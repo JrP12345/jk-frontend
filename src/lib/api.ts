@@ -1,11 +1,11 @@
 import axios from "axios";
 
-// Use Next.js rewrite proxy to avoid CORS and cookie cross-origin issues
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+// Direct backend communication using NEXT_PUBLIC_API_URL
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 const api = axios.create({
   baseURL: API_URL,
-  withCredentials: true, // Send httpOnly cookies with every request
+  withCredentials: true, // Send httpOnly cookies cross-origin with every request
   headers: {
     "Content-Type": "application/json",
   },
@@ -52,8 +52,6 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (err) {
         processQueue(err, null);
-        // If refresh fails, we are truly logged out. 
-        // Zustand store will handle the global redirect, or we can force window.location.href = "/login"
         if (typeof window !== "undefined") {
           window.dispatchEvent(new Event("auth-expired"));
         }

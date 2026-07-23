@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard
+  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, SkeletonCard, SkeletonTable, Dropdown, cn
 } from "@/components/ui";
 
 interface PatientUser {
@@ -389,11 +389,11 @@ export default function AdmissionsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header & Clinic Select (compact header, no gradient banner) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Top Header & Clinic Select */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-text">In-Patient Operations (IPD)</h2>
-          <p className="text-text-secondary text-sm">Manage ward admissions, track bed availability, and coordinate discharge billing.</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-text">In-Patient Operations (IPD)</h2>
+          <p className="text-xs sm:text-sm text-text-secondary">Manage ward admissions, track bed availability, and coordinate discharge billing.</p>
         </div>
         <div className="flex items-center gap-2.5">
           <Select
@@ -401,13 +401,13 @@ export default function AdmissionsPage() {
             value={selectedClinicId}
             onChange={(e) => setSelectedClinicId(e.target.value)}
             options={clinics.map(c => ({ value: c.id, label: `${c.name} (${c.city})` }))}
-            className="w-64"
+            className="w-full sm:w-64"
           />
         </div>
       </div>
 
       {/* KPI Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <StatCard
           label="Total Bed Capacity"
           value={totalBeds}
@@ -430,176 +430,117 @@ export default function AdmissionsPage() {
         />
       </div>
 
-      {/* Tabs Menu */}
-      <div className="flex border-b border-border gap-6">
+      {/* Tabs Menu (Scrollable on mobile) */}
+      <div className="flex items-center border-b border-border gap-3 sm:gap-6 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth pb-px">
         <button
+          type="button"
           onClick={() => setActiveTab("occupancy")}
-          className={`pb-3 text-sm font-semibold transition-colors ${activeTab === "occupancy" ? "border-b-2 border-primary-600 text-primary-600" : "text-text-muted hover:text-text"}`}
+          className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "occupancy" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
         >
-          Ward Occupancy Map
+          Ward Occupancy & Active Admissions ({activeAdmissions.length})
         </button>
         <button
-          onClick={() => setActiveTab("admissions")}
-          className={`pb-3 text-sm font-semibold transition-colors ${activeTab === "admissions" ? "border-b-2 border-primary-600 text-primary-600" : "text-text-muted hover:text-text"}`}
-        >
-          Active Admissions ({activeAdmissions.length})
-        </button>
-        <button
+          type="button"
           onClick={() => setActiveTab("beds")}
-          className={`pb-3 text-sm font-semibold transition-colors ${activeTab === "beds" ? "border-b-2 border-primary-600 text-primary-600" : "text-text-muted hover:text-text"}`}
+          className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "beds" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
         >
-          Beds Setup
+          Beds Setup & Inventory
         </button>
       </div>
 
-      {loading ? (
-        <div className="py-12 flex justify-center items-center">
-          <Spinner size="lg" label="Loading ward data..." />
-        </div>
-      ) : (
-        <>
-          {/* TAB 1: OCCUPANCY MAP */}
-          {activeTab === "occupancy" && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-text">Real-Time Ward Overview</h3>
-                 <Button onClick={() => { setSelectedBedId(""); setIntakeErrors({}); setIsAdmitOpen(true); }}>
-                  + Admit Patient
-                </Button>
+      {/* TAB 1: SINGLE UNIFIED WARD OCCUPANCY & ACTIVE ADMISSIONS TABLE */}
+      {activeTab === "occupancy" && (
+        <Table
+          onAddClick={() => { setSelectedBedId(""); setIntakeErrors({}); setIsAdmitOpen(true); }}
+          actionLabel="Admit Patient"
+          searchPlaceholder="Search active admitted patient name, doctor, ward..."
+          loading={loading}
+          toolbarFilters={
+            Object.keys(bedsByWard).length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 py-1 w-full">
+                {Object.entries(bedsByWard).map(([wardName, wardBeds]) => {
+                  const occupiedCount = wardBeds.filter(b => b.status === "occupied").length;
+                  return (
+                    <div key={wardName} className="flex items-center gap-2 bg-surface-alt/70 px-3 py-1.5 rounded-lg border border-border/60 text-xs">
+                      <span className="font-bold text-text">{wardName}:</span>
+                      <span className="text-primary-600 font-semibold">{occupiedCount}/{wardBeds.length} Occupied</span>
+                      <div className="flex items-center gap-1 ml-1">
+                        {wardBeds.map(b => (
+                          <span
+                            key={b.id}
+                            title={`${b.bedNumber}: ${b.status} (${b.occupiedBy?.userId?.name || "Available"})`}
+                            onClick={() => {
+                              if (b.status === "available") {
+                                setSelectedBedId(b.id);
+                                setIntakeErrors({});
+                                setIsAdmitOpen(true);
+                              }
+                            }}
+                            className={cn(
+                              "px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all",
+                              b.status === "occupied" ? "bg-rose-500/20 text-rose-600 dark:text-rose-400" : "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:scale-105"
+                            )}
+                          >
+                            {b.bedNumber}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-
-              {Object.keys(bedsByWard).length === 0 ? (
-                <Card className="p-8 text-center text-text-muted">
-                  No beds have been configured for this clinic location. Go to the "Beds Setup" tab to register wards and beds.
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {Object.entries(bedsByWard).map(([wardName, wardBeds]) => (
-                    <Card key={wardName} className="overflow-hidden">
-                      <CardHeader className="bg-surface-hover/50 border-b border-border py-4 px-5">
-                        <div className="flex justify-between items-center">
-                          <CardTitle className="text-base font-bold text-text">{wardName}</CardTitle>
-                          <Badge variant="default" className="text-xs">
-                            {wardBeds.filter(b => b.status === "occupied").length} / {wardBeds.length} Occupied
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-5">
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                          {wardBeds.map(bed => {
-                            let bgClass = "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400";
-                            if (bed.status === "occupied") bgClass = "bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-400";
-                            if (bed.status === "maintenance") bgClass = "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400";
-                            if (bed.status === "reserved") bgClass = "bg-indigo-500/10 border-indigo-500/30 text-indigo-700 dark:text-indigo-400";
-
-                            return (
-                              <div
-                                key={bed.id}
-                                onClick={() => {
-                                  if (bed.status === "available") {
-                                    setSelectedBedId(bed.id);
-                                    setIntakeErrors({});
-                                    setIsAdmitOpen(true);
-                                  }
-                                }}
-                                className={`border rounded-xl p-3 flex flex-col items-center justify-between text-center transition-all duration-300 ease-spring ${bed.status === "available" ? "cursor-pointer hover:scale-[1.03] hover:shadow-md hover:border-emerald-500/50" : ""} ${bgClass}`}
-                              >
-                                <span className="text-xs font-bold uppercase tracking-wider">{bed.bedNumber}</span>
-                                <div className="h-6 mt-1 flex items-center justify-center">
-                                  {bed.status === "occupied" ? (
-                                    <span className="text-[10px] font-semibold truncate max-w-[70px]">
-                                      {bed.occupiedBy?.userId?.name || "Occupied"}
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] uppercase font-bold tracking-tight opacity-75">{bed.status}</span>
-                                  )}
-                                </div>
-                                <span className="text-[10px] font-semibold opacity-80 mt-2">₹{bed.pricePerDay}/day</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+            )
+          }
+          columns={[
+            { header: "Patient Name", key: "patientName" },
+            { header: "Ward/Bed", key: "bedNumber" },
+            { header: "Admit Date", key: "admitDate" },
+            { header: "Days Spent", key: "days" },
+            { header: "Doctor in Charge", key: "doctor" },
+            { header: "Admission Reason", key: "reason" },
+            { header: "Action", key: "action" }
+          ]}
+          data={activeAdmissions.map(adm => {
+            const days = Math.max(1, Math.ceil((new Date().getTime() - new Date(adm.admissionDate).getTime()) / (1000 * 60 * 60 * 24)));
+            return {
+              id: adm.id,
+              patientName: (
+                <div>
+                  <div className="font-semibold text-text">{adm.patientId.userId.name}</div>
+                  {adm.patientId.userId.phone && adm.patientId.userId.phone !== "-" && (
+                    <div className="text-xs text-text-muted">{adm.patientId.userId.phone}</div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 2: ACTIVE ADMISSIONS */}
-          {activeTab === "admissions" && (
-            <Card>
-              <CardHeader className="py-4 px-5 border-b border-border flex justify-between items-center">
-                <CardTitle className="text-lg font-bold text-text">Currently Admitted In-Patients</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table
-                  columns={[
-                    { header: "Patient Name", key: "patientName" },
-                    { header: "Ward/Bed", key: "bedNumber" },
-                    { header: "Admit Date", key: "admitDate" },
-                    { header: "Days Spent", key: "days" },
-                    { header: "Doctor in Charge", key: "doctor" },
-                    { header: "Admission Reason", key: "reason" },
-                    { header: "Action", key: "action" }
-                  ]}
-                  data={activeAdmissions.map(adm => {
-                    const days = Math.max(1, Math.ceil((new Date().getTime() - new Date(adm.admissionDate).getTime()) / (1000 * 60 * 60 * 24)));
-                    return {
-                      id: adm.id,
-                      patientName: (
-                        <div>
-                          <div className="font-semibold text-text">{adm.patientId.userId.name}</div>
-                          <div className="text-xs text-text-muted">{adm.patientId.userId.phone}</div>
-                        </div>
-                      ),
-                      bedNumber: (
-                        <div className="font-medium text-text">
-                          {adm.bedId?.wardName} - <span className="text-primary-600 font-bold">{adm.bedId?.bedNumber}</span>
-                        </div>
-                      ),
-                      admitDate: new Date(adm.admissionDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }),
-                      days: <Badge variant="default">{days} {days === 1 ? "day" : "days"}</Badge>,
-                      doctor: (
-                        <div>
-                          <div className="font-semibold text-text">{adm.doctorInCharge.name}</div>
-                          <div className="text-[10px] text-text-muted">{adm.doctorInCharge.specialization || "Attending Physician"}</div>
-                        </div>
-                      ),
-                      reason: <span className="text-sm text-text truncate max-w-xs block">{adm.reasonForAdmission}</span>,
-                      action: (
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => {
-                            setActiveAdmission(adm);
-                            setIsDischargeOpen(true);
-                          }}
-                        >
-                          Discharge & Invoice
-                        </Button>
-                      )
-                    };
-                  })}
-                  emptyMessage="No patients are currently admitted in this clinic location."
-                />
-              </CardContent>
-            </Card>
-          )}
+              ),
+              bedNumber: (
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-text">{adm.bedId.bedNumber}</span>
+                  <span className="text-[10px] bg-primary-500/10 text-primary-600 px-1.5 py-0.5 rounded font-medium">{adm.bedId.wardName}</span>
+                </div>
+              ),
+              admitDate: new Date(adm.admissionDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+              days: <Badge variant="primary" className="font-bold">{days} Day{days > 1 ? "s" : ""}</Badge>,
+              doctor: <span>Dr. {(adm.doctorInCharge?.name || "Unassigned").replace(/^dr\.?\s+/i, "")}</span>,
+              reason: <span className="text-xs text-text-muted italic max-w-xs truncate">{adm.reasonForAdmission || "General Admission"}</span>,
+              action: (
+                <Button variant="danger" size="xs" onClick={() => { setActiveAdmission(adm); setIsDischargeOpen(true); }}>
+                  Discharge & Bill
+                </Button>
+              )
+            };
+          })}
+          emptyMessage="No patients are currently admitted in this clinic location."
+        />
+      )}
 
           {/* TAB 3: BEDS SETUP */}
           {activeTab === "beds" && (
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-text">Ward Beds Inventory</h3>
-                <Button onClick={() => { setEditingBedId(null); setWardName(""); setBedNumber(""); setPricePerDay(0); setBedErrors({}); setIsBedModalOpen(true); }}>
-                  + Add New Bed
-                </Button>
-              </div>
-
               <Card className="overflow-hidden">
                 <Table
+                  onAddClick={() => { setEditingBedId(null); setWardName(""); setBedNumber(""); setPricePerDay(0); setBedErrors({}); setIsBedModalOpen(true); }}
+                  actionLabel="Add New Bed"
+                  loading={loading}
                   columns={[
                     { header: "Ward Name", key: "ward" },
                     { header: "Bed Number", key: "bedNum" },
@@ -627,30 +568,27 @@ export default function AdmissionsPage() {
                       <span className="text-xs text-text-muted">None</span>
                     ),
                     actions: (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
+                      <Dropdown
+                        align="right"
+                        trigger={
+                          <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
+                            <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                            </svg>
+                          </Button>
+                        }
+                        items={[
+                          { label: "Edit Bed", onClick: () => {
                             setEditingBedId(bed.id);
                             setWardName(bed.wardName);
                             setBedNumber(bed.bedNumber);
                             setPricePerDay(bed.pricePerDay);
                             setBedErrors({});
                             setIsBedModalOpen(true);
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50"
-                          onClick={() => handleDeleteBed(bed.id)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
+                          }},
+                          { label: "Delete Bed", danger: true, onClick: () => handleDeleteBed(bed.id) },
+                        ]}
+                      />
                     )
                   }))}
                   emptyMessage="No beds configured yet. Create a bed to get started."
@@ -658,8 +596,6 @@ export default function AdmissionsPage() {
               </Card>
             </div>
           )}
-        </>
-      )}
 
       {/* ADMIT PATIENT MODAL */}
       <Modal

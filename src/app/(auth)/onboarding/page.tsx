@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
 import {
@@ -18,8 +18,11 @@ import {
   ModeSwitcher,
   Textarea,
   Checkbox,
+  ImageUpload,
+  AnantaLogo,
   cn
 } from "@/components/ui";
+import { useR2Upload } from "@/lib/useR2Upload";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -30,11 +33,14 @@ const STEPS = [
   { label: "Review", description: "Confirm information" }
 ];
 
-export default function OnboardingPage() {
+function OnboardingInner() {
   const [step, setStep] = useState(0);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const onboardingKey = searchParams.get("key") || "";
   const { login } = useAuthStore();
   const { toast } = useToast();
+  const { uploadImage, uploading: uploadingR2 } = useR2Upload();
   
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -196,7 +202,7 @@ export default function OnboardingPage() {
 
     setLoading(true);
     try {
-      // Step 1: Create Organization & Admin
+      // Step 1: Create Organization & Admin (send onboarding secret header)
       const orgRes = await api.post("/onboarding/organization", {
         org_name: formData.orgName,
         city: formData.orgCity,
@@ -211,6 +217,8 @@ export default function OnboardingPage() {
         admin_email: formData.adminEmail,
         admin_password: formData.adminPassword,
         admin_phone: formData.adminPhone || undefined,
+      }, {
+        headers: { "X-Onboarding-Secret": onboardingKey },
       });
 
       // Login the admin user session immediately
@@ -270,12 +278,8 @@ export default function OnboardingPage() {
 
       <div className="w-full max-w-lg relative z-10 animate-fade-up">
         {/* Brand Header */}
-        <div className="text-center mb-6 select-none group">
-          <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-tr from-primary-600 to-primary-500 text-white font-bold text-lg mb-2 shadow-lg shadow-primary-600/30 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3">
-            <svg className="h-5.5 w-5.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0015 0m-15 0a7.5 7.5 0 1115 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077l1.41-.513m14.095-5.13l1.41-.513M5.106 17.785l1.15-.827m11.379-8.16l1.15-.827M8.14 21.27l.707-1.03m7.45-10.858l.707-1.03m-4.673 13.93l-.221-1.23m1.488-8.243l-.221-1.23M18.4 4.917l-1.095-1.095m-8.337 8.337l-1.095-1.095M11.6 3.176l-.222 1.23m.989 5.5l-.222 1.23m-4.516-1.597l.707 1.03m6.142-8.96l.707 1.03m-7.85 2.16l1.15.826m8.88-6.36l1.15.826M4.4 17.785l1.41.513m10.155-7.39l1.41.513" />
-            </svg>
-          </div>
+        <div className="text-center mb-6 select-none flex flex-col items-center justify-center">
+          <AnantaLogo size="md" className="mb-2" />
           <h1 className="text-xl font-bold text-text tracking-tight">Register Organization</h1>
           <p className="text-text-secondary text-xs mt-0.5">Let's set up your HealthOS workspace</p>
         </div>
@@ -368,11 +372,26 @@ export default function OnboardingPage() {
                     onChange={handleChange("orgDescription")} 
                     maxLength={250}
                   />
-                  <Input 
-                    label="Image URL" 
-                    placeholder="https://example.com/hospital.jpg" 
-                    value={formData.orgImageUrl} 
-                    onChange={handleChange("orgImageUrl")} 
+                  <ImageUpload
+                    label="Facility / Organization Logo"
+                    value={formData.orgImageUrl}
+                    uploading={uploadingR2}
+                    onChange={async (val) => {
+                      if (val instanceof File) {
+                        try {
+                          const res = await uploadImage(val);
+                          setFormData(prev => ({ ...prev, orgImageUrl: res.publicUrl }));
+                          toast({ title: "Logo Uploaded", description: "Facility logo uploaded successfully.", variant: "success" });
+                        } catch (err) {
+                          toast({ title: "Upload Failed", description: "Failed to upload logo image.", variant: "error" });
+                        }
+                      } else if (typeof val === "string") {
+                        setFormData(prev => ({ ...prev, orgImageUrl: val }));
+                      } else {
+                        setFormData(prev => ({ ...prev, orgImageUrl: "" }));
+                      }
+                    }}
+                    helperText="Upload official logo (PNG, JPG, WEBP)"
                   />
                 </div>
               )}
@@ -648,5 +667,17 @@ export default function OnboardingPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-surface-alt flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full border-2 border-primary-600 border-t-transparent animate-spin" />
+      </div>
+    }>
+      <OnboardingInner />
+    </Suspense>
   );
 }

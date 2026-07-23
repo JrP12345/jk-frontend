@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard
+  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, Dropdown
 } from "@/components/ui";
 
 interface InvoiceItem {
@@ -149,7 +149,7 @@ export default function BillingPage() {
         const res = await api.get("/onboarding/clinics");
         setClinics(res.data.data || []);
       } catch (err) {
-        console.error("Failed to load clinics filter");
+        console.warn("Clinics filter not accessible for user role");
       }
     };
     if (user) fetchFilters();
@@ -358,7 +358,7 @@ export default function BillingPage() {
         <body>
           <div class="receipt">
             <div class="center">
-              <h3 class="title">JK HEALTHCARE SYSTEM</h3>
+              <h3 class="title">ANANTA HEALTHCARE SYSTEM</h3>
               <p style="margin:2px 0; font-size:11px;">${ticketData.clinicId?.name}</p>
               <p style="margin:2px 0; font-size:10px;">${ticketData.clinicId?.address}, ${ticketData.clinicId?.city}</p>
             </div>
@@ -435,16 +435,15 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-text">Invoices & Billing</h2>
-          <p className="text-sm text-text-secondary">Track payments, create manual bills, and collect outpatient fees.</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-text">Invoices & Billing</h2>
+          <p className="text-xs sm:text-sm text-text-secondary">Track payments, create manual bills, and collect outpatient fees.</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>Create Manual Invoice</Button>
       </div>
 
       {/* KPI Stats Analytics grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-4">
         <StatCard
           label="Today's Collections"
           value={`₹${todaysPaidAmount}`}
@@ -474,75 +473,77 @@ export default function BillingPage() {
         />
       </div>
 
-      {/* Filters Card */}
-      <Card>
-        <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Input
-            placeholder="Search patient name, phone, or invoice #..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Select
-            label="Clinic Location"
-            value={filterClinic}
-            onChange={(e) => setFilterClinic(e.target.value)}
-            options={[{ value: "", label: "All Clinics" }, ...clinics.map(c => ({ value: c.id, label: c.name }))]}
-          />
-          <Select
-            label="Status"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            options={[
-              { value: "", label: "All Statuses" },
-              { value: "unpaid", label: "Unpaid" },
-              { value: "paid", label: "Paid" },
-              { value: "refunded", label: "Refunded" }
-            ]}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Invoices List */}
-      <Card>
-        <CardContent className="pt-6">
-          {loading ? (
-            <div className="flex justify-center py-8"><Spinner /></div>
-          ) : (
-            <Table
-              columns={[
-                { key: "invoiceNumber", header: "Invoice #", render: (row: Invoice) => <span className="font-bold text-primary-600">#{row.invoiceNumber}</span> },
-                { key: "patient", header: "Patient", render: (row: Invoice) => (
-                  <div className="flex flex-col">
-                    <span className="font-medium text-text">{row.patientId?.userId?.name || "Patient Profile"}</span>
-                    <span className="text-xs text-text-secondary">{row.patientId?.userId?.phone}</span>
-                  </div>
-                )},
-                { key: "clinic", header: "Clinic Location", render: (row: Invoice) => <span>{row.clinicId?.name}</span> },
-                { key: "doctor", header: "Doctor", render: (row: Invoice) => <span>Dr. {row.doctorId?.name}</span> },
-                { key: "totalAmount", header: "Total", render: (row: Invoice) => <span className="font-semibold">₹{row.totalAmount}</span> },
-                { key: "status", header: "Status", render: (row: Invoice) => (
-                  <Badge variant={row.status === "paid" ? "success" : row.status === "unpaid" ? "danger" : "default"} className="capitalize">
-                    {row.status}
-                  </Badge>
-                )},
-                { key: "actions", header: "Actions", render: (row: Invoice) => (
-                  <div className="flex items-center gap-2">
-                    {row.status === "unpaid" && (
-                      <Button size="xs" variant="primary" onClick={() => {
-                        setActiveInvoice(row);
-                        setIsCollectOpen(true);
-                      }}>Collect</Button>
-                    )}
-                    <Button size="xs" variant="outline" onClick={() => handlePrintReceipt(row)}>Receipt</Button>
-                  </div>
-                )}
+      {/* Invoices List Table */}
+      <Table
+        onAddClick={() => setIsCreateOpen(true)}
+        actionLabel="Create Manual Invoice"
+        searchPlaceholder="Search patient name, phone, or invoice #..."
+        loading={loading}
+        toolbarFilters={
+          <>
+            {clinics.length > 1 && (
+              <div className="flex-1 min-w-[130px] sm:max-w-[160px]">
+                <Select
+                  size="sm"
+                  placeholder="All Clinics"
+                  value={filterClinic}
+                  onChange={(e) => setFilterClinic(e.target.value)}
+                  options={[{ value: "", label: "All Clinics" }, ...clinics.map(c => ({ value: c.id, label: c.name }))]}
+                />
+              </div>
+            )}
+            <div className="flex-1 min-w-[130px] sm:max-w-[160px]">
+              <Select
+                size="sm"
+                placeholder="All Statuses"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                options={[
+                  { value: "", label: "All Statuses" },
+                  { value: "unpaid", label: "Unpaid" },
+                  { value: "paid", label: "Paid" },
+                  { value: "refunded", label: "Refunded" }
+                ]}
+              />
+            </div>
+          </>
+        }
+        columns={[
+          { key: "invoiceNumber", header: "Invoice #", render: (row: Invoice) => <span className="font-bold text-primary-600">#{row.invoiceNumber}</span> },
+          { key: "patient", header: "Patient", render: (row: Invoice) => (
+            <div className="flex flex-col">
+              <span className="font-medium text-text">{row.patientId?.userId?.name || "Patient Profile"}</span>
+              <span className="text-xs text-text-secondary">{row.patientId?.userId?.phone}</span>
+            </div>
+          )},
+          { key: "clinic", header: "Clinic Location", render: (row: Invoice) => <span>{row.clinicId?.name}</span> },
+          { key: "doctor", header: "Doctor", render: (row: Invoice) => <span>Dr. {row.doctorId?.name}</span> },
+          { key: "totalAmount", header: "Total", render: (row: Invoice) => <span className="font-semibold">₹{row.totalAmount}</span> },
+          { key: "status", header: "Status", render: (row: Invoice) => (
+            <Badge variant={row.status === "paid" ? "success" : row.status === "unpaid" ? "danger" : "default"} className="capitalize">
+              {row.status}
+            </Badge>
+          )},
+          { key: "actions", header: "Actions", render: (row: Invoice) => (
+            <Dropdown
+              align="right"
+              trigger={
+                <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
+                  <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                  </svg>
+                </Button>
+              }
+              items={[
+                ...(row.status === "unpaid" ? [{ label: "Collect Payment", onClick: () => { setActiveInvoice(row); setIsCollectOpen(true); } }] : []),
+                { label: "View & Print Receipt", onClick: () => handlePrintReceipt(row) },
               ]}
-              data={filteredInvoices}
-              emptyMessage="No invoices found."
             />
           )}
-        </CardContent>
-      </Card>
+        ]}
+        data={filteredInvoices}
+        emptyMessage="No invoices found."
+      />
 
       {/* Create Manual Invoice Modal */}
       <Modal open={isCreateOpen} onClose={() => { setIsCreateOpen(false); resetCreateForm(); }} title="Create Manual Invoice" size="lg">

@@ -7,7 +7,7 @@ import { cn } from "./utils";
    Badge — Status label / tag
    ──────────────────────────────────────────────── */
 
-type BadgeVariant = "default" | "primary" | "success" | "warning" | "danger" | "outline";
+type BadgeVariant = "default" | "primary" | "success" | "warning" | "danger" | "outline" | "neutral" | "error" | "info";
 type BadgeSize = "sm" | "md";
 
 interface BadgeProps {
@@ -16,6 +16,7 @@ interface BadgeProps {
   dot?: boolean;
   removable?: boolean;
   onRemove?: () => void;
+  title?: string;
   children: ReactNode;
   className?: string;
 }
@@ -27,6 +28,9 @@ const variantStyles: Record<BadgeVariant, string> = {
   warning: "bg-warning-50 text-warning-600 border border-warning-500/20",
   danger:  "bg-danger-50 text-danger-600 border border-danger-500/20",
   outline: "bg-transparent text-text-secondary border border-border",
+  neutral: "bg-surface-alt text-text-secondary border border-border",
+  error:   "bg-danger-50 text-danger-600 border border-danger-500/20",
+  info:    "bg-primary-50 text-primary-700 border border-primary-200",
 };
 
 const dotColors: Record<BadgeVariant, string> = {
@@ -36,6 +40,9 @@ const dotColors: Record<BadgeVariant, string> = {
   warning: "bg-warning-500",
   danger:  "bg-danger-500",
   outline: "bg-text-muted",
+  neutral: "bg-text-muted",
+  error:   "bg-danger-500",
+  info:    "bg-primary-500",
 };
 
 const sizeStyles: Record<BadgeSize, string> = {
@@ -49,11 +56,13 @@ export default function Badge({
   dot = false,
   removable = false,
   onRemove,
+  title,
   children,
   className = "",
 }: BadgeProps) {
   return (
     <span
+      title={title}
       className={cn(
         "inline-flex items-center font-medium rounded-full whitespace-nowrap transition-colors duration-150",
         sizeStyles[size],

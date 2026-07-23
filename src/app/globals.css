@@ -57,6 +57,74 @@
   --font-mono: "Geist Mono", ui-monospace, monospace;
 }
 
+/* ────────────────────────────────────────────────
+   Modern Premium Skeleton Shimmer Engine (Linear/Vercel Style)
+   ──────────────────────────────────────────────── */
+@keyframes skeleton-wave {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--s-surface-alt) 0%,
+    var(--s-surface-hover) 35%,
+    var(--s-surface-alt) 70%
+  );
+  background-size: 250% 100%;
+  animation: skeleton-wave 2.4s infinite linear !important;
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.95;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.animate-pulse {
+  animation: pulse-slow 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
+/* ────────────────────────────────────────────────
+   Custom Modern Scrollbar System
+   ──────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.25);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.5);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.25) transparent;
+}
+
 /* ── Palettes ────────────────────────────────── */
 :root, [data-palette="blue"] {
   --p-50: #f0f7ff; --p-100: #e0effe; --p-200: #b9ddfc; --p-300: #7cc2fa;
@@ -201,5 +269,109 @@ body {
 
 .animate-shake {
   animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* ── Global Print Stylesheet ─────────────────── */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 12pt !important;
+  }
+  aside, nav, header, footer, button, .no-print, [role="navigation"] {
+    display: none !important;
+  }
+  main, .print-area {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 8px !important;
+    color: #000000 !important;
+  }
+}
+
+/* ── Specific Prescription Modal Print Handler ─────────────────── */
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  aside, nav, header, footer, button, .no-print, [role="navigation"] {
+    display: none !important;
+  }
+
+  /* Reset modal overlay vertical centering when printing */
+  div[role="dialog"], .fixed, .min-h-screen, .items-center {
+    position: static !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  #printable-prescription {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  #printable-prescription * {
+    color: #000000 !important;
+  }
+
+  #printable-prescription .rx-meta-box {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  #printable-prescription table {
+    width: 100% !important;
+    border: 1px solid #cbd5e1 !important;
+    border-collapse: collapse !important;
+  }
+
+  #printable-prescription th {
+    background: #f1f5f9 !important;
+    border-bottom: 2px solid #94a3b8 !important;
+    padding: 8px 12px !important;
+  }
+
+  #printable-prescription td {
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 8px 12px !important;
+  }
 }
 

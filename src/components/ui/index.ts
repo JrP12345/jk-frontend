@@ -6,6 +6,7 @@ export { ThemeProvider, useTheme, PALETTES, ModeSwitcher, PaletteSwitcher } from
 
 export { default as Button } from "./Button";
 export { default as Input } from "./Input";
+export { default as DatePicker } from "./DatePicker";
 export { default as Textarea } from "./Textarea";
 export { default as Select } from "./Select";
 export { default as Checkbox } from "./Checkbox";
@@ -40,3 +41,4 @@ export { default as Sidebar } from "./Sidebar";
 export { default as Stepper } from "./Stepper";
 
 export { default as Divider } from "./Divider";
+export { default as AnantaLogo, AnantaIcon } from "./AnantaLogo";

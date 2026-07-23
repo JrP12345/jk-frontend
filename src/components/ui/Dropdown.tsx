@@ -1,10 +1,11 @@
 "use client";
 
 import { type ReactNode, useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "./utils";
 
 /* ────────────────────────────────────────────────
-   Dropdown — Click-triggered menu with keyboard navigation
+   Dropdown — Click-triggered menu with portal rendering
    ──────────────────────────────────────────────── */
 
 interface DropdownItem {
@@ -27,15 +28,43 @@ interface DropdownProps {
 
 export default function Dropdown({ trigger, items, align = "left", width = "w-48", className = "" }: DropdownProps) {
   const [open, setOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [mounted, setMounted] = useState(false);
+
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const close = useCallback(() => {
     setOpen(false);
     setFocusedIndex(-1);
   }, []);
 
-  // Filter list of elements that can be focused/selected via keyboard
+  const updateCoords = useCallback(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const isUpward = spaceBelow < 220;
+
+      setOpenUpward(isUpward);
+      setCoords({
+        top: isUpward ? rect.top : rect.bottom,
+        left: align === "right" ? rect.right : rect.left,
+      });
+    }
+  }, [align]);
+
+  const handleToggle = () => {
+    if (!open) {
+      updateCoords();
+    }
+    setOpen(!open);
+  };
+
   const focusableItems = items
     .map((item, idx) => ({ item, originalIndex: idx }))
     .filter(({ item }) => !item.divider && !item.disabled);
@@ -43,14 +72,23 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
   useEffect(() => {
     if (!open) return;
     const onClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) close();
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        const portalEl = document.getElementById("dropdown-portal-root");
+        if (portalEl && portalEl.contains(e.target as Node)) return;
+        close();
+      }
     };
     const onEscape = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    const onScroll = () => { close(); };
+
     document.addEventListener("mousedown", onClickOutside);
     document.addEventListener("keydown", onEscape);
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+
     return () => {
       document.removeEventListener("mousedown", onClickOutside);
       document.removeEventListener("keydown", onEscape);
+      window.removeEventListener("scroll", onScroll, { capture: true });
     };
   }, [open, close]);
 
@@ -59,8 +97,8 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
 
     if (!open) {
       if (e.key === "Enter" || e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === " ") {
+        updateCoords();
         setOpen(true);
-        // Focus first or last item depending on direction key
         setFocusedIndex(e.key === "ArrowUp" ? focusableItems.length - 1 : 0);
         e.preventDefault();
       }
@@ -96,7 +134,7 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
       className={cn("relative inline-flex", className)}
     >
       <div
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         className="cursor-pointer"
         aria-haspopup="true"
         aria-expanded={open}
@@ -104,12 +142,20 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
         {trigger}
       </div>
 
-      {open && (
+      {open && mounted && coords && createPortal(
         <div
+          id="dropdown-portal-root"
+          style={{
+            position: "fixed",
+            top: openUpward ? undefined : coords.top + 6,
+            bottom: openUpward ? window.innerHeight - coords.top + 6 : undefined,
+            left: align === "right" ? undefined : coords.left,
+            right: align === "right" ? window.innerWidth - coords.left : undefined,
+            zIndex: 99999,
+          }}
           className={cn(
-            "absolute top-full mt-1.5 z-40 bg-surface rounded-lg border border-border shadow-lg py-1 animate-scale-in focus:outline-none backdrop-blur-md bg-surface/95",
-            width,
-            align === "right" ? "right-0 origin-top-right" : "left-0 origin-top-left",
+            "bg-surface rounded-xl border border-border shadow-2xl py-1.5 focus:outline-none backdrop-blur-xl bg-surface/95 animate-in fade-in zoom-in-95 duration-150",
+            width
           )}
           role="menu"
         >
@@ -131,14 +177,12 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
                   close();
                 }}
                 className={cn(
-                  "w-full flex items-center justify-between gap-2.5 px-3.5 py-2 text-sm text-left cursor-pointer transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed",
-                  isFocused ? "bg-surface-hover text-text scale-[0.98]" : "text-text",
+                  "w-full flex items-center justify-between gap-2.5 px-3.5 py-2 text-xs font-medium text-left cursor-pointer transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed",
+                  isFocused ? "bg-surface-hover text-text" : "text-text",
                   item.danger
-                    ? "text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-950/20"
-                    : isFocused
-                      ? ""
-                      : "hover:bg-surface-hover hover:text-text",
-                  isSelected && "font-medium text-primary-500"
+                    ? "text-danger-500 hover:bg-danger-500/10"
+                    : "hover:bg-surface-hover hover:text-text",
+                  isSelected && "font-bold text-primary-500"
                 )}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -154,16 +198,16 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
                   <span className="truncate">{item.label}</span>
                 </div>
                 {isSelected && (
-                  <svg className="h-4 w-4 text-primary-500 shrink-0 animate-scale-in" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <svg className="h-3.5 w-3.5 text-primary-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 )}
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
 }
-

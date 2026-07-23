@@ -11,7 +11,8 @@ import { cn } from "./utils";
 type ModalSize = "sm" | "md" | "lg" | "xl" | "full";
 
 interface ModalProps {
-  open: boolean;
+  open?: boolean;
+  isOpen?: boolean;
   onClose: () => void;
   title?: string;
   description?: string;
@@ -31,7 +32,8 @@ const sizeStyles: Record<ModalSize, string> = {
 };
 
 export default function Modal({
-  open,
+  open: openProp,
+  isOpen: isOpenProp,
   onClose,
   title,
   description,
@@ -41,6 +43,7 @@ export default function Modal({
   closeOnOverlay = true,
   className = "",
 }: ModalProps) {
+  const open = openProp ?? isOpenProp ?? false;
   const modalRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -121,7 +124,7 @@ export default function Modal({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       {/* Overlay Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in cursor-pointer"
@@ -137,24 +140,24 @@ export default function Modal({
         tabIndex={-1}
         aria-labelledby={title ? "modal-title" : undefined}
         className={cn(
-          "relative w-full bg-surface rounded-2xl shadow-2xl border border-border/80 ring-1 ring-white/5 animate-scale-in flex flex-col focus:outline-none",
+          "relative w-full bg-surface rounded-2xl shadow-2xl border border-border/80 ring-1 ring-white/5 animate-scale-in flex flex-col focus:outline-none overflow-hidden max-h-[90vh]",
           sizeStyles[size],
           className
         )}
       >
         {(title || description) && (
-          <div className="px-6 pt-6 pb-0">
-            {title && <h2 id="modal-title" className="text-lg font-semibold text-text">{title}</h2>}
-            {description && <p className="text-sm text-text-secondary mt-1">{description}</p>}
+          <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-0 shrink-0">
+            {title && <h2 id="modal-title" className="text-base sm:text-lg font-semibold text-text">{title}</h2>}
+            {description && <p className="text-xs sm:text-sm text-text-secondary mt-1">{description}</p>}
           </div>
         )}
 
-        <div className="px-6 py-5 overflow-y-auto" style={{ maxHeight: "calc(85vh - 140px)" }}>
+        <div className="px-4 sm:px-6 py-4 sm:py-5 overflow-y-auto flex-1 max-h-[75vh]">
           {children}
         </div>
 
         {footer && (
-          <div className="px-6 pb-5 flex items-center justify-end gap-2 border-t border-border pt-4">
+          <div className="px-4 sm:px-6 pb-4 sm:pb-5 flex items-center justify-end gap-2 border-t border-border pt-3 sm:pt-4">
             {footer}
           </div>
         )}

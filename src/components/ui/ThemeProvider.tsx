@@ -42,14 +42,14 @@ export const PALETTES: { id: Palette; label: string; swatch: string }[] = [
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeRaw] = useState<Mode>(() => {
-    if (typeof window !== "undefined") return (localStorage.getItem("jk-mode") as Mode) || "light";
-    return "light";
+    if (typeof window !== "undefined") return (localStorage.getItem("jk-mode") as Mode) || "dark";
+    return "dark";
   });
   const [palette, setPaletteRaw] = useState<Palette>(() => {
     if (typeof window !== "undefined") return (localStorage.getItem("jk-palette") as Palette) || "blue";
     return "blue";
   });
-  const [resolvedMode, setResolvedMode] = useState<"light" | "dark">(mode === "system" ? "light" : mode);
+  const [resolvedMode, setResolvedMode] = useState<"light" | "dark">(mode === "system" ? "dark" : mode);
 
   // Wrap setters to trigger smooth transition
   const triggerTransition = useCallback(() => {

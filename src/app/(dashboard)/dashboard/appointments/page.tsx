@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, ConfirmDialog, Stepper, Dropdown
+  Table, Button, Modal, Input, DatePicker, Select, Textarea, useToast, Spinner, Badge, ConfirmDialog, Stepper, Dropdown
 } from "@/components/ui";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -35,6 +36,7 @@ interface Appointment {
 }
 
 export default function AppointmentsPage() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const { toast } = useToast();
 
@@ -44,9 +46,17 @@ export default function AppointmentsPage() {
   // Filter States
   const [clinics, setClinics] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
+  const getTodayISO = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const [filterClinic, setFilterClinic] = useState("");
   const [filterDoctor, setFilterDoctor] = useState("");
-  const [filterDate, setFilterDate] = useState("");
+  const [filterDate, setFilterDate] = useState(getTodayISO());
   const [filterStatus, setFilterStatus] = useState("");
 
   // Modal States
@@ -139,9 +149,25 @@ export default function AppointmentsPage() {
   const [recordModalOpen, setRecordModalOpen] = useState(false);
   const [activeRecord, setActiveRecord] = useState<any | null>(null);
 
-  const handleOpenRecordModal = (appt: Appointment) => {
-    setActiveRecord(appt);
-    setRecordModalOpen(true);
+  const handleOpenRecordModal = async (appt: Appointment) => {
+    try {
+      const res = await api.get(`/encounters/${appt.id}/summary-report`);
+      const report = res.data?.data || res.data || {};
+      const symptoms = report.chiefComplaint || (report.symptoms || []).join(", ") || "";
+      const diagnosis = report.primaryDiagnosis || (report.diagnoses || []).map((d: any) => d.description || d.code).join(", ") || "";
+      const prescriptions = report.prescriptions || [];
+
+      setActiveRecord({
+        ...appt,
+        symptoms,
+        diagnosis,
+        prescriptions
+      });
+      setRecordModalOpen(true);
+    } catch (err) {
+      setActiveRecord(appt);
+      setRecordModalOpen(true);
+    }
   };
 
   const handleViewSlip = (appt: Appointment) => {
@@ -258,7 +284,15 @@ export default function AppointmentsPage() {
       if (filterClinic) queryParams.push(`clinicId=${filterClinic}`);
       if (filterDoctor) queryParams.push(`doctorId=${filterDoctor}`);
       if (filterStatus) queryParams.push(`status=${filterStatus}`);
-      if (filterDate) queryParams.push(`date=${filterDate}`);
+      if (filterDate) {
+        if (filterDate.includes(" to ")) {
+          const [start, end] = filterDate.split(" to ");
+          if (start) queryParams.push(`startDate=${start}`);
+          if (end) queryParams.push(`endDate=${end}`);
+        } else {
+          queryParams.push(`date=${filterDate}`);
+        }
+      }
       
       const queryString = queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
       const res = await api.get(`/appointments${queryString}`);
@@ -411,10 +445,15 @@ export default function AppointmentsPage() {
 
   const handleUpdateStatus = async () => {
     if (!updatingStatusId || !confirmStatus) return;
+    const targetId = updatingStatusId;
+    const targetStatus = confirmStatus;
     try {
-      await api.put(`/appointments/${updatingStatusId}/status`, { status: confirmStatus });
-      toast({ title: "Success", description: `Appointment updated to ${confirmStatus}`, variant: "success" });
+      await api.put(`/appointments/${targetId}/status`, { status: targetStatus });
+      toast({ title: "Success", description: `Appointment updated to ${targetStatus}`, variant: "success" });
       fetchAppointments();
+      if (targetStatus === "in-consultation") {
+        router.push(`/dashboard/consultations/${targetId}`);
+      }
     } catch (err: any) {
       toast({ title: "Error", description: err.response?.data?.message || "Failed to update appointment status", variant: "error" });
     } finally {
@@ -445,199 +484,186 @@ export default function AppointmentsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-text">Appointments</h2>
-          <p className="text-sm text-text-secondary">View and schedule clinic visits and token queue bookings.</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-text">Appointments</h2>
+          <p className="text-xs sm:text-sm text-text-secondary">View and schedule clinic visits and token queue bookings.</p>
         </div>
-        {user.role !== "patient" && user.role !== "doctor" && (
-          <Button onClick={openBookModal}>Book Appointment</Button>
-        )}
       </div>
 
       {/* Main Roster Table */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle>Appointments List</CardTitle>
-        </CardHeader>
-        {user.role !== "patient" && (
-          <div className="px-6 pb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            <Select
-              size="sm"
-              placeholder="Filter Clinic"
-              value={filterClinic}
-              onChange={(e) => setFilterClinic(e.target.value)}
-              options={[{ value: "", label: "All Clinics" }, ...clinics.map(c => ({ value: c.id, label: c.name }))]}
-            />
-            <Select
-              size="sm"
-              placeholder="Filter Doctor"
-              value={filterDoctor}
-              onChange={(e) => setFilterDoctor(e.target.value)}
-              options={[{ value: "", label: "All Doctors" }, ...doctors.map(d => ({ value: d.id, label: `Dr. ${d.name}` }))]}
-            />
-            <Input
-              size="sm"
-              type="date"
-              placeholder="Filter Date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-            />
-            <Select
-              size="sm"
-              placeholder="Filter Status"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              options={[
-                { value: "", label: "All Statuses" },
-                { value: "pending", label: "Pending" },
-                { value: "confirmed", label: "Confirmed" },
-                { value: "checked-in", label: "Checked-In" },
-                { value: "in-consultation", label: "In Consultation" },
-                { value: "completed", label: "Completed" },
-                { value: "cancelled", label: "Cancelled" },
-                { value: "no-show", label: "No Show" },
-              ]}
-            />
-          </div>
-        )}
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center p-12"><Spinner size="lg" /></div>
-          ) : (
-            <Table
-              columns={[
-                { 
-                  key: "tokenNumber", 
-                  header: "Token", 
-                  width: "70px",
-                  render: (row: Appointment) => (
-                    <button 
-                      onClick={() => handleViewSlip(row)}
-                      className="font-bold text-lg text-primary-600 hover:text-primary-700 hover:underline cursor-pointer focus:outline-none"
-                      title="View Booking Slip"
-                    >
-                      #{row.tokenNumber}
-                    </button>
-                  )
-                },
-                { 
-                  key: "patientName", 
-                  header: "Patient",
-                  render: (row: Appointment) => (
-                    <div className="flex flex-col">
-                      <span className="font-medium text-text">{row.patientId?.userId?.name || "Self"}</span>
-                      <span className="text-xs text-text-secondary">{row.patientId?.userId?.phone || "-"}</span>
-                    </div>
-                  )
-                },
-                { 
-                  key: "clinic", 
-                  header: "Location", 
-                  render: (row: Appointment) => <span>{row.clinicId?.name}</span>
-                },
-                { 
-                  key: "doctor", 
-                  header: "Doctor", 
-                  render: (row: Appointment) => <span>Dr. {row.doctorId?.name}</span>
-                },
-                { 
-                  key: "appointmentTime", 
-                  header: "Date & Time",
-                  render: (row: Appointment) => <span>{formatDateTime(row.appointmentTime)}</span>
-                },
-                { 
-                  key: "appointmentType", 
-                  header: "Type",
-                  render: (row: Appointment) => <span className="capitalize">{row.appointmentType}</span>
-                },
-                { 
-                  key: "status", 
-                  header: "Status",
-                  render: (row: Appointment) => (
-                    <Badge variant={getStatusBadgeVariant(row.status)} className="capitalize">{row.status.replace("-", " ")}</Badge>
-                  )
-                },
-                {
-                  key: "actions",
-                  header: "Actions",
-                  width: "120px",
-                  render: (row: Appointment) => {
-                    if (row.status === "completed") {
-                      return (
-                        <div className="flex flex-wrap gap-1.5 items-center">
-                          <Button
-                            variant="outline"
-                            size="xs"
-                            onClick={() => handleOpenRecordModal(row)}
-                            title="View Medical Summary"
-                          >
-                            Rx Summary
-                          </Button>
-                          {user.role === "patient" && (
-                            <Button
-                              variant="primary"
-                              size="xs"
-                              onClick={() => handleOpenReviewModal(row)}
-                            >
-                              Rate
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    }
-
-                    if (user.role === "patient") {
-                      if (row.status === "pending" || row.status === "confirmed") {
-                        return (
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={() => {
-                              setUpdatingStatusId(row.id);
-                              setConfirmStatus("cancelled");
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                        );
-                      }
-                      return <span className="text-text-muted text-xs">-</span>;
-                    }
-
-                    if (row.status === "cancelled" || row.status === "no-show") {
-                      return <span className="text-text-muted text-xs">-</span>;
-                    }
-                    return (
-                      <Dropdown
-                        align="right"
-                        trigger={
-                          <Button variant="outline" size="xs" className="gap-1 flex items-center">
-                            Actions
-                            <svg className="h-3.5 w-3.5 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                            </svg>
-                          </Button>
-                        }
-                        items={[
-                          { label: "Confirm", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("confirmed"); } },
-                          { label: "Check-In", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("checked-in"); } },
-                          { label: "In Consultation", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("in-consultation"); } },
-                          { label: "Complete", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("completed"); } },
-                          { label: "Cancel", danger: true, onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("cancelled"); } },
-                          { label: "No Show", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("no-show"); } }
-                        ]}
-                      />
-                    );
-                  }
+      <Table
+        onAddClick={user.role !== "patient" && user.role !== "doctor" ? openBookModal : undefined}
+        actionLabel="Book Appointment"
+        exportFilename="appointments_list"
+        searchPlaceholder="Search appointments..."
+        loading={loading}
+        toolbarFilters={
+          user.role !== "patient" && (
+            <>
+              <div className="w-full sm:w-48">
+                <DatePicker
+                  size="sm"
+                  variant="outline"
+                  mode="range"
+                  placeholder="Filter Date..."
+                  value={filterDate}
+                  onChange={(val) => setFilterDate(typeof val === "string" ? val : val.target.value)}
+                />
+              </div>
+              {clinics.length > 1 && (
+                <div className="w-full sm:w-40">
+                  <Select
+                    size="sm"
+                    placeholder="All Clinics"
+                    value={filterClinic}
+                    onChange={(e) => setFilterClinic(e.target.value)}
+                    options={[{ value: "", label: "All Clinics" }, ...clinics.map(c => ({ value: c.id, label: c.name }))]}
+                  />
+                </div>
+              )}
+              {doctors.length > 1 && (
+                <div className="w-full sm:w-40">
+                  <Select
+                    size="sm"
+                    placeholder="All Doctors"
+                    value={filterDoctor}
+                    onChange={(e) => setFilterDoctor(e.target.value)}
+                    options={[{ value: "", label: "All Doctors" }, ...doctors.map(d => ({ value: d.id, label: `Dr. ${(d.name || "").replace(/^dr\.?\s+/i, "")}` }))]}
+                  />
+                </div>
+              )}
+              <div className="w-full sm:w-40">
+                <Select
+                  size="sm"
+                  placeholder="All Statuses"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  options={[
+                    { value: "", label: "All Statuses" },
+                    { value: "pending", label: "Pending" },
+                    { value: "confirmed", label: "Confirmed" },
+                    { value: "checked-in", label: "Checked-In" },
+                    { value: "in-consultation", label: "In Consultation" },
+                    { value: "completed", label: "Completed" },
+                    { value: "cancelled", label: "Cancelled" },
+                    { value: "no-show", label: "No Show" },
+                  ]}
+                />
+              </div>
+            </>
+          )
+        }
+        columns={[
+          { 
+            key: "tokenNumber", 
+            header: "Token", 
+            width: "70px",
+            sortable: true,
+            filterable: true,
+            render: (row: Appointment) => (
+              <button 
+                onClick={() => handleViewSlip(row)}
+                className="font-bold text-base text-primary-500 hover:text-primary-400 hover:underline cursor-pointer focus:outline-none"
+                title="View Booking Slip"
+              >
+                #{row.tokenNumber}
+              </button>
+            )
+          },
+          { 
+            key: "patientName", 
+            header: "Patient",
+            sortable: true,
+            filterable: true,
+            render: (row: Appointment) => (
+              <div className="flex flex-col">
+                <span className="font-medium text-text">{row.patientId?.userId?.name || "Self"}</span>
+                {row.patientId?.userId?.phone && row.patientId?.userId?.phone !== "-" && (
+                  <span className="text-xs text-text-muted">{row.patientId?.userId?.phone}</span>
+                )}
+              </div>
+            )
+          },
+          { 
+            key: "clinic", 
+            header: "Location", 
+            sortable: true,
+            filterable: true,
+            render: (row: Appointment) => <span>{row.clinicId?.name}</span>
+          },
+          { 
+            key: "doctor", 
+            header: "Doctor", 
+            sortable: true,
+            filterable: true,
+            render: (row: Appointment) => <span>Dr. {(row.doctorId?.name || "Unassigned").replace(/^dr\.?\s+/i, "")}</span>
+          },
+          { 
+            key: "appointmentTime", 
+            header: "Date & Time",
+            sortable: true,
+            render: (row: Appointment) => <span>{formatDateTime(row.appointmentTime)}</span>
+          },
+          { 
+            key: "appointmentType", 
+            header: "Type",
+            sortable: true,
+            filterable: true,
+            render: (row: Appointment) => <span className="capitalize">{row.appointmentType}</span>
+          },
+          { 
+            key: "status", 
+            header: "Status",
+            sortable: true,
+            filterable: true,
+            filterType: "select",
+            filterOptions: [
+              { label: "Pending", value: "pending" },
+              { label: "Confirmed", value: "confirmed" },
+              { label: "Checked-In", value: "checked-in" },
+              { label: "In Consultation", value: "in-consultation" },
+              { label: "Completed", value: "completed" },
+              { label: "Cancelled", value: "cancelled" },
+              { label: "No Show", value: "no-show" },
+            ],
+            render: (row: Appointment) => (
+              <Badge variant={getStatusBadgeVariant(row.status)} className="capitalize">{row.status.replace("-", " ")}</Badge>
+            )
+          },
+          {
+            key: "actions",
+            header: "Actions",
+            width: "180px",
+            render: (row: Appointment) => (
+              <Dropdown
+                align="right"
+                trigger={
+                  <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
+                    <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                    </svg>
+                  </Button>
                 }
-              ]}
-              data={appointments}
-              emptyMessage="No appointments scheduled."
-            />
-          )}
-        </CardContent>
-      </Card>
+                items={[
+                  { label: "View Booking Slip", onClick: () => handleViewSlip(row) },
+                  { label: "View Rx / EHR Summary", onClick: () => handleOpenRecordModal(row) },
+                  ...(user.role === "doctor" && (row.status === "confirmed" || row.status === "checked-in" || row.status === "in-consultation")
+                    ? [{ label: "Open Encounter Workspace", onClick: () => router.push(`/dashboard/consultations/${row.id}`) }]
+                    : []),
+                  ...(row.status === "pending" ? [{ label: "Mark Confirmed", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("confirmed"); } }] : []),
+                  ...(row.status === "confirmed" ? [{ label: "Mark Checked-In", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("checked-in"); } }] : []),
+                  ...(row.status === "checked-in" ? [{ label: "Start Consultation", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("in-consultation"); } }] : []),
+                  ...(row.status === "in-consultation" ? [{ label: "Mark Completed", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("completed"); } }] : []),
+                  ...(row.status !== "completed" && row.status !== "cancelled" ? [{ label: "Cancel Appointment", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("cancelled"); } }] : [])
+                ]}
+              />
+            )
+          }
+        ]}
+        data={appointments}
+        emptyMessage="No appointments scheduled."
+      />
 
       {/* Book Appointment Modal (Multi-step flow) */}
       <Modal
@@ -705,14 +731,16 @@ export default function AppointmentsPage() {
                       error={bookingErrors.name}
                       required 
                     />
-                    <Input 
+                    <DatePicker 
                       label="Date of Birth *" 
-                      type="date"
                       value={newPatientForm.dob} 
-                      onChange={(e) => handleNewPatientChange("dob", e.target.value)} 
-                      onBlur={() => validateNewPatientField("dob", newPatientForm.dob)}
+                      maxDate={new Date()}
+                      onChange={(val) => {
+                        const strVal = typeof val === "string" ? val : val.target.value;
+                        handleNewPatientChange("dob", strVal);
+                        validateNewPatientField("dob", strVal);
+                      }} 
                       error={bookingErrors.dob}
-                      required 
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -965,74 +993,78 @@ export default function AppointmentsPage() {
         open={recordModalOpen}
         onClose={() => { setRecordModalOpen(false); setActiveRecord(null); }}
         title="Clinical Consultation Record"
-        size="md"
+        size="xl"
       >
         {activeRecord && (
           <div className="space-y-6 py-2">
-            <div className="border border-border rounded-xl p-5 bg-surface-alt relative overflow-hidden shadow-sm">
-              <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-primary-600/5 blur-2xl pointer-events-none" />
-              
-              <div className="border-b border-border/80 border-dashed pb-4 mb-4">
-                <span className="text-[10px] font-extrabold text-primary-600 tracking-wider uppercase block">MedLife HealthOS EHR</span>
-                <h3 className="text-base font-bold text-text mt-0.5">{activeRecord.clinicId?.name || "Clinic Location"}</h3>
-                <p className="text-[10px] text-text-muted mt-0.5">{activeRecord.clinicId?.address || ""}, {activeRecord.clinicId?.city || ""}</p>
+            <div id="printable-prescription" className="border border-border/80 rounded-xl p-6 bg-surface-alt text-text space-y-5 shadow-sm relative overflow-hidden">
+              <div className="border-b border-border/80 pb-4 flex justify-between items-start">
+                <div>
+                  <h1 className="text-xl font-extrabold text-primary-500 uppercase tracking-wider">{activeRecord.clinicId?.name || "MedLife Specialist Clinic"}</h1>
+                  <p className="text-xs text-text-muted mt-1">{[activeRecord.clinicId?.address, activeRecord.clinicId?.city].filter(Boolean).join(", ") || "Main HealthOS Campus"}</p>
+                </div>
+                <div className="text-right">
+                  <Badge variant="primary" className="text-xs font-bold px-3 py-1">Token #{activeRecord.tokenNumber || "1"}</Badge>
+                </div>
               </div>
 
               {/* Consultation Summary Metas */}
-              <div className="grid grid-cols-2 gap-4 text-xs text-text-secondary mb-4 pb-4 border-b border-border/40">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs bg-surface/80 border border-border/60 p-4 rounded-xl rx-meta-box">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Patient</span>
-                  <span className="font-semibold text-text">{activeRecord.patientId?.userId?.name || "Patient Profile"}</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Patient Name</span>
+                  <span className="font-semibold text-text text-sm">{activeRecord.patientId?.userId?.name || "Patient"}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Consulting Doctor</span>
-                  <span className="font-semibold text-text">Dr. {activeRecord.doctorId?.name} ({activeRecord.doctorId?.specialization || "General Medicine"})</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Attending Doctor</span>
+                  <span className="font-semibold text-text text-sm">
+                    {`Dr. ${(activeRecord.doctorId?.name || "Practitioner").replace(/^dr\.?\s+/i, "")}`} ({activeRecord.doctorId?.specialization || "General Medicine"})
+                  </span>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-muted block">Consultation Date</span>
-                  <span className="font-semibold text-text">{new Date(activeRecord.appointmentTime).toLocaleDateString(undefined, { dateStyle: "medium" })}</span>
+                  <span className="font-semibold text-text">{new Date(activeRecord.appointmentTime).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Token Number</span>
-                  <span className="font-semibold text-text">#{activeRecord.tokenNumber}</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Medical Record Status</span>
+                  <span className="font-semibold text-success-500">Verified EHR Record</span>
                 </div>
               </div>
 
               {/* Chief Complaints / Symptoms */}
-              <div className="space-y-1 mb-4">
-                <span className="text-[10px] uppercase tracking-wider font-extrabold text-text-muted block">Chief Complaints / Symptoms</span>
-                <p className="text-sm text-text-secondary leading-relaxed font-medium">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-text-muted block border-b border-border/40 pb-1">Chief Complaints / Symptoms</span>
+                <p className="text-sm text-text-secondary pt-1 font-medium">
                   {activeRecord.symptoms || "No symptoms recorded."}
                 </p>
               </div>
 
               {/* Clinical Diagnosis */}
-              <div className="space-y-1 mb-4">
-                <span className="text-[10px] uppercase tracking-wider font-extrabold text-text-muted block">Diagnosis / Clinical Findings</span>
-                <p className="text-sm text-text-secondary leading-relaxed font-medium">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-text-muted block border-b border-border/40 pb-1">Diagnosis & Clinical Assessment</span>
+                <p className="text-sm text-text font-bold">
                   {activeRecord.diagnosis || "No diagnosis recorded."}
                 </p>
               </div>
 
               {/* Prescriptions Table */}
               <div className="space-y-2">
-                <span className="text-[10px] uppercase tracking-wider font-extrabold text-text-muted block">Rx - Prescribed Medications</span>
+                <div className="text-2xl font-serif font-black italic text-primary-500">Rx</div>
                 {activeRecord.prescriptions && activeRecord.prescriptions.length > 0 ? (
-                  <div className="border border-border/60 rounded-lg overflow-hidden bg-surface">
+                  <div className="border border-border/60 rounded-xl overflow-hidden bg-surface">
                     <table className="w-full text-xs text-left border-collapse">
                       <thead>
-                        <tr className="bg-surface-alt border-b border-border/60 text-text font-bold">
-                          <th className="p-2.5">Medicine Name</th>
-                          <th className="p-2.5">Dosage</th>
-                          <th className="p-2.5">Duration</th>
+                        <tr className="bg-surface-alt border-b border-border/60 text-text font-bold uppercase">
+                          <th className="p-3">Medicine Name</th>
+                          <th className="p-3">Dosage / Instructions</th>
+                          <th className="p-3">Duration</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/40 text-text-secondary">
                         {activeRecord.prescriptions.map((med: any, idx: number) => (
                           <tr key={idx} className="hover:bg-surface-hover/30">
-                            <td className="p-2.5 font-medium">{med.name}</td>
-                            <td className="p-2.5">{med.dosage}</td>
-                            <td className="p-2.5">{med.duration}</td>
+                            <td className="p-3 font-bold text-text">{med.name}</td>
+                            <td className="p-3">{med.dosage}</td>
+                            <td className="p-3">{med.duration}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1045,14 +1077,26 @@ export default function AppointmentsPage() {
 
               {/* Follow-up Note */}
               {activeRecord.followUpRecommended && (
-                <div className="mt-4 pt-4 border-t border-border/40 space-y-1 text-xs">
-                  <span className="text-[10px] uppercase tracking-wider font-extrabold text-text-muted block">Recommended Follow-up</span>
-                  <p className="font-semibold text-text">Follow-up within {activeRecord.followUpTimeline}</p>
+                <div className="pt-2 space-y-1 text-xs">
+                  <span className="text-[10px] uppercase tracking-wider font-extrabold text-text-muted block border-b border-border/40 pb-1">Follow-up Plan</span>
+                  <p className="font-semibold text-text">Recommended follow-up within {activeRecord.followUpTimeline}</p>
                   {activeRecord.followUpNotes && (
                     <p className="text-text-secondary italic">&ldquo;{activeRecord.followUpNotes}&rdquo;</p>
                   )}
                 </div>
               )}
+
+              {/* Signature Line */}
+              <div className="pt-8 flex justify-end">
+                <div className="border-t border-border/80 pt-2 text-center w-56">
+                  <div className="font-bold text-xs text-text">{`Dr. ${(activeRecord.doctorId?.name || "Practitioner").replace(/^dr\.?\s+/i, "")}`}</div>
+                  <div className="text-[10px] text-text-muted">Authorized Signatory</div>
+                </div>
+              </div>
+
+              <div className="border-t border-border/40 pt-3 text-center text-[10px] text-text-muted">
+                Official Electronic Medical Prescription • Generated by MedLife HealthOS EMR
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
@@ -1060,84 +1104,155 @@ export default function AppointmentsPage() {
                 Close
               </Button>
               <Button 
+                variant="primary"
                 onClick={() => {
-                  const printWindow = window.open("", "_blank");
-                  if (!printWindow) return;
-                  printWindow.document.write(`
+                  if (!activeRecord) return;
+                  
+                  const clinicName = activeRecord.clinicId?.name || "MedLife Specialist Clinic";
+                  const clinicAddress = [activeRecord.clinicId?.address, activeRecord.clinicId?.city].filter(Boolean).join(", ") || "Main HealthOS Campus";
+                  const patientName = activeRecord.patientId?.userId?.name || "Patient";
+                  const rawDoctorName = activeRecord.doctorId?.name || "Practitioner";
+                  const cleanDoctorName = rawDoctorName.replace(/^dr\.?\s+/i, "");
+                  const doctorFormatted = `Dr. ${cleanDoctorName}`;
+                  const doctorSpec = activeRecord.doctorId?.specialization || "General Medicine";
+                  const apptDate = new Date(activeRecord.appointmentTime).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+                  const tokenNo = activeRecord.tokenNumber || "1";
+                  const symptoms = activeRecord.symptoms || "No symptoms recorded.";
+                  const diagnosis = activeRecord.diagnosis || "No diagnosis recorded.";
+                  const rxItems = (activeRecord.prescriptions || []).map((m: any) => `
+                    <tr>
+                      <td style="padding: 8px 12px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #e2e8f0;">${m.name}</td>
+                      <td style="padding: 8px 12px; color: #334155; border-bottom: 1px solid #e2e8f0;">${m.dosage}</td>
+                      <td style="padding: 8px 12px; color: #334155; border-bottom: 1px solid #e2e8f0;">${m.duration}</td>
+                    </tr>
+                  `).join("");
+
+                  const printFrame = document.createElement("iframe");
+                  printFrame.style.position = "fixed";
+                  printFrame.style.right = "0";
+                  printFrame.style.bottom = "0";
+                  printFrame.style.width = "0";
+                  printFrame.style.height = "0";
+                  printFrame.style.border = "0";
+                  document.body.appendChild(printFrame);
+
+                  const frameDoc = printFrame.contentWindow?.document;
+                  if (!frameDoc) return;
+
+                  frameDoc.open();
+                  frameDoc.write(`
+                    <!DOCTYPE html>
                     <html>
                       <head>
-                        <title>Prescription Slip - Token #${activeRecord.tokenNumber}</title>
+                        <title>Prescription Slip - Token #${tokenNo}</title>
                         <style>
-                          body { font-family: sans-serif; padding: 40px; color: #333; }
-                          .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
-                          .meta-grid { display: grid; grid-template-cols: 1fr 1fr; gap: 15px; margin-bottom: 30px; font-size: 14px; }
-                          .meta-label { font-weight: bold; color: #555; }
-                          .section-title { font-size: 12px; font-weight: bold; text-transform: uppercase; color: #777; margin-bottom: 6px; border-bottom: 1px solid #ddd; padding-bottom: 3px; margin-top: 20px; }
-                          .section-content { font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
-                          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                          th { border-bottom: 2px solid #ddd; text-align: left; padding: 8px; font-size: 13px; }
-                          td { padding: 8px; border-bottom: 1px solid #eee; font-size: 13px; }
-                          .footer { margin-top: 60px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #eee; padding-top: 15px; }
+                          @page { size: A4 portrait; margin: 12mm; }
+                          * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                          body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #111827; background: #ffffff; margin: 0; padding: 10px; line-height: 1.4; font-size: 12px; }
+                          .header-bar { border-bottom: 3px solid #0d9488; padding-bottom: 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-start; }
+                          .clinic-title { font-size: 20px; font-weight: 800; color: #0f766e; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+                          .clinic-sub { font-size: 11px; color: #6b7280; margin-top: 3px; }
+                          .token-badge { background: #0f766e; color: #ffffff; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 12px; display: inline-block; }
+                          .meta-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 18px; display: grid; grid-template-cols: 1fr 1fr; gap: 10px; font-size: 12px; }
+                          .meta-label { font-weight: 600; color: #64748b; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
+                          .meta-value { font-weight: 700; color: #0f172a; margin-top: 1px; }
+                          .rx-header { font-size: 28px; font-weight: 900; color: #0f766e; font-style: italic; margin-bottom: 6px; font-family: Georgia, serif; }
+                          .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #0f766e; border-bottom: 1.5px solid #ccfbf1; padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; letter-spacing: 0.5px; }
+                          .section-body { font-size: 13px; color: #334155; margin-bottom: 12px; background: #ffffff; }
+                          table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
+                          th { background: #f1f5f9; color: #475569; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left; padding: 8px 12px; border-bottom: 2px solid #cbd5e1; }
+                          .signature-box { margin-top: 40px; display: flex; justify-content: flex-end; }
+                          .sig-line { border-top: 1.5px solid #94a3b8; width: 200px; text-align: center; padding-top: 4px; font-size: 11px; font-weight: 600; color: #475569; }
+                          .footer-bar { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center; font-size: 10px; color: #94a3b8; }
                         </style>
                       </head>
                       <body>
-                        <div class="header">
-                          <h2 style="margin: 0; font-size: 20px;">\${activeRecord.clinicId?.name || "Clinic"}</h2>
-                          <p style="margin: 5px 0 0; font-size: 12px; color: #666;">\${activeRecord.clinicId?.address || ""}, \${activeRecord.clinicId?.city || ""}</p>
+                        <div class="header-bar">
+                          <div>
+                            <h1 class="clinic-title">${clinicName}</h1>
+                            <div class="clinic-sub">${clinicAddress}</div>
+                          </div>
+                          <div>
+                            <span class="token-badge">Token #${tokenNo}</span>
+                          </div>
                         </div>
-                        <div class="meta-grid">
-                          <div><span class="meta-label">Patient Name:</span> \${activeRecord.patientId?.userId?.name || ""}</div>
-                          <div><span class="meta-label">Doctor:</span> Dr. \${activeRecord.doctorId?.name || ""} (\${activeRecord.doctorId?.specialization || ""})</div>
-                          <div><span class="meta-label">Date:</span> \${new Date(activeRecord.appointmentTime).toLocaleDateString()}</div>
-                          <div><span class="meta-label">Token No:</span> #\${activeRecord.tokenNumber}</div>
+
+                        <div class="meta-box">
+                          <div>
+                            <div class="meta-label">Patient Name</div>
+                            <div class="meta-value">${patientName}</div>
+                          </div>
+                          <div>
+                            <div class="meta-label">Attending Doctor</div>
+                            <div class="meta-value">${doctorFormatted} <span style="font-weight: 400; color: #64748b;">(${doctorSpec})</span></div>
+                          </div>
+                          <div>
+                            <div class="meta-label">Consultation Date</div>
+                            <div class="meta-value">${apptDate}</div>
+                          </div>
+                          <div>
+                            <div class="meta-label">Medical Record Status</div>
+                            <div class="meta-value" style="color: #059669;">Verified EHR Record</div>
+                          </div>
                         </div>
-                        
-                        <div class="section-title">Chief Complaints / Symptoms</div>
-                        <div class="section-content">\${activeRecord.symptoms || "No symptoms recorded."}</div>
 
-                        <div class="section-title">Diagnosis / Clinical Findings</div>
-                        <div class="section-content">\${activeRecord.diagnosis || "No diagnosis recorded."}</div>
+                        <div class="section-title">Chief Complaints / Presenting Symptoms</div>
+                        <div class="section-body">${symptoms}</div>
 
-                        <div class="section-title">Rx - Prescriptions</div>
-                        \${activeRecord.prescriptions && activeRecord.prescriptions.length > 0 ? \`
+                        <div class="section-title">Diagnosis & Clinical Assessment</div>
+                        <div class="section-body"><strong>${diagnosis}</strong></div>
+
+                        <div class="rx-header">Rx</div>
+                        ${rxItems.length > 0 ? `
                           <table>
                             <thead>
                               <tr>
-                                <th>Medicine Name</th>
-                                <th>Dosage</th>
+                                <th>Medication Name</th>
+                                <th>Dosage / Instructions</th>
                                 <th>Duration</th>
                               </tr>
                             </thead>
                             <tbody>
-                              \${activeRecord.prescriptions.map((m: any) => \`
-                                <tr>
-                                  <td style="font-weight: bold;">\${m.name}</td>
-                                  <td>\${m.dosage}</td>
-                                  <td>\${m.duration}</td>
-                                </tr>
-                              \`).join("")}
+                              ${rxItems}
                             </tbody>
                           </table>
-                        \` : \`<p style="font-size: 13px; italic">No medications prescribed.</p>\`}
+                        ` : `<p style="font-size: 12px; color: #64748b; font-style: italic;">No medications prescribed.</p>`}
 
-                        \${activeRecord.followUpRecommended ? \`
-                          <div class="section-title" style="margin-top:30px;">Follow-up Recommendation</div>
-                          <div class="section-content">
-                            Recommended follow-up within <strong>\${activeRecord.followUpTimeline}</strong>.<br/>
-                            \${activeRecord.followUpNotes ? \`Instructions: <em>"\${activeRecord.followUpNotes}"</em>\` : ""}
+                        ${activeRecord.followUpRecommended ? `
+                          <div class="section-title" style="margin-top: 16px;">Follow-up Plan</div>
+                          <div class="section-body">
+                            Recommended follow-up within <strong>${activeRecord.followUpTimeline || "1 week"}</strong>.<br/>
+                            ${activeRecord.followUpNotes ? `Instructions: <em>"${activeRecord.followUpNotes}"</em>` : ""}
                           </div>
-                        \` : ""}
+                        ` : ""}
 
-                        <div class="footer">
-                          Powered by MedLife HealthOS Electronic Health Records.
+                        <div class="signature-box">
+                          <div class="sig-line">
+                            ${doctorFormatted}<br/>
+                            <span style="font-size: 10px; font-weight: 400; color: #94a3b8;">Authorized Signatory</span>
+                          </div>
+                        </div>
+
+                        <div class="footer-bar">
+                          Official Electronic Medical Prescription • Generated by MedLife HealthOS EMR
                         </div>
                       </body>
                     </html>
                   `);
-                  printWindow.document.close();
+                  frameDoc.close();
+
+                  setTimeout(() => {
+                    printFrame.contentWindow?.focus();
+                    printFrame.contentWindow?.print();
+                    setTimeout(() => {
+                      if (document.body.contains(printFrame)) {
+                        document.body.removeChild(printFrame);
+                      }
+                    }, 1000);
+                  }, 250);
                 }}
               >
-                Print Prescription
+                Print Prescription Slip
               </Button>
             </div>
           </div>

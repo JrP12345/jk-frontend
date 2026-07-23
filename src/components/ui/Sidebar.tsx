@@ -25,7 +25,7 @@ interface SidebarProps {
 export default function Sidebar({ brand, items, footer, collapsed = false, className = "" }: SidebarProps) {
   return (
     <aside className={cn("flex flex-col bg-surface border-r border-border h-full transition-all duration-300 ease-spring", collapsed ? "w-16" : "w-60", className)}>
-      {brand && <div className={cn("flex items-center border-b border-border", collapsed ? "justify-center p-3" : "px-4 py-4")}>{brand}</div>}
+      {brand && <div className={cn("h-16 shrink-0 flex items-center border-b border-border", collapsed ? "justify-center px-2" : "px-4")}>{brand}</div>}
       <nav className="flex-1 overflow-y-auto py-3 px-2">
         <ul className="flex flex-col gap-0.5">
           {items.map((item, i) => <SidebarItem key={i} item={item} collapsed={collapsed} />)}

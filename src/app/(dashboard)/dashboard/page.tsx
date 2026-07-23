@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuthStore } from "@/store/authStore";
-import { Card, CardHeader, CardTitle, CardContent, StatCard, Badge, Spinner, Table, Button, Dropdown, useToast } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, StatCard, Badge, Spinner, Table, Button, Dropdown, useToast, SkeletonCard, SkeletonTable } from "@/components/ui";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
@@ -35,18 +35,19 @@ export default function DashboardOverview() {
     try {
       setLoading(true);
       if (user.role === "admin" || user.role === "receptionist") {
-        const [clinicsRes, staffRes, apptsRes, invoicesRes] = await Promise.all([
+        const [clinicsRes, staffRes, apptsRes, invoicesRes] = await Promise.allSettled([
           api.get("/onboarding/clinics"),
           api.get("/onboarding/staff"),
           api.get("/appointments"),
           api.get("/invoices")
         ]);
 
-        const clList = clinicsRes.data.data || [];
-        const docList = staffRes.data.data.doctors || [];
-        const recList = staffRes.data.data.receptionists || [];
-        const apptList = apptsRes.data.data || [];
-        const invList = invoicesRes.data.data || [];
+        const clList = clinicsRes.status === "fulfilled" ? (clinicsRes.value.data.data || []) : [];
+        const staffData = staffRes.status === "fulfilled" ? (staffRes.value.data.data || {}) : {};
+        const docList = staffData.doctors || [];
+        const recList = staffData.receptionists || [];
+        const apptList = apptsRes.status === "fulfilled" ? (apptsRes.value.data.data || []) : [];
+        const invList = invoicesRes.status === "fulfilled" ? (invoicesRes.value.data.data || []) : [];
 
         const todayStr = new Date().toISOString().split("T")[0];
         const todaysPaid = invList.reduce((acc: number, curr: any) => {
@@ -84,12 +85,12 @@ export default function DashboardOverview() {
         });
         setAppointments(doctorAppts);
       } else if (user.role === "patient") {
-        const [apptsRes, invoicesRes] = await Promise.all([
+        const [apptsRes, invoicesRes] = await Promise.allSettled([
           api.get("/appointments"),
           api.get("/invoices")
         ]);
-        const apptList = apptsRes.data.data || [];
-        const invList = invoicesRes.data.data || [];
+        const apptList = apptsRes.status === "fulfilled" ? (apptsRes.value.data.data || []) : [];
+        const invList = invoicesRes.status === "fulfilled" ? (invoicesRes.value.data.data || []) : [];
 
         setPatientStats({
           appointmentsCount: apptList.filter((a: any) => ["pending", "confirmed"].includes(a.status)).length,
@@ -194,14 +195,18 @@ export default function DashboardOverview() {
         </div>
       )}
 
-      {/* KPI Cards Grid */}
-      {loading ? (
-        <div className="flex justify-center py-12"><Spinner size="lg" /></div>
-      ) : (
-        <>
-          {/* Admin / Receptionist KPI cards */}
-          {(user.role === "admin" || user.role === "receptionist") && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Admin / Receptionist KPI cards */}
+      {(user.role === "admin" || user.role === "receptionist") && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+          {loading ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : (
+            <>
               <StatCard
                 label="Today's Collections"
                 value={`₹${adminStats.collections}`}
@@ -218,12 +223,14 @@ export default function DashboardOverview() {
                 icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-primary-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>}
               />
               <StatCard
-                label="Total Practitioners"
+                label="Active Doctors Roster"
                 value={adminStats.doctors.toString()}
-                icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-purple-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
+                icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-indigo-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
               />
-            </div>
+            </>
           )}
+        </div>
+      )}
 
           {/* Doctor KPI cards */}
           {user.role === "doctor" && (
@@ -285,6 +292,7 @@ export default function DashboardOverview() {
                   </div>
                 ) : (
                   <Table
+                    loading={loading}
                     columns={
                       user.role === "doctor"
                         ? [
@@ -400,8 +408,6 @@ export default function DashboardOverview() {
               </CardContent>
             </Card>
           </div>
-        </>
-      )}
     </div>
   );
 }

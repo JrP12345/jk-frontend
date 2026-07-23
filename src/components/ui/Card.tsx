@@ -64,7 +64,7 @@ export default function Card({ children, padding = "md", hover = false, classNam
 }
 
 export function CardHeader({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={cn("flex flex-col space-y-1.5 pb-4 border-b border-border", className)}>{children}</div>;
+  return <div className={cn("flex flex-col space-y-1.5 pb-3 sm:pb-4 border-b border-border", className)}>{children}</div>;
 }
 
 export function CardTitle({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -72,14 +72,14 @@ export function CardTitle({ children, className = "" }: { children: ReactNode; c
 }
 
 export function CardDescription({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <p className={cn("text-sm text-text-secondary", className)}>{children}</p>;
+  return <p className={cn("text-xs sm:text-sm text-text-secondary", className)}>{children}</p>;
 }
 
 export function CardContent({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={cn("pt-4 flex-1", className)}>{children}</div>;
+  return <div className={cn("pt-3 sm:pt-4 flex-1", className)}>{children}</div>;
 }
 
 export function CardFooter({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={cn("flex items-center justify-end gap-2 pt-4 border-t border-border mt-4", className)}>{children}</div>;
+  return <div className={cn("flex items-center justify-end gap-2 pt-3 sm:pt-4 border-t border-border mt-3 sm:mt-4", className)}>{children}</div>;
 }
 

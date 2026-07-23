@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent, CardDescription,
-  Button, Select, Input, useToast, Spinner, Badge, StatCard, Modal, Textarea, Checkbox
+  Button, Select, Input, DatePicker, useToast, Spinner, Badge, StatCard, Modal, Textarea, Checkbox, Skeleton, SkeletonCard
 } from "@/components/ui";
 
 interface Appointment {
@@ -65,39 +65,49 @@ export default function QueuePage() {
       try {
         setLoadingFilters(true);
         if (user?.role === "doctor") {
-          // Doctors can see assignments to find which clinics they work at
-          const res = await api.get(`/onboarding/doctors/assignments?doctorId=${user.id}`);
-          const assignments = res.data.data || [];
-          const uniqueClinics = Array.from(new Set(assignments.map((a: any) => JSON.stringify(a.clinicId))))
-            .map((str: any) => JSON.parse(str));
-          
+          let uniqueClinics: any[] = [];
+          try {
+            const res = await api.get(`/onboarding/doctors/assignments?doctorId=${user.id}`);
+            const assignments = res.data?.data || [];
+            uniqueClinics = assignments
+              .map((a: any) => a.clinicId)
+              .filter(Boolean)
+              .filter((c: any, idx: number, arr: any[]) => arr.findIndex(t => (t.id || t._id) === (c.id || c._id)) === idx);
+          } catch {
+            const res = await api.get("/onboarding/clinics");
+            uniqueClinics = res.data?.data || [];
+          }
+
           setClinics(uniqueClinics);
           setDoctors([{ id: user.id, name: user.name }]);
           setSelectedDoctor(user.id);
           if (uniqueClinics.length > 0) {
-            setSelectedClinic(uniqueClinics[0].id);
+            setSelectedClinic(uniqueClinics[0].id || uniqueClinics[0]._id);
           }
         } else {
-          // Admins and receptionists fetch all clinics and doctors
           const [clinicsRes, staffRes] = await Promise.all([
-            api.get("/onboarding/clinics"),
-            api.get("/onboarding/staff")
+            api.get("/onboarding/clinics").catch(() => ({ data: { data: [] } })),
+            api.get("/onboarding/staff").catch(() => ({ data: { data: { doctors: [] } } }))
           ]);
-          const loadedClinics = clinicsRes.data.data || [];
-          const loadedDoctors = staffRes.data.data.doctors || [];
-          
+          const loadedClinics = clinicsRes.data?.data || [];
+          const loadedDoctors = Array.isArray(staffRes.data?.data?.doctors)
+            ? staffRes.data.data.doctors
+            : Array.isArray(staffRes.data?.data)
+            ? staffRes.data.data
+            : [];
+
           setClinics(loadedClinics);
           setDoctors(loadedDoctors);
 
           if (loadedClinics.length > 0) {
-            setSelectedClinic(loadedClinics[0].id);
+            setSelectedClinic(loadedClinics[0].id || loadedClinics[0]._id);
           }
           if (loadedDoctors.length > 0) {
-            setSelectedDoctor(loadedDoctors[0].id);
+            setSelectedDoctor(loadedDoctors[0].id || loadedDoctors[0]._id);
           }
         }
       } catch (err) {
-        toast({ title: "Error", description: "Failed to initialize filters", variant: "error" });
+        console.error("initFilters error:", err);
       } finally {
         setLoadingFilters(false);
       }
@@ -276,49 +286,59 @@ export default function QueuePage() {
         </Button>
       </div>
 
-      {/* Selector Filters (Compact bar, no labels) */}
-      <Card className="border-border bg-surface-alt/50 shadow-sm">
-        <CardContent className="py-3 px-4">
-          {loadingFilters ? (
-            <div className="w-full flex justify-center py-2"><Spinner size="sm" /></div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
-              <Select
+      {/* Selector Filters (Ultra-Compact Mobile Filter Bar) */}
+      <div className="flex flex-wrap items-center gap-2 p-2 bg-surface-alt/40 border border-border/60 rounded-xl w-full">
+        {loadingFilters ? (
+          <div className="flex items-center gap-2 w-full">
+            <Skeleton height="2rem" rounded="lg" className="flex-1" />
+            <Skeleton height="2rem" rounded="lg" className="flex-1" />
+          </div>
+        ) : (
+          <>
+            {clinics.length > 1 && (
+              <div className="flex-1 min-w-[130px] sm:max-w-xs">
+                <Select
+                  size="sm"
+                  placeholder="Select Clinic"
+                  value={selectedClinic}
+                  onChange={(e) => setSelectedClinic(e.target.value)}
+                  options={clinics.map(c => ({ value: c.id, label: c.name }))}
+                  disabled={user.role === "doctor" && clinics.length <= 1}
+                />
+              </div>
+            )}
+            {doctors.length > 1 && user.role !== "doctor" && (
+              <div className="flex-1 min-w-[130px] sm:max-w-xs">
+                <Select
+                  size="sm"
+                  placeholder="Select Doctor"
+                  value={selectedDoctor}
+                  onChange={(e) => setSelectedDoctor(e.target.value)}
+                  options={doctors.map(d => ({ value: d.id, label: `Dr. ${(d.name || "").replace(/^dr\.?\s+/i, "")}` }))}
+                />
+              </div>
+            )}
+            <div className="flex-1 min-w-[130px] sm:max-w-[160px]">
+              <DatePicker
                 size="sm"
-                placeholder="Select Clinic"
-                value={selectedClinic}
-                onChange={(e) => setSelectedClinic(e.target.value)}
-                options={clinics.map(c => ({ value: c.id, label: c.name }))}
-                disabled={user.role === "doctor" && clinics.length <= 1}
-              />
-              <Select
-                size="sm"
-                placeholder="Select Doctor"
-                value={selectedDoctor}
-                onChange={(e) => setSelectedDoctor(e.target.value)}
-                options={doctors.map(d => ({ value: d.id, label: `Dr. ${d.name}` }))}
-                disabled={user.role === "doctor"}
-              />
-              <Input
-                size="sm"
-                type="date"
+                variant="outline"
                 placeholder="Select Date"
                 value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                onChange={(val) => setSelectedDate(typeof val === "string" ? val : val.target.value)}
               />
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </>
+        )}
+      </div>
 
       {/* STATS OVERVIEW */}
       {selectedClinic && selectedDoctor && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
           <StatCard
             label="Total Waiting"
             value={stats.waiting.toString()}
             icon={
-              <svg className="h-5 w-5 text-warning-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             }
@@ -327,7 +347,7 @@ export default function QueuePage() {
             label="Checked-In"
             value={stats.checkedIn.toString()}
             icon={
-              <svg className="h-5 w-5 text-info-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             }
@@ -336,16 +356,16 @@ export default function QueuePage() {
             label="In Consultation"
             value={stats.activeConsultation.toString()}
             icon={
-              <svg className="h-5 w-5 text-success-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             }
           />
           <StatCard
             label="Next Token"
-            value={stats.nextInLine ? `#${stats.nextInLine}` : "-"}
+            value={stats.nextInLine ? `#${stats.nextInLine}` : "None"}
             icon={
-              <svg className="h-5 w-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
               </svg>
             }
@@ -367,7 +387,16 @@ export default function QueuePage() {
           </CardContent>
         </Card>
       ) : loadingQueue ? (
-        <div className="flex justify-center p-12"><Spinner size="lg" /></div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-3">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+          <div>
+            <SkeletonCard />
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           

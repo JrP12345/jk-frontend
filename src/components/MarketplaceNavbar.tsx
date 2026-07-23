@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
-import { Button, Avatar, Dropdown, ModeSwitcher } from "@/components/ui";
+import { Button, Avatar, Dropdown, ModeSwitcher, AnantaLogo } from "@/components/ui";
 
 export default function MarketplaceNavbar() {
   const { user, logout, isAuthenticated } = useAuthStore();
@@ -31,13 +31,8 @@ export default function MarketplaceNavbar() {
       <div className="max-w-6xl mx-auto px-6 h-full flex items-center justify-between">
         
         {/* Brand/Logo */}
-        <Link href="/browse" className="flex items-center gap-3 group">
-          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary-600 text-white flex items-center justify-center font-bold shadow-md shadow-primary-600/20 group-hover:scale-105 transition-transform duration-200">
-            JK
-          </div>
-          <span className="font-bold text-lg text-text tracking-tight group-hover:text-primary-600 transition-colors">
-            JK Healthcare
-          </span>
+        <Link href="/browse">
+          <AnantaLogo size="md" />
         </Link>
 
         {/* Desktop Navigation Items */}

@@ -11,26 +11,30 @@ interface Tab {
   icon?: ReactNode;
   badge?: string | number;
   disabled?: boolean;
-  content: ReactNode;
+  content?: ReactNode;
 }
 
 interface TabsProps {
   tabs: Tab[];
   defaultTab?: string;
+  activeTab?: string;
   variant?: "underline" | "pills";
   onChange?: (tabId: string) => void;
   className?: string;
 }
 
-export default function Tabs({ tabs, defaultTab, variant = "underline", onChange, className = "" }: TabsProps) {
-  const [active, setActive] = useState(defaultTab || tabs[0]?.id);
+export default function Tabs({ tabs, defaultTab, activeTab: controlledActiveTab, variant = "underline", onChange, className = "" }: TabsProps) {
+  const [internalActive, setInternalActive] = useState(defaultTab || tabs[0]?.id);
+  const active = controlledActiveTab !== undefined ? controlledActiveTab : internalActive;
   const [sliderStyle, setSliderStyle] = useState<React.CSSProperties>({ left: 0, width: 0, opacity: 0 });
   
   const containerRef = useRef<HTMLDivElement>(null);
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
 
   const handleChange = (id: string) => {
-    setActive(id);
+    if (controlledActiveTab === undefined) {
+      setInternalActive(id);
+    }
     onChange?.(id);
   };
 
@@ -59,7 +63,7 @@ export default function Tabs({ tabs, defaultTab, variant = "underline", onChange
         ref={containerRef}
         role="tablist"
         className={cn(
-          "relative flex gap-0.5",
+          "relative flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth max-w-full",
           variant === "underline" ? "border-b border-border pb-px" : "bg-surface-alt rounded-lg p-1",
         )}
       >
@@ -101,10 +105,10 @@ export default function Tabs({ tabs, defaultTab, variant = "underline", onChange
               disabled={tab.disabled}
               onClick={() => handleChange(tab.id)}
               className={cn(
-                "relative z-10 flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium cursor-pointer transition-colors duration-300 disabled:opacity-40 disabled:cursor-not-allowed select-none active:scale-[0.98]",
+                "relative z-10 flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium cursor-pointer transition-colors duration-300 disabled:opacity-40 disabled:cursor-not-allowed select-none active:scale-[0.98] shrink-0 whitespace-nowrap",
                 variant === "underline"
-                  ? cn("-mb-px", isActive ? "text-primary-600" : "text-text-secondary hover:text-text")
-                  : cn("rounded-md", isActive ? "text-text" : "text-text-secondary hover:text-text"),
+                  ? cn("-mb-px", isActive ? "text-primary-600 font-bold" : "text-text-secondary hover:text-text")
+                  : cn("rounded-md", isActive ? "text-text font-bold" : "text-text-secondary hover:text-text"),
               )}
             >
               {tab.icon && <span className="[&>svg]:h-4 [&>svg]:w-4 shrink-0">{tab.icon}</span>}

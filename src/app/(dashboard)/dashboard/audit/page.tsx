@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
-  Card, CardHeader, CardTitle, CardContent, CardDescription,
-  Table, Badge, Spinner, Alert, Button
+  Card, CardHeader, CardTitle, CardDescription, CardContent,
+  Table, Badge, Button, useToast, Spinner, Alert, SkeletonTable
 } from "@/components/ui";
 
 interface AuditLogEntry {
@@ -132,7 +132,7 @@ export default function AuditLogsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex justify-center p-12"><Spinner size="lg" /></div>
+            <SkeletonTable rows={6} cols={5} />
           ) : (
             <Table
               searchable

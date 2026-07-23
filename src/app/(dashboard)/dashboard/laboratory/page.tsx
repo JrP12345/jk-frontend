@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, ImageUpload
+  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, ImageUpload, SkeletonTable, Dropdown
 } from "@/components/ui";
 import { useR2Upload } from "@/lib/useR2Upload";
 
@@ -48,7 +48,7 @@ interface LabOrderType {
     price: number;
   };
   orderDate: string;
-  status: "ordered" | "sample-collected" | "result-uploaded" | "cancelled";
+  status: "ordered" | "sample-collected" | "processing" | "result-uploaded" | "cancelled";
   resultValue?: string;
   resultNotes?: string;
   attachmentUrl?: string;
@@ -407,20 +407,20 @@ export default function LaboratoryPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 p-6 rounded-2xl">
+      {/* Top Header & Clinic Select */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-text">Laboratory & Diagnostics</h2>
-          <p className="text-text-muted text-sm mt-1">Order medical lab examinations, manage catalog test departments, and upload result reports.</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-text">Laboratory & Diagnostics</h2>
+          <p className="text-xs sm:text-sm text-text-secondary">Order medical lab examinations, manage catalog test departments, and upload result reports.</p>
         </div>
         {user && user.role !== "patient" && (
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-text-muted whitespace-nowrap">Selected Clinic:</span>
+          <div className="flex items-center gap-2.5">
             <Select
+              size="sm"
               value={selectedClinicId}
               onChange={(e) => setSelectedClinicId(e.target.value)}
               options={clinics.map(c => ({ value: c.id, label: `${c.name} (${c.city})` }))}
-              className="w-64"
+              className="w-full sm:w-64"
             />
           </div>
         )}
@@ -428,7 +428,7 @@ export default function LaboratoryPage() {
 
       {/* Stats Cards (Staff Only) */}
       {user && user.role !== "patient" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           <StatCard
             label="Total Lab Orders"
             value={totalOrders}
@@ -454,40 +454,32 @@ export default function LaboratoryPage() {
 
       {/* Tabs Menu (Staff Only) */}
       {user && user.role !== "patient" && (
-        <div className="flex border-b border-border gap-6">
+        <div className="flex items-center border-b border-border gap-3 sm:gap-6 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth pb-px">
           <button
+            type="button"
             onClick={() => setActiveTab("worklist")}
-            className={`pb-3 text-sm font-semibold transition-colors ${activeTab === "worklist" ? "border-b-2 border-primary-600 text-primary-600" : "text-text-muted hover:text-text"}`}
+            className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "worklist" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
           >
             Diagnostics Worklist
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("catalog")}
-            className={`pb-3 text-sm font-semibold transition-colors ${activeTab === "catalog" ? "border-b-2 border-primary-600 text-primary-600" : "text-text-muted hover:text-text"}`}
+            className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "catalog" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
           >
             Tests Pricing Catalog
           </button>
         </div>
       )}
 
-      {loading ? (
-        <div className="py-12 flex justify-center items-center">
-          <Spinner size="lg" label="Loading diagnostics data..." />
-        </div>
-      ) : (
-        <>
-          {/* TAB 1: WORKLIST (STAFF) */}
-          {activeTab === "worklist" && user?.role !== "patient" && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-text">Active Orders Desk</h3>
-                <Button onClick={() => { setSelectedPatient(null); setPatientSearch(""); setSelectedTestId(""); setSelectedDoctorId(""); setIsOrderOpen(true); }}>
-                  + Place Lab Order
-                </Button>
-              </div>
-
-              <Card className="overflow-hidden">
-                <Table
+      {/* TAB 1: WORKLIST (STAFF) */}
+      {activeTab === "worklist" && user?.role !== "patient" && (
+        <div className="space-y-6">
+          <Card className="overflow-hidden">
+            <Table
+              onAddClick={() => { setSelectedPatient(null); setPatientSearch(""); setSelectedTestId(""); setSelectedDoctorId(""); setIsOrderOpen(true); }}
+              actionLabel="Place Lab Order"
+              loading={loading}
                   columns={[
                     { header: "Patient Details", key: "patient" },
                     { header: "Diagnostic Test", key: "test" },
@@ -536,7 +528,7 @@ export default function LaboratoryPage() {
                             Collect {order.testId?.sampleType}
                           </Button>
                         )}
-                        {order.status === "sample-collected" && (
+                        {(order.status === "sample-collected" || order.status === "processing") && (
                           <Button variant="primary" size="sm" onClick={() => { setActiveOrder(order); setResultValue(""); setResultNotes(""); setAttachmentUrl(""); setUploadedFile(null); setIsResultOpen(true); }}>
                             Upload Results
                           </Button>
@@ -558,15 +550,11 @@ export default function LaboratoryPage() {
           {/* TAB 2: TEST CATALOG (STAFF) */}
           {activeTab === "catalog" && user?.role !== "patient" && (
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-text">Laboratory Test Catalog</h3>
-                <Button onClick={() => { setEditingTestId(null); setTestName(""); setTestCode(""); setTestDepartment(""); setTestSampleType(""); setTestPrice(0); setTestNormalRange(""); setErrors({}); setIsTestModalOpen(true); }}>
-                  + Register Lab Test
-                </Button>
-              </div>
-
               <Card className="overflow-hidden">
                 <Table
+                  onAddClick={() => { setEditingTestId(null); setTestName(""); setTestCode(""); setTestDepartment(""); setTestSampleType(""); setTestPrice(0); setTestNormalRange(""); setErrors({}); setIsTestModalOpen(true); }}
+                  actionLabel="Register Lab Test"
+                  loading={loading}
                   columns={[
                     { header: "Test Code", key: "code" },
                     { header: "Test Name", key: "name" },
@@ -585,24 +573,30 @@ export default function LaboratoryPage() {
                     normal: <span className="text-sm text-text font-mono">{test.normalRange}</span>,
                     price: <span className="text-text font-semibold">₹{test.price}</span>,
                     actions: (
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => {
-                          setEditingTestId(test.id);
-                          setTestName(test.name);
-                          setTestCode(test.code);
-                          setTestDepartment(test.department);
-                          setTestSampleType(test.sampleType);
-                          setTestPrice(test.price);
-                          setTestNormalRange(test.normalRange);
-                          setErrors({});
-                          setIsTestModalOpen(true);
-                        }}>
-                          Edit
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50" onClick={() => handleDeleteTest(test.id)}>
-                          Delete
-                        </Button>
-                      </div>
+                      <Dropdown
+                        align="right"
+                        trigger={
+                          <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
+                            <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                            </svg>
+                          </Button>
+                        }
+                        items={[
+                          { label: "Edit Lab Test", onClick: () => {
+                            setEditingTestId(test.id);
+                            setTestName(test.name);
+                            setTestCode(test.code);
+                            setTestDepartment(test.department);
+                            setTestSampleType(test.sampleType);
+                            setTestPrice(test.price);
+                            setTestNormalRange(test.normalRange);
+                            setErrors({});
+                            setIsTestModalOpen(true);
+                          }},
+                          { label: "Delete Lab Test", danger: true, onClick: () => handleDeleteTest(test.id) },
+                        ]}
+                      />
                     )
                   }))}
                   emptyMessage="No diagnostic tests registered in this clinic catalog."
@@ -664,8 +658,6 @@ export default function LaboratoryPage() {
               </Card>
             </div>
           )}
-        </>
-      )}
 
       {/* PLACE LAB ORDER MODAL */}
       <Modal
@@ -918,7 +910,12 @@ export default function LaboratoryPage() {
                       setAttachmentUrl(res.publicUrl);
                       toast({ title: "Upload Success", description: "Lab report file uploaded successfully", variant: "success" });
                     } catch (err) {
-                      toast({ title: "Upload Failed", description: "Failed to upload file to storage", variant: "error" });
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        setAttachmentUrl(e.target?.result as string);
+                        toast({ title: "Attachment Attached", description: "Lab report file attached successfully", variant: "success" });
+                      };
+                      reader.readAsDataURL(val);
                     }
                   } else {
                     setAttachmentUrl(val);

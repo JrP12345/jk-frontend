@@ -51,7 +51,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ) : icon ? (
         <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>
       ) : null}
-      <span>{children}</span>
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">{children}</span>
       {iconRight && !loading && <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4">{iconRight}</span>}
     </button>
   )

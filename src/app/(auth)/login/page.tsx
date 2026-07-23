@@ -15,6 +15,7 @@ import {
   Button,
   useToast,
   ModeSwitcher,
+  AnantaLogo,
   cn
 } from "@/components/ui";
 
@@ -154,14 +155,9 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md relative z-10 animate-fade-up">
         {/* Brand Header */}
-        <div className="text-center mb-8 select-none group">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-primary-600 to-primary-500 text-white font-bold text-xl mb-3 shadow-lg shadow-primary-600/30 transition-all duration-500 group-hover:scale-110 group-hover:rotate-6">
-            <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0015 0m-15 0a7.5 7.5 0 1115 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077l1.41-.513m14.095-5.13l1.41-.513M5.106 17.785l1.15-.827m11.379-8.16l1.15-.827M8.14 21.27l.707-1.03m7.45-10.858l.707-1.03m-4.673 13.93l-.221-1.23m1.488-8.243l-.221-1.23M18.4 4.917l-1.095-1.095m-8.337 8.337l-1.095-1.095M11.6 3.176l-.222 1.23m.989 5.5l-.222 1.23m-4.516-1.597l.707 1.03m6.142-8.96l.707 1.03m-7.85 2.16l1.15.826m8.88-6.36l1.15.826M4.4 17.785l1.41.513m10.155-7.39l1.41.513" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-text tracking-tight">HealthOS</h1>
-          <p className="text-text-secondary text-sm mt-1">Sign in to manage clinical operations</p>
+        <div className="text-center mb-8 flex flex-col items-center justify-center">
+          <AnantaLogo size="xl" />
+          <p className="text-text-secondary text-sm mt-2">Sign in to manage clinical operations</p>
         </div>
 
         {/* Auth Card Container */}
@@ -246,12 +242,6 @@ export default function LoginPage() {
                 <Button type="submit" fullWidth loading={loading} size="lg">
                   Sign In
                 </Button>
-                <p className="text-xs text-text-secondary text-center">
-                  New to HealthOS?{" "}
-                  <a href="/onboarding" className="text-primary-600 font-semibold hover:underline">
-                    Register your organization
-                  </a>
-                </p>
               </CardFooter>
             </form>
           ) : (

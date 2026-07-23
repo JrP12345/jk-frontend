@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, useToast, Spinner, Badge, StatCard
+  Table, useToast, Spinner, Badge, StatCard, SkeletonCard, SkeletonTable
 } from "@/components/ui";
 
 interface ClinicPerformance {
@@ -38,18 +38,25 @@ interface AnalyticsData {
   };
 }
 
+import { AnalyticsService } from "@/services/analytics.service";
+
 export default function AnalyticsPage() {
   const { user } = useAuthStore();
   const { toast } = useToast();
 
   const [data, setData] = useState<AnalyticsData | null>(null);
+  const [qualityMetrics, setQualityMetrics] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/analytics/executive");
-      setData(res.data.data);
+      const [execData, qData] = await Promise.all([
+        AnalyticsService.getExecutiveAnalytics(),
+        AnalyticsService.getQualityMetrics().catch(() => null),
+      ]);
+      setData(execData);
+      setQualityMetrics(qData);
     } catch (err) {
       toast({
         title: "Error",
@@ -69,8 +76,21 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="py-20 flex justify-center items-center">
-        <Spinner size="lg" label="Aggregating ecosystem analytics..." />
+      <div className="space-y-6 animate-fade-in">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <SkeletonTable rows={5} cols={5} />
+          </div>
+          <div>
+            <SkeletonCard />
+          </div>
+        </div>
       </div>
     );
   }
@@ -88,15 +108,15 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       {/* Top Title Banner */}
-      <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-500/20 p-6 rounded-2xl">
-        <h2 className="text-2xl font-bold text-text">Ecosystem Executive Board</h2>
-        <p className="text-text-muted text-sm mt-1">
-          Comparative multi-clinic revenue analytics, active bed census utilization, pharmacy stock alerts, and outpatient referral loop performance.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-text">Ecosystem Executive Board</h2>
+          <p className="text-xs sm:text-sm text-text-secondary">Comparative multi-clinic revenue analytics, active bed census utilization, and referral performance.</p>
+        </div>
       </div>
 
       {/* KPI Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <StatCard
           label="Total Collections"
           value={`₹${overall.totalRevenue.toLocaleString()}`}

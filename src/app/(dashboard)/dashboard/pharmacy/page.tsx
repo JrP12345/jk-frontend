@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, Select, useToast, Spinner, Badge, StatCard
+  Table, Button, Modal, Input, DatePicker, Select, useToast, Spinner, Badge, StatCard, SkeletonTable
 } from "@/components/ui";
 
 interface MedicineType {
@@ -313,25 +313,25 @@ export default function PharmacyPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-cyan-500/10 to-indigo-500/10 border border-cyan-500/20 p-6 rounded-2xl">
+      {/* Top Header & Clinic Select */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-text">Pharmacy Desk & Inventory</h2>
-          <p className="text-text-muted text-sm mt-1">Dispense doctor prescriptions, log medicine batches, and track clinic stock levels.</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-text">Pharmacy Desk & Inventory</h2>
+          <p className="text-xs sm:text-sm text-text-secondary">Dispense doctor prescriptions, log medicine batches, and track clinic stock levels.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-text-muted whitespace-nowrap">Selected Clinic:</span>
+        <div className="flex items-center gap-2.5">
           <Select
+            size="sm"
             value={selectedClinicId}
             onChange={(e) => setSelectedClinicId(e.target.value)}
             options={clinics.map(c => ({ value: c.id, label: `${c.name} (${c.city})` }))}
-            className="w-64"
+            className="w-full sm:w-64"
           />
         </div>
       </div>
 
       {/* KPI Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
         <StatCard
           label="Total Med Types"
           value={totalItems}
@@ -349,40 +349,32 @@ export default function PharmacyPage() {
         />
       </div>
 
-      {/* Tabs Menu */}
-      <div className="flex border-b border-border gap-6">
+      {/* Tabs Menu (Scrollable on mobile) */}
+      <div className="flex items-center border-b border-border gap-3 sm:gap-6 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth pb-px">
         <button
+          type="button"
           onClick={() => setActiveTab("inventory")}
-          className={`pb-3 text-sm font-semibold transition-colors ${activeTab === "inventory" ? "border-b-2 border-primary-600 text-primary-600" : "text-text-muted hover:text-text"}`}
+          className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "inventory" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
         >
           Inventory Stock Catalog
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab("dispensing")}
-          className={`pb-3 text-sm font-semibold transition-colors ${activeTab === "dispensing" ? "border-b-2 border-primary-600 text-primary-600" : "text-text-muted hover:text-text"}`}
+          className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "dispensing" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
         >
           Dispensing Prescription Desk ({completedAppointments.length})
         </button>
       </div>
 
-      {loading ? (
-        <div className="py-12 flex justify-center items-center">
-          <Spinner size="lg" label="Loading catalog records..." />
-        </div>
-      ) : (
-        <>
-          {/* TAB 1: INVENTORY STOCK CATALOG */}
-          {activeTab === "inventory" && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-text">Active Inventory List</h3>
-                <Button onClick={() => { setEditingMedId(null); setMedName(""); setGenericName(""); setStockQuantity(0); setRetailPrice(0); setCostPrice(0); setExpiryDate(""); setBatchNumber(""); setMedErrors({}); setIsMedModalOpen(true); }}>
-                  + Add New Medicine
-                </Button>
-              </div>
-
-              <Card className="overflow-hidden">
-                <Table
+      {/* TAB 1: INVENTORY STOCK CATALOG */}
+      {activeTab === "inventory" && (
+        <div className="space-y-6">
+          <Card className="overflow-hidden">
+            <Table
+              onAddClick={user?.role === "admin" || user?.role === "receptionist" ? () => { setEditingMedId(null); setMedName(""); setGenericName(""); setStockQuantity(0); setRetailPrice(0); setCostPrice(0); setExpiryDate(""); setBatchNumber(""); setMedErrors({}); setIsMedModalOpen(true); } : undefined}
+              actionLabel="Add New Medicine"
+              loading={loading}
                   columns={[
                     { header: "Brand Name", key: "name" },
                     { header: "Generic Name", key: "generic" },
@@ -457,8 +449,6 @@ export default function PharmacyPage() {
           {/* TAB 2: DISPENSING PRESCRIPTION DESK */}
           {activeTab === "dispensing" && (
             <div className="space-y-6">
-              <h3 className="text-lg font-bold text-text">Outpatient Prescription Queue</h3>
-
               <Card className="overflow-hidden">
                 <Table
                   columns={[
@@ -506,8 +496,6 @@ export default function PharmacyPage() {
               </Card>
             </div>
           )}
-        </>
-      )}
 
       {/* ADD / EDIT MEDICINE MODAL */}
       <Modal
@@ -530,7 +518,6 @@ export default function PharmacyPage() {
                 required
                 error={medErrors.name}
               />
-              {medErrors.name && <p className="text-red-500 text-xs mt-0.5">{medErrors.name}</p>}
             </div>
             <div>
               <label className="text-xs font-semibold text-text mb-1 block">Generic Composition *</label>
@@ -545,7 +532,6 @@ export default function PharmacyPage() {
                 required
                 error={medErrors.genericName}
               />
-              {medErrors.genericName && <p className="text-red-500 text-xs mt-0.5">{medErrors.genericName}</p>}
             </div>
           </div>
 
@@ -563,23 +549,18 @@ export default function PharmacyPage() {
                 required
                 error={medErrors.batchNumber}
               />
-              {medErrors.batchNumber && <p className="text-red-500 text-xs mt-0.5">{medErrors.batchNumber}</p>}
             </div>
-            <div>
-              <label className="text-xs font-semibold text-text mb-1 block">Expiry Date *</label>
-              <Input
-                type="date"
-                value={expiryDate}
-                onChange={(e) => {
-                  setExpiryDate(e.target.value);
-                  validateMedField("expiryDate", e.target.value);
-                }}
-                onBlur={(e) => validateMedField("expiryDate", e.target.value)}
-                required
-                error={medErrors.expiryDate}
-              />
-              {medErrors.expiryDate && <p className="text-red-500 text-xs mt-0.5">{medErrors.expiryDate}</p>}
-            </div>
+            <DatePicker
+              label="Expiry Date *"
+              value={expiryDate}
+              minDate={new Date()}
+              onChange={(val) => {
+                const strVal = typeof val === "string" ? val : val.target.value;
+                setExpiryDate(strVal);
+                validateMedField("expiryDate", strVal);
+              }}
+              error={medErrors.expiryDate}
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
@@ -599,7 +580,6 @@ export default function PharmacyPage() {
                 required
                 error={medErrors.costPrice}
               />
-              {medErrors.costPrice && <p className="text-red-500 text-xs mt-0.5">{medErrors.costPrice}</p>}
             </div>
             <div>
               <label className="text-xs font-semibold text-text mb-1 block">Retail Price (₹) *</label>
@@ -617,7 +597,6 @@ export default function PharmacyPage() {
                 required
                 error={medErrors.price}
               />
-              {medErrors.price && <p className="text-red-500 text-xs mt-0.5">{medErrors.price}</p>}
             </div>
             <div>
               <label className="text-xs font-semibold text-text mb-1 block">Qty in Stock *</label>
@@ -634,7 +613,6 @@ export default function PharmacyPage() {
                 required
                 error={medErrors.stockQuantity}
               />
-              {medErrors.stockQuantity && <p className="text-red-500 text-xs mt-0.5">{medErrors.stockQuantity}</p>}
             </div>
           </div>
 
@@ -705,9 +683,6 @@ export default function PharmacyPage() {
                       />
                     </div>
                   </div>
-                  {getDispenseError(idx) && (
-                    <p className="text-red-500 text-xs mt-1 font-semibold">{getDispenseError(idx)}</p>
-                  )}
                 </div>
               ))}
             </div>

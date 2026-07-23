@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Tabs, Button, Modal, Input, useToast, Spinner, ImageUpload, ConfirmDialog, ScheduleEditor, Select
+  Table, Tabs, Button, Modal, Input, useToast, Spinner, ImageUpload, ConfirmDialog, ScheduleEditor, Select, SkeletonTable, Dropdown, cn
 } from "@/components/ui";
 import { useR2Upload } from "@/lib/useR2Upload";
+import { RBACPermissionMatrix } from "@/components/clinical/RBACPermissionMatrix";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -280,33 +281,42 @@ export default function StaffPage() {
     c => !assignments.some(a => (a.clinicId?.id || a.clinicId) === c.id)
   );
 
-  if (loading) return <div className="flex justify-center p-12"><Spinner size="lg" /></div>;
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-7 w-48 bg-surface-alt rounded-lg animate-pulse" />
+            <div className="h-4 w-72 bg-surface-alt rounded animate-pulse" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-9 w-32 bg-surface-alt rounded-lg animate-pulse" />
+            <div className="h-9 w-28 bg-surface-alt rounded-lg animate-pulse" />
+          </div>
+        </div>
+        <SkeletonTable rows={6} cols={5} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-text">Staff Management</h2>
-          <p className="text-sm text-text-secondary">Manage doctors and receptionists in your organization.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => openModal("receptionist")}>Add Receptionist</Button>
-          <Button onClick={() => openModal("doctor")}>Add Doctor</Button>
+          <h2 className="text-xl sm:text-2xl font-bold text-text">Staff Management</h2>
+          <p className="text-xs sm:text-sm text-text-secondary">Manage doctors, receptionists, and organizational roles.</p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Organization Roster</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Tabs
-            tabs={[
-              {
-                id: "doctors",
-                label: `Doctors (${doctors.length})`,
-                content: (
-                  <Table
+      <Tabs
+        tabs={[
+          {
+            id: "doctors",
+            label: `Doctors (${doctors.length})`,
+            content: (
+              <Table
+                onAddClick={() => openModal("doctor")}
+                actionLabel="Add Doctor"
                     searchable
                     searchPlaceholder="Search doctors by name, email, or specialty..."
                     columns={[
@@ -318,13 +328,23 @@ export default function StaffPage() {
                       { 
                         key: "actions", 
                         header: "Actions",
-                        width: "220px",
+                        width: "56px",
                         render: (row) => (
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="xs" onClick={() => openAssignmentsModal(row)}>Clinics</Button>
-                            <Button variant="outline" size="xs" onClick={() => openEditModal("doctor", row)}>Edit</Button>
-                            <Button variant="danger" size="xs" onClick={() => setDeletingId(row.id)}>Delete</Button>
-                          </div>
+                          <Dropdown
+                            align="right"
+                            trigger={
+                              <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
+                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                </svg>
+                              </Button>
+                            }
+                            items={[
+                              { label: "Manage Clinic Assignments", onClick: () => openAssignmentsModal(row) },
+                              { label: "Edit Doctor", onClick: () => openEditModal("doctor", row) },
+                              { label: "Delete Doctor", danger: true, onClick: () => setDeletingId(row.id) },
+                            ]}
+                          />
                         )
                       }
                     ]}
@@ -338,6 +358,8 @@ export default function StaffPage() {
                 label: `Receptionists (${receptionists.length})`,
                 content: (
                   <Table
+                    onAddClick={() => openModal("receptionist")}
+                    actionLabel="Add Receptionist"
                     searchable
                     searchPlaceholder="Search receptionists by name, email, or shift..."
                     columns={[
@@ -348,12 +370,22 @@ export default function StaffPage() {
                       { 
                         key: "actions", 
                         header: "Actions",
-                        width: "140px",
+                        width: "56px",
                         render: (row) => (
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="xs" onClick={() => openEditModal("receptionist", row)}>Edit</Button>
-                            <Button variant="danger" size="xs" onClick={() => setDeletingId(row.id)}>Delete</Button>
-                          </div>
+                          <Dropdown
+                            align="right"
+                            trigger={
+                              <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
+                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                </svg>
+                              </Button>
+                            }
+                            items={[
+                              { label: "Edit Receptionist", onClick: () => openEditModal("receptionist", row) },
+                              { label: "Delete Receptionist", danger: true, onClick: () => setDeletingId(row.id) },
+                            ]}
+                          />
                         )
                       }
                     ]}
@@ -361,11 +393,34 @@ export default function StaffPage() {
                     emptyMessage="No receptionists added yet."
                   />
                 )
+              },
+              {
+                id: "rbac",
+                label: "RBAC Governance & Permissions",
+                content: (
+                  <RBACPermissionMatrix
+                    users={[
+                      ...doctors.map((d) => ({
+                        id: d.id,
+                        name: d.name,
+                        email: d.email,
+                        role: "doctor",
+                        permissions: ["VIEW_EHR", "MANAGE_CLINICAL_NOTES", "ADMINISTER_MEDICATION", "MANAGE_ORDERS", "MANAGE_DISCHARGE_SUMMARY"],
+                      })),
+                      ...receptionists.map((r) => ({
+                        id: r.id,
+                        name: r.name,
+                        email: r.email,
+                        role: "receptionist",
+                        permissions: ["MANAGE_STAFF", "MANAGE_CLINICS", "MANAGE_APPOINTMENTS", "MANAGE_QUEUE", "MANAGE_BILLING"],
+                      })),
+                    ]}
+                    onRefresh={loadData}
+                  />
+                )
               }
             ]}
           />
-        </CardContent>
-      </Card>
 
       {/* Staff Add/Edit Modal */}
       <Modal
@@ -375,6 +430,30 @@ export default function StaffPage() {
         size={modalType === "doctor" ? "lg" : "md"}
       >
         <form onSubmit={handleSave} className="space-y-4" noValidate>
+          {!editingId && (
+            <div className="flex bg-surface-alt/70 p-1 rounded-xl border border-border gap-1 mb-2">
+              <button
+                type="button"
+                onClick={() => { setModalType("doctor"); setStaffErrors({}); }}
+                className={cn(
+                  "flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                  modalType === "doctor" ? "bg-primary-600 text-white shadow-xs" : "text-text-muted hover:text-text"
+                )}
+              >
+                <span>Doctor Account</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setModalType("receptionist"); setStaffErrors({}); }}
+                className={cn(
+                  "flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                  modalType === "receptionist" ? "bg-primary-600 text-white shadow-xs" : "text-text-muted hover:text-text"
+                )}
+              >
+                <span>Receptionist Account</span>
+              </button>
+            </div>
+          )}
           <Input 
             label="Full Name *" 
             value={formData.name || ""} 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, useToast, Spinner, ImageUpload, ConfirmDialog, ScheduleEditor, Checkbox, Dropdown
+  Table, Button, Modal, Input, useToast, Spinner, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, SkeletonTable, Dropdown
 } from "@/components/ui";
 import { useR2Upload } from "@/lib/useR2Upload";
 
@@ -178,24 +178,33 @@ export default function ClinicsPage() {
     }
   };
 
-  if (loading) return <div className="flex justify-center p-12"><Spinner size="lg" /></div>;
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-7 w-48 bg-surface-alt rounded-lg animate-pulse" />
+            <div className="h-4 w-72 bg-surface-alt rounded animate-pulse" />
+          </div>
+          <div className="h-9 w-28 bg-surface-alt rounded-lg animate-pulse" />
+        </div>
+        <SkeletonTable rows={5} cols={5} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-text">Clinics Management</h2>
-          <p className="text-sm text-text-secondary">Configure the physical clinic locations owned by your organization.</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-text">Clinics Management</h2>
+          <p className="text-xs sm:text-sm text-text-secondary">Configure the physical clinic locations owned by your organization.</p>
         </div>
-        <Button onClick={openModal}>Add Clinic</Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Clinics List</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table
+      <Table
+        onAddClick={openModal}
+        actionLabel="Add Clinic"
             searchable
             searchPlaceholder="Search clinics by name or city..."
             columns={[
@@ -242,10 +251,9 @@ export default function ClinicsPage() {
                   <Dropdown
                     align="right"
                     trigger={
-                      <Button variant="outline" size="xs" className="gap-1 flex items-center">
-                        Actions
-                        <svg className="h-3.5 w-3.5 text-text-muted" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                      <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
+                        <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                         </svg>
                       </Button>
                     }
@@ -261,8 +269,6 @@ export default function ClinicsPage() {
             data={clinics}
             emptyMessage="No clinics added yet."
           />
-        </CardContent>
-      </Card>
 
       <Modal
         open={isModalOpen}
