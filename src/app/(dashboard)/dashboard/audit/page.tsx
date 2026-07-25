@@ -41,13 +41,13 @@ export default function AuditLogsPage() {
   };
 
   useEffect(() => {
-    if (user?.role === "admin") {
+    if (user?.role === "admin" || user?.role === "root") {
       fetchLogs();
     }
   }, [user]);
 
   // Deny access for non-admins
-  if (user?.role !== "admin") {
+  if (user?.role !== "admin" && user?.role !== "root") {
     return (
       <div className="space-y-6 animate-fade-in">
         <Alert variant="error" title="Access Denied">

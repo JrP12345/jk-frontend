@@ -5,8 +5,10 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent, CardDescription,
-  Button, Select, Input, DatePicker, useToast, Spinner, Badge, StatCard, Modal, Textarea, Checkbox, Skeleton, SkeletonCard
+  Button, Select, Input, DatePicker, useToast, Spinner, Badge, StatCard, Modal, Textarea, Checkbox, Skeleton, SkeletonCard, WorkspaceClinicFilter
 } from "@/components/ui";
+import { UnifiedDocumentModal, UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
+import { NurseVitalsModal } from "@/components/clinical/NurseVitalsModal";
 
 interface Appointment {
   id: string;
@@ -28,12 +30,21 @@ interface Appointment {
 }
 
 export default function QueuePage() {
-  const { user } = useAuthStore();
+  const { user, activeClinicId } = useAuthStore();
   const { toast } = useToast();
 
   const [loadingFilters, setLoadingFilters] = useState(true);
   const [loadingQueue, setLoadingQueue] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+
+  // Token Slip Modal State
+  const [tokenModalOpen, setTokenModalOpen] = useState(false);
+  const [unifiedDoc, setUnifiedDoc] = useState<UnifiedDocumentData | null>(null);
+  const [callingNext, setCallingNext] = useState(false);
+
+  // Nurse Vitals Modal State
+  const [vitalsModalOpen, setVitalsModalOpen] = useState(false);
+  const [vitalsPatient, setVitalsPatient] = useState<{ id: string; name: string } | null>(null);
 
   // Complete Consultation & Follow-up State
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
@@ -49,12 +60,16 @@ export default function QueuePage() {
   // Filter States
   const [clinics, setClinics] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
-  const [selectedClinic, setSelectedClinic] = useState("");
+  const [selectedClinic, setSelectedClinic] = useState(activeClinicId || "");
   const [selectedDoctor, setSelectedDoctor] = useState("");
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split("T")[0];
   });
+
+  useEffect(() => {
+    setSelectedClinic(activeClinicId || "");
+  }, [activeClinicId]);
 
   // Queue State
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -159,6 +174,60 @@ export default function QueuePage() {
       await fetchQueue();
     } catch (err: any) {
       toast({ title: "Error", description: err.response?.data?.message || "Failed to update status", variant: "error" });
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  const handleCallNext = async () => {
+    try {
+      setCallingNext(true);
+      const res = await api.post("/queue/call-next", {
+        clinicId: selectedClinic,
+        doctorId: selectedDoctor,
+      });
+      if (res.data?.data) {
+        toast({ title: "Patient Called 🩺", description: res.data.message || `Token #${res.data.data.tokenNumber} in consultation`, variant: "success" });
+      } else {
+        toast({ title: "Queue Empty", description: res.data?.message || "No waiting patients", variant: "default" });
+      }
+      await fetchQueue();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.response?.data?.message || "Failed to call next patient", variant: "error" });
+    } finally {
+      setCallingNext(false);
+    }
+  };
+
+  const handleCheckInAndPrintToken = async (appt: Appointment) => {
+    try {
+      setUpdatingStatus(appt.id);
+      if (appt.status !== "checked-in") {
+        await api.put(`/appointments/${appt.id}/status`, { status: "checked-in" });
+      }
+      const clinicObj = clinics.find(c => (c.id || c._id) === selectedClinic);
+      const doctorObj = doctors.find(d => (d.id || d._id) === selectedDoctor);
+
+      setUnifiedDoc({
+        documentType: "token_slip",
+        title: `TOKEN SLIP #${appt.tokenNumber}`,
+        clinicName: clinicObj?.name || "Healthcare Center",
+        clinicAddress: clinicObj?.city,
+        doctorName: doctorObj?.name || user?.name || "Doctor",
+        doctorSpecialization: doctorObj?.specialization,
+        patientName: appt.patientId?.userId?.name || "Patient",
+        patientId: appt.patientId?.id,
+        date: new Date(appt.appointmentTime).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+        referenceNumber: `TKN-${appt.tokenNumber}`,
+        tokenDetails: {
+          tokenNumber: appt.tokenNumber,
+          estWaitTime: appt.estimatedWaitTime,
+        },
+      });
+      setTokenModalOpen(true);
+      await fetchQueue();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.response?.data?.message || "Failed to check-in patient", variant: "error" });
     } finally {
       setUpdatingStatus(null);
     }
@@ -281,9 +350,19 @@ export default function QueuePage() {
           <h2 className="text-2xl font-bold text-text">Queue Dashboard</h2>
           <p className="text-sm text-text-secondary">Track doctor patient flows, check-in, call next, and override order rules.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchQueue} loading={loadingQueue}>
-          Refresh Queue
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleCallNext}
+            loading={callingNext}
+          >
+            📢 Call Next Patient
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchQueue} loading={loadingQueue}>
+            Refresh Queue
+          </Button>
+        </div>
       </div>
 
       {/* Selector Filters (Ultra-Compact Mobile Filter Bar) */}
@@ -295,18 +374,6 @@ export default function QueuePage() {
           </div>
         ) : (
           <>
-            {clinics.length > 1 && (
-              <div className="flex-1 min-w-[130px] sm:max-w-xs">
-                <Select
-                  size="sm"
-                  placeholder="Select Clinic"
-                  value={selectedClinic}
-                  onChange={(e) => setSelectedClinic(e.target.value)}
-                  options={clinics.map(c => ({ value: c.id, label: c.name }))}
-                  disabled={user.role === "doctor" && clinics.length <= 1}
-                />
-              </div>
-            )}
             {doctors.length > 1 && user.role !== "doctor" && (
               <div className="flex-1 min-w-[130px] sm:max-w-xs">
                 <Select
@@ -489,22 +556,44 @@ export default function QueuePage() {
                               <Button
                                 size="xs"
                                 variant="secondary"
-                                onClick={() => updateStatus(appt.id, "checked-in")}
+                                onClick={() => handleCheckInAndPrintToken(appt)}
                                 loading={updatingStatus === appt.id}
                               >
-                                Check-In
+                                Check-In & Token 🎫
                               </Button>
                             ) : null}
 
                             {appt.status === "checked-in" ? (
-                              <Button
-                                size="xs"
-                                variant="primary"
-                                onClick={() => updateStatus(appt.id, "in-consultation")}
-                                loading={updatingStatus === appt.id}
-                              >
-                                Call Next
-                              </Button>
+                              <>
+                                <Button
+                                  size="xs"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setVitalsPatient({
+                                      id: appt.patientId?.id || (appt.patientId as any)?._id || (appt.patientId as any),
+                                      name: appt.patientId?.userId?.name || "Patient",
+                                    });
+                                    setVitalsModalOpen(true);
+                                  }}
+                                >
+                                  Vitals 🩺
+                                </Button>
+                                <Button
+                                  size="xs"
+                                  variant="outline"
+                                  onClick={() => handleCheckInAndPrintToken(appt)}
+                                >
+                                  Token 🖨️
+                                </Button>
+                                <Button
+                                  size="xs"
+                                  variant="primary"
+                                  onClick={() => updateStatus(appt.id, "in-consultation")}
+                                  loading={updatingStatus === appt.id}
+                                >
+                                  Consult 🩺
+                                </Button>
+                              </>
                             ) : null}
 
                             {appt.status === "in-consultation" ? (
@@ -762,6 +851,21 @@ export default function QueuePage() {
           </div>
         </form>
       </Modal>
+
+      {/* Token Slip Printable Modal */}
+      <UnifiedDocumentModal
+        open={tokenModalOpen}
+        onClose={() => setTokenModalOpen(false)}
+        document={unifiedDoc}
+      />
+
+      {/* Nurse Vitals Pre-Check Modal */}
+      <NurseVitalsModal
+        open={vitalsModalOpen}
+        onClose={() => setVitalsModalOpen(false)}
+        patientId={vitalsPatient?.id || ""}
+        patientName={vitalsPatient?.name || "Patient"}
+      />
     </div>
   );
 }

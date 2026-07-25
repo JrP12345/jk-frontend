@@ -57,12 +57,16 @@ interface AdmissionType {
 }
 
 export default function AdmissionsPage() {
-  const { user } = useAuthStore();
+  const { user, activeClinicId } = useAuthStore();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"occupancy" | "admissions" | "beds">("occupancy");
   const [clinics, setClinics] = useState<any[]>([]);
-  const [selectedClinicId, setSelectedClinicId] = useState("");
+  const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
+
+  useEffect(() => {
+    setSelectedClinicId(activeClinicId || "");
+  }, [activeClinicId]);
   const [beds, setBeds] = useState<BedType[]>([]);
   const [admissions, setAdmissions] = useState<AdmissionType[]>([]);
   const [doctors, setDoctors] = useState<DoctorUser[]>([]);
@@ -389,20 +393,11 @@ export default function AdmissionsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header & Clinic Select */}
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-text">In-Patient Operations (IPD)</h2>
           <p className="text-xs sm:text-sm text-text-secondary">Manage ward admissions, track bed availability, and coordinate discharge billing.</p>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <Select
-            size="sm"
-            value={selectedClinicId}
-            onChange={(e) => setSelectedClinicId(e.target.value)}
-            options={clinics.map(c => ({ value: c.id, label: `${c.name} (${c.city})` }))}
-            className="w-full sm:w-64"
-          />
         </div>
       </div>
 

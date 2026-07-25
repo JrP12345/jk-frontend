@@ -170,7 +170,7 @@ export default function LoginPage() {
         >
           {!isForgotPassword ? (
             /* Login Form */
-            <form onSubmit={handleLogin} noValidate>
+            <form onSubmit={handleLogin} noValidate autoComplete="off">
               <CardHeader>
                 <CardTitle>Welcome Back</CardTitle>
                 <CardDescription>Enter your credential details to access your account</CardDescription>
@@ -179,7 +179,7 @@ export default function LoginPage() {
                 <Input
                   label="Email"
                   type="email"
-                  placeholder="admin@hospital.com"
+                  placeholder="21amtics177@gmail.com"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
@@ -188,7 +188,7 @@ export default function LoginPage() {
                   onBlur={() => validateEmail(email)}
                   error={emailError}
                   required
-                  autoComplete="email"
+                  autoComplete="off"
                 />
                 <Input
                   label="Password"
@@ -202,7 +202,7 @@ export default function LoginPage() {
                   onBlur={() => validatePassword(password)}
                   error={passwordError}
                   required
-                  autoComplete="current-password"
+                  autoComplete="off"
                   iconRight={
                     <button
                       type="button"

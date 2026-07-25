@@ -6,8 +6,9 @@ import {
   Card, CardHeader, CardTitle, CardContent,
   Table, Tabs, Button, Modal, Input, useToast, Spinner, ImageUpload, ConfirmDialog, ScheduleEditor, Select, SkeletonTable, Dropdown, cn
 } from "@/components/ui";
-import { useR2Upload } from "@/lib/useR2Upload";
+import { useR2Upload } from "@/hooks/useR2Upload";
 import { RBACPermissionMatrix } from "@/components/clinical/RBACPermissionMatrix";
+import { ExecutiveAnalytics } from "@/components/analytics/ExecutiveAnalytics";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -34,10 +35,14 @@ interface Receptionist {
 export default function StaffPage() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [receptionists, setReceptionists] = useState<Receptionist[]>([]);
+  const [nurses, setNurses] = useState<any[]>([]);
+  const [labTechs, setLabTechs] = useState<any[]>([]);
+  const [pharmacists, setPharmacists] = useState<any[]>([]);
+  const [cashiers, setCashiers] = useState<any[]>([]);
   const [clinics, setClinics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<"doctor" | "receptionist">("doctor");
+  const [modalType, setModalType] = useState<"doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier">("doctor");
   const [formData, setFormData] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -104,8 +109,13 @@ export default function StaffPage() {
   const fetchStaff = async () => {
     try {
       const res = await api.get("/onboarding/staff");
-      setDoctors(res.data.data.doctors || []);
-      setReceptionists(res.data.data.receptionists || []);
+      const data = res.data.data || {};
+      setDoctors(data.doctors || []);
+      setReceptionists(data.receptionists || []);
+      setNurses(data.nurses || []);
+      setLabTechs(data.labTechs || []);
+      setPharmacists(data.pharmacists || []);
+      setCashiers(data.cashiers || []);
     } catch (err) {
       toast({ title: "Error", description: "Failed to load staff list", variant: "error", duration: 3000 });
     }
@@ -130,7 +140,7 @@ export default function StaffPage() {
     loadData();
   }, []);
 
-  const openModal = (type: "doctor" | "receptionist") => {
+  const openModal = (type: "doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier") => {
     setEditingId(null);
     setModalType(type);
     setFormData({});
@@ -139,7 +149,7 @@ export default function StaffPage() {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (type: "doctor" | "receptionist", row: any) => {
+  const openEditModal = (type: "doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier", row: any) => {
     setEditingId(row.id);
     setModalType(type);
     setFormData({ ...row }); // Populate existing data
@@ -175,10 +185,13 @@ export default function StaffPage() {
 
       if (editingId) {
         await api.put(`/onboarding/${modalType}/${editingId}`, finalData);
-        toast({ title: "Success", description: `${modalType === "doctor" ? "Doctor" : "Receptionist"} updated successfully!`, variant: "success", duration: 3000 });
-      } else {
+        toast({ title: "Success", description: "Staff member updated successfully!", variant: "success", duration: 3000 });
+      } else if (modalType === "doctor" || modalType === "receptionist") {
         await api.post(`/onboarding/${modalType}`, finalData);
-        toast({ title: "Success", description: `${modalType === "doctor" ? "Doctor" : "Receptionist"} added successfully!`, variant: "success", duration: 3000 });
+        toast({ title: "Success", description: "Staff member added successfully!", variant: "success", duration: 3000 });
+      } else {
+        await api.post(`/onboarding/staff`, { ...finalData, role: modalType });
+        toast({ title: "Success", description: `${modalType.replace("_", " ").toUpperCase()} added successfully!`, variant: "success", duration: 3000 });
       }
       setIsModalOpen(false);
       fetchStaff(); // Refresh the lists
@@ -395,6 +408,162 @@ export default function StaffPage() {
                 )
               },
               {
+                id: "nurses",
+                label: `Nurses (${nurses.length})`,
+                content: (
+                  <Table
+                    onAddClick={() => openModal("nurse")}
+                    actionLabel="Add Nurse"
+                    searchable
+                    searchPlaceholder="Search nurses..."
+                    columns={[
+                      { key: "name", header: "Name", sortable: true },
+                      { key: "email", header: "Email", sortable: true },
+                      { key: "phone", header: "Phone", sortable: true },
+                      { 
+                        key: "actions", 
+                        header: "Actions",
+                        width: "56px",
+                        render: (row) => (
+                          <Dropdown
+                            align="right"
+                            trigger={
+                              <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
+                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                </svg>
+                              </Button>
+                            }
+                            items={[
+                              { label: "Delete Nurse", danger: true, onClick: () => setDeletingId(row.id) },
+                            ]}
+                          />
+                        )
+                      }
+                    ]}
+                    data={nurses}
+                    emptyMessage="No nurses added yet."
+                  />
+                )
+              },
+              {
+                id: "labTechs",
+                label: `Lab Technicians (${labTechs.length})`,
+                content: (
+                  <Table
+                    onAddClick={() => openModal("lab_tech")}
+                    actionLabel="Add Lab Tech"
+                    searchable
+                    searchPlaceholder="Search lab technicians..."
+                    columns={[
+                      { key: "name", header: "Name", sortable: true },
+                      { key: "email", header: "Email", sortable: true },
+                      { key: "phone", header: "Phone", sortable: true },
+                      { 
+                        key: "actions", 
+                        header: "Actions",
+                        width: "56px",
+                        render: (row) => (
+                          <Dropdown
+                            align="right"
+                            trigger={
+                              <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
+                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                </svg>
+                              </Button>
+                            }
+                            items={[
+                              { label: "Delete Lab Tech", danger: true, onClick: () => setDeletingId(row.id) },
+                            ]}
+                          />
+                        )
+                      }
+                    ]}
+                    data={labTechs}
+                    emptyMessage="No lab technicians added yet."
+                  />
+                )
+              },
+              {
+                id: "pharmacists",
+                label: `Pharmacists (${pharmacists.length})`,
+                content: (
+                  <Table
+                    onAddClick={() => openModal("pharmacist")}
+                    actionLabel="Add Pharmacist"
+                    searchable
+                    searchPlaceholder="Search pharmacists..."
+                    columns={[
+                      { key: "name", header: "Name", sortable: true },
+                      { key: "email", header: "Email", sortable: true },
+                      { key: "phone", header: "Phone", sortable: true },
+                      { 
+                        key: "actions", 
+                        header: "Actions",
+                        width: "56px",
+                        render: (row) => (
+                          <Dropdown
+                            align="right"
+                            trigger={
+                              <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
+                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                </svg>
+                              </Button>
+                            }
+                            items={[
+                              { label: "Delete Pharmacist", danger: true, onClick: () => setDeletingId(row.id) },
+                            ]}
+                          />
+                        )
+                      }
+                    ]}
+                    data={pharmacists}
+                    emptyMessage="No pharmacists added yet."
+                  />
+                )
+              },
+              {
+                id: "cashiers",
+                label: `Cashiers (${cashiers.length})`,
+                content: (
+                  <Table
+                    onAddClick={() => openModal("cashier")}
+                    actionLabel="Add Cashier"
+                    searchable
+                    searchPlaceholder="Search cashiers..."
+                    columns={[
+                      { key: "name", header: "Name", sortable: true },
+                      { key: "email", header: "Email", sortable: true },
+                      { key: "phone", header: "Phone", sortable: true },
+                      { 
+                        key: "actions", 
+                        header: "Actions",
+                        width: "56px",
+                        render: (row) => (
+                          <Dropdown
+                            align="right"
+                            trigger={
+                              <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
+                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                </svg>
+                              </Button>
+                            }
+                            items={[
+                              { label: "Delete Cashier", danger: true, onClick: () => setDeletingId(row.id) },
+                            ]}
+                          />
+                        )
+                      }
+                    ]}
+                    data={cashiers}
+                    emptyMessage="No cashiers added yet."
+                  />
+                )
+              },
+              {
                 id: "rbac",
                 label: "RBAC Governance & Permissions",
                 content: (
@@ -418,6 +587,11 @@ export default function StaffPage() {
                     onRefresh={loadData}
                   />
                 )
+              },
+              {
+                id: "analytics",
+                label: "Executive BI & Analytics 📈",
+                content: <ExecutiveAnalytics />
               }
             ]}
           />
@@ -426,7 +600,7 @@ export default function StaffPage() {
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={`${editingId ? "Edit" : "Add New"} ${modalType === "doctor" ? "Doctor" : "Receptionist"}`}
+        title={`${editingId ? "Edit" : "Add New"} ${modalType.replace("_", " ").toUpperCase()}`}
         size={modalType === "doctor" ? "lg" : "md"}
       >
         <form onSubmit={handleSave} className="space-y-4" noValidate>

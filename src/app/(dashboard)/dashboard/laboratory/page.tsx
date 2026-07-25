@@ -7,7 +7,7 @@ import {
   Card, CardHeader, CardTitle, CardContent,
   Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, ImageUpload, SkeletonTable, Dropdown
 } from "@/components/ui";
-import { useR2Upload } from "@/lib/useR2Upload";
+import { useR2Upload } from "@/hooks/useR2Upload";
 
 const LAB_DEPARTMENTS = ["Biochemistry", "Hematology", "Radiology", "Microbiology", "Immunology", "Pathology", "Urinalysis", "Cardiology"];
 
@@ -56,12 +56,16 @@ interface LabOrderType {
 }
 
 export default function LaboratoryPage() {
-  const { user } = useAuthStore();
+  const { user, activeClinicId } = useAuthStore();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"worklist" | "catalog" | "patientVault">("worklist");
   const [clinics, setClinics] = useState<any[]>([]);
-  const [selectedClinicId, setSelectedClinicId] = useState("");
+  const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
+
+  useEffect(() => {
+    setSelectedClinicId(activeClinicId || "");
+  }, [activeClinicId]);
   const [labTests, setLabTests] = useState<LabTestType[]>([]);
   const [labOrders, setLabOrders] = useState<LabOrderType[]>([]);
   const [doctors, setDoctors] = useState<DoctorUser[]>([]);
@@ -157,9 +161,6 @@ export default function LaboratoryPage() {
         ]);
         const clinicsList = clinicsRes.data.data || [];
         setClinics(clinicsList);
-        if (clinicsList.length > 0) {
-          setSelectedClinicId(clinicsList[0].id);
-        }
         setDoctors(staffRes.data.data.doctors || []);
       } catch (err) {
         toast({ title: "Error", description: "Failed to load clinic or staff lists", variant: "error" });
@@ -407,23 +408,12 @@ export default function LaboratoryPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header & Clinic Select */}
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-text">Laboratory & Diagnostics</h2>
           <p className="text-xs sm:text-sm text-text-secondary">Order medical lab examinations, manage catalog test departments, and upload result reports.</p>
         </div>
-        {user && user.role !== "patient" && (
-          <div className="flex items-center gap-2.5">
-            <Select
-              size="sm"
-              value={selectedClinicId}
-              onChange={(e) => setSelectedClinicId(e.target.value)}
-              options={clinics.map(c => ({ value: c.id, label: `${c.name} (${c.city})` }))}
-              className="w-full sm:w-64"
-            />
-          </div>
-        )}
       </div>
 
       {/* Stats Cards (Staff Only) */}

@@ -7,6 +7,7 @@ import {
   Card, CardHeader, CardTitle, CardContent,
   Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, Dropdown
 } from "@/components/ui";
+import { UnifiedDocumentModal, UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
 
 interface InvoiceItem {
   description: string;
@@ -73,6 +74,34 @@ export default function BillingPage() {
   // Receipt Modal State
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receiptInvoice, setReceiptInvoice] = useState<Invoice | null>(null);
+
+  // Print Invoice PDF Modal State
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [unifiedDoc, setUnifiedDoc] = useState<UnifiedDocumentData | null>(null);
+
+  const handleOpenPrintInvoice = (inv: Invoice) => {
+    setUnifiedDoc({
+      documentType: "invoice",
+      title: `INVOICE #${inv.invoiceNumber}`,
+      clinicName: inv.clinicId?.name || "ANANTA Healthcare Center",
+      clinicAddress: inv.clinicId?.address || inv.clinicId?.city,
+      doctorName: inv.doctorId?.name,
+      doctorSpecialization: inv.doctorId?.specialization,
+      patientName: inv.patientId?.userId?.name || "Patient Profile",
+      patientId: inv.patientId?.id,
+      date: new Date(inv.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+      referenceNumber: inv.invoiceNumber,
+      invoiceItems: inv.items || [],
+      invoiceTotals: {
+        subtotal: inv.subtotal,
+        tax: inv.tax,
+        discount: inv.discount,
+        total: inv.totalAmount,
+        status: inv.status,
+      },
+    });
+    setPrintModalOpen(true);
+  };
 
   // Validation State
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -537,6 +566,7 @@ export default function BillingPage() {
               items={[
                 ...(row.status === "unpaid" ? [{ label: "Collect Payment", onClick: () => { setActiveInvoice(row); setIsCollectOpen(true); } }] : []),
                 { label: "View & Print Receipt", onClick: () => handlePrintReceipt(row) },
+                { label: "🖨️ Print Official PDF", onClick: () => handleOpenPrintInvoice(row) },
               ]}
             />
           )}
@@ -820,6 +850,13 @@ export default function BillingPage() {
           </div>
         )}
       </Modal>
+
+      {/* Official Invoice PDF Modal */}
+      <UnifiedDocumentModal
+        open={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        document={unifiedDoc}
+      />
     </div>
   );
 }

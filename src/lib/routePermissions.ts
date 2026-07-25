@@ -17,7 +17,7 @@ export const routePermissions: Record<string, string[]> = {
  * Admins always bypass permission checks.
  */
 export function hasRoutePermission(route: string, userRole: string, userPermissions: string[] = []): boolean {
-  if (userRole === "admin") return true;
+  if (userRole === "root" || userRole === "admin") return true;
 
   // Find if there's any mapped requirement for this path
   const matchedRoute = Object.keys(routePermissions).find(p => route.startsWith(p));

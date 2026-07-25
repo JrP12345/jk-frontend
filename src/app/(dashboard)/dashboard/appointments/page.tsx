@@ -6,8 +6,10 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, DatePicker, Select, Textarea, useToast, Spinner, Badge, ConfirmDialog, Stepper, Dropdown
+  Table, Button, Modal, Input, DatePicker, Select, Textarea, useToast, Spinner, Badge, ConfirmDialog, Stepper, Dropdown, WorkspaceClinicFilter
 } from "@/components/ui";
+import { PatientQueueTracker } from "@/components/clinical/PatientQueueTracker";
+import { PatientMedicalRecords } from "@/components/ehr/PatientMedicalRecords";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const BOOKING_STEPS = [
@@ -37,7 +39,7 @@ interface Appointment {
 
 export default function AppointmentsPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, activeClinicId } = useAuthStore();
   const { toast } = useToast();
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -54,10 +56,14 @@ export default function AppointmentsPage() {
     return `${year}-${month}-${day}`;
   };
 
-  const [filterClinic, setFilterClinic] = useState("");
+  const [filterClinic, setFilterClinic] = useState(activeClinicId || "");
   const [filterDoctor, setFilterDoctor] = useState("");
   const [filterDate, setFilterDate] = useState(getTodayISO());
   const [filterStatus, setFilterStatus] = useState("");
+
+  useEffect(() => {
+    setFilterClinic(activeClinicId || "");
+  }, [activeClinicId]);
 
   // Modal States
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
@@ -83,6 +89,27 @@ export default function AppointmentsPage() {
   const [bookingTime, setBookingTime] = useState("");
   const [bookingType, setBookingType] = useState<"walk-in" | "reception" | "online">("reception");
   const [bookingNotes, setBookingNotes] = useState("");
+
+  // Slot Engine State
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [fetchingSlots, setFetchingSlots] = useState(false);
+  const [selectedSlotDate, setSelectedSlotDate] = useState(new Date().toISOString().split("T")[0]);
+
+  useEffect(() => {
+    if (!bookingDoctorId || !selectedSlotDate) return;
+    const fetchSlots = async () => {
+      try {
+        setFetchingSlots(true);
+        const res = await api.get(`/doctors/${bookingDoctorId}/slots?clinicId=${bookingClinicId}&date=${selectedSlotDate}`);
+        setAvailableSlots(res.data?.data?.availableSlots || []);
+      } catch (err) {
+        setAvailableSlots([]);
+      } finally {
+        setFetchingSlots(false);
+      }
+    };
+    fetchSlots();
+  }, [bookingDoctorId, bookingClinicId, selectedSlotDate]);
 
   // Status Update State
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
@@ -491,9 +518,18 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
+      {/* Live Patient Queue Tracker (if active appointment today) */}
+      {user.role === "patient" && appointments.length > 0 && (
+        <PatientQueueTracker
+          appointmentId={appointments[0].id}
+          clinicId={appointments[0].clinicId?.id || (appointments[0].clinicId as any)}
+          doctorId={appointments[0].doctorId?.id || (appointments[0].doctorId as any)}
+        />
+      )}
+
       {/* Main Roster Table */}
       <Table
-        onAddClick={user.role !== "patient" && user.role !== "doctor" ? openBookModal : undefined}
+        onAddClick={user.role !== "doctor" ? openBookModal : undefined}
         actionLabel="Book Appointment"
         exportFilename="appointments_list"
         searchPlaceholder="Search appointments..."
@@ -511,17 +547,6 @@ export default function AppointmentsPage() {
                   onChange={(val) => setFilterDate(typeof val === "string" ? val : val.target.value)}
                 />
               </div>
-              {clinics.length > 1 && (
-                <div className="w-full sm:w-40">
-                  <Select
-                    size="sm"
-                    placeholder="All Clinics"
-                    value={filterClinic}
-                    onChange={(e) => setFilterClinic(e.target.value)}
-                    options={[{ value: "", label: "All Clinics" }, ...clinics.map(c => ({ value: c.id, label: c.name }))]}
-                  />
-                </div>
-              )}
               {doctors.length > 1 && (
                 <div className="w-full sm:w-40">
                   <Select
@@ -664,6 +689,13 @@ export default function AppointmentsPage() {
         data={appointments}
         emptyMessage="No appointments scheduled."
       />
+
+      {/* Patient Medical Records & Prescription Downloads */}
+      {user.role === "patient" && (
+        <div className="pt-6 border-t border-border">
+          <PatientMedicalRecords patientId={user.id} />
+        </div>
+      )}
 
       {/* Book Appointment Modal (Multi-step flow) */}
       <Modal
@@ -826,18 +858,23 @@ export default function AppointmentsPage() {
             </div>
           )}
 
-          {/* STEP 3: DateTime & Notes Slot Picker */}
+          {/* STEP 3: Live Time Slots & Schedule Picker */}
           {bookingStep === 3 && (
             <form onSubmit={handleConfirmBooking} className="space-y-4">
-              <h3 className="text-sm font-semibold text-text">Choose Schedule Time</h3>
+              <h3 className="text-sm font-semibold text-text">Choose Schedule Date & Working Hours Slot</h3>
+              
               <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Appointment Date & Time *"
-                  type="datetime-local"
-                  value={bookingTime}
-                  onChange={(e) => setBookingTime(e.target.value)}
-                  required
-                />
+                <div>
+                  <label className="block text-xs font-bold text-text mb-1">Select Date *</label>
+                  <input
+                    type="date"
+                    value={selectedSlotDate}
+                    onChange={(e) => setSelectedSlotDate(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs bg-surface border border-border rounded-lg text-text"
+                    required
+                  />
+                </div>
+
                 <Select
                   label="Appointment Booking Type"
                   value={bookingType}
@@ -845,9 +882,57 @@ export default function AppointmentsPage() {
                   options={[
                     { value: "reception", label: "Reception Booking" },
                     { value: "walk-in", label: "Walk-In" },
-                    { value: "online", label: "Online" }
+                    { value: "online", label: "Online Booking" }
                   ]}
                 />
+              </div>
+
+              {/* Slot Availability Grid */}
+              <div className="space-y-2 border-t border-border pt-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-text">Available Doctor Slots for {selectedSlotDate}</span>
+                  {fetchingSlots && <span className="text-text-muted text-[11px]">Calculating slots...</span>}
+                </div>
+
+                {fetchingSlots ? (
+                  <div className="py-4 text-center"><Spinner size="sm" label="Fetching time slots..." /></div>
+                ) : availableSlots.length === 0 ? (
+                  <div className="p-3 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200 rounded-lg text-xs text-amber-800 dark:text-amber-300">
+                    No 15-min open slots for this date. You may specify custom time below or pick another date.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-40 overflow-y-auto p-1">
+                    {availableSlots.map((slot) => {
+                      const fullSlotISO = `${selectedSlotDate}T${slot}:00`;
+                      const isSelected = bookingTime === fullSlotISO;
+
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={() => setBookingTime(fullSlotISO)}
+                          className={`px-2 py-1.5 text-xs font-bold rounded-lg border transition-all ${
+                            isSelected
+                              ? "bg-primary-600 text-white border-primary-600 shadow-sm"
+                              : "bg-surface hover:bg-primary-50 text-text border-border"
+                          }`}
+                        >
+                          {slot}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <Input
+                    label="Selected DateTime *"
+                    type="datetime-local"
+                    value={bookingTime}
+                    onChange={(e) => setBookingTime(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
 
               <Textarea 

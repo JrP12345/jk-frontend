@@ -1,22 +1,39 @@
 "use client";
 
 import { useAuthStore } from "@/store/authStore";
-import { Sidebar, Button, Spinner, Dropdown, ModeSwitcher, PaletteSwitcher, Avatar, useToast, AnantaLogo, AnantaIcon } from "@/components/ui";
+import { Sidebar, Button, Spinner, Dropdown, ModeSwitcher, PaletteSwitcher, Avatar, useToast, AnantaLogo, AnantaIcon, Select } from "@/components/ui";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { hasRoutePermission } from "@/lib/routePermissions";
+import api from "@/lib/api";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout, isLoading } = useAuthStore();
+  const { user, logout, isLoading, activeClinicId, setActiveClinic } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [headerClinics, setHeaderClinics] = useState<Array<{ id: string; name: string; city: string }>>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (user && user.role !== "patient") {
+      api.get("/onboarding/clinics")
+        .then((res) => {
+          const list = res.data.data || [];
+          setHeaderClinics(list);
+          if (list.length > 0 && (!activeClinicId || !list.some((c: any) => c.id === activeClinicId))) {
+            setActiveClinic(list[0].id);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user?.organization_id]);
 
   useEffect(() => {
     if (!isLoading && user && !hasRoutePermission(pathname, user.role, user.permissions)) {
@@ -58,6 +75,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Navigation logic based on role
   const allNavItems = [
     { label: "Overview", href: "/dashboard", icon: <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> },
+    ...(user.role === "root" ? [
+      {
+        label: "Organizations",
+        href: "/dashboard/organizations",
+        badge: "Platform",
+        icon: <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+      }
+    ] : []),
+    { label: "Notifications", href: "/dashboard/notifications", icon: <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg> },
     { label: "Appointments", href: "/dashboard/appointments", icon: <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg> },
 
     // Staff-only clinical features
@@ -128,7 +154,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const filteredNavItems = allNavItems.filter(item => {
     // Overview and Browse Clinics are public
-    if (item.href === "/dashboard" || item.href === "/browse") return true;
+    if (item.href === "/dashboard" || item.href === "/browse" || item.href === "/dashboard/notifications") return true;
 
     // Patient lab reports is allowed
     if (item.href === "/dashboard/laboratory" && user.role === "patient") return true;
@@ -178,7 +204,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
         {/* Top Navbar */}
-        <header className="h-16 border-b border-border bg-surface flex items-center justify-between px-4 md:px-6 shrink-0 z-10">
+        <header className="h-16 border-b border-border bg-surface flex items-center justify-between px-4 md:px-6 shrink-0 z-40 relative">
           <div className="flex items-center gap-3">
             {/* Mobile Hamburger Toggle Button */}
             <button
@@ -191,9 +217,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </svg>
             </button>
             <AnantaLogo size="sm" className="md:hidden" />
-            <h1 className="text-base md:text-lg font-semibold text-text capitalize hidden sm:block">{user.role} Dashboard</h1>
+            <h1 className="text-base md:text-lg font-semibold text-text capitalize hidden sm:block">
+              {user.role === "root" ? "Root Super-Admin" : user.role === "admin" ? "Organization Admin" : user.role} Dashboard
+            </h1>
           </div>
+
           <div className="flex items-center gap-2 md:gap-4">
+            {user.role !== "patient" && headerClinics.length > 0 && (
+              <div className="hidden lg:block w-48 sm:w-56">
+                <Select
+                  size="sm"
+                  options={headerClinics.map((c) => ({ value: c.id, label: `📍 ${c.name}` }))}
+                  value={activeClinicId || (headerClinics[0] ? headerClinics[0].id : "")}
+                  onChange={(e) => setActiveClinic(e.target.value)}
+                />
+              </div>
+            )}
+            <NotificationBell />
             <div className="hidden sm:block">
               <PaletteSwitcher />
             </div>
@@ -203,12 +243,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               trigger={
                 <button className="flex items-center gap-2 hover:bg-surface-hover p-1 pr-2 rounded-full transition-colors">
                   <Avatar name={user.name} size="sm" status="online" />
-                  <span className="text-sm font-medium text-text hidden sm:block">{user.name}</span>
+                  <div className="text-left hidden sm:block">
+                    <p className="text-xs font-semibold text-text leading-tight">{user.name}</p>
+                    <p className="text-[10px] text-text-muted capitalize leading-tight">{user.role}</p>
+                  </div>
                 </button>
               }
               items={[
-                { label: "Profile", onClick: () => router.push("/dashboard/settings") },
-                { label: "Settings", onClick: () => router.push("/dashboard/settings") },
+                { label: "Profile Settings", onClick: () => router.push("/dashboard/settings") },
+                ...(user.role === "root" ? [
+                  { label: "🏛️ Manage All Organizations", onClick: () => router.push("/dashboard/organizations") }
+                ] : []),
+                ...(user.role === "admin" ? [
+                  { label: "✨ Create New Organization", onClick: () => router.push("/onboarding?mode=new_org") }
+                ] : []),
+                { label: "Notification Settings", onClick: () => router.push("/dashboard/settings/notifications") },
                 { divider: true, label: "" },
                 { label: "Sign out", onClick: handleLogout, danger: true }
               ]}

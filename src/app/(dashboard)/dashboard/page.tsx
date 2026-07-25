@@ -34,7 +34,7 @@ export default function DashboardOverview() {
     if (!user) return;
     try {
       setLoading(true);
-      if (user.role === "admin" || user.role === "receptionist") {
+      if (user.role === "admin" || user.role === "root" || user.role === "receptionist") {
         const [clinicsRes, staffRes, apptsRes, invoicesRes] = await Promise.allSettled([
           api.get("/onboarding/clinics"),
           api.get("/onboarding/staff"),

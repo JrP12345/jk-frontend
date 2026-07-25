@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { API_URL } from './api';
+import { API_URL } from '../lib/api';
 
 export interface UploadResult {
   url: string;

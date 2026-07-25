@@ -12,6 +12,7 @@ interface DropdownItem {
   label: string;
   icon?: ReactNode;
   onClick?: () => void;
+  variant?: "default" | "primary" | "warning" | "danger";
   danger?: boolean;
   disabled?: boolean;
   divider?: boolean;
@@ -179,8 +180,12 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
                 className={cn(
                   "w-full flex items-center justify-between gap-2.5 px-3.5 py-2 text-xs font-medium text-left cursor-pointer transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed",
                   isFocused ? "bg-surface-hover text-text" : "text-text",
-                  item.danger
+                  item.danger || item.variant === "danger"
                     ? "text-danger-500 hover:bg-danger-500/10"
+                    : item.variant === "warning"
+                    ? "text-amber-500 hover:bg-amber-500/10"
+                    : item.variant === "primary"
+                    ? "text-primary-500 hover:bg-primary-500/10"
                     : "hover:bg-surface-hover hover:text-text",
                   isSelected && "font-bold text-primary-500"
                 )}

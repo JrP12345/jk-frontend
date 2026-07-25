@@ -12,6 +12,7 @@ import { SOAPNoteEditor } from "./SOAPNoteEditor";
 import { NEWS2Calculator } from "./NEWS2Calculator";
 import { PatientTimeline } from "../ehr/PatientTimeline";
 import { Tabs, Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, DatePicker, Select, Modal, useToast, Table, Spinner } from "@/components/ui";
+import api from "@/lib/api";
 import { NEWS2Service } from "@/services/news2.service";
 import { OrdersService } from "@/services/orders.service";
 import { MARService } from "@/services/mar.service";
@@ -80,6 +81,26 @@ export function EncounterWorkspace({
 
   // Export FHIR State
   const [exportingFhir, setExportingFhir] = useState(false);
+  const [callingNext, setCallingNext] = useState(false);
+
+  const handleCallNextPatient = async () => {
+    try {
+      setCallingNext(true);
+      const res = await api.post("/queue/call-next", { clinicId, doctorId });
+      if (res.data?.data) {
+        toast({ title: "Patient Called 🩺", description: res.data.message || `Token #${res.data.data.tokenNumber} in consultation`, variant: "success" });
+        const apptId = res.data.data.id || res.data.data._id;
+        const pId = typeof res.data.data.patientId === "object" ? (res.data.data.patientId.id || res.data.data.patientId._id) : res.data.data.patientId;
+        window.location.href = `/dashboard/consultations/${apptId}?patientId=${pId}&clinicId=${clinicId || ""}`;
+      } else {
+        toast({ title: "Queue Empty", description: res.data?.message || "No waiting patients in queue for today", variant: "default" });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.response?.data?.message || "Failed to call next patient", variant: "error" });
+    } finally {
+      setCallingNext(false);
+    }
+  };
 
   const handleScheduleMar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,9 +288,14 @@ export function EncounterWorkspace({
             ]}
           />
 
-          <Button variant="outline" size="sm" onClick={handleExportFHIR} loading={exportingFhir}>
-            ⚡ Export FHIR R4 Bundle
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="primary" size="sm" onClick={handleCallNextPatient} loading={callingNext}>
+              📢 Call Next Patient
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportFHIR} loading={exportingFhir}>
+              ⚡ Export FHIR R4 Bundle
+            </Button>
+          </div>
         </div>
 
         {/* Tab 1: SOAP Note Editor */}

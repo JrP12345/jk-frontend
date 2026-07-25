@@ -21,8 +21,10 @@ export function proxy(request: NextRequest) {
   // In production builds, always redirect to /login — no exceptions.
   // In development: requires the secret key passed as ?key=<ONBOARDING_SECRET>.
   if (pathname === '/onboarding') {
-    // If already logged in, redirect to dashboard regardless of env
-    if (hasRefreshToken) {
+    const isNewOrgMode = searchParams.get('mode') === 'new_org';
+
+    // If already logged in AND not explicitly creating a new org, redirect to dashboard
+    if (hasRefreshToken && !isNewOrgMode) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
@@ -31,11 +33,11 @@ export function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    // In development — still require the secret key
+    // In development — require the secret key for first-time setup (unless mode=new_org)
     const providedKey = searchParams.get('key') || '';
     const expectedKey = process.env.ONBOARDING_SECRET || '';
 
-    if (!providedKey || !expectedKey || providedKey !== expectedKey) {
+    if (!isNewOrgMode && (!providedKey || !expectedKey || providedKey !== expectedKey)) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('error', 'unauthorized');
       return NextResponse.redirect(loginUrl);

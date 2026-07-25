@@ -69,7 +69,7 @@ export default function AnalyticsPage() {
   };
 
   useEffect(() => {
-    if (user && user.role === "admin") {
+    if (user && (user.role === "admin" || user.role === "root")) {
       fetchAnalytics();
     }
   }, [user]);

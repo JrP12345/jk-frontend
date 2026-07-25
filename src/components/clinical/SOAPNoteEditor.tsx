@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { SOAPService } from "@/services/soap.service";
 import { Modal, Button, Badge, Spinner, Textarea, Select } from "@/components/ui";
+import { UnifiedDocumentModal, UnifiedDocumentData } from "./UnifiedDocumentModal";
+import { PreviousVisitsSidebar } from "./PreviousVisitsSidebar";
 
 interface SOAPNoteEditorProps {
   patientId: string;
@@ -64,6 +66,164 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
   const [medDosage, setMedDosage] = useState("");
   const [medDuration, setMedDuration] = useState("");
   const [prescriptions, setPrescriptions] = useState<Array<{ name: string; dosage: string; duration: string }>>([]);
+
+  // Medicine Autocomplete State
+  const [medicineResults, setMedicineResults] = useState<any[]>([]);
+  const [showMedDropdown, setShowMedDropdown] = useState(false);
+  const [searchingMeds, setSearchingMeds] = useState(false);
+  const [selectedMedStock, setSelectedMedStock] = useState<number | null>(null);
+
+  // Clinical Templates Pre-built List
+  const CLINICAL_TEMPLATES = [
+    {
+      id: "uri",
+      name: "Upper Respiratory Infection (URI)",
+      chiefComplaint: "Fever, sore throat, cough and nasal congestion for 3 days",
+      historyOfPresentIllness: "Patient reports sudden onset of low-grade fever accompanied by scratchy throat and dry cough.",
+      symptomsText: "Fever, Sore throat, Cough, Nasal Congestion",
+      physicalExamination: "Pharynx erythematous, no exudates. Chest bilaterally clear to auscultation. No lymphadenopathy.",
+      primaryDiagnosis: "Acute upper respiratory infection, unspecified",
+      icdCode: "J06.9",
+      severity: "mild",
+      treatmentPlan: "Rest, warm fluid intake, saline nasal rinse. Follow-up if symptoms persist beyond 7 days.",
+      prescriptions: [
+        { name: "Paracetamol 500mg", dosage: "1 tablet", duration: "5 days" },
+        { name: "Cetirizine 10mg", dosage: "1 tablet", duration: "5 days" },
+      ],
+    },
+    {
+      id: "htn",
+      name: "Hypertension Routine Follow-up",
+      chiefComplaint: "Routine hypertension follow-up check",
+      historyOfPresentIllness: "Patient taking prescribed anti-hypertensive regimen regularly. Reports no chest pain or shortness of breath.",
+      symptomsText: "Asymptomatic",
+      physicalExamination: "BP 130/84 mmHg, Pulse 72 bpm. S1 S2 heard, no murmurs. Pedals clear.",
+      primaryDiagnosis: "Essential (primary) hypertension",
+      icdCode: "I10",
+      severity: "moderate",
+      treatmentPlan: "Continue current anti-hypertensive medication. Low-sodium diet, regular aerobic exercise.",
+      prescriptions: [
+        { name: "Amlodipine 5mg", dosage: "1 tablet", duration: "30 days" },
+      ],
+    },
+    {
+      id: "dm2",
+      name: "Type 2 Diabetes Routine Check",
+      chiefComplaint: "Routine Type 2 Diabetes follow-up & blood sugar review",
+      historyOfPresentIllness: "Patient reports adherence to diabetic diet and medication. No signs of hypoglycemia or peripheral neuropathy.",
+      symptomsText: "No active complaints",
+      physicalExamination: "Abdomen soft, non-tender. Monofilament test normal bilaterally. Foot inspection clear.",
+      primaryDiagnosis: "Type 2 diabetes mellitus without complications",
+      icdCode: "E11.9",
+      severity: "moderate",
+      treatmentPlan: "Monitor fasting & post-prandial blood sugar weekly. Continue Metformin regimen.",
+      prescriptions: [
+        { name: "Metformin 500mg", dosage: "1 tablet", duration: "30 days" },
+      ],
+    },
+    {
+      id: "gastritis",
+      name: "Acute Gastritis / Dyspepsia",
+      chiefComplaint: "Epigastric burning pain and nausea after meals for 2 days",
+      historyOfPresentIllness: "Patient reports burning discomfort in upper abdomen, exacerbated by spicy food.",
+      symptomsText: "Epigastric pain, Nausea, Heartburn",
+      physicalExamination: "Abdomen soft, mild epigastric tenderness on deep palpation. Bowel sounds active.",
+      primaryDiagnosis: "Acute gastritis, unspecified",
+      icdCode: "K29.00",
+      severity: "moderate",
+      treatmentPlan: "Avoid spicy and fried foods. Take PPI 30 mins before breakfast.",
+      prescriptions: [
+        { name: "Pantoprazole 40mg", dosage: "1 tablet", duration: "14 days" },
+        { name: "Antacid Oral Suspension", dosage: "10ml", duration: "7 days" },
+      ],
+    },
+  ];
+
+  const handleApplyTemplate = (templateId: string) => {
+    const tpl = CLINICAL_TEMPLATES.find((t) => t.id === templateId);
+    if (!tpl) return;
+    setChiefComplaint(tpl.chiefComplaint);
+    setHistoryOfPresentIllness(tpl.historyOfPresentIllness);
+    setSymptomsText(tpl.symptomsText);
+    setPhysicalExamination(tpl.physicalExamination);
+    setPrimaryDiagnosis(tpl.primaryDiagnosis);
+    setIcdCode(tpl.icdCode);
+    setSeverity(tpl.severity);
+    setTreatmentPlan(tpl.treatmentPlan);
+    setPrescriptions(tpl.prescriptions);
+  };
+
+  const handleCopyForwardVisit = (note: any) => {
+    if (note.subjective?.chiefComplaint) setChiefComplaint(note.subjective.chiefComplaint);
+    if (note.subjective?.historyOfPresentIllness) setHistoryOfPresentIllness(note.subjective.historyOfPresentIllness);
+    if (note.subjective?.symptoms) setSymptomsText(note.subjective.symptoms.join(", "));
+    if (note.objective?.physicalExamination) setPhysicalExamination(note.objective.physicalExamination);
+    if (note.assessment?.diagnoses?.[0]) {
+      setPrimaryDiagnosis(note.assessment.diagnoses[0].description || "");
+      setIcdCode(note.assessment.diagnoses[0].code || "");
+    }
+    if (note.plan?.treatmentPlan) setTreatmentPlan(note.plan.treatmentPlan);
+    if (note.plan?.prescriptions && note.plan.prescriptions.length > 0) {
+      setPrescriptions(note.plan.prescriptions.map((p: any) => ({
+        name: p.name || p.medicineName,
+        dosage: p.dosage || "1 tablet",
+        duration: p.duration || "5 days",
+      })));
+    }
+  };
+
+  // Medicine Autocomplete Search Effect
+  useEffect(() => {
+    if (!medName.trim() || medName.length < 2) {
+      setMedicineResults([]);
+      setShowMedDropdown(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setSearchingMeds(true);
+        const res = await api.get(`/medicines?search=${encodeURIComponent(medName.trim())}`);
+        const list = res.data?.data || [];
+        setMedicineResults(list);
+        setShowMedDropdown(list.length > 0);
+      } catch {
+        setMedicineResults([]);
+        setShowMedDropdown(false);
+      } finally {
+        setSearchingMeds(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [medName]);
+
+  // Print Modal State
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [unifiedDoc, setUnifiedDoc] = useState<UnifiedDocumentData | null>(null);
+
+  const handleOpenPrintModal = () => {
+    setUnifiedDoc({
+      documentType: "prescription",
+      title: "PRESCRIPTION RX",
+      clinicName: "ANANTA Healthcare System",
+      doctorName: "Attending Physician",
+      doctorSpecialization: "Outpatient General Medicine",
+      patientName: "Patient Profile",
+      date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+      diagnoses: primaryDiagnosis ? [{ code: icdCode, description: primaryDiagnosis }] : [],
+      vitals: {
+        bp: bpSystolic && bpDiastolic ? `${bpSystolic}/${bpDiastolic}` : undefined,
+        pulse: pulseRate || undefined,
+        temp: temperatureF || undefined,
+        spO2: spO2 || undefined,
+      },
+      prescriptions: prescriptions.length > 0
+        ? prescriptions.map(p => ({ ...p, frequency: (p as any).frequency || "1-0-1" }))
+        : (medName ? [{ name: medName, dosage: medDosage, frequency: "1-0-1", duration: medDuration }] : []),
+    });
+    setPrintModalOpen(true);
+  };
 
   // Check LocalStorage for Unsaved Draft on Mount
   useEffect(() => {
@@ -318,6 +478,33 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
           <p className="text-xs text-zinc-500">Standardized medical documentation workspace</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Quick Load Clinical Template Dropdown */}
+          {!isSigned && (
+            <select
+              onChange={(e) => {
+                if (e.target.value) {
+                  handleApplyTemplate(e.target.value);
+                  e.target.value = "";
+                }
+              }}
+              className="px-3 py-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-bold cursor-pointer hover:bg-amber-100"
+            >
+              <option value="">⚡ Load Template...</option>
+              {CLINICAL_TEMPLATES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <button
+            type="button"
+            onClick={handleOpenPrintModal}
+            className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 rounded-lg text-xs font-semibold transition-all border border-blue-200 dark:border-blue-800"
+          >
+            🖨️ Print Rx PDF
+          </button>
           <button
             type="button"
             onClick={handleFetchHistory}
@@ -382,6 +569,11 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
           </div>
         </div>
       )}
+
+      {/* Main 2-Column Consultation Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Active SOAP Note Editor */}
+        <div className="lg:col-span-2 space-y-4">
 
       {message && (
         <div className={`p-3 rounded-lg text-sm border ${message.type === "success" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400"}`}>
@@ -526,25 +718,94 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
             />
           </div>
 
-          {/* Rx Medication Add Bar */}
-          <div className="space-y-2 border-t border-zinc-200 dark:border-[#252631] pt-3">
-            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Add Rx Medication</span>
-            <div className="flex gap-2">
-              <input type="text" placeholder="Drug Name" value={medName} onChange={(e) => setMedName(e.target.value)} disabled={isSigned} className="flex-1 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border rounded disabled:opacity-60" />
-              <input type="text" placeholder="Dosage" value={medDosage} onChange={(e) => setMedDosage(e.target.value)} disabled={isSigned} className="w-20 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border rounded disabled:opacity-60" />
-              <input type="text" placeholder="Duration" value={medDuration} onChange={(e) => setMedDuration(e.target.value)} disabled={isSigned} className="w-20 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border rounded disabled:opacity-60" />
-              <button type="button" onClick={handleAddMedication} disabled={isSigned} className="px-3 py-1 bg-zinc-800 text-white rounded text-xs font-medium disabled:opacity-50">Add</button>
+          {/* Rx Medication Add Bar with Catalog Autocomplete */}
+          <div className="space-y-2 border-t border-zinc-200 dark:border-[#252631] pt-3 relative">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Add Rx Medication (Search Catalog)</span>
+              {selectedMedStock !== null && (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${selectedMedStock < 10 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>
+                  Inventory Stock: {selectedMedStock} units
+                </span>
+              )}
             </div>
+
+            <div className="flex gap-2 relative">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  placeholder="Search Drug Name or Generic..."
+                  value={medName}
+                  onChange={(e) => setMedName(e.target.value)}
+                  onFocus={() => { if (medicineResults.length > 0) setShowMedDropdown(true); }}
+                  disabled={isSigned}
+                  className="w-full px-2 py-1 text-xs bg-white dark:bg-[#12131a] border rounded disabled:opacity-60"
+                />
+
+                {/* Autocomplete Dropdown Overlay */}
+                {showMedDropdown && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-[#1a1b23] border border-border shadow-lg rounded-lg z-50 max-h-48 overflow-y-auto divide-y divide-border text-xs">
+                    {searchingMeds ? (
+                      <div className="p-2 text-center text-text-muted">Searching catalog...</div>
+                    ) : (
+                      medicineResults.map((m) => (
+                        <div
+                          key={m.id || m._id}
+                          onClick={() => {
+                            setMedName(`${m.name} (${m.genericName})`);
+                            setSelectedMedStock(m.stockQuantity);
+                            setShowMedDropdown(false);
+                          }}
+                          className="p-2 hover:bg-primary-50 dark:hover:bg-primary-900/30 cursor-pointer flex justify-between items-center"
+                        >
+                          <div>
+                            <span className="font-bold text-text block">{m.name}</span>
+                            <span className="text-[11px] text-text-secondary">{m.genericName}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-xs font-bold text-primary-600">₹{m.price}</span>
+                            <span className="text-[10px] text-text-muted block">Stock: {m.stockQuantity}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <input type="text" placeholder="Dosage (e.g. 1 tab)" value={medDosage} onChange={(e) => setMedDosage(e.target.value)} disabled={isSigned} className="w-28 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border rounded disabled:opacity-60" />
+              <input type="text" placeholder="Duration" value={medDuration} onChange={(e) => setMedDuration(e.target.value)} disabled={isSigned} className="w-24 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border rounded disabled:opacity-60" />
+              <button type="button" onClick={handleAddMedication} disabled={isSigned} className="px-3 py-1 bg-primary-600 text-white rounded text-xs font-medium hover:bg-primary-700 disabled:opacity-50">Add Rx</button>
+            </div>
+
             {prescriptions.length > 0 && (
               <div className="space-y-1 pt-1">
                 {prescriptions.map((p, i) => (
-                  <div key={i} className="text-xs text-zinc-600 dark:text-zinc-400 bg-white dark:bg-[#12131a] px-2 py-1 rounded border border-zinc-200 dark:border-[#252631] flex justify-between">
-                    <span>{p.name} — {p.dosage} ({p.duration})</span>
+                  <div key={i} className="text-xs text-zinc-700 dark:text-zinc-300 bg-white dark:bg-[#12131a] px-3 py-1.5 rounded border border-zinc-200 dark:border-[#252631] flex justify-between items-center">
+                    <span><b>{i + 1}.</b> {p.name} — {p.dosage} ({p.duration})</span>
+                    {!isSigned && (
+                      <button
+                        type="button"
+                        onClick={() => setPrescriptions((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="text-red-500 hover:text-red-700 text-xs font-bold"
+                      >
+                        ✕ Remove
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Right Column: Patient Previous Visits Sidebar */}
+        <div className="lg:col-span-1">
+          <PreviousVisitsSidebar
+            patientId={activePatientId || patientId}
+            onCopyForward={handleCopyForwardVisit}
+          />
         </div>
       </div>
 
@@ -586,6 +847,13 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
           </Button>
         </form>
       </Modal>
+
+      {/* Official Prescription PDF Modal */}
+      <UnifiedDocumentModal
+        open={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        document={unifiedDoc}
+      />
     </div>
   );
 }

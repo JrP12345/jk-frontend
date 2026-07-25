@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import api from "@/lib/api";
 
-export type Role = "admin" | "doctor" | "receptionist" | "patient";
+export type Role = "root" | "admin" | "doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier" | "patient" | "family_member";
 
 export interface User {
   id: string;
@@ -16,17 +16,21 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  activeClinicId: string | null;
   
   // Actions
   checkAuth: () => Promise<void>;
   login: (user: User) => void;
   logout: () => Promise<void>;
+  switchOrg: (organizationId?: string) => Promise<void>;
+  setActiveClinic: (clinicId: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true, // Initially true so we don't flash login page on load
+  activeClinicId: null,
 
   checkAuth: async () => {
     try {
@@ -50,6 +54,18 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user: null, isAuthenticated: false });
     }
   },
+
+  switchOrg: async (organizationId?: string) => {
+    try {
+      await api.post("/auth/switch-org", { organizationId });
+      const res = await api.get("/auth/me");
+      set({ user: res.data.data.user, isAuthenticated: true, activeClinicId: null });
+    } catch (err) {
+      console.error("Failed to switch organization context:", err);
+    }
+  },
+
+  setActiveClinic: (clinicId: string | null) => set({ activeClinicId: clinicId }),
 }));
 
 // Listen for the custom "auth-expired" event from the axios interceptor

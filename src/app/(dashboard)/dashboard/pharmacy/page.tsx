@@ -38,12 +38,16 @@ interface AppointmentWithRx {
 }
 
 export default function PharmacyPage() {
-  const { user } = useAuthStore();
+  const { user, activeClinicId } = useAuthStore();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"inventory" | "dispensing">("inventory");
   const [clinics, setClinics] = useState<any[]>([]);
-  const [selectedClinicId, setSelectedClinicId] = useState("");
+  const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
+
+  useEffect(() => {
+    setSelectedClinicId(activeClinicId || "");
+  }, [activeClinicId]);
   const [medicines, setMedicines] = useState<MedicineType[]>([]);
   const [completedAppointments, setCompletedAppointments] = useState<AppointmentWithRx[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,9 +151,6 @@ export default function PharmacyPage() {
         const res = await api.get("/onboarding/clinics");
         const clinicsList = res.data.data || [];
         setClinics(clinicsList);
-        if (clinicsList.length > 0) {
-          setSelectedClinicId(clinicsList[0].id);
-        }
       } catch (err) {
         toast({ title: "Error", description: "Failed to load clinics list", variant: "error" });
       }
@@ -159,12 +160,13 @@ export default function PharmacyPage() {
 
   // Fetch data on Clinic change
   const fetchData = async () => {
-    if (!selectedClinicId) return;
     try {
       setLoading(true);
+      const query = selectedClinicId ? `?clinicId=${selectedClinicId}` : "";
+      const apptQuery = selectedClinicId ? `?clinicId=${selectedClinicId}&status=completed` : "?status=completed";
       const [medsRes, apptsRes] = await Promise.all([
-        api.get(`/medicines?clinicId=${selectedClinicId}`),
-        api.get(`/appointments?clinicId=${selectedClinicId}&status=completed`)
+        api.get(`/medicines${query}`),
+        api.get(`/appointments${apptQuery}`)
       ]);
       setMedicines(medsRes.data.data || []);
       

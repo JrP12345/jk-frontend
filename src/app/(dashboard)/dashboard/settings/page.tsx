@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import api from "@/lib/api";
 import {
   Card, CardHeader, CardTitle, CardContent, CardDescription,
   Button, Input, useToast, Spinner, ImageUpload, ScheduleEditor
 } from "@/components/ui";
-import { useR2Upload } from "@/lib/useR2Upload";
+import { useR2Upload } from "@/hooks/useR2Upload";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const PHONE_REGEX = /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$/;
@@ -112,7 +113,7 @@ export default function SettingsPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-text">Organization Settings</h1>
-        <p className="text-text-muted mt-1">Update your hospital or clinic details.</p>
+        <p className="text-text-muted mt-1">Update your hospital facility details & workspace preferences.</p>
       </div>
 
       <Card>

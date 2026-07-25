@@ -6,7 +6,7 @@ import {
   Card, CardHeader, CardTitle, CardContent,
   Table, Button, Modal, Input, useToast, Spinner, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, SkeletonTable, Dropdown
 } from "@/components/ui";
-import { useR2Upload } from "@/lib/useR2Upload";
+import { useR2Upload } from "@/hooks/useR2Upload";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 

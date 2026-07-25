@@ -20,7 +20,7 @@ export { default as Card, CardHeader, CardTitle, CardDescription, CardContent, C
 export { default as Avatar, AvatarGroup } from "./Avatar";
 export { default as StatCard } from "./StatCard";
 export { default as Table } from "./Table";
-export type { Column } from "./Table";
+export type { Column, TableBulkAction } from "./Table";
 
 export { default as Alert } from "./Alert";
 export { default as Spinner, PageSpinner } from "./Spinner";
@@ -42,3 +42,4 @@ export { default as Stepper } from "./Stepper";
 
 export { default as Divider } from "./Divider";
 export { default as AnantaLogo, AnantaIcon } from "./AnantaLogo";
+export { default as WorkspaceClinicFilter } from "./WorkspaceClinicFilter";
