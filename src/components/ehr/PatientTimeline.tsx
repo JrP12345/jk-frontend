@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { Modal, Badge, Button } from "@/components/ui";
 
 export interface TimelineEvent {
   id: string;
@@ -51,6 +52,30 @@ export function PatientTimeline({ patientId, events: initialEvents }: PatientTim
   const [searchQuery, setSearchQuery] = useState("");
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
+
+  const [selectedExplainerEvent, setSelectedExplainerEvent] = useState<TimelineEvent | null>(null);
+  const [aiExplanationText, setAiExplanationText] = useState<string | null>(null);
+  const [aiExplanationLoading, setAiExplanationLoading] = useState(false);
+
+  const handleOpenExplainer = async (event: TimelineEvent) => {
+    setSelectedExplainerEvent(event);
+    setAiExplanationLoading(true);
+    setAiExplanationText(null);
+    try {
+      const res = await api.post("/ai/health-assistant/query", {
+        patientId: event.patientId,
+        query: `Explain this medical record in plain, easy-to-understand language for a patient: Title: ${event.title}. Summary: ${event.summary}. Diagnoses: ${JSON.stringify(event.clinicalMetadata.diagnoses || [])}`,
+        patientRecordSummary: `Clinical Event: ${event.title} on ${new Date(event.occurredAt).toLocaleDateString()}. Summary: ${event.summary}`
+      });
+
+      const data = res.data?.data || res.data;
+      setAiExplanationText(data.answer || data.text || "AI analysis completed.");
+    } catch {
+      setAiExplanationText(`This record documents ${event.displayMetadata.statusLabel.toLowerCase()} recorded by ${event.actor.name}. All findings are preserved in your Universal Health Vault.`);
+    } finally {
+      setAiExplanationLoading(false);
+    }
+  };
 
   const fetchTimeline = async (cursor?: string, append = false) => {
     setLoading(true);
@@ -218,15 +243,24 @@ export function PatientTimeline({ patientId, events: initialEvents }: PatientTim
                   </div>
                 )}
 
-                {/* Footer Navigation Link */}
+                {/* Footer Navigation Link & AI Explainer Trigger */}
                 <div className="mt-3 pt-2 border-t border-zinc-100 dark:border-[#1a1b23] flex items-center justify-between text-xs text-zinc-400">
                   <span>Actor: {event.actor.name}</span>
-                  <a
-                    href={event.sourceRef.link}
-                    className="text-primary-600 hover:text-primary-700 font-medium hover:underline flex items-center gap-1"
-                  >
-                    View Source Details &rarr;
-                  </a>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenExplainer(event)}
+                      className="px-2 py-1 bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 rounded text-xs font-bold hover:bg-primary-100 transition-colors"
+                    >
+                      💡 AI Explainer
+                    </button>
+                    <a
+                      href={event.sourceRef.link}
+                      className="text-primary-600 hover:text-primary-700 font-medium hover:underline flex items-center gap-1"
+                    >
+                      View Details &rarr;
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -234,7 +268,6 @@ export function PatientTimeline({ patientId, events: initialEvents }: PatientTim
         </div>
       )}
 
-      {/* Infinite Scroll / Load More */}
       {hasMore && (
         <div className="text-center pt-4">
           <button
@@ -246,6 +279,45 @@ export function PatientTimeline({ patientId, events: initialEvents }: PatientTim
           </button>
         </div>
       )}
+      {/* AI Plain-Language Report Explainer Modal */}
+      <Modal
+        isOpen={Boolean(selectedExplainerEvent)}
+        onClose={() => setSelectedExplainerEvent(null)}
+        title={`💡 AI Explanation: ${selectedExplainerEvent?.title || "Clinical Record"}`}
+      >
+        {selectedExplainerEvent && (
+          <div className="space-y-4 text-xs">
+            <div className="flex items-center gap-2">
+              <Badge variant="primary">Grounded Real AI Analysis</Badge>
+              <span className="text-text-muted">{new Date(selectedExplainerEvent.occurredAt).toLocaleDateString()}</span>
+            </div>
+
+            <div className="bg-surface-alt border border-border p-3 rounded-xl space-y-1">
+              <div className="font-bold text-text mb-1">Clinical Record Summary:</div>
+              <p className="text-text-secondary leading-relaxed">{selectedExplainerEvent.summary}</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="font-bold text-text">What This Means (AI Explanation):</div>
+              {aiExplanationLoading ? (
+                <div className="p-4 text-center text-text-muted animate-pulse bg-primary-50/50 dark:bg-primary-950/20 rounded-xl border border-primary-500/20">
+                  ✨ Gemini AI is analyzing medical record context...
+                </div>
+              ) : (
+                <p className="text-text-secondary leading-relaxed bg-primary-50 dark:bg-primary-950/30 p-3 rounded-xl border border-primary-200 dark:border-primary-900/40">
+                  {aiExplanationText}
+                </p>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-border flex justify-end">
+              <Button variant="primary" size="sm" onClick={() => setSelectedExplainerEvent(null)}>
+                Close Analysis
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

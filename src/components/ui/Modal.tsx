@@ -8,7 +8,7 @@ import { cn } from "./utils";
    Modal — Animated dialog overlay with focus trap & scroll lock
    ──────────────────────────────────────────────── */
 
-type ModalSize = "sm" | "md" | "lg" | "xl" | "full";
+type ModalSize = "sm" | "md" | "lg" | "xl" | "2xl" | "full";
 
 interface ModalProps {
   open?: boolean;
@@ -28,6 +28,7 @@ const sizeStyles: Record<ModalSize, string> = {
   md: "max-w-md",
   lg: "max-w-lg",
   xl: "max-w-2xl",
+  "2xl": "max-w-4xl",
   full: "max-w-[calc(100vw-2rem)]",
 };
 
@@ -152,7 +153,7 @@ export default function Modal({
           </div>
         )}
 
-        <div className="px-4 sm:px-6 py-4 sm:py-5 overflow-y-auto flex-1 max-h-[75vh]">
+        <div className={cn("overflow-y-auto flex-1 max-h-[75vh]", (title || description) ? "px-4 sm:px-5 pt-3.5 sm:pt-4 pb-4 sm:pb-5" : "p-3.5 sm:p-4")}>
           {children}
         </div>
 

@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, ImageUpload, SkeletonTable, Dropdown
+  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, ImageUpload, SkeletonTable, Dropdown, ConfirmDialog
 } from "@/components/ui";
 import { useR2Upload } from "@/hooks/useR2Upload";
 
@@ -304,12 +304,15 @@ export default function LaboratoryPage() {
     }
   };
 
-  // Delete Lab Test
-  const handleDeleteTest = async (testId: string) => {
-    if (!confirm("Are you sure you want to remove this diagnostic test from the catalog?")) return;
+  // Delete Lab Test State & Handler
+  const [deletingTestId, setDeletingTestId] = useState<string | null>(null);
+
+  const handleDeleteTest = async () => {
+    if (!deletingTestId) return;
     try {
-      await api.delete(`/lab-tests/${testId}`);
-      toast({ title: "Success", description: "Test deleted from catalog", variant: "success" });
+      await api.delete(`/lab-tests/${deletingTestId}`);
+      toast({ title: "Success", description: "Test deleted from catalog", variant: "warning" });
+      setDeletingTestId(null);
       fetchData();
     } catch (err: any) {
       toast({ title: "Deletion Failed", description: err.response?.data?.message || "Server error", variant: "error" });
@@ -407,12 +410,44 @@ export default function LaboratoryPage() {
   const completedOrders = labOrders.filter(o => o.status === "result-uploaded").length;
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
+      {/* Top Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-text">Laboratory & Diagnostics</h2>
-          <p className="text-xs sm:text-sm text-text-secondary">Order medical lab examinations, manage catalog test departments, and upload result reports.</p>
+          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Laboratory & Diagnostics</h1>
+          <p className="text-xs text-text-muted mt-0.5">
+            Order medical lab examinations, manage catalog test departments, and upload result reports.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {user && user.role !== "patient" && (
+            <>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => { setSelectedPatient(null); setPatientSearch(""); setSelectedTestId(""); setSelectedDoctorId(""); setIsOrderOpen(true); }}
+                className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Place Lab Order</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchData}
+                loading={loading}
+                className="font-semibold rounded-xl cursor-pointer gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Refresh</span>
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -467,8 +502,6 @@ export default function LaboratoryPage() {
         <div className="space-y-6">
           <Card className="overflow-hidden">
             <Table
-              onAddClick={() => { setSelectedPatient(null); setPatientSearch(""); setSelectedTestId(""); setSelectedDoctorId(""); setIsOrderOpen(true); }}
-              actionLabel="Place Lab Order"
               loading={loading}
                   columns={[
                     { header: "Patient Details", key: "patient" },
@@ -542,8 +575,6 @@ export default function LaboratoryPage() {
             <div className="space-y-6">
               <Card className="overflow-hidden">
                 <Table
-                  onAddClick={() => { setEditingTestId(null); setTestName(""); setTestCode(""); setTestDepartment(""); setTestSampleType(""); setTestPrice(0); setTestNormalRange(""); setErrors({}); setIsTestModalOpen(true); }}
-                  actionLabel="Register Lab Test"
                   loading={loading}
                   columns={[
                     { header: "Test Code", key: "code" },
@@ -584,7 +615,7 @@ export default function LaboratoryPage() {
                             setErrors({});
                             setIsTestModalOpen(true);
                           }},
-                          { label: "Delete Lab Test", danger: true, onClick: () => handleDeleteTest(test.id) },
+                          { label: "Delete Lab Test", danger: true, onClick: () => setDeletingTestId(test.id) },
                         ]}
                       />
                     )
@@ -738,7 +769,7 @@ export default function LaboratoryPage() {
         title={editingTestId ? "Modify Lab Test Catalog Entry" : "Register Diagnostic Examination"}
       >
         <form onSubmit={handleTestSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="text-xs font-semibold text-text mb-1 block">Test Name *</label>
               <Input
@@ -752,7 +783,6 @@ export default function LaboratoryPage() {
                 required
                 error={errors.name}
               />
-              {errors.name && <p className="text-red-500 text-xs mt-0.5">{errors.name}</p>}
             </div>
             <div>
               <label className="text-xs font-semibold text-text mb-1 block">Test Code *</label>
@@ -767,11 +797,10 @@ export default function LaboratoryPage() {
                 required
                 error={errors.code}
               />
-              {errors.code && <p className="text-red-500 text-xs mt-0.5">{errors.code}</p>}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="text-xs font-semibold text-text mb-1 block">Department Group *</label>
               <Select
@@ -785,7 +814,6 @@ export default function LaboratoryPage() {
                 required
                 error={errors.department}
               />
-              {errors.department && <p className="text-red-500 text-xs mt-0.5">{errors.department}</p>}
             </div>
             <div>
               <label className="text-xs font-semibold text-text mb-1 block">Sample Material Type *</label>
@@ -800,11 +828,10 @@ export default function LaboratoryPage() {
                 required
                 error={errors.sampleType}
               />
-              {errors.sampleType && <p className="text-red-500 text-xs mt-0.5">{errors.sampleType}</p>}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="text-xs font-semibold text-text mb-1 block">Price (₹ INR) *</label>
               <Input
@@ -820,7 +847,6 @@ export default function LaboratoryPage() {
                 required
                 error={errors.price}
               />
-              {errors.price && <p className="text-red-500 text-xs mt-0.5">{errors.price}</p>}
             </div>
             <div>
               <label className="text-xs font-semibold text-text mb-1 block">Normal Range Reference *</label>
@@ -835,7 +861,6 @@ export default function LaboratoryPage() {
                 required
                 error={errors.normalRange}
               />
-              {errors.normalRange && <p className="text-red-500 text-xs mt-0.5">{errors.normalRange}</p>}
             </div>
           </div>
 
@@ -936,75 +961,85 @@ export default function LaboratoryPage() {
         open={isPrintOpen}
         onClose={() => setIsPrintOpen(false)}
         title="Laboratory Diagnosis Certificate"
+        size="lg"
       >
         {printOrder && (
-          <div className="space-y-6">
-            <div id="printable-lab-slip" className="border border-border p-6 rounded-xl bg-white text-black space-y-4">
+          <div className="space-y-5 font-sans">
+            <div id="printable-lab-slip" className="border border-gray-200 p-5 sm:p-6 rounded-2xl bg-white text-black space-y-4 shadow-sm">
               <div className="text-center border-b-2 border-gray-800 pb-3">
-                <h2 className="text-lg font-bold uppercase tracking-wider">JK Laboratory & Diagnostics Services</h2>
-                <p className="text-xs text-gray-500">Certified Medical Diagnostics Center | System Generated Report</p>
+                <h2 className="text-lg font-black uppercase tracking-wider text-gray-900">
+                  JK Laboratory & Diagnostics Services
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">Certified Medical Diagnostics Center &bull; Official Diagnostic Report</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-xs sm:text-sm">
                 <div>
-                  <span className="font-semibold block text-gray-500 text-xs">Patient Recipient:</span>
-                  <strong className="text-gray-900">{printOrder.patientId?.userId?.name}</strong>
-                  <div className="text-xs text-gray-500">Phone: {printOrder.patientId?.userId?.phone}</div>
+                  <span className="font-semibold block text-gray-500 text-[11px] uppercase tracking-wider">Patient Recipient:</span>
+                  <strong className="text-gray-900 text-sm">{printOrder.patientId?.userId?.name}</strong>
+                  <div className="text-xs text-gray-500 mt-0.5">Phone: {printOrder.patientId?.userId?.phone || "N/A"}</div>
                 </div>
                 <div className="text-right">
-                  <span className="font-semibold block text-gray-500 text-xs">Ordering Clinician:</span>
-                  <strong className="text-gray-900">{printOrder.doctorId?.name}</strong>
-                  <div className="text-xs text-gray-500">{printOrder.doctorId?.specialization || "Clinical Practitioner"}</div>
+                  <span className="font-semibold block text-gray-500 text-[11px] uppercase tracking-wider">Ordering Clinician:</span>
+                  <strong className="text-gray-900 text-sm">{printOrder.doctorId?.name}</strong>
+                  <div className="text-xs text-gray-500 mt-0.5">{printOrder.doctorId?.specialization || "Clinical Practitioner"}</div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm border-t border-gray-100 pt-3">
+              <div className="grid grid-cols-2 gap-4 text-xs sm:text-sm border-t border-gray-100 pt-3">
                 <div>
-                  <span className="font-semibold block text-gray-500 text-xs">Sample Collected Date:</span>
-                  <span className="text-gray-800">{new Date(printOrder.orderDate).toLocaleDateString()}</span>
+                  <span className="font-semibold block text-gray-500 text-[11px] uppercase tracking-wider">Sample Collected Date:</span>
+                  <span className="text-gray-800 font-medium">{new Date(printOrder.orderDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</span>
                 </div>
                 <div className="text-right">
-                  <span className="font-semibold block text-gray-500 text-xs">Test Room Code:</span>
-                  <span className="font-mono text-gray-800">{printOrder.testId?.code}</span>
+                  <span className="font-semibold block text-gray-500 text-[11px] uppercase tracking-wider">Test Room Code:</span>
+                  <span className="font-mono font-bold text-gray-800">{printOrder.testId?.code}</span>
                 </div>
               </div>
 
-              <div className="my-6">
-                <table className="w-full border-collapse">
+              <div className="my-4 overflow-x-auto">
+                <table className="w-full border-collapse table-fixed text-xs">
                   <thead>
-                    <tr className="bg-gray-100 text-gray-700 text-xs uppercase">
-                      <th className="border p-2 text-left">Examination Code & Name</th>
-                      <th className="border p-2 text-left">Patient Result</th>
-                      <th className="border p-2 text-left">Normal reference</th>
-                      <th className="border p-2 text-left">Department</th>
+                    <tr className="bg-gray-100 text-gray-700 text-[11px] uppercase font-bold">
+                      <th className="border border-gray-200 p-2.5 text-left w-[30%]">Examination</th>
+                      <th className="border border-gray-200 p-2.5 text-left w-[35%]">Patient Result</th>
+                      <th className="border border-gray-200 p-2.5 text-left w-[23%]">Normal Reference</th>
+                      <th className="border border-gray-200 p-2.5 text-left w-[12%]">Dept</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="text-sm">
-                      <td className="border p-3">
-                        <div className="font-bold text-gray-900">{printOrder.testId?.name}</div>
-                        <div className="text-xs text-gray-500">{printOrder.testId?.code}</div>
+                    <tr className="text-xs">
+                      <td className="border border-gray-200 p-2.5 align-top">
+                        <div className="font-bold text-gray-900 leading-snug">{printOrder.testId?.name}</div>
+                        <div className="text-[10px] font-mono text-gray-500 mt-0.5">{printOrder.testId?.code}</div>
                       </td>
-                      <td className="border p-3 font-bold text-teal-700">{printOrder.resultValue}</td>
-                      <td className="border p-3 font-mono text-gray-700">{printOrder.testId?.normalRange}</td>
-                      <td className="border p-3 text-xs">{printOrder.testId?.department}</td>
+                      <td className="border border-gray-200 p-2.5 align-top font-bold text-teal-700 whitespace-pre-wrap break-words leading-relaxed">
+                        {printOrder.resultValue}
+                      </td>
+                      <td className="border border-gray-200 p-2.5 align-top font-mono text-gray-700 whitespace-pre-wrap break-words">
+                        {printOrder.testId?.normalRange}
+                      </td>
+                      <td className="border border-gray-200 p-2.5 align-top text-[11px] text-gray-600 font-medium">
+                        {printOrder.testId?.department}
+                      </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
 
               {printOrder.resultNotes && (
-                <div className="bg-gray-50 border-l-4 border-teal-600 p-3 text-sm italic text-gray-700">
-                  <strong>Pathologist Findings:</strong> {printOrder.resultNotes}
+                <div className="bg-teal-50/50 border-l-4 border-teal-600 p-3 rounded-r-xl text-xs text-gray-800 leading-relaxed">
+                  <strong className="text-teal-900 block font-bold mb-0.5">Pathologist Findings & Clinical Notes:</strong>
+                  <p className="whitespace-pre-wrap italic">{printOrder.resultNotes}</p>
                 </div>
               )}
 
-              <div className="mt-12 flex justify-between text-xs pt-12 border-t border-gray-100">
-                <div className="text-center w-40">
-                  <div className="border-t border-gray-300 pt-1 text-gray-500">Lab Technician</div>
+              <div className="mt-8 flex justify-between text-xs pt-8 border-t border-gray-100">
+                <div className="text-center w-36">
+                  <div className="border-t border-gray-400 pt-1 text-gray-500 font-medium text-[11px]">Lab Technician</div>
                 </div>
-                <div className="text-center w-40">
-                  <div className="border-t border-gray-300 pt-1 text-gray-500">Authorized Signatory</div>
+                <div className="text-center w-36">
+                  <div className="border-t border-gray-400 pt-1 text-gray-500 font-medium text-[11px]">Authorized Signatory</div>
                 </div>
               </div>
             </div>
@@ -1020,6 +1055,17 @@ export default function LaboratoryPage() {
           </div>
         )}
       </Modal>
+
+      {/* ── Delete Test Confirm Dialog ─────────────────────────────────── */}
+      <ConfirmDialog
+        open={!!deletingTestId}
+        onClose={() => setDeletingTestId(null)}
+        onConfirm={handleDeleteTest}
+        title="Delete Diagnostic Test"
+        description="Are you sure you want to remove this test from the laboratory catalog? This action cannot be undone."
+        variant="danger"
+        confirmLabel="Delete Test"
+      />
     </div>
   );
 }

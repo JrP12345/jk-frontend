@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
 import {
@@ -13,10 +14,11 @@ import {
   CardFooter,
   Input,
   Button,
+  Badge,
   useToast,
   ModeSwitcher,
   AnantaLogo,
-  cn
+  cn,
 } from "@/components/ui";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -45,7 +47,6 @@ export default function LoginPage() {
   const { login } = useAuthStore();
   const { toast } = useToast();
 
-  // Validate email on blur or input
   const validateEmail = (val: string, isReset = false) => {
     const errorStateSetter = isReset ? setResetEmailError : setEmailError;
     if (!val) {
@@ -60,7 +61,6 @@ export default function LoginPage() {
     return true;
   };
 
-  // Validate password
   const validatePassword = (val: string) => {
     if (!val) {
       setPasswordError("Password is required");
@@ -97,7 +97,7 @@ export default function LoginPage() {
       login(res.data.data.user);
       toast({
         title: "Welcome back!",
-        description: "You have successfully logged in.",
+        description: `Successfully logged in as ${res.data.data.user.name}.`,
         variant: "success",
         duration: 3000,
       });
@@ -106,9 +106,9 @@ export default function LoginPage() {
       triggerShake();
       toast({
         title: "Login Failed",
-        description: err.response?.data?.message || "Invalid credentials. Please try again.",
+        description: err.response?.data?.message || "Invalid credentials. Please verify your email and password.",
         variant: "error",
-        duration: 5000,
+        duration: 4000,
       });
     } finally {
       setLoading(false);
@@ -122,21 +122,20 @@ export default function LoginPage() {
 
     setResetLoading(true);
     try {
-      // Simulate API call for password reset
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setIsResetSent(true);
       toast({
         title: "Recovery Link Sent",
-        description: `Reset password instructions have been sent to ${resetEmail}.`,
+        description: `Password reset instructions have been sent to ${resetEmail}.`,
         variant: "success",
         duration: 4000,
       });
-    } catch (err) {
+    } catch {
       toast({
         title: "Request Failed",
         description: "Unable to process recovery request. Please try again later.",
         variant: "error",
-        duration: 5000,
+        duration: 4000,
       });
     } finally {
       setResetLoading(false);
@@ -144,42 +143,57 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-surface-alt relative overflow-hidden">
-      {/* Decorative background blobs - soft shifting gradient glow */}
-      <div className="absolute top-[-15%] left-[-15%] w-[50%] h-[50%] bg-primary-500/15 rounded-full blur-[140px] pointer-events-none animate-pulse duration-[8s]" />
-      <div className="absolute bottom-[-15%] right-[-15%] w-[50%] h-[50%] bg-blue-500/15 rounded-full blur-[140px] pointer-events-none animate-pulse duration-[6s] delay-1000" />
-      
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-surface-alt relative overflow-hidden font-sans text-text">
+      {/* Background ambient glow */}
+      <div className="absolute top-[-15%] left-[-15%] w-[50%] h-[50%] bg-primary-500/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[-15%] right-[-15%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
+
+      {/* Top Header Navigation */}
+      <div className="absolute top-6 left-6 z-20">
+        <Link
+          href="/browse"
+          className="text-xs font-semibold text-text-secondary hover:text-text flex items-center gap-1.5 bg-surface/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-border/60 transition-all hover:border-border"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Browse Clinics
+        </Link>
+      </div>
+
       <div className="absolute top-6 right-6 z-20">
         <ModeSwitcher />
       </div>
 
       <div className="w-full max-w-md relative z-10 animate-fade-up">
         {/* Brand Header */}
-        <div className="text-center mb-8 flex flex-col items-center justify-center">
+        <div className="text-center mb-6 flex flex-col items-center justify-center">
           <AnantaLogo size="xl" />
-          <p className="text-text-secondary text-sm mt-2">Sign in to manage clinical operations</p>
+          <p className="text-text-secondary text-xs sm:text-sm mt-2">Sign in to ANANTA Healthcare OS</p>
         </div>
 
         {/* Auth Card Container */}
-        <Card 
-          hover 
+        <Card
           className={cn(
-            "shadow-xl shadow-black/5 border-border/50 backdrop-blur-md bg-surface/90 transition-transform duration-300", 
+            "shadow-xl border-border/80 backdrop-blur-md bg-surface p-0 rounded-2xl overflow-hidden transition-transform duration-300",
             isShaking && "animate-shake"
           )}
         >
           {!isForgotPassword ? (
             /* Login Form */
-            <form onSubmit={handleLogin} noValidate autoComplete="off">
-              <CardHeader>
-                <CardTitle>Welcome Back</CardTitle>
-                <CardDescription>Enter your credential details to access your account</CardDescription>
+            <form onSubmit={handleLogin} noValidate autoComplete="off" className="p-5 sm:p-6 space-y-4">
+              <CardHeader className="p-0 mb-4">
+                <CardTitle className="text-xl sm:text-2xl font-black text-text">Welcome Back</CardTitle>
+                <CardDescription className="text-xs text-text-muted mt-1">
+                  Enter your clinical credentials to access your account dashboard
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+
+              <CardContent className="p-0 space-y-4">
                 <Input
-                  label="Email"
+                  label="Email Address *"
                   type="email"
-                  placeholder="21amtics177@gmail.com"
+                  placeholder="doctor@ananta.health"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
@@ -190,77 +204,82 @@ export default function LoginPage() {
                   required
                   autoComplete="off"
                 />
-                <Input
-                  label="Password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (passwordError) validatePassword(e.target.value);
-                  }}
-                  onBlur={() => validatePassword(password)}
-                  error={passwordError}
-                  required
-                  autoComplete="off"
-                  iconRight={
+
+                <div>
+                  <Input
+                    label="Password *"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (passwordError) validatePassword(e.target.value);
+                    }}
+                    onBlur={() => validatePassword(password)}
+                    error={passwordError}
+                    required
+                    autoComplete="off"
+                    iconRight={
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="p-1 text-text-muted hover:text-text rounded-md transition-all cursor-pointer"
+                        title={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                          </svg>
+                        ) : (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        )}
+                      </button>
+                    }
+                  />
+                  <div className="flex justify-end pt-1.5">
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="p-1 text-text-muted hover:text-text rounded-md hover:bg-surface-hover/50 transition-all active:scale-75 cursor-pointer"
-                      title={showPassword ? "Hide password" : "Show password"}
+                      onClick={() => {
+                        setIsForgotPassword(true);
+                        setIsResetSent(false);
+                        setResetEmail("");
+                        setResetEmailError("");
+                      }}
+                      className="text-xs font-semibold text-primary-600 hover:underline cursor-pointer"
                     >
-                      {showPassword ? (
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                        </svg>
-                      ) : (
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                      )}
+                      Forgot Password?
                     </button>
-                  }
-                />
-                <div className="flex justify-end pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsForgotPassword(true);
-                      setIsResetSent(false);
-                      setResetEmail("");
-                      setResetEmailError("");
-                    }}
-                    className="text-xs font-semibold text-primary-600 hover:text-primary-700 hover:underline transition-all cursor-pointer"
-                  >
-                    Forgot Password?
-                  </button>
+                  </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex-col gap-4">
-                <Button type="submit" fullWidth loading={loading} size="lg">
-                  Sign In
+
+              <CardFooter className="p-0 pt-2 flex flex-col gap-3">
+                <Button type="submit" fullWidth loading={loading} size="lg" className="rounded-xl font-bold">
+                  Sign In to Dashboard
                 </Button>
               </CardFooter>
             </form>
           ) : (
             /* Forgot Password Form */
-            <form onSubmit={handleResetPassword} noValidate>
-              <CardHeader>
-                <CardTitle>Recover Password</CardTitle>
-                <CardDescription>
+            <form onSubmit={handleResetPassword} noValidate className="p-5 sm:p-6 space-y-4">
+              <CardHeader className="p-0 mb-3">
+                <CardTitle className="text-xl font-bold">Recover Password</CardTitle>
+                <CardDescription className="text-xs text-text-muted mt-1">
                   {!isResetSent
-                    ? "Enter your email address and we'll send you instructions to reset your password."
-                    : "Instructions have been successfully dispatched."}
+                    ? "Enter your email address and we will send password recovery instructions."
+                    : "Instructions have been dispatched to your inbox."}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+
+              <CardContent className="p-0 space-y-4">
                 {!isResetSent ? (
                   <Input
-                    label="Email"
+                    label="Registered Email *"
                     type="email"
-                    placeholder="admin@hospital.com"
+                    placeholder="doctor@ananta.health"
                     value={resetEmail}
                     onChange={(e) => {
                       setResetEmail(e.target.value);
@@ -272,28 +291,29 @@ export default function LoginPage() {
                     autoComplete="email"
                   />
                 ) : (
-                  <div className="p-4 rounded-xl bg-success-500/10 border border-success-500/20 text-success-700 dark:text-success-300 text-xs leading-relaxed flex gap-2.5 animate-scale-in">
-                    <svg className="h-5 w-5 text-success-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs leading-relaxed flex gap-2.5">
+                    <svg className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a10 10 0 11-20 0 10 10 0 0120 0z" />
                     </svg>
                     <div>
-                      An email containing reset instructions has been sent to <span className="font-semibold">{resetEmail}</span>. Please verify your inbox and spam folder.
+                      Instructions have been sent to <strong className="text-text">{resetEmail}</strong>. Please check your inbox.
                     </div>
                   </div>
                 )}
               </CardContent>
-              <CardFooter className="flex-col gap-3">
+
+              <CardFooter className="p-0 pt-2 flex flex-col gap-3">
                 {!isResetSent && (
-                  <Button type="submit" fullWidth loading={resetLoading} size="lg">
+                  <Button type="submit" fullWidth loading={resetLoading} size="md" className="rounded-xl font-bold">
                     Send Recovery Link
                   </Button>
                 )}
                 <button
                   type="button"
                   onClick={() => setIsForgotPassword(false)}
-                  className="text-xs font-semibold text-text-secondary hover:text-text p-1.5 transition-colors cursor-pointer"
+                  className="text-xs font-semibold text-text-secondary hover:text-text transition-colors cursor-pointer"
                 >
-                  &larr; Back to login
+                  &larr; Back to Sign In
                 </button>
               </CardFooter>
             </form>
@@ -303,4 +323,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

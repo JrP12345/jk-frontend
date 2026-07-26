@@ -73,20 +73,12 @@ export default function MarketplaceNavbar() {
           ) : (
             <div className="flex items-center gap-2">
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/login")}
-                className="text-text-secondary hover:text-text"
-              >
-                Sign In
-              </Button>
-              <Button
                 variant="primary"
                 size="sm"
-                onClick={() => router.push("/onboarding")}
+                onClick={() => router.push("/login")}
                 className="shadow-sm"
               >
-                Register Clinic
+                Sign In
               </Button>
             </div>
           )}
@@ -163,18 +155,11 @@ export default function MarketplaceNavbar() {
             ) : (
               <div className="flex flex-col gap-3 pt-2">
                 <Button
-                  variant="outline"
-                  className="w-full text-center"
+                  variant="primary"
+                  className="w-full text-center shadow-sm"
                   onClick={() => navigateTo("/login")}
                 >
                   Sign In
-                </Button>
-                <Button
-                  variant="primary"
-                  className="w-full text-center shadow-sm"
-                  onClick={() => navigateTo("/onboarding")}
-                >
-                  Register Clinic
                 </Button>
               </div>
             )}

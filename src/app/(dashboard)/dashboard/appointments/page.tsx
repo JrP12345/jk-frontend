@@ -510,12 +510,26 @@ export default function AppointmentsPage() {
   if (!user) return null;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
+      {/* Top Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-text">Appointments</h2>
-          <p className="text-xs sm:text-sm text-text-secondary">View and schedule clinic visits and token queue bookings.</p>
+          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Appointments</h1>
+          <p className="text-xs text-text-muted mt-0.5">
+            Manage clinical appointments, queue tokens, and patient encounter schedules.
+          </p>
         </div>
+
+        {user.role !== "doctor" && (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={openBookModal}
+            className="font-bold rounded-xl shadow-xs shrink-0 cursor-pointer"
+          >
+            + Book Appointment
+          </Button>
+        )}
       </div>
 
       {/* Live Patient Queue Tracker (if active appointment today) */}
@@ -529,8 +543,6 @@ export default function AppointmentsPage() {
 
       {/* Main Roster Table */}
       <Table
-        onAddClick={user.role !== "doctor" ? openBookModal : undefined}
-        actionLabel="Book Appointment"
         exportFilename="appointments_list"
         searchPlaceholder="Search appointments..."
         loading={loading}

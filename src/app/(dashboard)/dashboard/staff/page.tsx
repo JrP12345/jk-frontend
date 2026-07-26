@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
 import {
   Card, CardHeader, CardTitle, CardContent,
@@ -33,6 +33,9 @@ interface Receptionist {
 }
 
 export default function StaffPage() {
+  const { toast } = useToast();
+  const { uploadFile } = useR2Upload();
+
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [receptionists, setReceptionists] = useState<Receptionist[]>([]);
   const [nurses, setNurses] = useState<any[]>([]);
@@ -47,8 +50,23 @@ export default function StaffPage() {
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const { toast } = useToast();
-  const { uploadFile } = useR2Upload();
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>("all");
+
+  const allStaffMembers = useMemo(() => {
+    const list: any[] = [];
+    doctors.forEach(d => list.push({ ...d, roleType: "doctor", roleLabel: "Doctor", details: d.specialization ? `${d.specialization} (${d.qualification || "MD"})` : (d.qualification || "-") }));
+    receptionists.forEach(r => list.push({ ...r, roleType: "receptionist", roleLabel: "Receptionist", details: r.clinicName ? `Clinic: ${r.clinicName}` : (r.shift || "-") }));
+    nurses.forEach(n => list.push({ ...n, roleType: "nurse", roleLabel: "Nurse", details: n.phone || "-" }));
+    labTechs.forEach(l => list.push({ ...l, roleType: "lab_tech", roleLabel: "Lab Tech", details: l.phone || "-" }));
+    pharmacists.forEach(p => list.push({ ...p, roleType: "pharmacist", roleLabel: "Pharmacist", details: p.phone || "-" }));
+    cashiers.forEach(c => list.push({ ...c, roleType: "cashier", roleLabel: "Cashier", details: c.phone || "-" }));
+    return list;
+  }, [doctors, receptionists, nurses, labTechs, pharmacists, cashiers]);
+
+  const filteredStaff = useMemo(() => {
+    if (selectedRoleFilter === "all") return allStaffMembers;
+    return allStaffMembers.filter(s => s.roleType === selectedRoleFilter);
+  }, [allStaffMembers, selectedRoleFilter]);
 
   // Dynamic Validation State
   const [staffErrors, setStaffErrors] = useState<Record<string, string>>({});
@@ -313,256 +331,147 @@ export default function StaffPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
+      {/* Top Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-text">Staff Management</h2>
-          <p className="text-xs sm:text-sm text-text-secondary">Manage doctors, receptionists, and organizational roles.</p>
+          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Staff & Practitioner Management</h1>
+          <p className="text-xs text-text-muted mt-0.5">
+            Manage clinical practitioners, receptionists, access privileges, and RBAC governance.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => openModal("doctor")}
+            className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Add Staff Member</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadData}
+            loading={loading}
+            className="font-semibold rounded-xl cursor-pointer gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Refresh</span>
+          </Button>
         </div>
       </div>
 
       <Tabs
         tabs={[
           {
-            id: "doctors",
-            label: `Doctors (${doctors.length})`,
+            id: "directory",
+            label: `Staff Directory (${allStaffMembers.length})`,
             content: (
-              <Table
-                onAddClick={() => openModal("doctor")}
-                actionLabel="Add Doctor"
-                    searchable
-                    searchPlaceholder="Search doctors by name, email, or specialty..."
-                    columns={[
-                      { key: "name", header: "Name", sortable: true },
-                      { key: "email", header: "Email", sortable: true },
-                      { key: "specialization", header: "Specialty", sortable: true },
-                      { key: "qualification", header: "Qualification", sortable: true },
-                      { key: "experience_years", header: "Experience", sortable: true },
-                      { 
-                        key: "actions", 
-                        header: "Actions",
-                        width: "56px",
-                        render: (row) => (
-                          <Dropdown
-                            align="right"
-                            trigger={
-                              <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
-                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                                </svg>
-                              </Button>
-                            }
-                            items={[
-                              { label: "Manage Clinic Assignments", onClick: () => openAssignmentsModal(row) },
-                              { label: "Edit Doctor", onClick: () => openEditModal("doctor", row) },
-                              { label: "Delete Doctor", danger: true, onClick: () => setDeletingId(row.id) },
-                            ]}
-                          />
-                        )
-                      }
-                    ]}
-                    data={doctors}
-                    emptyMessage="No doctors added yet."
-                  />
-                )
-              },
-              {
-                id: "receptionists",
-                label: `Receptionists (${receptionists.length})`,
-                content: (
-                  <Table
-                    onAddClick={() => openModal("receptionist")}
-                    actionLabel="Add Receptionist"
-                    searchable
-                    searchPlaceholder="Search receptionists by name, email, or shift..."
-                    columns={[
-                      { key: "name", header: "Name", sortable: true },
-                      { key: "email", header: "Email", sortable: true },
-                      { key: "clinicName", header: "Assigned Clinic", sortable: true, render: (row: Receptionist) => <span>{row.clinicName || <span className="text-text-muted italic">Unassigned</span>}</span> },
-                      { key: "shift", header: "Shift", sortable: true },
-                      { 
-                        key: "actions", 
-                        header: "Actions",
-                        width: "56px",
-                        render: (row) => (
-                          <Dropdown
-                            align="right"
-                            trigger={
-                              <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
-                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                                </svg>
-                              </Button>
-                            }
-                            items={[
-                              { label: "Edit Receptionist", onClick: () => openEditModal("receptionist", row) },
-                              { label: "Delete Receptionist", danger: true, onClick: () => setDeletingId(row.id) },
-                            ]}
-                          />
-                        )
-                      }
-                    ]}
-                    data={receptionists}
-                    emptyMessage="No receptionists added yet."
-                  />
-                )
-              },
-              {
-                id: "nurses",
-                label: `Nurses (${nurses.length})`,
-                content: (
-                  <Table
-                    onAddClick={() => openModal("nurse")}
-                    actionLabel="Add Nurse"
-                    searchable
-                    searchPlaceholder="Search nurses..."
-                    columns={[
-                      { key: "name", header: "Name", sortable: true },
-                      { key: "email", header: "Email", sortable: true },
-                      { key: "phone", header: "Phone", sortable: true },
-                      { 
-                        key: "actions", 
-                        header: "Actions",
-                        width: "56px",
-                        render: (row) => (
-                          <Dropdown
-                            align="right"
-                            trigger={
-                              <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
-                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                                </svg>
-                              </Button>
-                            }
-                            items={[
-                              { label: "Delete Nurse", danger: true, onClick: () => setDeletingId(row.id) },
-                            ]}
-                          />
-                        )
-                      }
-                    ]}
-                    data={nurses}
-                    emptyMessage="No nurses added yet."
-                  />
-                )
-              },
-              {
-                id: "labTechs",
-                label: `Lab Technicians (${labTechs.length})`,
-                content: (
-                  <Table
-                    onAddClick={() => openModal("lab_tech")}
-                    actionLabel="Add Lab Tech"
-                    searchable
-                    searchPlaceholder="Search lab technicians..."
-                    columns={[
-                      { key: "name", header: "Name", sortable: true },
-                      { key: "email", header: "Email", sortable: true },
-                      { key: "phone", header: "Phone", sortable: true },
-                      { 
-                        key: "actions", 
-                        header: "Actions",
-                        width: "56px",
-                        render: (row) => (
-                          <Dropdown
-                            align="right"
-                            trigger={
-                              <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
-                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                                </svg>
-                              </Button>
-                            }
-                            items={[
-                              { label: "Delete Lab Tech", danger: true, onClick: () => setDeletingId(row.id) },
-                            ]}
-                          />
-                        )
-                      }
-                    ]}
-                    data={labTechs}
-                    emptyMessage="No lab technicians added yet."
-                  />
-                )
-              },
-              {
-                id: "pharmacists",
-                label: `Pharmacists (${pharmacists.length})`,
-                content: (
-                  <Table
-                    onAddClick={() => openModal("pharmacist")}
-                    actionLabel="Add Pharmacist"
-                    searchable
-                    searchPlaceholder="Search pharmacists..."
-                    columns={[
-                      { key: "name", header: "Name", sortable: true },
-                      { key: "email", header: "Email", sortable: true },
-                      { key: "phone", header: "Phone", sortable: true },
-                      { 
-                        key: "actions", 
-                        header: "Actions",
-                        width: "56px",
-                        render: (row) => (
-                          <Dropdown
-                            align="right"
-                            trigger={
-                              <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
-                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                                </svg>
-                              </Button>
-                            }
-                            items={[
-                              { label: "Delete Pharmacist", danger: true, onClick: () => setDeletingId(row.id) },
-                            ]}
-                          />
-                        )
-                      }
-                    ]}
-                    data={pharmacists}
-                    emptyMessage="No pharmacists added yet."
-                  />
-                )
-              },
-              {
-                id: "cashiers",
-                label: `Cashiers (${cashiers.length})`,
-                content: (
-                  <Table
-                    onAddClick={() => openModal("cashier")}
-                    actionLabel="Add Cashier"
-                    searchable
-                    searchPlaceholder="Search cashiers..."
-                    columns={[
-                      { key: "name", header: "Name", sortable: true },
-                      { key: "email", header: "Email", sortable: true },
-                      { key: "phone", header: "Phone", sortable: true },
-                      { 
-                        key: "actions", 
-                        header: "Actions",
-                        width: "56px",
-                        render: (row) => (
-                          <Dropdown
-                            align="right"
-                            trigger={
-                              <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
-                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                                </svg>
-                              </Button>
-                            }
-                            items={[
-                              { label: "Delete Cashier", danger: true, onClick: () => setDeletingId(row.id) },
-                            ]}
-                          />
-                        )
-                      }
-                    ]}
-                    data={cashiers}
-                    emptyMessage="No cashiers added yet."
-                  />
-                )
-              },
+              <div className="space-y-4">
+                {/* Role Filter Bar */}
+                <div className="flex items-center gap-1.5 flex-wrap p-1.5 bg-surface border border-border rounded-2xl shadow-2xs">
+                  <span className="text-xs font-bold text-text-muted px-2">Filter Role:</span>
+                  {[
+                    { key: "all", label: "All Staff", count: allStaffMembers.length },
+                    { key: "doctor", label: "Doctors", count: doctors.length },
+                    { key: "receptionist", label: "Receptionists", count: receptionists.length },
+                    { key: "nurse", label: "Nurses", count: nurses.length },
+                    { key: "lab_tech", label: "Lab Techs", count: labTechs.length },
+                    { key: "pharmacist", label: "Pharmacists", count: pharmacists.length },
+                    { key: "cashier", label: "Cashiers", count: cashiers.length },
+                  ].map((filter) => {
+                    const isSelected = selectedRoleFilter === filter.key;
+                    return (
+                      <button
+                        key={filter.key}
+                        type="button"
+                        onClick={() => setSelectedRoleFilter(filter.key)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5",
+                          isSelected
+                            ? "bg-primary-600 text-white border-primary-600 shadow-xs"
+                            : "bg-surface-alt/60 text-text-muted border-border/80 hover:bg-surface-hover hover:text-text"
+                        )}
+                      >
+                        <span>{filter.label}</span>
+                        <span className={cn(
+                          "px-1.5 py-0.2 text-[10px] rounded-full font-black",
+                          isSelected ? "bg-white/20 text-white" : "bg-surface-alt text-text-muted"
+                        )}>
+                          {filter.count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <Table
+                  searchable
+                  searchPlaceholder="Search staff members by name, email, role, or specialty..."
+                  columns={[
+                    { 
+                      key: "name", 
+                      header: "Name", 
+                      sortable: true,
+                      render: (row) => <span className="font-bold text-text">{row.name}</span>
+                    },
+                    { 
+                      key: "roleLabel", 
+                      header: "Role Designation", 
+                      sortable: true,
+                      render: (row) => (
+                        <span className={cn(
+                          "px-2.5 py-0.5 rounded-full text-xs font-bold inline-block border",
+                          row.roleType === "doctor" && "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-950/40 dark:border-primary-800",
+                          row.roleType === "receptionist" && "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800",
+                          row.roleType === "nurse" && "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:border-purple-800",
+                          row.roleType === "lab_tech" && "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800",
+                          row.roleType === "pharmacist" && "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/40 dark:border-cyan-800",
+                          row.roleType === "cashier" && "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800"
+                        )}>
+                          {row.roleLabel}
+                        </span>
+                      )
+                    },
+                    { key: "email", header: "Email Address", sortable: true },
+                    { key: "phone", header: "Phone Number", sortable: true, render: (row) => <span>{row.phone || "-"}</span> },
+                    { key: "details", header: "Details / Branch", sortable: true },
+                    { 
+                      key: "actions", 
+                      header: "Actions",
+                      width: "56px",
+                      render: (row) => (
+                        <Dropdown
+                          align="right"
+                          trigger={
+                            <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
+                              <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                              </svg>
+                            </Button>
+                          }
+                          items={[
+                            ...(row.roleType === "doctor" ? [{ label: "Manage Clinic Assignments", onClick: () => openAssignmentsModal(row) }] : []),
+                            { label: `Edit ${row.roleLabel}`, onClick: () => openEditModal(row.roleType, row) },
+                            { label: `Delete ${row.roleLabel}`, danger: true, onClick: () => setDeletingId(row.id) }
+                          ]}
+                        />
+                      )
+                    }
+                  ]}
+                  data={filteredStaff}
+                  emptyMessage="No staff members match the selected filter."
+                />
+              </div>
+            )
+          },
               {
                 id: "rbac",
                 label: "RBAC Governance & Permissions",
@@ -600,87 +509,97 @@ export default function StaffPage() {
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={`${editingId ? "Edit" : "Add New"} ${modalType.replace("_", " ").toUpperCase()}`}
-        size={modalType === "doctor" ? "lg" : "md"}
+        title={`${editingId ? "Update" : "Add New"} ${modalType.replace("_", " ").toUpperCase()} Profile`}
+        size="xl"
       >
         <form onSubmit={handleSave} className="space-y-4" noValidate>
           {!editingId && (
-            <div className="flex bg-surface-alt/70 p-1 rounded-xl border border-border gap-1 mb-2">
-              <button
-                type="button"
-                onClick={() => { setModalType("doctor"); setStaffErrors({}); }}
-                className={cn(
-                  "flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5",
-                  modalType === "doctor" ? "bg-primary-600 text-white shadow-xs" : "text-text-muted hover:text-text"
-                )}
-              >
-                <span>Doctor Account</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setModalType("receptionist"); setStaffErrors({}); }}
-                className={cn(
-                  "flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5",
-                  modalType === "receptionist" ? "bg-primary-600 text-white shadow-xs" : "text-text-muted hover:text-text"
-                )}
-              >
-                <span>Receptionist Account</span>
-              </button>
+            <div>
+              <Select
+                label="Staff Account Role & Designation *"
+                value={modalType}
+                onChange={(e) => {
+                  setModalType(e.target.value as any);
+                  setStaffErrors({});
+                }}
+                options={[
+                  { value: "doctor", label: "Doctor / Clinical Practitioner" },
+                  { value: "receptionist", label: "Receptionist / Front Desk" },
+                  { value: "nurse", label: "Nurse / Clinical Support" },
+                  { value: "lab_tech", label: "Laboratory Technician" },
+                  { value: "pharmacist", label: "Pharmacist / Dispenser" },
+                  { value: "cashier", label: "Cashier / Accounts Desk" }
+                ]}
+              />
             </div>
           )}
-          <Input 
-            label="Full Name *" 
-            value={formData.name || ""} 
-            onChange={(e) => handleFieldChange("name", e.target.value)} 
-            onBlur={() => validateStaffField("name", formData.name || "")}
-            error={staffErrors.name}
-            required 
-          />
-          <Input 
-            label="Email *" 
-            type="email" 
-            value={formData.email || ""} 
-            onChange={(e) => handleFieldChange("email", e.target.value)} 
-            onBlur={() => validateStaffField("email", formData.email || "")}
-            disabled={!!editingId} 
-            error={staffErrors.email}
-            required 
-          />
-          {!editingId && (
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input 
-              label="Password *" 
-              type={showPassword ? "text" : "password"} 
-              value={formData.password || ""} 
-              onChange={(e) => handleFieldChange("password", e.target.value)} 
-              onBlur={() => validateStaffField("password", formData.password || "")}
-              error={staffErrors.password}
+              label="Full Name *" 
+              value={formData.name || ""} 
+              onChange={(e) => handleFieldChange("name", e.target.value)} 
+              onBlur={() => validateStaffField("name", formData.name || "")}
+              placeholder="e.g. Dr. Sarah Jenkins, MD"
+              error={staffErrors.name}
               required 
-              iconRight={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="p-1 text-text-muted hover:text-text rounded-md hover:bg-surface-hover/50 transition-all active:scale-75 cursor-pointer"
-                  title={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? (
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                    </svg>
-                  ) : (
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  )}
-                </button>
-              }
             />
-          )}
-          <Input label="Phone Number" value={formData.phone || ""} onChange={(e) => handleFieldChange("phone", e.target.value)} />
+            <Input 
+              label="Phone Number" 
+              value={formData.phone || ""} 
+              onChange={(e) => handleFieldChange("phone", e.target.value)} 
+              placeholder="e.g. +1 415 555 0199"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <Input 
+              label="Email Address *" 
+              type="email" 
+              value={formData.email || ""} 
+              onChange={(e) => handleFieldChange("email", e.target.value)} 
+              onBlur={() => validateStaffField("email", formData.email || "")}
+              disabled={!!editingId} 
+              placeholder="e.g. sarah.jenkins@clinic.com"
+              error={staffErrors.email}
+              required 
+            />
+            {!editingId ? (
+              <Input 
+                label="Password *" 
+                type={showPassword ? "text" : "password"} 
+                value={formData.password || ""} 
+                onChange={(e) => handleFieldChange("password", e.target.value)} 
+                onBlur={() => validateStaffField("password", formData.password || "")}
+                placeholder="Min 6 characters"
+                error={staffErrors.password}
+                required 
+                iconRight={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="p-1 text-text-muted hover:text-text rounded-md hover:bg-surface-hover/50 transition-all active:scale-75 cursor-pointer"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    )}
+                  </button>
+                }
+              />
+            ) : <div />}
+          </div>
           
           {modalType === "doctor" && (
-            <>
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3.5 border-t border-border pt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <Input 
                   label="Specialization *" 
                   placeholder="e.g. Cardiologist" 
@@ -698,8 +617,8 @@ export default function StaffPage() {
                 value={formData.image_url || null} 
                 onChange={(val) => handleFieldChange("image_url", val)} 
               />
-              <Input label="Short Biography/Description" placeholder="About the doctor..." value={formData.description || ""} onChange={(e) => handleFieldChange("description", e.target.value)} />
-            </>
+              <Input label="Short Biography / Overview" placeholder="About practitioner's background and achievements..." value={formData.description || ""} onChange={(e) => handleFieldChange("description", e.target.value)} />
+            </div>
           )}
 
           {modalType === "receptionist" && (

@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, SkeletonCard, SkeletonTable, Dropdown, cn
+  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, SkeletonCard, SkeletonTable, Dropdown, cn, ConfirmDialog
 } from "@/components/ui";
 
 interface PatientUser {
@@ -334,12 +334,15 @@ export default function AdmissionsPage() {
     }
   };
 
-  // Delete Bed
-  const handleDeleteBed = async (bedId: string) => {
-    if (!confirm("Are you sure you want to remove this bed?")) return;
+  // Delete Bed State & Handler
+  const [deletingBedId, setDeletingBedId] = useState<string | null>(null);
+
+  const handleDeleteBed = async () => {
+    if (!deletingBedId) return;
     try {
-      await api.delete(`/beds/${bedId}`);
-      toast({ title: "Success", description: "Bed deleted successfully", variant: "success" });
+      await api.delete(`/beds/${deletingBedId}`);
+      toast({ title: "Success", description: "Bed deleted successfully", variant: "warning" });
+      setDeletingBedId(null);
       fetchData();
     } catch (err: any) {
       toast({
@@ -392,12 +395,34 @@ export default function AdmissionsPage() {
   const activeAdmissions = admissions.filter(a => a.status === "admitted");
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
+      {/* Top Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-text">In-Patient Operations (IPD)</h2>
-          <p className="text-xs sm:text-sm text-text-secondary">Manage ward admissions, track bed availability, and coordinate discharge billing.</p>
+          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">In-Patient Operations (IPD)</h1>
+          <p className="text-xs text-text-muted mt-0.5">
+            Manage ward admissions, track bed availability, and coordinate discharge billing.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => { setSelectedBedId(""); setIntakeErrors({}); setIsAdmitOpen(true); }}
+            className="font-bold rounded-xl shadow-xs cursor-pointer"
+          >
+            + Admit Patient
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchData}
+            loading={loading}
+            className="font-semibold rounded-xl cursor-pointer"
+          >
+            🔄 Refresh
+          </Button>
         </div>
       </div>
 
@@ -446,8 +471,6 @@ export default function AdmissionsPage() {
       {/* TAB 1: SINGLE UNIFIED WARD OCCUPANCY & ACTIVE ADMISSIONS TABLE */}
       {activeTab === "occupancy" && (
         <Table
-          onAddClick={() => { setSelectedBedId(""); setIntakeErrors({}); setIsAdmitOpen(true); }}
-          actionLabel="Admit Patient"
           searchPlaceholder="Search active admitted patient name, doctor, ward..."
           loading={loading}
           toolbarFilters={
@@ -581,7 +604,7 @@ export default function AdmissionsPage() {
                             setBedErrors({});
                             setIsBedModalOpen(true);
                           }},
-                          { label: "Delete Bed", danger: true, onClick: () => handleDeleteBed(bed.id) },
+                          { label: "Delete Bed", danger: true, onClick: () => setDeletingBedId(bed.id) },
                         ]}
                       />
                     )
@@ -644,9 +667,6 @@ export default function AdmissionsPage() {
                 <Button variant="ghost" size="sm" className="text-red-500" onClick={() => { setSelectedPatient(null); validateIntakeField("patient", null); }}>Change</Button>
               </div>
             )}
-            {intakeErrors.patient && (
-              <p className="text-red-500 text-xs mt-0.5">{intakeErrors.patient}</p>
-            )}
           </div>
 
           {/* Select Bed */}
@@ -666,9 +686,6 @@ export default function AdmissionsPage() {
               required
               error={intakeErrors.bed}
             />
-            {intakeErrors.bed && (
-              <p className="text-red-500 text-xs mt-0.5">{intakeErrors.bed}</p>
-            )}
           </div>
 
           {/* Select Doctor in Charge */}
@@ -685,9 +702,6 @@ export default function AdmissionsPage() {
               required
               error={intakeErrors.doctor}
             />
-            {intakeErrors.doctor && (
-              <p className="text-red-500 text-xs mt-0.5">{intakeErrors.doctor}</p>
-            )}
           </div>
 
           {/* Reason for Admission */}
@@ -704,9 +718,6 @@ export default function AdmissionsPage() {
               required
               error={intakeErrors.reason}
             />
-            {intakeErrors.reason && (
-              <p className="text-red-500 text-xs mt-0.5">{intakeErrors.reason}</p>
-            )}
           </div>
 
           {/* Notes */}
@@ -751,7 +762,6 @@ export default function AdmissionsPage() {
               required
               error={bedErrors.wardName}
             />
-            {bedErrors.wardName && <p className="text-red-500 text-xs mt-0.5">{bedErrors.wardName}</p>}
           </div>
 
           <div>
@@ -767,7 +777,6 @@ export default function AdmissionsPage() {
               required
               error={bedErrors.bedNumber}
             />
-            {bedErrors.bedNumber && <p className="text-red-500 text-xs mt-0.5">{bedErrors.bedNumber}</p>}
           </div>
 
           <div>
@@ -785,7 +794,6 @@ export default function AdmissionsPage() {
               required
               error={bedErrors.pricePerDay}
             />
-            {bedErrors.pricePerDay && <p className="text-red-500 text-xs mt-0.5">{bedErrors.pricePerDay}</p>}
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
@@ -859,6 +867,17 @@ export default function AdmissionsPage() {
           </div>
         )}
       </Modal>
+
+      {/* ── Delete Bed Confirm Dialog ──────────────────────────────────── */}
+      <ConfirmDialog
+        open={!!deletingBedId}
+        onClose={() => setDeletingBedId(null)}
+        onConfirm={handleDeleteBed}
+        title="Remove Inpatient Bed"
+        description="Are you sure you want to remove this bed from the ward configuration? This action cannot be undone."
+        variant="danger"
+        confirmLabel="Delete Bed"
+      />
     </div>
   );
 }

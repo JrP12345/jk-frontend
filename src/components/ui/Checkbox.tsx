@@ -23,7 +23,7 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
         <label
           htmlFor={id}
           className={cn(
-            "group flex items-start gap-3",
+            "group/chk flex items-start gap-3",
             disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
           )}
         >
@@ -44,7 +44,7 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
               "flex items-center justify-center h-4.5 w-4.5 rounded border border-border bg-surface text-white transition-all duration-300 ease-spring",
               "peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500/20",
               "peer-checked:bg-primary-600 peer-checked:border-primary-600 peer-checked:[&_svg]:scale-100",
-              "group-hover:border-primary-500/50 peer-checked:group-hover:bg-primary-500 peer-checked:group-hover:border-primary-500"
+              "group-hover/chk:border-primary-500/50 peer-checked:group-hover/chk:bg-primary-500 peer-checked:group-hover/chk:border-primary-500"
             )}>
               {/* Checkmark Icon */}
               <svg
@@ -62,7 +62,7 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
           </div>
 
           <div className="flex flex-col select-none">
-            {label && <span className="text-sm font-medium text-text leading-tight transition-colors duration-200 group-hover:text-primary-600">{label}</span>}
+            {label && <span className="text-sm font-medium text-text leading-tight transition-colors duration-200 group-hover/chk:text-primary-600">{label}</span>}
             {description && <span className="text-xs text-text-muted mt-0.5">{description}</span>}
           </div>
         </label>

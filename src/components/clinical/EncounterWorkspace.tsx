@@ -11,6 +11,7 @@ import { DischargeSummaryModal } from "./DischargeSummaryModal";
 import { SOAPNoteEditor } from "./SOAPNoteEditor";
 import { NEWS2Calculator } from "./NEWS2Calculator";
 import { PatientTimeline } from "../ehr/PatientTimeline";
+import { DoctorCopilotCard } from "./DoctorCopilotCard";
 import { Tabs, Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, DatePicker, Select, Modal, useToast, Table, Spinner } from "@/components/ui";
 import api from "@/lib/api";
 import { NEWS2Service } from "@/services/news2.service";
@@ -272,8 +273,10 @@ export function EncounterWorkspace({
       {/* Global Cmd+K Search Modal */}
       <PatientSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} patientId={patient.id} />
 
-      {/* Main Workspace Navigation Tabs */}
+      {/* Main Workspace Container */}
       <div className="p-4 max-w-7xl mx-auto w-full space-y-4">
+        {/* ANANTA 20-Second Doctor Pre-Visit Briefing Card */}
+        <DoctorCopilotCard patientName={patient.name} />
         <div className="flex items-center justify-between">
           <Tabs
             activeTab={activeTab}

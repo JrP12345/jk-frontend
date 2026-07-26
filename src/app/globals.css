@@ -4,6 +4,8 @@
    JK Healthcare — Design System (Tailwind v4)
    ──────────────────────────────────────────────── */
 @theme {
+  --color-primary: var(--p-500);
+  --color-primary-hover: var(--p-600);
   --color-primary-50: var(--p-50);
   --color-primary-100: var(--p-100);
   --color-primary-200: var(--p-200);
@@ -223,12 +225,57 @@
   color-scheme: dark;
 }
 
-/* ── Smooth Theme Transition ─────────────────── */
-html[data-transitioning] *,
-html[data-transitioning] *::before,
-html[data-transitioning] *::after {
-  transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease,
-              box-shadow 0.35s ease, fill 0.35s ease, stroke 0.35s ease !important;
+/* ── Smooth Theme Transitions Engine ──────────── */
+body,
+header,
+aside,
+main,
+nav,
+section,
+article,
+div,
+button,
+input,
+select,
+textarea,
+span,
+p,
+h1, h2, h3, h4, h5, h6,
+svg {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, fill 0.3s ease, stroke 0.3s ease;
+}
+
+/* Disable transitions during initial page load to prevent flash */
+html.no-transitions *,
+html.no-transitions *::before,
+html.no-transitions *::after {
+  transition: none !important;
+}
+
+/* ── Native View Transitions 60fps GPU Engine ── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.25s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  animation-name: view-fade-out;
+}
+
+::view-transition-new(root) {
+  animation-name: view-fade-in;
+}
+
+@keyframes view-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes view-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ── Base ─────────────────────────────────────── */

@@ -30,6 +30,7 @@ export { default as ProgressBar } from "./ProgressBar";
 export { ToastProvider, useToast } from "./Toast";
 
 export { default as Modal } from "./Modal";
+export { Drawer } from "./Drawer";
 export { default as ConfirmDialog } from "./ConfirmDialog";
 export { default as Dropdown } from "./Dropdown";
 export { default as Tooltip } from "./Tooltip";
@@ -43,3 +44,4 @@ export { default as Stepper } from "./Stepper";
 export { default as Divider } from "./Divider";
 export { default as AnantaLogo, AnantaIcon } from "./AnantaLogo";
 export { default as WorkspaceClinicFilter } from "./WorkspaceClinicFilter";
+export { default as FilterPill } from "./FilterPill";

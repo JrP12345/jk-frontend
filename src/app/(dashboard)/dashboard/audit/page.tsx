@@ -114,15 +114,30 @@ export default function AuditLogsPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
+      {/* Top Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
         <div>
-          <h2 className="text-2xl font-bold text-text">Audit Trail Logs</h2>
-          <p className="text-sm text-text-secondary">View security audits, queue status change events, and receptionist operations.</p>
+          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Security Audit Trail</h1>
+          <p className="text-xs text-text-muted mt-0.5">
+            Immutable HIPAA compliance audit logs, queue overrides, and operational event tracking.
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchLogs} loading={loading}>
-          Refresh logs
-        </Button>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchLogs}
+            loading={loading}
+            className="font-semibold rounded-xl cursor-pointer gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Refresh Logs</span>
+          </Button>
+        </div>
       </div>
 
       <Card>

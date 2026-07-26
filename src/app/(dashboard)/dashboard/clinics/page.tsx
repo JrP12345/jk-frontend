@@ -194,19 +194,46 @@ export default function ClinicsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
+      {/* Top Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-text">Clinics Management</h2>
-          <p className="text-xs sm:text-sm text-text-secondary">Configure the physical clinic locations owned by your organization.</p>
+          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Clinics Management</h1>
+          <p className="text-xs text-text-muted mt-0.5">
+            Configure physical clinic locations, Operating Hours, and Facility services.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={openModal}
+            className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Add Clinic</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchClinics}
+            loading={loading}
+            className="font-semibold rounded-xl cursor-pointer gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Refresh</span>
+          </Button>
         </div>
       </div>
 
       <Table
-        onAddClick={openModal}
-        actionLabel="Add Clinic"
-            searchable
-            searchPlaceholder="Search clinics by name or city..."
+        searchable
+        searchPlaceholder="Search clinics by name or city..."
             columns={[
               { key: "name", header: "Name", sortable: true },
               { key: "city", header: "City", sortable: true },
@@ -273,85 +300,107 @@ export default function ClinicsPage() {
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={`${editingId ? "Edit" : "Add New"} Clinic`}
-        size="lg"
+        title={`${editingId ? "Update Clinic Configuration" : "Add New Clinic Location"}`}
+        size="2xl"
       >
-        <form onSubmit={handleSave} className="space-y-4">
-          <Input 
-            label="Clinic Name *" 
-            value={formData.name || ""} 
-            onChange={(e) => handleFieldChange("name", e.target.value)} 
-            onBlur={() => validateClinicField("name", formData.name || "")}
-            error={clinicErrors.name}
-            required 
-          />
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSave} className="space-y-5">
+          {/* Section 1: Clinic Media & Basic Identity */}
+          <div className="space-y-3.5 border-b border-border pb-4">
+            <h3 className="text-xs font-bold text-primary-600 uppercase tracking-wider">1. Branding & Clinic Identity</h3>
+            
+            {/* Top Logo / Photo Uploader */}
+            <div className="bg-surface p-3.5 border border-border rounded-xl">
+              <ImageUpload 
+                label="Clinic Banner Photo / Logo *" 
+                value={formData.image_url || null} 
+                onChange={(val) => setFormData({ ...formData, image_url: val })} 
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+              <Input 
+                label="Clinic Name *" 
+                value={formData.name || ""} 
+                onChange={(e) => handleFieldChange("name", e.target.value)} 
+                onBlur={() => validateClinicField("name", formData.name || "")}
+                placeholder="e.g. HealthOS Central Clinic"
+                error={clinicErrors.name}
+                required 
+              />
+              <Input 
+                label="City *" 
+                value={formData.city || ""} 
+                onChange={(e) => handleFieldChange("city", e.target.value)} 
+                onBlur={() => validateClinicField("city", formData.city || "")}
+                placeholder="e.g. San Francisco"
+                error={clinicErrors.city}
+                required 
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <Input 
+                label="Phone Number" 
+                value={formData.phone || ""} 
+                onChange={(e) => handleFieldChange("phone", e.target.value)} 
+                placeholder="e.g. +1 415 555 0199"
+              />
+              <Input 
+                label="Email Address" 
+                type="email" 
+                value={formData.email || ""} 
+                onChange={(e) => handleFieldChange("email", e.target.value)} 
+                onBlur={() => validateClinicField("email", formData.email || "")}
+                placeholder="e.g. contact@clinic.com"
+                error={clinicErrors.email}
+              />
+            </div>
+
             <Input 
-              label="City *" 
-              value={formData.city || ""} 
-              onChange={(e) => handleFieldChange("city", e.target.value)} 
-              onBlur={() => validateClinicField("city", formData.city || "")}
-              error={clinicErrors.city}
-              required 
-            />
-            <Input 
-              label="Full Address" 
+              label="Full Physical Address" 
               value={formData.address || ""} 
               onChange={(e) => handleFieldChange("address", e.target.value)} 
+              placeholder="e.g. 742 Evergreen Terrace, Suite 100"
             />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+
             <Input 
-              label="Phone Number" 
-              value={formData.phone || ""} 
-              onChange={(e) => handleFieldChange("phone", e.target.value)} 
-            />
-            <Input 
-              label="Email Address" 
-              type="email" 
-              value={formData.email || ""} 
-              onChange={(e) => handleFieldChange("email", e.target.value)} 
-              onBlur={() => validateClinicField("email", formData.email || "")}
-              error={clinicErrors.email}
+              label="Clinic Overview / Description" 
+              placeholder="Brief summary of clinical specialties and services..." 
+              value={formData.description || ""} 
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
             />
           </div>
 
-          <ScheduleEditor 
-            label="Operating Hours & Days" 
-            value={formData.timings || ""} 
-            onChange={(val) => setFormData({ ...formData, timings: val })} 
-          />
+          {/* Section 2: Facilities & Operating Hours */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-primary-600 uppercase tracking-wider">2. Facilities & Operating Hours</h3>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-text block">Available Medical Facilities</label>
+              <div className="flex flex-wrap gap-4 p-3.5 bg-surface border border-border rounded-xl">
+                {["Pharmacy", "Laboratory", "Parking", "Emergency Care", "Vaccination Center"].map((fac) => (
+                  <Checkbox 
+                    key={fac}
+                    label={fac}
+                    checked={formData.facilities?.includes(fac) || false}
+                    onChange={(e) => handleFacilityChange(fac, e.target.checked)}
+                  />
+                ))}
+              </div>
+            </div>
 
-          <ImageUpload 
-            label="Clinic Logo / Image" 
-            value={formData.image_url || null} 
-            onChange={(val) => setFormData({ ...formData, image_url: val })} 
-          />
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-text block">Facilities Available</label>
-            <div className="flex flex-wrap gap-6 pt-1">
-              {["Pharmacy", "Laboratory", "Parking", "Emergency Care", "Vaccination Center"].map((fac) => (
-                <Checkbox 
-                  key={fac}
-                  label={fac}
-                  checked={formData.facilities?.includes(fac) || false}
-                  onChange={(e) => handleFacilityChange(fac, e.target.checked)}
-                />
-              ))}
+            <div className="pt-1 space-y-2">
+              <ScheduleEditor 
+                label="Operating Schedule & Working Days" 
+                value={formData.timings || ""} 
+                onChange={(val) => setFormData({ ...formData, timings: val })} 
+              />
             </div>
           </div>
 
-          <Input 
-            label="Clinic Description / About" 
-            placeholder="Short overview..." 
-            value={formData.description || ""} 
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
-          />
-
-          <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={submitting}>Save</Button>
+            <Button type="submit" loading={submitting}>{editingId ? "Update Clinic" : "Save Clinic"}</Button>
           </div>
         </form>
       </Modal>

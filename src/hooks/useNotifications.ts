@@ -74,20 +74,29 @@ export function useNotifications() {
 
             setRealtimeNotifications((prev) => [newNotif, ...prev]);
 
-            // Fire floating SaaS Toast Notification
-            toast({
-              title: newNotif.title,
-              description: newNotif.message,
-              variant:
-                newNotif.severity === "error"
-                  ? "error"
-                  : newNotif.severity === "warning"
-                  ? "warning"
-                  : newNotif.severity === "success"
-                  ? "success"
-                  : "default",
-              duration: 5000,
-            });
+            // Fire floating SaaS Toast Notification (suppress duplicate audit toasts already handled by page UI)
+            const titleLower = newNotif.title.toLowerCase();
+            const isDuplicateAuditToast =
+              titleLower.includes("account login") ||
+              titleLower.includes("login successful") ||
+              titleLower.includes("organization onboarding") ||
+              titleLower.includes("organization created");
+
+            if (!isDuplicateAuditToast) {
+              toast({
+                title: newNotif.title,
+                description: newNotif.message,
+                variant:
+                  newNotif.severity === "error"
+                    ? "error"
+                    : newNotif.severity === "warning"
+                    ? "warning"
+                    : newNotif.severity === "success"
+                    ? "success"
+                    : "default",
+                duration: 5000,
+              });
+            }
           } else if (payload.type === "UNREAD_COUNT_UPDATED") {
             if (payload.data?.unreadCount !== undefined) {
               queryClient.setQueryData(["notifications", "unread-count"], payload.data.unreadCount);

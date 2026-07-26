@@ -51,51 +51,71 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
   const [resolvedMode, setResolvedMode] = useState<"light" | "dark">(mode === "system" ? "dark" : mode);
 
-  // Wrap setters to trigger smooth transition
-  const triggerTransition = useCallback(() => {
-    const root = document.documentElement;
-    root.setAttribute("data-transitioning", "");
-    // Remove after transition completes
-    const id = setTimeout(() => root.removeAttribute("data-transitioning"), 400);
-    return () => clearTimeout(id);
+  const setMode = useCallback((m: Mode) => {
+    const nextResolved = m === "system"
+      ? (typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : m;
+
+    const applyChange = () => {
+      document.documentElement.setAttribute("data-mode", nextResolved);
+      setModeRaw(m);
+      setResolvedMode(nextResolved);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("jk-mode", m);
+      }
+    };
+
+    if (typeof document !== "undefined" && "startViewTransition" in document) {
+      (document as any).startViewTransition(applyChange);
+    } else {
+      applyChange();
+    }
   }, []);
 
-  const setMode = useCallback((m: Mode) => {
-    triggerTransition();
-    setModeRaw(m);
-  }, [triggerTransition]);
-
   const setPalette = useCallback((p: Palette) => {
-    triggerTransition();
-    setPaletteRaw(p);
-  }, [triggerTransition]);
+    const applyChange = () => {
+      document.documentElement.setAttribute("data-palette", p);
+      setPaletteRaw(p);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("jk-palette", p);
+      }
+    };
+
+    if (typeof document !== "undefined" && "startViewTransition" in document) {
+      (document as any).startViewTransition(applyChange);
+    } else {
+      applyChange();
+    }
+  }, []);
 
   const toggleMode = useCallback(() => {
-    setMode(resolvedMode === "light" ? "dark" : "light");
+    const next = resolvedMode === "light" ? "dark" : "light";
+    setMode(next);
   }, [resolvedMode, setMode]);
 
   // Resolve system preference
   useEffect(() => {
     if (mode === "system") {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      setResolvedMode(mq.matches ? "dark" : "light");
-      const handler = (e: MediaQueryListEvent) => setResolvedMode(e.matches ? "dark" : "light");
+      const nextRes = mq.matches ? "dark" : "light";
+      document.documentElement.setAttribute("data-mode", nextRes);
+      setResolvedMode(nextRes);
+      const handler = (e: MediaQueryListEvent) => {
+        const r = e.matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-mode", r);
+        setResolvedMode(r);
+      };
       mq.addEventListener("change", handler);
       return () => mq.removeEventListener("change", handler);
     }
-    setResolvedMode(mode);
   }, [mode]);
 
-  // Apply data attributes & save to localStorage
+  // Ensure initial attributes match state on mount
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute("data-mode", resolvedMode);
     root.setAttribute("data-palette", palette);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("jk-mode", mode);
-      localStorage.setItem("jk-palette", palette);
-    }
-  }, [resolvedMode, palette, mode]);
+  }, [resolvedMode, palette]);
 
   return (
     <ThemeContext.Provider value={{ mode, palette, resolvedMode, setMode, setPalette, toggleMode }}>

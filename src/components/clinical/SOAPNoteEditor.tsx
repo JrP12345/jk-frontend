@@ -23,7 +23,43 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
   const [isSigned, setIsSigned] = useState(false);
   const [loading, setLoading] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const handleGenerateAISOAP = async () => {
+    if (!chiefComplaint.trim()) {
+      setMessage({ type: "error", text: "Please enter a Chief Complaint first so AI can generate the clinical note." });
+      return;
+    }
+    try {
+      setGeneratingAI(true);
+      setMessage(null);
+      const res = await api.post("/ai/soap-notes/generate", {
+        chiefComplaint,
+        vitals: {
+          bp: bpSystolic && bpDiastolic ? `${bpSystolic}/${bpDiastolic}` : undefined,
+          pulse: pulseRate ? Number(pulseRate) : undefined,
+          temp: temperatureF ? Number(temperatureF) : undefined,
+          spO2: spO2 ? Number(spO2) : undefined,
+        },
+        examinationFindings: physicalExamination || undefined,
+        history: historyOfPresentIllness || undefined,
+      });
+
+      const draft = res.data?.data || res.data;
+      if (draft.subjective) setHistoryOfPresentIllness(draft.subjective);
+      if (draft.objective) setPhysicalExamination(draft.objective);
+      if (draft.assessment) setPrimaryDiagnosis(draft.assessment);
+      if (draft.plan) setTreatmentPlan(draft.plan);
+      if (draft.suggestedICD10 && draft.suggestedICD10.length > 0) setIcdCode(draft.suggestedICD10[0]);
+
+      setMessage({ type: "success", text: "AI Clinical SOAP Note successfully generated!" });
+    } catch (err: any) {
+      setMessage({ type: "error", text: err.response?.data?.message || "Failed to generate AI SOAP Note." });
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
 
   const [activePatientId, setActivePatientId] = useState<string>(patientId && patientId !== "dummy-patient-id" ? patientId : "");
   const [activeClinicId, setActiveClinicId] = useState<string>(clinicId && clinicId !== "dummy-clinic-id" ? clinicId : "");
@@ -478,24 +514,37 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
           <p className="text-xs text-zinc-500">Standardized medical documentation workspace</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Quick Load Clinical Template Dropdown */}
+          {/* Quick Load Clinical Template Dropdown & Real AI Generator */}
           {!isSigned && (
-            <select
-              onChange={(e) => {
-                if (e.target.value) {
-                  handleApplyTemplate(e.target.value);
-                  e.target.value = "";
-                }
-              }}
-              className="px-3 py-1.5 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-bold cursor-pointer hover:bg-amber-100"
-            >
-              <option value="">⚡ Load Template...</option>
-              {CLINICAL_TEMPLATES.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+            <>
+              <button
+                type="button"
+                disabled={generatingAI}
+                onClick={handleGenerateAISOAP}
+                className="px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2" />
+                </svg>
+                <span>{generatingAI ? "Generating AI SOAP..." : "AI Auto-Draft SOAP"}</span>
+              </button>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleApplyTemplate(e.target.value);
+                    e.target.value = "";
+                  }
+                }}
+                className="px-3 py-1.5 bg-surface text-text border border-border/80 rounded-xl text-xs font-semibold cursor-pointer hover:bg-surface-hover transition-colors"
+              >
+                <option value="">Load Clinical Template...</option>
+                {CLINICAL_TEMPLATES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </>
           )}
 
           <button

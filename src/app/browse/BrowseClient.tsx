@@ -3,7 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-import { Spinner, Input, Button } from "@/components/ui";
+import {
+  Button,
+  Select,
+  Badge,
+  Card,
+  CardContent,
+  SkeletonCard,
+  EmptyState,
+} from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 
 interface Clinic {
@@ -19,19 +27,19 @@ interface Clinic {
   facilities?: string[];
 }
 
-const SPECIALTIES = [
-  { id: "", label: "All Specialties", icon: "🏥" },
-  { id: "General Medicine", label: "General Medicine", icon: "🩺" },
-  { id: "Pediatrics", label: "Pediatrics", icon: "👶" },
-  { id: "Cardiology", label: "Cardiology", icon: "❤️" },
-  { id: "Dentistry", label: "Dentistry", icon: "🦷" },
-  { id: "Orthopedics", label: "Orthopedics", icon: "🦴" },
+const SPECIALTY_OPTIONS = [
+  { value: "", label: "🩺 All Specialties" },
+  { value: "General Medicine", label: "🩺 General Medicine" },
+  { value: "Pediatrics", label: "👶 Pediatrics" },
+  { value: "Cardiology", label: "❤️ Cardiology" },
+  { value: "Dentistry", label: "🦷 Dentistry" },
+  { value: "Orthopedics", label: "🦴 Orthopedics" },
 ];
 
 const SORT_OPTIONS = [
-  { value: "latest", label: "Latest" },
-  { value: "name", label: "Name A–Z" },
-  { value: "city", label: "By City" },
+  { value: "latest", label: "Sort: Featured" },
+  { value: "name", label: "Sort: Name (A-Z)" },
+  { value: "city", label: "Sort: By City" },
 ];
 
 export default function BrowseClient() {
@@ -43,9 +51,10 @@ export default function BrowseClient() {
   const [selectedCity, setSelectedCity] = useState("");
   const [sortBy, setSortBy] = useState("latest");
   const [allCities, setAllCities] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const formatTimings = (timingsStr: string | null | undefined): string => {
-    if (!timingsStr) return "";
+    if (!timingsStr) return "Mon–Fri: 9:00 AM – 6:00 PM";
     try {
       const data = JSON.parse(timingsStr);
       const days = Object.keys(data);
@@ -55,7 +64,7 @@ export default function BrowseClient() {
           return `${firstSlot.start} – ${firstSlot.end}`;
         }
       }
-      return "";
+      return "Mon–Fri: 9:00 AM – 6:00 PM";
     } catch {
       return timingsStr;
     }
@@ -70,12 +79,12 @@ export default function BrowseClient() {
       if (selectedSpecialty) params.append("specialization", selectedSpecialty);
       const res = await api.get(`/public/clinics${params.toString() ? `?${params}` : ""}`);
       const data: Clinic[] = res.data.data || [];
-      setAllCities([...new Set(data.map(c => c.city).filter(Boolean))]);
-      // Sort
+      setAllCities([...new Set(data.map((c) => c.city).filter(Boolean))]);
+
       const sorted = [...data].sort((a, b) => {
         if (sortBy === "name") return a.name.localeCompare(b.name);
         if (sortBy === "city") return a.city.localeCompare(b.city);
-        return 0; // latest = server order
+        return 0;
       });
       setClinics(sorted);
     } catch (err) {
@@ -85,245 +94,290 @@ export default function BrowseClient() {
     }
   };
 
-  useEffect(() => { fetchClinics(); }, [search, selectedCity, selectedSpecialty, sortBy]);
+  useEffect(() => {
+    fetchClinics();
+  }, [search, selectedCity, selectedSpecialty, sortBy]);
 
   return (
-    <div className="min-h-screen bg-[var(--color-surface-alt)] pt-16 pb-24">
+    <div className="min-h-screen bg-surface-alt font-sans text-text antialiased selection:bg-primary-500/20 selection:text-primary-600">
       <MarketplaceNavbar />
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full bg-[var(--color-primary-600)]/10 blur-[120px]" />
-          <div className="absolute top-10 right-1/4 w-72 h-72 rounded-full bg-blue-500/8 blur-[100px]" />
-        </div>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14 relative z-10">
-          <div className="text-center max-w-2xl mx-auto mb-8">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[var(--color-primary-600)] bg-[var(--color-primary-600)]/10 px-3 py-1 rounded-full mb-4 border border-[var(--color-primary-600)]/20">
-              🏥 Verified Healthcare Network
-            </span>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-[var(--color-text)] tracking-tight mb-3 leading-tight">
-              Find Your Perfect
-              <span className="text-[var(--color-primary-600)]"> Medical Care</span>
-            </h1>
-            <p className="text-[var(--color-text-secondary)] text-sm sm:text-base max-w-lg mx-auto">
-              Discover verified clinics, connect with expert specialists, and book appointments instantly.
-            </p>
-          </div>
+      {/* Hero Header Section */}
+      <section className="relative pt-20 pb-6 overflow-hidden bg-gradient-to-b from-surface via-surface/90 to-surface-alt border-b border-border/40">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
+          <h1 className="text-2xl sm:text-4xl font-black text-text tracking-tight mb-2 leading-tight">
+            Find Your Perfect <span className="text-primary-600">Medical Care</span>
+          </h1>
+          <p className="text-text-secondary text-xs sm:text-sm max-w-md mx-auto mb-5">
+            Discover verified clinics, connect with expert specialists, and book appointments.
+          </p>
 
-          {/* Search Bar */}
-          <div className="max-w-2xl mx-auto relative">
-            <div className="flex gap-2 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] shadow-lg p-2">
-              <div className="flex-1">
-                <Input
-                  placeholder="Search by clinic name, address, city..."
+          {/* Unified Multi-Filter Search Bar (Location & Specialty Selects Beside Search Box) */}
+          <div className="max-w-3xl mx-auto">
+            <div className="flex flex-col md:flex-row items-center gap-2 bg-surface rounded-2xl md:rounded-full border border-border/80 shadow-md p-2 focus-within:ring-2 focus-within:ring-primary-500/30 focus-within:border-primary-500 transition-all">
+              {/* Search Query Input */}
+              <div className="flex items-center gap-2 px-3 py-1.5 w-full flex-1">
+                <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search clinic name, address..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="border-0 bg-transparent shadow-none focus:ring-0 text-sm"
-                  icon={
-                    <svg className="w-4 h-4 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  }
+                  className="w-full bg-transparent border-0 text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="text-text-muted hover:text-text p-1 rounded-full cursor-pointer text-xs shrink-0"
+                    aria-label="Clear search"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Location Select Dropdown */}
+              <div className="w-full md:w-auto shrink-0 border-t md:border-t-0 md:border-l border-border/60 pt-2 md:pt-0 md:pl-2">
+                <Select
+                  value={selectedCity}
+                  onChange={(e) => setSelectedCity(e.target.value)}
+                  options={[
+                    { value: "", label: "📍 All Locations" },
+                    ...allCities.map((c) => ({ value: c, label: `📍 ${c}` })),
+                  ]}
+                  size="sm"
+                  className="text-xs border-0 bg-transparent shadow-none w-full"
                 />
               </div>
-              <Button variant="primary" className="px-5 rounded-xl shrink-0">
-                Search
-              </Button>
+
+              {/* Specialty Select Dropdown (Beside Location) */}
+              <div className="w-full md:w-auto shrink-0 border-t md:border-t-0 md:border-l border-border/60 pt-2 md:pt-0 md:pl-2">
+                <Select
+                  value={selectedSpecialty}
+                  onChange={(e) => setSelectedSpecialty(e.target.value)}
+                  options={SPECIALTY_OPTIONS}
+                  size="sm"
+                  className="text-xs border-0 bg-transparent shadow-none w-full"
+                />
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Filters Row */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 mb-6">
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          {/* Specialty Pills */}
-          <div className="flex flex-wrap gap-2 items-center">
-            {SPECIALTIES.map(spec => (
+      {/* Main Section */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
+        {/* Results Info & View Controls Bar */}
+        <div className="flex items-center justify-end gap-3 mb-6 pb-3 border-b border-border/40">
+          <div className="flex items-center gap-3 shrink-0">
+            {/* View Mode Switcher */}
+            <div className="flex items-center bg-surface rounded-lg p-0.5 border border-border">
               <button
-                key={spec.id}
-                onClick={() => setSelectedSpecialty(spec.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
-                  selectedSpecialty === spec.id
-                    ? "bg-[var(--color-primary-600)] text-white border-[var(--color-primary-600)] shadow-sm"
-                    : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:border-[var(--color-primary-600)]/50 hover:text-[var(--color-text)]"
+                onClick={() => setViewMode("grid")}
+                className={`p-1.5 rounded-md text-xs transition-colors ${
+                  viewMode === "grid" ? "bg-surface-alt text-primary-600 font-bold shadow-xs" : "text-text-muted hover:text-text"
                 }`}
+                title="Grid View"
               >
-                <span>{spec.icon}</span>
-                <span>{spec.label}</span>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
               </button>
-            ))}
-          </div>
-
-          {/* Right filters */}
-          <div className="flex items-center gap-2 shrink-0">
-            {allCities.length > 1 && (
-              <select
-                value={selectedCity}
-                onChange={(e) => setSelectedCity(e.target.value)}
-                className="text-xs bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text)] cursor-pointer focus:outline-none focus:border-[var(--color-primary-600)] transition-colors"
+              <button
+                onClick={() => setViewMode("list")}
+                className={`p-1.5 rounded-md text-xs transition-colors ${
+                  viewMode === "list" ? "bg-surface-alt text-primary-600 font-bold shadow-xs" : "text-text-muted hover:text-text"
+                }`}
+                title="List View"
               >
-                <option value="">All Cities</option>
-                {allCities.map(city => (
-                  <option key={city} value={city}>{city}</option>
-                ))}
-              </select>
-            )}
-            <select
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Sort Dropdown */}
+            <Select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="text-xs bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-[var(--color-text)] cursor-pointer focus:outline-none focus:border-[var(--color-primary-600)] transition-colors"
-            >
-              {SORT_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
+              options={SORT_OPTIONS}
+              size="sm"
+              className="text-xs rounded-full"
+            />
           </div>
         </div>
-      </div>
 
-      {/* Results */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-[var(--color-text-secondary)]">
-            {loading ? "Searching..." : (
-              <><span className="text-[var(--color-text)] font-bold text-base">{clinics.length}</span> clinic{clinics.length !== 1 ? "s" : ""} found</>
-            )}
-          </h2>
-        </div>
-
+        {/* Clinics Listing Grid / List */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-2xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-surface)] animate-pulse">
-                <div className="h-44 bg-[var(--color-surface-alt)]" />
-                <div className="p-5 space-y-3">
-                  <div className="h-4 w-3/4 bg-[var(--color-surface-alt)] rounded-lg" />
-                  <div className="h-3 w-full bg-[var(--color-surface-alt)] rounded" />
-                  <div className="h-3 w-1/2 bg-[var(--color-surface-alt)] rounded" />
-                </div>
-              </div>
+              <SkeletonCard key={i} />
             ))}
           </div>
         ) : clinics.length === 0 ? (
-          <div className="text-center py-24 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)]">
-            <div className="text-5xl mb-4">🏥</div>
-            <h3 className="text-lg font-bold text-[var(--color-text)] mb-2">No Clinics Found</h3>
-            <p className="text-[var(--color-text-muted)] text-sm max-w-xs mx-auto">
-              Try adjusting your filters or search terms to discover available clinics.
-            </p>
-            <button
-              onClick={() => { setSearch(""); setSelectedCity(""); setSelectedSpecialty(""); }}
-              className="mt-5 text-sm font-semibold text-[var(--color-primary-600)] hover:underline cursor-pointer"
-            >
-              Clear all filters
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <Card className="p-8 text-center border-dashed">
+            <EmptyState
+              icon="🏥"
+              title="No Clinics Found"
+              description="No medical facilities match your current search criteria."
+              action={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearch("");
+                    setSelectedCity("");
+                    setSelectedSpecialty("");
+                  }}
+                  className="rounded-full"
+                >
+                  Clear all filters
+                </Button>
+              }
+            />
+          </Card>
+        ) : viewMode === "grid" ? (
+          /* Modern Online Healthcare Clinic Card Grid Layout (Zocdoc / Practo Style) */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {clinics.map((clinic) => (
-              <article
+              <Card
                 key={clinic.id}
                 onClick={() => router.push(`/browse/${clinic.id}`)}
-                className="group bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] overflow-hidden cursor-pointer hover:shadow-xl hover:border-[var(--color-primary-600)]/40 hover:-translate-y-1 transition-all duration-300 flex flex-col"
+                className="group cursor-pointer hover:shadow-xl hover:border-primary-500/40 hover:-translate-y-1 transition-all duration-300 p-5 rounded-2xl border border-border bg-surface flex flex-col justify-between"
               >
-                {/* Banner */}
-                <div className="h-44 relative overflow-hidden flex-shrink-0 bg-[var(--color-surface-alt)]">
-                  {clinic.image_url ? (
-                    <img
-                      src={clinic.image_url}
-                      alt={clinic.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[var(--color-primary-600)]/15 via-[var(--color-surface-alt)] to-blue-600/10">
-                      <svg className="w-14 h-14 text-[var(--color-primary-600)]/30 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                      <span className="text-xs text-[var(--color-text-muted)] font-medium">{clinic.name}</span>
+                <div>
+                  {/* Card Header: Avatar & Badges */}
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-600/15 via-primary-500/10 to-blue-600/15 border border-primary-500/20 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform duration-300">
+                        {clinic.image_url ? (
+                          <img src={clinic.image_url} alt={clinic.name} className="w-full h-full object-cover rounded-2xl" />
+                        ) : (
+                          <span className="text-xl">🏥</span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="text-base font-bold text-text group-hover:text-primary-600 transition-colors line-clamp-1">
+                            {clinic.name}
+                          </h3>
+                          <span className="text-primary-600 text-xs shrink-0" title="Verified Facility">
+                            ✓
+                          </span>
+                        </div>
+                        <p className="text-xs text-text-muted flex items-center gap-1 mt-0.5">
+                          <span>📍 {clinic.city}</span>
+                          <span>•</span>
+                          <span className="text-amber-500 font-semibold">★ 4.9</span>
+                        </p>
+                      </div>
                     </div>
-                  )}
-                  {/* City badge */}
-                  <div className="absolute top-3 left-3">
-                    <span className="bg-[var(--color-surface)]/95 backdrop-blur-sm text-[var(--color-text)] text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm border border-[var(--color-border)]/50">
-                      📍 {clinic.city}
-                    </span>
-                  </div>
-                  {/* Rating pill */}
-                  <div className="absolute top-3 right-3">
-                    <span className="bg-amber-500/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center gap-0.5">
-                      ★ 4.9
-                    </span>
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-4 flex flex-col flex-1 gap-3">
-                  <div>
-                    <h3 className="text-base font-bold text-[var(--color-text)] group-hover:text-[var(--color-primary-600)] transition-colors line-clamp-1 leading-snug">
-                      {clinic.name}
-                    </h3>
-                    <p className="text-[11px] text-[var(--color-text-muted)] line-clamp-2 mt-1 leading-relaxed">
-                      {clinic.description || "A premier HealthOS clinic offering comprehensive medical services and specialized practitioner care."}
-                    </p>
                   </div>
 
-                  {/* Facilities */}
+                  {/* Clinic Description */}
+                  <p className="text-xs text-text-muted line-clamp-2 leading-relaxed mb-4">
+                    {clinic.description || "Verified healthcare facility providing general medicine, specialized practitioner consultations, and diagnostic care."}
+                  </p>
+
+                  {/* Facilities / Specialty Tags */}
                   {clinic.facilities && clinic.facilities.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1.5 mb-4">
                       {clinic.facilities.slice(0, 3).map((fac, idx) => (
                         <span
                           key={idx}
-                          className="text-[9px] font-bold uppercase tracking-wide bg-[var(--color-primary-600)]/8 text-[var(--color-primary-600)] border border-[var(--color-primary-600)]/20 px-2 py-0.5 rounded-full"
+                          className="text-[10px] font-bold uppercase tracking-wider bg-primary-500/10 text-primary-700 dark:text-primary-400 px-2.5 py-0.5 rounded-full border border-primary-500/15"
                         >
                           {fac}
                         </span>
                       ))}
                       {clinic.facilities.length > 3 && (
-                        <span className="text-[9px] text-[var(--color-text-muted)] px-1">+{clinic.facilities.length - 3}</span>
+                        <span className="text-[10px] text-text-muted self-center font-medium">
+                          +{clinic.facilities.length - 3}
+                        </span>
                       )}
                     </div>
                   )}
+                </div>
 
-                  {/* Meta */}
-                  <div className="flex flex-col gap-1.5 text-[11px] text-[var(--color-text-secondary)] mt-auto border-t border-[var(--color-border)]/60 pt-3">
+                <div>
+                  {/* Address & Timings Footer */}
+                  <div className="space-y-1.5 text-xs text-text-secondary border-t border-border/50 pt-3 mb-4">
                     {clinic.address && (
-                      <div className="flex items-center gap-1.5 truncate">
-                        <svg className="w-3 h-3 text-[var(--color-text-muted)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <div className="flex items-center gap-2 truncate">
+                        <svg className="w-3.5 h-3.5 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                         <span className="truncate">{clinic.address}</span>
                       </div>
                     )}
-                    {clinic.timings && formatTimings(clinic.timings) && (
-                      <div className="flex items-center gap-1.5">
-                        <svg className="w-3 h-3 text-[var(--color-text-muted)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>{formatTimings(clinic.timings)}</span>
-                      </div>
+                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium">
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{formatTimings(clinic.timings)}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div className="flex items-center gap-2">
+                    <Button variant="primary" size="sm" className="w-full font-bold rounded-xl shadow-xs">
+                      Book Appointment
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          /* List View */
+          <div className="space-y-4 max-w-4xl mx-auto">
+            {clinics.map((clinic) => (
+              <Card
+                key={clinic.id}
+                onClick={() => router.push(`/browse/${clinic.id}`)}
+                className="group cursor-pointer hover:shadow-lg hover:border-primary-500/40 transition-all duration-200 p-5 rounded-2xl border border-border bg-surface flex flex-col sm:flex-row gap-4 items-center justify-between"
+              >
+                <div className="flex items-center gap-4 min-w-0 flex-1">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-600/15 via-primary-500/10 to-blue-600/15 border border-primary-500/20 flex items-center justify-center shrink-0 shadow-2xs">
+                    {clinic.image_url ? (
+                      <img src={clinic.image_url} alt={clinic.name} className="w-full h-full object-cover rounded-2xl" />
+                    ) : (
+                      <span className="text-2xl">🏥</span>
                     )}
                   </div>
 
-                  {/* CTA */}
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-[11px] font-semibold text-[var(--color-primary-600)] flex items-center gap-1 group-hover:gap-2 transition-all duration-200">
-                      View Specialists
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </span>
-                    <span className="text-[10px] text-[var(--color-text-muted)] bg-[var(--color-surface-alt)] px-2 py-0.5 rounded-full border border-[var(--color-border)]/50">
-                      Book Now
-                    </span>
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-text group-hover:text-primary-600 transition-colors truncate">
+                        {clinic.name}
+                      </h3>
+                      <span className="text-primary-600 text-xs shrink-0">✓</span>
+                    </div>
+
+                    <p className="text-xs text-text-muted line-clamp-1">
+                      {clinic.description || "Verified Healthcare facility providing specialized patient care."}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary pt-0.5">
+                      <span>📍 {clinic.city} ({clinic.address || "Main Branch"})</span>
+                      <span>•</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">🕒 {formatTimings(clinic.timings)}</span>
+                    </div>
                   </div>
                 </div>
-              </article>
+
+                <div className="shrink-0 w-full sm:w-auto">
+                  <Button variant="primary" size="sm" className="w-full sm:w-auto rounded-xl font-bold px-5">
+                    Book Appointment
+                  </Button>
+                </div>
+              </Card>
             ))}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

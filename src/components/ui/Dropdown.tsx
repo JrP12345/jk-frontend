@@ -155,7 +155,7 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
             zIndex: 99999,
           }}
           className={cn(
-            "bg-surface rounded-xl border border-border shadow-2xl py-1.5 focus:outline-none backdrop-blur-xl bg-surface/95 animate-in fade-in zoom-in-95 duration-150",
+            "bg-surface rounded-2xl border border-border shadow-2xl p-1.5 focus:outline-none backdrop-blur-xl bg-surface/95 animate-in fade-in zoom-in-95 duration-150",
             width
           )}
           role="menu"
@@ -178,24 +178,23 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
                   close();
                 }}
                 className={cn(
-                  "w-full flex items-center justify-between gap-2.5 px-3.5 py-2 text-xs font-medium text-left cursor-pointer transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed",
-                  isFocused ? "bg-surface-hover text-text" : "text-text",
+                  "w-full flex items-center justify-between gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl text-left cursor-pointer transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed group",
                   item.danger || item.variant === "danger"
-                    ? "text-danger-500 hover:bg-danger-500/10"
+                    ? "text-red-500 hover:bg-red-600 hover:text-white font-bold"
                     : item.variant === "warning"
                     ? "text-amber-500 hover:bg-amber-500/10"
                     : item.variant === "primary"
                     ? "text-primary-500 hover:bg-primary-500/10"
-                    : "hover:bg-surface-hover hover:text-text",
+                    : "text-text hover:bg-surface-hover hover:text-text",
+                  isFocused && !(item.danger || item.variant === "danger") && "bg-surface-hover text-text",
                   isSelected && "font-bold text-primary-500"
                 )}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   {item.icon && (
                     <span className={cn(
-                      "shrink-0 [&>svg]:h-4 [&>svg]:w-4",
-                      isFocused ? "text-text" : "text-text-muted",
-                      item.danger && "text-danger-500"
+                      "shrink-0 [&>svg]:h-4 [&>svg]:w-4 transition-colors",
+                      item.danger || item.variant === "danger" ? "text-red-500 group-hover:text-white" : "text-text-muted group-hover:text-text"
                     )}>
                       {item.icon}
                     </span>

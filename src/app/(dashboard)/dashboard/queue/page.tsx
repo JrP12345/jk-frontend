@@ -344,23 +344,34 @@ export default function QueuePage() {
   if (!user) return null;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
+      {/* Top Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
         <div>
-          <h2 className="text-2xl font-bold text-text">Queue Dashboard</h2>
-          <p className="text-sm text-text-secondary">Track doctor patient flows, check-in, call next, and override order rules.</p>
+          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Queue Dashboard</h1>
+          <p className="text-xs text-text-muted mt-0.5">
+            Track practitioner patient flows, check-in waiting patients, call next token, and override order rules.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             variant="primary"
             size="sm"
             onClick={handleCallNext}
             loading={callingNext}
+            className="font-bold rounded-xl shadow-xs cursor-pointer"
           >
             📢 Call Next Patient
           </Button>
-          <Button variant="outline" size="sm" onClick={fetchQueue} loading={loadingQueue}>
-            Refresh Queue
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchQueue}
+            loading={loadingQueue}
+            className="font-semibold rounded-xl cursor-pointer"
+          >
+            🔄 Refresh
           </Button>
         </div>
       </div>

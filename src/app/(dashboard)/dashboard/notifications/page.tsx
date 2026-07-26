@@ -36,7 +36,7 @@ export default function NotificationsInboxPage() {
   // Modals & Dialogs State
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<string[]>([]);
   const [viewingNotification, setViewingNotification] = useState<NotificationItem | null>(null);
   const [orgUsers, setOrgUsers] = useState<Array<{ id: string; name: string; email: string; role: string }>>([]);
 
@@ -127,7 +127,7 @@ export default function NotificationsInboxPage() {
       });
 
       toast({
-        title: "Notification Sent! 🚀",
+        title: "Notification Sent",
         description: res.message || "Notification dispatched successfully across selected channels.",
         variant: "success",
       });
@@ -212,18 +212,18 @@ export default function NotificationsInboxPage() {
       render: (row) => (
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Badge variant={getSeverityBadgeVariant(row.severity)} size="sm">
+            <Badge variant={getSeverityBadgeVariant(row.severity)} size="sm" className="uppercase font-extrabold text-[9px] tracking-wider">
               {row.category}
             </Badge>
             {row.pinned && (
               <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded">
-                📌 Pinned
+                Pinned
               </span>
             )}
           </div>
           {row.priority === "urgent" || row.priority === "high" ? (
             <span className="text-[10px] font-extrabold text-danger-500 uppercase tracking-wider">
-              ⚡ {row.priority}
+              {row.priority}
             </span>
           ) : null}
         </div>
@@ -235,7 +235,7 @@ export default function NotificationsInboxPage() {
       render: (row) => (
         <div className="space-y-0.5 min-w-[240px]">
           <p
-            className={`text-sm text-text cursor-pointer hover:text-primary-600 transition-colors ${
+            className={`text-xs sm:text-sm text-text cursor-pointer hover:text-primary-600 transition-colors ${
               !row.readAt ? "font-bold" : "font-medium"
             }`}
             onClick={() => handleViewDetail(row)}
@@ -266,33 +266,37 @@ export default function NotificationsInboxPage() {
           <Dropdown
             align="right"
             trigger={
-              <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
-                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+              <button
+                type="button"
+                className="p-1.5 rounded-lg border border-border text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
+                title="Actions"
+              >
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                 </svg>
-              </Button>
+              </button>
             }
             items={[
               {
-                label: row.pinned ? "Unpin Notification 📌" : "Pin Notification 📌",
+                label: row.pinned ? "Unpin Notification" : "Pin Notification",
                 onClick: () => togglePinNotification(row.id),
               },
               ...(!row.readAt
                 ? [
                     {
-                      label: "Mark as Read ✓",
+                      label: "Mark as Read",
                       onClick: () => markAsRead(row.id),
                     },
                   ]
                 : []),
               {
-                label: "View Details →",
+                label: "View Details",
                 onClick: () => handleViewDetail(row),
               },
               {
-                label: "Delete Notification 🗑️",
+                label: "Delete Notification",
                 variant: "danger",
-                onClick: () => setDeletingId(row.id),
+                onClick: () => setDeletingIds([row.id]),
               },
             ]}
           />
@@ -317,56 +321,80 @@ export default function NotificationsInboxPage() {
       variant: "danger",
       onClick: (selectedRows) => {
         if (selectedRows.length > 0) {
-          setDeletingId(selectedRows[0].id);
+          setDeletingIds(selectedRows.map((r) => r.id));
         }
       },
     },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
+      {/* Top Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-text tracking-tight">Notifications</h1>
-          <p className="text-sm text-text-muted mt-1">
+          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Notifications</h1>
+          <p className="text-xs text-text-muted mt-0.5">
             Manage workspace notifications and compose multi-channel alerts for team members.
           </p>
         </div>
-        <div className="flex items-center gap-2.5 flex-wrap">
+
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
           <Button
             variant="secondary"
             size="sm"
             onClick={handleTestTrigger}
             disabled={isTestLoading}
+            className="rounded-xl text-xs font-semibold cursor-pointer"
           >
-            {isTestLoading ? <Spinner size="sm" /> : "⚡ Trigger Test Event"}
+            {isTestLoading ? <Spinner size="sm" /> : "Trigger Test Event"}
           </Button>
           {unreadCount > 0 && (
-            <Button variant="outline" size="sm" onClick={() => markAllAsRead()}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => markAllAsRead()}
+              className="rounded-xl text-xs font-semibold cursor-pointer"
+            >
               Mark All Read ({unreadCount})
             </Button>
           )}
-          <Button variant="primary" size="sm" onClick={() => setIsSendModalOpen(true)}>
-            ➕ Send Notification
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setIsSendModalOpen(true)}
+            className="rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+          >
+            + Send Notification
           </Button>
         </div>
       </div>
 
       {/* Clean Filters Bar */}
-      <Card className="p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+      <Card className="p-3.5 sm:p-4 rounded-2xl border border-border bg-surface">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
           <Input
             placeholder="Search notification titles or messages..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            className="text-xs"
           />
 
           <Select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            value={unreadOnly ? "unread" : category}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "unread") {
+                setUnreadOnly(true);
+                setCategory("");
+              } else {
+                setUnreadOnly(false);
+                setCategory(val);
+              }
+            }}
+            className="text-xs"
             options={[
-              { value: "", label: "All Categories" },
+              { value: "", label: "All Notifications" },
+              { value: "unread", label: `Unread Notifications Only (${unreadCount})` },
               { value: "patient", label: "Healthcare / Patient" },
               { value: "task", label: "Tasks & Workflows" },
               { value: "security", label: "Security Alerts" },
@@ -377,34 +405,11 @@ export default function NotificationsInboxPage() {
               { value: "auth", label: "Authentication" },
             ]}
           />
-
-          <div className="flex items-center gap-2 bg-surface-hover p-1 rounded-xl border border-border shrink-0">
-            <button
-              onClick={() => setUnreadOnly(false)}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                !unreadOnly
-                  ? "bg-surface text-primary-500 shadow-xs border border-border"
-                  : "text-text-muted hover:text-text"
-              }`}
-            >
-              All Notifications
-            </button>
-            <button
-              onClick={() => setUnreadOnly(true)}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                unreadOnly
-                  ? "bg-surface text-primary-500 shadow-xs border border-border"
-                  : "text-text-muted hover:text-text"
-              }`}
-            >
-              Unread ({unreadCount})
-            </button>
-          </div>
         </div>
       </Card>
 
       {/* Main Notification Data Table */}
-      <Card className="overflow-hidden">
+      <Card className="rounded-2xl border border-border bg-surface overflow-hidden">
         {isLoading ? (
           <div className="p-12 text-center">
             <Spinner size="lg" label="Loading notifications..." />
@@ -417,11 +422,11 @@ export default function NotificationsInboxPage() {
               keyField="id"
               selectable
               bulkActions={bulkActions}
-              emptyMessage="No notifications found. Click '➕ Send Notification' above to compose your first message!"
+              emptyMessage="No notifications found. Click '+ Send Notification' to compose a message."
             />
 
             {pagination.totalPages > 1 && (
-              <div className="p-4 border-t border-border flex justify-center">
+              <div className="p-3.5 border-t border-border flex justify-center">
                 <Pagination
                   currentPage={pagination.page}
                   totalPages={pagination.totalPages}
@@ -433,7 +438,7 @@ export default function NotificationsInboxPage() {
         )}
       </Card>
 
-      {/* ── Send Notification Composer Modal (Multi-Channel) ─────────── */}
+      {/* ── Send Notification Composer Modal ─────────────────────────── */}
       <Modal
         open={isSendModalOpen}
         onClose={() => setIsSendModalOpen(false)}
@@ -441,13 +446,13 @@ export default function NotificationsInboxPage() {
         description="Dispatch a notification across In-App and Email channels."
         size="lg"
       >
-        <form onSubmit={handleSendNotification} className="space-y-4">
-          {/* Channel Selector Checkboxes */}
-          <div className="bg-surface-hover/70 p-3 rounded-xl border border-border space-y-2">
-            <label className="block text-xs font-bold text-text uppercase tracking-wider text-text-muted">
-              Select Delivery Channels
+        <form onSubmit={handleSendNotification} className="space-y-3.5 pt-1">
+          {/* Delivery Channels Bar */}
+          <div className="bg-surface-alt p-3 rounded-xl border border-border space-y-1.5">
+            <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
+              Delivery Channels
             </label>
-            <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="grid grid-cols-2 gap-3 pt-0.5">
               <Checkbox
                 checked={sendInApp}
                 onChange={(e) => setSendInApp(e.target.checked)}
@@ -461,9 +466,10 @@ export default function NotificationsInboxPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Row 1: Recipient Audience & Category / Specific User */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-text mb-1.5">Recipient Audience</label>
+              <label className="block text-xs font-semibold text-text mb-1">Recipient Audience</label>
               <Select
                 value={recipientScope}
                 onChange={(e) => setRecipientScope(e.target.value)}
@@ -477,9 +483,9 @@ export default function NotificationsInboxPage() {
               />
             </div>
 
-            {recipientScope === "user" && (
+            {recipientScope === "user" ? (
               <div>
-                <label className="block text-xs font-bold text-text mb-1.5">Select User</label>
+                <label className="block text-xs font-semibold text-text mb-1">Select User</label>
                 <Select
                   value={targetUserId}
                   onChange={(e) => setTargetUserId(e.target.value)}
@@ -492,54 +498,76 @@ export default function NotificationsInboxPage() {
                   ]}
                 />
               </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-bold text-text mb-1.5">Category</label>
-              <Select
-                value={formCategory}
-                onChange={(e) => setFormCategory(e.target.value)}
-                options={[
-                  { value: "system", label: "System Alert" },
-                  { value: "patient", label: "Patient / Clinical" },
-                  { value: "task", label: "Task / Workflow" },
-                  { value: "security", label: "Security Event" },
-                  { value: "billing", label: "Billing & Invoices" },
-                  { value: "team", label: "Team Activity" },
-                  { value: "organization", label: "Organization" },
-                ]}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-text mb-1.5">Severity & Priority</label>
-              <div className="grid grid-cols-2 gap-2">
+            ) : (
+              <div>
+                <label className="block text-xs font-semibold text-text mb-1">Category</label>
                 <Select
-                  value={formSeverity}
-                  onChange={(e) => setFormSeverity(e.target.value)}
+                  value={formCategory}
+                  onChange={(e) => setFormCategory(e.target.value)}
                   options={[
-                    { value: "info", label: "Info" },
-                    { value: "success", label: "Success" },
-                    { value: "warning", label: "Warning" },
-                    { value: "error", label: "Error" },
-                  ]}
-                />
-                <Select
-                  value={formPriority}
-                  onChange={(e) => setFormPriority(e.target.value)}
-                  options={[
-                    { value: "low", label: "Low Priority" },
-                    { value: "medium", label: "Medium" },
-                    { value: "high", label: "High" },
-                    { value: "urgent", label: "Urgent" },
+                    { value: "system", label: "System Alert" },
+                    { value: "patient", label: "Patient / Clinical" },
+                    { value: "task", label: "Task / Workflow" },
+                    { value: "security", label: "Security Event" },
+                    { value: "billing", label: "Billing & Invoices" },
+                    { value: "team", label: "Team Activity" },
+                    { value: "organization", label: "Organization" },
                   ]}
                 />
               </div>
+            )}
+          </div>
+
+          {/* Row 2: Severity Level & Priority Level */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {recipientScope === "user" && (
+              <div>
+                <label className="block text-xs font-semibold text-text mb-1">Category</label>
+                <Select
+                  value={formCategory}
+                  onChange={(e) => setFormCategory(e.target.value)}
+                  options={[
+                    { value: "system", label: "System Alert" },
+                    { value: "patient", label: "Patient / Clinical" },
+                    { value: "task", label: "Task / Workflow" },
+                    { value: "security", label: "Security Event" },
+                    { value: "billing", label: "Billing & Invoices" },
+                    { value: "team", label: "Team Activity" },
+                    { value: "organization", label: "Organization" },
+                  ]}
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-semibold text-text mb-1">Severity Level</label>
+              <Select
+                value={formSeverity}
+                onChange={(e) => setFormSeverity(e.target.value)}
+                options={[
+                  { value: "info", label: "Info" },
+                  { value: "success", label: "Success" },
+                  { value: "warning", label: "Warning" },
+                  { value: "error", label: "Error" },
+                ]}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-text mb-1">Priority Level</label>
+              <Select
+                value={formPriority}
+                onChange={(e) => setFormPriority(e.target.value)}
+                options={[
+                  { value: "low", label: "Low Priority" },
+                  { value: "medium", label: "Medium" },
+                  { value: "high", label: "High" },
+                  { value: "urgent", label: "Urgent" },
+                ]}
+              />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-text mb-1.5">Notification Title</label>
+            <label className="block text-xs font-semibold text-text mb-1">Notification Title *</label>
             <Input
               placeholder="e.g. Patient Chart Updated / Critical System Alert"
               value={formTitle}
@@ -549,7 +577,7 @@ export default function NotificationsInboxPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-text mb-1.5">Notification Message</label>
+            <label className="block text-xs font-semibold text-text mb-1">Notification Message *</label>
             <Textarea
               placeholder="Enter full notification details or action instructions..."
               value={formMessage}
@@ -560,7 +588,7 @@ export default function NotificationsInboxPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-text mb-1.5">Action Link URL (Optional)</label>
+            <label className="block text-xs font-semibold text-text mb-1">Action Link URL (Optional)</label>
             <Input
               placeholder="e.g. /dashboard/appointments or /dashboard/queue"
               value={formActionUrl}
@@ -577,14 +605,14 @@ export default function NotificationsInboxPage() {
             >
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" disabled={isSending}>
-              {isSending ? <Spinner size="sm" /> : "🚀 Dispatch Notification"}
+            <Button type="submit" variant="primary" size="sm" disabled={isSending} className="font-bold rounded-xl">
+              {isSending ? <Spinner size="sm" /> : "Dispatch Notification"}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* ── Notification Detail View Modal ─────────────────────────────── */}
+      {/* ── Notification Detail View Modal (Rich Enterprise Card) ──────── */}
       <Modal
         open={!!viewingNotification}
         onClose={() => setViewingNotification(null)}
@@ -592,27 +620,43 @@ export default function NotificationsInboxPage() {
         size="md"
       >
         {viewingNotification && (
-          <div className="space-y-4 text-xs">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2">
-                <Badge variant={getSeverityBadgeVariant(viewingNotification.severity)} size="sm">
+          <div className="space-y-4 text-xs font-sans">
+            {/* Metadata Pills Header */}
+            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-3 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant={getSeverityBadgeVariant(viewingNotification.severity)} size="sm" className="uppercase font-extrabold text-[9px] tracking-wider">
                   {viewingNotification.category}
                 </Badge>
+                <Badge variant="outline" size="sm" className="uppercase font-bold text-[9px]">
+                  {viewingNotification.severity}
+                </Badge>
                 {viewingNotification.priority && (
-                  <span className="text-[10px] font-extrabold text-primary-500 uppercase tracking-wider">
+                  <span className="text-[10px] font-extrabold text-primary-600 dark:text-primary-400 bg-primary-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
                     {viewingNotification.priority} Priority
                   </span>
                 )}
               </div>
-              <span className="text-text-muted font-medium">
+              <span className="text-[11px] text-text-muted font-medium">
                 {formatTimestamp(viewingNotification.createdAt)}
               </span>
             </div>
 
-            <div className="bg-surface-hover/50 p-4 rounded-xl border border-border">
-              <p className="text-text text-sm leading-relaxed whitespace-pre-wrap">
+            {/* Rich Formatted Message Card */}
+            <div className="bg-surface-alt p-4 rounded-2xl border border-border/80 shadow-xs space-y-2">
+              <h4 className="text-sm font-bold text-text">{viewingNotification.title}</h4>
+              <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">
                 {viewingNotification.message}
               </p>
+            </div>
+
+            {/* Delivery Channels Context */}
+            <div className="flex items-center justify-between pt-1 text-[11px] text-text-muted border-t border-border/40">
+              <span className="font-medium">Delivery Channels: In-App Inbox &bull; Email Dispatch</span>
+              {viewingNotification.readAt ? (
+                <span className="text-emerald-500 font-semibold">Read</span>
+              ) : (
+                <span className="text-primary-500 font-semibold">Unread</span>
+              )}
             </div>
 
             {viewingNotification.actionUrl && (
@@ -625,6 +669,7 @@ export default function NotificationsInboxPage() {
                     setViewingNotification(null);
                     router.push(url);
                   }}
+                  className="font-bold rounded-xl cursor-pointer"
                 >
                   Open Link Destination →
                 </Button>
@@ -636,19 +681,29 @@ export default function NotificationsInboxPage() {
 
       {/* ── Delete Confirmation Dialog ─────────────────────────────────── */}
       <ConfirmDialog
-        open={!!deletingId}
-        onClose={() => setDeletingId(null)}
+        open={deletingIds.length > 0}
+        onClose={() => setDeletingIds([])}
         onConfirm={async () => {
-          if (deletingId) {
-            await deleteNotification(deletingId);
-            setDeletingId(null);
-            toast({ title: "Notification Deleted", description: "Notification removed successfully.", variant: "default" });
+          if (deletingIds.length > 0) {
+            const count = deletingIds.length;
+            await Promise.all(deletingIds.map((id) => deleteNotification(id)));
+            setDeletingIds([]);
+            toast({
+              title: count > 1 ? "Notifications Deleted" : "Notification Deleted",
+              description: `${count} notification(s) removed successfully.`,
+              variant: "warning",
+            });
+            refetch();
           }
         }}
-        title="Delete Notification"
-        description="Are you sure you want to delete this notification? This action cannot be undone."
+        title={deletingIds.length > 1 ? `Delete ${deletingIds.length} Notifications` : "Delete Notification"}
+        description={
+          deletingIds.length > 1
+            ? `Are you sure you want to delete these ${deletingIds.length} selected notifications? This action cannot be undone.`
+            : "Are you sure you want to delete this notification? This action cannot be undone."
+        }
         variant="danger"
-        confirmLabel="Delete"
+        confirmLabel={deletingIds.length > 1 ? `Delete (${deletingIds.length})` : "Delete"}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState, useMemo } from "react";
+import { type ReactNode, useState, useMemo, useEffect } from "react";
 import { cn } from "./utils";
 import Checkbox from "./Checkbox";
 import Button from "./Button";
@@ -106,6 +106,20 @@ export default function Table<T extends Record<string, any>>({
 
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(defaultRowsPerPage);
+
+  // Auto-prune orphan selections when dataset changes or items are deleted
+  useEffect(() => {
+    if (selected.size > 0) {
+      const validIds = new Set(data.map((d) => d[keyField]));
+      setSelected((prev) => {
+        const next = new Set([...prev].filter((id) => validIds.has(id)));
+        if (next.size !== prev.size) {
+          onSelectionChange?.(data.filter((d) => next.has(d[keyField])));
+        }
+        return next;
+      });
+    }
+  }, [data, keyField]);
 
   // Filtered columns based on visibility menu
   const visibleColumns = useMemo(() => {
@@ -283,7 +297,7 @@ export default function Table<T extends Record<string, any>>({
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text text-xs"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text text-xs cursor-pointer"
                   >
                     ✕
                   </button>
@@ -298,7 +312,7 @@ export default function Table<T extends Record<string, any>>({
                   type="button"
                   onClick={() => setShowFilterRow(!showFilterRow)}
                   className={cn(
-                    "p-2 rounded-lg border border-border text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors relative",
+                    "p-2 rounded-lg border border-border text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors relative cursor-pointer",
                     (showFilterRow || activeFiltersCount > 0) && "border-primary-500 text-primary-500 bg-primary-500/10"
                   )}
                   title="Toggle Header Filters"
@@ -315,7 +329,7 @@ export default function Table<T extends Record<string, any>>({
                   trigger={
                     <button
                       type="button"
-                      className="p-2 rounded-lg border border-border text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+                      className="p-2 rounded-lg border border-border text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
                       title="Column Visibility"
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -329,6 +343,7 @@ export default function Table<T extends Record<string, any>>({
                     const isVisible = !hiddenColumns.has(colKey);
                     return {
                       label: `${isVisible ? "✓ " : "   "}${col.header}`,
+                      active: isVisible,
                       onClick: () => toggleColumnVisibility(colKey),
                     };
                   })}
@@ -339,7 +354,7 @@ export default function Table<T extends Record<string, any>>({
                 <button
                   type="button"
                   onClick={exportToCSV}
-                  className="p-2 rounded-lg border border-border text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+                  className="p-2 rounded-lg border border-border text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
                   title="Export to CSV"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -617,7 +632,11 @@ export default function Table<T extends Record<string, any>>({
                 key={idx}
                 variant={action.variant || "secondary"}
                 size="sm"
-                onClick={() => action.onClick(selectedRowsList)}
+                onClick={() => {
+                  action.onClick(selectedRowsList);
+                  setSelected(new Set());
+                  onSelectionChange?.([]);
+                }}
                 className="whitespace-nowrap text-xs gap-1.5"
               >
                 {action.icon}

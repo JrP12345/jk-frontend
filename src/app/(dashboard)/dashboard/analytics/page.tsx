@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
-  Card, CardHeader, CardTitle, CardContent,
+  Card, CardHeader, CardTitle, CardContent, Button,
   Table, useToast, Spinner, Badge, StatCard, SkeletonCard, SkeletonTable
 } from "@/components/ui";
 
@@ -106,12 +105,29 @@ export default function AnalyticsPage() {
   const { overall, clinicsPerformance, doctorSpecializations, referralStats } = data;
 
   return (
-    <div className="space-y-6">
-      {/* Top Title Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
+      {/* Top Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-text">Ecosystem Executive Board</h2>
-          <p className="text-xs sm:text-sm text-text-secondary">Comparative multi-clinic revenue analytics, active bed census utilization, and referral performance.</p>
+          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Executive BI & Analytics Board</h1>
+          <p className="text-xs text-text-muted mt-0.5">
+            Comparative multi-clinic revenue analytics, active bed census utilization, and referral performance metrics.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchAnalytics}
+            loading={loading}
+            className="font-semibold rounded-xl cursor-pointer gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Refresh BI Feed</span>
+          </Button>
         </div>
       </div>
 

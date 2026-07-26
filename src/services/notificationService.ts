@@ -52,6 +52,17 @@ export interface NotificationPreferences {
   };
 }
 
+export interface SmtpConfig {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  pass: string;
+  passIsSet?: boolean;
+  fromEmail: string;
+  fromName: string;
+}
+
 export const notificationService = {
   getNotifications: async (params?: {
     page?: number;
@@ -145,5 +156,17 @@ export const notificationService = {
     const res = await api.post("/notifications/test-email", { targetEmail });
     return res.data;
   },
+
+  // ─── SMTP / Email Gateway Config ───────────────────────────────
+  getSmtpConfig: async (): Promise<SmtpConfig> => {
+    const res = await api.get("/onboarding/organization/me/smtp");
+    return res.data.data;
+  },
+
+  updateSmtpConfig: async (data: Partial<SmtpConfig>): Promise<SmtpConfig> => {
+    const res = await api.put("/onboarding/organization/me/smtp", data);
+    return res.data.data;
+  },
 };
+
 

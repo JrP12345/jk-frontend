@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, DatePicker, Select, useToast, Spinner, Badge, StatCard, SkeletonTable
+  Table, Button, Modal, Input, DatePicker, Select, useToast, Spinner, Badge, StatCard, SkeletonTable, Dropdown, ConfirmDialog
 } from "@/components/ui";
 
 interface MedicineType {
@@ -233,12 +233,16 @@ export default function PharmacyPage() {
     }
   };
 
+  // Delete Confirmation State
+  const [deletingMedId, setDeletingMedId] = useState<string | null>(null);
+
   // Delete Medicine
-  const handleDeleteMed = async (medId: string) => {
-    if (!confirm("Are you sure you want to remove this medicine?")) return;
+  const handleDeleteMed = async () => {
+    if (!deletingMedId) return;
     try {
-      await api.delete(`/medicines/${medId}`);
-      toast({ title: "Success", description: "Medicine deleted successfully", variant: "success" });
+      await api.delete(`/medicines/${deletingMedId}`);
+      toast({ title: "Success", description: "Medicine deleted successfully", variant: "warning" });
+      setDeletingMedId(null);
       fetchData();
     } catch (err: any) {
       toast({ title: "Deletion Failed", description: err.response?.data?.message || "Server error", variant: "error" });
@@ -314,21 +318,42 @@ export default function PharmacyPage() {
   const expiredCount = medicines.filter(m => new Date(m.expiryDate) < new Date()).length;
 
   return (
-    <div className="space-y-6">
-      {/* Top Header & Clinic Select */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
+      {/* Top Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-text">Pharmacy Desk & Inventory</h2>
-          <p className="text-xs sm:text-sm text-text-secondary">Dispense doctor prescriptions, log medicine batches, and track clinic stock levels.</p>
+          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Pharmacy Desk & Inventory</h1>
+          <p className="text-xs text-text-muted mt-0.5">
+            Dispense practitioner prescriptions, log medicine batches, and track inventory stock levels.
+          </p>
         </div>
-        <div className="flex items-center gap-2.5">
-          <Select
+
+        <div className="flex items-center gap-2 shrink-0">
+          {(user?.role === "admin" || user?.role === "receptionist") && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => { setEditingMedId(null); setMedName(""); setGenericName(""); setStockQuantity(0); setRetailPrice(0); setCostPrice(0); setExpiryDate(""); setBatchNumber(""); setMedErrors({}); setIsMedModalOpen(true); }}
+              className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Add Medicine</span>
+            </Button>
+          )}
+          <Button
+            variant="outline"
             size="sm"
-            value={selectedClinicId}
-            onChange={(e) => setSelectedClinicId(e.target.value)}
-            options={clinics.map(c => ({ value: c.id, label: `${c.name} (${c.city})` }))}
-            className="w-full sm:w-64"
-          />
+            onClick={fetchData}
+            loading={loading}
+            className="font-semibold rounded-xl cursor-pointer gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Refresh</span>
+          </Button>
         </div>
       </div>
 
@@ -374,8 +399,6 @@ export default function PharmacyPage() {
         <div className="space-y-6">
           <Card className="overflow-hidden">
             <Table
-              onAddClick={user?.role === "admin" || user?.role === "receptionist" ? () => { setEditingMedId(null); setMedName(""); setGenericName(""); setStockQuantity(0); setRetailPrice(0); setCostPrice(0); setExpiryDate(""); setBatchNumber(""); setMedErrors({}); setIsMedModalOpen(true); } : undefined}
-              actionLabel="Add New Medicine"
               loading={loading}
                   columns={[
                     { header: "Brand Name", key: "name" },
@@ -410,35 +433,38 @@ export default function PharmacyPage() {
                         </div>
                       ),
                       actions: (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingMedId(med.id);
-                              setMedName(med.name);
-                              setGenericName(med.genericName);
-                              setStockQuantity(med.stockQuantity);
-                              setRetailPrice(med.price);
-                              setCostPrice(med.costPrice);
-                              // Format date for input: YYYY-MM-DD
-                              setExpiryDate(new Date(med.expiryDate).toISOString().split("T")[0]);
-                              setBatchNumber(med.batchNumber);
-                              setMedErrors({});
-                              setIsMedModalOpen(true);
-                            }}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:bg-red-50"
-                            onClick={() => handleDeleteMed(med.id)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
+                        <Dropdown
+                          align="right"
+                          trigger={
+                            <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
+                              <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                              </svg>
+                            </Button>
+                          }
+                          items={[
+                            {
+                              label: "Edit Stock",
+                              onClick: () => {
+                                setEditingMedId(med.id);
+                                setMedName(med.name);
+                                setGenericName(med.genericName);
+                                setStockQuantity(med.stockQuantity);
+                                setRetailPrice(med.price);
+                                setCostPrice(med.costPrice);
+                                setExpiryDate(new Date(med.expiryDate).toISOString().split("T")[0]);
+                                setBatchNumber(med.batchNumber);
+                                setMedErrors({});
+                                setIsMedModalOpen(true);
+                              },
+                            },
+                            {
+                              label: "Delete Medicine",
+                              danger: true,
+                              onClick: () => setDeletingMedId(med.id),
+                            },
+                          ]}
+                        />
                       )
                     };
                   })}
@@ -506,7 +532,7 @@ export default function PharmacyPage() {
         title={editingMedId ? "Update Inventory Item" : "Register Medicine Stock"}
       >
         <form onSubmit={handleMedSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="text-xs font-semibold text-text mb-1 block">Brand Name *</label>
               <Input
@@ -537,7 +563,7 @@ export default function PharmacyPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="text-xs font-semibold text-text mb-1 block">Batch Number *</label>
               <Input
@@ -565,7 +591,7 @@ export default function PharmacyPage() {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="text-xs font-semibold text-text mb-1 block">Purchase Cost (₹) *</label>
               <Input
@@ -600,22 +626,23 @@ export default function PharmacyPage() {
                 error={medErrors.price}
               />
             </div>
-            <div>
-              <label className="text-xs font-semibold text-text mb-1 block">Qty in Stock *</label>
-              <Input
-                type="number"
-                value={stockQuantity === 0 ? "" : stockQuantity}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setStockQuantity(val);
-                  validateMedField("stockQuantity", val);
-                }}
-                onBlur={(e) => validateMedField("stockQuantity", Number(e.target.value))}
-                placeholder="e.g. 100"
-                required
-                error={medErrors.stockQuantity}
-              />
-            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-text mb-1 block">Quantity in Stock *</label>
+            <Input
+              type="number"
+              value={stockQuantity === 0 ? "" : stockQuantity}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setStockQuantity(val);
+                validateMedField("stockQuantity", val);
+              }}
+              onBlur={(e) => validateMedField("stockQuantity", Number(e.target.value))}
+              placeholder="e.g. 100"
+              required
+              error={medErrors.stockQuantity}
+            />
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
@@ -712,6 +739,17 @@ export default function PharmacyPage() {
           </div>
         )}
       </Modal>
+
+      {/* ── Delete Medicine Confirm Dialog ──────────────────────────────── */}
+      <ConfirmDialog
+        open={!!deletingMedId}
+        onClose={() => setDeletingMedId(null)}
+        onConfirm={handleDeleteMed}
+        title="Delete Inventory Stock Item"
+        description="Are you sure you want to remove this medicine item from the inventory catalog? This action cannot be undone."
+        variant="danger"
+        confirmLabel="Delete Medicine"
+      />
     </div>
   );
 }

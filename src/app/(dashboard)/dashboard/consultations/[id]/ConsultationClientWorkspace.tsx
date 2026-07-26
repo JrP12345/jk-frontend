@@ -35,10 +35,16 @@ export function ConsultationClientWorkspace({
         setLoading(true);
         setError(null);
 
-        // 1. Fetch appointment details to resolve real patientId, clinicId, doctorId
-        const apptsRes = await api.get("/appointments");
-        const list = apptsRes.data?.data || [];
-        const appt = list.find((a: any) => a.id === appointmentId || a._id === appointmentId);
+        // 1. Fetch appointment details directly by ID to resolve real patientId, clinicId, doctorId
+        let appt: any = null;
+        try {
+          const apptRes = await api.get(`/appointments/${appointmentId}`);
+          appt = apptRes.data?.data || apptRes.data;
+        } catch {
+          const apptsRes = await api.get("/appointments");
+          const list = apptsRes.data?.data || [];
+          appt = list.find((a: any) => a.id === appointmentId || a._id === appointmentId);
+        }
 
         let resolvedPatientId = patientId;
         let resolvedClinicId = clinicId;

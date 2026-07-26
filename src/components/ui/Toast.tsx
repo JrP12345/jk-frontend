@@ -40,8 +40,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   useEffect(() => setMounted(true), []);
 
   const addToast = useCallback((options: Omit<Toast, "id" | "duration"> & { id?: string; duration?: number }) => {
-    const id = options.id || crypto.randomUUID();
-    setToasts((prev) => [...prev, { ...options, id, duration: options.duration || 4000 } as Toast]);
+    setToasts((prev) => {
+      if (prev.some((t) => t.title === options.title && t.description === options.description)) {
+        return prev;
+      }
+      const id = options.id || crypto.randomUUID();
+      return [...prev, { ...options, id, duration: options.duration || 4000 } as Toast];
+    });
   }, []);
 
   const dismiss = useCallback((id: string) => {

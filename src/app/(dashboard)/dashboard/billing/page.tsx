@@ -463,11 +463,40 @@ export default function BillingPage() {
   const unpaidCount = invoices.filter(i => i.status === "unpaid").length;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
+      {/* Top Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-text">Invoices & Billing</h2>
-          <p className="text-xs sm:text-sm text-text-secondary">Track payments, create manual bills, and collect outpatient fees.</p>
+          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Invoices & Billing</h1>
+          <p className="text-xs text-text-muted mt-0.5">
+            Track payments, create manual bills, and collect outpatient fees.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setIsCreateOpen(true)}
+            className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Create Invoice</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchInvoices}
+            loading={loading}
+            className="font-semibold rounded-xl cursor-pointer gap-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Refresh</span>
+          </Button>
         </div>
       </div>
 
@@ -504,8 +533,6 @@ export default function BillingPage() {
 
       {/* Invoices List Table */}
       <Table
-        onAddClick={() => setIsCreateOpen(true)}
-        actionLabel="Create Manual Invoice"
         searchPlaceholder="Search patient name, phone, or invoice #..."
         loading={loading}
         toolbarFilters={
@@ -566,7 +593,7 @@ export default function BillingPage() {
               items={[
                 ...(row.status === "unpaid" ? [{ label: "Collect Payment", onClick: () => { setActiveInvoice(row); setIsCollectOpen(true); } }] : []),
                 { label: "View & Print Receipt", onClick: () => handlePrintReceipt(row) },
-                { label: "🖨️ Print Official PDF", onClick: () => handleOpenPrintInvoice(row) },
+                { label: "Print Official PDF", onClick: () => handleOpenPrintInvoice(row) },
               ]}
             />
           )}
@@ -630,7 +657,7 @@ export default function BillingPage() {
           </div>
 
           {/* Step 2: Clinic & Doctor Details */}
-          <div className="grid grid-cols-2 gap-4 border-b border-border pb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 border-b border-border pb-4">
             <Select
               label="Choose Clinic Location *"
               value={selectedClinicId}
@@ -654,7 +681,12 @@ export default function BillingPage() {
               }}
               options={[
                 { value: "", label: "Select doctor..." },
-                ...doctorAssignments.map(a => ({ value: a.doctorId?.id || a.doctorId, label: `Dr. ${a.doctorId?.name} (${a.doctorId?.specialization})` }))
+                ...doctorAssignments.map(a => {
+                  const docName = a.doctorId?.name || "";
+                  const formattedName = docName.startsWith("Dr.") ? docName : `Dr. ${docName}`;
+                  const spec = a.doctorId?.specialization ? ` (${a.doctorId.specialization})` : "";
+                  return { value: a.doctorId?.id || a.doctorId, label: `${formattedName}${spec}` };
+                })
               ]}
               disabled={!selectedClinicId}
               error={errors.doctorId}
@@ -662,56 +694,79 @@ export default function BillingPage() {
             />
           </div>
 
-          {/* Step 3: Items Builder */}
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold text-text">Invoice Items</h3>
-              <Button type="button" size="xs" variant="outline" onClick={addInvoiceItem}>+ Add Custom Charge</Button>
+          {/* Step 3: Invoice Line Items Table */}
+          <div className="space-y-2 border-b border-border pb-4">
+            <div className="flex justify-between items-center mb-1">
+              <h3 className="text-sm font-bold text-text">3. Invoice Line Items</h3>
+              <Button type="button" size="xs" variant="outline" onClick={addInvoiceItem} className="cursor-pointer font-semibold">
+                + Add Custom Charge
+              </Button>
             </div>
 
-            <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              {/* Table Column Headers */}
+              <div className="flex gap-2 text-xs font-semibold text-text-muted px-1">
+                <div className="flex-1">Item Description / Charge *</div>
+                <div className="w-24 text-right">Amount (₹) *</div>
+                <div className="w-20 text-right">Qty *</div>
+                <div className="w-9"></div> {/* Action Spacer Column */}
+              </div>
+
               {invoiceItems.map((item, idx) => (
-                <div key={idx} className="flex gap-2.5 items-end">
+                <div key={idx} className="flex gap-2 items-start">
                   <div className="flex-1">
                     <Input
-                      label={idx === 0 ? "Base Charge *" : "Item Description *"}
                       value={item.description}
                       onChange={(e) => updateInvoiceItemField(idx, "description", e.target.value)}
                       disabled={idx === 0}
                       error={errors[`itemDescription_${idx}`]}
+                      placeholder="Charge description..."
                       required
                     />
                   </div>
                   <div className="w-24">
                     <Input
-                      label="Amount *"
                       type="number"
                       value={item.amount || ""}
                       onChange={(e) => updateInvoiceItemField(idx, "amount", e.target.value)}
                       error={errors[`itemAmount_${idx}`]}
+                      placeholder="0.00"
                       required
                     />
                   </div>
-                  <div className="w-16">
+                  <div className="w-20">
                     <Input
-                      label="Qty *"
                       type="number"
                       value={item.quantity || ""}
                       onChange={(e) => updateInvoiceItemField(idx, "quantity", e.target.value)}
                       error={errors[`itemQuantity_${idx}`]}
+                      placeholder="1"
                       required
                     />
                   </div>
-                  {idx > 0 && (
-                    <Button type="button" size="sm" variant="danger" className="mb-0.5" onClick={() => removeInvoiceItem(idx)}>✕</Button>
-                  )}
+                  <div className="w-9 flex justify-center pt-1.5 shrink-0">
+                    {idx > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => removeInvoiceItem(idx)}
+                        className="h-8 w-8 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center transition-colors cursor-pointer"
+                        title="Remove Line Item"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    ) : (
+                      <div className="w-8 h-8" />
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Totals Summary */}
-          <div className="grid grid-cols-2 gap-4 border-t border-border pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 border-t border-border pt-4">
             <div className="space-y-3">
               <Input
                 label="Add Tax (₹)"
