@@ -10,11 +10,12 @@ import {
 import { useR2Upload } from "@/hooks/useR2Upload";
 import { notificationService, type SmtpConfig } from "@/services/notificationService";
 import { aiAdminService } from "@/services/aiAdmin.service";
+import BillingSettingsPage from "./billing/page";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const PHONE_REGEX = /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s./0-9]*$/;
 
-type Tab = "organization" | "notifications" | "ai";
+type Tab = "organization" | "notifications" | "ai" | "billing";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   {
@@ -41,6 +42,15 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2" />
+      </svg>
+    ),
+  },
+  {
+    id: "billing",
+    label: "Commercial Billing & Subscription",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
       </svg>
     ),
   },
@@ -494,7 +504,7 @@ export default function SettingsPage() {
       {/* Top Banner */}
       <div className="bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
         <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Settings</h1>
-        <p className="text-xs text-text-muted mt-0.5">Manage organization details, notification preferences, email gateway, and AI configuration.</p>
+        <p className="text-xs text-text-muted mt-0.5">Manage organization details, notification preferences, email gateway, commercial billing, and AI configuration.</p>
       </div>
 
       {/* Tab Navigation */}
@@ -519,6 +529,7 @@ export default function SettingsPage() {
       {activeTab === "organization" && <OrganizationTab />}
       {activeTab === "notifications" && <NotificationsTab />}
       {activeTab === "ai" && <AISettingsTab />}
+      {activeTab === "billing" && <BillingSettingsPage />}
     </div>
   );
 }
