@@ -71,6 +71,55 @@ export default function PharmacyPage() {
   const [dispenseItems, setDispenseItems] = useState<Array<{ medicineId: string; quantity: number }>>([]);
   const [submittingDispense, setSubmittingDispense] = useState(false);
 
+  // Multi-Batch Modal State
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [batchTargetMed, setBatchTargetMed] = useState<MedicineType | null>(null);
+  const [newBatchNum, setNewBatchNum] = useState("");
+  const [newBatchExpiry, setNewBatchExpiry] = useState("");
+  const [newBatchQty, setNewBatchQty] = useState<number>(50);
+  const [newBatchCost, setNewBatchCost] = useState<number>(0);
+  const [newBatchPrice, setNewBatchPrice] = useState<number>(0);
+  const [submittingBatch, setSubmittingBatch] = useState(false);
+
+  const openAddBatchModal = (med: MedicineType) => {
+    setBatchTargetMed(med);
+    setNewBatchNum("");
+    setNewBatchExpiry("");
+    setNewBatchQty(50);
+    setNewBatchCost(med.costPrice || 0);
+    setNewBatchPrice(med.price || 0);
+    setIsBatchModalOpen(true);
+  };
+
+  const handleAddBatchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!batchTargetMed || !newBatchNum || !newBatchExpiry || newBatchQty <= 0) {
+      toast({ title: "Validation Error", description: "Batch number, expiry date, and quantity are required", variant: "error" });
+      return;
+    }
+
+    setSubmittingBatch(true);
+    try {
+      await api.post("/pharmacy/batches", {
+        medicineId: batchTargetMed.id,
+        clinicId: selectedClinicId || batchTargetMed.clinicId,
+        batchNumber: newBatchNum.trim(),
+        expiryDate: newBatchExpiry,
+        quantity: newBatchQty,
+        purchaseCost: newBatchCost,
+        sellingPrice: newBatchPrice,
+      });
+
+      toast({ title: "Batch Stock Added! 📦", description: `Added ${newBatchQty} units of Batch #${newBatchNum}`, variant: "success" });
+      setIsBatchModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast({ title: "Batch Error", description: err.response?.data?.message || "Failed to add batch", variant: "error" });
+    } finally {
+      setSubmittingBatch(false);
+    }
+  };
+
   const validateMedField = (field: string, value: any, currentCost = costPrice, currentRetail = retailPrice) => {
     let error = "";
     if (field === "name" && !String(value).trim()) {
@@ -407,7 +456,7 @@ export default function PharmacyPage() {
                     { header: "Expiry Date", key: "expiry" },
                     { header: "Retail Price", key: "price" },
                     { header: "Stock count", key: "stock" },
-                    { header: "Actions", key: "actions" }
+                    { header: "Actions", key: "actions", align: "right" }
                   ]}
                   data={medicines.map(med => {
                     const isExpired = new Date(med.expiryDate) < new Date();
@@ -433,38 +482,44 @@ export default function PharmacyPage() {
                         </div>
                       ),
                       actions: (
-                        <Dropdown
-                          align="right"
-                          trigger={
-                            <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
-                              <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                              </svg>
-                            </Button>
-                          }
-                          items={[
-                            {
-                              label: "Edit Stock",
-                              onClick: () => {
-                                setEditingMedId(med.id);
-                                setMedName(med.name);
-                                setGenericName(med.genericName);
-                                setStockQuantity(med.stockQuantity);
-                                setRetailPrice(med.price);
-                                setCostPrice(med.costPrice);
-                                setExpiryDate(new Date(med.expiryDate).toISOString().split("T")[0]);
-                                setBatchNumber(med.batchNumber);
-                                setMedErrors({});
-                                setIsMedModalOpen(true);
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Dropdown
+                            align="right"
+                            trigger={
+                              <Button size="sm" variant="outline" className="h-8 w-8 p-0 flex items-center justify-center rounded-lg border-border hover:bg-surface-hover hover:text-text cursor-pointer transition-colors shrink-0" title="Row Actions">
+                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                </svg>
+                              </Button>
+                            }
+                            items={[
+                              {
+                                label: "+ Add Batch Stock",
+                                onClick: () => openAddBatchModal(med),
                               },
-                            },
-                            {
-                              label: "Delete Medicine",
-                              danger: true,
-                              onClick: () => setDeletingMedId(med.id),
-                            },
-                          ]}
-                        />
+                              {
+                                label: "Edit Stock",
+                                onClick: () => {
+                                  setEditingMedId(med.id);
+                                  setMedName(med.name);
+                                  setGenericName(med.genericName);
+                                  setStockQuantity(med.stockQuantity);
+                                  setRetailPrice(med.price);
+                                  setCostPrice(med.costPrice);
+                                  setExpiryDate(new Date(med.expiryDate).toISOString().split("T")[0]);
+                                  setBatchNumber(med.batchNumber);
+                                  setMedErrors({});
+                                  setIsMedModalOpen(true);
+                                },
+                              },
+                              {
+                                label: "Delete Medicine",
+                                danger: true,
+                                onClick: () => setDeletingMedId(med.id),
+                              },
+                            ]}
+                          />
+                        </div>
                       )
                     };
                   })}
@@ -484,7 +539,7 @@ export default function PharmacyPage() {
                     { header: "Attending Doctor", key: "doctor" },
                     { header: "Visit Time", key: "time" },
                     { header: "Prescription", key: "rx" },
-                    { header: "Action", key: "action" }
+                    { header: "Actions", key: "action", align: "right" }
                   ]}
                   data={completedAppointments.map(appt => ({
                     id: appt.id,
@@ -510,13 +565,16 @@ export default function PharmacyPage() {
                       </div>
                     ),
                     action: (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => openDispenseModal(appt)}
-                      >
-                        Dispense & Bill
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => openDispenseModal(appt)}
+                          className="shrink-0 font-bold"
+                        >
+                          Dispense & Bill
+                        </Button>
+                      </div>
                     )
                   }))}
                   emptyMessage="No completed prescriptions awaiting dispensing at this clinic location."
@@ -750,6 +808,71 @@ export default function PharmacyPage() {
         variant="danger"
         confirmLabel="Delete Medicine"
       />
+
+      {/* ── Add Batch Stock Modal ─────────────────────────────────────── */}
+      <Modal open={isBatchModalOpen} onClose={() => setIsBatchModalOpen(false)} title={`Add Batch Stock: ${batchTargetMed?.name || ""}`} size="md">
+        <form onSubmit={handleAddBatchSubmit} className="space-y-4">
+          <div className="p-3 bg-surface-alt rounded-lg border border-border text-xs">
+            <p className="font-bold text-text">Medicine: {batchTargetMed?.name}</p>
+            <p className="text-text-secondary">Generic: {batchTargetMed?.genericName}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Batch Number *"
+              placeholder="e.g. BATCH-2026-09"
+              value={newBatchNum}
+              onChange={(e) => setNewBatchNum(e.target.value)}
+              required
+            />
+            <Input
+              label="Expiry Date *"
+              type="date"
+              value={newBatchExpiry}
+              onChange={(e) => setNewBatchExpiry(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <Input
+              label="Quantity *"
+              type="number"
+              min="1"
+              value={newBatchQty}
+              onChange={(e) => setNewBatchQty(Number(e.target.value))}
+              required
+            />
+            <Input
+              label="Purchase Cost (₹) *"
+              type="number"
+              min="0"
+              step="0.01"
+              value={newBatchCost}
+              onChange={(e) => setNewBatchCost(Number(e.target.value))}
+              required
+            />
+            <Input
+              label="Selling Price (₹) *"
+              type="number"
+              min="0"
+              step="0.01"
+              value={newBatchPrice}
+              onChange={(e) => setNewBatchPrice(Number(e.target.value))}
+              required
+            />
+          </div>
+
+          <div className="flex justify-between border-t border-border pt-4 mt-4">
+            <Button variant="outline" type="button" onClick={() => setIsBatchModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={submittingBatch}>
+              + Add Batch Stock
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

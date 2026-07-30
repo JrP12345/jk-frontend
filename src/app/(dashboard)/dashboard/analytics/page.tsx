@@ -45,17 +45,20 @@ export default function AnalyticsPage() {
 
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [qualityMetrics, setQualityMetrics] = useState<any | null>(null);
+  const [nabhKpis, setNabhKpis] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const [execData, qData] = await Promise.all([
+      const [execData, qData, nabhData] = await Promise.all([
         AnalyticsService.getExecutiveAnalytics(),
         AnalyticsService.getQualityMetrics().catch(() => null),
+        AnalyticsService.getNabhKpis().catch(() => null),
       ]);
       setData(execData);
       setQualityMetrics(qData);
+      setNabhKpis(nabhData);
     } catch (err) {
       toast({
         title: "Error",
@@ -260,6 +263,38 @@ export default function AnalyticsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* NABH Hospital Accreditation Quality Standards Card */}
+          {nabhKpis && (
+            <Card>
+              <CardHeader className="py-4 px-5 border-b border-border flex justify-between items-center">
+                <CardTitle className="text-base font-bold text-text">NABH Quality Standards (5th Ed.)</CardTitle>
+                <Badge variant="primary" className="text-[10px]">Accreditation Ready</Badge>
+              </CardHeader>
+              <CardContent className="p-5 space-y-3 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-text-muted">Average Length of Stay (ALOS):</span>
+                  <span className="font-bold text-text">{nabhKpis.indicators?.averageLengthOfStayDays} Days</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-text-muted">30-Day Readmission Rate:</span>
+                  <span className="font-bold text-primary-600">{nabhKpis.indicators?.readmissionRate30DaysPercent}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-text-muted">MAR Medication Safety:</span>
+                  <span className="font-bold text-green-600">{nabhKpis.indicators?.marMedicationCompliancePercent}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-text-muted">HAI Rate (per 1000 days):</span>
+                  <span className="font-bold text-amber-600">{nabhKpis.indicators?.hospitalAcquiredInfectionRatePer1000}</span>
+                </div>
+                <div className="flex justify-between items-center border-t border-border pt-2">
+                  <span className="font-semibold text-text">Patient Satisfaction Index:</span>
+                  <span className="font-extrabold text-green-600">{nabhKpis.indicators?.patientSatisfactionScorePercent}%</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

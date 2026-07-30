@@ -395,33 +395,35 @@ export default function OrganizationsPage() {
     },
     {
       header: "Actions",
+      align: "right",
       accessor: (org) => {
         const isCurrentOrg = user?.organization_id === org.id;
         const isInactive = org.status === "inactive" || org.isActive === false;
 
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-1.5">
             <Button
               variant={isCurrentOrg ? "secondary" : "outline"}
               size="sm"
               loading={switchingId === org.id}
               onClick={() => handleEnterWorkspace(org.id, org.name)}
-              className="text-xs font-semibold rounded-xl cursor-pointer"
+              className="text-xs font-semibold rounded-lg cursor-pointer shrink-0"
             >
               {isCurrentOrg ? "Active Workspace" : "Enter Workspace →"}
             </Button>
             <Dropdown
               align="right"
               trigger={
-                <button
-                  type="button"
-                  className="p-1.5 rounded-lg border border-border text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
-                  title="Actions"
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 p-0 flex items-center justify-center rounded-lg border-border hover:bg-surface-hover hover:text-text cursor-pointer transition-colors shrink-0"
+                  title="Row Actions"
                 >
-                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                   </svg>
-                </button>
+                </Button>
               }
               items={[
                 {

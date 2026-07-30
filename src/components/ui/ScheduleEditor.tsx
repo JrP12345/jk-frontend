@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { cn } from "./utils";
 import Select from "./Select";
 
@@ -68,12 +68,13 @@ interface ScheduleEditorProps {
   className?: string;
 }
 
-export default function ScheduleEditor({
+const ScheduleEditor = memo(function ScheduleEditor({
   label,
   value,
   onChange,
   className,
 }: ScheduleEditorProps) {
+
   const [schedule, setSchedule] = useState<ScheduleData>(() => {
     try {
       return value ? JSON.parse(value) : {};
@@ -379,4 +380,7 @@ export default function ScheduleEditor({
       )}
     </div>
   );
-}
+});
+
+export default ScheduleEditor;
+

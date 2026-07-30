@@ -1,11 +1,11 @@
 "use client";
 
-import { type ReactNode, useState, useRef, useEffect, useLayoutEffect } from "react";
+import { type ReactNode, useState, useRef, useEffect, useLayoutEffect, memo } from "react";
 import { cn } from "./utils";
 
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-interface Tab {
+export interface Tab {
   id: string;
   label: string;
   icon?: ReactNode;
@@ -14,7 +14,7 @@ interface Tab {
   content?: ReactNode;
 }
 
-interface TabsProps {
+export interface TabsProps {
   tabs: Tab[];
   defaultTab?: string;
   activeTab?: string;
@@ -23,11 +23,18 @@ interface TabsProps {
   className?: string;
 }
 
-export default function Tabs({ tabs, defaultTab, activeTab: controlledActiveTab, variant = "underline", onChange, className = "" }: TabsProps) {
+const Tabs = memo(function Tabs({
+  tabs,
+  defaultTab,
+  activeTab: controlledActiveTab,
+  variant = "underline",
+  onChange,
+  className = "",
+}: TabsProps) {
   const [internalActive, setInternalActive] = useState(defaultTab || tabs[0]?.id);
   const active = controlledActiveTab !== undefined ? controlledActiveTab : internalActive;
   const [sliderStyle, setSliderStyle] = useState<React.CSSProperties>({ left: 0, width: 0, opacity: 0 });
-  
+
   const containerRef = useRef<HTMLDivElement>(null);
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
 
@@ -57,20 +64,44 @@ export default function Tabs({ tabs, defaultTab, activeTab: controlledActiveTab,
     return () => window.removeEventListener("resize", updateSlider);
   }, [active, variant, tabs]);
 
+  const enabledTabs = tabs.filter((t) => !t.disabled);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (enabledTabs.length === 0) return;
+    const currentIndex = enabledTabs.findIndex((t) => t.id === active);
+
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      const nextTab = enabledTabs[(currentIndex + 1) % enabledTabs.length];
+      if (nextTab) handleChange(nextTab.id);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      const prevTab = enabledTabs[(currentIndex - 1 + enabledTabs.length) % enabledTabs.length];
+      if (prevTab) handleChange(prevTab.id);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      if (enabledTabs[0]) handleChange(enabledTabs[0].id);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      if (enabledTabs[enabledTabs.length - 1]) handleChange(enabledTabs[enabledTabs.length - 1].id);
+    }
+  };
+
   return (
     <div className={className}>
       <div
         ref={containerRef}
         role="tablist"
+        onKeyDown={handleKeyDown}
         className={cn(
-          "relative flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth max-w-full",
-          variant === "underline" ? "border-b border-border pb-px" : "bg-surface-alt rounded-lg p-1",
+          "relative flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth max-w-full select-none touch-manipulation",
+          variant === "underline" ? "border-b border-border pb-px" : "bg-surface-alt rounded-xl p-1"
         )}
       >
         {/* Underline Slider */}
         {variant === "underline" && (
           <div
-            className="absolute bottom-0 h-0.5 bg-primary-500 transition-all duration-300 ease-out-expo"
+            className="absolute bottom-0 h-0.5 bg-primary-500 transform-gpu transition-all duration-300 ease-spring"
             style={{
               left: sliderStyle.left,
               width: sliderStyle.width,
@@ -82,7 +113,7 @@ export default function Tabs({ tabs, defaultTab, activeTab: controlledActiveTab,
         {/* Pills Slider */}
         {variant === "pills" && (
           <div
-            className="absolute bg-surface rounded-md shadow-sm transition-all duration-300 ease-out-expo"
+            className="absolute bg-surface rounded-lg shadow-xs transform-gpu transition-all duration-300 ease-spring"
             style={{
               top: "4px",
               bottom: "4px",
@@ -99,27 +130,32 @@ export default function Tabs({ tabs, defaultTab, activeTab: controlledActiveTab,
             <button
               key={tab.id}
               ref={isActive ? activeTabRef : null}
+              id={`tab-${tab.id}`}
               role="tab"
               type="button"
               aria-selected={isActive}
+              aria-controls={`tabpanel-${tab.id}`}
+              tabIndex={isActive ? 0 : -1}
               disabled={tab.disabled}
               onClick={() => handleChange(tab.id)}
               className={cn(
-                "relative z-10 flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium cursor-pointer transition-colors duration-300 disabled:opacity-40 disabled:cursor-not-allowed select-none active:scale-[0.98] shrink-0 whitespace-nowrap",
+                "relative z-10 flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium cursor-pointer transform-gpu transition-all duration-200 ease-smooth disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] shrink-0 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg min-h-[36px] sm:min-h-0",
                 variant === "underline"
-                  ? cn("-mb-px", isActive ? "text-primary-600 font-bold" : "text-text-secondary hover:text-text")
-                  : cn("rounded-md", isActive ? "text-text font-bold" : "text-text-secondary hover:text-text"),
+                  ? cn("-mb-px", isActive ? "text-primary-600 dark:text-primary-400 font-bold" : "text-text-secondary hover:text-text")
+                  : cn(isActive ? "text-text font-bold" : "text-text-secondary hover:text-text")
               )}
             >
               {tab.icon && <span className="[&>svg]:h-4 [&>svg]:w-4 shrink-0">{tab.icon}</span>}
               <span>{tab.label}</span>
               {tab.badge !== undefined && (
-                <span className={cn(
-                  "ml-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-full leading-none",
-                  isActive 
-                    ? "bg-primary-100 text-primary-700 dark:bg-primary-950/40 dark:text-primary-400" 
-                    : "bg-surface-alt text-text-muted",
-                )}>
+                <span
+                  className={cn(
+                    "ml-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-full leading-none transition-colors duration-200",
+                    isActive
+                      ? "bg-primary-500/10 text-primary-600 dark:text-primary-400"
+                      : "bg-surface-alt text-text-muted"
+                  )}
+                >
                   {tab.badge}
                 </span>
               )}
@@ -127,8 +163,22 @@ export default function Tabs({ tabs, defaultTab, activeTab: controlledActiveTab,
           );
         })}
       </div>
-      <div role="tabpanel" className="pt-4 animate-fade-up">{activeTab?.content}</div>
+      {activeTab?.content && (
+        <div
+          id={`tabpanel-${activeTab.id}`}
+          role="tabpanel"
+          aria-labelledby={`tab-${activeTab.id}`}
+          tabIndex={0}
+          className="pt-4 animate-fade-in transform-gpu transition-all duration-250 ease-smooth focus-visible:outline-none"
+        >
+          {activeTab.content}
+        </div>
+      )}
     </div>
   );
-}
+});
+
+export default Tabs;
+
+
 

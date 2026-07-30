@@ -93,6 +93,7 @@ export default function Table<T extends Record<string, any>>({
   pagination = true,
   rowsPerPageOptions = [10, 25, 50, 100],
   defaultRowsPerPage = 10,
+  onRowClick,
 }: TableProps<T>) {
   // State
   const [density, setDensity] = useState<TableDensity>(initialDensity);
@@ -406,7 +407,7 @@ export default function Table<T extends Record<string, any>>({
                 {visibleColumns.map((col, idx) => {
                   const colKey = col.key || (typeof col.accessor === "string" ? col.accessor : col.header) || String(idx);
                   const isActionCol = colKey === "actions" || colKey === "action" || col.header.toLowerCase() === "actions" || col.header.toLowerCase() === "action";
-                  const effectiveAlign = isActionCol ? "center" : col.align;
+                  const effectiveAlign = col.align || (isActionCol ? "right" : "left");
                   const alignClass = effectiveAlign === "center" ? "text-center" : effectiveAlign === "right" ? "text-right" : "text-left";
                   const isLast = idx === visibleColumns.length - 1;
 
@@ -497,8 +498,18 @@ export default function Table<T extends Record<string, any>>({
                   return (
                     <tr
                       key={String(val ?? i)}
+                      tabIndex={onRowClick ? 0 : undefined}
+                      role={onRowClick ? "button" : undefined}
+                      onClick={onRowClick ? () => onRowClick(row) : undefined}
+                      onKeyDown={onRowClick ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onRowClick(row);
+                        }
+                      } : undefined}
                       className={cn(
-                        "transition-colors duration-150 border-b border-border/40",
+                        "transform-gpu transition-all duration-200 ease-smooth border-b border-border/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset",
+                        onRowClick && "cursor-pointer",
                         isSelected ? "bg-primary-500/10 text-primary-400 font-medium" : "hover:bg-surface-hover/50"
                       )}
                     >
@@ -513,7 +524,7 @@ export default function Table<T extends Record<string, any>>({
                       {visibleColumns.map((col, colIdx) => {
                         const colKey = col.key || (typeof col.accessor === "string" ? col.accessor : col.header) || String(colIdx);
                         const isActionCol = colKey === "actions" || colKey === "action" || col.header.toLowerCase() === "actions" || col.header.toLowerCase() === "action";
-                        const effectiveAlign = isActionCol ? "center" : col.align;
+                        const effectiveAlign = col.align || (isActionCol ? "right" : "left");
                         const alignClass = effectiveAlign === "center" ? "text-center" : effectiveAlign === "right" ? "text-right" : "text-left";
                         const isLast = colIdx === visibleColumns.length - 1;
                         const cellContent = col.render

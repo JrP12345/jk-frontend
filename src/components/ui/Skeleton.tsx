@@ -1,12 +1,14 @@
 "use client";
 
+import { memo } from "react";
 import { cn } from "./utils";
 
-interface SkeletonProps {
+export interface SkeletonProps {
   width?: string;
   height?: string;
   rounded?: "sm" | "md" | "lg" | "xl" | "full";
   className?: string;
+  style?: React.CSSProperties;
 }
 
 const roundedMap = {
@@ -17,25 +19,29 @@ const roundedMap = {
   full: "rounded-full",
 };
 
-export default function Skeleton({
+const Skeleton = memo(function Skeleton({
   width = "100%",
   height = "1rem",
   rounded = "lg",
   className = "",
+  style,
 }: SkeletonProps) {
   return (
     <div
-      style={{ width, height }}
+      aria-hidden="true"
+      style={{ width, height, ...style }}
       className={cn(
-        "skeleton-shimmer border border-border/20 shrink-0",
+        "skeleton-shimmer border border-border/20 shrink-0 select-none",
         roundedMap[rounded],
         className
       )}
     />
   );
-}
+});
 
-export function SkeletonText({
+export default Skeleton;
+
+export const SkeletonText = memo(function SkeletonText({
   lines = 3,
   className = "",
 }: {
@@ -43,7 +49,7 @@ export function SkeletonText({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col gap-2.5", className)}>
+    <div aria-hidden="true" className={cn("flex flex-col gap-2.5", className)}>
       {Array.from({ length: lines }).map((_, i) => (
         <Skeleton
           key={i}
@@ -54,11 +60,11 @@ export function SkeletonText({
       ))}
     </div>
   );
-}
+});
 
-export function SkeletonCard({ className = "" }: { className?: string }) {
+export const SkeletonCard = memo(function SkeletonCard({ className = "" }: { className?: string }) {
   return (
-    <div className={cn("p-5 bg-surface border border-border/80 rounded-2xl shadow-xs space-y-4", className)}>
+    <div aria-hidden="true" className={cn("p-5 bg-surface border border-border/80 rounded-2xl shadow-xs space-y-4", className)}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 flex-1">
           <Skeleton width="2.5rem" height="2.5rem" rounded="full" />
@@ -72,11 +78,11 @@ export function SkeletonCard({ className = "" }: { className?: string }) {
       <SkeletonText lines={2} />
     </div>
   );
-}
+});
 
 const COL_WIDTHS = ["65%", "50%", "75%", "60%", "40%"];
 
-export function SkeletonTable({
+export const SkeletonTable = memo(function SkeletonTable({
   rows = 5,
   cols = 4,
   className = "",
@@ -86,7 +92,7 @@ export function SkeletonTable({
   className?: string;
 }) {
   return (
-    <div className={cn("w-full rounded-2xl border border-border/80 bg-surface overflow-hidden shadow-xs", className)}>
+    <div aria-hidden="true" className={cn("w-full rounded-2xl border border-border/80 bg-surface overflow-hidden shadow-xs", className)}>
       {/* Table Header Placeholder */}
       <div className="flex gap-4 px-5 py-3.5 bg-surface-alt/60 border-b border-border/80 items-center">
         <Skeleton width="1.25rem" height="1.25rem" rounded="md" />
@@ -113,4 +119,6 @@ export function SkeletonTable({
       ))}
     </div>
   );
-}
+});
+
+

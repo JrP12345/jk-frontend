@@ -184,6 +184,37 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
       initialParsed.dateObj || initialRange.start || new Date()
     );
     const [viewMode, setViewMode] = useState<"days" | "months" | "years">("days");
+    const [timeScreenOpen, setTimeScreenOpen] = useState(false);
+
+    const hourColRef = useRef<HTMLDivElement>(null);
+    const minColRef = useRef<HTMLDivElement>(null);
+    const periodColRef = useRef<HTMLDivElement>(null);
+
+    // Initial position centering when time screen opens
+    useEffect(() => {
+      if (timeScreenOpen) {
+        const timer = setTimeout(() => {
+          const [hStr, mStr] = (selectedTime || "09:00").split(":");
+          const h24 = parseInt(hStr || "9", 10);
+          const mins = parseInt(mStr || "0", 10);
+          const isPM = h24 >= 12;
+          const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+
+          if (hourColRef.current) {
+            hourColRef.current.scrollTop = (h12 - 1) * 36;
+          }
+          if (minColRef.current) {
+            const minOptions = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+            const minIdx = minOptions.findIndex((m) => Math.abs(mins - m) < 3);
+            if (minIdx !== -1) minColRef.current.scrollTop = minIdx * 36;
+          }
+          if (periodColRef.current) {
+            periodColRef.current.scrollTop = (isPM ? 1 : 0) * 36;
+          }
+        }, 30);
+        return () => clearTimeout(timer);
+      }
+    }, [timeScreenOpen]);
 
     // Sync controlled props
     useEffect(() => {
@@ -546,236 +577,421 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             }}
             className="w-72 rounded-2xl border border-border bg-surface-alt p-4 shadow-2xl backdrop-blur-xl bg-surface-alt/95 animate-in fade-in zoom-in-95 duration-150"
           >
-            {/* Preset Shortcuts */}
-            {renderPresets && (
-              <div className="grid grid-cols-3 gap-1.5 mb-3 pb-2.5 border-b border-border/60 text-[10px]">
-                <button
-                  type="button"
-                  onClick={() => handlePreset("today")}
-                  className="px-1.5 py-1 rounded-md bg-surface border border-border/60 text-text hover:bg-surface-hover transition-colors font-medium text-center truncate cursor-pointer"
-                >
-                  Today
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePreset("yesterday")}
-                  className="px-1.5 py-1 rounded-md bg-surface border border-border/60 text-text hover:bg-surface-hover transition-colors font-medium text-center truncate cursor-pointer"
-                >
-                  Yesterday
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePreset("last7Days")}
-                  className="px-1.5 py-1 rounded-md bg-surface border border-border/60 text-text hover:bg-surface-hover transition-colors font-medium text-center truncate cursor-pointer"
-                >
-                  Last 7D
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePreset("last30Days")}
-                  className="px-1.5 py-1 rounded-md bg-surface border border-border/60 text-text hover:bg-surface-hover transition-colors font-medium text-center truncate cursor-pointer"
-                >
-                  Last 30D
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePreset("thisMonth")}
-                  className="px-1.5 py-1 rounded-md bg-surface border border-border/60 text-text hover:bg-surface-hover transition-colors font-medium text-center truncate cursor-pointer"
-                >
-                  This Month
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePreset("thisYear")}
-                  className="px-1.5 py-1 rounded-md bg-surface border border-border/60 text-text hover:bg-surface-hover transition-colors font-medium text-center truncate cursor-pointer"
-                >
-                  This Year
-                </button>
-              </div>
-            )}
+            {mode === "datetime" && timeScreenOpen ? (
+              /* SCREEN MODE 2: WHEEL TIME PICKER SCREEN (Matching Reference Image) */
+              (() => {
+                const [hStr, mStr] = (selectedTime || "09:00").split(":");
+                const h24 = parseInt(hStr || "9", 10);
+                const mins = parseInt(mStr || "0", 10);
+                const isPM = h24 >= 12;
+                const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
 
-            {/* Month/Year Navigation Bar */}
-            <div className="flex items-center justify-between mb-3 gap-1">
-              <button
-                type="button"
-                onClick={handlePrevMonth}
-                className="p-1 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text transition-colors cursor-pointer shrink-0"
-                aria-label="Previous Month"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
+                const setTimeVal = (newH12: number, newMins: number, pm: boolean) => {
+                  let targetH24 = newH12 % 12;
+                  if (pm) targetH24 += 12;
+                  const cleanH = String(targetH24).padStart(2, "0");
+                  const cleanM = String(newMins).padStart(2, "0");
+                  handleTimeChange(`${cleanH}:${cleanM}`);
+                };
 
-              <div className="flex items-center gap-1 font-bold text-xs text-text">
-                <button
-                  type="button"
-                  onClick={() => setViewMode(viewMode === "months" ? "days" : "months")}
-                  className={cn(
-                    "px-2 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold",
-                    viewMode === "months"
-                      ? "bg-primary-600 border-primary-600 text-white shadow-xs"
-                      : "bg-surface border-border/80 text-text hover:bg-surface-hover hover:border-text-secondary"
-                  )}
-                >
-                  <span>{MONTH_NAMES[viewMonth]}</span>
-                  <svg className="h-3 w-3 shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                const displayFormatted12 = `${String(h12).padStart(2, "0")}:${String(mins).padStart(2, "0")} ${isPM ? "PM" : "AM"}`;
 
-                <button
-                  type="button"
-                  onClick={() => setViewMode(viewMode === "years" ? "days" : "years")}
-                  className={cn(
-                    "px-2 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold",
-                    viewMode === "years"
-                      ? "bg-primary-600 border-primary-600 text-white shadow-xs"
-                      : "bg-surface border-border/80 text-text hover:bg-surface-hover hover:border-text-secondary"
-                  )}
-                >
-                  <span>{viewYear}</span>
-                  <svg className="h-3 w-3 shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleNextMonth}
-                className="p-1 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text transition-colors cursor-pointer shrink-0"
-                aria-label="Next Month"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-
-            {/* MODE 1: MONTH SELECTION GRID */}
-            {viewMode === "months" && (
-              <div className="grid grid-cols-3 gap-2 py-2 animate-in fade-in zoom-in-95 duration-150">
-                {MONTH_NAMES.map((mName, idx) => {
-                  const isCurrentMonth = idx === viewMonth;
-                  return (
-                    <button
-                      key={mName}
-                      type="button"
-                      onClick={() => {
-                        setViewDate(new Date(viewYear, idx, 1));
-                        setViewMode("days");
-                      }}
-                      className={cn(
-                        "py-2 px-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer text-center",
-                        isCurrentMonth
-                          ? "bg-primary-600 border-primary-600 text-white font-bold shadow-sm scale-105"
-                          : "bg-surface border-border/60 text-text hover:bg-surface-hover hover:border-text-secondary"
-                      )}
-                    >
-                      {mName.slice(0, 3)}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* MODE 2: YEAR SELECTION GRID */}
-            {viewMode === "years" && (
-              <div className="grid grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1 py-1 animate-in fade-in zoom-in-95 duration-150">
-                {Array.from({ length: 110 }, (_, i) => new Date().getFullYear() - 90 + i).map((yr) => {
-                  const isCurrentYear = yr === viewYear;
-                  return (
-                    <button
-                      key={yr}
-                      type="button"
-                      onClick={() => {
-                        setViewDate(new Date(yr, viewMonth, 1));
-                        setViewMode("days");
-                      }}
-                      className={cn(
-                        "py-1.5 px-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-center",
-                        isCurrentYear
-                          ? "bg-primary-600 border-primary-600 text-white font-bold shadow-sm scale-105"
-                          : "bg-surface border-border/60 text-text hover:bg-surface-hover hover:border-text-secondary"
-                      )}
-                    >
-                      {yr}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* MODE 3: STANDARD CALENDAR DAYS GRID */}
-            {viewMode === "days" && (
-              <>
-                {/* Day Names Header */}
-                <div className="grid grid-cols-7 text-center text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">
-                  {DAY_NAMES.map((name) => (
-                    <div key={name} className="py-1">{name}</div>
-                  ))}
-                </div>
-
-                {/* Calendar Days Grid */}
-                <div className="grid grid-cols-7 gap-y-1 gap-x-0 text-xs">
-                  {/* Prev Month Days */}
-                  {Array.from({ length: firstDayOfMonth }).map((_, i) => (
-                    <div
-                      key={`prev-${i}`}
-                      className="h-8 flex items-center justify-center text-text-muted/30 select-none text-xs font-normal"
-                    >
-                      {daysInPrevMonth - firstDayOfMonth + i + 1}
-                    </div>
-                  ))}
-
-                  {/* Current Month Days */}
-                  {Array.from({ length: daysInMonth }).map((_, i) => {
-                    const day = i + 1;
-                    const disabledDay = isDateDisabled(day);
-                    const todayDay = isToday(day);
-                    const singleSelected = isSingleSelected(day);
-                    const isStart = isRangeBoundary(day, "start");
-                    const isEnd = isRangeBoundary(day, "end");
-                    const isMiddle = isRangeMiddle(day);
-
-                    return (
+                return (
+                  <div className="space-y-3 animate-in fade-in zoom-in-95 duration-200 ease-out transform-gpu py-1">
+                    {/* Header: < Back button and Set Time badge */}
+                    <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2.5">
                       <button
-                        key={`day-${day}`}
                         type="button"
-                        disabled={disabledDay}
-                        onClick={() => handleSelectDay(day)}
-                        onMouseEnter={() => mode === "range" && rangeStart && !rangeEnd && setHoverDate(new Date(viewYear, viewMonth, day))}
-                        className={cn(
-                          "h-8 w-full flex items-center justify-center font-medium text-xs transition-all relative cursor-pointer",
-                          disabledDay && "opacity-30 cursor-not-allowed text-text-muted",
-                          todayDay && !singleSelected && !isStart && !isEnd && "border border-primary-500 text-primary-500 font-bold rounded-lg",
-                          singleSelected && "bg-primary-600 text-white font-bold rounded-lg shadow-sm scale-105 z-10",
-                          isStart && "bg-primary-600 text-white font-bold rounded-l-lg z-10",
-                          isEnd && "bg-primary-600 text-white font-bold rounded-r-lg z-10",
-                          isMiddle && "bg-primary-500/20 text-primary-400 font-semibold rounded-none",
-                          !singleSelected && !isStart && !isEnd && !isMiddle && !disabledDay && "hover:bg-surface-hover text-text rounded-lg"
-                        )}
+                        onClick={() => setTimeScreenOpen(false)}
+                        className="px-2.5 py-1 bg-surface border border-border rounded-xl text-xs font-bold text-text hover:bg-surface-hover hover:-translate-x-0.5 active:scale-95 transition-all duration-150 cursor-pointer flex items-center gap-1.5 shadow-xs"
                       >
-                        {day}
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                        </svg>
+                        <span>Back</span>
                       </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
+                      <span className="px-3 py-1 rounded-xl bg-primary/15 text-primary-400 border border-primary/30 font-mono font-extrabold text-xs animate-in fade-in duration-200">
+                        Set: {displayFormatted12}
+                      </span>
+                    </div>
 
-            {/* DateTime Mode Time Selector */}
-            {mode === "datetime" && (
-              <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between text-xs">
-                <span className="text-text-muted font-medium">Time (24h):</span>
-                <input
-                  type="time"
-                  value={selectedTime}
-                  onChange={(e) => handleTimeChange(e.target.value)}
-                  className="bg-surface border border-border/80 rounded-lg px-2.5 py-1 text-xs text-text font-mono focus:outline-none focus:border-primary-500 cursor-pointer"
-                />
-              </div>
+                    {/* 3-Column Vertical Scroll Wheel Box */}
+                    <div className="relative border border-border/80 rounded-2xl bg-surface/95 p-2 overflow-hidden shadow-inner my-2 h-44">
+                      {/* Central Highlight Selection Bar Across All 3 Columns */}
+                      <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 h-8 bg-primary-500/25 border border-primary-500/50 rounded-xl pointer-events-none z-0 shadow-xs transition-all duration-200" />
+
+                      <div className="grid grid-cols-3 gap-1 relative z-10 text-center font-mono h-full">
+                        {/* Column 1: Hours (01 - 12) */}
+                        <div
+                          ref={hourColRef}
+                          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                          onScroll={(e) => {
+                            const scrollTop = e.currentTarget.scrollTop;
+                            requestAnimationFrame(() => {
+                              const idx = Math.min(11, Math.max(0, Math.round(scrollTop / 36)));
+                              const scrolledH12 = idx + 1;
+                              if (scrolledH12 !== h12) {
+                                setTimeVal(scrolledH12, mins, isPM);
+                              }
+                            });
+                          }}
+                          className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden py-[72px] space-y-1 snap-y snap-mandatory scroll-smooth"
+                        >
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map((hVal) => {
+                            const isSelected = hVal === h12;
+                            return (
+                              <button
+                                key={hVal}
+                                type="button"
+                                onClick={() => setTimeVal(hVal, mins, isPM)}
+                                className={cn(
+                                  "w-full h-8 flex items-center justify-center text-sm font-extrabold transition-all duration-150 ease-out cursor-pointer rounded-lg snap-center active:scale-95",
+                                  isSelected ? "text-primary font-black scale-105" : "text-text-muted/50 hover:text-text hover:bg-surface/60"
+                                )}
+                              >
+                                {String(hVal).padStart(2, "0")}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Column 2: Minutes (00 - 55 in steps of 5) */}
+                        <div
+                          ref={minColRef}
+                          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                          onScroll={(e) => {
+                            const minOptions = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+                            const scrollTop = e.currentTarget.scrollTop;
+                            requestAnimationFrame(() => {
+                              const idx = Math.min(minOptions.length - 1, Math.max(0, Math.round(scrollTop / 36)));
+                              const scrolledMins = minOptions[idx];
+                              if (scrolledMins !== mins) {
+                                setTimeVal(h12, scrolledMins, isPM);
+                              }
+                            });
+                          }}
+                          className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden py-[72px] space-y-1 snap-y snap-mandatory scroll-smooth"
+                        >
+                          {["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map((mStrVal) => {
+                            const mVal = parseInt(mStrVal, 10);
+                            const isSelected = Math.abs(mins - mVal) < 3 || (mins > 55 && mVal === 55);
+                            return (
+                              <button
+                                key={mStrVal}
+                                type="button"
+                                onClick={() => setTimeVal(h12, mVal, isPM)}
+                                className={cn(
+                                  "w-full h-8 flex items-center justify-center text-sm font-extrabold transition-all duration-150 ease-out cursor-pointer rounded-lg snap-center active:scale-95",
+                                  isSelected ? "text-primary font-black scale-105" : "text-text-muted/50 hover:text-text hover:bg-surface/60"
+                                )}
+                              >
+                                {mStrVal}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Column 3: Period (AM / PM Wheel) */}
+                        <div
+                          ref={periodColRef}
+                          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                          onScroll={(e) => {
+                            const scrollTop = e.currentTarget.scrollTop;
+                            requestAnimationFrame(() => {
+                              const idx = Math.round(scrollTop / 36);
+                              const scrolledPM = idx >= 1;
+                              if (scrolledPM !== isPM) {
+                                setTimeVal(h12, mins, scrolledPM);
+                              }
+                            });
+                          }}
+                          className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden py-[72px] space-y-1 snap-y snap-mandatory scroll-smooth"
+                        >
+                          {["AM", "PM"].map((pVal) => {
+                            const isSelected = (pVal === "PM" && isPM) || (pVal === "AM" && !isPM);
+                            return (
+                              <button
+                                key={pVal}
+                                type="button"
+                                onClick={() => setTimeVal(h12, mins, pVal === "PM")}
+                                className={cn(
+                                  "w-full h-8 flex items-center justify-center text-sm font-extrabold transition-all duration-150 ease-out cursor-pointer rounded-lg snap-center active:scale-95",
+                                  isSelected ? "text-primary font-black scale-105" : "text-text-muted/50 hover:text-text hover:bg-surface/60"
+                                )}
+                              >
+                                {pVal}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Confirm & Close Button */}
+                    <button
+                      type="button"
+                      onClick={() => { setTimeScreenOpen(false); setIsOpen(false); }}
+                      className="w-full py-2 bg-primary text-white font-bold text-xs rounded-xl shadow-md hover:bg-primary-600 hover:scale-[1.02] active:scale-95 transition-all duration-150 cursor-pointer text-center"
+                    >
+                      Set Date & Time
+                    </button>
+                  </div>
+                );
+              })()
+            ) : (
+              /* SCREEN MODE 1: CALENDAR VIEW SCREEN */
+              <>
+                {/* Preset Shortcuts */}
+                {renderPresets && (
+                  <div className="grid grid-cols-3 gap-1.5 mb-3 pb-2.5 border-b border-border/60 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => handlePreset("today")}
+                      className="px-1.5 py-1 rounded-md bg-surface border border-border/60 text-text hover:bg-surface-hover transition-colors font-medium text-center truncate cursor-pointer"
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePreset("yesterday")}
+                      className="px-1.5 py-1 rounded-md bg-surface border border-border/60 text-text hover:bg-surface-hover transition-colors font-medium text-center truncate cursor-pointer"
+                    >
+                      Yesterday
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePreset("last7Days")}
+                      className="px-1.5 py-1 rounded-md bg-surface border border-border/60 text-text hover:bg-surface-hover transition-colors font-medium text-center truncate cursor-pointer"
+                    >
+                      Last 7D
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePreset("last30Days")}
+                      className="px-1.5 py-1 rounded-md bg-surface border border-border/60 text-text hover:bg-surface-hover transition-colors font-medium text-center truncate cursor-pointer"
+                    >
+                      Last 30D
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePreset("thisMonth")}
+                      className="px-1.5 py-1 rounded-md bg-surface border border-border/60 text-text hover:bg-surface-hover transition-colors font-medium text-center truncate cursor-pointer"
+                    >
+                      This Month
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePreset("thisYear")}
+                      className="px-1.5 py-1 rounded-md bg-surface border border-border/60 text-text hover:bg-surface-hover transition-colors font-medium text-center truncate cursor-pointer"
+                    >
+                      This Year
+                    </button>
+                  </div>
+                )}
+
+                {/* Month/Year Navigation Bar */}
+                <div className="flex items-center justify-between mb-3 gap-1">
+                  <button
+                    type="button"
+                    onClick={handlePrevMonth}
+                    className="p-1 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text transition-colors cursor-pointer shrink-0"
+                    aria-label="Previous Month"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+
+                  <div className="flex items-center gap-1 font-bold text-xs text-text">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode(viewMode === "months" ? "days" : "months")}
+                      className={cn(
+                        "px-2 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold",
+                        viewMode === "months"
+                          ? "bg-primary-600 border-primary-600 text-white shadow-xs"
+                          : "bg-surface border-border/80 text-text hover:bg-surface-hover hover:border-text-secondary"
+                      )}
+                    >
+                      <span>{MONTH_NAMES[viewMonth]}</span>
+                      <svg className="h-3 w-3 shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setViewMode(viewMode === "years" ? "days" : "years")}
+                      className={cn(
+                        "px-2 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold",
+                        viewMode === "years"
+                          ? "bg-primary-600 border-primary-600 text-white shadow-xs"
+                          : "bg-surface border-border/80 text-text hover:bg-surface-hover hover:border-text-secondary"
+                      )}
+                    >
+                      <span>{viewYear}</span>
+                      <svg className="h-3 w-3 shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleNextMonth}
+                    className="p-1 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text transition-colors cursor-pointer shrink-0"
+                    aria-label="Next Month"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* MODE 1: MONTH SELECTION GRID */}
+                {viewMode === "months" && (
+                  <div className="grid grid-cols-3 gap-2 py-2 animate-in fade-in zoom-in-95 duration-150">
+                    {MONTH_NAMES.map((mName, idx) => {
+                      const isCurrentMonth = idx === viewMonth;
+                      return (
+                        <button
+                          key={mName}
+                          type="button"
+                          onClick={() => {
+                            setViewDate(new Date(viewYear, idx, 1));
+                            setViewMode("days");
+                          }}
+                          className={cn(
+                            "py-2 px-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer text-center",
+                            isCurrentMonth
+                              ? "bg-primary-600 border-primary-600 text-white font-bold shadow-sm scale-105"
+                              : "bg-surface border-border/60 text-text hover:bg-surface-hover hover:border-text-secondary"
+                          )}
+                        >
+                          {mName.slice(0, 3)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* MODE 2: YEAR SELECTION GRID */}
+                {viewMode === "years" && (
+                  <div className="grid grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1 py-1 animate-in fade-in zoom-in-95 duration-150">
+                    {Array.from({ length: 110 }, (_, i) => new Date().getFullYear() - 90 + i).map((yr) => {
+                      const isCurrentYear = yr === viewYear;
+                      return (
+                        <button
+                          key={yr}
+                          type="button"
+                          onClick={() => {
+                            setViewDate(new Date(yr, viewMonth, 1));
+                            setViewMode("days");
+                          }}
+                          className={cn(
+                            "py-1.5 px-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-center",
+                            isCurrentYear
+                              ? "bg-primary-600 border-primary-600 text-white font-bold shadow-sm scale-105"
+                              : "bg-surface border-border/60 text-text hover:bg-surface-hover hover:border-text-secondary"
+                          )}
+                        >
+                          {yr}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* MODE 3: STANDARD CALENDAR DAYS GRID */}
+                {viewMode === "days" && (
+                  <>
+                    {/* Day Names Header */}
+                    <div className="grid grid-cols-7 text-center text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">
+                      {DAY_NAMES.map((name) => (
+                        <div key={name} className="py-1">{name}</div>
+                      ))}
+                    </div>
+
+                    {/* Calendar Days Grid */}
+                    <div className="grid grid-cols-7 gap-y-1 gap-x-0 text-xs">
+                      {/* Prev Month Days */}
+                      {Array.from({ length: firstDayOfMonth }).map((_, i) => (
+                        <div
+                          key={`prev-${i}`}
+                          className="h-8 flex items-center justify-center text-text-muted/30 select-none text-xs font-normal"
+                        >
+                          {daysInPrevMonth - firstDayOfMonth + i + 1}
+                        </div>
+                      ))}
+
+                      {/* Current Month Days */}
+                      {Array.from({ length: daysInMonth }).map((_, i) => {
+                        const day = i + 1;
+                        const disabledDay = isDateDisabled(day);
+                        const todayDay = isToday(day);
+                        const singleSelected = isSingleSelected(day);
+                        const isStart = isRangeBoundary(day, "start");
+                        const isEnd = isRangeBoundary(day, "end");
+                        const isMiddle = isRangeMiddle(day);
+
+                        return (
+                          <button
+                            key={`day-${day}`}
+                            type="button"
+                            disabled={disabledDay}
+                            onClick={() => handleSelectDay(day)}
+                            onMouseEnter={() => mode === "range" && rangeStart && !rangeEnd && setHoverDate(new Date(viewYear, viewMonth, day))}
+                            className={cn(
+                              "h-8 w-full flex items-center justify-center font-medium text-xs transition-all relative cursor-pointer",
+                              disabledDay && "opacity-30 cursor-not-allowed text-text-muted",
+                              todayDay && !singleSelected && !(mode === "range" && (isStart || isEnd)) && "font-extrabold text-text ring-1 ring-border rounded-lg",
+                              singleSelected && mode !== "range" && "bg-primary-600 text-white font-bold rounded-lg shadow-sm scale-105 z-10",
+                              isStart && mode === "range" && "bg-primary-600 text-white font-bold rounded-l-lg z-10",
+                              isEnd && mode === "range" && "bg-primary-600 text-white font-bold rounded-r-lg z-10",
+                              isMiddle && mode === "range" && "bg-primary-500/20 text-primary-400 font-semibold rounded-none",
+                              !singleSelected && !(mode === "range" && (isStart || isEnd || isMiddle)) && !disabledDay && "hover:bg-surface-hover text-text rounded-lg"
+                            )}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {/* DateTime Mode: Switch to Time View Screen Button */}
+                {mode === "datetime" && (() => {
+                  const [hStr, mStr] = (selectedTime || "09:00").split(":");
+                  const h24 = parseInt(hStr || "9", 10);
+                  const mins = parseInt(mStr || "0", 10);
+                  const isPM = h24 >= 12;
+                  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+                  const displayFormatted12 = `${String(h12).padStart(2, "0")}:${String(mins).padStart(2, "0")} ${isPM ? "PM" : "AM"}`;
+
+                  return (
+                    <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between text-xs">
+                      <span className="text-text-muted font-bold text-[11px] uppercase tracking-wider">Time:</span>
+                      <button
+                        type="button"
+                        onClick={() => setTimeScreenOpen(true)}
+                        className="px-2.5 py-1.5 rounded-xl bg-surface border border-border/80 hover:border-primary-500/50 hover:bg-surface-hover text-text font-mono font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs"
+                      >
+                        <svg className="w-3.5 h-3.5 text-primary-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>{displayFormatted12}</span>
+                        <div className="flex items-center gap-1 text-[11px] text-text-muted font-sans font-medium pl-1.5 border-l border-border/60">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+                          </svg>
+                          <span>Set Time</span>
+                        </div>
+                      </button>
+                    </div>
+                  );
+                })()}
+              </>
             )}
           </div>,
           document.body

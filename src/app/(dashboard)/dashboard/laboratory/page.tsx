@@ -69,7 +69,29 @@ export default function LaboratoryPage() {
   const [labTests, setLabTests] = useState<LabTestType[]>([]);
   const [labOrders, setLabOrders] = useState<LabOrderType[]>([]);
   const [doctors, setDoctors] = useState<DoctorUser[]>([]);
+  const [tatMetrics, setTatMetrics] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [testsRes, ordersRes, docRes, tatRes] = await Promise.all([
+        api.get(selectedClinicId ? `/lab-tests?clinicId=${selectedClinicId}` : "/lab-tests"),
+        api.get(selectedClinicId ? `/lab-orders?clinicId=${selectedClinicId}` : "/lab-orders"),
+        api.get(selectedClinicId ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff"),
+        api.get(selectedClinicId ? `/laboratory/tat-metrics?clinicId=${selectedClinicId}` : "/laboratory/tat-metrics"),
+      ]);
+
+      setLabTests(testsRes.data?.data || []);
+      setLabOrders(ordersRes.data?.data || []);
+      setDoctors(docRes.data?.data?.doctors || []);
+      setTatMetrics(tatRes.data?.data || null);
+    } catch (err) {
+      // Non-critical
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Validation & Upload States
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -177,26 +199,6 @@ export default function LaboratoryPage() {
       fetchMetadata();
     }
   }, [user]);
-
-  // Fetch Tests and Orders when clinic changes
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const testQuery = selectedClinicId !== "all" && selectedClinicId ? `?clinicId=${selectedClinicId}` : "";
-      const orderQuery = selectedClinicId !== "all" && selectedClinicId ? `?clinicId=${selectedClinicId}` : "";
-
-      const [testsRes, ordersRes] = await Promise.all([
-        api.get(`/lab-tests${testQuery}`),
-        api.get(`/lab-orders${orderQuery}`)
-      ]);
-      setLabTests(testsRes.data.data || []);
-      setLabOrders(ordersRes.data.data || []);
-    } catch (err) {
-      toast({ title: "Error", description: "Failed to load laboratory logs", variant: "error" });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (selectedClinicId) {
@@ -594,30 +596,32 @@ export default function LaboratoryPage() {
                     normal: <span className="text-sm text-text font-mono">{test.normalRange}</span>,
                     price: <span className="text-text font-semibold">₹{test.price}</span>,
                     actions: (
-                      <Dropdown
-                        align="right"
-                        trigger={
-                          <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
-                            <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                            </svg>
-                          </Button>
-                        }
-                        items={[
-                          { label: "Edit Lab Test", onClick: () => {
-                            setEditingTestId(test.id);
-                            setTestName(test.name);
-                            setTestCode(test.code);
-                            setTestDepartment(test.department);
-                            setTestSampleType(test.sampleType);
-                            setTestPrice(test.price);
-                            setTestNormalRange(test.normalRange);
-                            setErrors({});
-                            setIsTestModalOpen(true);
-                          }},
-                          { label: "Delete Lab Test", danger: true, onClick: () => setDeletingTestId(test.id) },
-                        ]}
-                      />
+                      <div className="flex items-center justify-end">
+                        <Dropdown
+                          align="right"
+                          trigger={
+                            <Button size="sm" variant="outline" className="h-8 w-8 p-0 flex items-center justify-center rounded-lg cursor-pointer shrink-0" title="Row Actions">
+                              <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                              </svg>
+                            </Button>
+                          }
+                          items={[
+                            { label: "Edit Lab Test", onClick: () => {
+                              setEditingTestId(test.id);
+                              setTestName(test.name);
+                              setTestCode(test.code);
+                              setTestDepartment(test.department);
+                              setTestSampleType(test.sampleType);
+                              setTestPrice(test.price);
+                              setTestNormalRange(test.normalRange);
+                              setErrors({});
+                              setIsTestModalOpen(true);
+                            }},
+                            { label: "Delete Lab Test", danger: true, onClick: () => setDeletingTestId(test.id) },
+                          ]}
+                        />
+                      </div>
                     )
                   }))}
                   emptyMessage="No diagnostic tests registered in this clinic catalog."

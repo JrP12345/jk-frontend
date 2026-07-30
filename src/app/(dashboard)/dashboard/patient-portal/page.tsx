@@ -11,6 +11,7 @@ import {
   Badge,
   Spinner,
   Input,
+  DatePicker,
   Select,
   useToast,
   Modal,
@@ -67,6 +68,64 @@ export default function PatientPortalPage() {
   // Timeline state
   const [timelineEvents, setTimelineEvents] = useState<any[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
+
+  // Self-Booking State
+  const [isSelfBookOpen, setIsSelfBookOpen] = useState(false);
+  const [selfClinics, setSelfClinics] = useState<any[]>([]);
+  const [selfDoctors, setSelfDoctors] = useState<any[]>([]);
+  const [selfClinicId, setSelfClinicId] = useState("");
+  const [selfDoctorId, setSelfDoctorId] = useState("");
+  const [selfApptTime, setSelfApptTime] = useState("");
+  const [selfNotes, setSelfNotes] = useState("");
+  const [submittingSelfBook, setSubmittingSelfBook] = useState(false);
+
+  const openSelfBookModal = async () => {
+    setIsSelfBookOpen(true);
+    try {
+      const [clinicsRes, staffRes] = await Promise.all([
+        api.get("/onboarding/clinics"),
+        api.get("/onboarding/staff"),
+      ]);
+      setSelfClinics(clinicsRes.data?.data || []);
+      setSelfDoctors(staffRes.data?.data?.doctors || []);
+    } catch {
+      // Non-critical
+    }
+  };
+
+  const handleSelfBookSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selfClinicId || !selfDoctorId || !selfApptTime) {
+      toast({ title: "Validation Error", description: "Please select clinic, doctor, and appointment time", variant: "error" });
+      return;
+    }
+
+    setSubmittingSelfBook(true);
+    try {
+      const res = await api.post("/patient-portal/self-book", {
+        clinicId: selfClinicId,
+        doctorId: selfDoctorId,
+        appointmentTime: selfApptTime,
+        notes: selfNotes,
+      });
+
+      const token = res.data?.data?.tokenNumber;
+      toast({
+        title: "Appointment Booked! 🩺",
+        description: `Successfully booked. Assigned Queue Token: #${token}`,
+        variant: "success",
+      });
+
+      setIsSelfBookOpen(false);
+      setSelfApptTime("");
+      setSelfNotes("");
+      router.push("/dashboard/bills");
+    } catch (err: any) {
+      toast({ title: "Booking Failed", description: err.response?.data?.message || "Failed to book appointment", variant: "error" });
+    } finally {
+      setSubmittingSelfBook(false);
+    }
+  };
 
   const fetchPatientData = async () => {
     try {
@@ -229,10 +288,10 @@ export default function PatientPortalPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => router.push("/browse")}>
-            Browse Clinics & Book
+          <Button size="sm" onClick={openSelfBookModal}>
+            📅 Book Appointment
           </Button>
-          <Button size="sm" onClick={() => setEditProfileModalOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setEditProfileModalOpen(true)}>
             Edit Medical Info
           </Button>
         </div>
@@ -589,6 +648,51 @@ export default function PatientPortalPage() {
           </form>
         </Modal>
       )}
+
+      {/* Self-Booking Modal */}
+      <Modal open={isSelfBookOpen} onClose={() => setIsSelfBookOpen(false)} title="Book Doctor Appointment" size="md">
+        <form onSubmit={handleSelfBookSubmit} className="space-y-4">
+          <Select
+            label="Clinic Location *"
+            value={selfClinicId}
+            onChange={(e) => setSelfClinicId(e.target.value)}
+            options={selfClinics.map((c) => ({ value: c.id || c._id, label: `${c.name} - ${c.city}` }))}
+            required
+          />
+
+          <Select
+            label="Attending Doctor *"
+            value={selfDoctorId}
+            onChange={(e) => setSelfDoctorId(e.target.value)}
+            options={selfDoctors.map((d) => ({ value: d.id || d._id, label: `Dr. ${d.name} (${d.specialization || "General"})` }))}
+            required
+          />
+
+          <DatePicker
+            label="Preferred Appointment Date & Time *"
+            mode="datetime"
+            value={selfApptTime}
+            onChange={(val) => setSelfApptTime(typeof val === "string" ? val : val.target.value)}
+            fullWidth
+          />
+
+          <Input
+            label="Reason for Visit / Symptoms"
+            placeholder="e.g. Regular checkup, headache, fever..."
+            value={selfNotes}
+            onChange={(e) => setSelfNotes(e.target.value)}
+          />
+
+          <div className="flex justify-between border-t border-border pt-4 mt-4">
+            <Button variant="outline" type="button" onClick={() => setIsSelfBookOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={submittingSelfBook}>
+              Confirm Booking & Get Token
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

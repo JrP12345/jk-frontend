@@ -446,23 +446,26 @@ export default function StaffPage() {
                     { 
                       key: "actions", 
                       header: "Actions",
+                      align: "right",
                       width: "56px",
                       render: (row) => (
-                        <Dropdown
-                          align="right"
-                          trigger={
-                            <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
-                              <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                              </svg>
-                            </Button>
-                          }
-                          items={[
-                            ...(row.roleType === "doctor" ? [{ label: "Manage Clinic Assignments", onClick: () => openAssignmentsModal(row) }] : []),
-                            { label: `Edit ${row.roleLabel}`, onClick: () => openEditModal(row.roleType, row) },
-                            { label: `Delete ${row.roleLabel}`, danger: true, onClick: () => setDeletingId(row.id) }
-                          ]}
-                        />
+                        <div className="flex items-center justify-end">
+                          <Dropdown
+                            align="right"
+                            trigger={
+                              <Button size="sm" variant="outline" className="h-8 w-8 p-0 flex items-center justify-center rounded-lg cursor-pointer shrink-0" title="Row Actions">
+                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                                </svg>
+                              </Button>
+                            }
+                            items={[
+                              ...(row.roleType === "doctor" ? [{ label: "Manage Clinic Assignments", onClick: () => openAssignmentsModal(row) }] : []),
+                              { label: `Edit ${row.roleLabel}`, onClick: () => openEditModal(row.roleType, row) },
+                              { label: `Delete ${row.roleLabel}`, danger: true, onClick: () => setDeletingId(row.id) }
+                            ]}
+                          />
+                        </div>
                       )
                     }
                   ]}

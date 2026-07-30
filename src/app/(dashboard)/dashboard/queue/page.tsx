@@ -361,8 +361,13 @@ export default function QueuePage() {
             onClick={handleCallNext}
             loading={callingNext}
             className="font-bold rounded-xl shadow-xs cursor-pointer"
+            icon={
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.684A1.761 1.761 0 013 12c0-.735.45-1.365 1.09-1.63M16.5 6.1a6.002 6.002 0 010 11.8" />
+              </svg>
+            }
           >
-            📢 Call Next Patient
+            Call Next Patient
           </Button>
           <Button
             variant="outline"
@@ -370,8 +375,13 @@ export default function QueuePage() {
             onClick={fetchQueue}
             loading={loadingQueue}
             className="font-semibold rounded-xl cursor-pointer"
+            icon={
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            }
           >
-            🔄 Refresh
+            Refresh
           </Button>
         </div>
       </div>

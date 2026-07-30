@@ -175,18 +175,39 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
     },
   ];
 
+  const [dbTemplates, setDbTemplates] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        let res = await api.get("/soap-templates");
+        let list = res.data?.data || [];
+        if (list.length === 0) {
+          await api.post("/soap-templates/seed");
+          res = await api.get("/soap-templates");
+          list = res.data?.data || [];
+        }
+        setDbTemplates(list);
+      } catch (err) {
+        // Non-critical
+      }
+    };
+    fetchTemplates();
+  }, []);
+
   const handleApplyTemplate = (templateId: string) => {
-    const tpl = CLINICAL_TEMPLATES.find((t) => t.id === templateId);
+    const tpl = CLINICAL_TEMPLATES.find((t) => t.id === templateId) || dbTemplates.find((t) => (t.id || t._id) === templateId);
     if (!tpl) return;
-    setChiefComplaint(tpl.chiefComplaint);
-    setHistoryOfPresentIllness(tpl.historyOfPresentIllness);
-    setSymptomsText(tpl.symptomsText);
-    setPhysicalExamination(tpl.physicalExamination);
-    setPrimaryDiagnosis(tpl.primaryDiagnosis);
-    setIcdCode(tpl.icdCode);
-    setSeverity(tpl.severity);
-    setTreatmentPlan(tpl.treatmentPlan);
-    setPrescriptions(tpl.prescriptions);
+    setChiefComplaint(tpl.chiefComplaint || tpl.title || "");
+    setHistoryOfPresentIllness(tpl.historyOfPresentIllness || tpl.subjective || "");
+    setSymptomsText(tpl.symptomsText || "");
+    setPhysicalExamination(tpl.physicalExamination || tpl.objective || "");
+    setPrimaryDiagnosis(tpl.primaryDiagnosis || tpl.assessment || "");
+    if (tpl.icdCode) setIcdCode(tpl.icdCode);
+    if (tpl.severity) setSeverity(tpl.severity);
+    setTreatmentPlan(tpl.treatmentPlan || tpl.plan || "");
+    if (tpl.prescriptions) setPrescriptions(tpl.prescriptions);
+    setMessage({ type: "success", text: `Applied template: ${tpl.name || tpl.title}` });
   };
 
   const handleCopyForwardVisit = (note: any) => {
@@ -541,6 +562,11 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                 {CLINICAL_TEMPLATES.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
+                  </option>
+                ))}
+                {dbTemplates.map((t) => (
+                  <option key={t.id || t._id} value={t.id || t._id}>
+                    {t.title} ({t.specialty})
                   </option>
                 ))}
               </select>

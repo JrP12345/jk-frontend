@@ -5,7 +5,7 @@ import Link from "next/link";
 import { cn } from "./utils";
 import Tooltip from "./Tooltip";
 
-interface NavItem {
+export interface NavItem {
   label: string;
   href: string;
   icon?: ReactNode;
@@ -14,7 +14,7 @@ interface NavItem {
   children?: NavItem[];
 }
 
-interface SidebarProps {
+export interface SidebarProps {
   brand?: ReactNode;
   items: NavItem[];
   footer?: ReactNode;
@@ -24,11 +24,28 @@ interface SidebarProps {
 
 export default function Sidebar({ brand, items, footer, collapsed = false, className = "" }: SidebarProps) {
   return (
-    <aside className={cn("flex flex-col bg-surface border-r border-border h-full transition-all duration-300 ease-spring", collapsed ? "w-16" : "w-60", className)}>
-      {brand && <div className={cn("h-16 shrink-0 flex items-center border-b border-border", collapsed ? "justify-center px-2" : "px-4")}>{brand}</div>}
+    <aside
+      className={cn(
+        "flex flex-col bg-surface border-r border-border h-full transform-gpu transition-all duration-200 ease-smooth select-none",
+        collapsed ? "w-16" : "w-60",
+        className
+      )}
+    >
+      {brand && (
+        <div
+          className={cn(
+            "h-16 shrink-0 flex items-center border-b border-border",
+            collapsed ? "justify-center px-2" : "px-4"
+          )}
+        >
+          {brand}
+        </div>
+      )}
       <nav className="flex-1 overflow-y-auto py-3 px-2">
         <ul className="flex flex-col gap-0.5">
-          {items.map((item, i) => <SidebarItem key={i} item={item} collapsed={collapsed} />)}
+          {items.map((item, i) => (
+            <SidebarItem key={i} item={item} collapsed={collapsed} />
+          ))}
         </ul>
       </nav>
       {footer && <div className={cn("border-t border-border", collapsed ? "p-2" : "px-3 py-3")}>{footer}</div>}
@@ -40,20 +57,30 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
   const content = (
     <Link
       href={item.href}
+      aria-current={item.active ? "page" : undefined}
       className={cn(
-        "relative flex items-center gap-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 ease-spring active:scale-95",
+        "relative flex items-center gap-2.5 rounded-xl text-sm font-medium cursor-pointer transform-gpu transition-all duration-150 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 active:scale-98",
         collapsed ? "justify-center p-2.5" : "px-3 py-2",
-        item.active 
-          ? "bg-primary-50 text-primary-700 dark:bg-primary-950/25 dark:text-primary-400" 
-          : "text-text-secondary hover:text-text hover:bg-surface-hover",
+        item.active
+          ? "bg-primary-500/10 text-primary-600 dark:text-primary-400 font-semibold"
+          : "text-text-secondary hover:text-text hover:bg-surface-hover"
       )}
     >
-      {item.icon && <span className={cn("shrink-0 [&>svg]:h-[18px] [&>svg]:w-[18px]", item.active ? "text-primary-600 dark:text-primary-400" : "text-text-muted")}>{item.icon}</span>}
+      {item.icon && (
+        <span
+          className={cn(
+            "shrink-0 [&>svg]:h-[18px] [&>svg]:w-[18px] transition-colors",
+            item.active ? "text-primary-600 dark:text-primary-400" : "text-text-muted"
+          )}
+        >
+          {item.icon}
+        </span>
+      )}
       {!collapsed && (
         <>
           <span className="flex-1 truncate">{item.label}</span>
           {item.badge !== undefined && (
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 leading-none">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400 leading-none">
               {item.badge}
             </span>
           )}
@@ -77,4 +104,5 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
     </li>
   );
 }
+
 

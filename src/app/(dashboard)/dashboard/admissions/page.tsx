@@ -70,7 +70,29 @@ export default function AdmissionsPage() {
   const [beds, setBeds] = useState<BedType[]>([]);
   const [admissions, setAdmissions] = useState<AdmissionType[]>([]);
   const [doctors, setDoctors] = useState<DoctorUser[]>([]);
+  const [hierarchyData, setHierarchyData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [bedsRes, admRes, docRes, hierarchyRes] = await Promise.all([
+        api.get(selectedClinicId ? `/beds?clinicId=${selectedClinicId}` : "/beds"),
+        api.get(selectedClinicId ? `/admissions?clinicId=${selectedClinicId}` : "/admissions"),
+        api.get(selectedClinicId ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff"),
+        api.get(selectedClinicId ? `/beds/hierarchy?clinicId=${selectedClinicId}` : "/beds/hierarchy"),
+      ]);
+
+      setBeds(bedsRes.data?.data || []);
+      setAdmissions(admRes.data?.data || []);
+      setDoctors(docRes.data?.data?.doctors || []);
+      setHierarchyData(hierarchyRes.data?.data || null);
+    } catch (err) {
+      // Non-critical
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Admit Patient Modal State
   const [isAdmitOpen, setIsAdmitOpen] = useState(false);
@@ -182,28 +204,6 @@ export default function AdmissionsPage() {
     };
     if (user) fetchMetadata();
   }, [user]);
-
-  // Fetch Beds and Admissions when Clinic changes or on tab change
-  const fetchData = async () => {
-    if (!selectedClinicId) return;
-    try {
-      setLoading(true);
-      const [bedsRes, admissionsRes] = await Promise.all([
-        api.get(`/beds?clinicId=${selectedClinicId}`),
-        api.get(`/admissions?clinicId=${selectedClinicId}`)
-      ]);
-      setBeds(bedsRes.data.data || []);
-      setAdmissions(admissionsRes.data.data || []);
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch bed and admission logs",
-        variant: "error"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     fetchData();
@@ -411,8 +411,13 @@ export default function AdmissionsPage() {
             size="sm"
             onClick={() => { setSelectedBedId(""); setIntakeErrors({}); setIsAdmitOpen(true); }}
             className="font-bold rounded-xl shadow-xs cursor-pointer"
+            icon={
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            }
           >
-            + Admit Patient
+            Admit Patient
           </Button>
           <Button
             variant="outline"
@@ -420,8 +425,13 @@ export default function AdmissionsPage() {
             onClick={fetchData}
             loading={loading}
             className="font-semibold rounded-xl cursor-pointer"
+            icon={
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            }
           >
-            🔄 Refresh
+            Refresh
           </Button>
         </div>
       </div>
@@ -516,7 +526,7 @@ export default function AdmissionsPage() {
             { header: "Days Spent", key: "days" },
             { header: "Doctor in Charge", key: "doctor" },
             { header: "Admission Reason", key: "reason" },
-            { header: "Action", key: "action" }
+            { header: "Actions", key: "action", align: "right" }
           ]}
           data={activeAdmissions.map(adm => {
             const days = Math.max(1, Math.ceil((new Date().getTime() - new Date(adm.admissionDate).getTime()) / (1000 * 60 * 60 * 24)));
@@ -541,9 +551,11 @@ export default function AdmissionsPage() {
               doctor: <span>Dr. {(adm.doctorInCharge?.name || "Unassigned").replace(/^dr\.?\s+/i, "")}</span>,
               reason: <span className="text-xs text-text-muted italic max-w-xs truncate">{adm.reasonForAdmission || "General Admission"}</span>,
               action: (
-                <Button variant="danger" size="xs" onClick={() => { setActiveAdmission(adm); setIsDischargeOpen(true); }}>
-                  Discharge & Bill
-                </Button>
+                <div className="flex items-center justify-end gap-1.5">
+                  <Button variant="danger" size="sm" onClick={() => { setActiveAdmission(adm); setIsDischargeOpen(true); }} className="shrink-0 font-bold">
+                    Discharge & Bill
+                  </Button>
+                </div>
               )
             };
           })}
@@ -565,7 +577,7 @@ export default function AdmissionsPage() {
                     { header: "Price Per Day", key: "price" },
                     { header: "Current Status", key: "status" },
                     { header: "Occupant", key: "occupant" },
-                    { header: "Actions", key: "actions" }
+                    { header: "Actions", key: "actions", align: "right" }
                   ]}
                   data={beds.map(bed => ({
                     id: bed.id,
@@ -586,27 +598,29 @@ export default function AdmissionsPage() {
                       <span className="text-xs text-text-muted">None</span>
                     ),
                     actions: (
-                      <Dropdown
-                        align="right"
-                        trigger={
-                          <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
-                            <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                            </svg>
-                          </Button>
-                        }
-                        items={[
-                          { label: "Edit Bed", onClick: () => {
-                            setEditingBedId(bed.id);
-                            setWardName(bed.wardName);
-                            setBedNumber(bed.bedNumber);
-                            setPricePerDay(bed.pricePerDay);
-                            setBedErrors({});
-                            setIsBedModalOpen(true);
-                          }},
-                          { label: "Delete Bed", danger: true, onClick: () => setDeletingBedId(bed.id) },
-                        ]}
-                      />
+                      <div className="flex items-center justify-end">
+                        <Dropdown
+                          align="right"
+                          trigger={
+                            <Button size="sm" variant="outline" className="h-8 w-8 p-0 flex items-center justify-center rounded-lg cursor-pointer shrink-0" title="Row Actions">
+                              <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                              </svg>
+                            </Button>
+                          }
+                          items={[
+                            { label: "Edit Bed", onClick: () => {
+                              setEditingBedId(bed.id);
+                              setWardName(bed.wardName);
+                              setBedNumber(bed.bedNumber);
+                              setPricePerDay(bed.pricePerDay);
+                              setBedErrors({});
+                              setIsBedModalOpen(true);
+                            }},
+                            { label: "Delete Bed", danger: true, onClick: () => setDeletingBedId(bed.id) },
+                          ]}
+                        />
+                      </div>
                     )
                   }))}
                   emptyMessage="No beds configured yet. Create a bed to get started."

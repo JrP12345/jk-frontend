@@ -26,7 +26,9 @@ interface Invoice {
   tax: number;
   discount: number;
   totalAmount: number;
-  status: "unpaid" | "paid" | "refunded";
+  amountPaid?: number;
+  balanceDue?: number;
+  status: "unpaid" | "partially_paid" | "paid" | "refunded";
   paymentMethod?: string;
   paymentDate?: string;
   createdAt: string;
@@ -68,8 +70,53 @@ export default function BillingPage() {
   // Collect Payment Modal State
   const [isCollectOpen, setIsCollectOpen] = useState(false);
   const [activeInvoice, setActiveInvoice] = useState<Invoice | null>(null);
-  const [collectMethod, setCollectMethod] = useState("cash");
+  const [collectMethod, setCollectMethod] = useState<"cash" | "card" | "upi" | "net-banking" | "insurance" | "online">("cash");
   const [submittingPayment, setSubmittingPayment] = useState(false);
+
+  // Partial / Installment Payment Modal State
+  const [isPartialModalOpen, setIsPartialModalOpen] = useState(false);
+  const [partialTargetInvoice, setPartialTargetInvoice] = useState<Invoice | null>(null);
+  const [partialAmount, setPartialAmount] = useState<number>(0);
+  const [partialMethod, setPartialMethod] = useState<string>("cash");
+  const [partialRef, setPartialRef] = useState<string>("");
+  const [partialNotes, setPartialNotes] = useState<string>("");
+  const [submittingPartial, setSubmittingPartial] = useState(false);
+
+  const openPartialPaymentModal = (inv: Invoice) => {
+    setPartialTargetInvoice(inv);
+    const balance = inv.balanceDue !== undefined ? inv.balanceDue : inv.totalAmount - (inv.amountPaid || 0);
+    setPartialAmount(balance);
+    setPartialMethod("cash");
+    setPartialRef("");
+    setPartialNotes("");
+    setIsPartialModalOpen(true);
+  };
+
+  const handleRecordPartialPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!partialTargetInvoice || partialAmount <= 0) {
+      toast({ title: "Validation Error", description: "Please enter a valid payment amount", variant: "error" });
+      return;
+    }
+
+    setSubmittingPartial(true);
+    try {
+      const res = await api.post(`/invoices/${partialTargetInvoice.id}/payments`, {
+        amount: partialAmount,
+        paymentMethod: partialMethod,
+        referenceNumber: partialRef,
+        notes: partialNotes,
+      });
+
+      toast({ title: "Payment Recorded! 💰", description: res.data?.message || "Payment installment updated", variant: "success" });
+      setIsPartialModalOpen(false);
+      fetchInvoices();
+    } catch (err: any) {
+      toast({ title: "Payment Failed", description: err.response?.data?.message || "Failed to record payment", variant: "error" });
+    } finally {
+      setSubmittingPartial(false);
+    }
+  };
 
   // Receipt Modal State
   const [receiptOpen, setReceiptOpen] = useState(false);
@@ -479,23 +526,40 @@ export default function BillingPage() {
             size="sm"
             onClick={() => setIsCreateOpen(true)}
             className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5"
+            icon={
+              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            }
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            <span>Create Invoice</span>
+            Create Invoice
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.location.href = "/dashboard/billing/services"}
+            className="font-semibold rounded-xl cursor-pointer"
+            icon={
+              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            }
+          >
+            Service Rate Cards
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={fetchInvoices}
             loading={loading}
-            className="font-semibold rounded-xl cursor-pointer gap-1.5"
+            className="font-semibold rounded-xl cursor-pointer"
+            icon={
+              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            }
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span>Refresh</span>
+            Refresh
           </Button>
         </div>
       </div>
@@ -574,28 +638,49 @@ export default function BillingPage() {
           )},
           { key: "clinic", header: "Clinic Location", render: (row: Invoice) => <span>{row.clinicId?.name}</span> },
           { key: "doctor", header: "Doctor", render: (row: Invoice) => <span>Dr. {row.doctorId?.name}</span> },
-          { key: "totalAmount", header: "Total", render: (row: Invoice) => <span className="font-semibold">₹{row.totalAmount}</span> },
+          { key: "totalAmount", header: "Total / Balance", render: (row: Invoice) => (
+            <div className="flex flex-col">
+              <span className="font-semibold text-text">₹{row.totalAmount}</span>
+              {row.status !== "paid" && (
+                <span className="text-xs font-bold text-danger-500">
+                  Due: ₹{row.balanceDue !== undefined ? row.balanceDue : row.totalAmount - (row.amountPaid || 0)}
+                </span>
+              )}
+            </div>
+          )},
           { key: "status", header: "Status", render: (row: Invoice) => (
-            <Badge variant={row.status === "paid" ? "success" : row.status === "unpaid" ? "danger" : "default"} className="capitalize">
-              {row.status}
+            <Badge variant={row.status === "paid" ? "success" : row.status === "partially_paid" ? "warning" : "danger"} className="capitalize">
+              {row.status === "partially_paid" ? "Partially Paid" : row.status}
             </Badge>
           )},
-          { key: "actions", header: "Actions", render: (row: Invoice) => (
-            <Dropdown
-              align="right"
-              trigger={
-                <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
-                  <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                  </svg>
+          { key: "actions", header: "Actions", align: "right", render: (row: Invoice) => (
+            <div className="flex items-center justify-end gap-1.5">
+              {row.status !== "paid" ? (
+                <Button size="sm" variant="primary" onClick={() => openPartialPaymentModal(row)} className="shrink-0 font-bold">
+                  Pay ₹{row.balanceDue !== undefined ? row.balanceDue : row.totalAmount - (row.amountPaid || 0)}
                 </Button>
-              }
-              items={[
-                ...(row.status === "unpaid" ? [{ label: "Collect Payment", onClick: () => { setActiveInvoice(row); setIsCollectOpen(true); } }] : []),
-                { label: "View & Print Receipt", onClick: () => handlePrintReceipt(row) },
-                { label: "Print Official PDF", onClick: () => handleOpenPrintInvoice(row) },
-              ]}
-            />
+              ) : (
+                <Button size="sm" variant="outline" onClick={() => handleOpenPrintInvoice(row)} className="shrink-0">
+                  PDF Invoice
+                </Button>
+              )}
+              <Dropdown
+                align="right"
+                trigger={
+                  <Button size="sm" variant="outline" className="h-8 w-8 p-0 flex items-center justify-center rounded-lg border-border hover:bg-surface-hover hover:text-text cursor-pointer transition-colors shrink-0" title="Row Actions">
+                    <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                    </svg>
+                  </Button>
+                }
+                items={[
+                  ...(row.status !== "paid" ? [{ label: "Record Installment Payment", onClick: () => openPartialPaymentModal(row) }] : []),
+                  ...(row.status === "unpaid" ? [{ label: "Collect Full Payment", onClick: () => { setActiveInvoice(row); setIsCollectOpen(true); } }] : []),
+                  { label: "View & Print Receipt", onClick: () => handlePrintReceipt(row) },
+                  { label: "Print Official PDF", onClick: () => handleOpenPrintInvoice(row) },
+                ]}
+              />
+            </div>
           )}
         ]}
         data={filteredInvoices}
@@ -823,7 +908,7 @@ export default function BillingPage() {
           <Select
             label="Payment Collection Method *"
             value={collectMethod}
-            onChange={(e) => setCollectMethod(e.target.value)}
+            onChange={(e) => setCollectMethod(e.target.value as any)}
             options={[
               { value: "cash", label: "Cash Payment" },
               { value: "card", label: "Card swipe / POS" },
@@ -912,6 +997,72 @@ export default function BillingPage() {
         onClose={() => setPrintModalOpen(false)}
         document={unifiedDoc}
       />
+
+      {/* Record Partial Payment Modal */}
+      <Modal
+        open={isPartialModalOpen}
+        onClose={() => setIsPartialModalOpen(false)}
+        title={`Record Installment Payment: Invoice #${partialTargetInvoice?.invoiceNumber || ""}`}
+        size="md"
+      >
+        <form onSubmit={handleRecordPartialPayment} className="space-y-4">
+          <div className="p-3 bg-surface-alt rounded-lg border border-border text-xs space-y-1">
+            <p className="font-bold text-text">Patient: {partialTargetInvoice?.patientId?.userId?.name}</p>
+            <p className="text-text-secondary">Invoice Total: ₹{partialTargetInvoice?.totalAmount}</p>
+            <p className="text-text-secondary">Amount Previously Paid: ₹{partialTargetInvoice?.amountPaid || 0}</p>
+            <p className="font-bold text-danger-500">
+              Remaining Balance Due: ₹{partialTargetInvoice?.balanceDue !== undefined ? partialTargetInvoice.balanceDue : (partialTargetInvoice?.totalAmount || 0) - (partialTargetInvoice?.amountPaid || 0)}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Installment Payment Amount (₹) *"
+              type="number"
+              min="1"
+              step="0.01"
+              value={partialAmount}
+              onChange={(e) => setPartialAmount(Number(e.target.value))}
+              required
+            />
+            <Select
+              label="Payment Method *"
+              value={partialMethod}
+              onChange={(e) => setPartialMethod(e.target.value)}
+              options={[
+                { value: "cash", label: "Cash" },
+                { value: "upi", label: "UPI / QR Code" },
+                { value: "card", label: "Debit/Credit Card" },
+                { value: "net-banking", label: "Net Banking" },
+                { value: "insurance", label: "Insurance / Cashless" },
+              ]}
+            />
+          </div>
+
+          <Input
+            label="Transaction Reference / Cheque #"
+            placeholder="e.g. UPI/123456789 or CHQ-998822"
+            value={partialRef}
+            onChange={(e) => setPartialRef(e.target.value)}
+          />
+
+          <Input
+            label="Payment Notes"
+            placeholder="Installment 1 of 3, Deposit balance, etc."
+            value={partialNotes}
+            onChange={(e) => setPartialNotes(e.target.value)}
+          />
+
+          <div className="flex justify-between border-t border-border pt-4 mt-4">
+            <Button variant="outline" type="button" onClick={() => setIsPartialModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={submittingPartial}>
+              Record Installment
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

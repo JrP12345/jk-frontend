@@ -184,21 +184,32 @@ export default function PatientsDirectoryPage() {
         return (
           <div className="flex items-center justify-end gap-1.5">
             <Button
-              size="xs"
+              size="sm"
               variant="outline"
               onClick={() => router.push(`/dashboard/patients/${pid}/timeline`)}
-              className="text-xs font-semibold rounded-lg cursor-pointer"
+              className="font-semibold rounded-lg cursor-pointer shrink-0"
             >
               EHR Timeline →
             </Button>
-            <Button
-              size="xs"
-              variant="primary"
-              onClick={() => router.push(`/dashboard/appointments?patientId=${pid}`)}
-              className="text-xs font-bold rounded-lg cursor-pointer"
-            >
-              Book Appt
-            </Button>
+            <Dropdown
+              align="right"
+              trigger={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 p-0 flex items-center justify-center rounded-lg border-border hover:bg-surface-hover hover:text-text cursor-pointer transition-colors shrink-0"
+                  title="Row Actions"
+                >
+                  <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                  </svg>
+                </Button>
+              }
+              items={[
+                { label: "Book Appointment", onClick: () => router.push(`/dashboard/appointments?patientId=${pid}`) },
+                { label: "Inspect EHR Timeline", onClick: () => router.push(`/dashboard/patients/${pid}/timeline`) },
+              ]}
+            />
           </div>
         );
       },
@@ -220,21 +231,31 @@ export default function PatientsDirectoryPage() {
 
         <div className="flex items-center gap-2 shrink-0">
           <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchPatients}
-            disabled={loading}
-            className="rounded-xl text-xs font-semibold cursor-pointer"
-          >
-            🔄 Refresh
-          </Button>
-          <Button
             variant="primary"
             size="sm"
             onClick={() => router.push("/dashboard/appointments")}
-            className="rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+            className="font-bold rounded-xl shadow-xs cursor-pointer"
+            icon={
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            }
           >
-            + Register / Book Patient
+            Register / Book Patient
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchPatients}
+            loading={loading}
+            className="font-semibold rounded-xl cursor-pointer"
+            icon={
+              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            }
+          >
+            Refresh
           </Button>
         </div>
       </div>

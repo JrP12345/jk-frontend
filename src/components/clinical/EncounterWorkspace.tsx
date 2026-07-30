@@ -84,6 +84,44 @@ export function EncounterWorkspace({
   const [exportingFhir, setExportingFhir] = useState(false);
   const [callingNext, setCallingNext] = useState(false);
 
+  // Auto Charge Capture State
+  const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
+  const [chargePreview, setChargePreview] = useState<any>(null);
+  const [loadingCharges, setLoadingCharges] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
+
+  const handleOpenChargePreview = async () => {
+    if (!encounterId) {
+      toast({ title: "No Encounter", description: "Encounter context is missing", variant: "error" });
+      return;
+    }
+    setIsChargeModalOpen(true);
+    setLoadingCharges(true);
+    try {
+      const res = await api.get(`/encounters/${encounterId}/charges-preview`);
+      setChargePreview(res.data?.data || null);
+    } catch (err: any) {
+      toast({ title: "Preview Error", description: err.response?.data?.message || "Failed to load encounter charges", variant: "error" });
+    } finally {
+      setLoadingCharges(false);
+    }
+  };
+
+  const handleGenerateInvoiceFromEncounter = async () => {
+    if (!encounterId) return;
+    setGeneratingInvoice(true);
+    try {
+      const res = await api.post(`/encounters/${encounterId}/auto-invoice`);
+      const inv = res.data?.data;
+      toast({ title: "Invoice Generated! 📄", description: `Created Invoice #${inv.invoiceNumber} for ₹${inv.totalAmount}`, variant: "success" });
+      setIsChargeModalOpen(false);
+    } catch (err: any) {
+      toast({ title: "Generation Error", description: err.response?.data?.message || "Failed to generate invoice", variant: "error" });
+    } finally {
+      setGeneratingInvoice(false);
+    }
+  };
+
   const handleCallNextPatient = async () => {
     try {
       setCallingNext(true);
@@ -292,6 +330,9 @@ export function EncounterWorkspace({
           />
 
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleOpenChargePreview}>
+              💳 Auto Charge Capture
+            </Button>
             <Button variant="primary" size="sm" onClick={handleCallNextPatient} loading={callingNext}>
               📢 Call Next Patient
             </Button>
@@ -568,6 +609,106 @@ export function EncounterWorkspace({
             <Button type="submit" loading={submittingMar}>Schedule Dose</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal 4: Auto Charge Capture & Invoice Preview */}
+      <Modal open={isChargeModalOpen} onClose={() => setIsChargeModalOpen(false)} title="Auto-Captured Encounter Charges & Invoice Preview" size="lg">
+        <div className="space-y-4">
+          {loadingCharges ? (
+            <div className="py-12 text-center">
+              <Spinner size="lg" label="Compiling consultation fees, lab orders, prescriptions & bed charges..." />
+            </div>
+          ) : !chargePreview || !chargePreview.items || chargePreview.items.length === 0 ? (
+            <div className="p-6 text-center text-text-muted">
+              No billable items or orders found for this encounter session.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3 bg-surface-alt rounded-lg border border-border flex justify-between items-center text-xs">
+                <div>
+                  <p className="font-bold text-text">Patient: {patient.name}</p>
+                  <p className="text-text-secondary">Encounter ID: {encounterId}</p>
+                </div>
+                <Badge variant="primary">Auto-Compiled</Badge>
+              </div>
+
+              <div className="border border-border rounded-xl overflow-hidden">
+                <Table
+                  columns={[
+                    {
+                      key: "description",
+                      header: "Item / Service",
+                      render: (row: any) => (
+                        <div>
+                          <p className="font-semibold text-text text-xs">{row.description}</p>
+                          <span className="text-[10px] text-text-muted uppercase tracking-wider">{row.category?.replace("_", " ")}</span>
+                        </div>
+                      ),
+                    },
+                    {
+                      key: "hsnSacCode",
+                      header: "SAC / HSN",
+                      render: (row: any) => <span className="font-mono text-xs">{row.hsnSacCode}</span>,
+                    },
+                    {
+                      key: "amount",
+                      header: "Rate (₹)",
+                      render: (row: any) => <span>₹{row.amount}</span>,
+                    },
+                    {
+                      key: "quantity",
+                      header: "Qty",
+                      render: (row: any) => <span>{row.quantity}</span>,
+                    },
+                    {
+                      key: "gstRate",
+                      header: "GST %",
+                      render: (row: any) => <span>{row.gstRate}%</span>,
+                    },
+                    {
+                      key: "total",
+                      header: "Line Total",
+                      render: (row: any) => <span className="font-bold text-text">₹{(row.amount * row.quantity).toLocaleString("en-IN")}</span>,
+                    },
+                  ]}
+                  data={chargePreview.items}
+                />
+              </div>
+
+              <div className="p-4 bg-surface rounded-xl border border-border space-y-2 text-xs">
+                <div className="flex justify-between text-text-secondary">
+                  <span>Subtotal:</span>
+                  <span className="font-semibold">₹{chargePreview.subtotal?.toLocaleString("en-IN")}</span>
+                </div>
+                {chargePreview.cgstTotal > 0 && (
+                  <div className="flex justify-between text-text-secondary">
+                    <span>CGST:</span>
+                    <span>₹{chargePreview.cgstTotal}</span>
+                  </div>
+                )}
+                {chargePreview.sgstTotal > 0 && (
+                  <div className="flex justify-between text-text-secondary">
+                    <span>SGST:</span>
+                    <span>₹{chargePreview.sgstTotal}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-base font-bold text-text pt-2 border-t border-border">
+                  <span>Total Amount Due:</span>
+                  <span className="text-primary-600">₹{chargePreview.totalAmount?.toLocaleString("en-IN")}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-between border-t border-border pt-4 mt-4">
+                <Button variant="outline" type="button" onClick={() => setIsChargeModalOpen(false)}>
+                  Close
+                </Button>
+                <Button type="button" onClick={handleGenerateInvoiceFromEncounter} loading={generatingInvoice}>
+                  📄 Generate Official Invoice
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       </Modal>
     </div>
   );

@@ -1,55 +1,101 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, memo } from "react";
 import { cn } from "./utils";
 import Card from "./Card";
+import Skeleton from "./Skeleton";
 
-interface StatCardProps {
-  label: string;
+export interface StatCardProps {
+  label?: string;
+  title?: string;
   value: string | number;
   change?: { value: string; positive: boolean };
+  description?: string;
   icon?: ReactNode;
   trend?: "up" | "down" | "neutral";
+  loading?: boolean;
+  onClick?: () => void;
   className?: string;
 }
 
-export default function StatCard({ label, value, change, icon, trend, className = "" }: StatCardProps) {
+const StatCard = memo(function StatCard({
+  label,
+  title,
+  value,
+  change,
+  description,
+  icon,
+  trend,
+  loading = false,
+  onClick,
+  className = "",
+}: StatCardProps) {
+  const displayLabel = title || label || "";
+  if (loading) {
+    return (
+      <Card padding="sm" className={className}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-24 rounded-md" />
+            <Skeleton className="h-7 w-32 rounded-lg" />
+            <Skeleton className="h-3 w-16 rounded-md" />
+          </div>
+          <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+        </div>
+      </Card>
+    );
+  }
+
+  const effectiveTrend = trend || (change ? (change.positive ? "up" : "down") : "neutral");
+
   return (
-    <Card hover padding="sm" className={className}>
+    <Card hover padding="sm" onClick={onClick} className={className}>
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <p className="text-xs sm:text-sm text-text-secondary font-medium truncate">{label}</p>
-          <p className="text-lg sm:text-2xl font-bold text-text mt-1 tracking-tight truncate">{value}</p>
-          {change && (
-            <div className="flex items-center gap-1 mt-1.5">
-              {trend === "up" && (
-                <svg className="h-3.5 w-3.5 text-success-500 shrink-0" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8 4l4 5H4l4-5z" />
-                </svg>
+          <p className="text-xs sm:text-sm text-text-secondary font-medium truncate select-none">{displayLabel}</p>
+          <p className="text-lg sm:text-2xl font-bold text-text mt-1 tracking-tight truncate tabular-nums">
+            {value}
+          </p>
+
+          {(change || description) && (
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              {change && (
+                <div
+                  className={cn(
+                    "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[11px] font-semibold select-none",
+                    change.positive
+                      ? "bg-success-500/10 text-success-600 dark:text-success-400"
+                      : "bg-danger-500/10 text-danger-600 dark:text-danger-400"
+                  )}
+                >
+                  {effectiveTrend === "up" && (
+                    <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <path d="M8 4l4 5H4l4-5z" />
+                    </svg>
+                  )}
+                  {effectiveTrend === "down" && (
+                    <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <path d="M8 12l4-5H4l4 5z" />
+                    </svg>
+                  )}
+                  <span className={change.positive ? "text-success-600 dark:text-success-400" : "text-danger-600 dark:text-danger-400"}>{change.value}</span>
+                </div>
               )}
-              {trend === "down" && (
-                <svg className="h-3.5 w-3.5 text-danger-500 shrink-0" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8 12l4-5H4l4 5z" />
-                </svg>
-              )}
-              <span className={cn(
-                "text-[11px] sm:text-xs font-semibold", 
-                change.positive 
-                  ? "text-success-600 dark:text-success-400" 
-                  : "text-danger-600 dark:text-danger-400"
-              )}>
-                {change.value}
-              </span>
+              {description && <span className="text-xs text-text-muted">{description}</span>}
             </div>
           )}
         </div>
         {icon && (
-          <div className="shrink-0 p-1.5 sm:p-2.5 rounded-xl bg-surface-alt border border-border/60 text-text-secondary [&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5 ml-2 sm:ml-4 transition-colors">
+          <div className="shrink-0 p-2 sm:p-2.5 rounded-xl bg-surface-alt border border-border/60 text-primary-500 [&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5 ml-2 sm:ml-4 transition-colors">
             {icon}
           </div>
         )}
       </div>
     </Card>
   );
-}
+});
+
+export default StatCard;
+
+
 

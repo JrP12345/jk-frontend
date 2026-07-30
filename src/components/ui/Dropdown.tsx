@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState, useRef, useEffect, useCallback } from "react";
+import { type ReactNode, useState, useRef, useEffect, useCallback, memo } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "./utils";
 
@@ -8,7 +8,7 @@ import { cn } from "./utils";
    Dropdown — Click-triggered menu with portal rendering
    ──────────────────────────────────────────────── */
 
-interface DropdownItem {
+export interface DropdownItem {
   label: string;
   icon?: ReactNode;
   onClick?: () => void;
@@ -19,7 +19,7 @@ interface DropdownItem {
   active?: boolean;
 }
 
-interface DropdownProps {
+export interface DropdownProps {
   trigger: ReactNode;
   items: DropdownItem[];
   align?: "left" | "right";
@@ -27,8 +27,10 @@ interface DropdownProps {
   className?: string;
 }
 
-export default function Dropdown({ trigger, items, align = "left", width = "w-48", className = "" }: DropdownProps) {
+const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width = "w-48", className = "" }: DropdownProps) {
   const [open, setOpen] = useState(false);
+  const [render, setRender] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const [openUpward, setOpenUpward] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
@@ -44,6 +46,20 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
     setOpen(false);
     setFocusedIndex(-1);
   }, []);
+
+  useEffect(() => {
+    if (open) {
+      setRender(true);
+      setIsExiting(false);
+    } else if (render) {
+      setIsExiting(true);
+      const timer = setTimeout(() => {
+        setRender(false);
+        setIsExiting(false);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [open, render]);
 
   const updateCoords = useCallback(() => {
     if (containerRef.current) {
@@ -62,8 +78,10 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
   const handleToggle = () => {
     if (!open) {
       updateCoords();
+      setOpen(true);
+    } else {
+      close();
     }
-    setOpen(!open);
   };
 
   const focusableItems = items
@@ -79,17 +97,23 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
         close();
       }
     };
-    const onEscape = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
-    const onScroll = () => { close(); };
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    const onScrollOrResize = () => {
+      close();
+    };
 
     document.addEventListener("mousedown", onClickOutside);
     document.addEventListener("keydown", onEscape);
-    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    window.addEventListener("scroll", onScrollOrResize, { capture: true, passive: true });
+    window.addEventListener("resize", onScrollOrResize, { passive: true });
 
     return () => {
       document.removeEventListener("mousedown", onClickOutside);
       document.removeEventListener("keydown", onEscape);
-      window.removeEventListener("scroll", onScroll, { capture: true });
+      window.removeEventListener("scroll", onScrollOrResize, { capture: true });
+      window.removeEventListener("resize", onScrollOrResize);
     };
   }, [open, close]);
 
@@ -107,13 +131,11 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
     }
 
     if (e.key === "ArrowDown") {
-      setFocusedIndex(prev => (focusableItems.length > 0 ? (prev + 1) % focusableItems.length : -1));
+      setFocusedIndex((prev) => (focusableItems.length > 0 ? (prev + 1) % focusableItems.length : -1));
       e.preventDefault();
     } else if (e.key === "ArrowUp") {
-      setFocusedIndex(prev =>
-        focusableItems.length > 0
-          ? (prev - 1 + focusableItems.length) % focusableItems.length
-          : -1
+      setFocusedIndex((prev) =>
+        focusableItems.length > 0 ? (prev - 1 + focusableItems.length) % focusableItems.length : -1
       );
       e.preventDefault();
     } else if (e.key === "Enter" || e.key === " ") {
@@ -129,89 +151,97 @@ export default function Dropdown({ trigger, items, align = "left", width = "w-48
   };
 
   return (
-    <div
-      ref={containerRef}
-      onKeyDown={handleKeyDown}
-      className={cn("relative inline-flex", className)}
-    >
+    <div ref={containerRef} onKeyDown={handleKeyDown} className={cn("relative inline-flex", className)}>
       <div
         onClick={handleToggle}
-        className="cursor-pointer"
-        aria-haspopup="true"
+        className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg touch-manipulation active:scale-[0.98] transition-transform duration-100"
+        aria-haspopup="menu"
         aria-expanded={open}
       >
         {trigger}
       </div>
 
-      {open && mounted && coords && createPortal(
-        <div
-          id="dropdown-portal-root"
-          style={{
-            position: "fixed",
-            top: openUpward ? undefined : coords.top + 6,
-            bottom: openUpward ? window.innerHeight - coords.top + 6 : undefined,
-            left: align === "right" ? undefined : coords.left,
-            right: align === "right" ? window.innerWidth - coords.left : undefined,
-            zIndex: 99999,
-          }}
-          className={cn(
-            "bg-surface rounded-2xl border border-border shadow-2xl p-1.5 focus:outline-none backdrop-blur-xl bg-surface/95 animate-in fade-in zoom-in-95 duration-150",
-            width
-          )}
-          role="menu"
-        >
-          {items.map((item, i) => {
-            if (item.divider) return <div key={i} className="my-1 border-t border-border" role="separator" />;
+      {render &&
+        mounted &&
+        coords &&
+        createPortal(
+          <div
+            id="dropdown-portal-root"
+            style={{
+              position: "fixed",
+              top: openUpward ? undefined : coords.top + 6,
+              bottom: openUpward ? window.innerHeight - coords.top + 6 : undefined,
+              left: align === "right" ? undefined : coords.left,
+              right: align === "right" ? window.innerWidth - coords.left : undefined,
+              zIndex: 99999,
+            }}
+            className={cn(
+              "bg-surface/95 rounded-2xl border border-border/80 shadow-2xl shadow-black/30 p-1.5 focus:outline-none backdrop-blur-xl ring-1 ring-white/10 transform-gpu select-none",
+              isExiting ? "animate-dropdown-out" : "animate-dropdown-in",
+              width
+            )}
+            role="menu"
+          >
+            {items.map((item, i) => {
+              if (item.divider) return <div key={i} className="my-1 border-t border-border/60" role="separator" />;
 
-            const focusableIdx = focusableItems.findIndex(x => x.originalIndex === i);
-            const isFocused = focusableIdx === focusedIndex;
-            const isSelected = item.active;
+              const focusableIdx = focusableItems.findIndex((x) => x.originalIndex === i);
+              const isFocused = focusableIdx === focusedIndex;
+              const isSelected = item.active;
 
-            return (
-              <button
-                key={i}
-                type="button"
-                role="menuitem"
-                disabled={item.disabled}
-                onClick={() => {
-                  item.onClick?.();
-                  close();
-                }}
-                className={cn(
-                  "w-full flex items-center justify-between gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl text-left cursor-pointer transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed group",
-                  item.danger || item.variant === "danger"
-                    ? "text-red-500 hover:bg-red-600 hover:text-white font-bold"
-                    : item.variant === "warning"
-                    ? "text-amber-500 hover:bg-amber-500/10"
-                    : item.variant === "primary"
-                    ? "text-primary-500 hover:bg-primary-500/10"
-                    : "text-text hover:bg-surface-hover hover:text-text",
-                  isFocused && !(item.danger || item.variant === "danger") && "bg-surface-hover text-text",
-                  isSelected && "font-bold text-primary-500"
-                )}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  {item.icon && (
-                    <span className={cn(
-                      "shrink-0 [&>svg]:h-4 [&>svg]:w-4 transition-colors",
-                      item.danger || item.variant === "danger" ? "text-red-500 group-hover:text-white" : "text-text-muted group-hover:text-text"
-                    )}>
-                      {item.icon}
-                    </span>
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  role="menuitem"
+                  disabled={item.disabled}
+                  onClick={() => {
+                    item.onClick?.();
+                    close();
+                  }}
+                  className={cn(
+                    "w-full flex items-center justify-between gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-left cursor-pointer transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 min-h-[36px] sm:min-h-0",
+                    item.danger || item.variant === "danger"
+                      ? "text-danger-500 hover:bg-danger-500/10 dark:hover:bg-danger-500/20 font-semibold"
+                      : item.variant === "warning"
+                      ? "text-warning-600 dark:text-warning-400 hover:bg-warning-500/10"
+                      : item.variant === "primary"
+                      ? "text-primary-600 dark:text-primary-400 hover:bg-primary-500/10"
+                      : "text-text hover:bg-surface-hover hover:text-text",
+                    isFocused && !(item.danger || item.variant === "danger") && "bg-surface-hover text-text",
+                    isSelected && "font-semibold text-primary-500"
                   )}
-                  <span className="truncate">{item.label}</span>
-                </div>
-                {isSelected && (
-                  <svg className="h-3.5 w-3.5 text-primary-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </button>
-            );
-          })}
-        </div>,
-        document.body
-      )}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {item.icon && (
+                      <span
+                        className={cn(
+                          "shrink-0 [&>svg]:h-4 [&>svg]:w-4 transition-colors",
+                          item.danger || item.variant === "danger"
+                            ? "text-danger-500"
+                            : "text-text-muted group-hover:text-text"
+                        )}
+                      >
+                        {item.icon}
+                      </span>
+                    )}
+                    <span className="truncate">{item.label}</span>
+                  </div>
+                  {isSelected && (
+                    <svg className="h-3.5 w-3.5 text-primary-500 shrink-0 animate-scale-in" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )}
     </div>
   );
-}
+});
+
+export default Dropdown;
+
+

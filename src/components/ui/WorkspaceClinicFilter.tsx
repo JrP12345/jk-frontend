@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import Select from "./Select";
@@ -17,7 +17,7 @@ interface WorkspaceClinicFilterProps {
   className?: string;
 }
 
-export default function WorkspaceClinicFilter({
+const WorkspaceClinicFilter = memo(function WorkspaceClinicFilter({
   selectedClinicId,
   onClinicChange,
   className = "",
@@ -74,4 +74,7 @@ export default function WorkspaceClinicFilter({
       </div>
     </div>
   );
-}
+});
+
+export default WorkspaceClinicFilter;
+

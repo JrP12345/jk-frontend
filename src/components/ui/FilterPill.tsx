@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, memo } from "react";
 import { cn } from "./utils";
 
 export interface FilterPillProps {
@@ -12,7 +12,7 @@ export interface FilterPillProps {
   className?: string;
 }
 
-export default function FilterPill({
+const FilterPill = memo(function FilterPill({
   label,
   icon,
   active = false,
@@ -23,12 +23,13 @@ export default function FilterPill({
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "px-3.5 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-all duration-200 ease-out flex items-center gap-1.5 shrink-0 whitespace-nowrap border outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 select-none",
+        "px-3.5 py-1.5 rounded-full text-xs font-semibold cursor-pointer transform-gpu transition-all duration-150 ease-smooth flex items-center gap-1.5 shrink-0 whitespace-nowrap border outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 select-none active:scale-95 touch-manipulation min-h-[32px] sm:min-h-0",
         active
-          ? "bg-primary-600 text-white border-primary-600 font-semibold shadow-xs hover:bg-primary-700"
-          : "bg-surface text-text-secondary border-border hover:bg-surface-hover hover:text-text hover:border-border/80",
+          ? "bg-primary-600 text-white border-primary-600 shadow-xs hover:bg-primary-700"
+          : "bg-surface text-text-secondary border-border hover:bg-surface-hover hover:text-text",
         className
       )}
     >
@@ -48,4 +49,8 @@ export default function FilterPill({
       )}
     </button>
   );
-}
+});
+
+export default FilterPill;
+
+

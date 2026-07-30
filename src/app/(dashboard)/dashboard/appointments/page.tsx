@@ -10,6 +10,7 @@ import {
 } from "@/components/ui";
 import { PatientQueueTracker } from "@/components/clinical/PatientQueueTracker";
 import { PatientMedicalRecords } from "@/components/ehr/PatientMedicalRecords";
+import { AppointmentCalendarView } from "@/components/clinical/AppointmentCalendarView";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const BOOKING_STEPS = [
@@ -91,9 +92,21 @@ export default function AppointmentsPage() {
   const [bookingNotes, setBookingNotes] = useState("");
 
   // Slot Engine State
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  interface SlotInfo {
+    time: string;
+    available: boolean;
+    reason?: string;
+    isLocked?: boolean;
+    lockedByOther?: boolean;
+  }
+  const [availableSlots, setAvailableSlots] = useState<SlotInfo[]>([]);
   const [fetchingSlots, setFetchingSlots] = useState(false);
   const [selectedSlotDate, setSelectedSlotDate] = useState(new Date().toISOString().split("T")[0]);
+
+  // Slot Lock State
+  const [currentLockId, setCurrentLockId] = useState<string | null>(null);
+  const [lockingSlot, setLockingSlot] = useState(false);
+  const [lockedSlotTime, setLockedSlotTime] = useState<string | null>(null);
 
   useEffect(() => {
     if (!bookingDoctorId || !selectedSlotDate) return;
@@ -101,7 +114,8 @@ export default function AppointmentsPage() {
       try {
         setFetchingSlots(true);
         const res = await api.get(`/doctors/${bookingDoctorId}/slots?clinicId=${bookingClinicId}&date=${selectedSlotDate}`);
-        setAvailableSlots(res.data?.data?.availableSlots || []);
+        const slotsData = res.data?.data?.slots || [];
+        setAvailableSlots(slotsData);
       } catch (err) {
         setAvailableSlots([]);
       } finally {
@@ -161,9 +175,51 @@ export default function AppointmentsPage() {
     setBookingStep(3);
   };
 
+  // Phase 2: View Layout Toggle State
+  const [viewLayout, setViewLayout] = useState<"table" | "calendar">("table");
+
   // Phase 2: Ticket Slip State
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<any>(null);
+
+  // Reschedule Appointment State
+  const [rescheduleTargetAppt, setRescheduleTargetAppt] = useState<Appointment | null>(null);
+  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [rescheduleReason, setRescheduleReason] = useState("");
+  const [submittingReschedule, setSubmittingReschedule] = useState(false);
+
+  const handleOpenRescheduleModal = (appt: Appointment) => {
+    setRescheduleTargetAppt(appt);
+    setRescheduleTime(appt.appointmentTime ? new Date(appt.appointmentTime).toISOString().slice(0, 16) : "");
+    setRescheduleReason("");
+    setBookingDoctorId((appt.doctorId as any)?.id || (appt.doctorId as any)?._id || "");
+    setBookingClinicId((appt.clinicId as any)?.id || (appt.clinicId as any)?._id || "");
+  };
+
+  const handleRescheduleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rescheduleTargetAppt || !rescheduleTime) {
+      toast({ title: "Validation Error", description: "Please select a valid new appointment date & time", variant: "error" });
+      return;
+    }
+
+    setSubmittingReschedule(true);
+    try {
+      const res = await api.patch(`/appointments/${rescheduleTargetAppt.id}/reschedule`, {
+        newTime: rescheduleTime,
+        reason: rescheduleReason,
+        ...(currentLockId ? { lockId: currentLockId } : {}),
+      });
+
+      toast({ title: "Rescheduled! 🗓️", description: res.data?.message || "Appointment successfully rescheduled", variant: "success" });
+      setRescheduleTargetAppt(null);
+      fetchAppointments();
+    } catch (err: any) {
+      toast({ title: "Reschedule Failed", description: err.response?.data?.message || "Could not reschedule appointment", variant: "error" });
+    } finally {
+      setSubmittingReschedule(false);
+    }
+  };
 
   // Phase 2: Doctor Reviews State
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -353,7 +409,7 @@ export default function AppointmentsPage() {
     if (user) {
       fetchClinicsAndDoctors();
     }
-  }, [user]);
+  }, [user?.id, user?.role]);
 
   // Fetch doctor assignments when booking clinic changes
   useEffect(() => {
@@ -415,7 +471,8 @@ export default function AppointmentsPage() {
         doctorId: bookingDoctorId,
         appointmentTime: bookingTime,
         appointmentType: bookingType,
-        notes: bookingNotes
+        notes: bookingNotes,
+        ...(currentLockId ? { lockId: currentLockId } : {}),
       };
 
       if (isNewPatient) {
@@ -465,9 +522,68 @@ export default function AppointmentsPage() {
     setBookingNotes("");
   };
 
+  const releaseCurrentLock = async () => {
+    if (currentLockId && lockedSlotTime && bookingClinicId && bookingDoctorId) {
+      try {
+        await api.delete("/appointments/lock-slot", {
+          data: { clinicId: bookingClinicId, doctorId: bookingDoctorId, slotTime: lockedSlotTime, lockId: currentLockId },
+        });
+      } catch {
+        // Non-critical: lock will auto-expire via TTL
+      }
+    }
+    setCurrentLockId(null);
+    setLockedSlotTime(null);
+  };
+
+  const handleSlotClick = async (slot: SlotInfo) => {
+    if (!slot.available || slot.lockedByOther) return;
+    const fullSlotISO = `${selectedSlotDate}T${slot.time}:00`;
+
+    // If clicking the same already-locked slot, just keep it
+    if (lockedSlotTime === fullSlotISO && currentLockId) {
+      setBookingTime(fullSlotISO);
+      return;
+    }
+
+    // Release previous lock if any
+    await releaseCurrentLock();
+
+    // Acquire new lock
+    setLockingSlot(true);
+    try {
+      const res = await api.post("/appointments/lock-slot", {
+        clinicId: bookingClinicId,
+        doctorId: bookingDoctorId,
+        slotTime: fullSlotISO,
+      });
+      const lockData = res.data?.data;
+      setCurrentLockId(lockData?.lockId || null);
+      setLockedSlotTime(fullSlotISO);
+      setBookingTime(fullSlotISO);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Could not reserve this slot";
+      toast({ title: "Slot Unavailable", description: msg, variant: "error" });
+      // Refresh slots to show updated lock state
+      setFetchingSlots(true);
+      try {
+        const res = await api.get(`/doctors/${bookingDoctorId}/slots?clinicId=${bookingClinicId}&date=${selectedSlotDate}`);
+        setAvailableSlots(res.data?.data?.slots || []);
+      } catch { /* ignore */ } finally { setFetchingSlots(false); }
+    } finally {
+      setLockingSlot(false);
+    }
+  };
+
   const openBookModal = () => {
     resetBookingForm();
     setIsBookModalOpen(true);
+  };
+
+  const handleCloseBookModal = () => {
+    releaseCurrentLock();
+    setIsBookModalOpen(false);
+    resetBookingForm();
   };
 
   const handleUpdateStatus = async () => {
@@ -541,8 +657,48 @@ export default function AppointmentsPage() {
         />
       )}
 
-      {/* Main Roster Table */}
-      <Table
+      {/* View Layout Switcher Bar */}
+      <div className="flex justify-between items-center bg-surface p-3.5 rounded-2xl border border-border/80 shadow-xs">
+        <span className="text-xs font-bold text-text-muted uppercase tracking-wider">Schedule View Mode</span>
+        <div className="flex items-center gap-1.5 bg-surface-alt/70 p-1 rounded-xl border border-border/60">
+          <Button
+            size="xs"
+            variant={viewLayout === "table" ? "primary" : "ghost"}
+            onClick={() => setViewLayout("table")}
+            className="font-bold rounded-lg cursor-pointer"
+            icon={
+              <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18M3 18h18M3 6h18" />
+              </svg>
+            }
+          >
+            Table List
+          </Button>
+          <Button
+            size="xs"
+            variant={viewLayout === "calendar" ? "primary" : "ghost"}
+            onClick={() => setViewLayout("calendar")}
+            className="font-bold rounded-lg cursor-pointer"
+            icon={
+              <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            }
+          >
+            Calendar View
+          </Button>
+        </div>
+      </div>
+
+      {viewLayout === "calendar" ? (
+        <AppointmentCalendarView
+          appointments={appointments as any}
+          onRescheduleClick={(appt: any) => handleOpenRescheduleModal(appt)}
+        />
+      ) : (
+        /* Main Roster Table */
+        <Table
+          data={appointments || []}
         exportFilename="appointments_list"
         searchPlaceholder="Search appointments..."
         loading={loading}
@@ -671,36 +827,53 @@ export default function AppointmentsPage() {
           {
             key: "actions",
             header: "Actions",
-            width: "180px",
+            align: "right",
+            width: "200px",
             render: (row: Appointment) => (
-              <Dropdown
-                align="right"
-                trigger={
-                  <Button size="xs" variant="outline" className="h-7 w-7 p-0 flex items-center justify-center rounded-lg cursor-pointer" title="Row Actions">
-                    <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                    </svg>
-                  </Button>
-                }
-                items={[
-                  { label: "View Booking Slip", onClick: () => handleViewSlip(row) },
-                  { label: "View Rx / EHR Summary", onClick: () => handleOpenRecordModal(row) },
-                  ...(user.role === "doctor" && (row.status === "confirmed" || row.status === "checked-in" || row.status === "in-consultation")
-                    ? [{ label: "Open Encounter Workspace", onClick: () => router.push(`/dashboard/consultations/${row.id}`) }]
-                    : []),
-                  ...(row.status === "pending" ? [{ label: "Mark Confirmed", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("confirmed"); } }] : []),
-                  ...(row.status === "confirmed" ? [{ label: "Mark Checked-In", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("checked-in"); } }] : []),
-                  ...(row.status === "checked-in" ? [{ label: "Start Consultation", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("in-consultation"); } }] : []),
-                  ...(row.status === "in-consultation" ? [{ label: "Mark Completed", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("completed"); } }] : []),
-                  ...(row.status !== "completed" && row.status !== "cancelled" ? [{ label: "Cancel Appointment", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("cancelled"); } }] : [])
-                ]}
-              />
+              <div className="flex items-center justify-end gap-1.5">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleViewSlip(row)}
+                  className="font-semibold rounded-lg cursor-pointer shrink-0"
+                >
+                  View Slip
+                </Button>
+                <Dropdown
+                  align="right"
+                  trigger={
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-8 p-0 flex items-center justify-center rounded-lg border-border hover:bg-surface-hover hover:text-text cursor-pointer transition-colors shrink-0"
+                      title="Row Actions"
+                    >
+                      <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                      </svg>
+                    </Button>
+                  }
+                  items={[
+                    { label: "View Booking Slip", onClick: () => handleViewSlip(row) },
+                    { label: "View Rx / EHR Summary", onClick: () => handleOpenRecordModal(row) },
+                    ...(row.status !== "completed" && row.status !== "cancelled" ? [{ label: "Reschedule Appointment", onClick: () => handleOpenRescheduleModal(row) }] : []),
+                    ...(user.role === "doctor" && (row.status === "confirmed" || row.status === "checked-in" || row.status === "in-consultation")
+                      ? [{ label: "Open Encounter Workspace", onClick: () => router.push(`/dashboard/consultations/${row.id}`) }]
+                      : []),
+                    ...(row.status === "pending" ? [{ label: "Mark Confirmed", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("confirmed"); } }] : []),
+                    ...(row.status === "confirmed" ? [{ label: "Mark Checked-In", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("checked-in"); } }] : []),
+                    ...(row.status === "checked-in" ? [{ label: "Start Consultation", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("in-consultation"); } }] : []),
+                    ...(row.status === "in-consultation" ? [{ label: "Mark Completed", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("completed"); } }] : []),
+                    ...(row.status !== "completed" && row.status !== "cancelled" ? [{ label: "Cancel Appointment", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("cancelled"); } }] : [])
+                  ]}
+                />
+              </div>
             )
           }
         ]}
-        data={appointments}
         emptyMessage="No appointments scheduled."
       />
+      )}
 
       {/* Patient Medical Records & Prescription Downloads */}
       {user.role === "patient" && (
@@ -712,7 +885,7 @@ export default function AppointmentsPage() {
       {/* Book Appointment Modal (Multi-step flow) */}
       <Modal
         open={isBookModalOpen}
-        onClose={() => setIsBookModalOpen(false)}
+        onClose={handleCloseBookModal}
         title="Schedule Clinic Appointment"
         size="lg"
       >
@@ -877,13 +1050,12 @@ export default function AppointmentsPage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-text mb-1">Select Date *</label>
-                  <input
-                    type="date"
+                  <DatePicker
+                    label="Select Date *"
+                    mode="date"
                     value={selectedSlotDate}
-                    onChange={(e) => setSelectedSlotDate(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs bg-surface border border-border rounded-lg text-text"
-                    required
+                    onChange={(val) => setSelectedSlotDate(typeof val === "string" ? val : val.target.value)}
+                    fullWidth
                   />
                 </div>
 
@@ -914,22 +1086,34 @@ export default function AppointmentsPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-40 overflow-y-auto p-1">
-                    {availableSlots.map((slot) => {
-                      const fullSlotISO = `${selectedSlotDate}T${slot}:00`;
+                    {availableSlots.filter(s => s.available).map((slot) => {
+                      const fullSlotISO = `${selectedSlotDate}T${slot.time}:00`;
                       const isSelected = bookingTime === fullSlotISO;
+                      const isHeldByOther = slot.lockedByOther;
+                      const isMyLock = lockedSlotTime === fullSlotISO && currentLockId;
 
                       return (
                         <button
-                          key={slot}
+                          key={slot.time}
                           type="button"
-                          onClick={() => setBookingTime(fullSlotISO)}
-                          className={`px-2 py-1.5 text-xs font-bold rounded-lg border transition-all ${
+                          disabled={!!isHeldByOther || lockingSlot}
+                          onClick={() => handleSlotClick(slot)}
+                          className={`px-2 py-1.5 text-xs font-bold rounded-lg border transition-all relative ${
                             isSelected
                               ? "bg-primary-600 text-white border-primary-600 shadow-sm"
-                              : "bg-surface hover:bg-primary-50 text-text border-border"
+                              : isHeldByOther
+                                ? "bg-amber-50 dark:bg-amber-900/20 text-amber-500 border-amber-300 cursor-not-allowed opacity-70"
+                                : "bg-surface hover:bg-primary-50 text-text border-border"
                           }`}
+                          title={isHeldByOther ? "This slot is being held by another user" : slot.time}
                         >
-                          {slot}
+                          {slot.time}
+                          {isHeldByOther && (
+                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 border border-white dark:border-gray-800" title="Held by another user" />
+                          )}
+                          {isMyLock && (
+                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-400 border border-white dark:border-gray-800" title="Reserved by you" />
+                          )}
                         </button>
                       );
                     })}
@@ -937,12 +1121,12 @@ export default function AppointmentsPage() {
                 )}
 
                 <div className="pt-2">
-                  <Input
+                  <DatePicker
                     label="Selected DateTime *"
-                    type="datetime-local"
+                    mode="datetime"
                     value={bookingTime}
-                    onChange={(e) => setBookingTime(e.target.value)}
-                    required
+                    onChange={(val) => setBookingTime(typeof val === "string" ? val : val.target.value)}
+                    fullWidth
                   />
                 </div>
               </div>
@@ -1354,6 +1538,46 @@ export default function AppointmentsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Reschedule Appointment Modal */}
+      <Modal
+        open={!!rescheduleTargetAppt}
+        onClose={() => setRescheduleTargetAppt(null)}
+        title={`Reschedule Appointment #${rescheduleTargetAppt?.tokenNumber || ""}`}
+        size="md"
+      >
+        <form onSubmit={handleRescheduleSubmit} className="space-y-4">
+          <div className="p-3 bg-surface-alt rounded-lg border border-border text-xs">
+            <p className="font-bold text-text">Patient: {rescheduleTargetAppt?.patientId?.userId?.name}</p>
+            <p className="text-text-secondary">Doctor: Dr. {rescheduleTargetAppt?.doctorId?.name}</p>
+            <p className="text-text-secondary">Current Time: {rescheduleTargetAppt?.appointmentTime ? new Date(rescheduleTargetAppt.appointmentTime).toLocaleString() : ""}</p>
+          </div>
+
+          <DatePicker
+            label="New Date & Time *"
+            mode="datetime"
+            value={rescheduleTime}
+            onChange={(val) => setRescheduleTime(typeof val === "string" ? val : val.target.value)}
+            fullWidth
+          />
+
+          <Textarea
+            label="Reason for Rescheduling (Optional)"
+            placeholder="Patient request, practitioner unavailability..."
+            value={rescheduleReason}
+            onChange={(e) => setRescheduleReason(e.target.value)}
+          />
+
+          <div className="flex justify-between border-t border-border pt-4 mt-4">
+            <Button variant="outline" type="button" onClick={() => setRescheduleTargetAppt(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={submittingReschedule}>
+              Confirm Reschedule
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

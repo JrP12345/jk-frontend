@@ -3,7 +3,7 @@
 import React from "react";
 import { cn } from "./utils";
 
-interface AnantaLogoProps {
+export interface AnantaLogoProps {
   className?: string;
   iconOnly?: boolean;
   size?: "sm" | "md" | "lg" | "xl";
@@ -27,13 +27,13 @@ export function AnantaIcon({ className = "h-12 w-auto" }: { className?: string }
       <img
         src="/logo-d.png"
         alt="Ananta Logo"
-        className="h-full w-auto object-contain [html[data-mode=dark]_&]:hidden"
+        className="h-full w-auto object-contain [html[data-mode=dark]_&]:hidden transform-gpu transition-transform duration-200 ease-smooth"
       />
       {/* Dark Mode Logo (white ink on dark) */}
       <img
         src="/logo-w.png"
         alt="Ananta Logo"
-        className="h-full w-auto object-contain hidden [html[data-mode=dark]_&]:block"
+        className="h-full w-auto object-contain hidden [html[data-mode=dark]_&]:block transform-gpu transition-transform duration-200 ease-smooth"
       />
     </div>
   );
@@ -45,7 +45,6 @@ export function AnantaIcon({ className = "h-12 w-auto" }: { className?: string }
  */
 export default function AnantaLogo({
   className = "",
-  iconOnly = false,
   size = "md",
 }: AnantaLogoProps) {
   const sizeClass = sizeMap[size];
@@ -56,14 +55,15 @@ export default function AnantaLogo({
       <img
         src="/logo-d.png"
         alt="Ananta Healthcare"
-        className={cn(sizeClass, "object-contain [html[data-mode=dark]_&]:hidden transition-transform group-hover:scale-105 duration-200")}
+        className={cn(sizeClass, "object-contain [html[data-mode=dark]_&]:hidden transform-gpu transition-transform group-hover:scale-105 duration-200 ease-smooth")}
       />
       {/* Dark Mode Logo Asset — shown only in dark mode */}
       <img
         src="/logo-w.png"
         alt="Ananta Healthcare"
-        className={cn(sizeClass, "object-contain hidden [html[data-mode=dark]_&]:block transition-transform group-hover:scale-105 duration-200")}
+        className={cn(sizeClass, "object-contain hidden [html[data-mode=dark]_&]:block transform-gpu transition-transform group-hover:scale-105 duration-200 ease-smooth")}
       />
     </div>
   );
 }
+
