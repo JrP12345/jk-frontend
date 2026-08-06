@@ -46,6 +46,8 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [qualityMetrics, setQualityMetrics] = useState<any | null>(null);
   const [nabhKpis, setNabhKpis] = useState<any | null>(null);
+
+  const displayMetric = (value: unknown, suffix = "") => value === null || value === undefined ? "—" : `${value}${suffix}`;
   const [loading, setLoading] = useState(true);
 
   const fetchAnalytics = async () => {
@@ -274,23 +276,23 @@ export default function AnalyticsPage() {
               <CardContent className="p-5 space-y-3 text-xs">
                 <div className="flex justify-between items-center">
                   <span className="text-text-muted">Average Length of Stay (ALOS):</span>
-                  <span className="font-bold text-text">{nabhKpis.indicators?.averageLengthOfStayDays} Days</span>
+                  <span className="font-bold text-text">{displayMetric(nabhKpis.indicators?.averageLengthOfStayDays, " Days")}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-text-muted">30-Day Readmission Rate:</span>
-                  <span className="font-bold text-primary-600">{nabhKpis.indicators?.readmissionRate30DaysPercent}%</span>
+                  <span className="font-bold text-primary-600">{displayMetric(nabhKpis.indicators?.readmissionRate30DaysPercent, "%")}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-text-muted">MAR Medication Safety:</span>
-                  <span className="font-bold text-green-600">{nabhKpis.indicators?.marMedicationCompliancePercent}%</span>
+                  <span className="font-bold text-green-600">{displayMetric(nabhKpis.indicators?.marMedicationCompliancePercent, "%")}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-text-muted">HAI Rate (per 1000 days):</span>
-                  <span className="font-bold text-amber-600">{nabhKpis.indicators?.hospitalAcquiredInfectionRatePer1000}</span>
+                  <span className="font-bold text-amber-600">{displayMetric(nabhKpis.indicators?.hospitalAcquiredInfectionRatePer1000)}</span>
                 </div>
                 <div className="flex justify-between items-center border-t border-border pt-2">
                   <span className="font-semibold text-text">Patient Satisfaction Index:</span>
-                  <span className="font-extrabold text-green-600">{nabhKpis.indicators?.patientSatisfactionScorePercent}%</span>
+                  <span className="font-extrabold text-green-600">{displayMetric(nabhKpis.indicators?.patientSatisfactionScorePercent, "%")}</span>
                 </div>
               </CardContent>
             </Card>

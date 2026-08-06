@@ -32,7 +32,13 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // If 401 Unauthorized, try to refresh token
-    if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== "/auth/refresh" && originalRequest.url !== "/auth/login") {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      originalRequest.url !== "/auth/refresh" &&
+      originalRequest.url !== "/auth/login" &&
+      originalRequest.url !== "/auth/login/verify-2fa"
+    ) {
       if (isRefreshing) {
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });

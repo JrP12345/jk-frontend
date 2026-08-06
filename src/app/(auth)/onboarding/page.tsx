@@ -147,7 +147,10 @@ function OnboardingInner() {
         if (!formData.adminEmail.trim()) newErrors.adminEmail = "Admin Email is required";
         else if (!EMAIL_REGEX.test(formData.adminEmail)) newErrors.adminEmail = "Invalid email address";
         if (!formData.adminPassword) newErrors.adminPassword = "Password is required";
-        else if (formData.adminPassword.length < 6) newErrors.adminPassword = "Minimum 6 characters required";
+        else if (formData.adminPassword.length < 8) newErrors.adminPassword = "Minimum 8 characters required";
+        else if (!/[A-Z]/.test(formData.adminPassword)) newErrors.adminPassword = "Must contain an uppercase letter";
+        else if (!/[a-z]/.test(formData.adminPassword)) newErrors.adminPassword = "Must contain a lowercase letter";
+        else if (!/[0-9]/.test(formData.adminPassword)) newErrors.adminPassword = "Must contain a digit";
       }
     } else if (s === 1) {
       if (!formData.clinicName.trim()) newErrors.clinicName = "Clinic Branch Name is required";
@@ -192,7 +195,7 @@ function OnboardingInner() {
 
     setLoading(true);
     try {
-      // 1. Create Organization & Admin
+      // 1. Create Organization, Admin & Primary Clinic in single atomic transaction
       const orgRes = await api.post("/onboarding/organization", {
         org_name: formData.orgName,
         city: formData.orgCity,
@@ -201,30 +204,22 @@ function OnboardingInner() {
         org_email: formData.orgEmail || undefined,
         description: formData.orgDescription || undefined,
         image_url: formData.orgImageUrl || undefined,
-        admin_name: formData.adminName || user?.name || "Root Administrator",
-        admin_email: formData.adminEmail || user?.email || "admin@hospital.com",
-        admin_password: formData.adminPassword || "Password123!",
+        admin_name: formData.adminName || user?.name || "",
+        admin_email: formData.adminEmail || user?.email || "",
+        admin_password: formData.adminPassword || undefined,
         admin_phone: formData.adminPhone || undefined,
+        clinic_name: formData.clinicName || undefined,
+        clinic_city: formData.clinicCity || undefined,
+        clinic_address: formData.clinicAddress || undefined,
+        clinic_phone: formData.clinicPhone || undefined,
+        clinic_email: formData.clinicEmail || undefined,
       }, {
-        headers: { "X-Onboarding-Secret": onboardingKey || "jk-root-onboard-2025-secret" },
+        headers: onboardingKey ? { "X-Onboarding-Secret": onboardingKey } : undefined,
       });
 
       // Login Admin session if user not already logged in
       if (!user) {
         login(orgRes.data.data.user);
-      }
-
-      // 2. Create primary clinic branch
-      try {
-        await api.post("/onboarding/clinics", {
-          name: formData.clinicName,
-          city: formData.clinicCity,
-          address: formData.clinicAddress || undefined,
-          phone: formData.clinicPhone || undefined,
-          email: formData.clinicEmail || undefined,
-        });
-      } catch (clinicErr) {
-        console.warn("Primary clinic setup notice:", clinicErr);
       }
 
       // 3. Initialize 2FA Google Authenticator setup endpoint

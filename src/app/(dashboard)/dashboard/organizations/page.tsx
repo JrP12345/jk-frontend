@@ -111,8 +111,8 @@ export default function OrganizationsPage() {
 
   const handleInitiate2FA = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.orgName.trim() || !formData.city.trim()) {
-      toast({ title: "Validation Error", description: "Organization Name and City are required.", variant: "warning" });
+    if (!formData.orgName.trim() || !formData.city.trim() || !formData.adminName.trim() || !formData.adminEmail.trim() || !formData.adminPassword) {
+      toast({ title: "Validation Error", description: "Organization, administrator name, administrator email, and administrator password are required.", variant: "warning" });
       return;
     }
 
@@ -158,15 +158,12 @@ export default function OrganizationsPage() {
           org_phone: formData.orgPhone || undefined,
           org_email: formData.orgEmail || undefined,
           plan: formData.plan,
-          admin_name: formData.adminName || `${formData.orgName} Admin`,
-          admin_email:
-            formData.adminEmail ||
-            formData.orgEmail ||
-            `admin_${formData.orgName.toLowerCase().replace(/[^a-z0-9]/g, "")}_${Date.now()}@ananta.internal`,
-          admin_password: formData.adminPassword || "Password123!",
+          admin_name: formData.adminName,
+          admin_email: formData.adminEmail,
+          admin_password: formData.adminPassword,
         },
         {
-          headers: { "X-Onboarding-Secret": "jk-root-onboard-2025-secret" },
+          headers: undefined,
         }
       );
 
@@ -575,6 +572,13 @@ export default function OrganizationsPage() {
             value={formData.orgPhone}
             onChange={(e) => setFormData({ ...formData, orgPhone: e.target.value })}
           />
+
+          <div className="border-t border-border/40 pt-3 space-y-3">
+            <p className="text-xs font-bold text-text">Organization Administrator</p>
+            <Input label="Administrator Name *" value={formData.adminName} onChange={(e) => setFormData({ ...formData, adminName: e.target.value })} required />
+            <Input label="Administrator Email *" type="email" value={formData.adminEmail} onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })} required />
+            <Input label="Administrator Password *" type="password" value={formData.adminPassword} onChange={(e) => setFormData({ ...formData, adminPassword: e.target.value })} minLength={6} required />
+          </div>
 
           <div className="flex justify-end gap-2 pt-3 border-t border-border/40">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>

@@ -480,22 +480,13 @@ export default function StaffPage() {
                 label: "RBAC Governance & Permissions",
                 content: (
                   <RBACPermissionMatrix
-                    users={[
-                      ...doctors.map((d) => ({
-                        id: d.id,
-                        name: d.name,
-                        email: d.email,
-                        role: "doctor",
-                        permissions: ["VIEW_EHR", "MANAGE_CLINICAL_NOTES", "ADMINISTER_MEDICATION", "MANAGE_ORDERS", "MANAGE_DISCHARGE_SUMMARY"],
-                      })),
-                      ...receptionists.map((r) => ({
-                        id: r.id,
-                        name: r.name,
-                        email: r.email,
-                        role: "receptionist",
-                        permissions: ["MANAGE_STAFF", "MANAGE_CLINICS", "MANAGE_APPOINTMENTS", "MANAGE_QUEUE", "MANAGE_BILLING"],
-                      })),
-                    ]}
+                    users={allStaffMembers.map((s) => ({
+                      id: s.id,
+                      name: s.name,
+                      email: s.email,
+                      role: s.roleType,
+                      permissions: s.permissions || [],
+                    }))}
                     onRefresh={loadData}
                   />
                 )

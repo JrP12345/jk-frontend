@@ -50,27 +50,16 @@ export function DoctorCopilotCard({ patientName, briefing, isLoading = false }: 
     );
   }
 
-  // Fallback demo briefing if none provided
-  const data: DoctorCopilotBriefingData = briefing || {
-    visitIntent: "Diabetes & Hypertension Routine Review",
-    keyDeltas: [
-      { metric: "HbA1c", previous: "7.2%", current: "8.9%", trajectory: "worsening" },
-      { metric: "Weight", previous: "74 kg", current: "77 kg", trajectory: "increased" },
-      { metric: "BP", previous: "130/82", current: "145/90 mmHg", trajectory: "worsening" },
-    ],
-    medicationCompliance: {
-      score: 0.55,
-      notes: "Metformin 1000mg adherence dropped to 55% after reported GI side effects.",
-    },
-    suggestedDiscussionPoints: [
-      "Assess GI tolerance to Metformin; evaluate Metformin XR formulation or DPP-4 inhibitor.",
-      "Order Serum Creatinine & eGFR (last checked 9 months ago).",
-      "Evaluate home blood pressure log trends.",
-    ],
-    evidenceCitations: [
-      { docId: "doc_lab_901", title: "Metropolis Lab Report", date: "2026-06-10", page: 1, confidence: 0.98 },
-    ],
-  };
+  if (!briefing) {
+    return (
+      <div className="bg-surface border border-border rounded-xl p-4 my-3 text-sm text-text-secondary">
+        <div className="font-semibold text-text">20-Second Pre-Visit Briefing</div>
+        <p className="mt-1">No generated briefing is available for {patientName}. Clinical decisions must use the verified patient record.</p>
+      </div>
+    );
+  }
+
+  const data = briefing;
 
   const getTrajectoryBadge = (trajectory: BriefingDelta["trajectory"]) => {
     switch (trajectory) {

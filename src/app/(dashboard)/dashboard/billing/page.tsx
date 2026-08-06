@@ -1063,6 +1063,13 @@ export default function BillingPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Official Invoice Print / Receipt Modal */}
+      <UnifiedDocumentModal
+        open={printModalOpen}
+        onClose={() => setPrintModalOpen(false)}
+        document={unifiedDoc}
+      />
     </div>
   );
 }

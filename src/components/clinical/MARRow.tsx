@@ -27,10 +27,11 @@ interface MARRowProps {
   onRefresh: () => void;
 }
 
-export function MARRow({ patientId, clinicId, item, onRefresh }: MARRowProps) {
+export function MARRow({ patientId, item, onRefresh }: MARRowProps) {
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
   const [targetStatus, setTargetStatus] = useState<MARStatus>("administered");
   const [notes, setNotes] = useState("");
+  const [witnessNurseName, setWitnessNurseName] = useState("");
   const [loading, setLoading] = useState(false);
   const [evaluatingCds, setEvaluatingCds] = useState(false);
   const [cdsWarnings, setCdsWarnings] = useState<string[]>([]);
@@ -41,10 +42,9 @@ export function MARRow({ patientId, clinicId, item, onRefresh }: MARRowProps) {
     try {
       const data = await SOAPService.evaluatePrescriptionSafety({
         patientId,
-        clinicId,
         medicationName: item.medicationName,
       });
-      const warnings = data.warnings || [];
+      const warnings = (data.findings || []).map((finding: any) => finding.title || finding.description || "Clinical safety finding");
       setCdsWarnings(warnings);
       if (warnings.length > 0) {
         toast({
@@ -186,6 +186,23 @@ export function MARRow({ patientId, clinicId, item, onRefresh }: MARRowProps) {
             <div className="text-xs text-text-secondary">
               Recording <b>{targetStatus.toUpperCase()}</b> for <b>{item.medicationName} ({item.dosage})</b>.
             </div>
+
+            {targetStatus === "administered" && (
+              <div className="p-3 rounded-lg bg-surface-alt border border-border space-y-2 text-xs">
+                <div className="font-semibold text-text">Dual-Nurse Administration Verification</div>
+                <div>
+                  <label className="block text-[11px] text-text-muted mb-1">Witnessing Nurse Full Name & Staff ID *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Nurse Sarah Jenkins (RN-9021)"
+                    value={witnessNurseName}
+                    onChange={(e) => setWitnessNurseName(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-lg border border-border bg-surface text-text text-xs focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+            )}
 
             <Textarea
               label="Clinical Notes / Justification"

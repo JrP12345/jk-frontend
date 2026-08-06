@@ -26,7 +26,7 @@ export function PatientMedicalRecords({ patientId }: PatientMedicalRecordsProps)
         setLoading(true);
         const [notesRes, invRes] = await Promise.all([
           api.get(`/patients/${patientId}/clinical-notes/history`).catch(() => ({ data: { data: [] } })),
-          api.get("/billing/invoices").catch(() => ({ data: { data: [] } })),
+          api.get("/invoices").catch(() => ({ data: { data: [] } })),
         ]);
 
         setNotes(notesRes.data?.data?.notes || notesRes.data?.data || []);

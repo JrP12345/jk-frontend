@@ -79,7 +79,7 @@ export default function LaboratoryPage() {
         api.get(selectedClinicId ? `/lab-tests?clinicId=${selectedClinicId}` : "/lab-tests"),
         api.get(selectedClinicId ? `/lab-orders?clinicId=${selectedClinicId}` : "/lab-orders"),
         api.get(selectedClinicId ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff"),
-        api.get(selectedClinicId ? `/laboratory/tat-metrics?clinicId=${selectedClinicId}` : "/laboratory/tat-metrics"),
+        api.get(selectedClinicId ? `/lab/tat-metrics?clinicId=${selectedClinicId}` : "/lab/tat-metrics"),
       ]);
 
       setLabTests(testsRes.data?.data || []);

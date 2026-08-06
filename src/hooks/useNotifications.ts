@@ -24,17 +24,10 @@ export function useNotifications() {
   useEffect(() => {
     if (!user || typeof window === "undefined" || typeof EventSource === "undefined") return;
 
-    const getSseToken = () => {
-      if (typeof document === "undefined") return "";
-      const match = document.cookie.match(new RegExp("(?:^|; )sse_access_token=([^;]*)"));
-      if (match) return decodeURIComponent(match[1]);
-      const matchAccess = document.cookie.match(new RegExp("(?:^|; )access_token=([^;]*)"));
-      return matchAccess ? decodeURIComponent(matchAccess[1]) : "";
-    };
-
-    const token = getSseToken();
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-    const streamUrl = `${apiUrl}/notifications/stream${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+    // EventSource sends the httpOnly access cookie when credentials are enabled;
+    // do not expose a bearer token in the URL or a script-readable cookie.
+    const streamUrl = `${apiUrl}/notifications/stream`;
 
     let eventSource: EventSource | null = null;
 

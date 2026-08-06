@@ -91,6 +91,24 @@ export function PatientQueueTracker({ appointmentId, clinicId, doctorId }: Patie
             <span className="font-bold text-amber-600 text-sm">{queueInfo.estimatedWaitTime} mins</span>
           </div>
 
+          {(queueInfo.myStatus === "pending" || queueInfo.myStatus === "confirmed") && (
+            <Button
+              size="xs"
+              variant="primary"
+              onClick={async () => {
+                try {
+                  await api.post(`/appointments/${appointmentId}/check-in`);
+                  fetchQueueInfo();
+                } catch (e) {
+                  // ignore
+                }
+              }}
+              className="font-bold shrink-0"
+            >
+              Check In Now ✅
+            </Button>
+          )}
+
           <Button size="xs" variant="outline" onClick={fetchQueueInfo} title="Refresh Queue Status">
             🔄
           </Button>

@@ -28,12 +28,23 @@ export class SOAPService {
     return res.data?.data || res.data;
   }
 
-  public static async evaluatePrescriptionSafety(payload: { patientId: string; clinicId: string; medicationName: string }) {
-    const res = await api.post("/prescriptions/evaluate-safety", payload);
+  public static async evaluatePrescriptionSafety(payload: { patientId: string; medicationName: string }) {
+    const res = await api.post("/prescriptions/evaluate-safety", {
+      patientId: payload.patientId,
+      proposedPrescriptions: [{ medicineName: payload.medicationName }],
+    });
     return res.data?.data || res.data;
   }
 
-  public static async overrideCDSEvaluation(payload: { evaluationId: string; overrideReason: string }) {
+  public static async overrideCDSEvaluation(payload: {
+    clinicId: string;
+    patientId: string;
+    encounterId?: string;
+    prescriptionIds?: string[];
+    findings: unknown[];
+    clinicianDecision: "accepted" | "overridden" | "blocked";
+    overrideReason?: string;
+  }) {
     const res = await api.post("/prescriptions/override-evaluation", payload);
     return res.data?.data || res.data;
   }

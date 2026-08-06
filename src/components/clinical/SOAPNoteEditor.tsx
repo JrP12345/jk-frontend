@@ -61,8 +61,8 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
     }
   };
 
-  const [activePatientId, setActivePatientId] = useState<string>(patientId && patientId !== "dummy-patient-id" ? patientId : "");
-  const [activeClinicId, setActiveClinicId] = useState<string>(clinicId && clinicId !== "dummy-clinic-id" ? clinicId : "");
+  const [activePatientId, setActivePatientId] = useState<string>(patientId || "");
+  const [activeClinicId, setActiveClinicId] = useState<string>(clinicId || "");
 
   // Local Storage Autosave Draft Recovery State
   const [recoveredDraft, setRecoveredDraft] = useState<any | null>(null);
@@ -260,6 +260,10 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
   const [unifiedDoc, setUnifiedDoc] = useState<UnifiedDocumentData | null>(null);
 
   const handleOpenPrintModal = () => {
+    if (encounterId) {
+      window.open(`/api/v1/encounters/${encounterId}/prescription/print`, "_blank");
+      return;
+    }
     setUnifiedDoc({
       documentType: "prescription",
       title: "PRESCRIPTION RX",
@@ -538,17 +542,18 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
           {/* Quick Load Clinical Template Dropdown & Real AI Generator */}
           {!isSigned && (
             <>
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="primary"
                 disabled={generatingAI}
                 onClick={handleGenerateAISOAP}
-                className="px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                className="flex items-center gap-1.5 font-bold"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2" />
                 </svg>
                 <span>{generatingAI ? "Generating AI SOAP..." : "AI Auto-Draft SOAP"}</span>
-              </button>
+              </Button>
               <select
                 onChange={(e) => {
                   if (e.target.value) {
@@ -573,56 +578,56 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
             </>
           )}
 
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="outline"
             onClick={handleOpenPrintModal}
-            className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 rounded-lg text-xs font-semibold transition-all border border-blue-200 dark:border-blue-800"
           >
             🖨️ Print Rx PDF
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
             onClick={handleFetchHistory}
-            className="px-3 py-1.5 bg-zinc-100 dark:bg-[#1a1b23] hover:bg-zinc-200 dark:hover:bg-[#252631] text-zinc-700 dark:text-zinc-300 rounded-lg text-xs font-semibold transition-all border border-zinc-200 dark:border-[#252631]"
           >
             📜 Version History
-          </button>
+          </Button>
 
           {!isSigned ? (
             <>
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="primary"
                 onClick={handleSaveDraft}
                 disabled={loading || signing}
-                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-medium transition-all shadow-sm disabled:opacity-50"
               >
                 {loading ? "Saving..." : "Save Draft SOAP Note"}
-              </button>
+              </Button>
 
               {currentNoteId && (
-                <button
-                  type="button"
+                <Button
+                  size="sm"
+                  variant="success"
                   onClick={handleSignNote}
                   disabled={signing || loading}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-all shadow-sm disabled:opacity-50"
                 >
                   {signing ? "Signing..." : "Sign & Lock Note"}
-                </button>
+                </Button>
               )}
             </>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-bold flex items-center gap-1.5">
+              <Badge variant="success" className="px-3 py-1.5 text-xs font-bold">
                 ✓ Signed & Locked Note
-              </span>
+              </Badge>
 
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="warning"
                 onClick={() => setAmendOpen(true)}
-                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition-all shadow-sm"
               >
                 Amend Note
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -849,7 +854,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
 
               <input type="text" placeholder="Dosage (e.g. 1 tab)" value={medDosage} onChange={(e) => setMedDosage(e.target.value)} disabled={isSigned} className="w-28 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border rounded disabled:opacity-60" />
               <input type="text" placeholder="Duration" value={medDuration} onChange={(e) => setMedDuration(e.target.value)} disabled={isSigned} className="w-24 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border rounded disabled:opacity-60" />
-              <button type="button" onClick={handleAddMedication} disabled={isSigned} className="px-3 py-1 bg-primary-600 text-white rounded text-xs font-medium hover:bg-primary-700 disabled:opacity-50">Add Rx</button>
+              <Button size="xs" variant="primary" onClick={handleAddMedication} disabled={isSigned}>Add Rx</Button>
             </div>
 
             {prescriptions.length > 0 && (

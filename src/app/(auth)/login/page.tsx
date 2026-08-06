@@ -15,6 +15,7 @@ import {
   Input,
   Button,
   Badge,
+  Modal,
   useToast,
   ModeSwitcher,
   AnantaLogo,
@@ -36,8 +37,12 @@ export default function LoginPage() {
   // Shake feedback on failed login
   const [isShaking, setIsShaking] = useState(false);
 
-  // Forgot password flow states
+  // 2FA Auth states & Forgot Password states
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isTwoFactorModalOpen, setIsTwoFactorModalOpen] = useState(false);
+  const [twoFactorToken, setTwoFactorToken] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetEmailError, setResetEmailError] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
@@ -66,8 +71,20 @@ export default function LoginPage() {
       setPasswordError("Password is required");
       return false;
     }
-    if (val.length < 6) {
-      setPasswordError("Password must be at least 6 characters");
+    if (val.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
+      return false;
+    }
+    if (!/[A-Z]/.test(val)) {
+      setPasswordError("Password must contain at least one uppercase letter");
+      return false;
+    }
+    if (!/[a-z]/.test(val)) {
+      setPasswordError("Password must contain at least one lowercase letter");
+      return false;
+    }
+    if (!/[0-9]/.test(val)) {
+      setPasswordError("Password must contain at least one digit");
       return false;
     }
     setPasswordError("");
@@ -94,6 +111,17 @@ export default function LoginPage() {
 
     try {
       const res = await api.post("/auth/login", { email, password });
+      if (res.data?.data?.twoFactorRequired) {
+        toast({
+          title: "2FA Authentication Required",
+          description: "Please enter your 2FA verification code to complete sign in.",
+          variant: "warning",
+        });
+        setIsTwoFactorModalOpen(true);
+        setTwoFactorToken(res.data.data.twoFactorToken || "");
+        return;
+      }
+
       login(res.data.data.user);
       toast({
         title: "Welcome back!",
@@ -122,18 +150,18 @@ export default function LoginPage() {
 
     setResetLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await api.post("/auth/forgot-password", { email: resetEmail });
       setIsResetSent(true);
       toast({
         title: "Recovery Link Sent",
-        description: `Password reset instructions have been sent to ${resetEmail}.`,
+        description: `If an account exists for ${resetEmail}, password reset instructions have been dispatched.`,
         variant: "success",
-        duration: 4000,
+        duration: 5000,
       });
-    } catch {
+    } catch (err: any) {
       toast({
         title: "Request Failed",
-        description: "Unable to process recovery request. Please try again later.",
+        description: err.response?.data?.message || "Unable to process recovery request. Please try again later.",
         variant: "error",
         duration: 4000,
       });
@@ -320,6 +348,71 @@ export default function LoginPage() {
           )}
         </Card>
       </div>
+
+      {/* 2FA OTP Verification Modal */}
+      {isTwoFactorModalOpen && (
+        <Modal
+          isOpen={isTwoFactorModalOpen}
+          onClose={() => setIsTwoFactorModalOpen(false)}
+          title="Two-Factor Authentication Required"
+          description="Enter the 6-digit verification code from your authenticator app"
+        >
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setOtpLoading(true);
+              try {
+                const res = await api.post("/auth/login/verify-2fa", {
+                  twoFactorToken,
+                  otp: otpCode.trim(),
+                });
+                login(res.data.data.user);
+                toast({
+                  title: "Welcome back!",
+                  description: `2FA Verified. Logged in as ${res.data.data.user.name}.`,
+                  variant: "success",
+                });
+                setIsTwoFactorModalOpen(false);
+                router.push("/dashboard");
+              } catch (err: any) {
+                const msg = err.response?.data?.message || "";
+                const isExpired = msg.toLowerCase().includes("expired") || msg.toLowerCase().includes("challenge");
+                setOtpCode("");
+                toast({
+                  title: isExpired ? "Session Expired" : "Verification Failed",
+                  description: isExpired
+                    ? "Your 2FA session has expired. Please sign in again to get a new code prompt."
+                    : msg || "Invalid 2FA code. Please check your authenticator app and try again.",
+                  variant: "error",
+                  duration: 5000,
+                });
+                if (isExpired) {
+                  setIsTwoFactorModalOpen(false);
+                  setTwoFactorToken("");
+                }
+              } finally {
+                setOtpLoading(false);
+              }
+            }}
+            className="space-y-4"
+          >
+            <Input
+              label="6-Digit OTP Code"
+              placeholder="123456"
+              maxLength={6}
+              inputMode="numeric"
+              pattern="[0-9]{6}"
+              autoComplete="one-time-code"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+              required
+            />
+            <Button type="submit" loading={otpLoading} fullWidth variant="primary">
+              Verify & Sign In
+            </Button>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

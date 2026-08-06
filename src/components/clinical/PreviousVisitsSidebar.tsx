@@ -15,7 +15,7 @@ export function PreviousVisitsSidebar({ patientId, onCopyForward }: PreviousVisi
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!patientId || patientId === "dummy-patient-id") return;
+    if (!patientId) return;
     const fetchHistory = async () => {
       try {
         setLoading(true);
@@ -32,7 +32,7 @@ export function PreviousVisitsSidebar({ patientId, onCopyForward }: PreviousVisi
     fetchHistory();
   }, [patientId]);
 
-  if (!patientId || patientId === "dummy-patient-id") return null;
+  if (!patientId) return null;
 
   return (
     <div className="bg-surface rounded-xl border border-border p-4 space-y-4">

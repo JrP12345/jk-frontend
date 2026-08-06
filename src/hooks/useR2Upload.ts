@@ -33,17 +33,14 @@ export function useR2Upload(options?: UseR2UploadOptions) {
       setProgress(60);
       const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
-      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") || localStorage.getItem("token") || "" : "";
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
       const response = await fetch(`${API_URL}/upload-base64`, {
         method: 'POST',
         headers,
+        credentials: 'include',
         body: JSON.stringify({
           contentType: file.type || 'image/png',
           originalFilename: file.name,
@@ -78,22 +75,10 @@ export function useR2Upload(options?: UseR2UploadOptions) {
 
       return result;
     } catch (err: any) {
-      console.warn('R2 cloud upload unconfigured/failed, using local base64 data URL fallback');
-      setProgress(100);
-      const base64Url = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
-      const fallbackResult: UploadResult = {
-        url: base64Url,
-        publicUrl: base64Url,
-        key: file.name,
-      };
-      if (options?.onSuccess) {
-        options.onSuccess(fallbackResult);
-      }
-      return fallbackResult;
+      const message = err?.message || 'Cloud storage upload failed';
+      setError(message);
+      options?.onError?.(err);
+      throw err;
     } finally {
       setUploading(false);
     }

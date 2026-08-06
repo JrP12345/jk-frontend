@@ -27,13 +27,13 @@ export function NurseVitalsModal({
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
 
-  const [bpSystolic, setBpSystolic] = useState("120");
-  const [bpDiastolic, setBpDiastolic] = useState("80");
-  const [pulseRate, setPulseRate] = useState("72");
-  const [spO2, setSpO2] = useState("98");
-  const [temperatureF, setTemperatureF] = useState("98.6");
-  const [weightKg, setWeightKg] = useState("70");
-  const [heightCm, setHeightCm] = useState("170");
+  const [bpSystolic, setBpSystolic] = useState("");
+  const [bpDiastolic, setBpDiastolic] = useState("");
+  const [pulseRate, setPulseRate] = useState("");
+  const [spO2, setSpO2] = useState("");
+  const [temperatureF, setTemperatureF] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [heightCm, setHeightCm] = useState("");
 
   const handleSaveVitals = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,8 +48,8 @@ export function NurseVitalsModal({
           pulse: Number(pulseRate),
           spO2: Number(spO2),
           temperature: Number(temperatureF),
-          weight: Number(weightKg),
-          height: Number(heightCm),
+          ...(weightKg ? { weight: Number(weightKg) } : {}),
+          ...(heightCm ? { height: Number(heightCm) } : {}),
         },
       };
 

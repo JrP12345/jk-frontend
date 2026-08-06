@@ -31,17 +31,8 @@ export default function ImageUpload({
   disabled = false,
 }: ImageUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [simulatedProgress, setSimulatedProgress] = useState<number | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
 
   useEffect(() => {
     if (value instanceof File) {
@@ -59,32 +50,15 @@ export default function ImageUpload({
     (typeof value === "string" && value.toLowerCase().endsWith(".pdf")) ||
     (value instanceof File && value.type === "application/pdf");
 
-  const startSimulatedUpload = (file: File) => {
+  const selectFile = (file: File) => {
     if (disabled) return;
-    setIsUploading(true);
-    setSimulatedProgress(0);
-
-    let currentProgress = 0;
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      currentProgress += Math.floor(Math.random() * 15) + 5;
-      if (currentProgress >= 100) {
-        currentProgress = 100;
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        setTimeout(() => {
-          setIsUploading(false);
-          setSimulatedProgress(null);
-          onChange(file);
-        }, 200);
-      }
-      setSimulatedProgress(currentProgress);
-    }, 80);
+    onChange(file);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      startSimulatedUpload(file);
+      selectFile(file);
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -94,7 +68,7 @@ export default function ImageUpload({
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isUploading && !externalUploading && !disabled) {
+    if (!externalUploading && !disabled) {
       setIsDragging(true);
     }
   };
@@ -110,7 +84,7 @@ export default function ImageUpload({
     e.stopPropagation();
     setIsDragging(false);
 
-    if (isUploading || externalUploading || disabled) return;
+    if (externalUploading || disabled) return;
 
     const file = e.dataTransfer.files?.[0];
     if (file) {
@@ -121,7 +95,7 @@ export default function ImageUpload({
         return file.type === type;
       });
       if (isAllowed) {
-        startSimulatedUpload(file);
+        selectFile(file);
       }
     }
   };
@@ -142,8 +116,8 @@ export default function ImageUpload({
     }
   };
 
-  const currentUploading = externalUploading ?? isUploading;
-  const currentProgress = externalProgress ?? simulatedProgress;
+  const currentUploading = externalUploading ?? false;
+  const currentProgress = externalProgress;
 
   return (
     <div className={cn("flex flex-col gap-1.5 w-full", className)}>
@@ -269,5 +243,4 @@ export default function ImageUpload({
     </div>
   );
 }
-
 

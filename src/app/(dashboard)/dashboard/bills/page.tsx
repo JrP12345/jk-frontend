@@ -69,11 +69,8 @@ export default function PatientBillsPage() {
 
     try {
       setSubmittingPayment(true);
-      // Simulate tokenized gateway processing (PCI-DSS SAQ A Compliant)
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-
       const method = paymentOption === "upi" ? "upi" : "online";
-      const paymentToken = paymentOption === "card" ? "pm_card_visa" : "tok_upi";
+      const paymentToken = paymentOption === "card" ? "card" : "upi";
 
       await api.put(`/invoices/${activeInvoice.id}/pay`, { 
         paymentMethod: method,

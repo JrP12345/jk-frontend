@@ -63,6 +63,7 @@ export default function PatientsDirectoryPage() {
       setLoading(true);
       const queryParams = new URLSearchParams();
       if (search.trim()) queryParams.set("search", search.trim());
+      if (genderFilter !== "all") queryParams.set("gender", genderFilter);
       queryParams.set("page", String(page));
       queryParams.set("limit", "10");
 
@@ -72,13 +73,7 @@ export default function PatientsDirectoryPage() {
       const totalHeader = res.headers["x-total-count"] || res.headers["total-count"];
       const pagesHeader = res.headers["x-total-pages"] || res.headers["total-pages"];
 
-      let list = Array.isArray(rawData) ? rawData : [];
-
-      if (genderFilter !== "all") {
-        list = list.filter(
-          (p: PatientRecord) => (p.gender || "unknown").toLowerCase() === genderFilter.toLowerCase()
-        );
-      }
+      const list = Array.isArray(rawData) ? rawData : [];
 
       setPatients(list);
       if (totalHeader) setTotalCount(Number(totalHeader));
@@ -186,10 +181,13 @@ export default function PatientsDirectoryPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => router.push(`/dashboard/patients/${pid}/timeline`)}
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/dashboard/patients/${pid}`);
+              }}
               className="font-semibold rounded-lg cursor-pointer shrink-0"
             >
-              EHR Timeline →
+              View Profile →
             </Button>
             <Dropdown
               align="right"
@@ -206,6 +204,7 @@ export default function PatientsDirectoryPage() {
                 </Button>
               }
               items={[
+                { label: "View Full Profile", onClick: () => router.push(`/dashboard/patients/${pid}`) },
                 { label: "Book Appointment", onClick: () => router.push(`/dashboard/appointments?patientId=${pid}`) },
                 { label: "Inspect EHR Timeline", onClick: () => router.push(`/dashboard/patients/${pid}/timeline`) },
               ]}
@@ -351,6 +350,7 @@ export default function PatientsDirectoryPage() {
               data={patients}
               searchable={false}
               pagination={false}
+              onRowClick={(p) => router.push(`/dashboard/patients/${p.id || p._id}`)}
               emptyMessage="No patient profiles found. Try adjusting search criteria or register a new patient."
             />
           )}

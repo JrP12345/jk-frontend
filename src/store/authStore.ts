@@ -30,7 +30,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true, // Initially true so we don't flash login page on load
-  activeClinicId: null,
+  activeClinicId: typeof window !== "undefined" ? localStorage.getItem("ananta_active_clinic_id") : null,
 
   checkAuth: async () => {
     try {
@@ -59,13 +59,21 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await api.post("/auth/switch-org", { organizationId });
       const res = await api.get("/auth/me");
+      if (typeof window !== "undefined") localStorage.removeItem("ananta_active_clinic_id");
       set({ user: res.data.data.user, isAuthenticated: true, activeClinicId: null });
     } catch (err) {
       console.error("Failed to switch organization context:", err);
+      throw err;
     }
   },
 
-  setActiveClinic: (clinicId: string | null) => set({ activeClinicId: clinicId }),
+  setActiveClinic: (clinicId: string | null) => {
+    if (typeof window !== "undefined") {
+      if (clinicId) localStorage.setItem("ananta_active_clinic_id", clinicId);
+      else localStorage.removeItem("ananta_active_clinic_id");
+    }
+    set({ activeClinicId: clinicId });
+  },
 }));
 
 // Listen for the custom "auth-expired" event from the axios interceptor

@@ -18,8 +18,11 @@ import {
   SkeletonCard,
 } from "@/components/ui";
 
+import { useModuleStore } from "@/store/moduleStore";
+
 export default function DashboardOverview() {
   const { user } = useAuthStore();
+  const { isModuleEnabled } = useModuleStore();
   const router = useRouter();
   const { toast } = useToast();
 

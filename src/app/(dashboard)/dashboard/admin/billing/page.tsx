@@ -20,6 +20,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { billingService, SaaSPlan } from "@/services/billing.service";
+import { API_URL } from "@/lib/api";
 
 export default function AdminBillingPage() {
   const { toast } = useToast();
@@ -38,8 +39,8 @@ export default function AdminBillingPage() {
   const [razorpayConfig, setRazorpayConfig] = useState({
     keyId: "",
     keySecret: "",
-    webhookSecret: "ananta_razorpay_webhook_secret_2026",
-    webhookUrl: "http://localhost:5000/api/billing/webhook",
+    webhookSecret: "",
+    webhookUrl: `${API_URL}/billing/webhook`,
   });
   const [savingRazorpay, setSavingRazorpay] = useState(false);
 
@@ -92,8 +93,8 @@ export default function AdminBillingPage() {
         setRazorpayConfig({
           keyId: rzpData.keyId || "",
           keySecret: rzpData.keySecret || "",
-          webhookSecret: rzpData.webhookSecret || "ananta_razorpay_webhook_secret_2026",
-          webhookUrl: "http://localhost:5000/api/billing/webhook",
+          webhookSecret: rzpData.webhookSecret || "",
+          webhookUrl: `${API_URL}/billing/webhook`,
         });
       }
     } catch (err: any) {

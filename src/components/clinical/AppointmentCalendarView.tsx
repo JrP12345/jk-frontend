@@ -33,11 +33,18 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedAppt, setSelectedAppt] = useState<AppointmentItem | null>(null);
 
-  // Group appointments by YYYY-MM-DD
+  const getLocalDateKey = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Group appointments by YYYY-MM-DD in local time
   const appointmentsByDate: Record<string, AppointmentItem[]> = {};
   appointments.forEach((appt) => {
     if (!appt.appointmentTime) return;
-    const dateKey = new Date(appt.appointmentTime).toISOString().split("T")[0];
+    const dateKey = getLocalDateKey(new Date(appt.appointmentTime));
     if (!appointmentsByDate[dateKey]) appointmentsByDate[dateKey] = [];
     appointmentsByDate[dateKey].push(appt);
   });
@@ -123,15 +130,15 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
               {currentDate.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" })}
             </h3>
             <span className="text-xs text-text-muted">
-              {(appointmentsByDate[currentDate.toISOString().split("T")[0]] || []).length} Appointments Scheduled
+              {(appointmentsByDate[getLocalDateKey(currentDate)] || []).length} Appointments Scheduled
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {(appointmentsByDate[currentDate.toISOString().split("T")[0]] || []).length === 0 ? (
+            {(appointmentsByDate[getLocalDateKey(currentDate)] || []).length === 0 ? (
               <p className="text-xs text-text-muted italic py-8 col-span-full text-center">No appointments scheduled for this day.</p>
             ) : (
-              (appointmentsByDate[currentDate.toISOString().split("T")[0]] || []).map((appt) => (
+              (appointmentsByDate[getLocalDateKey(currentDate)] || []).map((appt) => (
                 <div
                   key={appt.id}
                   onClick={() => { setSelectedAppt(appt); if (onSelectAppointment) onSelectAppointment(appt); }}
@@ -161,8 +168,8 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
       {viewMode === "week" && (
         <div className="grid grid-cols-7 gap-2">
           {weekDates.map((d) => {
-            const dateStr = d.toISOString().split("T")[0];
-            const isToday = new Date().toISOString().split("T")[0] === dateStr;
+            const dateStr = getLocalDateKey(d);
+            const isToday = getLocalDateKey(new Date()) === dateStr;
             const dayAppts = appointmentsByDate[dateStr] || [];
 
             return (
@@ -223,8 +230,8 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
           {Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate() }).map((_, idx) => {
             const dayNum = idx + 1;
             const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
-            const dateStr = d.toISOString().split("T")[0];
-            const isToday = new Date().toISOString().split("T")[0] === dateStr;
+            const dateStr = getLocalDateKey(d);
+            const isToday = getLocalDateKey(new Date()) === dateStr;
             const dayAppts = appointmentsByDate[dateStr] || [];
 
             return (

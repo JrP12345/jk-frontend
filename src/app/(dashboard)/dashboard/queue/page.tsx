@@ -150,6 +150,14 @@ export default function QueuePage() {
 
   useEffect(() => {
     fetchQueue();
+    const interval = setInterval(() => {
+      if (selectedClinic && selectedDoctor) {
+        api.get(`/queue?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`)
+          .then((res) => setAppointments(res.data.data || []))
+          .catch(() => {});
+      }
+    }, 15000);
+    return () => clearInterval(interval);
   }, [selectedClinic, selectedDoctor, selectedDate]);
 
   // Split appointments into Active and Finished categories

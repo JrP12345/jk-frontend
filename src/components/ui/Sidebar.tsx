@@ -11,6 +11,7 @@ export interface NavItem {
   icon?: ReactNode;
   badge?: string | number;
   active?: boolean;
+  section?: string;
   children?: NavItem[];
 }
 
@@ -43,9 +44,22 @@ export default function Sidebar({ brand, items, footer, collapsed = false, class
       )}
       <nav className="flex-1 overflow-y-auto py-3 px-2">
         <ul className="flex flex-col gap-0.5">
-          {items.map((item, i) => (
-            <SidebarItem key={i} item={item} collapsed={collapsed} />
-          ))}
+          {items.map((item, i) => {
+            const showSection = item.section && (i === 0 || items[i - 1]?.section !== item.section);
+            return (
+              <div key={i}>
+                {showSection && !collapsed && (
+                  <li className="pt-3 pb-1 px-3 text-[10px] font-bold tracking-wider text-text-muted uppercase">
+                    {item.section}
+                  </li>
+                )}
+                {showSection && collapsed && i > 0 && (
+                  <div className="my-1 border-t border-border/50" />
+                )}
+                <SidebarItem item={item} collapsed={collapsed} />
+              </div>
+            );
+          })}
         </ul>
       </nav>
       {footer && <div className={cn("border-t border-border", collapsed ? "p-2" : "px-3 py-3")}>{footer}</div>}

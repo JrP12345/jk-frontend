@@ -7,15 +7,17 @@ import { Card, CardHeader, CardTitle, CardContent, StatCard, Spinner, Badge } fr
 export function ExecutiveAnalytics() {
   const [metrics, setMetrics] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
+        setError(null);
         const [apptsRes, invRes, deptRes] = await Promise.all([
-          api.get("/appointments").catch(() => ({ data: { data: [] } })),
-          api.get("/billing/invoices").catch(() => ({ data: { data: [] } })),
-          api.get("/departments").catch(() => ({ data: { data: [] } })),
+          api.get("/appointments"),
+          api.get("/invoices"),
+          api.get("/departments"),
         ]);
 
         const appts: any[] = apptsRes.data?.data || [];
@@ -40,6 +42,7 @@ export function ExecutiveAnalytics() {
         });
       } catch (err) {
         console.error("Failed to load executive analytics:", err);
+        setError("Executive analytics could not be loaded. Verify your workspace access and try again.");
       } finally {
         setLoading(false);
       }
@@ -52,6 +55,14 @@ export function ExecutiveAnalytics() {
     return (
       <div className="py-12 text-center">
         <Spinner size="lg" label="Calculating enterprise health system KPIs..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-12 text-center text-sm text-error-600 dark:text-error-400">
+        {error}
       </div>
     );
   }

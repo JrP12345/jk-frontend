@@ -80,7 +80,7 @@ export default function AppointmentsPage() {
   // New Patient Form
   const [isNewPatient, setIsNewPatient] = useState(false);
   const [newPatientForm, setNewPatientForm] = useState({
-    name: "", dob: "", gender: "male", phone: "", email: "", address: "", allergies: "", conditions: "", medicalNotes: ""
+    name: "", dob: "", gender: "male", phone: "", email: "", password: "", address: "", allergies: "", conditions: "", medicalNotes: ""
   });
 
   // Doctor & Slot Booking Details
@@ -140,6 +140,12 @@ export default function AppointmentsPage() {
       error = "Date of Birth is required";
     } else if (field === "email" && value.trim() && !EMAIL_REGEX.test(value)) {
       error = "Please enter a valid email address";
+    } else if (field === "password") {
+      if (!value) error = "Password is required";
+      else if (value.length < 8) error = "Password must be at least 8 characters";
+      else if (!/[A-Z]/.test(value)) error = "Password must contain an uppercase letter";
+      else if (!/[a-z]/.test(value)) error = "Password must contain a lowercase letter";
+      else if (!/[0-9]/.test(value)) error = "Password must contain a digit";
     }
 
     setBookingErrors((prev) => {
@@ -167,7 +173,8 @@ export default function AppointmentsPage() {
       const isNameValid = validateNewPatientField("name", newPatientForm.name);
       const isDobValid = validateNewPatientField("dob", newPatientForm.dob);
       const isEmailValid = validateNewPatientField("email", newPatientForm.email);
-      if (!isNameValid || !isDobValid || !isEmailValid) {
+      const isPasswordValid = validateNewPatientField("password", newPatientForm.password);
+      if (!isNameValid || !isDobValid || !isEmailValid || !isPasswordValid) {
         toast({ title: "Validation Error", description: "Please correct highlighted fields before proceeding.", variant: "error" });
         return;
       }
@@ -457,7 +464,8 @@ export default function AppointmentsPage() {
       const isNameValid = validateNewPatientField("name", newPatientForm.name);
       const isDobValid = validateNewPatientField("dob", newPatientForm.dob);
       const isEmailValid = validateNewPatientField("email", newPatientForm.email);
-      if (!isNameValid || !isDobValid || !isEmailValid) {
+      const isPasswordValid = validateNewPatientField("password", newPatientForm.password);
+      if (!isNameValid || !isDobValid || !isEmailValid || !isPasswordValid) {
         setBookingStep(2);
         toast({ title: "Validation Error", description: "Please correct highlighted fields before submitting.", variant: "error" });
         return;
@@ -513,7 +521,7 @@ export default function AppointmentsPage() {
     setIsNewPatient(false);
     setBookingErrors({});
     setNewPatientForm({
-      name: "", dob: "", gender: "male", phone: "", email: "", address: "", allergies: "", conditions: "", medicalNotes: ""
+      name: "", dob: "", gender: "male", phone: "", email: "", password: "", address: "", allergies: "", conditions: "", medicalNotes: ""
     });
     setBookingClinicId("");
     setBookingDoctorId("");
@@ -982,6 +990,15 @@ export default function AppointmentsPage() {
                       onChange={(e) => handleNewPatientChange("email", e.target.value)} 
                       onBlur={() => validateNewPatientField("email", newPatientForm.email)}
                       error={bookingErrors.email}
+                    />
+                    <Input
+                      label="Patient Portal Password *"
+                      type="password"
+                      value={newPatientForm.password}
+                      onChange={(e) => handleNewPatientChange("password", e.target.value)}
+                      onBlur={() => validateNewPatientField("password", newPatientForm.password)}
+                      error={bookingErrors.password}
+                      required
                     />
                     <Input 
                       label="Full Address" 

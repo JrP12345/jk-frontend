@@ -11,11 +11,12 @@ import { useR2Upload } from "@/hooks/useR2Upload";
 import { notificationService, type SmtpConfig } from "@/services/notificationService";
 import { aiAdminService } from "@/services/aiAdmin.service";
 import BillingSettingsPage from "./billing/page";
+import ModulesSettingsPage from "./modules/page";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const PHONE_REGEX = /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s./0-9]*$/;
 
-type Tab = "organization" | "notifications" | "ai" | "billing";
+type Tab = "organization" | "notifications" | "ai" | "modules" | "billing";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   {
@@ -42,6 +43,15 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2" />
+      </svg>
+    ),
+  },
+  {
+    id: "modules",
+    label: "Module Manager",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
       </svg>
     ),
   },
@@ -529,6 +539,7 @@ export default function SettingsPage() {
       {activeTab === "organization" && <OrganizationTab />}
       {activeTab === "notifications" && <NotificationsTab />}
       {activeTab === "ai" && <AISettingsTab />}
+      {activeTab === "modules" && <ModulesSettingsPage />}
       {activeTab === "billing" && <BillingSettingsPage />}
     </div>
   );

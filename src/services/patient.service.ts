@@ -16,4 +16,10 @@ export class PatientService {
     const res = await api.get(`/patients/${patientId}/search?q=${encodeURIComponent(q)}&category=${category}`);
     return res.data?.data || res.data;
   }
+
+  public static async updatePatientProfile(patientId: string, payload: any) {
+    const res = await api.patch(`/patients/${patientId}`, payload);
+    return res.data?.data || res.data;
+  }
 }
+

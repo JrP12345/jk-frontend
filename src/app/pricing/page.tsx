@@ -10,6 +10,7 @@ export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
   const [plans, setPlans] = useState<SaaSPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchPlans() {
@@ -18,10 +19,12 @@ export default function PricingPage() {
         if (data && data.length > 0) {
           setPlans(data);
         } else {
-          setPlans(defaultPlansFallback);
+          setPlans([]);
+          setError("No active pricing plans are configured.");
         }
       } catch (err) {
-        setPlans(defaultPlansFallback);
+        setPlans([]);
+        setError("Pricing plans could not be loaded. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -83,6 +86,8 @@ export default function PricingPage() {
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
           </div>
+        ) : error ? (
+          <div className="py-20 text-center text-slate-400">{error}</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
             {plans.map((plan) => {
@@ -236,51 +241,3 @@ export default function PricingPage() {
     </div>
   );
 }
-
-const defaultPlansFallback: SaaSPlan[] = [
-  {
-    id: "1",
-    name: "Starter",
-    slug: "starter",
-    description: "Essential healthcare tools for individual practitioners and small single-branch clinics.",
-    monthlyPrice: 1999,
-    annualPrice: 19990,
-    currency: "INR",
-    trialDays: 15,
-    status: "active",
-    displayOrder: 1,
-    isPopular: false,
-    limits: { maxHospitals: 1, maxClinics: 1, maxDoctors: 2, maxStaff: 5, maxPatients: 500, maxAppointments: 1000, maxStorageMB: 2048 },
-    features: { analytics: true, auditLogs: false, multiBranch: false, dataExport: false, apiAccess: false, aiFeatures: false }
-  },
-  {
-    id: "2",
-    name: "Professional",
-    slug: "professional",
-    description: "Complete management suite for growing multi-doctor clinics and diagnostic centers.",
-    monthlyPrice: 4999,
-    annualPrice: 49990,
-    currency: "INR",
-    trialDays: 15,
-    status: "active",
-    displayOrder: 2,
-    isPopular: true,
-    limits: { maxHospitals: 3, maxClinics: 5, maxDoctors: 15, maxStaff: 25, maxPatients: 5000, maxAppointments: 10000, maxStorageMB: 10240 },
-    features: { analytics: true, auditLogs: true, multiBranch: true, dataExport: true, apiAccess: false, aiFeatures: true }
-  },
-  {
-    id: "3",
-    name: "Enterprise",
-    slug: "enterprise",
-    description: "Advanced infrastructure with dedicated AI engines, unlimited branches, and custom SLA for hospitals.",
-    monthlyPrice: 14999,
-    annualPrice: 149990,
-    currency: "INR",
-    trialDays: 15,
-    status: "active",
-    displayOrder: 3,
-    isPopular: false,
-    limits: { maxHospitals: 99, maxClinics: 99, maxDoctors: 999, maxStaff: 999, maxPatients: 99999, maxAppointments: 999999, maxStorageMB: 102400 },
-    features: { analytics: true, auditLogs: true, multiBranch: true, dataExport: true, apiAccess: true, aiFeatures: true }
-  }
-];

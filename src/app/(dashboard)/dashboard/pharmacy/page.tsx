@@ -7,6 +7,7 @@ import {
   Card, CardHeader, CardTitle, CardContent,
   Table, Button, Modal, Input, DatePicker, Select, useToast, Spinner, Badge, StatCard, SkeletonTable, Dropdown, ConfirmDialog
 } from "@/components/ui";
+import { PharmacyAlertsCenter } from "@/components/pharmacy/PharmacyAlertsCenter";
 
 interface MedicineType {
   id: string;
@@ -18,6 +19,9 @@ interface MedicineType {
   costPrice: number;
   expiryDate: string;
   batchNumber: string;
+  reorderLevel?: number;
+  hsnCode?: string;
+  gstRate?: number;
 }
 
 interface PrescriptionItem {
@@ -41,7 +45,7 @@ export default function PharmacyPage() {
   const { user, activeClinicId } = useAuthStore();
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<"inventory" | "dispensing">("inventory");
+  const [activeTab, setActiveTab] = useState<"inventory" | "alerts" | "dispensing">("inventory");
   const [clinics, setClinics] = useState<any[]>([]);
   const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
 
@@ -81,13 +85,14 @@ export default function PharmacyPage() {
   const [newBatchPrice, setNewBatchPrice] = useState<number>(0);
   const [submittingBatch, setSubmittingBatch] = useState(false);
 
-  const openAddBatchModal = (med: MedicineType) => {
-    setBatchTargetMed(med);
+  const openAddBatchModal = (med?: MedicineType) => {
+    const target = med || medicines[0] || null;
+    setBatchTargetMed(target);
     setNewBatchNum("");
     setNewBatchExpiry("");
     setNewBatchQty(50);
-    setNewBatchCost(med.costPrice || 0);
-    setNewBatchPrice(med.price || 0);
+    setNewBatchCost(target?.costPrice || 0);
+    setNewBatchPrice(target?.price || 0);
     setIsBatchModalOpen(true);
   };
 
@@ -436,12 +441,29 @@ export default function PharmacyPage() {
         </button>
         <button
           type="button"
+          onClick={() => setActiveTab("alerts")}
+          className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "alerts" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
+        >
+          ⚠️ Low Stock & Expiry Alerts
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab("dispensing")}
           className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "dispensing" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
         >
           Dispensing Prescription Desk ({completedAppointments.length})
         </button>
       </div>
+
+      {/* TAB: LOW STOCK & EXPIRY ALERTS */}
+      {activeTab === "alerts" && (
+        <PharmacyAlertsCenter
+          clinicId={selectedClinicId}
+          medicines={medicines as any}
+          onOpenAddBatch={(med) => openAddBatchModal(med as any)}
+          onRefresh={fetchData}
+        />
+      )}
 
       {/* TAB 1: INVENTORY STOCK CATALOG */}
       {activeTab === "inventory" && (
