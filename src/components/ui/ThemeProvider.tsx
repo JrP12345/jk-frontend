@@ -58,6 +58,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     const applyChange = () => {
       document.documentElement.setAttribute("data-mode", nextResolved);
+      document.documentElement.classList.toggle("dark", nextResolved === "dark");
       setModeRaw(m);
       setResolvedMode(nextResolved);
       if (typeof window !== "undefined") {
@@ -99,10 +100,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
       const nextRes = mq.matches ? "dark" : "light";
       document.documentElement.setAttribute("data-mode", nextRes);
+      document.documentElement.classList.toggle("dark", nextRes === "dark");
       setResolvedMode(nextRes);
       const handler = (e: MediaQueryListEvent) => {
         const r = e.matches ? "dark" : "light";
         document.documentElement.setAttribute("data-mode", r);
+        document.documentElement.classList.toggle("dark", r === "dark");
         setResolvedMode(r);
       };
       mq.addEventListener("change", handler);
@@ -114,6 +117,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute("data-mode", resolvedMode);
+    root.classList.toggle("dark", resolvedMode === "dark");
     root.setAttribute("data-palette", palette);
   }, [resolvedMode, palette]);
 

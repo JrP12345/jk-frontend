@@ -86,7 +86,7 @@ const StatCard = memo(function StatCard({
           )}
         </div>
         {icon && (
-          <div className="shrink-0 p-2 sm:p-2.5 rounded-xl bg-surface-alt border border-border/60 text-primary-500 [&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5 ml-2 sm:ml-4 transition-colors">
+          <div className="shrink-0 p-2 sm:p-2.5 rounded-xl bg-gradient-to-br from-primary-500/15 via-primary-500/10 to-transparent border border-primary-500/20 text-primary-500 [&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5 ml-2 sm:ml-4 shadow-xs">
             {icon}
           </div>
         )}

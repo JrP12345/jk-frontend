@@ -36,7 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         })
         .catch(() => {});
     }
-  }, [user?.organization_id]);
+  }, [user?.id, user?.organization_id]);
 
   // Fetch module toggle states once user is loaded
   useEffect(() => {
@@ -350,7 +350,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
         {/* Top Navbar */}
-        <header className="h-16 border-b border-border bg-surface flex items-center justify-between px-4 md:px-6 shrink-0 z-40 relative">
+        <header className="h-16 border-b border-border/80 bg-surface/90 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 shrink-0 z-40 relative shadow-2xs">
           <div className="flex items-center gap-3">
             {/* Mobile Hamburger Toggle Button */}
             <button
@@ -370,7 +370,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           <div className="flex items-center gap-2 md:gap-4">
             {user.role !== "patient" && headerClinics.length > 0 && (
-              <div className="hidden lg:block w-48 sm:w-56">
+              <div className="hidden md:block w-48 sm:w-56">
                 <Select
                   size="sm"
                   options={headerClinics.map((c) => ({ value: c.id, label: `📍 ${c.name}` }))}

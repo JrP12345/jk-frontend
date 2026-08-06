@@ -393,7 +393,7 @@ export default function Table<T extends Record<string, any>>({
           <table className="w-full text-sm border-collapse text-left min-w-[650px] sm:min-w-full">
             <thead>
               <tr className={cn(
-                "border-b border-border bg-surface-alt/70 text-text font-bold text-xs uppercase tracking-wider",
+                "border-b border-border/80 bg-surface-alt/80 backdrop-blur-md text-text font-bold text-xs uppercase tracking-wider",
                 stickyHeader && "sticky top-0 z-10"
               )}>
                 {selectable && (

@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
 import {
   Card,
-  CardHeader,
-  CardTitle,
   CardContent,
   Button,
   Badge,
@@ -16,8 +14,12 @@ import {
   Spinner,
   Modal,
   Input,
+  Select,
+  Checkbox,
   Dropdown,
+  StatCard,
   useToast,
+  cn,
 } from "@/components/ui";
 
 interface Organization {
@@ -33,6 +35,10 @@ interface Organization {
   maxClinics?: number;
   maxDoctors?: number;
   maxStaff?: number;
+  taxId?: string;
+  licenseNumber?: string;
+  currency?: string;
+  timezone?: string;
   createdAt: string;
 }
 
@@ -41,9 +47,15 @@ export default function OrganizationsPage() {
   const [loading, setLoading] = useState(true);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
 
-  // Create New Organization Modal State
+  // Filters & Search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"all" | "active" | "inactive" | "starter" | "pro" | "enterprise">("all");
+
+  // Create New Organization Modal State (2-Step Wizard)
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState<1 | 2>(1);
   const [submitting, setSubmitting] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [formData, setFormData] = useState({
     orgName: "",
     city: "",
@@ -51,16 +63,47 @@ export default function OrganizationsPage() {
     orgPhone: "",
     orgEmail: "",
     plan: "starter" as "starter" | "pro" | "enterprise",
+    taxId: "",
+    licenseNumber: "",
+    currency: "INR",
+    timezone: "Asia/Kolkata",
     adminName: "",
     adminEmail: "",
     adminPassword: "",
+    clinicName: "",
+    sendWelcomeEmail: true,
   });
 
-  // 2FA Security OTP Modal State
-  const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
-  const [totpSecret, setTotpSecret] = useState<string>("");
-  const [otpCode, setOtpCode] = useState<string>("");
-  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  // Post-Creation Credentials Summary Modal
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const [createdCredentialsSummary, setCreatedCredentialsSummary] = useState<{
+    orgName: string;
+    adminName: string;
+    adminEmail: string;
+    adminPassword: string;
+    loginUrl: string;
+  } | null>(null);
+
+  // Edit & Delete Modal States
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    city: "",
+    address: "",
+    phone: "",
+    email: "",
+    plan: "starter" as "starter" | "pro" | "enterprise",
+    taxId: "",
+    licenseNumber: "",
+    currency: "INR",
+    timezone: "Asia/Kolkata",
+  });
+  const [updating, setUpdating] = useState(false);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingOrg, setDeletingOrg] = useState<Organization | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const { user, switchOrg } = useAuthStore();
   const router = useRouter();
@@ -88,6 +131,41 @@ export default function OrganizationsPage() {
     }
   };
 
+  // Platform Metrics
+  const stats = useMemo(() => {
+    const total = organizations.length;
+    const active = organizations.filter((o) => o.status !== "inactive" && o.isActive !== false).length;
+    const inactive = total - active;
+    const starterCount = organizations.filter((o) => (o.plan || "starter") === "starter").length;
+    const proCount = organizations.filter((o) => o.plan === "pro").length;
+    const enterpriseCount = organizations.filter((o) => o.plan === "enterprise").length;
+
+    return { total, active, inactive, starterCount, proCount, enterpriseCount };
+  }, [organizations]);
+
+  // Filtered List
+  const filteredOrganizations = useMemo(() => {
+    return organizations.filter((org) => {
+      const matchesSearch =
+        org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        org.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (org.email && org.email.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const isInactive = org.status === "inactive" || org.isActive === false;
+      const currentPlan = org.plan || "starter";
+
+      if (!matchesSearch) return false;
+
+      if (activeTab === "active") return !isInactive;
+      if (activeTab === "inactive") return isInactive;
+      if (activeTab === "starter") return currentPlan === "starter";
+      if (activeTab === "pro") return currentPlan === "pro";
+      if (activeTab === "enterprise") return currentPlan === "enterprise";
+
+      return true;
+    });
+  }, [organizations, searchQuery, activeTab]);
+
   const handleEnterWorkspace = async (orgId: string, orgName: string) => {
     try {
       setSwitchingId(orgId);
@@ -109,89 +187,69 @@ export default function OrganizationsPage() {
     }
   };
 
-  const handleInitiate2FA = async (e: React.FormEvent) => {
+  const handleGeneratePassword = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    let pass = "";
+    for (let i = 0; i < 12; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setFormData((prev) => ({ ...prev, adminPassword: pass }));
+    setShowAdminPassword(true);
+    toast({ title: "Password Generated", description: "Secure administrator password generated.", variant: "info" });
+  };
+
+  const handleCreateOrganizationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (submitting) return;
+
     if (!formData.orgName.trim() || !formData.city.trim() || !formData.adminName.trim() || !formData.adminEmail.trim() || !formData.adminPassword) {
-      toast({ title: "Validation Error", description: "Organization, administrator name, administrator email, and administrator password are required.", variant: "warning" });
+      toast({
+        title: "Validation Error",
+        description: "Organization name, city, admin name, admin email, and admin password are required.",
+        variant: "warning",
+      });
       return;
     }
 
     setSubmitting(true);
     try {
-      const totpRes = await api.post("/onboarding/totp/setup");
-      setTotpSecret(totpRes.data?.data?.secret || "");
-      setOtpCode(""); // Leave blank so user performs real 2FA verification from Google Authenticator
-
-      setIsModalOpen(false);
-      setIsMfaModalOpen(true);
-    } catch (err: any) {
-      toast({
-        title: "2FA Setup Failed",
-        description: err.response?.data?.message || "Failed to initialize security authorization.",
-        variant: "error",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleVerifyAndCreateOrganization = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otpCode.trim() || otpCode.trim().length < 6) {
-      toast({ title: "Validation Error", description: "Please enter the 6-digit authenticator code.", variant: "warning" });
-      return;
-    }
-
-    setVerifyingOtp(true);
-    try {
-      await api.post("/onboarding/totp/verify", {
-        token: otpCode.trim(),
-        secret: totpSecret,
+      await api.post("/onboarding/organization", {
+        org_name: formData.orgName.trim(),
+        city: formData.city.trim(),
+        address: formData.address.trim() || undefined,
+        org_phone: formData.orgPhone.trim() ? formData.orgPhone.trim() : undefined,
+        org_email: formData.orgEmail.trim() ? formData.orgEmail.trim() : undefined,
+        plan: formData.plan,
+        taxId: formData.taxId.trim() || undefined,
+        licenseNumber: formData.licenseNumber.trim() || undefined,
+        currency: formData.currency,
+        timezone: formData.timezone,
+        admin_name: formData.adminName.trim(),
+        admin_email: formData.adminEmail.trim().toLowerCase(),
+        admin_password: formData.adminPassword,
+        clinic_name: formData.clinicName.trim() || undefined,
+        sendWelcomeEmail: formData.sendWelcomeEmail,
       });
 
-      const createRes = await api.post(
-        "/onboarding/organization",
-        {
-          org_name: formData.orgName,
-          city: formData.city,
-          address: formData.address || undefined,
-          org_phone: formData.orgPhone || undefined,
-          org_email: formData.orgEmail || undefined,
-          plan: formData.plan,
-          admin_name: formData.adminName,
-          admin_email: formData.adminEmail,
-          admin_password: formData.adminPassword,
-        },
-        {
-          headers: undefined,
-        }
-      );
-
-      const createdOrg = createRes.data?.data?.organization;
-      if (createdOrg) {
-        setOrganizations((prev) => [
-          {
-            id: createdOrg.id,
-            name: createdOrg.name || formData.orgName,
-            city: createdOrg.city || formData.city,
-            address: formData.address,
-            email: formData.orgEmail,
-            phone: formData.orgPhone,
-            plan: formData.plan,
-            createdAt: new Date().toISOString(),
-          },
-          ...prev.filter((o) => o.id !== createdOrg.id),
-        ]);
-      }
+      const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+      setCreatedCredentialsSummary({
+        orgName: formData.orgName.trim(),
+        adminName: formData.adminName.trim(),
+        adminEmail: formData.adminEmail.trim().toLowerCase(),
+        adminPassword: formData.adminPassword,
+        loginUrl: `${origin}/login`,
+      });
 
       toast({
-        title: "Organization Created",
-        description: `${formData.orgName} (${formData.plan.toUpperCase()} Plan) registered successfully.`,
+        title: "Organization Provisioned",
+        description: `${formData.orgName} (${formData.plan.toUpperCase()} Tier) created successfully.`,
         variant: "success",
       });
 
-      setIsMfaModalOpen(false);
-      setOtpCode("");
+      setIsModalOpen(false);
+      setWizardStep(1);
+      setIsSummaryModalOpen(true);
       setFormData({
         orgName: "",
         city: "",
@@ -199,38 +257,38 @@ export default function OrganizationsPage() {
         orgPhone: "",
         orgEmail: "",
         plan: "starter",
+        taxId: "",
+        licenseNumber: "",
+        currency: "INR",
+        timezone: "Asia/Kolkata",
         adminName: "",
         adminEmail: "",
         adminPassword: "",
+        clinicName: "",
+        sendWelcomeEmail: true,
       });
       fetchOrganizations();
     } catch (err: any) {
       toast({
-        title: "Authorization Failed",
-        description: err.response?.data?.message || "Invalid authenticator code or creation failed.",
+        title: "Creation Failed",
+        description: err.response?.data?.message || "Failed to create organization.",
         variant: "error",
       });
     } finally {
-      setVerifyingOtp(false);
+      setSubmitting(false);
     }
   };
 
-  // Edit & Delete Modal State
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
-  const [editFormData, setEditFormData] = useState({
-    name: "",
-    city: "",
-    address: "",
-    phone: "",
-    email: "",
-    plan: "starter" as "starter" | "pro" | "enterprise",
-  });
-  const [updating, setUpdating] = useState(false);
-
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deletingOrg, setDeletingOrg] = useState<Organization | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const handleCopyCredentials = () => {
+    if (!createdCredentialsSummary) return;
+    const text = `ANANTA Healthcare OS - Administrator Credentials\nOrganization: ${createdCredentialsSummary.orgName}\nLogin Portal: ${createdCredentialsSummary.loginUrl}\nEmail: ${createdCredentialsSummary.adminEmail}\nPassword: ${createdCredentialsSummary.adminPassword}`;
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Credentials Copied",
+      description: "Administrator email, password & portal link copied to clipboard.",
+      variant: "success",
+    });
+  };
 
   const handleOpenEditModal = (org: Organization) => {
     setEditingOrg(org);
@@ -241,6 +299,10 @@ export default function OrganizationsPage() {
       phone: org.phone || "",
       email: org.email || "",
       plan: org.plan || "starter",
+      taxId: org.taxId || "",
+      licenseNumber: org.licenseNumber || "",
+      currency: org.currency || "INR",
+      timezone: org.timezone || "Asia/Kolkata",
     });
     setIsEditModalOpen(true);
   };
@@ -258,6 +320,10 @@ export default function OrganizationsPage() {
         phone: editFormData.phone || undefined,
         email: editFormData.email || undefined,
         plan: editFormData.plan,
+        taxId: editFormData.taxId || undefined,
+        licenseNumber: editFormData.licenseNumber || undefined,
+        currency: editFormData.currency,
+        timezone: editFormData.timezone,
       });
 
       const updated = res.data?.data;
@@ -347,26 +413,40 @@ export default function OrganizationsPage() {
 
   const tableColumns: Column<Organization>[] = [
     {
-      header: "Organization",
+      header: "Organization & Identifiers",
       accessor: (org) => (
         <div className="space-y-0.5">
-          <p className="font-bold text-text text-xs sm:text-sm">{org.name}</p>
-          <p className="text-[11px] text-text-muted">{org.email || "No email listed"}</p>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-text text-xs sm:text-sm">{org.name}</span>
+            {user?.organization_id === org.id && (
+              <Badge variant="primary" size="sm" className="text-[9px] px-1.5 py-0 font-extrabold uppercase">
+                Active Workspace
+              </Badge>
+            )}
+          </div>
+          <p className="text-[11px] text-text-muted">
+            {org.email || "No email listed"}
+            {org.taxId ? ` · Tax ID: ${org.taxId}` : ""}
+          </p>
         </div>
       ),
     },
     {
-      header: "Plan",
+      header: "Plan & Quotas",
       accessor: (org) => {
         const plan = org.plan || "starter";
         const variant = plan === "enterprise" ? "primary" : plan === "pro" ? "info" : "secondary";
         return (
           <div className="space-y-0.5">
-            <Badge variant={variant as any} size="sm" className="uppercase font-extrabold text-[9px] tracking-wider">
-              {plan}
-            </Badge>
+            <div className="flex items-center gap-1.5">
+              <Badge variant={variant as any} size="sm" className="uppercase font-extrabold text-[9px] tracking-wider">
+                {plan}
+              </Badge>
+              <span className="text-[10px] text-text-muted font-bold">{org.currency || "INR"}</span>
+            </div>
             <p className="text-[10px] text-text-muted">
-              {org.maxClinics ?? 1} Branch · {org.maxDoctors ?? 2} Doctors · {org.maxStaff ?? 2} Staff
+              {org.maxClinics ?? (plan === "enterprise" ? "Unlimited" : plan === "pro" ? 5 : 1)} Branch ·{" "}
+              {org.maxDoctors ?? (plan === "enterprise" ? "Unlimited" : plan === "pro" ? 15 : 2)} Docs
             </p>
           </div>
         );
@@ -380,7 +460,7 @@ export default function OrganizationsPage() {
           <div className="flex items-center gap-1.5 text-xs font-semibold">
             <span className={`w-2 h-2 rounded-full ${isInactive ? "bg-red-500" : "bg-emerald-500 animate-pulse"}`} />
             <span className={isInactive ? "text-text-muted" : "text-text"}>
-              {isInactive ? "Inactive" : "Active"}
+              {isInactive ? "Suspended" : "Active"}
             </span>
           </div>
         );
@@ -428,7 +508,7 @@ export default function OrganizationsPage() {
                   onClick: () => handleOpenEditModal(org),
                 },
                 {
-                  label: isInactive ? "Activate Workspace" : "Deactivate Workspace",
+                  label: isInactive ? "Activate Workspace" : "Suspend Workspace",
                   variant: isInactive ? "default" : "warning",
                   onClick: () => handleToggleOrgStatus(org),
                 },
@@ -450,7 +530,7 @@ export default function OrganizationsPage() {
       <div className="p-8 text-center space-y-3 max-w-md mx-auto">
         <h2 className="text-lg font-bold text-text">Access Restricted</h2>
         <p className="text-xs text-text-secondary">
-          Only Root Admin accounts can view and manage all platform organizations.
+          Only Root Super Admin accounts can view and manage all platform organizations.
         </p>
       </div>
     );
@@ -458,12 +538,17 @@ export default function OrganizationsPage() {
 
   return (
     <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
-      {/* Clean Enterprise Header */}
+      {/* Executive Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Organizations</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Organizations & Tenants</h1>
+            <Badge variant="primary" size="sm" className="font-extrabold text-[10px] uppercase">
+              Root Super Admin
+            </Badge>
+          </div>
           <p className="text-xs text-text-muted mt-0.5">
-            Manage multi-tenant organizations, subscription plans, and active workspaces.
+            Manage multi-tenant healthcare organizations, subscription quotas, and active workspace contexts.
           </p>
         </div>
 
@@ -471,169 +556,451 @@ export default function OrganizationsPage() {
           variant="primary"
           size="sm"
           className="font-bold rounded-xl shadow-xs shrink-0 cursor-pointer"
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setWizardStep(1);
+            setIsModalOpen(true);
+          }}
         >
           + Create Organization
         </Button>
       </div>
 
-      {/* Organizations Table Card */}
-      <Card className="rounded-2xl border border-border bg-surface">
+      {/* KPI Stats Summary Cards using Design System StatCard Component */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard
+          title="Total Workspaces"
+          value={stats.total}
+          description={`${stats.active} Active · ${stats.inactive} Suspended`}
+        />
+        <StatCard
+          title="Starter Tier"
+          value={stats.starterCount}
+          description="Single-Clinic Tier"
+        />
+        <StatCard
+          title="Pro Tier"
+          value={stats.proCount}
+          description="Multi-Branch Clinics"
+        />
+        <StatCard
+          title="Enterprise Tier"
+          value={stats.enterpriseCount}
+          description="Unlimited Capacity"
+        />
+      </div>
+
+      {/* Filter Tabs & Search Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface p-3 rounded-2xl border border-border">
+        {/* Tabs */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          {[
+            { id: "all", label: `All (${stats.total})` },
+            { id: "active", label: `Active (${stats.active})` },
+            { id: "inactive", label: `Suspended (${stats.inactive})` },
+            { id: "starter", label: `Starter (${stats.starterCount})` },
+            { id: "pro", label: `Pro (${stats.proCount})` },
+            { id: "enterprise", label: `Enterprise (${stats.enterpriseCount})` },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer",
+                activeTab === tab.id
+                  ? "bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/30"
+                  : "text-text-secondary hover:text-text hover:bg-surface-hover"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="w-full sm:w-64">
+          <Input
+            placeholder="Search by name or city..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="text-xs h-9"
+          />
+        </div>
+      </div>
+
+      {/* Organizations Table Card (Desktop) & Responsive Cards (Mobile) */}
+      <Card className="rounded-2xl border border-border bg-surface overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
             <div className="py-12 text-center">
-              <Spinner size="md" label="Loading organizations..." />
+              <Spinner size="md" label="Loading platform organizations..." />
             </div>
-          ) : organizations.length === 0 ? (
+          ) : filteredOrganizations.length === 0 ? (
             <div className="py-12 text-center space-y-3">
-              <p className="text-text-muted text-xs font-semibold">No organizations registered yet.</p>
-              <Button variant="primary" size="sm" onClick={() => setIsModalOpen(true)} className="rounded-xl font-bold cursor-pointer">
-                Create First Organization →
+              <p className="text-text-muted text-xs font-semibold">No organizations match the selected criteria.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery("");
+                  setActiveTab("all");
+                }}
+                className="rounded-xl font-bold cursor-pointer"
+              >
+                Clear Search & Filters
               </Button>
             </div>
           ) : (
-            <Table
-              columns={tableColumns}
-              data={organizations}
-              searchable={true}
-              searchPlaceholder="Search organizations by name or city..."
-            />
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden sm:block">
+                <Table columns={tableColumns} data={filteredOrganizations} searchable={false} />
+              </div>
+
+              {/* Mobile Card List View */}
+              <div className="block sm:hidden divide-y divide-border">
+                {filteredOrganizations.map((org) => {
+                  const isCurrentOrg = user?.organization_id === org.id;
+                  const isInactive = org.status === "inactive" || org.isActive === false;
+                  const plan = org.plan || "starter";
+
+                  return (
+                    <div key={org.id} className="p-4 space-y-3 bg-surface">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-text text-sm">{org.name}</span>
+                            {isCurrentOrg && (
+                              <Badge variant="primary" size="sm" className="text-[8px] px-1 py-0 uppercase">
+                                Active
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-text-muted">{org.email || "No email listed"}</p>
+                        </div>
+                        <Badge
+                          variant={plan === "enterprise" ? "primary" : plan === "pro" ? "info" : "secondary"}
+                          size="sm"
+                          className="uppercase text-[9px] font-extrabold"
+                        >
+                          {plan}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-text-secondary pt-1">
+                        <span>City: <strong>{org.city}</strong></span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rounded-full ${isInactive ? "bg-red-500" : "bg-emerald-500"}`} />
+                          <span>{isInactive ? "Suspended" : "Active"}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
+                        <Button
+                          variant={isCurrentOrg ? "secondary" : "outline"}
+                          size="sm"
+                          loading={switchingId === org.id}
+                          onClick={() => handleEnterWorkspace(org.id, org.name)}
+                          className="text-xs font-semibold rounded-lg w-full"
+                        >
+                          {isCurrentOrg ? "Active Workspace" : "Enter Workspace →"}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
 
-      {/* Modal: Create New Organization Form */}
+      {/* Modal: 2-Step Responsive Create Organization Wizard */}
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Create Organization"
-        description="Set organization details and subscription tier."
+        title="Create Tenant Organization"
+        description="Provision a new healthcare organization workspace and administrator."
       >
-        <form onSubmit={handleInitiate2FA} className="space-y-4 pt-1">
-          <Input
-            label="Organization Name *"
-            placeholder="e.g. Apollo Health System"
-            value={formData.orgName}
-            onChange={(e) => setFormData({ ...formData, orgName: e.target.value })}
-            required
-          />
+        {/* Wizard Step Progress Bar */}
+        <div className="flex items-center justify-between border-b border-border pb-3 mb-4 text-xs font-bold">
+          <div className={`flex items-center gap-2 ${wizardStep === 1 ? "text-primary-600 dark:text-primary-400" : "text-text-muted"}`}>
+            <span className="w-5 h-5 rounded-full bg-primary-500/20 flex items-center justify-center text-[10px]">1</span>
+            <span>Organization & Tier</span>
+          </div>
+          <div className="h-0.5 flex-1 mx-3 bg-border" />
+          <div className={`flex items-center gap-2 ${wizardStep === 2 ? "text-primary-600 dark:text-primary-400" : "text-text-muted"}`}>
+            <span className="w-5 h-5 rounded-full bg-primary-500/20 flex items-center justify-center text-[10px]">2</span>
+            <span>Administrator & Options</span>
+          </div>
+        </div>
 
-          {/* Subscription Tier Selection */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-text">Subscription Tier *</label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: "starter", title: "Starter", desc: "1 Clinic, 2 Docs" },
-                { id: "pro", title: "Pro", desc: "5 Clinics, 15 Docs" },
-                { id: "enterprise", title: "Enterprise", desc: "Unlimited" },
-              ].map((tier) => (
-                <button
+        <form onSubmit={handleCreateOrganizationSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+          {/* STEP 1: Organization & Subscription Tier */}
+          {wizardStep === 1 && (
+            <div className="space-y-4 animate-fade-in">
+              <Input
+                label="Organization Name *"
+                placeholder="e.g. Apollo Healthcare System"
+                value={formData.orgName}
+                onChange={(e) => setFormData({ ...formData, orgName: e.target.value })}
+                required
+              />
+
+              {/* Subscription Tier Radio Cards */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-text">Subscription Plan Tier *</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {[
+                    { id: "starter", title: "Starter", desc: "1 Clinic · 2 Doctors · 5 Staff" },
+                    { id: "pro", title: "Pro", desc: "5 Clinics · 15 Doctors · Multi-Branch" },
+                    { id: "enterprise", title: "Enterprise", desc: "Unlimited Capacity · Dedicated AI" },
+                  ].map((tier) => (
+                    <button
+                      type="button"
+                      key={tier.id}
+                      onClick={() => setFormData({ ...formData, plan: tier.id as any })}
+                      className={cn(
+                        "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                        formData.plan === tier.id
+                          ? "border-primary-500 bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold shadow-xs"
+                          : "border-border hover:bg-surface-hover text-text-secondary"
+                      )}
+                    >
+                      <p className="text-xs font-bold uppercase">{tier.title}</p>
+                      <p className="text-[10px] opacity-80 mt-1 leading-snug">{tier.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="City *"
+                  placeholder="e.g. San Francisco"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Contact Email"
+                  type="email"
+                  placeholder="contact@apollo.health"
+                  value={formData.orgEmail}
+                  onChange={(e) => setFormData({ ...formData, orgEmail: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Tax ID / GSTIN (Optional)"
+                  placeholder="22AAAAA0000A1Z5"
+                  value={formData.taxId}
+                  onChange={(e) => setFormData({ ...formData, taxId: e.target.value })}
+                />
+                <Input
+                  label="License No. (Optional)"
+                  placeholder="HOSP-REG-2026-8901"
+                  value={formData.licenseNumber}
+                  onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Select
+                  label="Currency"
+                  value={formData.currency}
+                  onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                  options={[
+                    { value: "INR", label: "INR (₹)" },
+                    { value: "USD", label: "USD ($)" },
+                    { value: "EUR", label: "EUR (€)" },
+                    { value: "GBP", label: "GBP (£)" },
+                    { value: "AED", label: "AED (د.إ)" },
+                  ]}
+                />
+
+                <Select
+                  label="Operating Timezone"
+                  value={formData.timezone}
+                  onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                  options={[
+                    { value: "Asia/Kolkata", label: "Asia/Kolkata (IST +5:30)" },
+                    { value: "America/New_York", label: "America/New_York (EST -5:00)" },
+                    { value: "Europe/London", label: "Europe/London (GMT +0:00)" },
+                    { value: "Asia/Dubai", label: "Asia/Dubai (GST +4:00)" },
+                  ]}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-border">
+                <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
                   type="button"
-                  key={tier.id}
-                  onClick={() => setFormData({ ...formData, plan: tier.id as any })}
-                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    formData.plan === tier.id
-                      ? "border-primary-500 bg-primary-500/10 text-primary-600 font-bold"
-                      : "border-border hover:bg-surface-hover text-text-secondary"
-                  }`}
+                  variant="primary"
+                  size="sm"
+                  disabled={!formData.orgName.trim() || !formData.city.trim()}
+                  onClick={() => setWizardStep(2)}
+                  className="font-bold rounded-xl"
                 >
-                  <p className="text-xs font-bold capitalize">{tier.title}</p>
-                  <p className="text-[10px] opacity-80 mt-0.5">{tier.desc}</p>
-                </button>
-              ))}
+                  Configure Administrator →
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="City *"
-              placeholder="e.g. San Francisco"
-              value={formData.city}
-              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              required
-            />
-            <Input
-              label="Contact Email"
-              type="email"
-              placeholder="contact@hospital.com"
-              value={formData.orgEmail}
-              onChange={(e) => setFormData({ ...formData, orgEmail: e.target.value })}
-            />
-          </div>
-          <Input
-            label="Address"
-            placeholder="123 Health Ave"
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-          />
-          <Input
-            label="Contact Phone"
-            placeholder="+1 234 567 890"
-            value={formData.orgPhone}
-            onChange={(e) => setFormData({ ...formData, orgPhone: e.target.value })}
-          />
+          {/* STEP 2: Administrator & Primary Branch */}
+          {wizardStep === 2 && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="p-3 bg-surface-alt rounded-xl border border-border space-y-1">
+                <p className="text-xs font-bold text-text">Primary Hospital / Clinic Branch</p>
+                <Input
+                  placeholder={formData.orgName ? `${formData.orgName} (Main Branch)` : "Main Clinic Branch Name"}
+                  value={formData.clinicName}
+                  onChange={(e) => setFormData({ ...formData, clinicName: e.target.value })}
+                  className="text-xs"
+                />
+              </div>
 
-          <div className="border-t border-border/40 pt-3 space-y-3">
-            <p className="text-xs font-bold text-text">Organization Administrator</p>
-            <Input label="Administrator Name *" value={formData.adminName} onChange={(e) => setFormData({ ...formData, adminName: e.target.value })} required />
-            <Input label="Administrator Email *" type="email" value={formData.adminEmail} onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })} required />
-            <Input label="Administrator Password *" type="password" value={formData.adminPassword} onChange={(e) => setFormData({ ...formData, adminPassword: e.target.value })} minLength={6} required />
-          </div>
+              <div className="space-y-3 border-t border-border pt-3">
+                <p className="text-xs font-bold text-text">Organization Administrator Account</p>
+                <Input
+                  label="Administrator Name *"
+                  placeholder="Dr. Jay Patel"
+                  value={formData.adminName}
+                  onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Administrator Email *"
+                  type="email"
+                  placeholder="admin@apollo.health"
+                  value={formData.adminEmail}
+                  onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
+                  hint="Each organization administrator must have a unique email address."
+                  required
+                />
+                <div>
+                  <Input
+                    label="Administrator Password *"
+                    type={showAdminPassword ? "text" : "password"}
+                    placeholder="••••••••••••"
+                    value={formData.adminPassword}
+                    onChange={(e) => setFormData({ ...formData, adminPassword: e.target.value })}
+                    minLength={6}
+                    required
+                  />
+                  <div className="flex justify-between items-center pt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPassword(!showAdminPassword)}
+                      className="text-[11px] font-semibold text-text-muted hover:text-text cursor-pointer"
+                    >
+                      {showAdminPassword ? "Hide password" : "Show password"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleGeneratePassword}
+                      className="text-[11px] font-bold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer"
+                    >
+                      + Generate Secure Password
+                    </button>
+                  </div>
+                </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-border/40">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" size="sm" loading={submitting} className="font-bold rounded-xl">
-              Proceed to Security Verification →
-            </Button>
-          </div>
+                <div className="pt-2">
+                  <Checkbox
+                    id="sendWelcomeEmailToggle"
+                    checked={formData.sendWelcomeEmail}
+                    onChange={(e) => setFormData({ ...formData, sendWelcomeEmail: e.target.checked })}
+                    label="Send automated welcome email with login portal URL & credentials"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center pt-3 border-t border-border">
+                <Button type="button" variant="outline" size="sm" onClick={() => setWizardStep(1)}>
+                  ← Back
+                </Button>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" size="sm" loading={submitting} className="font-bold rounded-xl">
+                    Create & Provision Workspace
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </form>
       </Modal>
 
-      {/* Modal: Google Authenticator 2FA Verification */}
+      {/* Modal: Post-Creation Credentials Summary */}
       <Modal
-        open={isMfaModalOpen}
-        onClose={() => setIsMfaModalOpen(false)}
-        title="Security Verification"
-        description="Enter the 6-digit OTP code generated by your authenticator app."
+        open={isSummaryModalOpen}
+        onClose={() => setIsSummaryModalOpen(false)}
+        title="Workspace Provisioned Successfully"
+        description="Save or copy the administrator login credentials below."
       >
-        <form onSubmit={handleVerifyAndCreateOrganization} className="space-y-4 pt-1">
-          <div className="flex flex-col items-center justify-center p-4 bg-surface-alt rounded-2xl border border-border text-center space-y-2">
-            <div>
-              <p className="text-xs font-bold text-text">Authenticator Verification Required</p>
-              <p className="text-[11px] text-text-muted mt-0.5">
-                Enter the 6-digit security code from your Google Authenticator app.
-              </p>
-            </div>
-            {totpSecret && (
-              <div className="flex items-center gap-2 mt-1 bg-surface p-2 rounded-xl border border-border text-[10px] font-mono">
-                <span className="text-text-muted select-none">Secret:</span>
-                <span className="font-bold text-primary-600 dark:text-primary-400 select-all">{totpSecret}</span>
+        <div className="space-y-4 pt-1">
+          {createdCredentialsSummary && (
+            <div className="space-y-3">
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="font-extrabold text-emerald-700 dark:text-emerald-400 text-sm">
+                    {createdCredentialsSummary.orgName}
+                  </p>
+                  <Badge variant="success" size="sm" className="text-[9px] font-extrabold uppercase">
+                    Provisioned
+                  </Badge>
+                </div>
+                <p className="text-xs text-text-secondary">
+                  Primary administrator account created and linked to workspace.
+                </p>
               </div>
-            )}
-          </div>
 
-          <Input
-            label="6-Digit Authenticator Code *"
-            placeholder="123456"
-            value={otpCode}
-            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            maxLength={6}
-            required
-            autoComplete="off"
-            className="text-center text-lg font-mono tracking-widest"
-          />
+              <div className="space-y-2 bg-surface-alt p-3.5 rounded-xl border border-border text-xs">
+                <div className="flex justify-between py-1 border-b border-border/60">
+                  <span className="text-text-muted">Login Portal URL:</span>
+                  <span className="font-bold text-text select-all">{createdCredentialsSummary.loginUrl}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/60">
+                  <span className="text-text-muted">Administrator Email:</span>
+                  <span className="font-bold text-text select-all">{createdCredentialsSummary.adminEmail}</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-text-muted">Administrator Password:</span>
+                  <span className="font-mono font-bold text-primary-600 dark:text-primary-400 select-all">
+                    {createdCredentialsSummary.adminPassword}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-border/40">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsMfaModalOpen(false)}>
-              Cancel
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCopyCredentials}
+              className="font-bold rounded-xl"
+            >
+              📋 Copy Credentials
             </Button>
-            <Button type="submit" variant="primary" size="sm" loading={verifyingOtp} disabled={otpCode.length < 6} className="font-bold rounded-xl">
-              Verify & Create Organization →
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => setIsSummaryModalOpen(false)}
+              className="font-bold rounded-xl"
+            >
+              Done
             </Button>
           </div>
-        </form>
+        </div>
       </Modal>
 
       {/* Modal: Edit Organization */}
@@ -643,7 +1010,7 @@ export default function OrganizationsPage() {
         title="Edit Organization Details"
         description="Update subscription plan tier, name, or contact details."
       >
-        <form onSubmit={handleUpdateOrganization} className="space-y-4 pt-1">
+        <form onSubmit={handleUpdateOrganization} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
           <Input
             label="Organization Name *"
             value={editFormData.name}
@@ -652,7 +1019,7 @@ export default function OrganizationsPage() {
           />
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-text">Subscription Tier *</label>
+            <label className="text-xs font-semibold text-text">Subscription Plan Tier *</label>
             <div className="grid grid-cols-3 gap-2">
               {[
                 { id: "starter", title: "Starter", desc: "1 Clinic, 2 Docs" },
@@ -690,18 +1057,20 @@ export default function OrganizationsPage() {
               onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
             />
           </div>
-          <Input
-            label="Address"
-            value={editFormData.address}
-            onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
-          />
-          <Input
-            label="Contact Phone"
-            value={editFormData.phone}
-            onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Tax ID / GSTIN"
+              value={editFormData.taxId}
+              onChange={(e) => setEditFormData({ ...editFormData, taxId: e.target.value })}
+            />
+            <Input
+              label="License Number"
+              value={editFormData.licenseNumber}
+              onChange={(e) => setEditFormData({ ...editFormData, licenseNumber: e.target.value })}
+            />
+          </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-border/40">
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsEditModalOpen(false)}>
               Cancel
             </Button>
@@ -727,7 +1096,7 @@ export default function OrganizationsPage() {
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-border/40">
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsDeleteModalOpen(false)}>
               Cancel
             </Button>

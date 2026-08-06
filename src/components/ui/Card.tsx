@@ -23,10 +23,10 @@ const paddings: Record<CardPadding, string> = {
 };
 
 const variants: Record<CardVariant, string> = {
-  default: "bg-surface border border-border/80 shadow-2xs",
+  default: "bg-surface border border-border/80 shadow-xs dark:shadow-black/20",
   outline: "bg-transparent border border-border/70",
   flat: "bg-surface-alt/70 border border-transparent",
-  glass: "bg-surface/85 backdrop-blur-xl border border-border/80 shadow-xs",
+  glass: "bg-surface/90 backdrop-blur-xl border border-border/80 shadow-md shadow-black/5 before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent",
 };
 
 const Card = memo(function Card({

@@ -22,19 +22,19 @@ const base =
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "bg-primary-600 text-white shadow-xs shadow-primary-500/20 hover:bg-primary-500 hover:shadow-md hover:shadow-primary-500/25 active:bg-primary-700 border border-primary-500/30",
+    "bg-gradient-to-b from-primary-500 to-primary-600 text-white shadow-xs shadow-primary-500/25 hover:from-primary-400 hover:to-primary-500 hover:shadow-md hover:shadow-primary-500/35 active:from-primary-600 active:to-primary-700 border border-primary-400/30 overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/25",
   secondary:
-    "bg-surface-alt border border-border text-text shadow-2xs hover:bg-surface-hover hover:border-border-focus hover:shadow-xs active:bg-surface-alt",
+    "bg-surface-alt/90 backdrop-blur-sm border border-border text-text shadow-2xs hover:bg-surface-hover hover:border-border-focus hover:shadow-xs active:bg-surface-alt",
   outline:
-    "border border-border/80 text-text hover:bg-surface-hover hover:border-text-secondary active:bg-surface-alt",
+    "border border-border/80 bg-surface/40 backdrop-blur-xs text-text hover:bg-surface-hover hover:border-text-secondary active:bg-surface-alt",
   ghost:
-    "text-text-secondary hover:bg-surface-hover hover:text-text active:bg-surface-alt",
+    "text-text-secondary hover:bg-surface-hover/80 hover:text-text active:bg-surface-alt",
   danger:
-    "bg-danger-600 text-white shadow-xs shadow-danger-500/20 hover:bg-danger-500 hover:shadow-md hover:shadow-danger-500/25 active:bg-danger-700 border border-danger-500/30",
+    "bg-gradient-to-b from-danger-500 to-danger-600 text-white shadow-xs shadow-danger-500/25 hover:from-danger-400 hover:to-danger-500 hover:shadow-md hover:shadow-danger-500/35 active:from-danger-600 active:to-danger-700 border border-danger-400/30 overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/25",
   warning:
-    "bg-warning-600 text-white shadow-xs shadow-warning-500/20 hover:bg-warning-500 hover:shadow-md hover:shadow-warning-500/25 active:bg-warning-700 border border-warning-500/30",
+    "bg-gradient-to-b from-warning-500 to-warning-600 text-white shadow-xs shadow-warning-500/25 hover:from-warning-400 hover:to-warning-500 hover:shadow-md hover:shadow-warning-500/35 active:from-warning-600 active:to-warning-700 border border-warning-400/30 overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/25",
   success:
-    "bg-success-600 text-white shadow-xs shadow-success-500/20 hover:bg-success-500 hover:shadow-md hover:shadow-success-500/25 active:bg-success-700 border border-success-500/30",
+    "bg-gradient-to-b from-success-500 to-success-600 text-white shadow-xs shadow-success-500/25 hover:from-success-400 hover:to-success-500 hover:shadow-md hover:shadow-success-500/35 active:from-success-600 active:to-success-700 border border-success-400/30 overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/25",
 };
 
 const sizes: Record<ButtonSize, string> = {

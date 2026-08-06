@@ -11,7 +11,18 @@ const api = axios.create({
   },
 });
 
-// Response interceptor for transparent token refresh
+// Request interceptor to automatically attach active clinic context
+api.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const activeClinicId = localStorage.getItem("ananta_active_clinic_id");
+    if (activeClinicId && !config.headers["x-clinic-id"]) {
+      config.headers["x-clinic-id"] = activeClinicId;
+    }
+  }
+  return config;
+});
+
+// Response interceptor for transparent token refresh & 403 handling
 let isRefreshing = false;
 let failedQueue: { resolve: (value?: unknown) => void; reject: (reason?: any) => void }[] = [];
 
@@ -65,6 +76,12 @@ api.interceptors.response.use(
       } finally {
         isRefreshing = false;
       }
+    }
+
+    // If 403 Forbidden, notify client-side listener for permission/organization fallback
+    if (error.response?.status === 403 && typeof window !== "undefined") {
+      const msg = error.response?.data?.message || error.response?.data?.error || "Access forbidden";
+      window.dispatchEvent(new CustomEvent("auth-forbidden", { detail: { message: msg, url: originalRequest?.url } }));
     }
 
     return Promise.reject(error);

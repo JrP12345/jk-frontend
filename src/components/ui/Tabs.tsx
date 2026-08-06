@@ -101,7 +101,7 @@ const Tabs = memo(function Tabs({
         {/* Underline Slider */}
         {variant === "underline" && (
           <div
-            className="absolute bottom-0 h-0.5 bg-primary-500 transform-gpu transition-all duration-300 ease-spring"
+            className="absolute bottom-0 h-[3px] rounded-full bg-gradient-to-r from-primary-500 to-primary-600 shadow-xs shadow-primary-500/50 transform-gpu transition-all duration-300 ease-spring"
             style={{
               left: sliderStyle.left,
               width: sliderStyle.width,
@@ -113,7 +113,7 @@ const Tabs = memo(function Tabs({
         {/* Pills Slider */}
         {variant === "pills" && (
           <div
-            className="absolute bg-surface rounded-lg shadow-xs transform-gpu transition-all duration-300 ease-spring"
+            className="absolute bg-surface/90 backdrop-blur-md rounded-lg shadow-sm border border-border/60 transform-gpu transition-all duration-300 ease-spring"
             style={{
               top: "4px",
               bottom: "4px",

@@ -27,7 +27,7 @@ export default function Sidebar({ brand, items, footer, collapsed = false, class
   return (
     <aside
       className={cn(
-        "flex flex-col bg-surface border-r border-border h-full transform-gpu transition-all duration-200 ease-smooth select-none",
+        "flex flex-col bg-surface/90 backdrop-blur-xl border-r border-border/80 h-full transform-gpu transition-all duration-200 ease-smooth select-none shadow-2xs",
         collapsed ? "w-16" : "w-60",
         className
       )}
@@ -35,7 +35,7 @@ export default function Sidebar({ brand, items, footer, collapsed = false, class
       {brand && (
         <div
           className={cn(
-            "h-16 shrink-0 flex items-center border-b border-border",
+            "h-16 shrink-0 flex items-center border-b border-border/60",
             collapsed ? "justify-center px-2" : "px-4"
           )}
         >
@@ -49,7 +49,7 @@ export default function Sidebar({ brand, items, footer, collapsed = false, class
             return (
               <div key={i}>
                 {showSection && !collapsed && (
-                  <li className="pt-3 pb-1 px-3 text-[10px] font-bold tracking-wider text-text-muted uppercase">
+                  <li className="pt-3.5 pb-1.5 px-3 text-[10px] font-bold tracking-widest text-text-muted uppercase">
                     {item.section}
                   </li>
                 )}
@@ -62,7 +62,7 @@ export default function Sidebar({ brand, items, footer, collapsed = false, class
           })}
         </ul>
       </nav>
-      {footer && <div className={cn("border-t border-border", collapsed ? "p-2" : "px-3 py-3")}>{footer}</div>}
+      {footer && <div className={cn("border-t border-border/60", collapsed ? "p-2" : "px-3 py-3")}>{footer}</div>}
     </aside>
   );
 }
@@ -73,11 +73,11 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
       href={item.href}
       aria-current={item.active ? "page" : undefined}
       className={cn(
-        "relative flex items-center gap-2.5 rounded-xl text-sm font-medium cursor-pointer transform-gpu transition-all duration-150 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 active:scale-98",
+        "relative flex items-center gap-2.5 rounded-xl text-sm font-medium cursor-pointer transform-gpu transition-all duration-150 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 active:scale-98 overflow-hidden",
         collapsed ? "justify-center p-2.5" : "px-3 py-2",
         item.active
-          ? "bg-primary-500/10 text-primary-600 dark:text-primary-400 font-semibold"
-          : "text-text-secondary hover:text-text hover:bg-surface-hover"
+          ? "bg-gradient-to-r from-primary-500/15 via-primary-500/10 to-transparent text-primary-600 dark:text-primary-400 font-semibold shadow-2xs"
+          : "text-text-secondary hover:text-text hover:bg-surface-hover/80"
       )}
     >
       {item.icon && (
@@ -94,14 +94,14 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
         <>
           <span className="flex-1 truncate">{item.label}</span>
           {item.badge !== undefined && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400 leading-none">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary-500/15 text-primary-600 dark:text-primary-400 leading-none">
               {item.badge}
             </span>
           )}
         </>
       )}
       {item.active && (
-        <span className="absolute left-0 w-1 h-5 rounded-r bg-primary-600 dark:bg-primary-500 animate-fade-in" />
+        <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-gradient-to-b from-primary-500 to-primary-600 shadow-xs shadow-primary-500/50 animate-fade-in" />
       )}
     </Link>
   );

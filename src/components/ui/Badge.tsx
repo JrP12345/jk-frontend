@@ -3,7 +3,7 @@
 import { type ReactNode, memo } from "react";
 import { cn } from "./utils";
 
-export type BadgeVariant = "default" | "primary" | "success" | "warning" | "danger" | "outline" | "neutral" | "error" | "info";
+export type BadgeVariant = "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline" | "neutral" | "error" | "info";
 export type BadgeSize = "sm" | "md" | "lg";
 
 export interface BadgeProps {
@@ -19,20 +19,22 @@ export interface BadgeProps {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: "bg-surface-alt text-text-secondary border border-border",
-  primary: "bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20",
-  success: "bg-success-500/10 text-success-600 dark:text-success-400 border border-success-500/20",
-  warning: "bg-warning-500/10 text-warning-600 dark:text-warning-400 border border-warning-500/20",
-  danger:  "bg-danger-500/10 text-danger-600 dark:text-danger-400 border border-danger-500/20",
-  outline: "bg-transparent text-text-secondary border border-border",
-  neutral: "bg-surface-alt text-text-secondary border border-border",
-  error:   "bg-danger-500/10 text-danger-600 dark:text-danger-400 border border-danger-500/20",
-  info:    "bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20",
+  default: "bg-surface-alt/90 backdrop-blur-xs text-text-secondary border border-border/80",
+  primary: "bg-primary-500/15 backdrop-blur-xs text-primary-600 dark:text-primary-400 border border-primary-500/30 shadow-2xs shadow-primary-500/10",
+  secondary: "bg-surface-alt/90 backdrop-blur-xs text-text-secondary border border-border/80",
+  success: "bg-emerald-500/15 backdrop-blur-xs text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-2xs shadow-emerald-500/10",
+  warning: "bg-amber-500/15 backdrop-blur-xs text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-2xs shadow-amber-500/10",
+  danger:  "bg-rose-500/15 backdrop-blur-xs text-rose-600 dark:text-rose-400 border border-rose-500/30 shadow-2xs shadow-rose-500/10",
+  outline: "bg-transparent text-text-secondary border border-border/80",
+  neutral: "bg-surface-alt/90 backdrop-blur-xs text-text-secondary border border-border/80",
+  error:   "bg-rose-500/15 backdrop-blur-xs text-rose-600 dark:text-rose-400 border border-rose-500/30 shadow-2xs shadow-rose-500/10",
+  info:    "bg-sky-500/15 backdrop-blur-xs text-sky-600 dark:text-sky-400 border border-sky-500/30 shadow-2xs shadow-sky-500/10",
 };
 
 const dotColors: Record<BadgeVariant, string> = {
   default: "bg-text-muted",
   primary: "bg-primary-500",
+  secondary: "bg-text-muted",
   success: "bg-success-500",
   warning: "bg-warning-500",
   danger:  "bg-danger-500",

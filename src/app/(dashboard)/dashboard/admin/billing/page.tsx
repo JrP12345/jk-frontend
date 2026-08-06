@@ -467,14 +467,42 @@ export default function AdminBillingPage() {
                   {
                     header: "Actions",
                     accessor: (row: any) => (
-                      <Button
-                        variant="secondary"
-                        size="xs"
-                        onClick={() => setExtendingSubId(row.id)}
-                        className="font-bold rounded-lg cursor-pointer"
-                      >
-                        Extend Trial
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {row.status !== "active" && (
+                          <Button
+                            variant="primary"
+                            size="xs"
+                            onClick={async () => {
+                              try {
+                                await billingService.adminActivateSubscription(row.id);
+                                toast({
+                                  title: "Subscription Activated! 💳",
+                                  description: `Organization '${row.organizationId?.name}' upgraded to Active Paid status.`,
+                                  variant: "success",
+                                });
+                                loadAdminData();
+                              } catch (err: any) {
+                                toast({
+                                  title: "Error",
+                                  description: err.response?.data?.message || "Failed to activate subscription.",
+                                  variant: "error",
+                                });
+                              }
+                            }}
+                            className="font-bold rounded-lg cursor-pointer"
+                          >
+                            Activate Paid Plan
+                          </Button>
+                        )}
+                        <Button
+                          variant="secondary"
+                          size="xs"
+                          onClick={() => setExtendingSubId(row.id)}
+                          className="font-bold rounded-lg cursor-pointer"
+                        >
+                          Extend Trial
+                        </Button>
+                      </div>
                     ),
                   },
                 ]}

@@ -149,6 +149,58 @@
   }
 }
 
+/* ────────────────────────────────────────────────
+   Springy Toast Animation Engine (Top Center Spring Entrance & Exit)
+   ──────────────────────────────────────────────── */
+@keyframes toast-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-24px) scale(0.92);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(4px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.9);
+  }
+}
+
+.animate-toast-enter {
+  animation: toast-enter 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+}
+
+.animate-toast-exit {
+  animation: toast-exit 0.25s cubic-bezier(0.06, 0.71, 0.55, 1) forwards;
+}
+
+@keyframes toast-progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.animate-toast-progress {
+  animation-name: toast-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
@@ -257,40 +309,40 @@
   --p-800: #0f172a; --p-900: #020617;
 }
 
-/* ── Light Mode ──────────────────────────────── */
+/* ── Light Mode (Crisp Cloud White & Warm Slate) ─────────── */
 :root, [data-mode="light"] {
-  --s-background: #f8fafc;
-  --s-surface: #fcfcfd;
-  --s-surface-alt: #f4f6fa;
+  --s-background: #f7f8fb;
+  --s-surface: #ffffff;
+  --s-surface-alt: #f1f3f8;
   --s-surface-elevated: #ffffff;
-  --s-surface-hover: #f1f5f9;
+  --s-surface-hover: #f4f5fa;
 
-  --s-card: #fcfcfd;
-  --s-card-hover: #f8fafc;
-  --s-sidebar: #f4f6fa;
-  --s-sidebar-border: #e2e8f0;
-  --s-header: rgba(252, 252, 253, 0.85);
+  --s-card: #ffffff;
+  --s-card-hover: #f8f9fc;
+  --s-sidebar: #fafbfd;
+  --s-sidebar-border: #e4e7ed;
+  --s-header: rgba(255, 255, 255, 0.88);
 
-  --s-border: #e2e8f0;
-  --s-border-focus: #3b82f6;
-  --s-divider: #f1f5f9;
-  --s-input: #fcfcfd;
-  --s-input-border: #cbd5e1;
+  --s-border: #e2e5ee;
+  --s-border-focus: var(--p-500);
+  --s-divider: #eef0f5;
+  --s-input: #ffffff;
+  --s-input-border: #cdd2dc;
 
-  --s-hover: #f1f5f9;
-  --s-active: #e2e8f0;
-  --s-selected: #eff6ff;
-  --s-focus-ring: rgba(37, 99, 235, 0.35);
+  --s-hover: #f1f3f8;
+  --s-active: #e4e7ed;
+  --s-selected: color-mix(in srgb, var(--p-500) 8%, white);
+  --s-focus-ring: color-mix(in srgb, var(--p-500) 30%, transparent);
 
-  --s-text-primary: #0f172a;
-  --s-text: #0f172a;
-  --s-text-secondary: #475569;
-  --s-text-muted: #94a3af;
+  --s-text-primary: #111827;
+  --s-text: #111827;
+  --s-text-secondary: #4b5563;
+  --s-text-muted: #6b7280;
 
-  --s-secondary: #475569;
-  --s-secondary-hover: #334155;
-  --s-accent: #6366f1;
-  --s-accent-hover: #4f46e5;
+  --s-secondary: #4b5563;
+  --s-secondary-hover: #374151;
+  --s-accent: #4f46e5;
+  --s-accent-hover: #4338ca;
   --s-accent-subtle: #eef2ff;
 
   --s-success: #059669;
@@ -319,23 +371,23 @@
   --s-info-subtle: #f0f9ff;
   --s-info-text: #0369a1;
 
-  --s-disabled: #f1f5f9;
-  --s-disabled-text: #94a3b8;
+  --s-disabled: #f3f4f6;
+  --s-disabled-text: #9ca3af;
 
-  --s-overlay: rgba(15, 23, 42, 0.45);
-  --s-skeleton: #e2e8f0;
-  --s-skeleton-shimmer: #f1f5f9;
+  --s-overlay: rgba(17, 24, 39, 0.45);
+  --s-skeleton: #e5e7eb;
+  --s-skeleton-shimmer: #f3f4f6;
 
-  --s-chart-1: #2563eb;
+  --s-chart-1: var(--p-500);
   --s-chart-2: #0d9488;
   --s-chart-3: #d97706;
   --s-chart-4: #8b5cf6;
   --s-chart-5: #e11d48;
 
-  --s-badge-default-bg: #f1f5f9;
-  --s-badge-default-text: #334155;
-  --s-badge-primary-bg: #eff6ff;
-  --s-badge-primary-text: #1d4ed8;
+  --s-badge-default-bg: #f1f3f8;
+  --s-badge-default-text: #374151;
+  --s-badge-primary-bg: color-mix(in srgb, var(--p-500) 10%, white);
+  --s-badge-primary-text: var(--p-700);
   --s-badge-success-bg: #ecfdf5;
   --s-badge-success-text: #047857;
   --s-badge-warning-bg: #fffbeb;
@@ -345,108 +397,133 @@
   --s-badge-info-bg: #f0f9ff;
   --s-badge-info-text: #0369a1;
 
-  --s-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.03);
-  --s-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
-  --s-shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
-  --s-shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.06), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
-  --s-shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.07), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
+  --s-shadow-xs: 0 1px 2px rgba(17, 24, 39, 0.04);
+  --s-shadow-sm: 0 1px 3px rgba(17, 24, 39, 0.06), 0 1px 2px rgba(17, 24, 39, 0.03);
+  --s-shadow-md: 0 4px 14px -2px rgba(17, 24, 39, 0.07), 0 2px 4px -2px rgba(17, 24, 39, 0.04);
+  --s-shadow-lg: 0 10px 24px -4px rgba(17, 24, 39, 0.09), 0 4px 8px -4px rgba(17, 24, 39, 0.04);
+  --s-shadow-xl: 0 20px 40px -6px rgba(17, 24, 39, 0.12), 0 8px 16px -6px rgba(17, 24, 39, 0.05);
 }
 
-/* ── Premium Near-Black Dark Mode ────────────── */
-[data-mode="dark"] {
-  --s-background: #0b0c10;
-  --s-surface: #12141c;
-  --s-surface-alt: #0e0f15;
-  --s-surface-elevated: #1a1d28;
-  --s-surface-hover: #181b26;
+/* ── Deep Obsidian & Glowing Glass Dark Mode ────────────── */
+.dark, [data-mode="dark"] {
+  --s-background: #080a12;
+  --s-surface: #0e1019;
+  --s-surface-alt: #0b0d16;
+  --s-surface-elevated: #151722;
+  --s-surface-hover: #141722;
 
-  --s-card: #12141c;
-  --s-card-hover: #181b26;
-  --s-sidebar: #0e0f15;
-  --s-sidebar-border: #1e2230;
-  --s-header: rgba(18, 20, 28, 0.85);
+  --s-card: #0e1019;
+  --s-card-hover: #141722;
+  --s-sidebar: #0b0d16;
+  --s-sidebar-border: #1e2236;
+  --s-header: rgba(14, 16, 25, 0.88);
 
-  --s-border: #1e2230;
-  --s-border-focus: #60a5fa;
-  --s-divider: #171a24;
-  --s-input: #0e0f15;
-  --s-input-border: #262a3d;
+  --s-border: #1e2236;
+  --s-border-focus: color-mix(in srgb, var(--p-400) 85%, white);
+  --s-divider: #151722;
+  --s-input: #0b0d16;
+  --s-input-border: #252a3d;
 
-  --s-hover: #1a1d29;
-  --s-active: #222636;
-  --s-selected: rgba(59, 130, 246, 0.15);
-  --s-focus-ring: rgba(96, 165, 250, 0.4);
+  --s-hover: #161926;
+  --s-active: #1e2236;
+  --s-selected: color-mix(in srgb, var(--p-500) 16%, transparent);
+  --s-focus-ring: color-mix(in srgb, var(--p-400) 40%, transparent);
 
-  --s-text-primary: #f8fafc;
-  --s-text: #f8fafc;
+  --s-text-primary: #f1f5f9;
+  --s-text: #f1f5f9;
   --s-text-secondary: #94a3b8;
   --s-text-muted: #64748b;
 
   --s-secondary: #94a3b8;
-  --s-secondary-hover: #cbd5e1;
+  --s-secondary-hover: #e2e8f0;
   --s-accent: #818cf8;
   --s-accent-hover: #a5b4fc;
-  --s-accent-subtle: rgba(99, 102, 241, 0.15);
+  --s-accent-subtle: rgba(99, 102, 241, 0.16);
 
   --s-success: #34d399;
-  --s-success-50: rgba(16, 185, 129, 0.1);
+  --s-success-50: rgba(16, 185, 129, 0.10);
   --s-success-500: #34d399;
   --s-success-600: #10b981;
-  --s-success-subtle: rgba(16, 185, 129, 0.15);
+  --s-success-subtle: rgba(16, 185, 129, 0.14);
   --s-success-text: #6ee7b7;
 
   --s-warning: #fbbf24;
-  --s-warning-50: rgba(245, 158, 11, 0.1);
+  --s-warning-50: rgba(245, 158, 11, 0.10);
   --s-warning-500: #fbbf24;
   --s-warning-600: #f59e0b;
-  --s-warning-subtle: rgba(245, 158, 11, 0.15);
+  --s-warning-subtle: rgba(245, 158, 11, 0.14);
   --s-warning-text: #fde047;
 
   --s-danger: #f87171;
-  --s-danger-50: rgba(239, 68, 68, 0.1);
+  --s-danger-50: rgba(239, 68, 68, 0.10);
   --s-danger-500: #f87171;
   --s-danger-600: #ef4444;
   --s-error: #f87171;
-  --s-error-subtle: rgba(239, 68, 68, 0.15);
+  --s-error-subtle: rgba(239, 68, 68, 0.14);
   --s-error-text: #fca5a5;
 
   --s-info: #38bdf8;
-  --s-info-subtle: rgba(14, 165, 233, 0.15);
+  --s-info-subtle: rgba(14, 165, 233, 0.14);
   --s-info-text: #7dd3fc;
 
-  --s-disabled: #171a24;
+  --s-disabled: #151722;
   --s-disabled-text: #475569;
 
-  --s-overlay: rgba(0, 0, 0, 0.75);
-  --s-skeleton: #1a1d29;
-  --s-skeleton-shimmer: #222636;
+  --s-overlay: rgba(0, 0, 0, 0.78);
+  --s-skeleton: #1e2236;
+  --s-skeleton-shimmer: #252a3d;
 
-  --s-chart-1: #60a5fa;
+  --s-chart-1: color-mix(in srgb, var(--p-400) 90%, white);
   --s-chart-2: #2dd4bf;
   --s-chart-3: #fbbf24;
   --s-chart-4: #c084fc;
   --s-chart-5: #fb7185;
 
-  --s-badge-default-bg: #1a1d29;
-  --s-badge-default-text: #cbd5e1;
-  --s-badge-primary-bg: rgba(59, 130, 246, 0.15);
-  --s-badge-primary-text: #93c5fd;
-  --s-badge-success-bg: rgba(16, 185, 129, 0.15);
+  --s-badge-default-bg: #1e2236;
+  --s-badge-default-text: #94a3b8;
+  --s-badge-primary-bg: color-mix(in srgb, var(--p-500) 16%, transparent);
+  --s-badge-primary-text: color-mix(in srgb, var(--p-300) 90%, white);
+  --s-badge-success-bg: rgba(16, 185, 129, 0.14);
   --s-badge-success-text: #6ee7b7;
-  --s-badge-warning-bg: rgba(245, 158, 11, 0.15);
+  --s-badge-warning-bg: rgba(245, 158, 11, 0.14);
   --s-badge-warning-text: #fde047;
-  --s-badge-danger-bg: rgba(239, 68, 68, 0.15);
+  --s-badge-danger-bg: rgba(239, 68, 68, 0.14);
   --s-badge-danger-text: #fca5a5;
-  --s-badge-info-bg: rgba(14, 165, 233, 0.15);
+  --s-badge-info-bg: rgba(14, 165, 233, 0.14);
   --s-badge-info-text: #7dd3fc;
 
-  --s-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --s-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
-  --s-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
-  --s-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
-  --s-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.65), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  --s-shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --s-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.35);
+  --s-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.4);
+  --s-shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.7), 0 4px 8px rgba(0, 0, 0, 0.45);
+  --s-shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.8), 0 8px 16px rgba(0, 0, 0, 0.5);
+}
 
-  color-scheme: dark;
+/* ────────────────────────────────────────────────
+   Liquid Glassmorphism & Gloss Utility Engine
+   ──────────────────────────────────────────────── */
+.glass-card {
+  background: var(--s-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--s-border);
+  box-shadow: var(--s-shadow-md);
+  border-radius: var(--radius-xl);
+}
+
+.glass-header {
+  background: var(--s-header);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--s-border);
+}
+
+.glass-modal {
+  background: var(--s-surface-elevated);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--s-border);
+  box-shadow: var(--s-shadow-xl);
 }
 
 /* ── Focus Outline Reset — Suppress mouse/reload focus rings while preserving keyboard focus-visible ── */

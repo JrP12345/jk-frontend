@@ -210,7 +210,7 @@ export default function LoginPage() {
           {!isForgotPassword ? (
             /* Login Form */
             <form onSubmit={handleLogin} noValidate autoComplete="off" className="p-5 sm:p-6 space-y-4">
-              <CardHeader className="p-0 mb-4">
+              <CardHeader className="p-0 mb-4 text-center">
                 <CardTitle className="text-xl sm:text-2xl font-black text-text">Welcome Back</CardTitle>
                 <CardDescription className="text-xs text-text-muted mt-1">
                   Enter your clinical credentials to access your account dashboard

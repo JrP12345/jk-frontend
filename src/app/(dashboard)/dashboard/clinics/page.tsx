@@ -6,6 +6,7 @@ import {
   Card, CardHeader, CardTitle, CardContent,
   Table, Button, Modal, Input, useToast, Spinner, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, SkeletonTable, Dropdown
 } from "@/components/ui";
+import { useAuthStore } from "@/store/authStore";
 import { useR2Upload } from "@/hooks/useR2Upload";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -24,7 +25,9 @@ interface Clinic {
 }
 
 export default function ClinicsPage() {
+  const { user } = useAuthStore();
   const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [organizations, setOrganizations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState<any>({});
@@ -34,6 +37,16 @@ export default function ClinicsPage() {
   const [qrClinic, setQrClinic] = useState<Clinic | null>(null);
   const { toast } = useToast();
   const { uploadFile } = useR2Upload();
+
+  // Load organizations list for Root Super-Admin selection
+  useEffect(() => {
+    if (user?.role === "root") {
+      api.get("/onboarding/organizations").then((res) => {
+        const orgList = res.data.data?.organizations || res.data.data || [];
+        setOrganizations(orgList);
+      }).catch(() => {});
+    }
+  }, [user]);
 
   // Clinic Form Validation State
   const [clinicErrors, setClinicErrors] = useState<Record<string, string>>({});
@@ -86,7 +99,8 @@ export default function ClinicsPage() {
 
   const openModal = () => {
     setEditingId(null);
-    setFormData({ facilities: [] });
+    const defaultOrgId = organizations.length > 0 ? (organizations[0].id || organizations[0]._id) : "";
+    setFormData({ facilities: [], organizationId: defaultOrgId });
     setClinicErrors({});
     setIsModalOpen(true);
   };
@@ -307,6 +321,24 @@ export default function ClinicsPage() {
         size="2xl"
       >
         <form onSubmit={handleSave} className="space-y-5">
+          {/* Root Admin Target Organization Selector */}
+          {user?.role === "root" && organizations.length > 0 && (
+            <div className="bg-primary-500/10 border border-primary-500/20 p-3.5 rounded-xl space-y-2">
+              <Select
+                label="Target Healthcare Organization *"
+                value={formData.organizationId || (organizations[0]?.id || organizations[0]?._id)}
+                onChange={(e) => setFormData({ ...formData, organizationId: e.target.value })}
+                options={organizations.map((o) => ({
+                  value: o.id || o._id,
+                  label: `${o.name} (${o.city || "Main"}) — ${o.plan?.toUpperCase() || "STARTER"} Tier`,
+                }))}
+              />
+              <p className="text-[11px] text-text-muted">
+                🛡️ <strong>Root Super-Admin Platform Override</strong>: Select which healthcare organization tenant this new clinic branch belongs to.
+              </p>
+            </div>
+          )}
+
           {/* Section 1: Clinic Media & Basic Identity */}
           <div className="space-y-3.5 border-b border-border pb-4">
             <h3 className="text-xs font-bold text-primary-600 uppercase tracking-wider">1. Branding & Clinic Identity</h3>

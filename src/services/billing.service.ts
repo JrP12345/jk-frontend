@@ -126,6 +126,11 @@ export const billingService = {
     return res.data.data;
   },
 
+  async adminActivateSubscription(subscriptionId: string, planSlug: string = "starter", billingCycle: "monthly" | "annual" = "monthly") {
+    const res = await api.post(`/admin/billing/subscriptions/${subscriptionId}/activate`, { planSlug, billingCycle });
+    return res.data.data;
+  },
+
   async adminRefundPayment(paymentId: string) {
     const res = await api.post(`/admin/billing/payments/${paymentId}/refund`);
     return res.data.data;

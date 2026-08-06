@@ -149,7 +149,7 @@ const Tooltip = memo(function Tooltip({
             ref={tooltipRef}
             role="tooltip"
             className={cn(
-              "fixed z-50 px-2.5 py-1.5 text-xs font-semibold text-text bg-surface border border-border/80 rounded-lg shadow-xl pointer-events-none animate-scale-in backdrop-blur-md bg-surface/95 transform-gpu transition-opacity duration-150 select-none",
+              "fixed z-50 px-2.5 py-1.5 text-xs font-semibold text-text bg-surface/95 backdrop-blur-xl border border-border/80 rounded-xl shadow-xl pointer-events-none animate-scale-in transform-gpu transition-opacity duration-150 select-none",
               !coords && "opacity-0"
             )}
             style={{

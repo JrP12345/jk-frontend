@@ -99,13 +99,13 @@ const Input = memo(
               aria-invalid={error ? true : undefined}
               aria-describedby={describedBy}
               className={cn(
-                "w-full rounded-lg border bg-surface text-text font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted/70 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt shadow-2xs",
+                "w-full rounded-xl border bg-surface/90 backdrop-blur-sm text-text font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted/70 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt shadow-2xs",
                 sizes[size],
                 icon && iconPaddingLeft[size],
                 (iconRight || hasClear) && iconPaddingRight[size],
                 error
-                  ? "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:border-danger-500"
-                  : "border-border hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500",
+                  ? "border-danger-500/80 focus-visible:ring-4 focus-visible:ring-danger-500/15 focus-visible:border-danger-500"
+                  : "border-border hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/15",
                 className
               )}
               {...rest}
@@ -124,7 +124,7 @@ const Input = memo(
             ) : iconRight ? (
               <span
                 className={cn(
-                  "absolute right-3 top-1/2 -translate-y-1/2 text-text-muted shrink-0 pointer-events-none",
+                  "absolute right-3 top-1/2 -translate-y-1/2 text-text-muted shrink-0 flex items-center justify-center",
                   iconSizes[size]
                 )}
               >
