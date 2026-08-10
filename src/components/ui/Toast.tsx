@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { cn } from "./utils";
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   ANANTA Healthcare OS — Top-Center Stacked Glassmorphic Toast Engine
+   ANANTA Healthcare OS — Production-Grade 3D Stacked Toast Notification Engine
    ───────────────────────────────────────────────────────────────────────────── */
 
 export type ToastVariant = "default" | "success" | "error" | "warning" | "info";
@@ -16,11 +16,13 @@ export interface Toast {
   description?: string;
   variant: ToastVariant;
   duration: number;
+  timestamp: number;
 }
 
 export interface ToastContextValue {
-  toast: (options: Omit<Toast, "id" | "duration"> & { id?: string; duration?: number; variant?: ToastVariant }) => void;
+  toast: (options: Omit<Toast, "id" | "duration" | "timestamp"> & { id?: string; duration?: number; variant?: ToastVariant }) => void;
   dismiss: (id: string) => void;
+  clearAll: () => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -36,50 +38,78 @@ export function useToast() {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
-  const addToast = useCallback((options: Omit<Toast, "id" | "duration"> & { id?: string; duration?: number; variant?: ToastVariant }) => {
-    setToasts((prev) => {
-      // Prevent duplicate identical toasts
-      if (prev.some((t) => t.title === options.title && t.description === options.description)) {
-        return prev;
-      }
-      const id = options.id || crypto.randomUUID();
+  const addToast = useCallback(
+    (options: Omit<Toast, "id" | "duration" | "timestamp"> & { id?: string; duration?: number; variant?: ToastVariant }) => {
+      const now = Date.now();
+      const id = options.id || `toast-${now}-${Math.random().toString(36).substring(2, 7)}`;
       const variant = options.variant || "default";
-      return [...prev, { ...options, id, variant, duration: options.duration || 4500 } as Toast];
-    });
-  }, []);
+      const duration = options.duration || 4500;
+
+      setToasts((prev) => {
+        // If an explicit ID matches an active toast, update it cleanly
+        if (options.id && prev.some((t) => t.id === options.id)) {
+          return prev.map((t) => (t.id === options.id ? { ...t, ...options, duration, timestamp: now } : t));
+        }
+        // Cap max active toasts at 4 to maintain compact, clean stacking without screen overflow
+        const updated = [...prev, { ...options, id, variant, duration, timestamp: now } as Toast];
+        return updated.slice(-4);
+      });
+    },
+    []
+  );
 
   const dismiss = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const clearAll = useCallback(() => {
+    setToasts([]);
+  }, []);
+
   return (
-    <ToastContext.Provider value={{ toast: addToast, dismiss }}>
+    <ToastContext.Provider value={{ toast: addToast, dismiss, clearAll }}>
       {children}
       {mounted &&
         createPortal(
-          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-2.5 w-[92vw] sm:w-[440px] pointer-events-none">
-            {toasts.map((t, index) => {
-              const total = toasts.length;
-              const depth = total - 1 - index; // 0 = active top toast, 1 = behind
-              const isVisible = depth < 3;
+          <div
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className="fixed bottom-5 right-5 z-[9999] p-4 -m-4 flex flex-col items-end w-[92vw] sm:w-[360px] pointer-events-none select-none"
+          >
+            {/* Stable Stack Container */}
+            <div className="relative w-full min-h-[64px]">
+              {toasts.map((t, index) => {
+                const total = toasts.length;
+                const depth = total - 1 - index; // 0 = newest front toast (depth 0), 1 = behind (depth 1)
+                const isVisible = isHovered || depth < 3;
 
-              return (
-                <div
-                  key={t.id}
-                  className="w-full pointer-events-auto transition-all duration-300 ease-out"
-                  style={{
-                    transform: depth > 0 ? `translateY(-${depth * 10}px) scale(${Math.max(0.88, 1 - depth * 0.04)})` : "none",
-                    opacity: isVisible ? Math.max(0.4, 1 - depth * 0.22) : 0,
-                    zIndex: 100 - depth,
-                  }}
-                >
-                  <ToastItem {...t} onDismiss={() => dismiss(t.id)} />
-                </div>
-              );
-            })}
+                // Continuous Hardware Accelerated Transforms:
+                // Collapsed: depth 0 = 0px, depth 1 = -8px, depth 2 = -16px
+                // Expanded: depth 0 = 0px, depth 1 = -92px, depth 2 = -184px, depth 3 = -276px (16px distinct gap between cards)
+                const translateY = isHovered ? -depth * 92 : -depth * 8;
+                const scale = isHovered ? 1 : Math.max(0.88, 1 - depth * 0.04);
+                const opacity = isVisible ? (isHovered ? 1 : Math.max(0.45, 1 - depth * 0.22)) : 0;
+
+                return (
+                  <div
+                    key={t.id}
+                    className="absolute bottom-0 right-0 w-full pointer-events-auto transition-all duration-350 ease-[cubic-bezier(0.32,0.72,0,1)] transform-gpu"
+                    style={{
+                      transform: `translate3d(0, ${translateY}px, 0) scale(${scale})`,
+                      opacity: opacity,
+                      zIndex: 100 - depth,
+                      transformOrigin: "bottom right",
+                    }}
+                  >
+                    <ToastItem {...t} onDismiss={() => dismiss(t.id)} isHoveredStack={isHovered} />
+                  </div>
+                );
+              })}
+            </div>
           </div>,
           document.body
         )}
@@ -128,7 +158,7 @@ const icons: Record<ToastVariant, ReactNode> = {
 };
 
 const variantBorders: Record<ToastVariant, string> = {
-  default: "border-border/80 shadow-black/30",
+  default: "border-border/80 shadow-black/40",
   info: "border-sky-500/30 shadow-sky-500/10",
   success: "border-emerald-500/30 shadow-emerald-500/10",
   error: "border-rose-500/30 shadow-rose-500/10",
@@ -145,7 +175,12 @@ const progressColors: Record<ToastVariant, string> = {
 
 /* ── Toast Item Component ──────────────────────────────────────────────────── */
 
-function ToastItem({ title, description, variant, duration, onDismiss }: Toast & { onDismiss: () => void }) {
+interface ToastItemProps extends Toast {
+  onDismiss: () => void;
+  isHoveredStack: boolean;
+}
+
+function ToastItem({ id, title, description, variant, duration, onDismiss, isHoveredStack }: ToastItemProps) {
   const [exiting, setExiting] = useState(false);
   const [paused, setPaused] = useState(false);
   const [dragX, setDragX] = useState(0);
@@ -154,28 +189,30 @@ function ToastItem({ title, description, variant, duration, onDismiss }: Toast &
   const startXRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto Dismiss Timer
+  const isPaused = paused || isHoveredStack;
+
+  // Auto Dismiss Timer with pause support
   useEffect(() => {
-    if (paused) return;
+    if (isPaused) return;
     timerRef.current = setTimeout(() => {
       setExiting(true);
-      setTimeout(onDismiss, 220);
+      setTimeout(onDismiss, 180);
     }, duration);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [duration, onDismiss, paused]);
+  }, [duration, onDismiss, isPaused]);
 
-  // Window-level Mouse Drag Listeners to avoid stuck drag states
+  // Window Drag Listeners
   useEffect(() => {
     if (!isDragging) return;
 
-    const handleWindowMouseMove = (e: MouseEvent) => {
+    const handleMouseMove = (e: MouseEvent) => {
       const diff = e.clientX - startXRef.current;
       setDragX(diff);
     };
 
-    const handleWindowMouseUp = () => {
+    const handleMouseUp = () => {
       setIsDragging(false);
       if (Math.abs(dragX) > 100) {
         setExiting(true);
@@ -185,17 +222,16 @@ function ToastItem({ title, description, variant, duration, onDismiss }: Toast &
       }
     };
 
-    window.addEventListener("mousemove", handleWindowMouseMove);
-    window.addEventListener("mouseup", handleWindowMouseUp);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
 
     return () => {
-      window.removeEventListener("mousemove", handleWindowMouseMove);
-      window.removeEventListener("mouseup", handleWindowMouseUp);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isDragging, dragX, onDismiss]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Only drag with primary mouse button
     if (e.button !== 0) return;
     startXRef.current = e.clientX;
     setIsDragging(true);
@@ -237,9 +273,9 @@ function ToastItem({ title, description, variant, duration, onDismiss }: Toast &
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       className={cn(
-        "relative flex items-start gap-3 border rounded-2xl p-3.5 shadow-2xl backdrop-blur-xl bg-surface/95 dark:bg-surface/90 cursor-grab active:cursor-grabbing select-none overflow-hidden transform-gpu transition-all duration-200",
+        "relative flex items-start gap-3 border rounded-2xl p-3 px-3.5 shadow-2xl backdrop-blur-xl bg-surface/95 dark:bg-surface/90 cursor-grab active:cursor-grabbing select-none overflow-hidden transform-gpu transition-all duration-200",
         variantBorders[variant],
-        exiting ? "animate-toast-exit" : "animate-toast-enter"
+        exiting ? "animate-toast-exit opacity-0 scale-95 translate-x-4" : "animate-toast-enter"
       )}
       style={{
         transform: dragX !== 0 ? `translateX(${dragX}px)` : undefined,
@@ -279,7 +315,7 @@ function ToastItem({ title, description, variant, duration, onDismiss }: Toast &
         )}
         style={{
           animationDuration: `${duration}ms`,
-          animationPlayState: paused ? "paused" : "running",
+          animationPlayState: isPaused ? "paused" : "running",
         }}
       />
     </div>

@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "next dev",
+    "clean": "rmdir /s /q .next 2>nul || rm -rf .next",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

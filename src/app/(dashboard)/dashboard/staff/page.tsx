@@ -4,9 +4,10 @@ import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Tabs, Button, Modal, Input, useToast, Spinner, ImageUpload, ConfirmDialog, ScheduleEditor, Select, SkeletonTable, Dropdown, cn
+  Table, Tabs, Button, Modal, Input, useToast, Spinner, ImageUpload, ConfirmDialog, ScheduleEditor, Select, SkeletonTable, Dropdown, Badge, cn
 } from "@/components/ui";
 import { useR2Upload } from "@/hooks/useR2Upload";
+import { useAuthStore } from "@/store/authStore";
 import { RBACPermissionMatrix } from "@/components/clinical/RBACPermissionMatrix";
 import { ExecutiveAnalytics } from "@/components/analytics/ExecutiveAnalytics";
 
@@ -35,6 +36,7 @@ interface Receptionist {
 export default function StaffPage() {
   const { toast } = useToast();
   const { uploadFile } = useR2Upload();
+  const { activeClinicId } = useAuthStore();
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [receptionists, setReceptionists] = useState<Receptionist[]>([]);
@@ -42,35 +44,99 @@ export default function StaffPage() {
   const [labTechs, setLabTechs] = useState<any[]>([]);
   const [pharmacists, setPharmacists] = useState<any[]>([]);
   const [cashiers, setCashiers] = useState<any[]>([]);
+  const [customStaff, setCustomStaff] = useState<any[]>([]);
   const [clinics, setClinics] = useState<any[]>([]);
+  const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<"doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier">("doctor");
+  const [modalType, setModalType] = useState<string>("doctor");
   const [formData, setFormData] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>("all");
 
+  const allRoleOptions = useMemo(() => {
+    const builtInMap: Record<string, string> = {
+      doctor: "Doctor / Clinical Practitioner",
+      receptionist: "Receptionist / Front Desk",
+      nurse: "Nurse / Clinical Support",
+      lab_tech: "Laboratory Technician",
+      pharmacist: "Pharmacist / Dispenser",
+      cashier: "Cashier / Accounts Desk",
+    };
+
+    const options = [
+      { value: "doctor", label: "Doctor / Clinical Practitioner" },
+      { value: "receptionist", label: "Receptionist / Front Desk" },
+      { value: "nurse", label: "Nurse / Clinical Support" },
+      { value: "lab_tech", label: "Laboratory Technician" },
+      { value: "pharmacist", label: "Pharmacist / Dispenser" },
+      { value: "cashier", label: "Cashier / Accounts Desk" },
+    ];
+
+    roles.forEach((r) => {
+      if (!builtInMap[r.name] && r.name !== "admin" && r.name !== "root" && r.name !== "patient") {
+        const formattedLabel = `⚙️ ${r.name.replace(/_/g, " ").toUpperCase()} (Custom Role)`;
+        options.push({ value: r.name, label: formattedLabel });
+      }
+    });
+
+    return options;
+  }, [roles]);
+
   const allStaffMembers = useMemo(() => {
     const list: any[] = [];
     doctors.forEach(d => list.push({ ...d, roleType: "doctor", roleLabel: "Doctor", details: d.specialization ? `${d.specialization} (${d.qualification || "MD"})` : (d.qualification || "-") }));
     receptionists.forEach(r => list.push({ ...r, roleType: "receptionist", roleLabel: "Receptionist", details: r.clinicName ? `Clinic: ${r.clinicName}` : (r.shift || "-") }));
-    nurses.forEach(n => list.push({ ...n, roleType: "nurse", roleLabel: "Nurse", details: n.phone || "-" }));
-    labTechs.forEach(l => list.push({ ...l, roleType: "lab_tech", roleLabel: "Lab Tech", details: l.phone || "-" }));
-    pharmacists.forEach(p => list.push({ ...p, roleType: "pharmacist", roleLabel: "Pharmacist", details: p.phone || "-" }));
-    cashiers.forEach(c => list.push({ ...c, roleType: "cashier", roleLabel: "Cashier", details: c.phone || "-" }));
+    nurses.forEach(n => list.push({ ...n, roleType: "nurse", roleLabel: "Nurse", details: n.clinicName ? `Clinic: ${n.clinicName}` : (n.organizationName ? `Org: ${n.organizationName}` : "Nurse Staff") }));
+    labTechs.forEach(l => list.push({ ...l, roleType: "lab_tech", roleLabel: "Lab Tech", details: l.clinicName ? `Clinic: ${l.clinicName}` : (l.organizationName ? `Org: ${l.organizationName}` : "Lab Technician") }));
+    pharmacists.forEach(p => list.push({ ...p, roleType: "pharmacist", roleLabel: "Pharmacist", details: p.clinicName ? `Clinic: ${p.clinicName}` : (p.organizationName ? `Org: ${p.organizationName}` : "Pharmacist") }));
+    cashiers.forEach(c => list.push({ ...c, roleType: "cashier", roleLabel: "Cashier", details: c.clinicName ? `Clinic: ${c.clinicName}` : (c.organizationName ? `Org: ${c.organizationName}` : "Billing Cashier") }));
+    customStaff.forEach(s => list.push({ ...s, roleType: s.role, roleLabel: s.role.replace(/_/g, " ").toUpperCase(), details: s.clinicName ? `Clinic: ${s.clinicName}` : (s.organizationName ? `Org: ${s.organizationName}` : (s.department || s.specialization || "Staff Member")) }));
     return list;
-  }, [doctors, receptionists, nurses, labTechs, pharmacists, cashiers]);
+  }, [doctors, receptionists, nurses, labTechs, pharmacists, cashiers, customStaff]);
 
-  const filteredStaff = useMemo(() => {
-    if (selectedRoleFilter === "all") return allStaffMembers;
-    return allStaffMembers.filter(s => s.roleType === selectedRoleFilter);
-  }, [allStaffMembers, selectedRoleFilter]);
+  const roleFilterTabs = useMemo(() => {
+    const tabs = [
+      { key: "all", label: "All Staff", count: allStaffMembers.length },
+      { key: "doctor", label: "Doctors", count: doctors.length },
+      { key: "receptionist", label: "Receptionists", count: receptionists.length },
+      { key: "nurse", label: "Nurses", count: nurses.length },
+      { key: "lab_tech", label: "Lab Techs", count: labTechs.length },
+      { key: "pharmacist", label: "Pharmacists", count: pharmacists.length },
+      { key: "cashier", label: "Cashiers", count: cashiers.length },
+    ];
+
+    const customCounts: Record<string, number> = {};
+    customStaff.forEach((s) => {
+      if (s.role) customCounts[s.role] = (customCounts[s.role] || 0) + 1;
+    });
+
+    Object.keys(customCounts).forEach((roleName) => {
+      tabs.push({
+        key: roleName,
+        label: `⚙️ ${roleName.replace(/_/g, " ").toUpperCase()}`,
+        count: customCounts[roleName],
+      });
+    });
+
+    return tabs;
+  }, [allStaffMembers, doctors, receptionists, nurses, labTechs, pharmacists, cashiers, customStaff]);
 
   // Dynamic Validation State
   const [staffErrors, setStaffErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
+
+  // Admin Doctor Profile State
+  const [isAdminDoctorModalOpen, setIsAdminDoctorModalOpen] = useState(false);
+  const [adminDoctorData, setAdminDoctorData] = useState<any>({
+    specialization: "General Physician / Consultant",
+    qualification: "MBBS, MD",
+    fees: 500,
+    registrationNumber: "",
+  });
+  const [savingAdminDoctor, setSavingAdminDoctor] = useState(false);
 
   // Doctor Assignments State
   const [selectedDoctorForAssignments, setSelectedDoctorForAssignments] = useState<Doctor | null>(null);
@@ -79,6 +145,30 @@ export default function StaffPage() {
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [newAssignment, setNewAssignment] = useState<any>({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: "" });
   const [savingAssignment, setSavingAssignment] = useState(false);
+
+  const filteredStaff = useMemo(() => {
+    if (selectedRoleFilter === "all") return allStaffMembers;
+    return allStaffMembers.filter(s => s.roleType === selectedRoleFilter);
+  }, [allStaffMembers, selectedRoleFilter]);
+
+  const handleEnableAdminDoctorProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminDoctorData.specialization) {
+      toast({ title: "Validation Error", description: "Specialization is required", variant: "error" });
+      return;
+    }
+    setSavingAdminDoctor(true);
+    try {
+      await api.post("/onboarding/admin/enable-doctor-profile", adminDoctorData);
+      toast({ title: "Success! 🩺", description: "Clinical Doctor Profile linked to your Admin account successfully!", variant: "success" });
+      setIsAdminDoctorModalOpen(false);
+      fetchStaff();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.response?.data?.message || "Failed to link Doctor profile", variant: "error" });
+    } finally {
+      setSavingAdminDoctor(false);
+    }
+  };
 
   const validateStaffField = (field: string, value: any) => {
     let error = "";
@@ -126,7 +216,8 @@ export default function StaffPage() {
 
   const fetchStaff = async () => {
     try {
-      const res = await api.get("/onboarding/staff");
+      const url = activeClinicId ? `/onboarding/staff?clinicId=${activeClinicId}` : "/onboarding/staff";
+      const res = await api.get(url);
       const data = res.data.data || {};
       setDoctors(data.doctors || []);
       setReceptionists(data.receptionists || []);
@@ -134,6 +225,10 @@ export default function StaffPage() {
       setLabTechs(data.labTechs || []);
       setPharmacists(data.pharmacists || []);
       setCashiers(data.cashiers || []);
+
+      const allStaff = data.allStaff || [];
+      const builtInRoles = new Set(["doctor", "receptionist", "nurse", "lab_tech", "pharmacist", "cashier"]);
+      setCustomStaff(allStaff.filter((s: any) => !builtInRoles.has(s.role)));
     } catch (err) {
       toast({ title: "Error", description: "Failed to load staff list", variant: "error", duration: 3000 });
     }
@@ -148,15 +243,24 @@ export default function StaffPage() {
     }
   };
 
+  const fetchRoles = async () => {
+    try {
+      const res = await api.get("/roles");
+      setRoles(res.data?.data || []);
+    } catch (err) {
+      console.error("Failed to load custom roles list");
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([fetchStaff(), fetchClinics()]);
+    await Promise.all([fetchStaff(), fetchClinics(), fetchRoles()]);
     setLoading(false);
   };
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activeClinicId]);
 
   const openModal = (type: "doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier") => {
     setEditingId(null);
@@ -202,7 +306,8 @@ export default function StaffPage() {
       }
 
       if (editingId) {
-        await api.put(`/onboarding/${modalType}/${editingId}`, finalData);
+        const updateEndpoint = (modalType === "doctor" || modalType === "receptionist") ? `/onboarding/${modalType}/${editingId}` : `/onboarding/staff/${editingId}`;
+        await api.put(updateEndpoint, finalData);
         toast({ title: "Success", description: "Staff member updated successfully!", variant: "success", duration: 3000 });
       } else if (modalType === "doctor" || modalType === "receptionist") {
         await api.post(`/onboarding/${modalType}`, finalData);
@@ -246,15 +351,24 @@ export default function StaffPage() {
     } finally {
       setAssignmentLoading(false);
     }
-    setNewAssignment({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: "" });
+    setNewAssignment({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: "", bookingMode: "sequential_queue", maxDailyTokens: "" });
   };
+
+const DEFAULT_WORKING_HOURS = JSON.stringify({
+  Monday: [{ start: "09:00", end: "17:00" }],
+  Tuesday: [{ start: "09:00", end: "17:00" }],
+  Wednesday: [{ start: "09:00", end: "17:00" }],
+  Thursday: [{ start: "09:00", end: "17:00" }],
+  Friday: [{ start: "09:00", end: "17:00" }],
+});
 
   const handleAddAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAssignment.clinicId || !newAssignment.workingHours || newAssignment.fees === undefined) {
-      toast({ title: "Error", description: "Please configure clinic, timings, and fees", variant: "error" });
+    if (!newAssignment.clinicId || newAssignment.fees === undefined) {
+      toast({ title: "Validation Error", description: "Please select a clinic location and set consultation fees", variant: "error" });
       return;
     }
+    const finalHours = newAssignment.workingHours && newAssignment.workingHours !== "{}" ? newAssignment.workingHours : DEFAULT_WORKING_HOURS;
     setSavingAssignment(true);
     try {
       await api.post("/onboarding/doctors/assignments", {
@@ -262,13 +376,15 @@ export default function StaffPage() {
         clinicId: newAssignment.clinicId,
         fees: Number(newAssignment.fees),
         appointmentDuration: Number(newAssignment.appointmentDuration),
-        workingHours: newAssignment.workingHours
+        workingHours: finalHours,
+        bookingMode: (newAssignment as any).bookingMode || "sequential_queue",
+        maxDailyTokens: (newAssignment as any).maxDailyTokens ? Number((newAssignment as any).maxDailyTokens) : null,
       });
-      toast({ title: "Success", description: "Doctor assigned to clinic successfully", variant: "success" });
+      toast({ title: "Success! 🏥", description: "Doctor assigned to clinic branch successfully!", variant: "success" });
       // Refresh assignments
       const res = await api.get(`/onboarding/doctors/assignments?doctorId=${selectedDoctorForAssignments?.id}`);
       setAssignments(res.data.data || []);
-      setNewAssignment({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: "" });
+      setNewAssignment({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: DEFAULT_WORKING_HOURS, bookingMode: "sequential_queue", maxDailyTokens: "" });
     } catch (err: any) {
       toast({ title: "Error", description: err.response?.data?.message || "Failed to assign doctor", variant: "error" });
     } finally {
@@ -341,7 +457,15 @@ export default function StaffPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsAdminDoctorModalOpen(true)}
+            className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5 border-primary-500/40 text-primary-400 hover:bg-primary-500/10"
+          >
+            <span>🩺 Link Doctor Profile to Admin</span>
+          </Button>
           <Button
             variant="primary"
             size="sm"
@@ -378,15 +502,7 @@ export default function StaffPage() {
                 {/* Role Filter Bar */}
                 <div className="flex items-center gap-1.5 flex-wrap p-1.5 bg-surface border border-border rounded-2xl shadow-2xs">
                   <span className="text-xs font-bold text-text-muted px-2">Filter Role:</span>
-                  {[
-                    { key: "all", label: "All Staff", count: allStaffMembers.length },
-                    { key: "doctor", label: "Doctors", count: doctors.length },
-                    { key: "receptionist", label: "Receptionists", count: receptionists.length },
-                    { key: "nurse", label: "Nurses", count: nurses.length },
-                    { key: "lab_tech", label: "Lab Techs", count: labTechs.length },
-                    { key: "pharmacist", label: "Pharmacists", count: pharmacists.length },
-                    { key: "cashier", label: "Cashiers", count: cashiers.length },
-                  ].map((filter) => {
+                  {roleFilterTabs.map((filter) => {
                     const isSelected = selectedRoleFilter === filter.key;
                     return (
                       <button
@@ -516,14 +632,7 @@ export default function StaffPage() {
                   setModalType(e.target.value as any);
                   setStaffErrors({});
                 }}
-                options={[
-                  { value: "doctor", label: "Doctor / Clinical Practitioner" },
-                  { value: "receptionist", label: "Receptionist / Front Desk" },
-                  { value: "nurse", label: "Nurse / Clinical Support" },
-                  { value: "lab_tech", label: "Laboratory Technician" },
-                  { value: "pharmacist", label: "Pharmacist / Dispenser" },
-                  { value: "cashier", label: "Cashier / Accounts Desk" }
-                ]}
+                options={allRoleOptions}
               />
             </div>
           )}
@@ -553,7 +662,6 @@ export default function StaffPage() {
               value={formData.email || ""} 
               onChange={(e) => handleFieldChange("email", e.target.value)} 
               onBlur={() => validateStaffField("email", formData.email || "")}
-              disabled={!!editingId} 
               placeholder="e.g. sarah.jenkins@clinic.com"
               error={staffErrors.email}
               required 
@@ -640,40 +748,78 @@ export default function StaffPage() {
       <Modal
         open={isAssignmentsModalOpen}
         onClose={() => setIsAssignmentsModalOpen(false)}
-        title={`Manage Clinic Assignments - Dr. ${selectedDoctorForAssignments?.name}`}
-        size="lg"
+        title={`Manage Clinic Assignments — Dr. ${selectedDoctorForAssignments?.name || ""}`}
+        size="xl"
       >
-        <div className="space-y-6">
-          {/* Current Assignments */}
-          <div>
-            <h3 className="text-sm font-semibold text-text mb-3">Active Assignments</h3>
+        <div className="space-y-6 font-sans">
+          {/* Informational Subtext */}
+          <div className="p-3.5 bg-primary-500/10 border border-primary-500/20 rounded-2xl flex items-start gap-3 text-xs text-text-secondary">
+            <span className="text-base shrink-0">🏥</span>
+            <div>
+              <p className="font-bold text-text">What are Active Assignments?</p>
+              <p className="mt-0.5 text-text-muted">
+                Active Assignments link this practitioner to specific clinic locations within your organization. Each clinic location can have custom consultation fees, slot durations (e.g. 15 mins), and operating day shifts for online appointment booking and OPD desk routing.
+              </p>
+            </div>
+          </div>
+
+          {/* Current Active Assignments Card */}
+          <div className="bg-surface-alt/40 border border-border/80 rounded-2xl p-4.5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-text tracking-tight flex items-center gap-2">
+                <span>📍 Active Clinic Assignments</span>
+                <Badge variant="primary" size="sm">{assignments.length}</Badge>
+              </h3>
+            </div>
+
             {assignmentLoading ? (
-              <div className="flex justify-center p-6"><Spinner size="sm" /></div>
+              <div className="flex justify-center p-8"><Spinner size="md" /></div>
             ) : assignments.length === 0 ? (
-              <div className="text-sm text-text-muted text-center py-6 border border-dashed border-border rounded-lg bg-surface-alt">
-                No clinics assigned to this doctor yet. Use the form below to assign a clinic.
+              <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed border-border rounded-2xl bg-surface-alt/30 space-y-2">
+                <div className="w-10 h-10 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-400 text-lg">
+                  🏥
+                </div>
+                <h4 className="text-sm font-bold text-text">No Clinic Locations Assigned Yet</h4>
+                <p className="text-xs text-text-muted max-w-md">
+                  This practitioner has no active clinic branch assignments. Select an available clinic branch below to set consultation fees, slot durations, and working hours.
+                </p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-left border-collapse text-sm">
+              <div className="overflow-x-auto rounded-xl border border-border shadow-2xs bg-surface">
+                <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-surface-alt border-b border-border">
-                      <th className="p-3 font-semibold text-text">Clinic</th>
-                      <th className="p-3 font-semibold text-text">Fees</th>
-                      <th className="p-3 font-semibold text-text">Duration</th>
-                      <th className="p-3 font-semibold text-text">Working Hours</th>
-                      <th className="p-3 font-semibold text-text w-20">Actions</th>
+                    <tr className="border-b border-border text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                      <th className="p-3">Clinic Location</th>
+                      <th className="p-3">Consultation Fee</th>
+                      <th className="p-3">Slot Duration</th>
+                      <th className="p-3">Booking Mode</th>
+                      <th className="p-3">Working Shift Hours</th>
+                      <th className="p-3 text-right w-24">Action</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-border">
                     {assignments.map((asg) => (
-                      <tr key={asg.id} className="border-b border-border hover:bg-surface-hover/30 transition-colors">
-                        <td className="p-3 text-text font-medium">{asg.clinicId?.name}</td>
-                        <td className="p-3 text-success-600 font-bold">₹{asg.fees}</td>
-                        <td className="p-3 text-text-secondary">{asg.appointmentDuration} mins</td>
-                        <td className="p-3 text-text-secondary whitespace-pre-wrap">{formatTimings(asg.workingHours)}</td>
+                      <tr key={asg.id} className="hover:bg-surface-hover/50 transition-colors">
+                        <td className="p-3 text-text font-bold flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span>{asg.clinicId?.name}</span>
+                        </td>
+                        <td className="p-3 text-emerald-400 font-extrabold text-sm">₹{asg.fees}</td>
                         <td className="p-3">
-                          <Button variant="danger" size="xs" onClick={() => handleRemoveAssignment(asg.id)}>Remove</Button>
+                          <span className="px-2 py-0.5 bg-surface-alt rounded-lg font-bold text-text-secondary border border-border">
+                            {asg.appointmentDuration} mins
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <Badge variant={asg.bookingMode === "sequential_queue" ? "primary" : "neutral"} className="font-bold text-[10px]">
+                            {asg.bookingMode === "sequential_queue" ? "🎟 Token Queue" : "🗓 Time Slots"}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-text-secondary whitespace-pre-wrap font-medium">{formatTimings(asg.workingHours)}</td>
+                        <td className="p-3 text-right">
+                          <Button variant="danger" size="xs" onClick={() => handleRemoveAssignment(asg.id)} className="font-bold">
+                            Remove
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -683,22 +829,37 @@ export default function StaffPage() {
             )}
           </div>
 
-          {/* Add New Assignment Form */}
+          {/* Add New Assignment Form Card */}
           {availableClinics.length > 0 ? (
-            <form onSubmit={handleAddAssignment} className="border-t border-border pt-5 space-y-4">
-              <h3 className="text-sm font-semibold text-text">Assign New Clinic Location</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <form onSubmit={handleAddAssignment} className="bg-surface-alt/40 border border-border/80 rounded-2xl p-4.5 space-y-4">
+              <h3 className="text-sm font-bold text-text tracking-tight flex items-center gap-2">
+                <span>➕ Assign New Clinic Location & Schedule</span>
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <Select
+                  label="Patient Booking Mode *"
+                  value={(newAssignment as any).bookingMode || "sequential_queue"}
+                  onChange={(e) => setNewAssignment({ ...newAssignment, bookingMode: e.target.value } as any)}
+                  options={[
+                    { value: "sequential_queue", label: "🎟 Sequential Queue Mode (Live Token Queue) - DEFAULT" },
+                    { value: "time_slot", label: "🗓 Time-Slot Mode (Fixed Time Slots)" },
+                  ]}
+                  required
+                />
                 <Select 
-                  label="Select Clinic *"
+                  label="Select Clinic Location *"
                   value={newAssignment.clinicId}
                   onChange={(e) => setNewAssignment({ ...newAssignment, clinicId: e.target.value })}
                   options={[
-                    { value: "", label: "Choose a clinic..." },
+                    { value: "", label: "Choose a clinic branch..." },
                     ...availableClinics.map(c => ({ value: c.id, label: c.name }))
                   ]}
                   required
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                 <Input 
                   label="Consultation Fee (₹) *"
                   type="number"
@@ -707,30 +868,91 @@ export default function StaffPage() {
                   required
                 />
                 <Input 
-                  label="Slot Duration (Minutes) *"
+                  label={(newAssignment as any).bookingMode === "time_slot" ? "Slot Duration (Minutes) *" : "Avg Time / Patient (Mins) *"}
                   type="number"
                   value={newAssignment.appointmentDuration}
                   onChange={(e) => setNewAssignment({ ...newAssignment, appointmentDuration: Number(e.target.value) })}
                   required
                 />
+                <Input
+                  label="Max Daily Tokens (Optional Cap)"
+                  type="number"
+                  placeholder="e.g. 40 (blank for unlimited)"
+                  value={(newAssignment as any).maxDailyTokens || ""}
+                  onChange={(e) => setNewAssignment({ ...newAssignment, maxDailyTokens: e.target.value } as any)}
+                />
               </div>
 
               <ScheduleEditor 
-                label="Working Days & Operating timings *"
+                label="Working Days & Operating Timings *"
                 value={newAssignment.workingHours}
                 onChange={(val) => setNewAssignment({ ...newAssignment, workingHours: val })}
               />
 
               <div className="flex justify-end gap-3 pt-2">
-                <Button type="submit" loading={savingAssignment}>Assign Clinic</Button>
+                <Button type="submit" loading={savingAssignment} variant="primary" className="font-bold rounded-xl shadow-xs cursor-pointer">
+                  Assign Clinic Location & Schedule
+                </Button>
               </div>
             </form>
           ) : (
-            <div className="text-sm text-text-muted text-center py-4 border border-border bg-surface-alt rounded-lg">
-              Doctor is already assigned to all available clinic locations.
+            <div className="text-xs text-text-muted text-center py-4 border border-border bg-surface-alt/50 rounded-2xl font-medium">
+              ✅ Dr. {selectedDoctorForAssignments?.name} is already assigned to all active clinic branches in your organization.
             </div>
           )}
         </div>
+      </Modal>
+
+      {/* Enable Clinical Doctor Profile for Admin Account Modal */}
+      <Modal
+        open={isAdminDoctorModalOpen}
+        onClose={() => setIsAdminDoctorModalOpen(false)}
+        title="Link Clinical Doctor Profile to Admin Account 🩺"
+        size="lg"
+      >
+        <form onSubmit={handleEnableAdminDoctorProfile} className="space-y-4">
+          <p className="text-xs text-text-muted">
+            Solo practice owners and Doctor-Admins can enable a Clinical Doctor Profile linked directly to their Admin account. This allows you to conduct OPD consultations, issue prescriptions, and manage appointments while maintaining full 100% Admin Governance.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <Input
+              label="Medical Specialization *"
+              value={adminDoctorData.specialization}
+              onChange={(e) => setAdminDoctorData({ ...adminDoctorData, specialization: e.target.value })}
+              placeholder="e.g. General Physician, Consultant Cardiologist"
+              required
+            />
+            <Input
+              label="Qualifications *"
+              value={adminDoctorData.qualification}
+              onChange={(e) => setAdminDoctorData({ ...adminDoctorData, qualification: e.target.value })}
+              placeholder="e.g. MBBS, MD (Internal Medicine)"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <Input
+              label="Consultation Fee (₹) *"
+              type="number"
+              value={adminDoctorData.fees}
+              onChange={(e) => setAdminDoctorData({ ...adminDoctorData, fees: Number(e.target.value) })}
+              required
+            />
+            <Input
+              label="Medical Registration / License No."
+              value={adminDoctorData.registrationNumber}
+              onChange={(e) => setAdminDoctorData({ ...adminDoctorData, registrationNumber: e.target.value })}
+              placeholder="e.g. MCI-2024-8849"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" type="button" onClick={() => setIsAdminDoctorModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" type="submit" loading={savingAdminDoctor}>Link Clinical Doctor Profile</Button>
+          </div>
+        </form>
       </Modal>
 
       {/* Delete/Deactivate Confirmation Dialog */}

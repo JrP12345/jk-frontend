@@ -744,7 +744,7 @@ export default function AdmissionsPage() {
       {/* CONFIRM BED DELETE */}
       {deletingBedId && (
         <ConfirmDialog
-          isOpen={!!deletingBedId}
+          open={!!deletingBedId}
           onClose={() => setDeletingBedId(null)}
           onConfirm={handleDeleteBed}
           title="Delete Ward Bed"

@@ -78,9 +78,29 @@ export default function PatientPortalPage() {
   const [selfApptTime, setSelfApptTime] = useState("");
   const [selfNotes, setSelfNotes] = useState("");
   const [submittingSelfBook, setSubmittingSelfBook] = useState(false);
+  const [selfDoctorBookingInfo, setSelfDoctorBookingInfo] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!selfDoctorId || !selfClinicId) return;
+    const checkMode = async () => {
+      try {
+        const todayStr = new Date().toISOString().split("T")[0];
+        const res = await api.get(`/doctors/${selfDoctorId}/slots?clinicId=${selfClinicId}&date=${todayStr}`);
+        const data = res.data?.data;
+        setSelfDoctorBookingInfo(data);
+        if (data?.bookingMode === "sequential_queue") {
+          setSelfApptTime(`${todayStr}T00:00:00`);
+        }
+      } catch {
+        // Fallback
+      }
+    };
+    checkMode();
+  }, [selfDoctorId, selfClinicId]);
 
   const openSelfBookModal = async () => {
     setIsSelfBookOpen(true);
+    setSelfDoctorBookingInfo(null);
     try {
       const [clinicsRes, staffRes] = await Promise.all([
         api.get("/onboarding/clinics"),
@@ -725,13 +745,25 @@ export default function PatientPortalPage() {
             required
           />
 
-          <DatePicker
-            label="Preferred Appointment Date & Time *"
-            mode="datetime"
-            value={selfApptTime}
-            onChange={(val) => setSelfApptTime(typeof val === "string" ? val : val.target.value)}
-            fullWidth
-          />
+          {selfDoctorBookingInfo?.bookingMode === "sequential_queue" ? (
+            <div className="p-3 bg-gradient-to-r from-primary-600/10 via-surface to-surface border border-primary-500/30 rounded-xl space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-text">🎟 Live Sequential Token Queue Mode</span>
+                <Badge variant="primary" className="font-bold text-[10px]">Sequential Token</Badge>
+              </div>
+              <p className="text-xs text-text-secondary">
+                This doctor operates in live token queue mode. Booking will issue Token <strong className="text-primary-600 font-bold">#{selfDoctorBookingInfo.nextToken || 1}</strong> with an estimated turn time of <strong className="text-amber-600 font-bold">~{Math.max(0, ((selfDoctorBookingInfo.nextToken || 1) - 1) * (selfDoctorBookingInfo.appointmentDuration || 15))} mins</strong>.
+              </p>
+            </div>
+          ) : (
+            <DatePicker
+              label="Preferred Appointment Date & Time *"
+              mode="datetime"
+              value={selfApptTime}
+              onChange={(val) => setSelfApptTime(typeof val === "string" ? val : val.target.value)}
+              fullWidth
+            />
+          )}
 
           <Input
             label="Reason for Visit / Symptoms"

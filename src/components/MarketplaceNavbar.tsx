@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Button, Avatar, Dropdown, ModeSwitcher, AnantaLogo } from "@/components/ui";
 
 export default function MarketplaceNavbar() {
-  const { user, logout, isAuthenticated } = useAuthStore();
+  const { user, logout, isAuthenticated, isLoading } = useAuthStore();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -41,7 +41,9 @@ export default function MarketplaceNavbar() {
           
           <div className="w-px h-6 bg-border mx-1" />
 
-          {isAuthenticated && user ? (
+          {isLoading ? (
+            <div className="w-24 h-9 rounded-xl bg-surface-alt/60 animate-pulse border border-border/40" />
+          ) : isAuthenticated && user ? (
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"

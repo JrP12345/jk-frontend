@@ -108,16 +108,30 @@ export default function AppointmentsPage() {
   const [lockingSlot, setLockingSlot] = useState(false);
   const [lockedSlotTime, setLockedSlotTime] = useState<string | null>(null);
 
+  const [doctorBookingMode, setDoctorBookingMode] = useState<"time_slot" | "sequential_queue">("sequential_queue");
+  const [nextTokenNum, setNextTokenNum] = useState<number | null>(null);
+  const [tokensTodayCount, setTokensTodayCount] = useState<number>(0);
+
   useEffect(() => {
     if (!bookingDoctorId || !selectedSlotDate) return;
     const fetchSlots = async () => {
       try {
         setFetchingSlots(true);
         const res = await api.get(`/doctors/${bookingDoctorId}/slots?clinicId=${bookingClinicId}&date=${selectedSlotDate}`);
-        const slotsData = res.data?.data?.slots || [];
+        const data = res.data?.data;
+        const slotsData = data?.slots || [];
         setAvailableSlots(slotsData);
+        const mode = data?.bookingMode || "sequential_queue";
+        setDoctorBookingMode(mode);
+        setNextTokenNum(data?.nextToken || null);
+        setTokensTodayCount(data?.tokensToday || 0);
+
+        if (mode === "sequential_queue") {
+          setBookingTime(`${selectedSlotDate}T00:00:00`);
+        }
       } catch (err) {
         setAvailableSlots([]);
+        setDoctorBookingMode("sequential_queue");
       } finally {
         setFetchingSlots(false);
       }
@@ -1088,65 +1102,80 @@ export default function AppointmentsPage() {
                 />
               </div>
 
-              {/* Slot Availability Grid */}
-              <div className="space-y-2 border-t border-border pt-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-text">Available Doctor Slots for {selectedSlotDate}</span>
-                  {fetchingSlots && <span className="text-text-muted text-[11px]">Calculating slots...</span>}
-                </div>
-
-                {fetchingSlots ? (
-                  <div className="py-4 text-center"><Spinner size="sm" label="Fetching time slots..." /></div>
-                ) : availableSlots.length === 0 ? (
-                  <div className="p-3 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200 rounded-lg text-xs text-amber-800 dark:text-amber-300">
-                    No 15-min open slots for this date. You may specify custom time below or pick another date.
+              {/* Slot Availability Grid OR Sequential Queue Notice */}
+              {doctorBookingMode === "sequential_queue" ? (
+                <div className="p-4 bg-gradient-to-r from-primary-600/10 via-surface to-surface border border-primary-500/30 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-text">🎟 Live Sequential Token Queue</span>
+                    <Badge variant="primary" className="font-bold">Sequential Token Assignment</Badge>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-40 overflow-y-auto p-1">
-                    {availableSlots.filter(s => s.available).map((slot) => {
-                      const fullSlotISO = `${selectedSlotDate}T${slot.time}:00`;
-                      const isSelected = bookingTime === fullSlotISO;
-                      const isHeldByOther = slot.lockedByOther;
-                      const isMyLock = lockedSlotTime === fullSlotISO && currentLockId;
-
-                      return (
-                        <button
-                          key={slot.time}
-                          type="button"
-                          disabled={!!isHeldByOther || lockingSlot}
-                          onClick={() => handleSlotClick(slot)}
-                          className={`px-2 py-1.5 text-xs font-bold rounded-lg border transition-all relative ${
-                            isSelected
-                              ? "bg-primary-600 text-white border-primary-600 shadow-sm"
-                              : isHeldByOther
-                                ? "bg-amber-50 dark:bg-amber-900/20 text-amber-500 border-amber-300 cursor-not-allowed opacity-70"
-                                : "bg-surface hover:bg-primary-50 text-text border-border"
-                          }`}
-                          title={isHeldByOther ? "This slot is being held by another user" : slot.time}
-                        >
-                          {slot.time}
-                          {isHeldByOther && (
-                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 border border-white dark:border-gray-800" title="Held by another user" />
-                          )}
-                          {isMyLock && (
-                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-400 border border-white dark:border-gray-800" title="Reserved by you" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div className="pt-2">
-                  <DatePicker
-                    label="Selected DateTime *"
-                    mode="datetime"
-                    value={bookingTime}
-                    onChange={(val) => setBookingTime(typeof val === "string" ? val : val.target.value)}
-                    fullWidth
-                  />
+                  <p className="text-xs text-text-secondary">
+                    Practitioner operates in sequential queue mode. Confirming booking will automatically issue Token <strong className="text-primary-600 font-black">#{nextTokenNum || (tokensTodayCount + 1)}</strong> for today.
+                  </p>
+                  <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                    Estimated Turn Time: <strong className="font-bold text-text">~{Math.max(0, (nextTokenNum ? nextTokenNum - 1 : tokensTodayCount) * 15)} mins</strong> (based on ~15 mins avg / patient)
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-2 border-t border-border pt-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-text">Available Doctor Slots for {selectedSlotDate}</span>
+                    {fetchingSlots && <span className="text-text-muted text-[11px]">Calculating slots...</span>}
+                  </div>
+
+                  {fetchingSlots ? (
+                    <div className="py-4 text-center"><Spinner size="sm" label="Fetching time slots..." /></div>
+                  ) : availableSlots.length === 0 ? (
+                    <div className="p-3 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200 rounded-lg text-xs text-amber-800 dark:text-amber-300">
+                      No 15-min open slots for this date. You may specify custom time below or pick another date.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-40 overflow-y-auto p-1">
+                      {availableSlots.filter(s => s.available).map((slot) => {
+                        const fullSlotISO = `${selectedSlotDate}T${slot.time}:00`;
+                        const isSelected = bookingTime === fullSlotISO;
+                        const isHeldByOther = slot.lockedByOther;
+                        const isMyLock = lockedSlotTime === fullSlotISO && currentLockId;
+
+                        return (
+                          <button
+                            key={slot.time}
+                            type="button"
+                            disabled={!!isHeldByOther || lockingSlot}
+                            onClick={() => handleSlotClick(slot)}
+                            className={`px-2 py-1.5 text-xs font-bold rounded-lg border transition-all relative ${
+                              isSelected
+                                ? "bg-primary-600 text-white border-primary-600 shadow-sm"
+                                : isHeldByOther
+                                  ? "bg-amber-50 dark:bg-amber-900/20 text-amber-500 border-amber-300 cursor-not-allowed opacity-70"
+                                  : "bg-surface hover:bg-primary-50 text-text border-border"
+                            }`}
+                            title={isHeldByOther ? "This slot is being held by another user" : slot.time}
+                          >
+                            {slot.time}
+                            {isHeldByOther && (
+                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 border border-white dark:border-gray-800" title="Held by another user" />
+                            )}
+                            {isMyLock && (
+                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-400 border border-white dark:border-gray-800" title="Reserved by you" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="pt-2">
+                    <DatePicker
+                      label="Selected DateTime *"
+                      mode="datetime"
+                      value={bookingTime}
+                      onChange={(val) => setBookingTime(typeof val === "string" ? val : val.target.value)}
+                      fullWidth
+                    />
+                  </div>
+                </div>
+              )}
 
               <Textarea 
                 label="Appointment Notes" 

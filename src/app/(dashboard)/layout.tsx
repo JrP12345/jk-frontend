@@ -56,10 +56,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [pathname, user, isLoading, router, toast]);
 
-  if (isLoading) {
+  if (isLoading || (user && user.role !== "patient" && !modulesLoaded)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface">
-        <Spinner size="lg" label="Loading workspace..." />
+        <Spinner size="lg" label="Initializing workspace & permissions..." />
       </div>
     );
   }
@@ -370,11 +370,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           <div className="flex items-center gap-2 md:gap-4">
             {user.role !== "patient" && headerClinics.length > 0 && (
-              <div className="hidden md:block w-48 sm:w-56">
+              <div className="hidden md:block w-52 sm:w-64">
                 <Select
                   size="sm"
-                  options={headerClinics.map((c) => ({ value: c.id, label: `📍 ${c.name}` }))}
-                  value={activeClinicId || (headerClinics[0] ? headerClinics[0].id : "")}
+                  options={[
+                    ...(headerClinics.length > 1 || user.role === "admin" || user.role === "root"
+                      ? [{ value: "all", label: "📍 All Clinics / All Branches" }]
+                      : []),
+                    ...headerClinics.map((c) => ({ value: c.id, label: `📍 ${c.name}` })),
+                  ]}
+                  value={activeClinicId || (headerClinics[0] ? headerClinics[0].id : "all")}
                   onChange={(e) => setActiveClinic(e.target.value)}
                 />
               </div>

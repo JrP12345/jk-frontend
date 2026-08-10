@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
@@ -19,6 +19,7 @@ import {
   useToast,
   ModeSwitcher,
   AnantaLogo,
+  Spinner,
   cn,
 } from "@/components/ui";
 
@@ -49,8 +50,22 @@ export default function LoginPage() {
   const [isResetSent, setIsResetSent] = useState(false);
 
   const router = useRouter();
-  const { login } = useAuthStore();
+  const { isAuthenticated, isLoading, login } = useAuthStore();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace("/dashboard");
+    }
+  }, [isLoading, isAuthenticated, router]);
+
+  if (isLoading || isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface">
+        <Spinner size="lg" label="Signing into workspace..." />
+      </div>
+    );
+  }
 
   const validateEmail = (val: string, isReset = false) => {
     const errorStateSetter = isReset ? setResetEmailError : setEmailError;

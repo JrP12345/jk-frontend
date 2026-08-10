@@ -68,18 +68,28 @@ interface ScheduleEditorProps {
   className?: string;
 }
 
+const DEFAULT_SCHEDULE: ScheduleData = {
+  Monday: [{ start: "09:00", end: "17:00" }],
+  Tuesday: [{ start: "09:00", end: "17:00" }],
+  Wednesday: [{ start: "09:00", end: "17:00" }],
+  Thursday: [{ start: "09:00", end: "17:00" }],
+  Friday: [{ start: "09:00", end: "17:00" }],
+};
+
 const ScheduleEditor = memo(function ScheduleEditor({
-  label,
-  value,
+  label = "Working Days & Operating Hours",
+  value = "",
   onChange,
   className,
 }: ScheduleEditorProps) {
 
   const [schedule, setSchedule] = useState<ScheduleData>(() => {
     try {
-      return value ? JSON.parse(value) : {};
+      const parsed = value ? JSON.parse(value) : null;
+      if (parsed && Object.keys(parsed).length > 0) return parsed;
+      return DEFAULT_SCHEDULE;
     } catch {
-      return {};
+      return DEFAULT_SCHEDULE;
     }
   });
 

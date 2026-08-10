@@ -242,15 +242,17 @@ export default function TeleconsultationPage() {
           }
         }
 
-        setActiveSession(sessionData);
-        setClinicalNotesInput(sessionData.clinicalNotes || appt.notes || "");
-        if (sessionData.vitalsRecorded) {
-          setVitalsInput({
-            bp: sessionData.vitalsRecorded.bp || "",
-            pulse: sessionData.vitalsRecorded.pulse || "",
-            temp: sessionData.vitalsRecorded.temp || "",
-            spo2: sessionData.vitalsRecorded.spo2 || "",
-          });
+        if (sessionData) {
+          setActiveSession(sessionData);
+          setClinicalNotesInput(sessionData.clinicalNotes || appt.notes || "");
+          if (sessionData.vitalsRecorded) {
+            setVitalsInput({
+              bp: sessionData.vitalsRecorded.bp || "",
+              pulse: sessionData.vitalsRecorded.pulse || "",
+              temp: sessionData.vitalsRecorded.temp || "",
+              spo2: sessionData.vitalsRecorded.spo2 || "",
+            });
+          }
         }
       }
     } catch (err: any) {

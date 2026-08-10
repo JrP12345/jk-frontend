@@ -34,6 +34,8 @@ interface Doctor {
   rating?: number;
   reviewsCount?: number;
   languages?: string[];
+  bookingMode?: string;
+  maxDailyTokens?: number | null;
 }
 
 interface ClinicDetail {
@@ -134,12 +136,17 @@ export default function BrowseDetailClient({ id }: { id: string }) {
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<any>(null);
 
+  // Slot & Booking Mode Info
+  const [doctorSlotInfo, setDoctorSlotInfo] = useState<any | null>(null);
+  const [fetchingDoctorSlots, setFetchingDoctorSlots] = useState(false);
+
   const resetBookingForm = () => {
     setBookingNotes("");
     setGuestForm({ name: "", email: "", password: "", phone: "" });
     setSelectedDate("");
     setSelectedTime("");
     setFollowUpForAppointmentId(null);
+    setDoctorSlotInfo(null);
   };
 
   useEffect(() => {
@@ -178,22 +185,49 @@ export default function BrowseDetailClient({ id }: { id: string }) {
     }
   }, [clinic, searchParams, isAuthenticated, user]);
 
-  const handleOpenBooking = (doc: Doctor) => {
+  const handleOpenBooking = async (doc: Doctor) => {
     setSelectedDoctor(doc);
     setIsBookingOpen(true);
     setIsGuest(!isAuthenticated || user?.role !== "patient");
     resetBookingForm();
+
+    const todayISO = new Date().toISOString().split("T")[0];
+
+    // If doc object already has bookingMode from public clinic API
+    if (doc.bookingMode === "sequential_queue") {
+      setSelectedDate(todayISO);
+      setSelectedTime("00:00");
+      setDoctorSlotInfo({ bookingMode: "sequential_queue", nextToken: 1, tokensToday: 0, maxDailyTokens: doc.maxDailyTokens });
+    }
+
+    try {
+      setFetchingDoctorSlots(true);
+      const res = await api.get(`/public/doctors/${doc.id}/slots?clinicId=${id}&date=${todayISO}`);
+      const data = res.data?.data;
+      if (data) {
+        setDoctorSlotInfo(data);
+        if (data.bookingMode === "sequential_queue") {
+          setSelectedDate(todayISO);
+          setSelectedTime("00:00");
+        }
+      }
+    } catch {
+      // Fallback
+    } finally {
+      setFetchingDoctorSlots(false);
+    }
   };
 
   const handleBookAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDate || !selectedTime) {
-      toast({ title: "Validation Error", description: "Please choose a date and time slot.", variant: "error" });
+    if (!selectedDate || (!selectedTime && doctorSlotInfo?.bookingMode !== "sequential_queue")) {
+      toast({ title: "Validation Error", description: "Please select a date and slot.", variant: "error" });
       return;
     }
 
     setBookingLoading(true);
-    const mergedBookingTime = `${selectedDate}T${selectedTime}`;
+    const timeToUse = selectedTime || "00:00";
+    const mergedBookingTime = `${selectedDate}T${timeToUse}`;
 
     try {
       if (isGuest) {
@@ -562,44 +596,76 @@ export default function BrowseDetailClient({ id }: { id: string }) {
             </div>
           )}
 
-          {/* Schedule Date & Time Picker */}
-          <div className="space-y-3 pt-3 border-t border-border/50">
-            <label className="text-xs font-bold uppercase tracking-wider text-text block">Select Consultation Date *</label>
-            {upcomingDays.length === 0 ? (
-              <p className="text-xs text-danger-500">No active schedules configured for this clinic location.</p>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                {upcomingDays.map((d) => (
-                  <button
-                    key={d.dateString}
-                    type="button"
-                    onClick={() => {
-                      setSelectedDate(d.dateString);
-                      setSelectedTime("");
-                    }}
-                    className={`p-2 rounded-xl border text-center cursor-pointer transition-all duration-150 ${
-                      selectedDate === d.dateString
-                        ? "bg-primary-600 text-white border-primary-600 font-bold shadow-xs"
-                        : "bg-surface text-text-secondary border-border hover:bg-surface-hover"
-                    }`}
-                  >
-                    <span className="text-[10px] block capitalize">{d.dayName.substring(0, 3)}</span>
-                    <span className="text-xs font-bold">{d.label}</span>
-                  </button>
-                ))}
+          {/* Schedule Picker OR Sequential Queue Card */}
+          {fetchingDoctorSlots ? (
+            <div className="py-6 text-center">
+              <Spinner size="sm" label="Checking availability & queue mode..." />
+            </div>
+          ) : doctorSlotInfo?.bookingMode === "sequential_queue" ? (
+            <div className="p-4 bg-gradient-to-r from-primary-600/10 via-primary-500/5 to-surface rounded-2xl border border-primary-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm text-text">🎟 Live Sequential Token Queue</span>
+                <Badge variant="primary" className="font-bold">Next Available Token</Badge>
               </div>
-            )}
+              <p className="text-xs text-text-secondary">
+                This practitioner operates on a live sequential token queue. You will receive the next token number for today upon confirmation.
+              </p>
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="bg-surface p-3 rounded-xl border border-border text-center">
+                  <span className="text-[10px] text-text-muted uppercase font-semibold block">Your Queue Token</span>
+                  <span className="text-2xl font-black text-primary-600">#{doctorSlotInfo.nextToken || 1}</span>
+                </div>
+                <div className="bg-surface p-3 rounded-xl border border-border text-center">
+                  <span className="text-[10px] text-text-muted uppercase font-semibold block">Est. Wait / Turn Time</span>
+                  <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
+                    ~{Math.max(0, ((doctorSlotInfo.nextToken || 1) - 1) * (doctorSlotInfo.appointmentDuration || 15))} mins
+                  </span>
+                </div>
+              </div>
+              {doctorSlotInfo.maxDailyTokens && (
+                <p className="text-[11px] text-text-muted text-center">
+                  Daily Limit: {doctorSlotInfo.maxDailyTokens} Patients Maximum
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3 pt-3 border-t border-border/50">
+              <label className="text-xs font-bold uppercase tracking-wider text-text block">Select Consultation Date *</label>
+              {upcomingDays.length === 0 ? (
+                <p className="text-xs text-danger-500">No active schedules configured for this clinic location.</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {upcomingDays.map((d) => (
+                    <button
+                      key={d.dateString}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDate(d.dateString);
+                        setSelectedTime("");
+                      }}
+                      className={`p-2 rounded-xl border text-center cursor-pointer transition-all duration-150 ${
+                        selectedDate === d.dateString
+                          ? "bg-primary-600 text-white border-primary-600 font-bold shadow-xs"
+                          : "bg-surface text-text-secondary border-border hover:bg-surface-hover"
+                      }`}
+                    >
+                      <span className="text-[10px] block capitalize">{d.dayName.substring(0, 3)}</span>
+                      <span className="text-xs font-bold">{d.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
-            {selectedDate && (
-              <div className="space-y-2 border-t border-border/40 pt-3">
-                <label className="text-xs font-bold uppercase tracking-wider text-text block">Select Available Time Slot *</label>
-                {(() => {
-                  const dayName = upcomingDays.find((d) => d.dateString === selectedDate)?.dayName || "";
-                  const slots = generateTimeSlots(selectedDoctor?.timings, dayName, selectedDate);
+              {selectedDate && (
+                <div className="space-y-2 border-t border-border/40 pt-3">
+                  <label className="text-xs font-bold uppercase tracking-wider text-text block">Select Available Time Slot *</label>
+                  {(() => {
+                    const dayName = upcomingDays.find((d) => d.dateString === selectedDate)?.dayName || "";
+                    const slots = generateTimeSlots(selectedDoctor?.timings, dayName, selectedDate);
 
-                  if (slots.length === 0) {
-                    return <p className="text-xs text-text-muted">No available timeslots left for this date.</p>;
-                  }
+                    if (slots.length === 0) {
+                      return <p className="text-xs text-text-muted">No available timeslots left for this date.</p>;
+                    }
 
                   return (
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-44 overflow-y-auto pr-1">
@@ -623,12 +689,19 @@ export default function BrowseDetailClient({ id }: { id: string }) {
               </div>
             )}
           </div>
+          )}
 
           <div className="pt-3 border-t border-border/40 flex justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => setIsBookingOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" size="sm" type="submit" loading={bookingLoading} disabled={!selectedDate || !selectedTime}>
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              loading={bookingLoading}
+              disabled={!selectedDate || (!selectedTime && doctorSlotInfo?.bookingMode !== "sequential_queue")}
+            >
               Confirm Booking
             </Button>
           </div>

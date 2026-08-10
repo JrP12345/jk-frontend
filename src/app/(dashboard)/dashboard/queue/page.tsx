@@ -9,6 +9,7 @@ import {
 } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
 import { NurseVitalsModal } from "@/components/clinical/NurseVitalsModal";
+import { playChimeSound, CHIME_OPTIONS, ChimeType } from "@/utils/audioChimes";
 
 interface Appointment {
   id: string;
@@ -173,11 +174,29 @@ export default function QueuePage() {
     nextInLine: activeQueue.find(a => ["checked-in", "confirmed", "pending"].includes(a.status))?.tokenNumber || null
   };
 
+  const [chimeType, setChimeType] = useState<ChimeType>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("ananta_queue_chime_sound") as ChimeType) || "bell";
+    }
+    return "bell";
+  });
+
+  const handleChimeChange = (newType: ChimeType) => {
+    setChimeType(newType);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ananta_queue_chime_sound", newType);
+    }
+    playChimeSound(newType);
+  };
+
   // Status transitions
   const updateStatus = async (appointmentId: string, newStatus: string) => {
     try {
       setUpdatingStatus(appointmentId);
       await api.put(`/appointments/${appointmentId}/status`, { status: newStatus });
+      if (newStatus === "in-consultation") {
+        playChimeSound(chimeType);
+      }
       toast({ title: "Success", description: `Status updated to ${newStatus}`, variant: "success" });
       await fetchQueue();
     } catch (err: any) {
@@ -195,6 +214,7 @@ export default function QueuePage() {
         doctorId: selectedDoctor,
       });
       if (res.data?.data) {
+        playChimeSound(chimeType);
         toast({ title: "Patient Called 🩺", description: res.data.message || `Token #${res.data.data.tokenNumber} in consultation`, variant: "success" });
       } else {
         toast({ title: "Queue Empty", description: res.data?.message || "No waiting patients", variant: "default" });
@@ -362,7 +382,27 @@ export default function QueuePage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 bg-surface-alt/50 border border-border/80 p-1 rounded-xl">
+            <Select
+              size="sm"
+              value={chimeType}
+              onChange={(e) => handleChimeChange(e.target.value as ChimeType)}
+              options={CHIME_OPTIONS.map((c) => ({ value: c.id, label: `${c.icon} ${c.label}` }))}
+              className="w-48 text-xs font-medium"
+            />
+            <Button
+              variant="ghost"
+              size="xs"
+              type="button"
+              onClick={() => playChimeSound(chimeType)}
+              className="text-xs font-bold rounded-lg cursor-pointer px-2"
+              title="Preview Selected Sound Chime Tone"
+            >
+              🔊 Test
+            </Button>
+          </div>
+
           <Button
             variant="primary"
             size="sm"

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "Ananta — Healthcare Platform",
@@ -25,16 +26,14 @@ export default function RootLayout({
       data-palette="blue"
       suppressHydrationWarning
     >
-      <head>
-        <link rel="icon" href="/logo-w.png" type="image/png" sizes="any" />
-        <link rel="apple-touch-icon" href="/logo-w.png" />
-        <script
+      <body className="min-h-full flex flex-col bg-surface text-text font-sans antialiased">
+        <Script
+          id="theme-initializer"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var m=localStorage.getItem("jk-mode")||"dark";var p=localStorage.getItem("jk-palette")||"blue";if(m==="system"){m=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.setAttribute("data-mode",m);document.documentElement.setAttribute("data-palette",p);if(m==="dark"){document.documentElement.classList.add("dark");}else{document.documentElement.classList.remove("dark");}}catch(e){}})();`,
           }}
         />
-      </head>
-      <body className="min-h-full flex flex-col bg-surface text-text font-sans antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -63,6 +63,7 @@ export default function OrganizationsPage() {
     orgPhone: "",
     orgEmail: "",
     plan: "starter" as "starter" | "pro" | "enterprise",
+    trialDays: 15,
     taxId: "",
     licenseNumber: "",
     currency: "INR",
@@ -221,6 +222,7 @@ export default function OrganizationsPage() {
         org_phone: formData.orgPhone.trim() ? formData.orgPhone.trim() : undefined,
         org_email: formData.orgEmail.trim() ? formData.orgEmail.trim() : undefined,
         plan: formData.plan,
+        trialDays: formData.trialDays || 15,
         taxId: formData.taxId.trim() || undefined,
         licenseNumber: formData.licenseNumber.trim() || undefined,
         currency: formData.currency,
@@ -257,6 +259,7 @@ export default function OrganizationsPage() {
         orgPhone: "",
         orgEmail: "",
         plan: "starter",
+        trialDays: 15,
         taxId: "",
         licenseNumber: "",
         currency: "INR",
@@ -771,6 +774,21 @@ export default function OrganizationsPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-surface-alt/40 border border-border/80">
+                <Input
+                  label="Custom Free Trial Duration (Days) *"
+                  type="number"
+                  min={1}
+                  max={365}
+                  placeholder="15"
+                  value={formData.trialDays || 15}
+                  onChange={(e) => setFormData({ ...formData, trialDays: Number(e.target.value) || 15 })}
+                />
+                <p className="text-[10px] text-text-muted mt-1">
+                  Root Admin Override: Enter custom trial duration (e.g., 7, 15, 30, 60, or 90 days).
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

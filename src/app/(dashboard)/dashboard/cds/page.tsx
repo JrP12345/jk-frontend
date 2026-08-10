@@ -522,7 +522,7 @@ export default function ClinicalDecisionSupportPage() {
                 className={`p-4 rounded-2xl border space-y-3 transition-all ${
                   ddiResult.severity === "critical"
                     ? "bg-red-500/10 border-red-500/50 text-red-950 dark:text-red-200"
-                    : ddiResult.severity === "high" || ddiResult.severity === "major"
+                    : ddiResult.severity === "high" || (ddiResult.severity as string) === "major"
                     ? "bg-amber-500/10 border-amber-500/50 text-amber-950 dark:text-amber-200"
                     : "bg-emerald-500/10 border-emerald-500/50 text-emerald-950 dark:text-emerald-200"
                 }`}
