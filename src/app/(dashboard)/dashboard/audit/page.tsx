@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { canViewAuditLogs } from "@/lib/permissions";
 import {
   Card, CardHeader, CardTitle, CardDescription, CardContent,
   Table, Badge, Button, useToast, Spinner, Alert, SkeletonTable
@@ -41,13 +42,12 @@ export default function AuditLogsPage() {
   };
 
   useEffect(() => {
-    if (user?.role === "admin" || user?.role === "root") {
+    if (canViewAuditLogs(user)) {
       fetchLogs();
     }
   }, [user]);
 
-  // Deny access for non-admins
-  if (user?.role !== "admin" && user?.role !== "root") {
+  if (!canViewAuditLogs(user)) {
     return (
       <div className="space-y-6 animate-fade-in">
         <Alert variant="error" title="Access Denied">

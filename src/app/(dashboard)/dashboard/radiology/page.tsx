@@ -68,13 +68,18 @@ export default function RadiologyPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [studiesRes, patientsRes] = await Promise.all([
-        api.get(selectedClinicId ? `/radiology/studies?clinicId=${selectedClinicId}` : "/radiology/studies"),
-        api.get("/patients"),
-      ]);
+      if (user?.role === "patient") {
+        const studiesRes = await api.get(selectedClinicId ? `/radiology/studies?clinicId=${selectedClinicId}` : "/radiology/studies");
+        setStudies(studiesRes.data?.data || []);
+      } else {
+        const [studiesRes, patientsRes] = await Promise.all([
+          api.get(selectedClinicId ? `/radiology/studies?clinicId=${selectedClinicId}` : "/radiology/studies"),
+          api.get("/patients"),
+        ]);
 
-      setStudies(studiesRes.data?.data || []);
-      setPatients(patientsRes.data?.data || []);
+        setStudies(studiesRes.data?.data || []);
+        setPatients(patientsRes.data?.data || []);
+      }
     } catch (err: any) {
       toast({
         title: "Failed to Fetch Radiology Data",

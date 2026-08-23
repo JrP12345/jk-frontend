@@ -23,9 +23,13 @@ import {
   type TableBulkAction,
 } from "@/components/ui";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/authStore";
+import { hasAnyPermission } from "@/lib/permissions";
 
 export default function NotificationsInboxPage() {
   const router = useRouter();
+  const { user } = useAuthStore();
+  const canSendNotifications = hasAnyPermission(user, "MANAGE_ORGANIZATION");
   const { toast } = useToast();
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState<string>("");
@@ -358,6 +362,7 @@ export default function NotificationsInboxPage() {
               Mark All Read ({unreadCount})
             </Button>
           )}
+          {canSendNotifications && (
           <Button
             variant="primary"
             size="sm"
@@ -366,6 +371,7 @@ export default function NotificationsInboxPage() {
           >
             + Send Notification
           </Button>
+          )}
         </div>
       </div>
 

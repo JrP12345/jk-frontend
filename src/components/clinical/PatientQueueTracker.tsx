@@ -53,28 +53,28 @@ export function PatientQueueTracker({ appointmentId, clinicId, doctorId }: Patie
     );
   }
 
-  if (!queueInfo) return null;
+  if (!queueInfo || queueInfo.myToken == null) return null;
 
   return (
-    <Card className="border-l-4 border-l-primary-600 bg-gradient-to-r from-primary-50/30 to-transparent">
-      <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
+    <Card className="border-l-4 border-l-primary-500 bg-surface border border-border/80 shadow-xs rounded-2xl overflow-hidden">
+      <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs font-sans">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-primary-600 text-white flex flex-col items-center justify-center font-bold shadow-md">
-            <span className="text-[10px] opacity-80 uppercase tracking-widest font-medium">My Token</span>
-            <span className="text-xl leading-5">#{queueInfo.myToken || "-"}</span>
+          <div className="w-14 h-14 rounded-2xl bg-primary-600 text-white flex flex-col items-center justify-center font-extrabold shadow-md shrink-0">
+            <span className="text-[9px] opacity-80 uppercase tracking-widest font-semibold">My Token</span>
+            <span className="text-xl leading-5 mt-0.5">#{queueInfo.myToken}</span>
           </div>
 
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-text text-sm">Live OPD Queue Status</span>
-              <Badge variant={queueInfo.myStatus === "in-consultation" ? "success" : queueInfo.myStatus === "checked-in" ? "primary" : "warning"} className="capitalize">
+              <span className="font-bold text-text text-sm tracking-tight">Live OPD Queue Status</span>
+              <Badge variant={queueInfo.myStatus === "in-consultation" ? "success" : queueInfo.myStatus === "checked-in" ? "primary" : "warning"} className="capitalize font-bold text-[10px]">
                 {queueInfo.myStatus.replace("-", " ")}
               </Badge>
             </div>
-            <p className="text-text-secondary">
+            <p className="text-text-secondary text-xs">
               Currently in consultation:{" "}
-              <span className="font-bold text-primary-700">
-                {queueInfo.currentInConsultationToken ? `Token #${queueInfo.currentInConsultationToken}` : "None"}
+              <span className="font-bold text-primary-500">
+                {queueInfo.currentInConsultationToken ? `Token #${queueInfo.currentInConsultationToken}` : "Doctor Desk Ready"}
               </span>
             </p>
           </div>

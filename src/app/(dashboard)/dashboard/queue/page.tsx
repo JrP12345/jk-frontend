@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
+import { useClinicStore } from "@/store/clinicStore";
 import {
   Card, CardHeader, CardTitle, CardContent, CardDescription,
-  Button, Select, Input, DatePicker, useToast, Spinner, Badge, StatCard, Modal, Textarea, Checkbox, Skeleton, SkeletonCard, WorkspaceClinicFilter
+  Button, Select, Input, DatePicker, useToast, Spinner, Badge, StatCard, Modal, Textarea, Checkbox, Skeleton, SkeletonCard
 } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
 import { NurseVitalsModal } from "@/components/clinical/NurseVitalsModal";
@@ -32,6 +34,7 @@ interface Appointment {
 
 export default function QueuePage() {
   const { user, activeClinicId } = useAuthStore();
+  const { fetchClinics } = useClinicStore();
   const { toast } = useToast();
 
   const [loadingFilters, setLoadingFilters] = useState(true);
@@ -90,8 +93,8 @@ export default function QueuePage() {
               .filter(Boolean)
               .filter((c: any, idx: number, arr: any[]) => arr.findIndex(t => (t.id || t._id) === (c.id || c._id)) === idx);
           } catch {
-            const res = await api.get("/onboarding/clinics");
-            uniqueClinics = res.data?.data || [];
+            const loadedClinics = await fetchClinics();
+            uniqueClinics = loadedClinics;
           }
 
           setClinics(uniqueClinics);
@@ -101,11 +104,10 @@ export default function QueuePage() {
             setSelectedClinic(uniqueClinics[0].id || uniqueClinics[0]._id);
           }
         } else {
-          const [clinicsRes, staffRes] = await Promise.all([
-            api.get("/onboarding/clinics").catch(() => ({ data: { data: [] } })),
-            api.get("/onboarding/staff").catch(() => ({ data: { data: { doctors: [] } } }))
+          const [loadedClinics, staffRes] = await Promise.all([
+            fetchClinics(),
+            api.get("/onboarding/staff").catch(() => ({ data: { data: { doctors: [] } } })),
           ]);
-          const loadedClinics = clinicsRes.data?.data || [];
           const loadedDoctors = Array.isArray(staffRes.data?.data?.doctors)
             ? staffRes.data.data.doctors
             : Array.isArray(staffRes.data?.data)
@@ -116,7 +118,7 @@ export default function QueuePage() {
           setDoctors(loadedDoctors);
 
           if (loadedClinics.length > 0) {
-            setSelectedClinic(loadedClinics[0].id || loadedClinics[0]._id);
+            setSelectedClinic(loadedClinics[0].id);
           }
           if (loadedDoctors.length > 0) {
             setSelectedDoctor(loadedDoctors[0].id || loadedDoctors[0]._id);
@@ -371,6 +373,8 @@ export default function QueuePage() {
 
   if (!user) return null;
 
+  const canManageQueue = hasAnyPermission(user, "MANAGE_QUEUE");
+
   return (
     <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
       {/* Top Header Banner */}
@@ -594,7 +598,7 @@ export default function QueuePage() {
                           )}
 
                           {/* VIP Queue Reorder Up/Down arrows */}
-                          {(user.role === "admin" || user.role === "receptionist") && (
+                          {canManageQueue && (
                             <div className="flex items-center bg-surface-alt border border-border rounded-lg p-0.5">
                               <button
                                 onClick={() => moveQueueItem(idx, "up")}

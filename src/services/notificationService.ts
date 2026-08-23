@@ -158,15 +158,15 @@ export const notificationService = {
   },
 
   // ─── SMTP / Email Gateway Config ───────────────────────────────
-  getSmtpConfig: async (): Promise<SmtpConfig> => {
-    const res = await api.get("/onboarding/organization/me/smtp");
+  getSmtpConfig: async (organizationId?: string): Promise<SmtpConfig> => {
+    const url = organizationId ? `/onboarding/organization/me/smtp?organizationId=${organizationId}` : "/onboarding/organization/me/smtp";
+    const res = await api.get(url);
     return res.data.data;
   },
 
-  updateSmtpConfig: async (data: Partial<SmtpConfig>): Promise<SmtpConfig> => {
-    const res = await api.put("/onboarding/organization/me/smtp", data);
+  updateSmtpConfig: async (data: Partial<SmtpConfig>, organizationId?: string): Promise<SmtpConfig> => {
+    const url = organizationId ? `/onboarding/organization/me/smtp?organizationId=${organizationId}` : "/onboarding/organization/me/smtp";
+    const res = await api.put(url, { ...data, ...(organizationId ? { organizationId } : {}) });
     return res.data.data;
   },
 };
-
-

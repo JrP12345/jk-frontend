@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
+import { canViewAnalytics } from "@/lib/permissions";
 import {
   Card, CardHeader, CardTitle, CardContent, Button,
   Table, useToast, Spinner, Badge, StatCard, SkeletonCard, SkeletonTable
@@ -73,7 +74,7 @@ export default function AnalyticsPage() {
   };
 
   useEffect(() => {
-    if (user && (user.role === "admin" || user.role === "root")) {
+    if (user && canViewAnalytics(user)) {
       fetchAnalytics();
     }
   }, [user]);

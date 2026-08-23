@@ -208,12 +208,15 @@ export default function PatientBillsPage() {
 
       {/* Online Checkout Payment Modal — PCI-DSS SAQ A Compliant */}
       <Modal open={checkoutOpen} onClose={() => { setCheckoutOpen(false); setActiveInvoice(null); }} title="Pay Secure Outpatient Bill" size="sm">
-        <form onSubmit={handleCheckoutSubmit} className="space-y-5">
-          <div className="p-4 bg-primary-50/50 dark:bg-primary-950/10 border border-primary-100 dark:border-primary-900/30 rounded-2xl space-y-1 text-center relative overflow-hidden">
-            <div className="absolute right-0 top-0 w-24 h-24 bg-primary-600/5 rounded-full blur-2xl pointer-events-none" />
-            <span className="text-[10px] tracking-widest font-extrabold uppercase text-primary-600 dark:text-primary-400">PCI-DSS Tokenized Gateway</span>
-            <p className="text-xs text-text-secondary mt-1">Invoice #{activeInvoice?.invoiceNumber} • Dr. {activeInvoice?.doctorId?.name}</p>
-            <p className="text-3xl font-black text-text tracking-tight mt-1">₹{activeInvoice?.totalAmount}</p>
+        <form onSubmit={handleCheckoutSubmit} className="space-y-5 font-sans pt-1">
+          <div className="p-4 bg-surface-alt border border-border/80 rounded-2xl space-y-1 text-center relative overflow-hidden shadow-xs">
+            <div className="inline-block">
+              <span className="text-[10px] tracking-widest font-black uppercase text-primary-500 bg-primary-500/10 px-2.5 py-0.5 rounded-full border border-primary-500/20">
+                🔒 PCI-DSS Tokenized Gateway
+              </span>
+            </div>
+            <p className="text-xs text-text-secondary font-medium pt-1">Invoice #{activeInvoice?.invoiceNumber} • Dr. {activeInvoice?.doctorId?.name}</p>
+            <p className="text-3xl font-black text-text tracking-tight pt-0.5">₹{activeInvoice?.totalAmount}</p>
           </div>
 
           {/* Payment Method Selector */}
@@ -221,24 +224,32 @@ export default function PatientBillsPage() {
             <button
               type="button"
               onClick={() => setPaymentOption("upi")}
-              className={`p-3.5 rounded-xl border text-center transition-all cursor-pointer font-semibold text-sm ${paymentOption === "upi" ? "bg-primary-50 border-primary-500 text-primary-750 dark:bg-primary-950/20" : "bg-surface-alt border-border text-text-secondary hover:bg-surface-hover"}`}
+              className={`p-3.5 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs ${
+                paymentOption === "upi"
+                  ? "bg-primary-600 text-white border-primary-600 shadow-xs"
+                  : "bg-surface-alt border-border text-text-secondary hover:bg-surface-hover"
+              }`}
             >
-              UPI / QR Code
+              📱 UPI / QR Code
             </button>
             <button
               type="button"
               onClick={() => setPaymentOption("card")}
-              className={`p-3.5 rounded-xl border text-center transition-all cursor-pointer font-semibold text-sm ${paymentOption === "card" ? "bg-primary-50 border-primary-500 text-primary-750 dark:bg-primary-950/20" : "bg-surface-alt border-border text-text-secondary hover:bg-surface-hover"}`}
+              className={`p-3.5 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs ${
+                paymentOption === "card"
+                  ? "bg-primary-600 text-white border-primary-600 shadow-xs"
+                  : "bg-surface-alt border-border text-text-secondary hover:bg-surface-hover"
+              }`}
             >
-              Tokenized Card SDK
+              💳 Tokenized Card SDK
             </button>
           </div>
 
           {paymentOption === "upi" ? (
             <div className="space-y-4 text-center py-2 animate-fade-in">
               <div className="mx-auto w-36 h-36 bg-surface border border-border p-2 rounded-xl flex items-center justify-center shadow-inner relative overflow-hidden group">
-                <div className="w-full h-full border-2 border-dashed border-text-muted/40 rounded flex flex-col items-center justify-center gap-1.5 bg-surface-alt">
-                  <svg className="w-8 h-8 text-primary-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-16v.01M4 12h4m12 0h.01M4 20h.01M4 4h10v10H4V4z" /></svg>
+                <div className="w-full h-full border-2 border-dashed border-primary-500/30 rounded flex flex-col items-center justify-center gap-1.5 bg-surface-alt/50">
+                  <svg className="w-8 h-8 text-primary-500 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-16v.01M4 12h4m12 0h.01M4 20h.01M4 4h10v10H4V4z" /></svg>
                   <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Scan UPI QR</span>
                 </div>
               </div>
@@ -248,7 +259,7 @@ export default function PatientBillsPage() {
             <div className="space-y-3.5 animate-fade-in py-2">
               <div className="p-4 border border-border rounded-xl bg-surface-alt text-center space-y-2">
                 <div className="flex items-center justify-center gap-2 text-xs font-bold text-text">
-                  <svg className="w-4 h-4 text-success-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                  <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                   <span>Hosted Payment Gateway (SAQ A)</span>
                 </div>
                 <p className="text-xs text-text-muted">Payment details are tokenized directly via hosted Elements iframe SDK (`pm_card_visa`). No card numbers touch application servers.</p>
@@ -256,9 +267,9 @@ export default function PatientBillsPage() {
             </div>
           )}
 
-          <div className="flex justify-end gap-3 border-t border-border pt-4 mt-6">
+          <div className="flex justify-end gap-3 border-t border-border/80 pt-4 mt-6">
             <Button variant="outline" type="button" onClick={() => { setCheckoutOpen(false); setActiveInvoice(null); }}>Cancel</Button>
-            <Button type="submit" loading={submittingPayment}>
+            <Button type="submit" loading={submittingPayment} variant="primary" className="font-bold">
               {submittingPayment ? "Processing..." : `Pay ₹${activeInvoice?.totalAmount}`}
             </Button>
           </div>

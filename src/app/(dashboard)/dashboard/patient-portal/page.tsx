@@ -36,9 +36,38 @@ export default function PatientPortalPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<"profile" | "records" | "prescriptions" | "refills" | "timeline">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "family" | "records" | "refills" | "timeline">("profile");
   const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState<PatientProfile | null>(null);
+  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+
+  // Family Members modal state
+  const [addFamilyModalOpen, setAddFamilyModalOpen] = useState(false);
+  const [familyForm, setFamilyForm] = useState({
+    name: "",
+    relationship: "son" as "mother" | "father" | "son" | "daughter" | "spouse" | "guardian" | "other",
+    dob: "",
+    gender: "male" as "male" | "female" | "other",
+    bloodGroup: "O+",
+  });
+  const [addingFamily, setAddingFamily] = useState(false);
+
+  // Claim record state
+  const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const [claimPatientId, setClaimPatientId] = useState("");
+  const [claiming, setClaiming] = useState(false);
+
+  // Booking for family state
+  const [selectedForPatientId, setSelectedForPatientId] = useState<string>("");
+
+  const fetchFamilyMembers = async () => {
+    try {
+      const res = await api.get("/family");
+      setFamilyMembers(res.data?.data || []);
+    } catch {
+      // Non-critical
+    }
+  };
 
   // Prescriptions & Refills state
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
@@ -102,12 +131,12 @@ export default function PatientPortalPage() {
     setIsSelfBookOpen(true);
     setSelfDoctorBookingInfo(null);
     try {
-      const [clinicsRes, staffRes] = await Promise.all([
-        api.get("/onboarding/clinics"),
-        api.get("/onboarding/staff"),
-      ]);
-      setSelfClinics(clinicsRes.data?.data || []);
-      setSelfDoctors(staffRes.data?.data?.doctors || []);
+      const res = await api.get("/public/clinics");
+      const list = res.data?.data || [];
+      setSelfClinics(list);
+      if (list.length > 0) {
+        setSelfDoctors(list[0].doctors || []);
+      }
     } catch {
       // Non-critical
     }
@@ -173,6 +202,8 @@ export default function PatientPortalPage() {
         // Fetch Timeline for patient
         fetchTimeline(p.id);
       }
+
+      await fetchFamilyMembers();
 
       // Fetch refill requests
       const refillRes = await api.get("/prescriptions/refills");
@@ -283,6 +314,49 @@ export default function PatientPortalPage() {
     }
   };
 
+  const handleAddFamilyMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!familyForm.name.trim()) return;
+
+    setAddingFamily(true);
+    try {
+      await api.post("/family", {
+        name: familyForm.name.trim(),
+        relationship: familyForm.relationship,
+        dob: familyForm.dob || undefined,
+        gender: familyForm.gender,
+        bloodGroup: familyForm.bloodGroup,
+      });
+
+      toast({ title: "Family Member Added! 👨‍👩‍👧", description: `Added ${familyForm.name} to your family list.`, variant: "success" });
+      setAddFamilyModalOpen(false);
+      setFamilyForm({ name: "", relationship: "son", dob: "", gender: "male", bloodGroup: "O+" });
+      fetchFamilyMembers();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.response?.data?.message || "Failed to add family member", variant: "error" });
+    } finally {
+      setAddingFamily(false);
+    }
+  };
+
+  const handleClaimRecord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!claimPatientId.trim()) return;
+
+    setClaiming(true);
+    try {
+      await api.post("/family/claim", { patientId: claimPatientId.trim() });
+      toast({ title: "Record Claimed! 🔗", description: "Successfully linked patient record to your account.", variant: "success" });
+      setClaimModalOpen(false);
+      setClaimPatientId("");
+      fetchPatientData();
+    } catch (err: any) {
+      toast({ title: "Claim Failed", description: err.response?.data?.message || "Failed to claim record", variant: "error" });
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -318,9 +392,10 @@ export default function PatientPortalPage() {
       </div>
 
       {/* Portal Tabs */}
-      <div className="flex border-b border-border space-x-6">
+      <div className="flex border-b border-border space-x-6 overflow-x-auto">
         {[
           { key: "profile", label: "Medical Profile" },
+          { key: "family", label: `My Family (${familyMembers.length})` },
           { key: "records", label: "Download Medical Records" },
           { key: "refills", label: `Refill Requests (${refillRequests.length})` },
           { key: "timeline", label: "PHR Health Timeline" },
@@ -328,7 +403,7 @@ export default function PatientPortalPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key as any)}
-            className={`pb-3 text-sm font-semibold transition-colors border-b-2 cursor-pointer ${
+            className={`pb-3 text-sm font-semibold transition-colors border-b-2 cursor-pointer whitespace-nowrap ${
               activeTab === tab.key
                 ? "border-primary-500 text-primary-500"
                 : "border-transparent text-text-muted hover:text-text"
@@ -418,6 +493,68 @@ export default function PatientPortalPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* TAB: My Family */}
+      {activeTab === "family" && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center bg-surface-alt p-4 rounded-xl border border-border">
+            <div>
+              <h3 className="font-bold text-sm text-text">Family Members & Dependents</h3>
+              <p className="text-xs text-text-muted mt-0.5">Manage family profiles and book appointments on their behalf</p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setClaimModalOpen(true)}>
+                🔗 Claim Existing Clinic Record
+              </Button>
+              <Button size="sm" onClick={() => setAddFamilyModalOpen(true)}>
+                ➕ Add Family Member
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {familyMembers.map((fm: any) => {
+              const p = fm.patient;
+              return (
+                <Card key={fm.relationshipId} className="p-4 space-y-3 relative">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary-500/20 text-primary-400 font-bold flex items-center justify-center">
+                        {(p?.name || "F")[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-text">{p?.name || "Family Member"}</h4>
+                        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 bg-primary-500/10 text-primary-400 font-bold rounded-full border border-primary-500/20">
+                          {fm.relationship}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-text-muted space-y-1 border-t border-border/50 pt-2">
+                    {p?.dob && <div>DOB: {new Date(p.dob).toLocaleDateString()}</div>}
+                    {p?.gender && <div>Gender: <span className="capitalize">{p.gender}</span></div>}
+                    {p?.bloodGroup && <div>Blood Group: {p.bloodGroup}</div>}
+                    {p?.mrn && <div>MRN: {p.mrn}</div>}
+                  </div>
+
+                  <div className="pt-2 border-t border-border/50 flex justify-end">
+                    <Button
+                      size="xs"
+                      onClick={() => {
+                        setSelectedForPatientId(p?.id || p?._id);
+                        openSelfBookModal();
+                      }}
+                    >
+                      📅 Book for {p?.name?.split(" ")[0] || "Member"}
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -560,10 +697,10 @@ export default function PatientPortalPage() {
                     <div className="p-4 bg-surface-alt border border-border/80 rounded-xl space-y-1">
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-bold text-primary-400 uppercase tracking-wider">
-                          {evt.eventType.replace("_", " ")}
+                          {(evt.eventType ? String(evt.eventType).replace(/_/g, " ") : "CLINICAL EVENT")}
                         </span>
                         <span className="text-xs text-text-muted">
-                          {new Date(evt.eventDate).toLocaleDateString()}
+                          {evt.eventDate ? new Date(evt.eventDate).toLocaleDateString() : ""}
                         </span>
                       </div>
                       <p className="text-sm font-semibold text-text">{evt.summary}</p>
@@ -730,6 +867,19 @@ export default function PatientPortalPage() {
       <Modal open={isSelfBookOpen} onClose={() => setIsSelfBookOpen(false)} title="Book Doctor Appointment" size="md">
         <form onSubmit={handleSelfBookSubmit} className="space-y-4">
           <Select
+            label="Who is this appointment for? *"
+            value={selectedForPatientId}
+            onChange={(e) => setSelectedForPatientId(e.target.value)}
+            options={[
+              { value: "", label: `Myself (${user?.name})` },
+              ...familyMembers.map((fm) => ({
+                value: fm.patient?.id || fm.patient?._id,
+                label: `${fm.patient?.name} (${fm.relationship})`,
+              })),
+            ]}
+          />
+
+          <Select
             label="Clinic Location *"
             value={selfClinicId}
             onChange={(e) => setSelfClinicId(e.target.value)}
@@ -782,6 +932,99 @@ export default function PatientPortalPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Add Family Member Modal */}
+      {addFamilyModalOpen && (
+        <Modal
+          open={addFamilyModalOpen}
+          onClose={() => setAddFamilyModalOpen(false)}
+          title="Add Family Member / Dependent"
+        >
+          <form onSubmit={handleAddFamilyMember} className="space-y-4">
+            <Input
+              label="Full Name *"
+              placeholder="e.g. Aarav Sharma"
+              value={familyForm.name}
+              onChange={(e) => setFamilyForm({ ...familyForm, name: e.target.value })}
+              required
+            />
+
+            <Select
+              label="Relationship *"
+              value={familyForm.relationship}
+              onChange={(e) => setFamilyForm({ ...familyForm, relationship: e.target.value as any })}
+              options={[
+                { value: "son", label: "Son" },
+                { value: "daughter", label: "Daughter" },
+                { value: "mother", label: "Mother" },
+                { value: "father", label: "Father" },
+                { value: "spouse", label: "Spouse" },
+                { value: "guardian", label: "Legal Guardian" },
+                { value: "other", label: "Other Dependent" },
+              ]}
+            />
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Date of Birth"
+                type="date"
+                value={familyForm.dob}
+                onChange={(e) => setFamilyForm({ ...familyForm, dob: e.target.value })}
+              />
+
+              <Select
+                label="Gender"
+                value={familyForm.gender}
+                onChange={(e) => setFamilyForm({ ...familyForm, gender: e.target.value as any })}
+                options={[
+                  { value: "male", label: "Male" },
+                  { value: "female", label: "Female" },
+                  { value: "other", label: "Other" },
+                ]}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-border pt-4">
+              <Button variant="outline" type="button" onClick={() => setAddFamilyModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={addingFamily}>
+                Save Family Member
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Claim Patient Record Modal */}
+      {claimModalOpen && (
+        <Modal
+          open={claimModalOpen}
+          onClose={() => setClaimModalOpen(false)}
+          title="Claim Existing Clinic Record"
+        >
+          <form onSubmit={handleClaimRecord} className="space-y-4">
+            <p className="text-xs text-text-muted">
+              If you have a walk-in record at the clinic, enter your Patient ID or MRN below to link it directly to your online account.
+            </p>
+            <Input
+              label="Patient ID or Record Reference *"
+              placeholder="e.g. 64f8a123bc4567890def1234"
+              value={claimPatientId}
+              onChange={(e) => setClaimPatientId(e.target.value)}
+              required
+            />
+            <div className="flex justify-end gap-3 border-t border-border pt-4">
+              <Button variant="outline" type="button" onClick={() => setClaimModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={claiming}>
+                Claim & Link Record
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

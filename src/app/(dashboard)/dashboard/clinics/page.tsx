@@ -7,6 +7,8 @@ import {
   Table, Button, Modal, Input, useToast, Spinner, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, SkeletonTable, Dropdown
 } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
+import { useClinicStore } from "@/store/clinicStore";
+import { hasAnyPermission, isRootUser } from "@/lib/permissions";
 import { useR2Upload } from "@/hooks/useR2Upload";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -15,18 +17,20 @@ interface Clinic {
   id: string;
   name: string;
   city: string;
-  address: string;
-  phone: string;
-  email: string;
-  description: string;
-  image_url: string;
-  timings: string;
-  facilities: string[];
+  address?: string;
+  phone?: string;
+  email?: string;
+  description?: string;
+  image_url?: string;
+  timings?: string;
+  facilities?: string[];
+  [key: string]: unknown;
 }
 
 export default function ClinicsPage() {
   const { user } = useAuthStore();
-  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const { clinics, fetchClinics, isLoading: clinicsLoading } = useClinicStore();
+  const canManageClinics = hasAnyPermission(user, "MANAGE_CLINICS");
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,7 +44,7 @@ export default function ClinicsPage() {
 
   // Load organizations list for Root Super-Admin selection
   useEffect(() => {
-    if (user?.role === "root") {
+    if (isRootUser(user)) {
       api.get("/onboarding/organizations").then((res) => {
         const orgList = res.data.data?.organizations || res.data.data || [];
         setOrganizations(orgList);
@@ -81,12 +85,11 @@ export default function ClinicsPage() {
     }
   };
 
-  const fetchClinics = async () => {
+  const reloadClinics = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/onboarding/clinics");
-      setClinics(res.data.data || []);
-    } catch (err) {
+      await fetchClinics(true);
+    } catch {
       toast({ title: "Error", description: "Failed to load clinics list", variant: "error", duration: 3000 });
     } finally {
       setLoading(false);
@@ -94,8 +97,8 @@ export default function ClinicsPage() {
   };
 
   useEffect(() => {
-    fetchClinics();
-  }, []);
+    reloadClinics();
+  }, [fetchClinics]);
 
   const openModal = () => {
     setEditingId(null);
@@ -152,7 +155,7 @@ export default function ClinicsPage() {
         toast({ title: "Success", description: "Clinic added successfully!", variant: "success", duration: 3000 });
       }
       setIsModalOpen(false);
-      fetchClinics();
+      await fetchClinics(true);
     } catch (err: any) {
       toast({ title: "Error", description: err.response?.data?.message || "Failed to save clinic", variant: "error", duration: 4000 });
     } finally {
@@ -165,7 +168,7 @@ export default function ClinicsPage() {
     try {
       await api.delete(`/onboarding/clinics/${deletingId}`);
       toast({ title: "Success", description: "Clinic deactivated successfully!", variant: "success", duration: 3000 });
-      fetchClinics();
+      await fetchClinics(true);
     } catch (err: any) {
       toast({ title: "Error", description: err.response?.data?.message || "Failed to delete clinic", variant: "error", duration: 4000 });
     } finally {
@@ -219,6 +222,7 @@ export default function ClinicsPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {canManageClinics && (
           <Button
             variant="primary"
             size="sm"
@@ -230,11 +234,12 @@ export default function ClinicsPage() {
             </svg>
             <span>Add Clinic</span>
           </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchClinics}
-            loading={loading}
+            onClick={reloadClinics}
+            loading={loading || clinicsLoading}
             className="font-semibold rounded-xl cursor-pointer gap-1.5"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -291,6 +296,7 @@ export default function ClinicsPage() {
                 width: "110px",
                 render: (row: Clinic) => (
                   <div className="flex items-center justify-end">
+                    {canManageClinics ? (
                     <Dropdown
                       align="right"
                       trigger={
@@ -306,11 +312,16 @@ export default function ClinicsPage() {
                         { label: "Delete Clinic", danger: true, onClick: () => setDeletingId(row.id) }
                       ]}
                     />
+                    ) : (
+                      <Button size="sm" variant="outline" className="h-8 px-2 text-xs" onClick={() => setQrClinic(row)}>
+                        QR
+                      </Button>
+                    )}
                   </div>
                 )
               }
             ]}
-            data={clinics}
+            data={clinics as Clinic[]}
             emptyMessage="No clinics added yet."
           />
 
@@ -322,7 +333,7 @@ export default function ClinicsPage() {
       >
         <form onSubmit={handleSave} className="space-y-5">
           {/* Root Admin Target Organization Selector */}
-          {user?.role === "root" && organizations.length > 0 && (
+          {isRootUser(user) && organizations.length > 0 && (
             <div className="bg-primary-500/10 border border-primary-500/20 p-3.5 rounded-xl space-y-2">
               <Select
                 label="Target Healthcare Organization *"

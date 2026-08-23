@@ -52,7 +52,19 @@ api.interceptors.response.use(
     ) {
       if (isRefreshing) {
         return new Promise(function (resolve, reject) {
-          failedQueue.push({ resolve, reject });
+          const timeoutId = setTimeout(() => {
+            reject(new Error("Token refresh request timed out"));
+          }, 10000);
+          failedQueue.push({
+            resolve: (val) => {
+              clearTimeout(timeoutId);
+              resolve(val);
+            },
+            reject: (err) => {
+              clearTimeout(timeoutId);
+              reject(err);
+            },
+          });
         }).then(() => {
           return api(originalRequest);
         }).catch((err) => {
@@ -80,8 +92,11 @@ api.interceptors.response.use(
 
     // If 403 Forbidden, notify client-side listener for permission/organization fallback
     if (error.response?.status === 403 && typeof window !== "undefined") {
-      const msg = error.response?.data?.message || error.response?.data?.error || "Access forbidden";
-      window.dispatchEvent(new CustomEvent("auth-forbidden", { detail: { message: msg, url: originalRequest?.url } }));
+      const data = error.response?.data || {};
+      const msg = data.message || data.error || "Access forbidden";
+      window.dispatchEvent(new CustomEvent("auth-forbidden", {
+        detail: { message: msg, error: data.error, url: originalRequest?.url },
+      }));
     }
 
     return Promise.reject(error);

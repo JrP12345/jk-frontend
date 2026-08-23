@@ -5,11 +5,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import {
   Card, CardHeader, CardTitle, CardContent, CardDescription,
-  Button, Input, useToast, Spinner, ImageUpload, ScheduleEditor, Toggle
+  Button, Input, useToast, Spinner, ImageUpload, ScheduleEditor, Toggle, Select
 } from "@/components/ui";
 import { useR2Upload } from "@/hooks/useR2Upload";
 import { notificationService, type SmtpConfig } from "@/services/notificationService";
 import { aiAdminService } from "@/services/aiAdmin.service";
+import { useAuthStore } from "@/store/authStore";
+import { isRootUser } from "@/lib/permissions";
 import BillingSettingsPage from "./billing/page";
 import ModulesSettingsPage from "./modules/page";
 
@@ -18,7 +20,7 @@ const PHONE_REGEX = /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s./0-9]*$/;
 
 type Tab = "organization" | "notifications" | "ai" | "modules" | "billing";
 
-const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+const TABS: { id: Tab; label: string; rootOnly?: boolean; icon: React.ReactNode }[] = [
   {
     id: "organization",
     label: "Organization Details",
@@ -40,6 +42,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   {
     id: "ai",
     label: "AI Configuration",
+    rootOnly: true,
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2" />
@@ -69,7 +72,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab 1: Organization Details
 // ─────────────────────────────────────────────────────────────────────────────
-function OrganizationTab() {
+function OrganizationTab({ selectedOrgId }: { selectedOrgId?: string }) {
   const [formData, setFormData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -101,12 +104,11 @@ function OrganizationTab() {
     return Object.keys(newErrors).length === 0;
   };
 
-  useEffect(() => { fetchSettings(); }, []);
-
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/onboarding/organization/me");
+      const url = selectedOrgId ? `/onboarding/organization/me?organizationId=${selectedOrgId}` : "/onboarding/organization/me";
+      const res = await api.get(url);
       setFormData(res.data.data);
       setErrors({});
     } catch (err: any) {
@@ -115,6 +117,10 @@ function OrganizationTab() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchSettings();
+  }, [selectedOrgId]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,12 +131,16 @@ function OrganizationTab() {
     setSaving(true);
     try {
       let finalData = { ...formData };
+      if (selectedOrgId) {
+        finalData.organizationId = selectedOrgId;
+      }
       if (finalData.image_url instanceof File) {
         toast({ title: "Uploading...", description: "Uploading logo to Cloudflare R2", variant: "default" });
         const { publicUrl } = await uploadFile(finalData.image_url);
         finalData.image_url = publicUrl;
       }
-      await api.put("/onboarding/organization/me", finalData);
+      const url = selectedOrgId ? `/onboarding/organization/me?organizationId=${selectedOrgId}` : "/onboarding/organization/me";
+      await api.put(url, finalData);
       toast({ title: "Saved", description: "Organization settings updated successfully!", variant: "success" });
       fetchSettings();
     } catch (err: any) {
@@ -213,18 +223,21 @@ function OrganizationTab() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab 2: Notifications & Email Gateway
 // ─────────────────────────────────────────────────────────────────────────────
-function NotificationsTab() {
+function NotificationsTab({ selectedOrgId }: { selectedOrgId?: string }) {
+  const { user } = useAuthStore();
+  const isRoot = user?.role === "root";
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: pref, isLoading: prefLoading } = useQuery({
-    queryKey: ["notification-preferences"],
+    queryKey: ["notification-preferences", selectedOrgId],
     queryFn: () => notificationService.getPreferences(),
   });
 
   const { data: smtpData, isLoading: smtpLoading } = useQuery({
-    queryKey: ["smtp-config"],
-    queryFn: () => notificationService.getSmtpConfig(),
+    queryKey: ["smtp-config", selectedOrgId],
+    queryFn: () => notificationService.getSmtpConfig(selectedOrgId),
+    enabled: isRoot,
   });
 
   const [channels, setChannels] = useState({ email: true, inApp: true });
@@ -257,7 +270,7 @@ function NotificationsTab() {
   });
 
   const updateSmtpMutation = useMutation({
-    mutationFn: () => notificationService.updateSmtpConfig(smtp),
+    mutationFn: () => notificationService.updateSmtpConfig(smtp, selectedOrgId),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["smtp-config"] }); toast({ title: "Email Gateway Saved", description: "SMTP configuration updated successfully.", variant: "success" }); },
     onError: (err: any) => toast({ title: "SMTP Save Failed", description: err?.response?.data?.message || "Could not save SMTP.", variant: "error" }),
   });
@@ -272,7 +285,7 @@ function NotificationsTab() {
     } finally { setTestingEmail(false); }
   };
 
-  if (prefLoading || smtpLoading) return <div className="p-12 text-center"><Spinner size="lg" label="Loading..." /></div>;
+  if (prefLoading || (isRoot && smtpLoading)) return <div className="p-12 text-center"><Spinner size="lg" label="Loading..." /></div>;
 
   const smtpConfigured = !!(smtpData?.host && smtpData?.user && smtpData?.passIsSet);
 
@@ -333,56 +346,76 @@ function NotificationsTab() {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-text">Outbound Email Gateway (SMTP)</h3>
-              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${smtpConfigured ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20"}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${smtpConfigured ? "bg-green-500" : "bg-amber-500"}`} />
-                {smtpConfigured ? "Configured" : "Not Configured"}
-              </span>
+              {isRoot ? (
+                <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${smtpConfigured ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20"}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${smtpConfigured ? "bg-green-500" : "bg-amber-500"}`} />
+                  {smtpConfigured ? "Configured" : "Not Configured"}
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                  🔒 Root Super-Admin Only
+                </span>
+              )}
             </div>
-            <p className="text-xs text-text-muted mt-0.5">SMTP credentials for real emails — appointment confirmations, password resets, alerts. Stored encrypted (AES-256-GCM).</p>
+            <p className="text-xs text-text-muted mt-0.5">SMTP credentials for outbound system emails — appointment confirmations, password resets, alerts.</p>
           </div>
-          <Button variant="primary" size="sm" onClick={() => updateSmtpMutation.mutate()} loading={updateSmtpMutation.isPending} className="font-bold rounded-xl gap-1.5 cursor-pointer shrink-0">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-            Save Gateway
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div><label className="block text-xs font-medium text-text-muted mb-1">SMTP Host</label><Input placeholder="smtp.gmail.com" value={smtp.host} onChange={(e) => setSmtp({ ...smtp, host: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-text-muted mb-1">SMTP Port</label><Input type="number" placeholder="587" value={smtp.port} onChange={(e) => setSmtp({ ...smtp, port: Number(e.target.value) })} /></div>
-          <div><label className="block text-xs font-medium text-text-muted mb-1">SMTP Username</label><Input placeholder="you@email.com" value={smtp.user} onChange={(e) => setSmtp({ ...smtp, user: e.target.value })} /></div>
-          <div>
-            <label className="block text-xs font-medium text-text-muted mb-1">
-              Password / App Password
-              {smtpData?.passIsSet && <span className="ml-2 text-[10px] text-green-600 font-normal">(password set)</span>}
-            </label>
-            <div className="relative">
-              <Input type={showPass ? "text" : "password"} placeholder={smtpData?.passIsSet ? "Leave blank to keep current" : "SMTP password"} value={smtp.pass} onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })} />
-              <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  {showPass ? <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /> : <><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>}
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div><label className="block text-xs font-medium text-text-muted mb-1">Sender Email</label><Input placeholder="noreply@yourhospital.com" value={smtp.fromEmail} onChange={(e) => setSmtp({ ...smtp, fromEmail: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-text-muted mb-1">Sender Name</label><Input placeholder="Ananta Health" value={smtp.fromName} onChange={(e) => setSmtp({ ...smtp, fromName: e.target.value })} /></div>
-        </div>
-
-        <div className="flex items-center justify-between p-3 bg-surface-alt/40 rounded-xl border border-border/60">
-          <div><p className="text-xs font-medium text-text">Use SSL/TLS (Port 465)</p><p className="text-[11px] text-text-muted">Off = STARTTLS on port 587. On = direct TLS on port 465.</p></div>
-          <Toggle checked={smtp.secure} onChange={(v) => setSmtp({ ...smtp, secure: v })} />
-        </div>
-
-        <div className="border-t border-border/60 pt-4 space-y-2">
-          <p className="text-xs font-semibold text-text">Dispatch Test Email</p>
-          <div className="flex items-center gap-2">
-            <div className="flex-1"><Input placeholder="recipient@email.com (blank = your account email)" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} /></div>
-            <Button variant="secondary" size="sm" onClick={handleSendTestEmail} loading={testingEmail} className="rounded-xl cursor-pointer shrink-0 gap-1.5">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-              Send
+          {isRoot && (
+            <Button variant="primary" size="sm" onClick={() => updateSmtpMutation.mutate()} loading={updateSmtpMutation.isPending} className="font-bold rounded-xl gap-1.5 cursor-pointer shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              Save Gateway
             </Button>
-          </div>
+          )}
         </div>
+
+        {isRoot ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div><label className="block text-xs font-medium text-text-muted mb-1">SMTP Host</label><Input placeholder="smtp.gmail.com" value={smtp.host} onChange={(e) => setSmtp({ ...smtp, host: e.target.value })} /></div>
+              <div><label className="block text-xs font-medium text-text-muted mb-1">SMTP Port</label><Input type="number" placeholder="587" value={smtp.port} onChange={(e) => setSmtp({ ...smtp, port: Number(e.target.value) })} /></div>
+              <div><label className="block text-xs font-medium text-text-muted mb-1">SMTP Username</label><Input placeholder="you@email.com" value={smtp.user} onChange={(e) => setSmtp({ ...smtp, user: e.target.value })} /></div>
+              <div>
+                <label className="block text-xs font-medium text-text-muted mb-1">
+                  Password / App Password
+                  {smtpData?.passIsSet && <span className="ml-2 text-[10px] text-green-600 font-normal">(password set)</span>}
+                </label>
+                <div className="relative">
+                  <Input type={showPass ? "text" : "password"} placeholder={smtpData?.passIsSet ? "Leave blank to keep current" : "SMTP password"} value={smtp.pass} onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })} />
+                  <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text transition-colors">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      {showPass ? <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /> : <><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>}
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div><label className="block text-xs font-medium text-text-muted mb-1">Sender Email</label><Input placeholder="noreply@yourhospital.com" value={smtp.fromEmail} onChange={(e) => setSmtp({ ...smtp, fromEmail: e.target.value })} /></div>
+              <div><label className="block text-xs font-medium text-text-muted mb-1">Sender Name</label><Input placeholder="Ananta Health" value={smtp.fromName} onChange={(e) => setSmtp({ ...smtp, fromName: e.target.value })} /></div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-surface-alt/40 rounded-xl border border-border/60">
+              <div><p className="text-xs font-medium text-text">Use SSL/TLS (Port 465)</p><p className="text-[11px] text-text-muted">Off = STARTTLS on port 587. On = direct TLS on port 465.</p></div>
+              <Toggle checked={smtp.secure} onChange={(v) => setSmtp({ ...smtp, secure: v })} />
+            </div>
+
+            <div className="border-t border-border/60 pt-4 space-y-2">
+              <p className="text-xs font-semibold text-text">Dispatch Test Email</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1"><Input placeholder="recipient@email.com (blank = your account email)" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} /></div>
+                <Button variant="secondary" size="sm" onClick={handleSendTestEmail} loading={testingEmail} className="rounded-xl cursor-pointer shrink-0 gap-1.5">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                  Send
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2.5">
+            <svg className="w-5 h-5 shrink-0 mt-0.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            <div>
+              <p className="font-bold text-sm mb-1">System Outbound Gateway Restricted</p>
+              <p className="leading-relaxed">SMTP Email Gateway configuration contains system-wide secret credentials and is managed exclusively by the Platform Super-Admin (Root). Notification preferences for your facility above remain fully active.</p>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );
@@ -391,13 +424,15 @@ function NotificationsTab() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab 3: AI Configuration
 // ─────────────────────────────────────────────────────────────────────────────
-function AISettingsTab() {
+function AISettingsTab({ selectedOrgId }: { selectedOrgId?: string }) {
+  const { user } = useAuthStore();
+  const isRoot = user?.role === "root";
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: config, isLoading } = useQuery({
-    queryKey: ["ai-admin-config"],
-    queryFn: () => aiAdminService.getConfig(),
+    queryKey: ["ai-admin-config", selectedOrgId],
+    queryFn: () => aiAdminService.getConfig(selectedOrgId),
   });
 
   const [flags, setFlags] = useState({
@@ -412,7 +447,7 @@ function AISettingsTab() {
   }, [config]);
 
   const updateMutation = useMutation({
-    mutationFn: () => aiAdminService.updateConfig({ featureFlags: flags }),
+    mutationFn: () => aiAdminService.updateConfig({ featureFlags: flags }, selectedOrgId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ai-admin-config"] });
       toast({ title: "AI Config Saved", description: "Changes take effect on the next AI request.", variant: "success" });
@@ -432,74 +467,106 @@ function AISettingsTab() {
       impact: "Affects every AI request — prompts are scrubbed before leaving your server.",
     },
     {
+      key: "enableStreaming" as const,
+      label: "Token Streaming (SSE)",
+      desc: "Stream AI model tokens in real-time to clinician interfaces for immediate feedback.",
+      badge: "Performance",
+      badgeColor: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+      impact: "Reduces perceived latency during note drafting and chat assistance.",
+    },
+    {
       key: "enableMultiAgentRouting" as const,
-      label: "Multi-Agent Routing",
-      desc: "Routes queries to specialized clinical sub-agents (Cardiologist, Radiologist, etc.) based on query context for higher accuracy.",
-      badge: null,
-      badgeColor: "",
-      impact: "Disabling routes all queries to the General Clinical Assistant directly.",
+      label: "Multi-Agent Specialist Routing",
+      desc: "Route clinical questions to sub-specialized agent pipelines (e.g. pharmacology, coding, diagnosis).",
+      badge: "Accuracy",
+      badgeColor: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+      impact: "Improves diagnostic nuance; slightly increases latency per consultation turn.",
     },
     {
       key: "enableToolExecution" as const,
-      label: "AI Tool Execution",
-      desc: "Allows the AI copilot to trigger structured clinical actions (lab order suggestions, drug interaction checks) that require clinician co-signature before execution.",
-      badge: "Advanced",
-      badgeColor: "bg-violet-500/10 text-violet-400 border-violet-500/20",
-      impact: "Disabling turns off AI action suggestions. Chat and generation still work.",
+      label: "Autonomous Clinical Tools",
+      desc: "Allow AI agents to autonomously query live EHR vitals, active lab orders, and drug databases.",
+      badge: "Clinical Power",
+      badgeColor: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+      impact: "Enables interactive tools (drug interaction checker, allergy guard) directly in chat.",
     },
-    {
-      key: "enableStreaming" as const,
-      label: "Streaming Responses",
-      desc: "Stream AI tokens in real-time as they are generated. Provides a faster perceived response for long outputs.",
-      badge: null,
-      badgeColor: "",
-      impact: "Disabling returns full responses as one block after generation completes.",
-    },
-  ] as const;
+  ];
 
   return (
-    <Card className="p-5 border border-border/80 shadow-xs space-y-5">
-      <div className="flex items-center justify-between pb-3 border-b border-border/60">
-        <div>
-          <h3 className="text-sm font-bold text-text">Clinical AI Feature Flags</h3>
-          <p className="text-xs text-text-muted mt-0.5">
-            Enforced in real-time on every AI request across your organization.
-          </p>
-        </div>
-        <Button variant="primary" size="sm" onClick={() => updateMutation.mutate()} loading={updateMutation.isPending} className="font-bold rounded-xl gap-1.5 cursor-pointer shrink-0">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-          Save Flags
-        </Button>
-      </div>
-
-      <div className="space-y-3">
-        {FLAG_CONFIG.map(({ key, label, desc, badge, badgeColor, impact }) => (
-          <div key={key} className={`p-4 rounded-xl border transition-all ${flags[key] ? "border-border/80 bg-surface-alt/40" : "border-border/50 bg-surface-alt/10 opacity-75"}`}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="text-sm font-bold text-text">{label}</p>
-                  {badge && (
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badgeColor}`}>{badge}</span>
-                  )}
-                </div>
-                <p className="text-xs text-text-muted leading-relaxed">{desc}</p>
-                <p className="text-[11px] text-text-muted/70 mt-1.5 italic">↳ {impact}</p>
-              </div>
-              <Toggle checked={flags[key]} onChange={(v) => setFlags((prev) => ({ ...prev, [key]: v }))} />
+    <div className="space-y-5">
+      {/* Feature Flags */}
+      <Card className="border border-border/80 shadow-xs">
+        <CardHeader className="border-b border-border/60 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base font-bold text-text">AI Architecture & Safety Governance</CardTitle>
+              <CardDescription className="text-xs text-text-muted mt-0.5">
+                Configure pipeline behaviors, security filters, and safety rails for clinical AI models.
+              </CardDescription>
             </div>
+            {isRoot && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => updateMutation.mutate()}
+                loading={updateMutation.isPending}
+                className="font-bold rounded-xl gap-1.5 cursor-pointer shrink-0"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                Save AI Config
+              </Button>
+            )}
           </div>
-        ))}
-      </div>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-5">
+          <div className="space-y-3 divide-y divide-border/40">
+            {FLAG_CONFIG.map(({ key, label, desc, badge, badgeColor, impact }) => (
+              <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 first:pt-0">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-text">{label}</p>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}`}>{badge}</span>
+                  </div>
+                  <p className="text-xs text-text-muted">{desc}</p>
+                  <p className="text-[11px] text-text-muted/80 italic">{impact}</p>
+                </div>
+                {isRoot ? (
+                  <Toggle
+                    checked={flags[key]}
+                    onChange={(val) => setFlags({ ...flags, [key]: val })}
+                  />
+                ) : (
+                  <span className="text-xs font-medium text-text-muted">{flags[key] ? "Enabled" : "Disabled"}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="p-3.5 rounded-xl bg-surface-alt/30 border border-border/60 flex items-start gap-2.5">
-        <svg className="w-4.5 h-4.5 text-text-muted mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-        <p className="text-xs text-text-muted leading-relaxed">
-          The active AI provider is determined by which API key is set in <code className="text-[11px] bg-surface px-1.5 py-0.5 rounded border border-border/60 font-mono text-text">backend/.env</code> —
-          currently using <strong className="text-text">{config ? "Google Gemini (GEMINI_API_KEY)" : "..."}</strong>.
-        </p>
-      </div>
-    </Card>
+      {/* Model Alias Overview */}
+      <Card className="border border-border/80 shadow-xs p-5">
+        <h3 className="text-sm font-bold text-text mb-1">Active Model Pipeline Routing</h3>
+        <p className="text-xs text-text-muted mb-4">Current routing tiers configured in backend environment variables.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-3.5 rounded-xl border border-border/70 bg-surface-alt/30 space-y-1">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Fast Lane</p>
+            <p className="text-xs font-bold text-text">CLINICAL_FAST</p>
+            <p className="text-[11px] text-text-muted">Real-time chat, autocomplete, voice transcribe. Latency: &lt;500ms.</p>
+          </div>
+          <div className="p-3.5 rounded-xl border border-border/70 bg-surface-alt/30 space-y-1">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Default Tier</p>
+            <p className="text-xs font-bold text-text">CLINICAL_ACCURATE</p>
+            <p className="text-[11px] text-text-muted">SOAP notes, visit summaries, patient timeline synthesis.</p>
+          </div>
+          <div className="p-3.5 rounded-xl border border-border/70 bg-surface-alt/30 space-y-1">
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Deep Reasoning</p>
+            <p className="text-xs font-bold text-text">CLINICAL_REASONING</p>
+            <p className="text-[11px] text-text-muted">Differential diagnosis, complex drug interaction adjudications.</p>
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 }
 
@@ -508,13 +575,61 @@ function AISettingsTab() {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("organization");
+  const { user } = useAuthStore();
+  const isRoot = user?.role === "root";
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [selectedOrgId, setSelectedOrgId] = useState<string>("");
+
+  useEffect(() => {
+    if (isRoot) {
+      api.get("/onboarding/organizations").then((res) => {
+        const orgList = res.data.data?.organizations || res.data.data || [];
+        setOrganizations(orgList);
+        if (orgList.length > 0) {
+          setSelectedOrgId((prev) => prev || orgList[0].id || orgList[0]._id);
+        }
+      }).catch(() => {
+        api.get("/organizations").then((res) => {
+          const orgList = res.data.data || [];
+          setOrganizations(orgList);
+          if (orgList.length > 0) {
+            setSelectedOrgId((prev) => prev || orgList[0].id || orgList[0]._id);
+          }
+        }).catch(() => {});
+      });
+    }
+  }, [isRoot]);
 
   return (
     <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
       {/* Top Banner */}
-      <div className="bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
-        <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Settings</h1>
-        <p className="text-xs text-text-muted mt-0.5">Manage organization details, notification preferences, email gateway, commercial billing, and AI configuration.</p>
+      <div className="bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Settings</h1>
+            {isRoot && (
+              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-violet-500/10 text-violet-600 border border-violet-500/20">
+                👑 Root Super-Admin Workspace
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-text-muted mt-0.5">Manage organization details, notification preferences, email gateway, commercial billing, and AI configuration.</p>
+        </div>
+
+        {isRoot && organizations.length > 0 && (
+          <div className="w-full sm:w-72 shrink-0">
+            <Select
+              size="sm"
+              label="Target Healthcare Organization"
+              value={selectedOrgId}
+              onChange={(e) => setSelectedOrgId(e.target.value)}
+              options={organizations.map((org) => ({
+                value: org.id || org._id,
+                label: `🏢 ${org.name} (${org.city})`,
+              }))}
+            />
+          </div>
+        )}
       </div>
 
       {/* Tab Navigation */}
@@ -531,16 +646,21 @@ export default function SettingsPage() {
           >
             {tab.icon}
             {tab.label}
+            {tab.rootOnly && (
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === tab.id ? "bg-white/20 text-white" : "bg-amber-500/15 text-amber-600 dark:text-amber-400"}`}>
+                Root
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Tab Content */}
-      {activeTab === "organization" && <OrganizationTab />}
-      {activeTab === "notifications" && <NotificationsTab />}
-      {activeTab === "ai" && <AISettingsTab />}
+      {activeTab === "organization" && <OrganizationTab selectedOrgId={selectedOrgId} />}
+      {activeTab === "notifications" && <NotificationsTab selectedOrgId={selectedOrgId} />}
+      {activeTab === "ai" && <AISettingsTab selectedOrgId={selectedOrgId} />}
       {activeTab === "modules" && <ModulesSettingsPage />}
-      {activeTab === "billing" && <BillingSettingsPage />}
+      {activeTab === "billing" && <BillingSettingsPage selectedOrgId={selectedOrgId} />}
     </div>
   );
 }

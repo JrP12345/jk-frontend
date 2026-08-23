@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
+import { useClinicStore } from "@/store/clinicStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
   Table, Button, Modal, Input, DatePicker, Select, useToast, Spinner, Badge, StatCard, SkeletonTable, Dropdown, ConfirmDialog
@@ -25,35 +27,37 @@ interface MedicineType {
 }
 
 interface PrescriptionItem {
+  id: string;
+  medicineId: string | null;
   name: string;
   dosage: string;
+  frequency: string;
   duration: string;
+  instructions?: string;
 }
 
-interface AppointmentWithRx {
-  id: string;
-  patientId: { id: string; userId: { name: string; phone: string } };
-  clinicId: { id: string; name: string };
+interface PendingPrescriptionGroup {
+  encounterId: string;
+  appointmentId: string | null;
+  appointmentTime: string | null;
+  patientId: { id: string; name: string; phone?: string };
   doctorId: { id: string; name: string };
-  appointmentTime: string;
-  symptoms?: string;
-  diagnosis?: string;
-  prescriptions?: PrescriptionItem[];
+  prescriptions: PrescriptionItem[];
 }
 
 export default function PharmacyPage() {
   const { user, activeClinicId } = useAuthStore();
+  const { clinics, fetchClinics } = useClinicStore();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"inventory" | "alerts" | "dispensing">("inventory");
-  const [clinics, setClinics] = useState<any[]>([]);
   const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
 
   useEffect(() => {
     setSelectedClinicId(activeClinicId || "");
   }, [activeClinicId]);
   const [medicines, setMedicines] = useState<MedicineType[]>([]);
-  const [completedAppointments, setCompletedAppointments] = useState<AppointmentWithRx[]>([]);
+  const [pendingPrescriptionGroups, setPendingPrescriptionGroups] = useState<PendingPrescriptionGroup[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Add/Edit Medicine Modal State
@@ -71,7 +75,7 @@ export default function PharmacyPage() {
 
   // Dispensing Modal State
   const [isDispenseOpen, setIsDispenseOpen] = useState(false);
-  const [activeAppointment, setActiveAppointment] = useState<AppointmentWithRx | null>(null);
+  const [activePrescriptionGroup, setActivePrescriptionGroup] = useState<PendingPrescriptionGroup | null>(null);
   const [dispenseItems, setDispenseItems] = useState<Array<{ medicineId: string; quantity: number }>>([]);
   const [submittingDispense, setSubmittingDispense] = useState(false);
 
@@ -198,37 +202,23 @@ export default function PharmacyPage() {
     return item.quantity <= 0 || item.quantity > med.stockQuantity;
   });
 
-  // Fetch Clinics
   useEffect(() => {
-    const fetchClinics = async () => {
-      try {
-        const res = await api.get("/onboarding/clinics");
-        const clinicsList = res.data.data || [];
-        setClinics(clinicsList);
-      } catch (err) {
-        toast({ title: "Error", description: "Failed to load clinics list", variant: "error" });
-      }
-    };
-    if (user) fetchClinics();
-  }, [user]);
+    if (user && user.role !== "patient") fetchClinics();
+  }, [user?.id, user?.role, fetchClinics]);
 
   // Fetch data on Clinic change
   const fetchData = async () => {
     try {
       setLoading(true);
       const query = selectedClinicId ? `?clinicId=${selectedClinicId}` : "";
-      const apptQuery = selectedClinicId ? `?clinicId=${selectedClinicId}&status=completed` : "?status=completed";
-      const [medsRes, apptsRes] = await Promise.all([
+      const [medsRes, pendingRes] = await Promise.all([
         api.get(`/medicines${query}`),
-        api.get(`/appointments${apptQuery}`)
+        selectedClinicId
+          ? api.get(`/pharmacy/pending-prescriptions?clinicId=${selectedClinicId}`)
+          : Promise.resolve({ data: { data: [] } }),
       ]);
       setMedicines(medsRes.data.data || []);
-      
-      // Filter appointments that actually have prescriptions registered
-      const withRx = (apptsRes.data.data || []).filter(
-        (a: any) => a.prescriptions && a.prescriptions.length > 0
-      );
-      setCompletedAppointments(withRx);
+      setPendingPrescriptionGroups(pendingRes.data.data || []);
     } catch (err) {
       toast({ title: "Error", description: "Failed to load pharmacy data", variant: "error" });
     } finally {
@@ -303,18 +293,18 @@ export default function PharmacyPage() {
     }
   };
 
-  // Trigger Dispensing Modal
-  const openDispenseModal = (appt: AppointmentWithRx) => {
-    setActiveAppointment(appt);
-    
-    // Map initial Rx names to our stock items where possible (fuzzy or exact name search)
-    const initialMappings = (appt.prescriptions || []).map(rx => {
-      const matched = medicines.find(
-        m => m.name.toLowerCase().includes(rx.name.toLowerCase()) && m.stockQuantity > 0
-      );
+  const openDispenseModal = (group: PendingPrescriptionGroup) => {
+    setActivePrescriptionGroup(group);
+
+    const initialMappings = (group.prescriptions || []).map((rx) => {
+      const matched = rx.medicineId
+        ? medicines.find((m) => m.id === rx.medicineId && m.stockQuantity > 0)
+        : medicines.find(
+            (m) => m.name.toLowerCase().includes(rx.name.toLowerCase()) && m.stockQuantity > 0
+          );
       return {
         medicineId: matched ? matched.id : "",
-        quantity: 10 // Default dispensing quantity
+        quantity: 10,
       };
     });
 
@@ -324,15 +314,14 @@ export default function PharmacyPage() {
 
   // Handle Dispense Submit
   const handleDispenseSubmit = async () => {
-    if (!activeAppointment) return;
+    if (!activePrescriptionGroup) return;
 
-    // Filter out items without matched medicines
-    const validItems = dispenseItems.filter(item => item.medicineId !== "");
+    const validItems = dispenseItems.filter((item) => item.medicineId !== "");
     if (validItems.length === 0) {
       toast({
         title: "Validation Error",
         description: "Please link at least one prescription item to a stock medicine",
-        variant: "warning"
+        variant: "warning",
       });
       return;
     }
@@ -340,26 +329,27 @@ export default function PharmacyPage() {
     try {
       setSubmittingDispense(true);
       await api.post("/pharmacy/dispense", {
-        patientId: activeAppointment.patientId.id,
+        patientId: activePrescriptionGroup.patientId.id,
         clinicId: selectedClinicId,
-        doctorId: activeAppointment.doctorId.id,
-        items: validItems
+        doctorId: activePrescriptionGroup.doctorId.id,
+        prescriptionIds: activePrescriptionGroup.prescriptions.map((rx) => rx.id),
+        items: validItems,
       });
 
       toast({
         title: "Success",
         description: "Medicines dispensed and billing invoice generated",
-        variant: "success"
+        variant: "success",
       });
 
       setIsDispenseOpen(false);
-      setActiveAppointment(null);
+      setActivePrescriptionGroup(null);
       fetchData();
     } catch (err: any) {
       toast({
         title: "Dispense Failed",
         description: err.response?.data?.message || "Failed to complete dispensing request",
-        variant: "error"
+        variant: "error",
       });
     } finally {
       setSubmittingDispense(false);
@@ -370,6 +360,8 @@ export default function PharmacyPage() {
   const totalItems = medicines.length;
   const lowStockCount = medicines.filter(m => m.stockQuantity < 10).length;
   const expiredCount = medicines.filter(m => new Date(m.expiryDate) < new Date()).length;
+
+  const canManageMedicines = hasAnyPermission(user, "MANAGE_MEDICINES");
 
   return (
     <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
@@ -383,7 +375,7 @@ export default function PharmacyPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {(user?.role === "admin" || user?.role === "receptionist") && (
+          {canManageMedicines && (
             <Button
               variant="primary"
               size="sm"
@@ -451,7 +443,7 @@ export default function PharmacyPage() {
           onClick={() => setActiveTab("dispensing")}
           className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "dispensing" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
         >
-          Dispensing Prescription Desk ({completedAppointments.length})
+          Dispensing Prescription Desk ({pendingPrescriptionGroups.length})
         </button>
       </div>
 
@@ -563,24 +555,26 @@ export default function PharmacyPage() {
                     { header: "Prescription", key: "rx" },
                     { header: "Actions", key: "action", align: "right" }
                   ]}
-                  data={completedAppointments.map(appt => ({
-                    id: appt.id,
+                  data={pendingPrescriptionGroups.map((group) => ({
+                    id: group.encounterId,
                     patient: (
                       <div>
-                        <div className="font-semibold text-text">{appt.patientId.userId.name}</div>
-                        <div className="text-xs text-text-muted">{appt.patientId.userId.phone}</div>
+                        <div className="font-semibold text-text">{group.patientId.name}</div>
+                        <div className="text-xs text-text-muted">{group.patientId.phone || "—"}</div>
                       </div>
                     ),
                     doctor: (
                       <div className="font-medium text-text">
-                        {appt.doctorId.name}
+                        {group.doctorId.name}
                       </div>
                     ),
-                    time: new Date(appt.appointmentTime).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+                    time: group.appointmentTime
+                      ? new Date(group.appointmentTime).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                      : "—",
                     rx: (
                       <div className="space-y-1 py-1">
-                        {appt.prescriptions?.map((item, idx) => (
-                          <div key={idx} className="text-xs text-text">
+                        {group.prescriptions?.map((item) => (
+                          <div key={item.id} className="text-xs text-text">
                             💊 <span className="font-bold">{item.name}</span> — <span className="text-text-muted">{item.dosage} ({item.duration})</span>
                           </div>
                         ))}
@@ -591,15 +585,15 @@ export default function PharmacyPage() {
                         <Button
                           variant="primary"
                           size="sm"
-                          onClick={() => openDispenseModal(appt)}
+                          onClick={() => openDispenseModal(group)}
                           className="shrink-0 font-bold"
                         >
                           Dispense & Bill
                         </Button>
                       </div>
-                    )
+                    ),
                   }))}
-                  emptyMessage="No completed prescriptions awaiting dispensing at this clinic location."
+                  emptyMessage="No active prescriptions awaiting dispensing at this clinic location."
                 />
               </Card>
             </div>
@@ -742,18 +736,18 @@ export default function PharmacyPage() {
         onClose={() => setIsDispenseOpen(false)}
         title="Dispensing Fulfillment Desk"
       >
-        {activeAppointment && (
+        {activePrescriptionGroup && (
           <div className="space-y-4">
             <div className="p-3 bg-surface-hover rounded-xl border border-border">
               <div className="text-xs text-text-muted">Patient Recipient:</div>
-              <div className="text-sm font-bold text-text mt-0.5">{activeAppointment.patientId.userId.name}</div>
+              <div className="text-sm font-bold text-text mt-0.5">{activePrescriptionGroup.patientId.name}</div>
             </div>
 
             <div className="space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-text-muted">Prescribed Items vs Catalog Matches</h4>
               
-              {activeAppointment.prescriptions?.map((rx, idx) => (
-                <div key={idx} className="p-3 border border-border/80 rounded-xl space-y-2">
+              {activePrescriptionGroup.prescriptions?.map((rx, idx) => (
+                <div key={rx.id} className="p-3 border border-border/80 rounded-xl space-y-2">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-bold text-text">💊 Prescribed: {rx.name}</span>
                     <span className="text-text-muted">Dosage: {rx.dosage} | Days: {rx.duration}</span>

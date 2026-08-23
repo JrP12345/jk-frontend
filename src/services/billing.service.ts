@@ -70,38 +70,42 @@ export const billingService = {
   },
 
   // Authenticated Subscription Details
-  async getSubscription(): Promise<SubscriptionInfo> {
-    const res = await api.get("/billing/subscription");
+  async getSubscription(organizationId?: string): Promise<SubscriptionInfo> {
+    const url = organizationId ? `/billing/subscription?organizationId=${organizationId}` : "/billing/subscription";
+    const res = await api.get(url);
     return res.data.data;
   },
 
   // Usage & Limits
-  async getUsage(): Promise<UsageInfo> {
-    const res = await api.get("/billing/usage");
+  async getUsage(organizationId?: string): Promise<UsageInfo> {
+    const url = organizationId ? `/billing/usage?organizationId=${organizationId}` : "/billing/usage";
+    const res = await api.get(url);
     return res.data.data;
   },
 
   // SaaS Commercial Invoices
-  async getSaaSInvoices() {
-    const res = await api.get("/billing/saas-invoices");
+  async getSaaSInvoices(organizationId?: string) {
+    const url = organizationId ? `/billing/saas-invoices?organizationId=${organizationId}` : "/billing/saas-invoices";
+    const res = await api.get(url);
     return res.data.data;
   },
 
   // Checkout
-  async createCheckoutOrder(planId: string, billingCycle: "monthly" | "annual" = "monthly") {
-    const res = await api.post("/billing/checkout", { planId, billingCycle });
+  async createCheckoutOrder(planId: string, billingCycle: "monthly" | "annual" = "monthly", organizationId?: string) {
+    const res = await api.post("/billing/checkout", { planId, billingCycle, ...(organizationId ? { organizationId } : {}) });
     return res.data.data;
   },
 
   // Verify Payment
-  async verifyPayment(data: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) {
-    const res = await api.post("/billing/verify-payment", data);
+  async verifyPayment(data: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }, organizationId?: string) {
+    const res = await api.post("/billing/verify-payment", { ...data, ...(organizationId ? { organizationId } : {}) });
     return res.data.data;
   },
 
   // Cancel
-  async cancelSubscription() {
-    const res = await api.post("/billing/cancel");
+  async cancelSubscription(organizationId?: string) {
+    const url = organizationId ? `/billing/cancel?organizationId=${organizationId}` : "/billing/cancel";
+    const res = await api.post(url, organizationId ? { organizationId } : {});
     return res.data.data;
   },
 

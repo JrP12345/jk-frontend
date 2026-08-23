@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card,
@@ -209,7 +210,7 @@ export default function ServiceCatalogPage() {
               Seed Default Rate Card
             </Button>
           )}
-          {(user?.role === "admin" || user?.role === "root" || user?.role === "cashier" || user?.role === "receptionist") && (
+          {hasAnyPermission(user, "MANAGE_BILLING") && (
             <Button size="sm" onClick={handleOpenAddModal}>
               + Add Service Item
             </Button>

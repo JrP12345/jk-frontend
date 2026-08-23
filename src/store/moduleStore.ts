@@ -42,7 +42,7 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
       set({ modules: data, isLoaded: true, isLoading: false });
     } catch (err: any) {
       console.error("Failed to fetch modules:", err);
-      set({ error: err.message || "Failed to load modules", isLoading: false });
+      set({ error: err.message || "Failed to load modules", isLoaded: true, isLoading: false });
     }
   },
 
@@ -54,7 +54,7 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
     if (!isLoaded) return true;
 
     const mod = modules.find((m) => m.moduleKey === moduleKey);
-    if (!mod) return true; // Unknown module key = allow (safe fallback)
+    if (!mod) return false;
     if (mod.alwaysOn) return true;
 
     return mod.enabled;

@@ -14,13 +14,16 @@ export interface AIConfig {
 }
 
 export const aiAdminService = {
-  getConfig: async (): Promise<AIConfig> => {
-    const res = await api.get("/ai/admin/config");
+  getConfig: async (organizationId?: string): Promise<AIConfig> => {
+    const url = organizationId ? `/ai/admin/config?organizationId=${organizationId}` : "/ai/admin/config";
+    const res = await api.get(url);
     return res.data.data;
   },
 
-  updateConfig: async (data: Partial<AIConfig>): Promise<AIConfig> => {
-    const res = await api.put("/ai/admin/config", data);
+  updateConfig: async (data: Partial<AIConfig>, organizationId?: string): Promise<AIConfig> => {
+    const url = organizationId ? `/ai/admin/config?organizationId=${organizationId}` : "/ai/admin/config";
+    const res = await api.put(url, { ...data, ...(organizationId ? { organizationId } : {}) });
     return res.data.data;
   },
 };
+

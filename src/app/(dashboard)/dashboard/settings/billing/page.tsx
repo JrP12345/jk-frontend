@@ -21,7 +21,7 @@ import { billingService, SaaSPlan, SubscriptionInfo, UsageInfo } from "@/service
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { useAuthStore } from "@/store/authStore";
 
-export default function BillingSettingsPage() {
+export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?: string }) {
   const { user } = useAuthStore();
   const { toast } = useToast();
   const [plans, setPlans] = useState<SaaSPlan[]>([]);
@@ -48,16 +48,16 @@ export default function BillingSettingsPage() {
 
   useEffect(() => {
     loadBillingData();
-  }, []);
+  }, [selectedOrgId]);
 
   async function loadBillingData() {
     setLoading(true);
     try {
       const [plansData, subData, usageData, invoicesData] = await Promise.all([
         billingService.getPlans(),
-        billingService.getSubscription(),
-        billingService.getUsage(),
-        billingService.getSaaSInvoices(),
+        billingService.getSubscription(selectedOrgId),
+        billingService.getUsage(selectedOrgId),
+        billingService.getSaaSInvoices(selectedOrgId),
       ]);
 
       setPlans(plansData);
@@ -81,7 +81,7 @@ export default function BillingSettingsPage() {
 
     try {
       // 1. Create order on backend (calls Razorpay REST API POST /v1/orders with user's keys)
-      const order = await billingService.createCheckoutOrder(plan.id, billingCycle);
+      const order = await billingService.createCheckoutOrder(plan.id, billingCycle, selectedOrgId);
 
       // 2. Load official Razorpay Checkout SDK
       const isLoaded = await loadRazorpayScript();

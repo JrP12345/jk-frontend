@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { hasAnyPermission } from "@/lib/permissions";
+import { useAuthStore } from "@/store/authStore";
 import { PatientService } from "@/services/patient.service";
 import {
   Card,
@@ -32,7 +34,10 @@ export default function PatientDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuthStore();
   const patientId = params.id as string;
+
+  const canManagePatients = hasAnyPermission(user, "MANAGE_PATIENTS");
 
   const [patientData, setPatientData] = useState<any>(null);
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -275,14 +280,16 @@ export default function PatientDetailPage() {
           ← Back to Patients Directory
         </Link>
         <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="xs"
-            variant="outline"
-            onClick={() => setEditModalOpen(true)}
-            className="rounded-xl font-semibold cursor-pointer"
-          >
-            ✏️ Edit Demographics
-          </Button>
+          {canManagePatients && (
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => setEditModalOpen(true)}
+              className="rounded-xl font-semibold cursor-pointer"
+            >
+              ✏️ Edit Demographics
+            </Button>
+          )}
           <Button
             size="xs"
             variant="primary"
@@ -308,7 +315,7 @@ export default function PatientDetailPage() {
             content: (
               <PatientOverviewCards
                 patient={overviewData}
-                onEditProfile={() => setEditModalOpen(true)}
+                onEditProfile={canManagePatients ? () => setEditModalOpen(true) : undefined}
               />
             ),
           },

@@ -7,7 +7,9 @@ import {
   Table, Tabs, Button, Modal, Input, useToast, Spinner, ImageUpload, ConfirmDialog, ScheduleEditor, Select, SkeletonTable, Dropdown, Badge, cn
 } from "@/components/ui";
 import { useR2Upload } from "@/hooks/useR2Upload";
+import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
+import { useClinicStore } from "@/store/clinicStore";
 import { RBACPermissionMatrix } from "@/components/clinical/RBACPermissionMatrix";
 import { ExecutiveAnalytics } from "@/components/analytics/ExecutiveAnalytics";
 
@@ -36,7 +38,9 @@ interface Receptionist {
 export default function StaffPage() {
   const { toast } = useToast();
   const { uploadFile } = useR2Upload();
-  const { activeClinicId } = useAuthStore();
+  const { activeClinicId, user } = useAuthStore();
+  const { clinics, fetchClinics } = useClinicStore();
+  const canManageStaff = hasAnyPermission(user, "MANAGE_STAFF");
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [receptionists, setReceptionists] = useState<Receptionist[]>([]);
@@ -45,7 +49,6 @@ export default function StaffPage() {
   const [pharmacists, setPharmacists] = useState<any[]>([]);
   const [cashiers, setCashiers] = useState<any[]>([]);
   const [customStaff, setCustomStaff] = useState<any[]>([]);
-  const [clinics, setClinics] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -143,6 +146,7 @@ export default function StaffPage() {
   const [isAssignmentsModalOpen, setIsAssignmentsModalOpen] = useState(false);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
   const [newAssignment, setNewAssignment] = useState<any>({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: "" });
   const [savingAssignment, setSavingAssignment] = useState(false);
 
@@ -231,15 +235,6 @@ export default function StaffPage() {
       setCustomStaff(allStaff.filter((s: any) => !builtInRoles.has(s.role)));
     } catch (err) {
       toast({ title: "Error", description: "Failed to load staff list", variant: "error", duration: 3000 });
-    }
-  };
-
-  const fetchClinics = async () => {
-    try {
-      const res = await api.get("/onboarding/clinics");
-      setClinics(res.data.data || []);
-    } catch (err) {
-      console.error("Failed to load clinics list");
     }
   };
 
@@ -338,11 +333,20 @@ export default function StaffPage() {
     }
   };
 
+  const DEFAULT_WORKING_HOURS = JSON.stringify({
+    Monday: [{ start: "09:00", end: "17:00" }],
+    Tuesday: [{ start: "09:00", end: "17:00" }],
+    Wednesday: [{ start: "09:00", end: "17:00" }],
+    Thursday: [{ start: "09:00", end: "17:00" }],
+    Friday: [{ start: "09:00", end: "17:00" }],
+  });
+
   // Assignments Handlers
   const openAssignmentsModal = async (doctor: Doctor) => {
     setSelectedDoctorForAssignments(doctor);
     setIsAssignmentsModalOpen(true);
     setAssignmentLoading(true);
+    setEditingAssignmentId(null);
     try {
       const res = await api.get(`/onboarding/doctors/assignments?doctorId=${doctor.id}`);
       setAssignments(res.data.data || []);
@@ -351,16 +355,25 @@ export default function StaffPage() {
     } finally {
       setAssignmentLoading(false);
     }
-    setNewAssignment({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: "", bookingMode: "sequential_queue", maxDailyTokens: "" });
+    setNewAssignment({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: DEFAULT_WORKING_HOURS, bookingMode: "sequential_queue", maxDailyTokens: "" });
   };
 
-const DEFAULT_WORKING_HOURS = JSON.stringify({
-  Monday: [{ start: "09:00", end: "17:00" }],
-  Tuesday: [{ start: "09:00", end: "17:00" }],
-  Wednesday: [{ start: "09:00", end: "17:00" }],
-  Thursday: [{ start: "09:00", end: "17:00" }],
-  Friday: [{ start: "09:00", end: "17:00" }],
-});
+  const handleStartEditAssignment = (asg: any) => {
+    setEditingAssignmentId(asg.id || asg._id);
+    setNewAssignment({
+      clinicId: asg.clinicId?.id || asg.clinicId?._id || asg.clinicId,
+      fees: asg.fees ?? 100,
+      appointmentDuration: asg.appointmentDuration ?? 15,
+      workingHours: asg.workingHours || DEFAULT_WORKING_HOURS,
+      bookingMode: asg.bookingMode || "sequential_queue",
+      maxDailyTokens: asg.maxDailyTokens ? String(asg.maxDailyTokens) : "",
+    });
+  };
+
+  const handleCancelEditAssignment = () => {
+    setEditingAssignmentId(null);
+    setNewAssignment({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: DEFAULT_WORKING_HOURS, bookingMode: "sequential_queue", maxDailyTokens: "" });
+  };
 
   const handleAddAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -371,22 +384,34 @@ const DEFAULT_WORKING_HOURS = JSON.stringify({
     const finalHours = newAssignment.workingHours && newAssignment.workingHours !== "{}" ? newAssignment.workingHours : DEFAULT_WORKING_HOURS;
     setSavingAssignment(true);
     try {
-      await api.post("/onboarding/doctors/assignments", {
-        doctorId: selectedDoctorForAssignments?.id,
-        clinicId: newAssignment.clinicId,
-        fees: Number(newAssignment.fees),
-        appointmentDuration: Number(newAssignment.appointmentDuration),
-        workingHours: finalHours,
-        bookingMode: (newAssignment as any).bookingMode || "sequential_queue",
-        maxDailyTokens: (newAssignment as any).maxDailyTokens ? Number((newAssignment as any).maxDailyTokens) : null,
-      });
-      toast({ title: "Success! 🏥", description: "Doctor assigned to clinic branch successfully!", variant: "success" });
+      if (editingAssignmentId) {
+        await api.put(`/onboarding/doctors/assignments/${editingAssignmentId}`, {
+          fees: Number(newAssignment.fees),
+          appointmentDuration: Number(newAssignment.appointmentDuration),
+          workingHours: finalHours,
+          bookingMode: (newAssignment as any).bookingMode || "sequential_queue",
+          maxDailyTokens: (newAssignment as any).maxDailyTokens ? Number((newAssignment as any).maxDailyTokens) : null,
+        });
+        toast({ title: "Success! 🏥", description: "Doctor clinic assignment updated successfully!", variant: "success" });
+      } else {
+        await api.post("/onboarding/doctors/assignments", {
+          doctorId: selectedDoctorForAssignments?.id,
+          clinicId: newAssignment.clinicId,
+          fees: Number(newAssignment.fees),
+          appointmentDuration: Number(newAssignment.appointmentDuration),
+          workingHours: finalHours,
+          bookingMode: (newAssignment as any).bookingMode || "sequential_queue",
+          maxDailyTokens: (newAssignment as any).maxDailyTokens ? Number((newAssignment as any).maxDailyTokens) : null,
+        });
+        toast({ title: "Success! 🏥", description: "Doctor assigned to clinic branch successfully!", variant: "success" });
+      }
       // Refresh assignments
       const res = await api.get(`/onboarding/doctors/assignments?doctorId=${selectedDoctorForAssignments?.id}`);
       setAssignments(res.data.data || []);
+      setEditingAssignmentId(null);
       setNewAssignment({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: DEFAULT_WORKING_HOURS, bookingMode: "sequential_queue", maxDailyTokens: "" });
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to assign doctor", variant: "error" });
+      toast({ title: "Error", description: err.response?.data?.message || "Failed to save assignment", variant: "error" });
     } finally {
       setSavingAssignment(false);
     }
@@ -396,6 +421,10 @@ const DEFAULT_WORKING_HOURS = JSON.stringify({
     try {
       await api.delete(`/onboarding/doctors/assignments/${assignmentId}`);
       toast({ title: "Success", description: "Doctor assignment removed successfully", variant: "success" });
+      if (editingAssignmentId === assignmentId) {
+        setEditingAssignmentId(null);
+        setNewAssignment({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: DEFAULT_WORKING_HOURS, bookingMode: "sequential_queue", maxDailyTokens: "" });
+      }
       // Refresh assignments
       const res = await api.get(`/onboarding/doctors/assignments?doctorId=${selectedDoctorForAssignments?.id}`);
       setAssignments(res.data.data || []);
@@ -458,6 +487,8 @@ const DEFAULT_WORKING_HOURS = JSON.stringify({
         </div>
 
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {canManageStaff && (
+          <>
           <Button
             variant="outline"
             size="sm"
@@ -477,6 +508,8 @@ const DEFAULT_WORKING_HOURS = JSON.stringify({
             </svg>
             <span>Add Staff Member</span>
           </Button>
+          </>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -749,7 +782,7 @@ const DEFAULT_WORKING_HOURS = JSON.stringify({
         open={isAssignmentsModalOpen}
         onClose={() => setIsAssignmentsModalOpen(false)}
         title={`Manage Clinic Assignments — Dr. ${selectedDoctorForAssignments?.name || ""}`}
-        size="xl"
+        size="2xl"
       >
         <div className="space-y-6 font-sans">
           {/* Informational Subtext */}
@@ -785,41 +818,52 @@ const DEFAULT_WORKING_HOURS = JSON.stringify({
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-border shadow-2xs bg-surface">
+              <div className="overflow-x-auto rounded-xl border border-border/80 shadow-2xs bg-surface">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-border text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                    <tr className="border-b border-border text-[11px] font-bold text-text-muted uppercase tracking-wider bg-surface-alt/50">
                       <th className="p-3">Clinic Location</th>
                       <th className="p-3">Consultation Fee</th>
                       <th className="p-3">Slot Duration</th>
                       <th className="p-3">Booking Mode</th>
                       <th className="p-3">Working Shift Hours</th>
-                      <th className="p-3 text-right w-24">Action</th>
+                      <th className="p-3 text-right w-36">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {assignments.map((asg) => (
-                      <tr key={asg.id} className="hover:bg-surface-hover/50 transition-colors">
-                        <td className="p-3 text-text font-bold flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                          <span>{asg.clinicId?.name}</span>
+                      <tr key={asg.id || asg._id} className="hover:bg-surface-hover/50 transition-colors">
+                        <td className="p-3 text-text font-bold whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                            <span>{asg.clinicId?.name || "Clinic Branch"}</span>
+                          </div>
                         </td>
-                        <td className="p-3 text-emerald-400 font-extrabold text-sm">₹{asg.fees}</td>
-                        <td className="p-3">
-                          <span className="px-2 py-0.5 bg-surface-alt rounded-lg font-bold text-text-secondary border border-border">
+                        <td className="p-3 text-emerald-400 font-extrabold text-sm whitespace-nowrap">
+                          ₹{asg.fees}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          <span className="px-2.5 py-1 bg-surface-alt rounded-lg font-bold text-text-secondary border border-border/60">
                             {asg.appointmentDuration} mins
                           </span>
                         </td>
-                        <td className="p-3">
+                        <td className="p-3 whitespace-nowrap">
                           <Badge variant={asg.bookingMode === "sequential_queue" ? "primary" : "neutral"} className="font-bold text-[10px]">
                             {asg.bookingMode === "sequential_queue" ? "🎟 Token Queue" : "🗓 Time Slots"}
                           </Badge>
                         </td>
-                        <td className="p-3 text-text-secondary whitespace-pre-wrap font-medium">{formatTimings(asg.workingHours)}</td>
-                        <td className="p-3 text-right">
-                          <Button variant="danger" size="xs" onClick={() => handleRemoveAssignment(asg.id)} className="font-bold">
-                            Remove
-                          </Button>
+                        <td className="p-3 text-text-secondary whitespace-normal font-medium leading-relaxed">
+                          {formatTimings(asg.workingHours)}
+                        </td>
+                        <td className="p-3 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button variant="outline" size="xs" onClick={() => handleStartEditAssignment(asg)} className="font-bold border-border">
+                              Edit ✏️
+                            </Button>
+                            <Button variant="danger" size="xs" onClick={() => handleRemoveAssignment(asg.id || asg._id)} className="font-bold">
+                              Remove
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -829,12 +873,19 @@ const DEFAULT_WORKING_HOURS = JSON.stringify({
             )}
           </div>
 
-          {/* Add New Assignment Form Card */}
-          {availableClinics.length > 0 ? (
+          {/* Add / Edit Assignment Form Card */}
+          {availableClinics.length > 0 || editingAssignmentId ? (
             <form onSubmit={handleAddAssignment} className="bg-surface-alt/40 border border-border/80 rounded-2xl p-4.5 space-y-4">
-              <h3 className="text-sm font-bold text-text tracking-tight flex items-center gap-2">
-                <span>➕ Assign New Clinic Location & Schedule</span>
-              </h3>
+              <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                <h3 className="text-sm font-bold text-text tracking-tight flex items-center gap-2">
+                  <span>{editingAssignmentId ? "✏️ Edit Clinic Location Assignment & Schedule" : "➕ Assign New Clinic Location & Schedule"}</span>
+                </h3>
+                {editingAssignmentId && (
+                  <Button type="button" variant="outline" size="xs" onClick={handleCancelEditAssignment} className="font-bold">
+                    Cancel Editing
+                  </Button>
+                )}
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 <Select
@@ -847,16 +898,28 @@ const DEFAULT_WORKING_HOURS = JSON.stringify({
                   ]}
                   required
                 />
-                <Select 
-                  label="Select Clinic Location *"
-                  value={newAssignment.clinicId}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, clinicId: e.target.value })}
-                  options={[
-                    { value: "", label: "Choose a clinic branch..." },
-                    ...availableClinics.map(c => ({ value: c.id, label: c.name }))
-                  ]}
-                  required
-                />
+
+                {editingAssignmentId ? (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-text-muted block">Clinic Branch Location</label>
+                    <div className="p-2.5 bg-surface border border-border/80 rounded-xl text-xs font-bold text-text flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span>{assignments.find(a => (a.id || a._id) === editingAssignmentId)?.clinicId?.name || "Selected Clinic Location"}</span>
+                      <Badge variant="neutral" size="sm" className="ml-auto text-[10px] font-semibold">Location Fixed</Badge>
+                    </div>
+                  </div>
+                ) : (
+                  <Select 
+                    label="Select Clinic Location *"
+                    value={newAssignment.clinicId}
+                    onChange={(e) => setNewAssignment({ ...newAssignment, clinicId: e.target.value })}
+                    options={[
+                      { value: "", label: "Choose a clinic branch..." },
+                      ...availableClinics.map(c => ({ value: c.id, label: c.name }))
+                    ]}
+                    required
+                  />
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
@@ -891,7 +954,7 @@ const DEFAULT_WORKING_HOURS = JSON.stringify({
 
               <div className="flex justify-end gap-3 pt-2">
                 <Button type="submit" loading={savingAssignment} variant="primary" className="font-bold rounded-xl shadow-xs cursor-pointer">
-                  Assign Clinic Location & Schedule
+                  {editingAssignmentId ? "Update Clinic Location & Schedule 💾" : "Assign Clinic Location & Schedule"}
                 </Button>
               </div>
             </form>

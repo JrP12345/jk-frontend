@@ -41,7 +41,5 @@ export { default as Breadcrumbs } from "./Breadcrumbs";
 export { default as Sidebar } from "./Sidebar";
 export { default as Stepper } from "./Stepper";
 
-export { default as Divider } from "./Divider";
 export { default as AnantaLogo, AnantaIcon } from "./AnantaLogo";
-export { default as WorkspaceClinicFilter } from "./WorkspaceClinicFilter";
-export { default as FilterPill } from "./FilterPill";
+

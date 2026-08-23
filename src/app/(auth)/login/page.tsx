@@ -26,6 +26,12 @@ import {
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export default function LoginPage() {
+  const [authTab, setAuthTab] = useState<"mobile" | "email">("mobile");
+  const [phone, setPhone] = useState("");
+  const [phoneOtp, setPhoneOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,7 +49,7 @@ export default function LoginPage() {
   const [isTwoFactorModalOpen, setIsTwoFactorModalOpen] = useState(false);
   const [twoFactorToken, setTwoFactorToken] = useState("");
   const [otpCode, setOtpCode] = useState("");
-  const [otpLoading, setOtpLoading] = useState(false);
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetEmailError, setResetEmailError] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
@@ -66,6 +72,68 @@ export default function LoginPage() {
       </div>
     );
   }
+
+  const handleRequestPhoneOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phone || phone.length < 10) {
+      toast({ title: "Validation Error", description: "Please enter a valid mobile phone number", variant: "error" });
+      triggerShake();
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      const res = await api.post("/auth/otp/request", { phone, purpose: "authentication" });
+      setOtpSent(true);
+      toast({
+        title: "OTP Dispatched! 📱",
+        description: res.data?.data?.devOtp
+          ? `[DEV MODE] Your OTP code is: ${res.data.data.devOtp}`
+          : `Verification OTP has been sent to ${phone}`,
+        variant: "success",
+        duration: 8000,
+      });
+    } catch (err: any) {
+      triggerShake();
+      toast({
+        title: "OTP Dispatch Failed",
+        description: err.response?.data?.message || "Failed to send OTP",
+        variant: "error",
+      });
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneOtp || phoneOtp.length < 6) {
+      toast({ title: "Validation Error", description: "Enter 6-digit OTP code", variant: "error" });
+      triggerShake();
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      const res = await api.post("/auth/otp/verify", { phone, otp: phoneOtp, purpose: "authentication" });
+      login(res.data.data.user);
+      toast({
+        title: "Welcome!",
+        description: `Successfully logged in as ${res.data.data.user.name}.`,
+        variant: "success",
+      });
+      router.push("/dashboard");
+    } catch (err: any) {
+      triggerShake();
+      toast({
+        title: "Verification Failed",
+        description: err.response?.data?.message || "Invalid OTP code",
+        variant: "error",
+      });
+    } finally {
+      setOtpLoading(false);
+    }
+  };
 
   const validateEmail = (val: string, isReset = false) => {
     const errorStateSetter = isReset ? setResetEmailError : setEmailError;
@@ -223,88 +291,153 @@ export default function LoginPage() {
           )}
         >
           {!isForgotPassword ? (
-            /* Login Form */
-            <form onSubmit={handleLogin} noValidate autoComplete="off" className="p-5 sm:p-6 space-y-4">
+            <div className="p-5 sm:p-6 space-y-4">
               <CardHeader className="p-0 mb-4 text-center">
                 <CardTitle className="text-xl sm:text-2xl font-black text-text">Welcome Back</CardTitle>
                 <CardDescription className="text-xs text-text-muted mt-1">
-                  Enter your clinical credentials to access your account dashboard
+                  Sign in with Mobile OTP or Staff Credentials
                 </CardDescription>
+                
+                {/* Auth Mode Tabs */}
+                <div className="grid grid-cols-2 p-1 bg-surface-alt rounded-xl border border-border/60 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => { setAuthTab("mobile"); setOtpSent(false); setPhoneOtp(""); }}
+                    className={cn(
+                      "py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                      authTab === "mobile" ? "bg-surface text-primary-600 shadow-sm" : "text-text-muted hover:text-text"
+                    )}
+                  >
+                    📱 Mobile OTP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthTab("email")}
+                    className={cn(
+                      "py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                      authTab === "email" ? "bg-surface text-primary-600 shadow-sm" : "text-text-muted hover:text-text"
+                    )}
+                  >
+                    ✉️ Staff Email
+                  </button>
+                </div>
               </CardHeader>
 
-              <CardContent className="p-0 space-y-4">
-                <Input
-                  label="Email Address *"
-                  type="email"
-                  placeholder="doctor@ananta.health"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (emailError) validateEmail(e.target.value);
-                  }}
-                  onBlur={() => validateEmail(email)}
-                  error={emailError}
-                  required
-                  autoComplete="off"
-                />
-
-                <div>
-                  <Input
-                    label="Password *"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      if (passwordError) validatePassword(e.target.value);
-                    }}
-                    onBlur={() => validatePassword(password)}
-                    error={passwordError}
-                    required
-                    autoComplete="off"
-                    iconRight={
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="p-1 text-text-muted hover:text-text rounded-md transition-all cursor-pointer"
-                        title={showPassword ? "Hide password" : "Show password"}
-                      >
-                        {showPassword ? (
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                          </svg>
-                        ) : (
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                        )}
-                      </button>
-                    }
-                  />
-                  <div className="flex justify-end pt-1.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsForgotPassword(true);
-                        setIsResetSent(false);
-                        setResetEmail("");
-                        setResetEmailError("");
+              {authTab === "mobile" ? (
+                /* Mobile OTP Form */
+                !otpSent ? (
+                  <form onSubmit={handleRequestPhoneOtp} className="space-y-4">
+                    <Input
+                      label="Mobile Phone Number *"
+                      type="tel"
+                      placeholder="9876543210"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      required
+                    />
+                    <Button type="submit" fullWidth loading={otpLoading} size="lg" className="rounded-xl font-bold">
+                      Send Verification OTP
+                    </Button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleVerifyPhoneOtp} className="space-y-4">
+                    <Input
+                      label={`6-Digit OTP Sent to ${phone} *`}
+                      placeholder="123456"
+                      maxLength={6}
+                      inputMode="numeric"
+                      value={phoneOtp}
+                      onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, ""))}
+                      required
+                    />
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={() => setOtpSent(false)} className="rounded-xl">
+                        Change Number
+                      </Button>
+                      <Button type="submit" fullWidth loading={otpLoading} size="lg" className="rounded-xl font-bold flex-1">
+                        Verify & Sign In
+                      </Button>
+                    </div>
+                  </form>
+                )
+              ) : (
+                /* Email Password Form */
+                <form onSubmit={handleLogin} noValidate autoComplete="off" className="space-y-4">
+                  <CardContent className="p-0 space-y-4">
+                    <Input
+                      label="Email Address *"
+                      type="email"
+                      placeholder="doctor@ananta.health"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (emailError) validateEmail(e.target.value);
                       }}
-                      className="text-xs font-semibold text-primary-600 hover:underline cursor-pointer"
-                    >
-                      Forgot Password?
-                    </button>
-                  </div>
-                </div>
-              </CardContent>
+                      onBlur={() => validateEmail(email)}
+                      error={emailError}
+                      required
+                      autoComplete="off"
+                    />
 
-              <CardFooter className="p-0 pt-2 flex flex-col gap-3">
-                <Button type="submit" fullWidth loading={loading} size="lg" className="rounded-xl font-bold">
-                  Sign In to Dashboard
-                </Button>
-              </CardFooter>
-            </form>
+                    <div>
+                      <Input
+                        label="Password *"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          if (passwordError) validatePassword(e.target.value);
+                        }}
+                        onBlur={() => validatePassword(password)}
+                        error={passwordError}
+                        required
+                        autoComplete="off"
+                        iconRight={
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="p-1 text-text-muted hover:text-text rounded-md transition-all cursor-pointer"
+                            title={showPassword ? "Hide password" : "Show password"}
+                          >
+                            {showPassword ? (
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                              </svg>
+                            ) : (
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            )}
+                          </button>
+                        }
+                      />
+                      <div className="flex justify-end pt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsForgotPassword(true);
+                            setIsResetSent(false);
+                            setResetEmail("");
+                            setResetEmailError("");
+                          }}
+                          className="text-xs font-semibold text-primary-600 hover:underline cursor-pointer"
+                        >
+                          Forgot Password?
+                        </button>
+                      </div>
+                    </div>
+                  </CardContent>
+
+                  <CardFooter className="p-0 pt-2 flex flex-col gap-3">
+                    <Button type="submit" fullWidth loading={loading} size="lg" className="rounded-xl font-bold">
+                      Sign In to Dashboard
+                    </Button>
+                  </CardFooter>
+                </form>
+              )}
+            </div>
           ) : (
             /* Forgot Password Form */
             <form onSubmit={handleResetPassword} noValidate className="p-5 sm:p-6 space-y-4">

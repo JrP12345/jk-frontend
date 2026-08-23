@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
+import { useClinicStore } from "@/store/clinicStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
   Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, Dropdown
@@ -36,13 +38,14 @@ interface Invoice {
 
 export default function BillingPage() {
   const { user } = useAuthStore();
+  const { clinics, fetchClinics } = useClinicStore();
   const { toast } = useToast();
+  const canManageBilling = hasAnyPermission(user, "MANAGE_BILLING");
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters State
-  const [clinics, setClinics] = useState<any[]>([]);
   const [filterClinic, setFilterClinic] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -218,18 +221,9 @@ export default function BillingPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Load Filters & Clinics
   useEffect(() => {
-    const fetchFilters = async () => {
-      try {
-        const res = await api.get("/onboarding/clinics");
-        setClinics(res.data.data || []);
-      } catch (err) {
-        console.warn("Clinics filter not accessible for user role");
-      }
-    };
-    if (user) fetchFilters();
-  }, [user]);
+    if (user && user.role !== "patient") fetchClinics();
+  }, [user?.id, user?.role, fetchClinics]);
 
   // Load Invoices
   const fetchInvoices = async () => {
@@ -521,6 +515,7 @@ export default function BillingPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {canManageBilling && (
           <Button
             variant="primary"
             size="sm"
@@ -534,6 +529,7 @@ export default function BillingPage() {
           >
             Create Invoice
           </Button>
+          )}
           <Button
             variant="outline"
             size="sm"

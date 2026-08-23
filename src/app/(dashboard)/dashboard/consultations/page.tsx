@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { hasAnyPermission } from "@/lib/permissions";
 import {
   Card,
   CardHeader,
@@ -75,6 +76,7 @@ export interface ClinicalNoteRecord {
 export default function ConsultationsPage() {
   const router = useRouter();
   const { user, activeClinicId } = useAuthStore();
+  const canStartConsultation = hasAnyPermission(user, "MANAGE_CLINICAL_NOTES", "MANAGE_APPOINTMENTS");
   const { toast } = useToast();
 
   const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
@@ -101,16 +103,21 @@ export default function ConsultationsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [apptsRes, patientsRes, staffRes] = await Promise.all([
-        api.get(selectedClinicId ? `/appointments?clinicId=${selectedClinicId}` : "/appointments"),
-        api.get("/patients"),
-        api.get(selectedClinicId ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff"),
-      ]);
+      if (user?.role === "patient") {
+        const apptsRes = await api.get("/appointments");
+        setQueueList(apptsRes.data?.data || apptsRes.data || []);
+      } else {
+        const [apptsRes, patientsRes, staffRes] = await Promise.all([
+          api.get(selectedClinicId ? `/appointments?clinicId=${selectedClinicId}` : "/appointments"),
+          api.get("/patients"),
+          api.get(selectedClinicId ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff"),
+        ]);
 
-      const rawAppts = apptsRes.data?.data || apptsRes.data || [];
-      setQueueList(rawAppts);
-      setPatients(patientsRes.data?.data || []);
-      setDoctors(staffRes.data?.data?.doctors || []);
+        const rawAppts = apptsRes.data?.data || apptsRes.data || [];
+        setQueueList(rawAppts);
+        setPatients(patientsRes.data?.data || []);
+        setDoctors(staffRes.data?.data?.doctors || []);
+      }
     } catch (err: any) {
       toast({
         title: "Failed to Fetch OPD Consultation Data",
@@ -202,6 +209,7 @@ export default function ConsultationsPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {canStartConsultation && (
           <Button
             variant="primary"
             size="sm"
@@ -210,6 +218,7 @@ export default function ConsultationsPage() {
           >
             <span>+ Start Walk-in Consultation</span>
           </Button>
+          )}
 
           <Button
             variant="outline"

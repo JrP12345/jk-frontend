@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
+import { useClinicStore } from "@/store/clinicStore";
+import { hasAnyPermission } from "@/lib/permissions";
 import api from "@/lib/api";
 import {
   Card,
@@ -22,9 +24,21 @@ import { useModuleStore } from "@/store/moduleStore";
 
 export default function DashboardOverview() {
   const { user } = useAuthStore();
+  const { clinics: clinicsList, fetchClinics } = useClinicStore();
   const { isModuleEnabled } = useModuleStore();
   const router = useRouter();
   const { toast } = useToast();
+
+  const canViewOpsDashboard = hasAnyPermission(
+    user,
+    "MANAGE_APPOINTMENTS",
+    "VIEW_APPOINTMENTS",
+    "MANAGE_BILLING",
+    "VIEW_BILLING",
+    "MANAGE_CLINICS",
+    "VIEW_CLINICS",
+  );
+  const canManageOrg = hasAnyPermission(user, "MANAGE_ORGANIZATION");
 
   const [adminStats, setAdminStats] = useState({
     clinics: 0,
@@ -39,7 +53,6 @@ export default function DashboardOverview() {
 
   const [appointments, setAppointments] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
-  const [clinicsList, setClinicsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Update appointment status inline
@@ -65,22 +78,18 @@ export default function DashboardOverview() {
     if (!user) return;
     try {
       setLoading(true);
-      if (user.role === "admin" || user.role === "root" || user.role === "receptionist") {
-        const [clinicsRes, staffRes, apptsRes, invoicesRes] = await Promise.allSettled([
-          api.get("/onboarding/clinics"),
+      if (canViewOpsDashboard) {
+        const [staffRes, apptsRes, invoicesRes] = await Promise.allSettled([
           api.get("/onboarding/staff"),
           api.get("/appointments"),
           api.get("/invoices"),
         ]);
-
-        const clList = clinicsRes.status === "fulfilled" ? clinicsRes.value.data.data || [] : [];
+        const clList = await fetchClinics();
         const staffData = staffRes.status === "fulfilled" ? staffRes.value.data.data || {} : {};
         const docList = staffData.doctors || [];
         const recList = staffData.receptionists || [];
         const apptList = apptsRes.status === "fulfilled" ? apptsRes.value.data.data || [] : [];
         const invList = invoicesRes.status === "fulfilled" ? invoicesRes.value.data.data || [] : [];
-
-        setClinicsList(clList);
 
         const todayStr = new Date().toISOString().split("T")[0];
         const todaysPaid = invList.reduce((acc: number, curr: any) => {
@@ -187,7 +196,7 @@ export default function DashboardOverview() {
           >
             🔄 Refresh
           </Button>
-          {(user.role === "admin" || user.role === "root") && (
+          {hasAnyPermission(user, "MANAGE_APPOINTMENTS") && (
             <Button
               variant="primary"
               size="sm"
@@ -245,7 +254,7 @@ export default function DashboardOverview() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. METRICS CARDS (2-COLUMN GRID ON MOBILE: grid-cols-2 lg:grid-cols-4)
          ────────────────────────────────────────────────────────────────────────── */}
-      {(user.role === "admin" || user.role === "root" || user.role === "receptionist") && (
+      {(canViewOpsDashboard) && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {loading ? (
             <>
@@ -362,7 +371,7 @@ export default function DashboardOverview() {
         <Card className="lg:col-span-2 rounded-2xl border border-border bg-surface">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-sm sm:text-base font-bold">
-              {user.role === "admin" || user.role === "root"
+              {canViewOpsDashboard
                 ? "Live Appointments Queue"
                 : user.role === "doctor"
                 ? "Today's Patient Roster"
@@ -548,7 +557,7 @@ export default function DashboardOverview() {
               )
             ) : (
               <div className="space-y-2">
-                {(user.role === "admin" || user.role === "root") && (
+                {canViewOpsDashboard && (
                   <>
                     {user.role === "root" && (
                       <button
@@ -659,7 +668,7 @@ export default function DashboardOverview() {
       {/* ──────────────────────────────────────────────────────────────────────────
           4. CLINIC LOCATIONS OVERVIEW GRID (FOR ROOT & ADMINS)
          ────────────────────────────────────────────────────────────────────────── */}
-      {(user.role === "admin" || user.role === "root") && clinicsList.length > 0 && (
+      {(canManageOrg) && clinicsList.length > 0 && (
         <div className="space-y-2.5 pt-1">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-text">Active Clinics Overview</h2>

@@ -75,17 +75,27 @@ export default function LaboratoryPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [testsRes, ordersRes, docRes, tatRes] = await Promise.all([
-        api.get(selectedClinicId ? `/lab-tests?clinicId=${selectedClinicId}` : "/lab-tests"),
-        api.get(selectedClinicId ? `/lab-orders?clinicId=${selectedClinicId}` : "/lab-orders"),
-        api.get(selectedClinicId ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff"),
-        api.get(selectedClinicId ? `/lab/tat-metrics?clinicId=${selectedClinicId}` : "/lab/tat-metrics"),
-      ]);
+      const isAll = !selectedClinicId || selectedClinicId === "all";
+      if (user?.role === "patient") {
+        const [testsRes, ordersRes] = await Promise.all([
+          api.get(!isAll ? `/lab-tests?clinicId=${selectedClinicId}` : "/lab-tests"),
+          api.get(!isAll ? `/lab-orders?clinicId=${selectedClinicId}` : "/lab-orders"),
+        ]);
+        setLabTests(testsRes.data?.data || []);
+        setLabOrders(ordersRes.data?.data || []);
+      } else {
+        const [testsRes, ordersRes, docRes, tatRes] = await Promise.all([
+          api.get(!isAll ? `/lab-tests?clinicId=${selectedClinicId}` : "/lab-tests"),
+          api.get(!isAll ? `/lab-orders?clinicId=${selectedClinicId}` : "/lab-orders"),
+          api.get(!isAll ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff"),
+          api.get(!isAll ? `/lab/tat-metrics?clinicId=${selectedClinicId}` : "/lab/tat-metrics"),
+        ]);
 
-      setLabTests(testsRes.data?.data || []);
-      setLabOrders(ordersRes.data?.data || []);
-      setDoctors(docRes.data?.data?.doctors || []);
-      setTatMetrics(tatRes.data?.data || null);
+        setLabTests(testsRes.data?.data || []);
+        setLabOrders(ordersRes.data?.data || []);
+        setDoctors(docRes.data?.data?.doctors || []);
+        setTatMetrics(tatRes.data?.data || null);
+      }
     } catch (err) {
       // Non-critical
     } finally {
@@ -192,11 +202,11 @@ export default function LaboratoryPage() {
     if (user) {
       if (user.role === "patient") {
         setActiveTab("patientVault");
-        setSelectedClinicId("all"); // Patients query across all
+        setSelectedClinicId("all");
       } else {
         setActiveTab("worklist");
+        fetchMetadata();
       }
-      fetchMetadata();
     }
   }, [user]);
 

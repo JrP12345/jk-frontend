@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
+import { useClinicStore } from "@/store/clinicStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, DatePicker, Select, Textarea, useToast, Spinner, Badge, ConfirmDialog, Stepper, Dropdown, WorkspaceClinicFilter
+  Table, Button, Modal, Input, DatePicker, Select, Textarea, useToast, Spinner, Badge, ConfirmDialog, Stepper, Dropdown
 } from "@/components/ui";
 import { PatientQueueTracker } from "@/components/clinical/PatientQueueTracker";
 import { PatientMedicalRecords } from "@/components/ehr/PatientMedicalRecords";
@@ -41,13 +43,14 @@ interface Appointment {
 export default function AppointmentsPage() {
   const router = useRouter();
   const { user, activeClinicId } = useAuthStore();
+  const { clinics, fetchClinics } = useClinicStore();
+  const canManageAppointments = hasAnyPermission(user, "MANAGE_APPOINTMENTS");
   const { toast } = useToast();
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Filter States
-  const [clinics, setClinics] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
   const getTodayISO = () => {
     const d = new Date();
@@ -59,12 +62,18 @@ export default function AppointmentsPage() {
 
   const [filterClinic, setFilterClinic] = useState(activeClinicId || "");
   const [filterDoctor, setFilterDoctor] = useState("");
-  const [filterDate, setFilterDate] = useState(getTodayISO());
+  const [filterDate, setFilterDate] = useState(user?.role === "patient" ? "" : getTodayISO());
   const [filterStatus, setFilterStatus] = useState("");
 
   useEffect(() => {
     setFilterClinic(activeClinicId || "");
   }, [activeClinicId]);
+
+  useEffect(() => {
+    if (user?.role === "patient") {
+      setFilterDate("");
+    }
+  }, [user?.role]);
 
   // Modal States
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
@@ -411,11 +420,10 @@ export default function AppointmentsPage() {
   const fetchClinicsAndDoctors = async () => {
     if (!user || user.role === "patient") return;
     try {
-      const [clinicsRes, staffRes] = await Promise.all([
-        api.get("/onboarding/clinics"),
-        api.get("/onboarding/staff")
+      const [, staffRes] = await Promise.all([
+        fetchClinics(),
+        api.get("/onboarding/staff"),
       ]);
-      setClinics(clinicsRes.data.data || []);
       setDoctors(staffRes.data.data.doctors || []);
     } catch (err) {
       console.error("Failed to load clinics or doctors", err);
@@ -477,11 +485,9 @@ export default function AppointmentsPage() {
     if (isNewPatient) {
       const isNameValid = validateNewPatientField("name", newPatientForm.name);
       const isDobValid = validateNewPatientField("dob", newPatientForm.dob);
-      const isEmailValid = validateNewPatientField("email", newPatientForm.email);
-      const isPasswordValid = validateNewPatientField("password", newPatientForm.password);
-      if (!isNameValid || !isDobValid || !isEmailValid || !isPasswordValid) {
+      if (!isNameValid || !isDobValid) {
         setBookingStep(2);
-        toast({ title: "Validation Error", description: "Please correct highlighted fields before submitting.", variant: "error" });
+        toast({ title: "Validation Error", description: "Please enter patient name and date of birth before submitting.", variant: "error" });
         return;
       }
     }
@@ -658,7 +664,7 @@ export default function AppointmentsPage() {
           </p>
         </div>
 
-        {user.role !== "doctor" && (
+        {canManageAppointments && user.role !== "doctor" && (
           <Button
             variant="primary"
             size="sm"
@@ -671,13 +677,19 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Live Patient Queue Tracker (if active appointment today) */}
-      {user.role === "patient" && appointments.length > 0 && (
-        <PatientQueueTracker
-          appointmentId={appointments[0].id}
-          clinicId={appointments[0].clinicId?.id || (appointments[0].clinicId as any)}
-          doctorId={appointments[0].doctorId?.id || (appointments[0].doctorId as any)}
-        />
-      )}
+      {user.role === "patient" && (() => {
+        const activeAppt = appointments.find((a: any) =>
+          ["pending", "confirmed", "checked-in", "in-consultation"].includes(a.status)
+        );
+        if (!activeAppt) return null;
+        return (
+          <PatientQueueTracker
+            appointmentId={activeAppt.id}
+            clinicId={activeAppt.clinicId?.id || (activeAppt.clinicId as any)}
+            doctorId={activeAppt.doctorId?.id || (activeAppt.doctorId as any)}
+          />
+        );
+      })()}
 
       {/* View Layout Switcher Bar */}
       <div className="flex justify-between items-center bg-surface p-3.5 rounded-2xl border border-border/80 shadow-xs">
@@ -850,7 +862,7 @@ export default function AppointmentsPage() {
             key: "actions",
             header: "Actions",
             align: "right",
-            width: "200px",
+            width: "240px",
             render: (row: Appointment) => (
               <div className="flex items-center justify-end gap-1.5">
                 <Button
@@ -998,21 +1010,10 @@ export default function AppointmentsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <Input 
-                      label="Email Address" 
+                      label="Email Address (Optional)" 
                       type="email"
                       value={newPatientForm.email} 
                       onChange={(e) => handleNewPatientChange("email", e.target.value)} 
-                      onBlur={() => validateNewPatientField("email", newPatientForm.email)}
-                      error={bookingErrors.email}
-                    />
-                    <Input
-                      label="Patient Portal Password *"
-                      type="password"
-                      value={newPatientForm.password}
-                      onChange={(e) => handleNewPatientChange("password", e.target.value)}
-                      onBlur={() => validateNewPatientField("password", newPatientForm.password)}
-                      error={bookingErrors.password}
-                      required
                     />
                     <Input 
                       label="Full Address" 
