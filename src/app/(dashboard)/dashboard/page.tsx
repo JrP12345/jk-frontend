@@ -58,15 +58,18 @@ export default function DashboardOverview() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const canViewOpsDashboard = hasAnyPermission(
-    user,
-    "MANAGE_APPOINTMENTS",
-    "VIEW_APPOINTMENTS",
-    "MANAGE_BILLING",
-    "VIEW_BILLING",
-    "MANAGE_CLINICS",
-    "VIEW_CLINICS"
-  );
+  const canViewOpsDashboard =
+    user?.role !== "patient" &&
+    user?.role !== "doctor" &&
+    hasAnyPermission(
+      user,
+      "MANAGE_APPOINTMENTS",
+      "VIEW_APPOINTMENTS",
+      "MANAGE_BILLING",
+      "VIEW_BILLING",
+      "MANAGE_CLINICS",
+      "VIEW_CLINICS"
+    );
   const canManageOrg = hasAnyPermission(user, "MANAGE_ORGANIZATION");
 
   const [adminStats, setAdminStats] = useState({

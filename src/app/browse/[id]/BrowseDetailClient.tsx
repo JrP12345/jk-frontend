@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
@@ -53,10 +53,145 @@ interface ClinicDetail {
   doctors: Doctor[];
 }
 
+// ─── Helper: Format 24-hour time to 12-hour AM/PM ─────────────────
+function format12Hour(time24: string): string {
+  if (!time24) return "";
+  const [hStr, mStr] = time24.split(":");
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr || "0", 10);
+  if (isNaN(h)) return time24;
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
+}
+
+// ─── Helper: Parse Doctor Working Schedule for any day ─────────────
+interface ParsedDoctorDay {
+  isWorkingDay: boolean;
+  intervals: { start: string; end: string }[];
+  workingHoursLabel: string;
+  startFormatted: string;
+  endFormatted: string;
+}
+
+function parseDoctorWorkingSchedule(timingsStr: string | null | undefined, dayName: string): ParsedDoctorDay {
+  const defaultSchedule: ParsedDoctorDay = {
+    isWorkingDay: dayName.toLowerCase() !== "sunday",
+    intervals: [{ start: "09:00", end: "17:00" }],
+    workingHoursLabel: "09:00 AM – 05:00 PM",
+    startFormatted: "09:00 AM",
+    endFormatted: "05:00 PM",
+  };
+
+  if (!timingsStr) return defaultSchedule;
+
+  try {
+    let parsed: any = timingsStr;
+    const trimmed = typeof timingsStr === "string" ? timingsStr.trim() : "";
+
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      parsed = JSON.parse(trimmed);
+    } else if (typeof timingsStr === "string") {
+      const parts = trimmed.split(/[-–—to]/i).map((s) => s.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        const start = parts[0];
+        const end = parts[1];
+        return {
+          isWorkingDay: dayName.toLowerCase() !== "sunday",
+          intervals: [{ start, end }],
+          workingHoursLabel: `${format12Hour(start)} – ${format12Hour(end)}`,
+          startFormatted: format12Hour(start),
+          endFormatted: format12Hour(end),
+        };
+      }
+      return defaultSchedule;
+    }
+
+    if (Array.isArray(parsed)) {
+      if (parsed.length === 0) return defaultSchedule;
+      const intervals = parsed.map((item: any) => ({
+        start: item.start || "09:00",
+        end: item.end || "17:00",
+      }));
+      return {
+        isWorkingDay: dayName.toLowerCase() !== "sunday",
+        intervals,
+        workingHoursLabel: intervals.map((i) => `${format12Hour(i.start)} – ${format12Hour(i.end)}`).join(", "),
+        startFormatted: format12Hour(intervals[0].start),
+        endFormatted: format12Hour(intervals[intervals.length - 1].end),
+      };
+    }
+
+    if (typeof parsed === "object" && parsed !== null) {
+      const lowerKey = Object.keys(parsed).find((k) => k.toLowerCase() === dayName.toLowerCase());
+      const dayData = lowerKey ? parsed[lowerKey] : (parsed.all || parsed.daily || null);
+
+      if (!dayData) {
+        return {
+          isWorkingDay: false,
+          intervals: [],
+          workingHoursLabel: "Closed / Off",
+          startFormatted: "09:00 AM",
+          endFormatted: "05:00 PM",
+        };
+      }
+
+      if (Array.isArray(dayData)) {
+        if (dayData.length === 0) {
+          return {
+            isWorkingDay: false,
+            intervals: [],
+            workingHoursLabel: "Closed / Off",
+            startFormatted: "09:00 AM",
+            endFormatted: "05:00 PM",
+          };
+        }
+        const intervals = dayData.map((item: any) => ({
+          start: item.start || "09:00",
+          end: item.end || "17:00",
+        }));
+        return {
+          isWorkingDay: true,
+          intervals,
+          workingHoursLabel: intervals.map((i) => `${format12Hour(i.start)} – ${format12Hour(i.end)}`).join(", "),
+          startFormatted: format12Hour(intervals[0].start),
+          endFormatted: format12Hour(intervals[intervals.length - 1].end),
+        };
+      }
+
+      if (typeof dayData === "object" && dayData.start && dayData.end) {
+        return {
+          isWorkingDay: true,
+          intervals: [{ start: dayData.start, end: dayData.end }],
+          workingHoursLabel: `${format12Hour(dayData.start)} – ${format12Hour(dayData.end)}`,
+          startFormatted: format12Hour(dayData.start),
+          endFormatted: format12Hour(dayData.end),
+        };
+      }
+    }
+
+    return defaultSchedule;
+  } catch {
+    return defaultSchedule;
+  }
+}
+
 export default function BrowseDetailClient({ id }: { id: string }) {
   const renderTimings = (timingsStr: string | null | undefined, compact = false) => {
-    if (!timingsStr) return <span className="text-xs text-text-secondary">Mon–Fri: 9:00 AM – 6:00 PM</span>;
+    if (!timingsStr) return <span className="text-xs text-text-secondary">Mon–Sat: 9:00 AM – 5:00 PM</span>;
     try {
+      const trimmed = timingsStr.trim();
+      if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+        return (
+          <div className="flex justify-between items-center text-xs bg-surface-alt p-2.5 rounded-xl border border-border/50">
+            <span className="font-semibold text-text-secondary">Mon – Sat</span>
+            <span className="text-primary-600 dark:text-primary-400 bg-surface py-0.5 px-2.5 rounded-lg text-[11px] font-bold border border-border/40">
+              {timingsStr}
+            </span>
+          </div>
+        );
+      }
+
       const data = JSON.parse(timingsStr);
       const days = Object.keys(data);
       if (days.length === 0) return <span className="text-xs text-text-secondary">{timingsStr}</span>;
@@ -65,7 +200,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
       for (const day of days) {
         const slots = data[day];
         if (!slots || slots.length === 0) continue;
-        const slotsStr = slots.map((s: any) => `${s.start} - ${s.end}`).join(", ");
+        const slotsStr = slots.map((s: any) => `${format12Hour(s.start)} - ${format12Hour(s.end)}`).join(", ");
         if (!grouped[slotsStr]) grouped[slotsStr] = [];
         grouped[slotsStr].push(day.substring(0, 3));
       }
@@ -125,9 +260,9 @@ export default function BrowseDetailClient({ id }: { id: string }) {
   const [bookingNotes, setBookingNotes] = useState("");
   const [followUpForAppointmentId, setFollowUpForAppointmentId] = useState<string | null>(null);
 
-  // Guest Registration State
+  // Guest Registration State (No OTP required!)
   const [isGuest, setIsGuest] = useState(false);
-  const [guestForm, setGuestForm] = useState({ name: "", phone: "", otpCode: "", email: "" });
+  const [guestForm, setGuestForm] = useState({ name: "", phone: "", email: "" });
 
   // Visual Slots Picker State
   const [selectedDate, setSelectedDate] = useState("");
@@ -140,54 +275,16 @@ export default function BrowseDetailClient({ id }: { id: string }) {
   // Slot & Booking Mode Info
   const [doctorSlotInfo, setDoctorSlotInfo] = useState<any | null>(null);
   const [fetchingDoctorSlots, setFetchingDoctorSlots] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [sendingOtp, setSendingOtp] = useState(false);
   const [paymentMode, setPaymentMode] = useState<"pay_at_clinic" | "online">("pay_at_clinic");
 
   const resetBookingForm = () => {
     setBookingNotes("");
-    setGuestForm({ name: "", phone: "", otpCode: "", email: "" });
+    setGuestForm({ name: "", phone: "", email: "" });
     setSelectedDate("");
     setSelectedTime("");
     setFollowUpForAppointmentId(null);
     setDoctorSlotInfo(null);
-    setOtpSent(false);
-    setSendingOtp(false);
     setPaymentMode("pay_at_clinic");
-  };
-
-  const handleSendOtp = async () => {
-    if (!guestForm.phone || guestForm.phone.replace(/\D/g, "").length < 10) {
-      toast({ title: "Validation Error", description: "Please enter a valid 10-digit mobile phone number.", variant: "error" });
-      return;
-    }
-    setSendingOtp(true);
-    try {
-      const res = await api.post("/auth/otp/request", {
-        phone: guestForm.phone,
-        purpose: "authentication",
-      });
-      setOtpSent(true);
-      const testCode = res.data?.testOtpCode;
-      toast({
-        title: "OTP Sent",
-        description: testCode 
-          ? `Verification code sent! (Dev OTP: ${testCode})` 
-          : `Verification code sent to ${guestForm.phone}`,
-        variant: "success",
-      });
-      if (testCode) {
-        setGuestForm((prev) => ({ ...prev, otpCode: testCode }));
-      }
-    } catch (err: any) {
-      toast({
-        title: "Failed to Send OTP",
-        description: err.response?.data?.message || "Could not send verification code.",
-        variant: "error",
-      });
-    } finally {
-      setSendingOtp(false);
-    }
   };
 
   useEffect(() => {
@@ -226,9 +323,62 @@ export default function BrowseDetailClient({ id }: { id: string }) {
     }
   }, [clinic, searchParams, isAuthenticated, user]);
 
-  const fetchQueueForDate = async (dateStr: string, doc: Doctor) => {
+  // Generate next 7 upcoming days
+  const upcomingDays = useMemo(() => {
+    const timingsStr = selectedDoctor?.workingHours || selectedDoctor?.timings;
+    const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const list = [];
+    const current = new Date();
+
+    for (let i = 0; i <= 14; i++) {
+      const testDate = new Date();
+      testDate.setDate(current.getDate() + i);
+      const dayIndex = testDate.getDay();
+      const dayName = daysOfWeek[dayIndex];
+
+      const schedule = parseDoctorWorkingSchedule(timingsStr, dayName);
+      const isToday = i === 0;
+      const isTomorrow = i === 1;
+
+      // If today, check if shift end time has already passed
+      if (isToday && schedule.intervals.length > 0) {
+        const currentMinutes = current.getHours() * 60 + current.getMinutes();
+        const lastInterval = schedule.intervals[schedule.intervals.length - 1];
+        const [endH, endM] = lastInterval.end.split(":").map(Number);
+        const endMinutes = (endH || 0) * 60 + (endM || 0);
+
+        if (currentMinutes >= endMinutes) {
+          // Today's shift is over, skip today from list
+          continue;
+        }
+      }
+
+      if (schedule.isWorkingDay) {
+        const dateString = testDate.toISOString().split("T")[0];
+        const dayShort = testDate.toLocaleDateString("en-US", { weekday: "short" });
+        const dateNum = testDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+        list.push({
+          dateString,
+          label: isToday ? "Today" : isTomorrow ? "Tomorrow" : `${dayShort}, ${dateNum}`,
+          dayShort,
+          dateNum,
+          dayName,
+          isToday,
+          isTomorrow,
+          schedule,
+        });
+
+        if (list.length >= 6) break;
+      }
+    }
+
+    return list;
+  }, [selectedDoctor]);
+
+  const loadSlotsForDate = async (dateStr: string, doc: Doctor) => {
     setSelectedDate(dateStr);
-    setSelectedTime("09:00");
+    setSelectedTime("");
     try {
       setFetchingDoctorSlots(true);
       const res = await api.get(`/public/doctors/${doc.id}/slots?clinicId=${id}&date=${dateStr}`);
@@ -249,11 +399,31 @@ export default function BrowseDetailClient({ id }: { id: string }) {
     setIsGuest(!isAuthenticated || user?.role !== "patient");
     resetBookingForm();
 
-    const validDays = generateUpcomingDays(doc.workingHours || doc.timings);
-    const initialDate = validDays.length > 0 ? validDays[0].dateString : new Date().toISOString().split("T")[0];
+    const timingsStr = doc.workingHours || doc.timings;
+    const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const now = new Date();
+    let initialDate = now.toISOString().split("T")[0];
+
+    // Find the first valid upcoming day
+    for (let i = 0; i <= 14; i++) {
+      const testDate = new Date();
+      testDate.setDate(now.getDate() + i);
+      const dayName = daysOfWeek[testDate.getDay()];
+      const schedule = parseDoctorWorkingSchedule(timingsStr, dayName);
+      if (schedule.isWorkingDay) {
+        if (i === 0 && schedule.intervals.length > 0) {
+          const currentMinutes = now.getHours() * 60 + now.getMinutes();
+          const [endH, endM] = schedule.intervals[schedule.intervals.length - 1].end.split(":").map(Number);
+          if (currentMinutes >= (endH * 60 + (endM || 0))) {
+            continue;
+          }
+        }
+        initialDate = testDate.toISOString().split("T")[0];
+        break;
+      }
+    }
 
     setSelectedDate(initialDate);
-    setSelectedTime("09:00");
 
     if (doc.bookingMode === "sequential_queue") {
       setDoctorSlotInfo({ bookingMode: "sequential_queue", nextToken: 1, tokensToday: 0, maxDailyTokens: doc.maxDailyTokens });
@@ -273,10 +443,107 @@ export default function BrowseDetailClient({ id }: { id: string }) {
     }
   };
 
+interface SlotItem {
+  time: string;
+  available: boolean;
+  isLocked?: boolean;
+}
+
+  // Generate slots locally or from API response
+  const activeSlotsList = useMemo<SlotItem[]>(() => {
+    if (!selectedDoctor || !selectedDate) return [];
+
+    // If API returned structured slots, use them
+    if (doctorSlotInfo?.slots && Array.isArray(doctorSlotInfo.slots) && doctorSlotInfo.slots.length > 0) {
+      const now = new Date();
+      const isToday = selectedDate === now.toISOString().split("T")[0];
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      return doctorSlotInfo.slots
+        .filter((s: any) => {
+          if (!isToday) return true;
+          const [h, m] = s.time.split(":").map(Number);
+          return h * 60 + (m || 0) > currentMinutes;
+        })
+        .map((s: any) => ({
+          time: s.time,
+          available: s.available ?? true,
+          isLocked: s.isLocked,
+        }));
+    }
+
+    // Local generation fallback
+    const targetDate = new Date(selectedDate);
+    const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const dayName = daysOfWeek[targetDate.getDay()];
+    const schedule = parseDoctorWorkingSchedule(selectedDoctor.workingHours || selectedDoctor.timings, dayName);
+
+    if (!schedule.isWorkingDay || schedule.intervals.length === 0) return [];
+
+    const now = new Date();
+    const isToday = selectedDate === now.toISOString().split("T")[0];
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const duration = doctorSlotInfo?.appointmentDuration || 15;
+
+    const slots: SlotItem[] = [];
+
+    for (const interval of schedule.intervals) {
+      const [startH, startM] = interval.start.split(":").map(Number);
+      const [endH, endM] = interval.end.split(":").map(Number);
+
+      let currMinutes = (startH || 0) * 60 + (startM || 0);
+      const endMinutesTotal = (endH || 0) * 60 + (endM || 0);
+
+      while (currMinutes + duration <= endMinutesTotal) {
+        if (!isToday || currMinutes > currentMinutes) {
+          const h = Math.floor(currMinutes / 60);
+          const m = currMinutes % 60;
+          const timeStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+          slots.push({ time: timeStr, available: true });
+        }
+        currMinutes += duration;
+      }
+    }
+
+    return slots;
+  }, [selectedDoctor, selectedDate, doctorSlotInfo]);
+
+  // Categorize slots into Morning, Afternoon, Evening
+  const categorizedSlots = useMemo<{ morning: SlotItem[]; afternoon: SlotItem[]; evening: SlotItem[] }>(() => {
+    const morning: SlotItem[] = [];
+    const afternoon: SlotItem[] = [];
+    const evening: SlotItem[] = [];
+
+    for (const slot of activeSlotsList) {
+      const [h] = slot.time.split(":").map(Number);
+      if (h < 12) {
+        morning.push(slot);
+      } else if (h < 16) {
+        afternoon.push(slot);
+      } else {
+        evening.push(slot);
+      }
+    }
+
+    return { morning, afternoon, evening };
+  }, [activeSlotsList]);
+
+  // Information about the doctor's working schedule on the selected date
+  const selectedDaySchedule = useMemo(() => {
+    if (!selectedDate || !selectedDoctor) return null;
+    const targetDate = new Date(selectedDate);
+    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const dayName = daysOfWeek[targetDate.getDay()];
+    return {
+      dayName,
+      ...parseDoctorWorkingSchedule(selectedDoctor.workingHours || selectedDoctor.timings, dayName),
+    };
+  }, [selectedDate, selectedDoctor]);
+
   const handleBookAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDate || (!selectedTime && doctorSlotInfo?.bookingMode !== "sequential_queue")) {
-      toast({ title: "Validation Error", description: "Please select a date and slot.", variant: "error" });
+      toast({ title: "Validation Error", description: "Please select a consultation date and time slot.", variant: "error" });
       return;
     }
 
@@ -285,34 +552,28 @@ export default function BrowseDetailClient({ id }: { id: string }) {
     const mergedBookingTime = `${selectedDate}T${timeToUse}`;
 
     try {
+      // Seamless guest authentication without OTP
       if (isGuest) {
         if (!guestForm.name || !guestForm.phone) {
-          toast({ title: "Validation Error", description: "Patient name and mobile phone number are required.", variant: "error" });
+          toast({ title: "Validation Error", description: "Patient name and 10-digit mobile phone number are required.", variant: "error" });
           setBookingLoading(false);
           return;
         }
 
-        if (!otpSent && !guestForm.otpCode) {
-          await handleSendOtp();
+        const phoneDigits = guestForm.phone.replace(/\D/g, "");
+        if (phoneDigits.length < 10) {
+          toast({ title: "Validation Error", description: "Please enter a valid 10-digit mobile number.", variant: "error" });
           setBookingLoading(false);
           return;
         }
 
-        if (!guestForm.otpCode || guestForm.otpCode.length < 4) {
-          toast({ title: "Validation Error", description: "Please enter the 6-digit OTP code sent to your phone.", variant: "error" });
-          setBookingLoading(false);
-          return;
-        }
-
-        const regRes = await api.post("/auth/otp/verify", {
+        const regRes = await api.post("/auth/guest-login", {
           phone: guestForm.phone,
-          otp: guestForm.otpCode,
           name: guestForm.name,
-          purpose: "authentication",
+          email: guestForm.email || undefined,
         });
 
         login(regRes.data.data.user);
-        toast({ title: "Authenticated", description: `Logged in as ${regRes.data.data.user.name}`, variant: "success" });
       }
 
       const res = await api.post("/appointments", {
@@ -351,8 +612,11 @@ export default function BrowseDetailClient({ id }: { id: string }) {
         patientName: isGuest ? guestForm.name : user?.name || "Patient",
         appointmentTime: mergedBookingTime,
         selectedDate,
+        selectedTime: timeToUse,
         doctorName: selectedDoctor?.name,
+        specialization: selectedDoctor?.specialization,
         clinicName: clinic?.name,
+        clinicAddress: clinic?.address,
         fees: selectedDoctor?.fees,
         paymentMode,
       });
@@ -372,133 +636,6 @@ export default function BrowseDetailClient({ id }: { id: string }) {
     }
   };
 
-  // Generate next 5 working days starting from TODAY (i = 0)
-  const generateUpcomingDays = (timingsStr: string | null | undefined) => {
-    if (!timingsStr) return [];
-    try {
-      let schedule: any = {};
-      const str = timingsStr.trim();
-      if (str.startsWith("{")) {
-        schedule = JSON.parse(str);
-      } else {
-        // Fallback default shift 09:00 to 17:00 for standard working days
-        schedule = {
-          monday: [{ start: "09:00", end: "17:00" }],
-          tuesday: [{ start: "09:00", end: "17:00" }],
-          wednesday: [{ start: "09:00", end: "17:00" }],
-          thursday: [{ start: "09:00", end: "17:00" }],
-          friday: [{ start: "09:00", end: "17:00" }],
-          saturday: [{ start: "09:00", end: "17:00" }],
-        };
-      }
-
-      const activeDays = Object.keys(schedule).map((d) => d.toLowerCase());
-      if (activeDays.length === 0) return [];
-
-      const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-      const list = [];
-      const current = new Date();
-      const currentMinutes = current.getHours() * 60 + current.getMinutes();
-
-      for (let i = 0; i <= 30; i++) {
-        const testDate = new Date();
-        testDate.setDate(current.getDate() + i);
-        const dayName = daysOfWeek[testDate.getDay()];
-        if (activeDays.includes(dayName)) {
-          const isToday = i === 0;
-
-          // If evaluating today, check if current time is past today's operating shift end time
-          if (isToday) {
-            const key = Object.keys(schedule).find((k) => k.toLowerCase() === dayName);
-            if (key) {
-              const intervals = schedule[key];
-              if (Array.isArray(intervals) && intervals.length > 0) {
-                let maxEndMinutes = 0;
-                intervals.forEach((inv: any) => {
-                  if (inv.end) {
-                    const [endH, endM] = inv.end.split(":").map(Number);
-                    const endMins = (endH || 0) * 60 + (endM || 0);
-                    if (endMins > maxEndMinutes) maxEndMinutes = endMins;
-                  }
-                });
-                // If today's operating shift ended (e.g. 22:00 >= 17:00), skip Today!
-                if (maxEndMinutes > 0 && currentMinutes >= maxEndMinutes) {
-                  continue;
-                }
-              }
-            }
-          }
-
-          const label = isToday
-            ? "Today"
-            : testDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-
-          list.push({
-            dateString: testDate.toISOString().split("T")[0],
-            label,
-            dayName,
-            isToday,
-          });
-          if (list.length >= 5) break;
-        }
-      }
-      return list;
-    } catch {
-      return [];
-    }
-  };
-
-  // Generate time slots filtering out past times for today
-  const generateTimeSlots = (timingsStr: string | null | undefined, dayName: string, selectedDateStr?: string) => {
-    if (!timingsStr || !dayName) return [];
-    try {
-      let schedule: any = {};
-      const str = timingsStr.trim();
-      if (str.startsWith("{")) {
-        schedule = JSON.parse(str);
-      } else {
-        schedule = {
-          monday: [{ start: "09:00", end: "17:00" }],
-          tuesday: [{ start: "09:00", end: "17:00" }],
-          wednesday: [{ start: "09:00", end: "17:00" }],
-          thursday: [{ start: "09:00", end: "17:00" }],
-          friday: [{ start: "09:00", end: "17:00" }],
-          saturday: [{ start: "09:00", end: "17:00" }],
-        };
-      }
-
-      const key = Object.keys(schedule).find((k) => k.toLowerCase() === dayName.toLowerCase());
-      if (!key) return [];
-      const intervals = schedule[key];
-
-      const now = new Date();
-      const isToday = selectedDateStr === now.toISOString().split("T")[0];
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-      const slots: string[] = [];
-      intervals.forEach((interval: { start: string; end: string }) => {
-        const [startH, startM] = interval.start.split(":").map(Number);
-        const [endH, endM] = interval.end.split(":").map(Number);
-
-        let currMinutes = startH * 60 + startM;
-        const endMinutes = endH * 60 + endM;
-
-        while (currMinutes + 30 <= endMinutes) {
-          if (!isToday || currMinutes > currentMinutes) {
-            const h = Math.floor(currMinutes / 60);
-            const m = currMinutes % 60;
-            const timeStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-            slots.push(timeStr);
-          }
-          currMinutes += 30;
-        }
-      });
-      return slots;
-    } catch {
-      return [];
-    }
-  };
-
   const handlePrintSlip = () => {
     if (!createdTicket) return;
     const printWindow = window.open("", "_blank");
@@ -506,24 +643,55 @@ export default function BrowseDetailClient({ id }: { id: string }) {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Appointment Slip - #${createdTicket.tokenNumber}</title>
+          <title>Appointment Token Slip - #${createdTicket.tokenNumber}</title>
           <style>
-            body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f3f4f6; padding: 20px; }
-            .ticket { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 32px; width: 380px; text-align: left; }
-            .header { text-align: center; border-bottom: 2px dashed #e5e7eb; padding-bottom: 20px; margin-bottom: 20px; }
-            .token-num { font-size: 48px; font-weight: 800; color: #2563eb; margin: 4px 0; text-align: center; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f8fafc; padding: 24px; color: #0f172a; }
+            .ticket { background: white; border: 2px dashed #cbd5e1; border-radius: 20px; padding: 32px; width: 400px; text-align: left; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
+            .header { text-align: center; border-bottom: 2px dashed #e2e8f0; padding-bottom: 20px; margin-bottom: 20px; }
+            .clinic-title { font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; }
+            .clinic-sub { font-size: 12px; color: #64748b; margin: 0; }
+            .token-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 16px; text-align: center; margin-bottom: 20px; }
+            .token-label { font-size: 11px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 1px; }
+            .token-num { font-size: 44px; font-weight: 900; color: #1d4ed8; margin: 2px 0; line-height: 1; }
+            .details-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; }
+            .label { color: #64748b; font-weight: 500; }
+            .value { color: #0f172a; font-weight: 700; text-align: right; }
+            .footer { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 24px; padding-top: 16px; border-top: 1px solid #f1f5f9; }
           </style>
         </head>
         <body>
           <div class="ticket">
             <div class="header">
-              <h1>${clinic?.name}</h1>
-              <p>${clinic?.address}</p>
+              <h1 class="clinic-title">${clinic?.name}</h1>
+              <p class="clinic-sub">${clinic?.address || clinic?.city}</p>
             </div>
-            <div class="token-num">#${createdTicket.tokenNumber}</div>
-            <p><strong>Patient:</strong> ${createdTicket.patientName}</p>
-            <p><strong>Doctor:</strong> Dr. ${selectedDoctor?.name}</p>
-            <p><strong>Time:</strong> ${new Date(createdTicket.appointmentTime).toLocaleString()}</p>
+            <div class="token-box">
+              <div class="token-label">OPD Queue Token</div>
+              <div class="token-num">#${createdTicket.tokenNumber}</div>
+            </div>
+            <div class="details-row">
+              <span class="label">Patient Name:</span>
+              <span class="value">${createdTicket.patientName}</span>
+            </div>
+            <div class="details-row">
+              <span class="label">Consulting Doctor:</span>
+              <span class="value">Dr. ${createdTicket.doctorName} (${createdTicket.specialization || "Specialist"})</span>
+            </div>
+            <div class="details-row">
+              <span class="label">Appointment Date:</span>
+              <span class="value">${createdTicket.selectedDate}</span>
+            </div>
+            <div class="details-row">
+              <span class="label">Time Slot:</span>
+              <span class="value">${format12Hour(createdTicket.selectedTime)}</span>
+            </div>
+            <div class="details-row">
+              <span class="label">Consultation Fee:</span>
+              <span class="value">₹${createdTicket.fees || 0} (${createdTicket.paymentMode === "online" ? "Online Paid" : "Pay at Reception"})</span>
+            </div>
+            <div class="footer">
+              Please arrive 10 minutes prior to your scheduled time. Present this token at the reception desk.
+            </div>
           </div>
           <script>window.onload = () => { window.print(); window.close(); };</script>
         </body>
@@ -542,8 +710,6 @@ export default function BrowseDetailClient({ id }: { id: string }) {
 
   if (!clinic) return null;
 
-  const upcomingDays = generateUpcomingDays(selectedDoctor?.workingHours || selectedDoctor?.timings);
-
   return (
     <div className="min-h-screen bg-surface-alt pt-16 pb-20 font-sans text-text">
       <MarketplaceNavbar />
@@ -560,9 +726,9 @@ export default function BrowseDetailClient({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* Inset Rounded Clinic Header Banner */}
+      {/* Clinic Header Banner */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
-        <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-xs">
           <div className="h-56 sm:h-72 w-full relative bg-surface-alt overflow-hidden">
             {clinic.image_url ? (
               <img src={clinic.image_url} alt={clinic.name} className="w-full h-full object-cover" />
@@ -572,7 +738,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                   <span className="text-3xl">🏥</span>
                 </div>
                 <span className="text-base font-bold text-text">{clinic.name}</span>
-                <span className="text-xs text-text-muted mt-0.5">Accredited Healthcare Pavilion</span>
+                <span className="text-xs text-text-muted mt-0.5">Accredited Healthcare Facility</span>
               </div>
             )}
             <div className="absolute top-4 left-4">
@@ -587,7 +753,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl sm:text-3xl font-black text-text tracking-tight">{clinic.name}</h1>
-                <span className="text-primary-600 text-sm" title="Verified Facility">✓</span>
+                <span className="text-primary-600 text-sm font-bold" title="Verified Facility">✓</span>
               </div>
               <div className="flex flex-wrap items-center gap-4 text-xs text-text-secondary">
                 <div className="flex items-center gap-1.5">
@@ -634,14 +800,14 @@ export default function BrowseDetailClient({ id }: { id: string }) {
               </p>
 
               <div>
-                <h4 className="text-xs font-bold text-text mb-2 uppercase tracking-wider">Operating Hours</h4>
+                <h4 className="text-xs font-bold text-text mb-2 uppercase tracking-wider">Clinic Operating Hours</h4>
                 {renderTimings(clinic.timings)}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Right Column: Specialists Practitioner Cards (Zocdoc / Practo Style) */}
+        {/* Right Column: Specialists Practitioner Cards */}
         <div className="lg:col-span-2 space-y-5">
           <h2 className="text-xl font-bold text-text flex items-center gap-2">
             Available Specialists
@@ -709,124 +875,131 @@ export default function BrowseDetailClient({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* Booking Modal */}
+      {/* Refined Booking Modal */}
       <Modal
         open={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}
         title={`Book Consultation — Dr. ${selectedDoctor?.name}`}
-        size="md"
+        size="lg"
       >
-        <form onSubmit={handleBookAppointment} className="space-y-4 pt-1">
-          <div className="p-3.5 bg-surface-alt rounded-xl border border-border flex items-center justify-between">
-            <div>
-              <p className="font-bold text-text text-sm">{selectedDoctor?.specialization}</p>
-              <p className="text-xs text-text-secondary mt-0.5">
-                Fee: <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{selectedDoctor?.fees}</span>
-              </p>
+        <form onSubmit={handleBookAppointment} className="space-y-5 pt-1">
+          {/* Doctor Info Card */}
+          <div className="p-4 bg-gradient-to-r from-primary-600/10 via-primary-500/5 to-surface rounded-2xl border border-primary-500/20 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary-600/15 border border-primary-500/30 flex items-center justify-center font-black text-primary-600 text-lg shrink-0">
+                {selectedDoctor?.image_url ? (
+                  <img src={selectedDoctor.image_url} alt={selectedDoctor.name} className="w-full h-full object-cover rounded-xl" />
+                ) : (
+                  "Dr"
+                )}
+              </div>
+              <div>
+                <p className="font-bold text-text text-sm">Dr. {selectedDoctor?.name}</p>
+                <p className="text-xs text-primary-600 dark:text-primary-400 font-semibold">{selectedDoctor?.specialization}</p>
+                <p className="text-[11px] text-text-muted">{clinic.name} • {clinic.city}</p>
+              </div>
             </div>
-            <Badge variant="success" className="text-[10px] font-bold">
-              Available
-            </Badge>
+            <div className="text-right shrink-0">
+              <span className="text-[10px] uppercase font-bold text-text-muted block">Fee</span>
+              <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                ₹{selectedDoctor?.fees || 0}
+              </span>
+            </div>
           </div>
 
-          {isGuest && (
-            <div className="space-y-3 border-l-2 border-primary-500 pl-4 py-1">
-              <p className="text-xs font-bold text-primary-600 uppercase tracking-wider">Patient Guest Booking Details:</p>
-              <Input label="Full Name *" placeholder="e.g. Ramesh Lad" value={guestForm.name} onChange={(e) => setGuestForm({ ...guestForm, name: e.target.value })} required />
-              
-              <div className="space-y-2">
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <Input label="Mobile Phone Number *" type="tel" placeholder="9904542245" value={guestForm.phone} onChange={(e) => setGuestForm({ ...guestForm, phone: e.target.value })} required />
+          {/* Doctor Working Hours & Shift Start Time Banner for Selected Date */}
+          {selectedDaySchedule && (
+            <div className="bg-surface-alt rounded-2xl p-4 border border-border/80 space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-primary-600/10 text-primary-600 flex items-center justify-center font-bold text-sm shrink-0">
+                    🕒
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    loading={sendingOtp}
-                    onClick={handleSendOtp}
-                    disabled={!guestForm.phone || guestForm.phone.replace(/\D/g, "").length < 10}
-                    className="shrink-0 mb-0.5"
-                  >
-                    {otpSent ? "Resend OTP" : "Send OTP 📲"}
-                  </Button>
+                  <div>
+                    <span className="text-xs font-bold text-text block">
+                      Doctor's Shift ({selectedDaySchedule.dayName})
+                    </span>
+                    <span className="text-xs font-bold text-primary-600 dark:text-primary-400">
+                      {selectedDaySchedule.isWorkingDay ? selectedDaySchedule.workingHoursLabel : "Not Available on this day"}
+                    </span>
+                  </div>
                 </div>
 
-                {otpSent && (
-                  <div className="pt-2 space-y-1">
-                    <Input
-                      label="6-Digit OTP Code *"
-                      type="text"
-                      maxLength={6}
-                      placeholder="Enter 6-digit OTP"
-                      value={guestForm.otpCode}
-                      onChange={(e) => setGuestForm({ ...guestForm, otpCode: e.target.value })}
-                      required
-                    />
-                    <p className="text-[11px] text-text-muted">Enter the 6-digit SMS verification code sent to your mobile phone.</p>
+                {selectedDaySchedule.isWorkingDay && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="primary" className="text-[11px] font-bold py-1 px-2.5">
+                      Starts at {selectedDaySchedule.startFormatted}
+                    </Badge>
+                    <span className="text-[11px] text-text-muted font-medium">⏱️ 15 min slots</span>
                   </div>
                 )}
               </div>
-
-              <Input label="Email (Optional)" type="email" placeholder="patient@example.com" value={guestForm.email} onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })} />
             </div>
           )}
 
-          {!isGuest && (
-            <div className="bg-primary-500/10 border border-primary-500/20 p-3 rounded-xl flex items-center justify-between">
-              <p className="text-xs text-text-secondary">
-                Patient Account: <strong className="text-text">{user?.name}</strong> {(user as any)?.phone ? `(${(user as any).phone})` : user?.email ? `(${user.email})` : ""}
-              </p>
-              <Badge variant="success" className="text-[10px] font-bold">Logged In</Badge>
-            </div>
-          )}
+          {/* Step 1: Date Selection */}
+          <div className="space-y-2.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-text flex items-center justify-between">
+              <span>1. Select Consultation Date *</span>
+              {selectedDate && (
+                <span className="text-primary-600 font-semibold lowercase tracking-normal">
+                  {upcomingDays.find((d) => d.dateString === selectedDate)?.label || selectedDate}
+                </span>
+              )}
+            </label>
 
-          {/* Date Selector for Queue OR Time Slot Schedule */}
-          <div className="space-y-2 pt-1">
-            <label className="text-xs font-bold uppercase tracking-wider text-text block">Select Consultation Date *</label>
             {upcomingDays.length === 0 ? (
-              <p className="text-xs text-danger-500">No active schedules configured for this clinic location.</p>
+              <p className="text-xs text-danger-500 p-3 bg-danger-500/10 rounded-xl border border-danger-500/20">
+                No active schedules configured for this doctor currently.
+              </p>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                 {upcomingDays.map((d) => (
                   <button
                     key={d.dateString}
                     type="button"
                     onClick={() => {
-                      if (selectedDoctor?.bookingMode === "sequential_queue") {
-                        fetchQueueForDate(d.dateString, selectedDoctor);
-                      } else {
-                        setSelectedDate(d.dateString);
-                        setSelectedTime("");
+                      if (selectedDoctor) {
+                        loadSlotsForDate(d.dateString, selectedDoctor);
                       }
                     }}
-                    className={`p-2.5 rounded-xl border text-center transition-all ${
+                    className={`p-2.5 rounded-xl border text-center transition-all duration-150 ${
                       selectedDate === d.dateString
-                        ? "bg-primary-600 text-white border-primary-600 shadow-xs"
-                        : "bg-surface hover:border-primary-500/50 text-text border-border"
+                        ? "bg-primary-600 text-white border-primary-600 shadow-md ring-2 ring-primary-500/20 font-bold"
+                        : "bg-surface hover:border-primary-500/50 hover:bg-surface-alt text-text border-border"
                     }`}
                   >
-                    <span className="text-[10px] font-medium opacity-80 block uppercase">{d.dayName.substring(0, 3)}</span>
-                    <span className="text-xs font-bold block mt-0.5">{d.label}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider block opacity-75">{d.dayShort}</span>
+                    <span className="text-xs font-black block mt-0.5">{d.dateNum}</span>
+                    {d.isToday && (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full inline-block mt-1 ${selectedDate === d.dateString ? "bg-white/20 text-white" : "bg-primary-500/10 text-primary-600"}`}>
+                        Today
+                      </span>
+                    )}
+                    {d.isTomorrow && (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full inline-block mt-1 ${selectedDate === d.dateString ? "bg-white/20 text-white" : "bg-surface-alt text-text-muted"}`}>
+                        Tmrw
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Schedule Picker OR Sequential Queue Card */}
+          {/* Step 2: Time Slots Picker OR Sequential Queue Card */}
           {fetchingDoctorSlots ? (
-            <div className="py-6 text-center">
-              <Spinner size="sm" label="Checking availability & queue mode..." />
+            <div className="py-8 text-center bg-surface-alt rounded-2xl border border-border/60">
+              <Spinner size="sm" label="Loading available slots & doctor shift..." />
             </div>
           ) : doctorSlotInfo?.bookingMode === "sequential_queue" ? (
             <div className="p-4 bg-gradient-to-r from-primary-600/10 via-primary-500/5 to-surface rounded-2xl border border-primary-500/30 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sm text-text flex items-center gap-1.5">
-                  <span>🎟</span> Live Token Queue
+                  <span>🎟</span> Live OPD Token Queue
                 </span>
                 <Badge variant="primary" className="font-bold">
-                  {selectedDate ? upcomingDays.find(d => d.dateString === selectedDate)?.label || selectedDate : "Today"}
+                  {selectedDate ? upcomingDays.find((d) => d.dateString === selectedDate)?.label || selectedDate : "Today"}
                 </Badge>
               </div>
 
@@ -850,55 +1023,177 @@ export default function BrowseDetailClient({ id }: { id: string }) {
             </div>
           ) : (
             selectedDate && (
-              <div className="space-y-2 pt-2 border-t border-border/40">
-                <label className="text-xs font-bold uppercase tracking-wider text-text block">Select Time Slot *</label>
-                {(() => {
-                  const dayName = upcomingDays.find((d) => d.dateString === selectedDate)?.dayName || "";
-                  const slots = generateTimeSlots(selectedDoctor?.timings, dayName, selectedDate);
+              <div className="space-y-3 pt-1">
+                <label className="text-xs font-bold uppercase tracking-wider text-text flex items-center justify-between">
+                  <span>2. Select Time Slot *</span>
+                  {selectedTime && (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                      Selected: {format12Hour(selectedTime)}
+                    </span>
+                  )}
+                </label>
 
-                  if (slots.length === 0) {
-                    return <p className="text-xs text-text-muted">No available timeslots left for this date.</p>;
-                  }
+                {activeSlotsList.length === 0 ? (
+                  <div className="p-4 text-center bg-surface-alt rounded-2xl border border-border text-xs text-text-muted">
+                    No available time slots for this date. Please choose another day above.
+                  </div>
+                ) : (
+                  <div className="space-y-3 bg-surface-alt p-4 rounded-2xl border border-border/80 max-h-56 overflow-y-auto">
+                    {/* Morning Slots */}
+                    {categorizedSlots.morning.length > 0 && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-text-secondary">
+                          <span>🌅</span> Morning ({categorizedSlots.morning.length} slots)
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                          {categorizedSlots.morning.map((s) => (
+                            <button
+                              key={s.time}
+                              type="button"
+                              onClick={() => setSelectedTime(s.time)}
+                              className={`p-2 rounded-xl text-xs font-bold text-center transition-all ${
+                                selectedTime === s.time
+                                  ? "bg-primary-600 text-white border-primary-600 shadow-xs ring-2 ring-primary-500/20"
+                                  : "bg-surface hover:border-primary-500/60 hover:text-primary-600 text-text border border-border"
+                              }`}
+                            >
+                              {format12Hour(s.time)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-                  return (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-36 overflow-y-auto pr-1">
-                      {slots.map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setSelectedTime(s)}
-                          className={`p-2 rounded-lg border text-xs font-semibold text-center transition-all ${
-                            selectedTime === s
-                              ? "bg-primary-600 text-white border-primary-600 shadow-xs"
-                              : "bg-surface hover:border-primary-500/50 text-text border-border"
-                          }`}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  );
-                })()}
+                    {/* Afternoon Slots */}
+                    {categorizedSlots.afternoon.length > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-text-secondary">
+                          <span>☀️</span> Afternoon ({categorizedSlots.afternoon.length} slots)
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                          {categorizedSlots.afternoon.map((s) => (
+                            <button
+                              key={s.time}
+                              type="button"
+                              onClick={() => setSelectedTime(s.time)}
+                              className={`p-2 rounded-xl text-xs font-bold text-center transition-all ${
+                                selectedTime === s.time
+                                  ? "bg-primary-600 text-white border-primary-600 shadow-xs ring-2 ring-primary-500/20"
+                                  : "bg-surface hover:border-primary-500/60 hover:text-primary-600 text-text border border-border"
+                              }`}
+                            >
+                              {format12Hour(s.time)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Evening Slots */}
+                    {categorizedSlots.evening.length > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-text-secondary">
+                          <span>🌆</span> Evening ({categorizedSlots.evening.length} slots)
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                          {categorizedSlots.evening.map((s) => (
+                            <button
+                              key={s.time}
+                              type="button"
+                              onClick={() => setSelectedTime(s.time)}
+                              className={`p-2 rounded-xl text-xs font-bold text-center transition-all ${
+                                selectedTime === s.time
+                                  ? "bg-primary-600 text-white border-primary-600 shadow-xs ring-2 ring-primary-500/20"
+                                  : "bg-surface hover:border-primary-500/60 hover:text-primary-600 text-text border border-border"
+                              }`}
+                            >
+                              {format12Hour(s.time)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )
           )}
 
-          {/* Payment Mode Selector */}
+          {/* Step 3: Patient Information (NO OTP REQUIRED!) */}
+          <div className="space-y-3 pt-1">
+            <label className="text-xs font-bold uppercase tracking-wider text-text block">
+              3. Patient Details *
+            </label>
+
+            {isGuest ? (
+              <div className="bg-surface-alt p-4 rounded-2xl border border-border/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-text flex items-center gap-1.5">
+                    <span>👤</span> Guest Patient Booking
+                  </p>
+                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    ⚡ Instant Booking (No OTP required)
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input
+                    label="Patient Full Name *"
+                    placeholder="e.g. Ramesh Lad"
+                    value={guestForm.name}
+                    onChange={(e) => setGuestForm({ ...guestForm, name: e.target.value })}
+                    required
+                  />
+                  <Input
+                    label="Mobile Phone Number *"
+                    type="tel"
+                    placeholder="e.g. 9876543210"
+                    value={guestForm.phone}
+                    onChange={(e) => setGuestForm({ ...guestForm, phone: e.target.value })}
+                    required
+                  />
+                </div>
+                <Input
+                  label="Email Address (Optional)"
+                  type="email"
+                  placeholder="patient@example.com (for booking receipt)"
+                  value={guestForm.email}
+                  onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })}
+                />
+              </div>
+            ) : (
+              <div className="bg-primary-500/10 border border-primary-500/20 p-3.5 rounded-2xl flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-text font-bold">
+                    Booking as: <span className="text-primary-600">{user?.name}</span>
+                  </p>
+                  <p className="text-[11px] text-text-secondary mt-0.5">
+                    {(user as any)?.phone || user?.email || "Authenticated Account"}
+                  </p>
+                </div>
+                <Badge variant="success" className="text-[10px] font-bold">Logged In</Badge>
+              </div>
+            )}
+          </div>
+
+          {/* Step 4: Payment Method */}
           {selectedDoctor?.fees && selectedDoctor.fees > 0 ? (
-            <div className="space-y-2 pt-2 border-t border-border/50">
+            <div className="space-y-2.5 pt-1">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold uppercase tracking-wider text-text block">Payment Method</label>
-                <span className="text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  Default: Pay at Clinic
+                <label className="text-xs font-bold uppercase tracking-wider text-text block">
+                  4. Payment Preference
+                </label>
+                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                  Total: ₹{selectedDoctor.fees}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <button
                   type="button"
                   onClick={() => setPaymentMode("pay_at_clinic")}
-                  className={`p-3 rounded-xl border text-left transition-all ${
+                  className={`p-3.5 rounded-2xl border text-left transition-all ${
                     paymentMode === "pay_at_clinic"
-                      ? "bg-primary-600/10 border-primary-600 text-primary-500 font-bold shadow-xs"
+                      ? "bg-primary-600/10 border-primary-600 text-primary-600 font-bold shadow-xs ring-1 ring-primary-500/20"
                       : "bg-surface border-border text-text hover:border-primary-500/50"
                   }`}
                 >
@@ -909,9 +1204,9 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                 <button
                   type="button"
                   onClick={() => setPaymentMode("online")}
-                  className={`p-3 rounded-xl border text-left transition-all ${
+                  className={`p-3.5 rounded-2xl border text-left transition-all ${
                     paymentMode === "online"
-                      ? "bg-primary-600/10 border-primary-600 text-primary-500 font-bold shadow-xs"
+                      ? "bg-primary-600/10 border-primary-600 text-primary-600 font-bold shadow-xs ring-1 ring-primary-500/20"
                       : "bg-surface border-border text-text hover:border-primary-500/50"
                   }`}
                 >
@@ -922,33 +1217,51 @@ export default function BrowseDetailClient({ id }: { id: string }) {
             </div>
           ) : null}
 
-          <div className="space-y-1.5 pt-2">
+          {/* Reason for Visit (Optional) */}
+          <div className="space-y-1.5 pt-1">
             <label className="text-xs font-medium text-text">Reason for Visit / Symptoms (Optional)</label>
             <Input
-              placeholder="e.g. High fever for 2 days, seasonal allergies"
+              placeholder="e.g. Fever, routine checkup, follow-up"
               value={bookingNotes}
               onChange={(e) => setBookingNotes(e.target.value)}
             />
           </div>
 
-          <div className="pt-3 border-t border-border/40 flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setIsBookingOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              type="submit"
-              loading={bookingLoading}
-              disabled={!selectedDate || (!selectedTime && doctorSlotInfo?.bookingMode !== "sequential_queue")}
-            >
-              {isGuest ? (otpSent ? "Verify OTP & Confirm Booking" : "Send OTP & Book") : "Confirm Booking"}
-            </Button>
+          {/* Summary & Confirm Actions */}
+          <div className="pt-4 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-xs text-text-secondary">
+              {selectedDate && (selectedTime || doctorSlotInfo?.bookingMode === "sequential_queue") ? (
+                <span>
+                  📅 <strong>{selectedDate}</strong> at{" "}
+                  <strong>
+                    {doctorSlotInfo?.bookingMode === "sequential_queue" ? "OPD Queue" : format12Hour(selectedTime)}
+                  </strong>
+                </span>
+              ) : (
+                <span>Please select a date & slot above</span>
+              )}
+            </div>
+
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setIsBookingOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                type="submit"
+                loading={bookingLoading}
+                disabled={!selectedDate || (!selectedTime && doctorSlotInfo?.bookingMode !== "sequential_queue")}
+                className="font-bold px-5 rounded-xl shadow-xs"
+              >
+                Confirm Appointment
+              </Button>
+            </div>
           </div>
         </form>
       </Modal>
 
-      {/* Ticket Slip Modal */}
+      {/* Ticket Slip Confirmation Modal */}
       <Modal
         open={ticketModalOpen}
         onClose={() => setTicketModalOpen(false)}
@@ -956,32 +1269,56 @@ export default function BrowseDetailClient({ id }: { id: string }) {
         size="sm"
       >
         <div className="text-center space-y-4 py-2">
-          <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl space-y-2">
-            <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400 block">
-              #{createdTicket?.tokenNumber}
-            </span>
-            <p className="text-xs font-bold text-text">Queue Token Slip</p>
+          <div className="p-5 bg-gradient-to-b from-emerald-500/15 via-emerald-500/5 to-surface border border-emerald-500/30 rounded-2xl space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-500/20 text-emerald-600 flex items-center justify-center text-2xl">
+              ✓
+            </div>
+            <div>
+              <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400 block">
+                #{createdTicket?.tokenNumber}
+              </span>
+              <p className="text-xs font-bold text-text uppercase tracking-wider mt-0.5">Queue Token Slip</p>
+            </div>
 
             {createdTicket && (
-              <div className="pt-2 border-t border-emerald-500/20 text-xs text-text-secondary space-y-1">
-                <p>Doctor: <strong className="text-text">Dr. {createdTicket.doctorName}</strong></p>
-                <p>Date: <strong className="text-text">{createdTicket.selectedDate}</strong></p>
-                {createdTicket.fees && (
-                  <p>Fee: <strong className="text-text">₹{createdTicket.fees}</strong> ({createdTicket.paymentMode === "online" ? "Online Order Created" : "Pay at Clinic"})</p>
+              <div className="pt-3 border-t border-emerald-500/20 text-xs text-text-secondary space-y-1.5 text-left">
+                <div className="flex justify-between">
+                  <span>Patient:</span>
+                  <strong className="text-text">{createdTicket.patientName}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span>Doctor:</span>
+                  <strong className="text-text">Dr. {createdTicket.doctorName}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span>Date:</span>
+                  <strong className="text-text">{createdTicket.selectedDate}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span>Time:</span>
+                  <strong className="text-text">{format12Hour(createdTicket.selectedTime)}</strong>
+                </div>
+                {createdTicket.fees !== undefined && (
+                  <div className="flex justify-between">
+                    <span>Fee:</span>
+                    <strong className="text-emerald-600 dark:text-emerald-400">
+                      ₹{createdTicket.fees} ({createdTicket.paymentMode === "online" ? "Online Paid" : "Pay at Reception"})
+                    </strong>
+                  </div>
                 )}
               </div>
             )}
           </div>
 
           <p className="text-xs text-text-secondary">
-            Your appointment token is confirmed. Present this token slip upon arrival at the clinic reception.
+            Your appointment has been confirmed. Please arrive at the clinic 10 minutes prior to your consultation time.
           </p>
 
           <div className="flex gap-2">
             <Button variant="outline" size="sm" className="w-full" onClick={() => setTicketModalOpen(false)}>
-              Close
+              Done
             </Button>
-            <Button variant="primary" size="sm" className="w-full" onClick={handlePrintSlip}>
+            <Button variant="primary" size="sm" className="w-full font-bold" onClick={handlePrintSlip}>
               Print Slip 🖨️
             </Button>
           </div>
