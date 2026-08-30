@@ -46,7 +46,7 @@ export function PatientMedicalRecords({ patientId }: PatientMedicalRecordsProps)
     setUnifiedDoc({
       documentType: "prescription",
       title: "PRESCRIPTION RX",
-      clinicName: note.clinicId?.name || "ANANTA Healthcare System",
+      clinicName: note.clinicId?.name || "ANANT Healthcare System",
       doctorName: note.doctorId?.name || "Attending Physician",
       doctorSpecialization: note.doctorId?.specialization || "General Medicine",
       patientName: "My Medical Record",

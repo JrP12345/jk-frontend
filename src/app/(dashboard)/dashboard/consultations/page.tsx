@@ -20,7 +20,23 @@ import {
   Badge,
   StatCard,
   Spinner,
+  cn,
 } from "@/components/ui";
+import {
+  RotateCw,
+  Plus,
+  Calendar,
+  Clock,
+  Stethoscope,
+  CheckCircle2,
+  Search,
+  Ticket,
+  Phone,
+  ArrowRight,
+  User,
+  AlertCircle,
+  FileText,
+} from "lucide-react";
 
 interface PatientUser {
   name: string;
@@ -83,8 +99,8 @@ export default function ConsultationsPage() {
   const [queueList, setQueueList] = useState<OPDQueueAppointment[]>([]);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
   const [doctors, setDoctors] = useState<DoctorUser[]>([]);
-  const [recentNotes, setRecentNotes] = useState<ClinicalNoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("checked-in");
@@ -101,8 +117,8 @@ export default function ConsultationsPage() {
   }, [activeClinicId]);
 
   const fetchData = async () => {
-    setLoading(true);
     try {
+      setIsRefreshing(true);
       if (user?.role === "patient") {
         const apptsRes = await api.get("/appointments");
         setQueueList(apptsRes.data?.data || apptsRes.data || []);
@@ -120,12 +136,13 @@ export default function ConsultationsPage() {
       }
     } catch (err: any) {
       toast({
-        title: "Failed to Fetch OPD Consultation Data",
-        description: err.response?.data?.message || "Could not retrieve appointments",
+        title: "Failed to Fetch Consultation Queue",
+        description: err.response?.data?.message || "Could not retrieve appointments.",
         variant: "error",
       });
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -137,13 +154,16 @@ export default function ConsultationsPage() {
   const handleStartWalkIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!patientId || !doctorId) {
-      toast({ title: "Validation Error", description: "Patient and attending doctor are required", variant: "error" });
+      toast({
+        title: "Validation Error",
+        description: "Patient and attending practitioner are required.",
+        variant: "warning",
+      });
       return;
     }
 
     try {
       setStartingEncounter(true);
-      // 1. Create a walk-in appointment
       const apptRes = await api.post("/appointments", {
         clinicId: selectedClinicId,
         patientId,
@@ -157,8 +177,8 @@ export default function ConsultationsPage() {
       const newApptId = apptRes.data?.data?.id || apptRes.data?.data?._id || apptRes.data?.id;
 
       toast({
-        title: "Encounter Initialized 🩺",
-        description: "Redirecting to SOAP Clinical Workspace...",
+        title: "Encounter Initialized",
+        description: "Opening Clinical Consultation Workspace...",
         variant: "success",
       });
 
@@ -166,8 +186,10 @@ export default function ConsultationsPage() {
       router.push(`/dashboard/consultations/${newApptId}`);
     } catch (err: any) {
       toast({
-        title: "Failed to Start Consultation",
-        description: err.response?.data?.message || "Could not initialize OPD encounter",
+        title: "Unable to Start Consultation",
+        description:
+          err.response?.data?.message ||
+          "Could not initialize OPD encounter. Please verify physician availability.",
         variant: "error",
       });
     } finally {
@@ -196,189 +218,274 @@ export default function ConsultationsPage() {
   const completedCount = queueList.filter((a) => a.status === "completed").length;
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
-      {/* Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight flex items-center gap-2">
-            <span>🩺</span> Outpatient Consultation Desk & Doctor Queue
-          </h1>
-          <p className="text-xs text-text-muted mt-0.5">
-            Real-time OPD patient queue, instant walk-in consultation launcher, and SOAP EHR clinical workspace.
-          </p>
-        </div>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Doctor Consultations & OPD Queue
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Clinical Desk
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Real-time outpatient patient queue, walk-in consultation launcher, and SOAP clinical documentation.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {canStartConsultation && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setIsWalkInModalOpen(true)}
-            className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5"
-          >
-            <span>+ Start Walk-in Consultation</span>
-          </Button>
-          )}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchData}
+              disabled={isRefreshing}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+            >
+              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
+              Refresh
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchData}
-            loading={loading}
-            className="font-semibold rounded-xl cursor-pointer gap-1.5"
-          >
-            <span>Refresh Desk</span>
-          </Button>
+            {canStartConsultation && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsWalkInModalOpen(true)}
+                className="font-semibold rounded-xl shadow-xs"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Start Walk-in Consultation
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* KPI Stats Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. KPI STATS CARDS
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total OPD Appointments"
-          value={totalToday}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-blue-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
+          value={totalToday.toString()}
+          description="Scheduled outpatient visits"
+          icon={<Calendar className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
           label="Waiting for Doctor"
-          value={checkedInCount}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-amber-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          value={checkedInCount.toString()}
+          description="Checked-in waiting line"
+          icon={<Clock className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
           label="In Consultation"
-          value={inConsultationCount}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-purple-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>}
+          value={inConsultationCount.toString()}
+          description="Active physician encounters"
+          icon={<Stethoscope className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
-          label="Consultations Completed"
-          value={completedCount}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-emerald-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          label="Completed Today"
+          value={completedCount.toString()}
+          description="Concluded patient visits"
+          icon={<CheckCircle2 className="w-5 h-5 text-text-secondary" />}
         />
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="p-4 bg-surface rounded-2xl border border-border/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Status Pills */}
-        <div className="flex items-center gap-1.5 flex-wrap text-xs">
-          <span className="font-bold text-text-muted mr-1">Queue Filter:</span>
-          {[
-            { key: "checked-in", label: "Waiting (Checked-in)" },
-            { key: "in-consultation", label: "In Consultation" },
-            { key: "confirmed", label: "Scheduled" },
-            { key: "completed", label: "Completed" },
-            { key: "all", label: "All Patients" },
-          ].map((s) => (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => setStatusFilter(s.key)}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                statusFilter === s.key
-                  ? "bg-primary-600 text-white border-primary-600 shadow-xs"
-                  : "bg-surface-alt text-text-muted border-border/80 hover:text-text"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          3. FILTER TOOLBAR & SEARCH
+         ────────────────────────────────────────────────────────────────────────── */}
+      <Card className="p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Segmented Filter Pills */}
+          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+            {[
+              { key: "checked-in", label: "Waiting (Checked-in)", count: checkedInCount },
+              { key: "in-consultation", label: "In Consultation", count: inConsultationCount },
+              { key: "confirmed", label: "Scheduled", count: queueList.filter((a) => a.status === "confirmed").length },
+              { key: "completed", label: "Completed", count: completedCount },
+              { key: "all", label: "All Patients", count: totalToday },
+            ].map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setStatusFilter(s.key)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
+                  statusFilter === s.key
+                    ? "bg-surface text-text shadow-xs font-bold border border-border/60"
+                    : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
+                )}
+              >
+                <span>{s.label}</span>
+                <span
+                  className={cn(
+                    "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
+                    statusFilter === s.key
+                      ? "bg-primary-500/10 text-primary-600 dark:text-primary-400"
+                      : "bg-surface-alt text-text-muted"
+                  )}
+                >
+                  {s.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Search Input */}
+          <div className="relative w-full sm:w-72 shrink-0">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search patient, doctor, complaint..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+            />
+          </div>
         </div>
+      </Card>
 
-        <Input
-          placeholder="Search patient, doctor, complaint..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full md:w-60 text-xs"
-        />
-      </div>
-
-      {/* Doctor OPD Queue Cards */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          4. DOCTOR OPD QUEUE CARDS GRID
+         ────────────────────────────────────────────────────────────────────────── */}
       {loading ? (
-        <div className="py-12 text-center">
-          <Spinner size="md" label="Loading Doctor Consultation Queue..." />
+        <div className="py-16 text-center">
+          <Spinner size="lg" label="Loading Doctor Consultation Queue..." />
         </div>
       ) : filteredQueue.length === 0 ? (
-        <Card className="py-12 text-center text-xs text-text-muted rounded-2xl border-border">
-          <CardContent>No patients currently waiting in consultation queue for selected filter.</CardContent>
+        <Card className="py-16 text-center text-text-muted rounded-2xl border border-border/80 bg-surface shadow-xs">
+          <CardContent className="space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-primary-500">
+              <Stethoscope className="w-6 h-6" />
+            </div>
+            <p className="font-bold text-text text-sm">No Patients in Selected Queue Filter</p>
+            <p className="text-xs text-text-muted max-w-sm mx-auto">
+              No patient records currently match this filter state. Try resetting the status filter above.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setStatusFilter("all");
+                setSearchQuery("");
+              }}
+              className="rounded-xl font-semibold text-xs"
+            >
+              Reset Filters
+            </Button>
+          </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredQueue.map((item) => {
-            const patientName = item.patientId?.userId?.name || "Patient";
+            const patientName = item.patientId?.userId?.name || "Patient Profile";
             const patientPhone = item.patientId?.userId?.phone || "";
             const doctorName = item.doctorId?.name || "Attending Doctor";
-
             const isInConsultation = item.status === "in-consultation";
             const isCompleted = item.status === "completed";
 
             return (
-              <div
+              <Card
                 key={item.id}
-                className={`p-4 rounded-2xl border transition-all space-y-3 flex flex-col justify-between text-xs shadow-xs ${
+                className={cn(
+                  "p-4 rounded-2xl border transition-all flex flex-col justify-between text-xs shadow-xs space-y-3.5 overflow-hidden",
                   isInConsultation
-                    ? "bg-purple-500/5 border-purple-500/40 hover:border-purple-500"
+                    ? "border-emerald-500/40 bg-emerald-500/[0.03] dark:bg-emerald-500/[0.06]"
                     : isCompleted
-                    ? "bg-emerald-500/5 border-emerald-500/30 hover:border-emerald-500"
-                    : "bg-surface border-border hover:border-primary-500"
-                }`}
+                    ? "border-emerald-500/20 bg-surface"
+                    : "border-border/80 bg-surface hover:border-primary-500/40"
+                )}
               >
                 {/* Header Badge */}
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono font-bold text-xs text-primary-600 bg-primary-500/10 px-2.5 py-0.5 rounded-lg border border-primary-500/20">
-                      🎫 Token #{item.tokenNumber || item.queuePosition || 1}
+                    <span className="font-mono font-bold text-xs text-primary-600 dark:text-primary-400 bg-primary-500/10 px-2.5 py-1 rounded-xl border border-primary-500/20 inline-flex items-center gap-1">
+                      <Ticket className="w-3.5 h-3.5 opacity-70" />
+                      Token #{item.tokenNumber || item.queuePosition || 1}
                     </span>
                     <Badge
                       variant={isInConsultation ? "warning" : isCompleted ? "success" : "primary"}
-                      className="capitalize font-bold text-xs"
+                      size="sm"
+                      dot={isInConsultation}
+                      pulse={isInConsultation}
+                      className="capitalize font-bold text-[10px]"
                     >
                       {item.status.replace("-", " ")}
                     </Badge>
                   </div>
 
-                  <h3 className="font-bold text-base text-text pt-1">{patientName}</h3>
-                  <p className="text-[11px] text-text-muted">{patientPhone && `Phone: ${patientPhone}`}</p>
+                  <h3 className="font-bold text-sm sm:text-base text-text pt-1">{patientName}</h3>
+                  {patientPhone && (
+                    <p className="text-xs text-text-muted flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-text-muted shrink-0" />
+                      {patientPhone}
+                    </p>
+                  )}
                 </div>
 
                 {/* Clinical Notes & Doctor Info */}
-                <div className="p-2.5 bg-surface-alt/70 rounded-xl border border-border/60 space-y-1 text-[11px]">
+                <div className="p-3 bg-surface-alt rounded-xl border border-border/80 space-y-1.5 text-xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-text-muted">Attending Doctor:</span>
-                    <span className="font-bold text-text">Dr. {doctorName}</span>
+                    <span className="text-text-muted">Physician:</span>
+                    <span className="font-bold text-text flex items-center gap-1">
+                      <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                      Dr. {doctorName.replace(/^dr\.?\s+/i, "")}
+                    </span>
                   </div>
                   {item.chiefComplaint && (
-                    <div className="pt-1 border-t border-border/40 text-text">
-                      <span className="text-text-muted block">Chief Complaint:</span>
-                      <span className="font-medium italic">{item.chiefComplaint}</span>
+                    <div className="pt-1.5 border-t border-border/60 text-text">
+                      <span className="text-text-muted block text-[10px] uppercase font-bold tracking-wider">
+                        Chief Complaint:
+                      </span>
+                      <span className="font-medium italic text-xs text-text-secondary">{item.chiefComplaint}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Action Footer */}
-                <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-2">
+                <div className="pt-2 border-t border-border/60">
                   <Button
-                    size="xs"
-                    variant="primary"
+                    size="sm"
+                    variant={isInConsultation ? "primary" : isCompleted ? "secondary" : "primary"}
                     onClick={() => router.push(`/dashboard/consultations/${item.id}`)}
-                    className="font-bold text-[11px] rounded-lg w-full gap-1.5"
+                    className="font-semibold text-xs rounded-xl w-full shadow-xs justify-between"
                   >
-                    <span>🩺 {isInConsultation ? "Resume Consultation" : isCompleted ? "View Signed Note" : "Start Consultation"}</span>
+                    <span>
+                      {isInConsultation
+                        ? "Resume Clinical Encounter"
+                        : isCompleted
+                        ? "View Signed Consultation Note"
+                        : "Start Consultation Workspace"}
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </Button>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>
       )}
 
-      {/* START WALK-IN CONSULTATION MODAL */}
-      <Modal isOpen={isWalkInModalOpen} onClose={() => setIsWalkInModalOpen(false)} title="🩺 Start Walk-in OPD Consultation">
-        <form onSubmit={handleStartWalkIn} className="space-y-4 text-xs">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          5. START WALK-IN CONSULTATION MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
+      <Modal
+        open={isWalkInModalOpen}
+        onClose={() => setIsWalkInModalOpen(false)}
+        title="Start Walk-in Consultation"
+        description="Initialize an immediate outpatient encounter workspace for a walk-in patient."
+      >
+        <form onSubmit={handleStartWalkIn} className="space-y-4 pt-1">
           <Select
             label="Target Patient Profile *"
             value={patientId}
             onChange={(e) => setPatientId(e.target.value)}
             options={[
-              { value: "", label: "Select patient..." },
+              { value: "", label: "Select patient profile..." },
               ...patients.map((p) => ({
                 value: p.id,
                 label: `${p.userId?.name || "Patient"} (${p.userId?.phone || "No phone"})`,
@@ -392,10 +499,10 @@ export default function ConsultationsPage() {
             value={doctorId}
             onChange={(e) => setDoctorId(e.target.value)}
             options={[
-              { value: "", label: "Select doctor..." },
+              { value: "", label: "Select attending physician..." },
               ...doctors.map((d) => ({
                 value: d.id,
-                label: `Dr. ${d.name} (${d.specialization || "General OPD"})`,
+                label: `Dr. ${(d.name || "").replace(/^dr\.?\s+/i, "")} (${d.specialization || "General OPD"})`,
               })),
             ]}
             required
@@ -403,18 +510,25 @@ export default function ConsultationsPage() {
 
           <Textarea
             label="Chief Complaint / Initial Symptoms"
-            placeholder="e.g. Acute headache, fever, shortness of breath..."
+            placeholder="e.g. Acute migraine, fever for 2 days, chest congestion..."
             value={chiefComplaint}
             onChange={(e) => setChiefComplaint(e.target.value)}
             rows={3}
           />
 
-          <div className="pt-3 border-t border-border flex justify-end gap-2">
+          <div className="pt-3 border-t border-border/60 flex justify-end gap-2.5">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsWalkInModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" loading={startingEncounter}>
-              Initialize SOAP Workspace 🩺
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={startingEncounter}
+              className="font-semibold rounded-xl shadow-xs"
+            >
+              Start Clinical Encounter
+              <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
             </Button>
           </div>
         </form>

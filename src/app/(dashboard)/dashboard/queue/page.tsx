@@ -6,12 +6,58 @@ import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import {
-  Card, CardHeader, CardTitle, CardContent, CardDescription,
-  Button, Select, Input, DatePicker, useToast, Spinner, Badge, StatCard, Modal, Textarea, Checkbox, Skeleton, SkeletonCard
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+  Button,
+  Select,
+  Input,
+  DatePicker,
+  useToast,
+  Spinner,
+  Badge,
+  StatCard,
+  Modal,
+  Textarea,
+  Checkbox,
+  Skeleton,
+  SkeletonCard,
+  ChartContainer,
+  BarChart,
+  cn,
 } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
 import { NurseVitalsModal } from "@/components/clinical/NurseVitalsModal";
 import { playChimeSound, CHIME_OPTIONS, ChimeType } from "@/utils/audioChimes";
+import {
+  Megaphone,
+  Volume2,
+  RotateCw,
+  Users,
+  UserCheck,
+  Stethoscope,
+  Ticket,
+  Clock,
+  ChevronUp,
+  ChevronDown,
+  CheckCircle2,
+  Activity,
+  Printer,
+  UserX,
+  XCircle,
+  Plus,
+  Trash2,
+  Calendar,
+  ArrowRight,
+  Sparkles,
+  Check,
+  Play,
+  CalendarClock,
+  Phone,
+  FileText,
+} from "lucide-react";
 
 interface Appointment {
   id: string;
@@ -91,7 +137,7 @@ export default function QueuePage() {
             uniqueClinics = assignments
               .map((a: any) => a.clinicId)
               .filter(Boolean)
-              .filter((c: any, idx: number, arr: any[]) => arr.findIndex(t => (t.id || t._id) === (c.id || c._id)) === idx);
+              .filter((c: any, idx: number, arr: any[]) => arr.findIndex((t) => (t.id || t._id) === (c.id || c._id)) === idx);
           } catch {
             const loadedClinics = await fetchClinics();
             uniqueClinics = loadedClinics;
@@ -145,7 +191,11 @@ export default function QueuePage() {
       const res = await api.get(`/queue?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`);
       setAppointments(res.data.data || []);
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to load queue", variant: "error" });
+      toast({
+        title: "Error Loading Queue",
+        description: err.response?.data?.message || "Failed to load active queue records.",
+        variant: "error",
+      });
     } finally {
       setLoadingQueue(false);
     }
@@ -155,7 +205,8 @@ export default function QueuePage() {
     fetchQueue();
     const interval = setInterval(() => {
       if (selectedClinic && selectedDoctor) {
-        api.get(`/queue?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`)
+        api
+          .get(`/queue?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`)
           .then((res) => setAppointments(res.data.data || []))
           .catch(() => {});
       }
@@ -165,15 +216,15 @@ export default function QueuePage() {
 
   // Split appointments into Active and Finished categories
   const activeStatuses = ["pending", "confirmed", "checked-in", "in-consultation"];
-  const activeQueue = appointments.filter(a => activeStatuses.includes(a.status));
-  const finishedQueue = appointments.filter(a => !activeStatuses.includes(a.status));
+  const activeQueue = appointments.filter((a) => activeStatuses.includes(a.status));
+  const finishedQueue = appointments.filter((a) => !activeStatuses.includes(a.status));
 
   // Compute live statistics
   const stats = {
-    waiting: activeQueue.filter(a => ["pending", "confirmed", "checked-in"].includes(a.status)).length,
-    checkedIn: activeQueue.filter(a => a.status === "checked-in").length,
-    activeConsultation: activeQueue.filter(a => a.status === "in-consultation").length,
-    nextInLine: activeQueue.find(a => ["checked-in", "confirmed", "pending"].includes(a.status))?.tokenNumber || null
+    waiting: activeQueue.filter((a) => ["pending", "confirmed", "checked-in"].includes(a.status)).length,
+    checkedIn: activeQueue.filter((a) => a.status === "checked-in").length,
+    activeConsultation: activeQueue.filter((a) => a.status === "in-consultation").length,
+    nextInLine: activeQueue.find((a) => ["checked-in", "confirmed", "pending"].includes(a.status))?.tokenNumber || null,
   };
 
   const [chimeType, setChimeType] = useState<ChimeType>(() => {
@@ -199,10 +250,10 @@ export default function QueuePage() {
       if (newStatus === "in-consultation") {
         playChimeSound(chimeType);
       }
-      toast({ title: "Success", description: `Status updated to ${newStatus}`, variant: "success" });
+      toast({ title: "Status Updated", description: `Appointment updated to ${newStatus.replace("-", " ")}.`, variant: "success" });
       await fetchQueue();
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to update status", variant: "error" });
+      toast({ title: "Update Failed", description: err.response?.data?.message || "Failed to update appointment status.", variant: "error" });
     } finally {
       setUpdatingStatus(null);
     }
@@ -217,13 +268,25 @@ export default function QueuePage() {
       });
       if (res.data?.data) {
         playChimeSound(chimeType);
-        toast({ title: "Patient Called 🩺", description: res.data.message || `Token #${res.data.data.tokenNumber} in consultation`, variant: "success" });
+        toast({
+          title: "Patient Called",
+          description: res.data.message || `Token #${res.data.data.tokenNumber} has been summoned for consultation.`,
+          variant: "success",
+        });
       } else {
-        toast({ title: "Queue Empty", description: res.data?.message || "No waiting patients", variant: "default" });
+        toast({
+          title: "Queue Clear",
+          description: res.data?.message || "No waiting patients remaining in this queue.",
+          variant: "default",
+        });
       }
       await fetchQueue();
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to call next patient", variant: "error" });
+      toast({
+        title: "Call Failed",
+        description: err.response?.data?.message || "Could not call next patient in queue.",
+        variant: "error",
+      });
     } finally {
       setCallingNext(false);
     }
@@ -235,8 +298,8 @@ export default function QueuePage() {
       if (appt.status !== "checked-in") {
         await api.put(`/appointments/${appt.id}/status`, { status: "checked-in" });
       }
-      const clinicObj = clinics.find(c => (c.id || c._id) === selectedClinic);
-      const doctorObj = doctors.find(d => (d.id || d._id) === selectedDoctor);
+      const clinicObj = clinics.find((c) => (c.id || c._id) === selectedClinic);
+      const doctorObj = doctors.find((d) => (d.id || d._id) === selectedDoctor);
 
       setUnifiedDoc({
         documentType: "token_slip",
@@ -257,7 +320,7 @@ export default function QueuePage() {
       setTokenModalOpen(true);
       await fetchQueue();
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to check-in patient", variant: "error" });
+      toast({ title: "Check-In Error", description: err.response?.data?.message || "Failed to check-in patient.", variant: "error" });
     } finally {
       setUpdatingStatus(null);
     }
@@ -278,22 +341,20 @@ export default function QueuePage() {
     e.preventDefault();
     if (!apptToComplete) return;
 
-    // Validate that if any prescription field is entered, all fields in that row must be filled
-    const hasInvalidPrescriptions = prescriptions.some(p => 
-      (p.name || p.dosage || p.duration) && !(p.name && p.dosage && p.duration)
+    const hasInvalidPrescriptions = prescriptions.some(
+      (p) => (p.name || p.dosage || p.duration) && !(p.name && p.dosage && p.duration)
     );
 
     if (hasInvalidPrescriptions) {
-      toast({ 
-        title: "Prescription Incomplete", 
-        description: "Please fill in Name, Dosage, and Duration for all prescribed medicine rows.", 
-        variant: "error" 
+      toast({
+        title: "Prescription Incomplete",
+        description: "Please fill in Name, Dosage, and Duration for all prescribed medication rows.",
+        variant: "error",
       });
       return;
     }
 
-    // Filter out any blank prescription lines
-    const activePrescriptions = prescriptions.filter(p => p.name && p.dosage && p.duration);
+    const activePrescriptions = prescriptions.filter((p) => p.name && p.dosage && p.duration);
 
     try {
       setCompletingSubmitting(true);
@@ -304,14 +365,14 @@ export default function QueuePage() {
         followUpNotes: recommendFollowUp ? followUpNotes : undefined,
         symptoms: symptoms || undefined,
         diagnosis: diagnosis || undefined,
-        prescriptions: activePrescriptions
+        prescriptions: activePrescriptions,
       });
-      toast({ title: "Success", description: "Consultation marked as completed", variant: "success" });
+      toast({ title: "Consultation Concluded", description: "Patient visit and clinical records saved.", variant: "success" });
       setCompleteModalOpen(false);
       setApptToComplete(null);
       await fetchQueue();
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to complete consultation", variant: "error" });
+      toast({ title: "Completion Error", description: err.response?.data?.message || "Failed to complete consultation.", variant: "error" });
     } finally {
       setCompletingSubmitting(false);
     }
@@ -322,53 +383,54 @@ export default function QueuePage() {
     const newIndex = direction === "up" ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= activeQueue.length) return;
 
-    // Shift in local array
     const updatedActive = [...activeQueue];
     const temp = updatedActive[index];
     updatedActive[index] = updatedActive[newIndex];
     updatedActive[newIndex] = temp;
 
-    // Instantly update local state to feel snappy
-    const reorderedAppointments = [
-      ...updatedActive,
-      ...finishedQueue
-    ];
+    const reorderedAppointments = [...updatedActive, ...finishedQueue];
     setAppointments(reorderedAppointments);
 
     try {
-      // Trigger API to persist reordering
-      const orderedAppointmentIds = updatedActive.map(a => a.id);
+      const orderedAppointmentIds = updatedActive.map((a) => a.id);
       await api.put("/queue/reorder", {
         clinicId: selectedClinic,
         doctorId: selectedDoctor,
         date: selectedDate,
-        orderedAppointmentIds
+        orderedAppointmentIds,
       });
-      toast({ title: "Queue Updated", description: "VIP Override order saved", variant: "success" });
-      // Fetch queue again to get correct estimated wait times recalculated by backend
+      toast({ title: "VIP Order Updated", description: "Queue order modified successfully.", variant: "success" });
       await fetchQueue();
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to reorder queue", variant: "error" });
-      await fetchQueue(); // Revert back to server state on failure
+      toast({ title: "Reorder Failed", description: err.response?.data?.message || "Failed to reorder queue.", variant: "error" });
+      await fetchQueue();
     }
   };
 
-  const getStatusBadgeVariant = (status: string): "default" | "primary" | "success" | "warning" | "danger" | "outline" => {
+  const getStatusBadgeVariant = (status: string): "default" | "primary" | "success" | "warning" | "danger" | "info" => {
     switch (status) {
-      case "pending": return "warning";
-      case "confirmed": return "primary";
-      case "checked-in": return "primary";
-      case "in-consultation": return "success";
-      case "completed": return "success";
-      case "cancelled": return "danger";
-      case "no-show": return "danger";
-      default: return "default";
+      case "pending":
+        return "warning";
+      case "confirmed":
+        return "primary";
+      case "checked-in":
+        return "info";
+      case "in-consultation":
+        return "success";
+      case "completed":
+        return "success";
+      case "cancelled":
+        return "danger";
+      case "no-show":
+        return "danger";
+      default:
+        return "default";
     }
   };
 
   const getWaitTimeLabel = (minutes?: number) => {
     if (minutes === undefined || minutes === 0) return "Next in Line";
-    return `Est. Wait: ${minutes} mins`;
+    return `Est. Wait: ${minutes}m`;
   };
 
   if (!user) return null;
@@ -376,89 +438,99 @@ export default function QueuePage() {
   const canManageQueue = hasAnyPermission(user, "MANAGE_QUEUE");
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
-      {/* Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Queue Dashboard</h1>
-          <p className="text-xs text-text-muted mt-0.5">
-            Track practitioner patient flows, check-in waiting patients, call next token, and override order rules.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1 bg-surface-alt/50 border border-border/80 p-1 rounded-xl">
-            <Select
-              size="sm"
-              value={chimeType}
-              onChange={(e) => handleChimeChange(e.target.value as ChimeType)}
-              options={CHIME_OPTIONS.map((c) => ({ value: c.id, label: `${c.icon} ${c.label}` }))}
-              className="w-48 text-xs font-medium"
-            />
-            <Button
-              variant="ghost"
-              size="xs"
-              type="button"
-              onClick={() => playChimeSound(chimeType)}
-              className="text-xs font-bold rounded-lg cursor-pointer px-2"
-              title="Preview Selected Sound Chime Tone"
-            >
-              🔊 Test
-            </Button>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Outpatient Queue Desk
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Live Stream
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Live token streaming, patient check-ins, VIP queue reordering, and consultation workflows.
+            </p>
           </div>
 
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleCallNext}
-            loading={callingNext}
-            className="font-bold rounded-xl shadow-xs cursor-pointer"
-            icon={
-              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.684A1.761 1.761 0 013 12c0-.735.45-1.365 1.09-1.63M16.5 6.1a6.002 6.002 0 010 11.8" />
-              </svg>
-            }
-          >
-            Call Next Patient
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchQueue}
-            loading={loadingQueue}
-            className="font-semibold rounded-xl cursor-pointer"
-            icon={
-              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            }
-          >
-            Refresh
-          </Button>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {/* Chime selector pill */}
+            <div className="flex items-center gap-1.5 bg-surface-alt p-1 rounded-xl border border-border/80">
+              <Select
+                size="sm"
+                value={chimeType}
+                onChange={(e) => handleChimeChange(e.target.value as ChimeType)}
+                options={CHIME_OPTIONS.map((c) => ({ value: c.id, label: `${c.icon} ${c.label}` }))}
+                className="w-44 text-xs font-semibold"
+              />
+              <Button
+                variant="ghost"
+                size="xs"
+                type="button"
+                onClick={() => playChimeSound(chimeType)}
+                className="text-xs font-semibold rounded-lg px-2 text-text-secondary hover:text-text"
+                title="Test Chime Sound"
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleCallNext}
+              loading={callingNext}
+              className="font-semibold rounded-xl shadow-xs"
+            >
+              <Megaphone className="w-3.5 h-3.5 mr-1.5" />
+              Call Next Patient
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchQueue}
+              loading={loadingQueue}
+              className="font-semibold rounded-xl hover:bg-surface-hover"
+            >
+              <RotateCw className={cn("w-3.5 h-3.5 mr-1.5 text-text-secondary", loadingQueue && "animate-spin")} />
+              Refresh
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Selector Filters (Ultra-Compact Mobile Filter Bar) */}
-      <div className="flex flex-wrap items-center gap-2 p-2 bg-surface-alt/40 border border-border/60 rounded-xl w-full">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. FILTER STRIP
+         ────────────────────────────────────────────────────────────────────────── */}
+      <Card className="p-3 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs">
         {loadingFilters ? (
-          <div className="flex items-center gap-2 w-full">
-            <Skeleton height="2rem" rounded="lg" className="flex-1" />
-            <Skeleton height="2rem" rounded="lg" className="flex-1" />
+          <div className="flex items-center gap-3 w-full">
+            <Skeleton height="2.25rem" rounded="lg" className="flex-1" />
+            <Skeleton height="2.25rem" rounded="lg" className="flex-1" />
           </div>
         ) : (
-          <>
+          <div className="flex flex-wrap items-center gap-3 w-full">
             {doctors.length > 1 && user.role !== "doctor" && (
-              <div className="flex-1 min-w-[130px] sm:max-w-xs">
+              <div className="flex-1 min-w-[160px] sm:max-w-xs">
                 <Select
                   size="sm"
                   placeholder="Select Doctor"
                   value={selectedDoctor}
                   onChange={(e) => setSelectedDoctor(e.target.value)}
-                  options={doctors.map(d => ({ value: d.id, label: `Dr. ${(d.name || "").replace(/^dr\.?\s+/i, "")}` }))}
+                  options={doctors.map((d) => ({
+                    value: d.id,
+                    label: `Dr. ${(d.name || "").replace(/^dr\.?\s+/i, "")}`,
+                  }))}
                 />
               </div>
             )}
-            <div className="flex-1 min-w-[130px] sm:max-w-[160px]">
+            <div className="flex-1 min-w-[150px] sm:max-w-[180px]">
               <DatePicker
                 size="sm"
                 variant="outline"
@@ -467,63 +539,92 @@ export default function QueuePage() {
                 onChange={(val) => setSelectedDate(typeof val === "string" ? val : val.target.value)}
               />
             </div>
-          </>
+          </div>
         )}
-      </div>
+      </Card>
 
-      {/* STATS OVERVIEW */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          3. STATS OVERVIEW
+         ────────────────────────────────────────────────────────────────────────── */}
       {selectedClinic && selectedDoctor && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
             label="Total Waiting"
             value={stats.waiting.toString()}
-            icon={
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            }
+            description="Patients in queue line"
+            icon={<Users className="w-5 h-5 text-text-secondary" />}
           />
           <StatCard
             label="Checked-In"
             value={stats.checkedIn.toString()}
-            icon={
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            }
+            description="Present at waiting area"
+            icon={<UserCheck className="w-5 h-5 text-text-secondary" />}
           />
           <StatCard
             label="In Consultation"
             value={stats.activeConsultation.toString()}
-            icon={
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            }
+            description="Currently with physician"
+            icon={<Stethoscope className="w-5 h-5 text-text-secondary" />}
           />
           <StatCard
             label="Next Token"
             value={stats.nextInLine ? `#${stats.nextInLine}` : "None"}
-            icon={
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-              </svg>
-            }
+            description="Next summoned patient"
+            icon={<Ticket className="w-5 h-5 text-text-secondary" />}
           />
         </div>
       )}
 
-      {/* MAIN LAYOUT */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          4. HOURLY TRAFFIC & BOTTLENECK CHART
+         ────────────────────────────────────────────────────────────────────────── */}
+      {selectedClinic && selectedDoctor && !loadingQueue && appointments.length > 0 && (
+        <ChartContainer
+          title="Hourly Patient Flow & Rush Distribution"
+          description="Distribution of patient tokens across operating hours"
+          loading={loadingQueue}
+          height={200}
+        >
+          <BarChart
+            data={["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"].map(
+              (hStr) => {
+                const targetHour = parseInt(hStr.split(":")[0], 10);
+                const apptsInHour = appointments.filter((a) => {
+                  if (!a.appointmentTime) return false;
+                  const d = new Date(a.appointmentTime);
+                  return d.getHours() === targetHour;
+                });
+                const waiting = apptsInHour.filter((a) => a.status === "pending" || a.status === "checked-in").length;
+                const consulted = apptsInHour.filter(
+                  (a) => a.status === "in-consultation" || a.status === "completed"
+                ).length;
+                return { label: hStr, waiting, consulted };
+              }
+            )}
+            series={[
+              { key: "waiting", name: "Waiting in Line", color: "var(--s-chart-3, #f59e0b)" },
+              { key: "consulted", name: "Completed / Active", color: "var(--s-chart-2, #10b981)" },
+            ]}
+            layout="stacked"
+            height={200}
+            valueFormatter={(v) => `${v} patients`}
+          />
+        </ChartContainer>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          5. MAIN QUEUE WORKSPACE (ACTIVE LIST + SERVED SIDEBAR)
+         ────────────────────────────────────────────────────────────────────────── */}
       {!selectedClinic || !selectedDoctor ? (
-        <Card className="text-center py-12">
+        <Card className="text-center py-16 rounded-2xl border border-border/80 bg-surface">
           <CardContent className="space-y-3">
-            <div className="mx-auto w-12 h-12 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
-              </svg>
+            <div className="mx-auto w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center text-text-secondary">
+              <Stethoscope className="w-6 h-6 text-primary-500" />
             </div>
-            <h3 className="text-lg font-medium text-text">Select a Clinic and Doctor</h3>
-            <p className="text-sm text-text-secondary max-w-sm mx-auto">Please choose a clinic location and doctor practitioner from filters above to view and manage live queues.</p>
+            <h3 className="text-base font-bold text-text">Select Clinic and Doctor</h3>
+            <p className="text-xs text-text-muted max-w-sm mx-auto">
+              Please choose a facility location and physician from the filters above to access the live queue.
+            </p>
           </CardContent>
         </Card>
       ) : loadingQueue ? (
@@ -538,105 +639,158 @@ export default function QueuePage() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Active Queue Control Column */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {/* Left 2 Columns: Active Queue Waitlist */}
           <div className="lg:col-span-2 space-y-4">
-            <h3 className="text-lg font-bold text-text flex items-center gap-2">
-              Active Queue Waitlist
-              <span className="text-xs bg-primary-100 text-primary-800 px-2 py-0.5 rounded-full">
-                {activeQueue.length} Patients
-              </span>
-            </h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-text">Active Queue Waitlist</h3>
+                <Badge variant="primary" size="sm" className="font-semibold">
+                  {activeQueue.length} Waiting
+                </Badge>
+              </div>
+            </div>
 
             {activeQueue.length === 0 ? (
-              <Card className="py-12 text-center text-text-muted">
-                <CardContent>No active patients waiting for today.</CardContent>
+              <Card className="py-14 text-center text-text-muted rounded-2xl border border-border/80 bg-surface">
+                <CardContent className="space-y-2">
+                  <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-emerald-500">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <p className="font-semibold text-text text-sm">No Active Patients in Queue</p>
+                  <p className="text-xs text-text-muted">All appointments for this shift have been processed or checked out.</p>
+                </CardContent>
               </Card>
             ) : (
               <div className="space-y-3">
                 {activeQueue.map((appt, idx) => {
                   const isFirst = idx === 0;
                   const isLast = idx === activeQueue.length - 1;
+                  const isInConsultation = appt.status === "in-consultation";
+                  const isCheckedIn = appt.status === "checked-in";
 
                   return (
-                    <Card key={appt.id} className={`border-l-4 overflow-hidden shadow-sm hover:shadow transition-shadow ${appt.status === "in-consultation" ? "border-l-success-500 bg-success-50/20" : appt.status === "checked-in" ? "border-l-info-500 bg-info-50/10" : "border-l-primary-500"}`}>
+                    <Card
+                      key={appt.id}
+                      className={cn(
+                        "rounded-2xl border transition-all shadow-xs overflow-hidden",
+                        isInConsultation
+                          ? "border-emerald-500/40 bg-emerald-500/[0.03] dark:bg-emerald-500/[0.06]"
+                          : isCheckedIn
+                          ? "border-primary-500/30 bg-surface"
+                          : "border-border/80 bg-surface"
+                      )}
+                    >
                       <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        
                         {/* Token & Patient details */}
-                        <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-full flex flex-col items-center justify-center font-bold shadow-sm shrink-0 ${appt.status === "in-consultation" ? "bg-success-600 text-white" : appt.status === "checked-in" ? "bg-info-600 text-white" : "bg-surface-alt border border-border text-text"}`}>
-                            <span className="text-xs font-normal">Token</span>
-                            <span className="text-lg leading-4">#{appt.tokenNumber}</span>
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div
+                            className={cn(
+                              "w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-mono font-bold shadow-xs shrink-0",
+                              isInConsultation
+                                ? "bg-emerald-500 text-white shadow-emerald-500/20"
+                                : isCheckedIn
+                                ? "bg-primary-500 text-white shadow-primary-500/20"
+                                : "bg-surface-alt border border-border text-text"
+                            )}
+                          >
+                            <span className="text-[9px] font-sans uppercase font-bold tracking-wider opacity-80">
+                              Token
+                            </span>
+                            <span className="text-base leading-none">#{appt.tokenNumber}</span>
                           </div>
-                          
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-text">{appt.patientId?.userId?.name || "Patient Profile"}</span>
-                              <Badge variant={getStatusBadgeVariant(appt.status)} className="capitalize py-0.5">
+
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-text text-sm truncate">
+                                {appt.patientId?.userId?.name || "Patient Profile"}
+                              </span>
+                              <Badge
+                                variant={getStatusBadgeVariant(appt.status)}
+                                size="sm"
+                                dot={isInConsultation}
+                                pulse={isInConsultation}
+                                className="capitalize font-semibold text-[10px]"
+                              >
                                 {appt.status.replace("-", " ")}
                               </Badge>
                             </div>
-                            <p className="text-xs text-text-secondary">
-                              {appt.patientId?.userId?.phone || "No phone"} • {appt.appointmentType.toUpperCase()}
-                            </p>
+                            <div className="flex items-center gap-2 text-xs text-text-muted flex-wrap">
+                              {appt.patientId?.userId?.phone && (
+                                <span className="inline-flex items-center gap-1">
+                                  <Phone className="w-3 h-3" />
+                                  {appt.patientId?.userId?.phone}
+                                </span>
+                              )}
+                              <span>&bull;</span>
+                              <span className="uppercase font-semibold text-[10px] tracking-wider px-1.5 py-0.5 rounded bg-surface-alt border border-border/60">
+                                {appt.appointmentType}
+                              </span>
+                            </div>
                             {appt.notes && (
-                              <p className="text-xs text-text-muted mt-1 italic">
+                              <p className="text-xs text-text-muted italic line-clamp-1">
                                 Note: &ldquo;{appt.notes}&rdquo;
                               </p>
                             )}
                           </div>
                         </div>
 
-                        {/* Wait time & override controls */}
-                        <div className="flex flex-wrap items-center gap-3 shrink-0">
+                        {/* Controls & Action Buttons */}
+                        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                           {/* Wait Time Indicator */}
-                          {appt.status !== "in-consultation" && (
-                            <span className="text-xs bg-surface-alt border border-border text-text-secondary px-2.5 py-1 rounded-md font-medium">
+                          {!isInConsultation && (
+                            <span className="text-xs bg-surface-alt border border-border/80 text-text-secondary px-2.5 py-1 rounded-xl font-medium inline-flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-text-muted" />
                               {getWaitTimeLabel(appt.estimatedWaitTime)}
                             </span>
                           )}
 
                           {/* VIP Queue Reorder Up/Down arrows */}
                           {canManageQueue && (
-                            <div className="flex items-center bg-surface-alt border border-border rounded-lg p-0.5">
+                            <div className="flex items-center bg-surface-alt border border-border/80 rounded-xl p-0.5">
                               <button
+                                type="button"
                                 onClick={() => moveQueueItem(idx, "up")}
                                 disabled={isFirst}
-                                className={`p-1.5 hover:bg-surface rounded transition-colors ${isFirst ? "text-text-muted cursor-not-allowed" : "text-text hover:text-primary-600"}`}
-                                title="Move Up (VIP Shift)"
+                                className={cn(
+                                  "p-1.5 rounded-lg transition-colors cursor-pointer",
+                                  isFirst ? "text-text-muted/40 cursor-not-allowed" : "text-text-secondary hover:text-text hover:bg-surface"
+                                )}
+                                title="Move Up (VIP Override)"
                               >
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-                                </svg>
+                                <ChevronUp className="h-3.5 w-3.5" />
                               </button>
                               <button
+                                type="button"
                                 onClick={() => moveQueueItem(idx, "down")}
                                 disabled={isLast}
-                                className={`p-1.5 hover:bg-surface rounded transition-colors ${isLast ? "text-text-muted cursor-not-allowed" : "text-text hover:text-primary-600"}`}
-                                title="Move Down (VIP Shift)"
+                                className={cn(
+                                  "p-1.5 rounded-lg transition-colors cursor-pointer",
+                                  isLast ? "text-text-muted/40 cursor-not-allowed" : "text-text-secondary hover:text-text hover:bg-surface"
+                                )}
+                                title="Move Down (VIP Override)"
                               >
-                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                                </svg>
+                                <ChevronDown className="h-3.5 w-3.5" />
                               </button>
                             </div>
                           )}
 
                           {/* Action Buttons */}
-                          <div className="flex gap-1.5">
-                            {appt.status === "pending" || appt.status === "confirmed" ? (
+                          <div className="flex items-center gap-1.5">
+                            {(appt.status === "pending" || appt.status === "confirmed") && (
                               <Button
                                 size="xs"
-                                variant="secondary"
+                                variant="primary"
                                 onClick={() => handleCheckInAndPrintToken(appt)}
                                 loading={updatingStatus === appt.id}
+                                className="font-semibold rounded-lg shadow-xs"
                               >
-                                Check-In & Token 🎫
+                                <Ticket className="w-3.5 h-3.5 mr-1" />
+                                Check-In
                               </Button>
-                            ) : null}
+                            )}
 
-                            {appt.status === "checked-in" ? (
+                            {isCheckedIn && (
                               <>
                                 <Button
                                   size="xs"
@@ -648,47 +802,54 @@ export default function QueuePage() {
                                     });
                                     setVitalsModalOpen(true);
                                   }}
+                                  className="font-semibold rounded-lg"
                                 >
-                                  Vitals 🩺
+                                  <Activity className="w-3.5 h-3.5 mr-1 text-text-muted" />
+                                  Vitals
                                 </Button>
                                 <Button
                                   size="xs"
                                   variant="outline"
                                   onClick={() => handleCheckInAndPrintToken(appt)}
+                                  className="font-semibold rounded-lg"
                                 >
-                                  Token 🖨️
+                                  <Printer className="w-3.5 h-3.5 mr-1 text-text-muted" />
+                                  Slip
                                 </Button>
                                 <Button
                                   size="xs"
                                   variant="primary"
                                   onClick={() => updateStatus(appt.id, "in-consultation")}
                                   loading={updatingStatus === appt.id}
+                                  className="font-semibold rounded-lg shadow-xs"
                                 >
-                                  Consult 🩺
+                                  <Play className="w-3.5 h-3.5 mr-1 fill-current" />
+                                  Consult
                                 </Button>
                               </>
-                            ) : null}
+                            )}
 
-                            {appt.status === "in-consultation" ? (
+                            {isInConsultation && (
                               <Button
                                 size="xs"
                                 variant="primary"
                                 onClick={() => openCompleteModal(appt)}
                                 loading={updatingStatus === appt.id}
+                                className="font-semibold rounded-lg shadow-xs"
                               >
-                                Complete
+                                <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                                Complete Visit
                               </Button>
-                            ) : null}
+                            )}
 
-                            {/* Options Dropdown or extra actions */}
-                            {appt.status !== "in-consultation" && (
+                            {!isInConsultation && (
                               <>
                                 <Button
                                   size="xs"
                                   variant="outline"
-                                  className="text-warning-600 border-warning-200 hover:bg-warning-50"
                                   onClick={() => updateStatus(appt.id, "no-show")}
                                   loading={updatingStatus === appt.id}
+                                  className="text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 border-border font-semibold rounded-lg"
                                 >
                                   No-Show
                                 </Button>
@@ -697,6 +858,7 @@ export default function QueuePage() {
                                   variant="danger"
                                   onClick={() => updateStatus(appt.id, "cancelled")}
                                   loading={updatingStatus === appt.id}
+                                  className="font-semibold rounded-lg"
                                 >
                                   Cancel
                                 </Button>
@@ -704,7 +866,6 @@ export default function QueuePage() {
                             )}
                           </div>
                         </div>
-
                       </CardContent>
                     </Card>
                   );
@@ -713,50 +874,68 @@ export default function QueuePage() {
             )}
           </div>
 
-          {/* Finished Queue Column */}
+          {/* Right Column: Served & Inactive Queue */}
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-text flex items-center gap-2">
-              Served & Inactive
-              <span className="text-xs bg-surface-alt text-text-secondary px-2 py-0.5 rounded-full border border-border">
-                {finishedQueue.length}
-              </span>
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-text">Processed Patients</h3>
+              <Badge variant="neutral" size="sm" className="font-semibold">
+                {finishedQueue.length} Served
+              </Badge>
+            </div>
 
-            <Card>
+            <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
               <CardContent className="p-0">
                 {finishedQueue.length === 0 ? (
-                  <div className="text-center py-12 text-text-muted text-sm">No recently processed patients.</div>
+                  <div className="text-center py-14 px-4 text-text-muted text-xs">
+                    No completed patient visits recorded yet today.
+                  </div>
                 ) : (
-                  <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
+                  <div className="divide-y divide-border/60 max-h-[520px] overflow-y-auto">
                     {finishedQueue.map((appt) => (
-                      <div key={appt.id} className="p-4 flex justify-between items-center hover:bg-surface-hover transition-colors">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-text-secondary">Token #{appt.tokenNumber}</span>
-                            <Badge variant={getStatusBadgeVariant(appt.status)} className="capitalize py-0 text-[10px]">
+                      <div
+                        key={appt.id}
+                        className="p-3.5 flex justify-between items-center hover:bg-surface-hover transition-colors gap-3"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono text-xs font-bold text-text-secondary">
+                              #{appt.tokenNumber}
+                            </span>
+                            <Badge
+                              variant={getStatusBadgeVariant(appt.status)}
+                              size="sm"
+                              className="capitalize text-[9px] font-bold"
+                            >
                               {appt.status}
                             </Badge>
                           </div>
-                          <p className="text-sm font-medium text-text mt-0.5">
+                          <p className="text-xs font-bold text-text truncate">
                             {appt.patientId?.userId?.name || "Patient Profile"}
                           </p>
-                          <p className="text-[10px] text-text-muted">
-                            Time: {new Date(appt.appointmentTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                          </p>
+                          <div className="flex items-center gap-1 text-[10px] text-text-muted">
+                            <Clock className="w-3 h-3 text-text-muted" />
+                            <span>
+                              {new Date(appt.appointmentTime).toLocaleTimeString("en-US", {
+                                hour: "numeric",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
                         </div>
+
                         {appt.status === "completed" && (
-                          <div className="w-6 h-6 rounded-full bg-success-100 text-success-700 flex items-center justify-center">
-                            ✓
+                          <div className="w-7 h-7 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                            <Check className="w-4 h-4" />
                           </div>
                         )}
                         {appt.status === "cancelled" && (
-                          <div className="w-6 h-6 rounded-full bg-danger-100 text-danger-700 flex items-center justify-center text-xs font-bold">
-                            ✕
+                          <div className="w-7 h-7 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
+                            <XCircle className="w-4 h-4" />
                           </div>
                         )}
                         {appt.status === "no-show" && (
-                          <div className="w-6 h-6 rounded-full bg-warning-100 text-warning-700 flex items-center justify-center text-xs font-bold">
-                            !
+                          <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0">
+                            <UserX className="w-4 h-4" />
                           </div>
                         )}
                       </div>
@@ -766,28 +945,24 @@ export default function QueuePage() {
               </CardContent>
             </Card>
           </div>
-
         </div>
       )}
 
-      {/* Complete Consultation Modal */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          6. COMPLETE CONSULTATION & EHR DOCUMENTATION MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={completeModalOpen}
         onClose={() => setCompleteModalOpen(false)}
-        title="Complete Consultation"
+        title="Complete Clinical Consultation"
+        description={`Document medical diagnosis, prescriptions, and follow-up plan for ${apptToComplete?.patientId?.userId?.name || "Patient"} (Token #${apptToComplete?.tokenNumber}).`}
         size="lg"
       >
-        <form onSubmit={handleCompleteConsultation} className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-sm text-text-secondary">
-              Mark consultation as completed for patient <strong className="text-text">{apptToComplete?.patientId?.userId?.name}</strong> (Token #{apptToComplete?.tokenNumber}).
-            </p>
-          </div>
-
+        <form onSubmit={handleCompleteConsultation} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
           {/* Clinical Record Documentation */}
-          <div className="space-y-4 border-t border-border pt-4 mt-2">
-            <h3 className="text-sm font-bold text-text">Clinical EHR Documentation</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3.5">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-text-muted">Clinical EHR Summary</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               <Input
                 label="Chief Complaints / Symptoms"
                 placeholder="e.g. Fever, dry cough, body ache for 3 days"
@@ -795,24 +970,26 @@ export default function QueuePage() {
                 onChange={(e) => setSymptoms(e.target.value)}
               />
               <Input
-                label="Diagnosis"
-                placeholder="e.g. Upper respiratory tract infection"
+                label="Primary Diagnosis"
+                placeholder="e.g. Acute Upper Respiratory Infection"
                 value={diagnosis}
                 onChange={(e) => setDiagnosis(e.target.value)}
               />
             </div>
 
             {/* Prescriptions Dynamic Builder */}
-            <div className="space-y-3">
+            <div className="space-y-3 border-t border-border/60 pt-3">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-text">Rx - Prescribed Medications</span>
+                <span className="text-xs font-bold text-text">Prescribed Medications (Rx)</span>
                 <Button
                   type="button"
                   size="xs"
                   variant="outline"
                   onClick={() => setPrescriptions([...prescriptions, { name: "", dosage: "", duration: "" }])}
+                  className="rounded-lg font-semibold"
                 >
-                  + Add Medication
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  Add Medicine
                 </Button>
               </div>
 
@@ -831,7 +1008,7 @@ export default function QueuePage() {
                         }}
                       />
                     </div>
-                    <div className="w-44">
+                    <div className="w-40">
                       <Input
                         label={idx === 0 ? "Dosage" : ""}
                         placeholder="e.g. 1-0-1 (After Food)"
@@ -860,12 +1037,12 @@ export default function QueuePage() {
                         type="button"
                         size="sm"
                         variant="danger"
-                        className="mb-0.5"
+                        className="mb-0.5 px-2.5"
                         onClick={() => {
                           setPrescriptions(prescriptions.filter((_, i) => i !== idx));
                         }}
                       >
-                        ✕
+                        <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     )}
                   </div>
@@ -874,52 +1051,60 @@ export default function QueuePage() {
             </div>
           </div>
 
-          <div className="py-2.5 border-t border-b border-border my-2">
+          <div className="p-3 bg-surface-alt rounded-xl border border-border/80">
             <Checkbox
               id="recommendFollowUp"
-              label="Recommend a follow-up appointment?"
+              label="Recommend follow-up appointment consultation?"
               checked={recommendFollowUp}
               onChange={(e) => setRecommendFollowUp(e.target.checked)}
             />
           </div>
 
           {recommendFollowUp && (
-            <div className="space-y-4 animate-fade-in">
+            <div className="space-y-3.5 animate-fade-in p-3.5 rounded-2xl bg-amber-500/[0.04] border border-amber-500/20">
               <Select
                 label="Recommended Timeframe *"
                 value={followUpTimeline}
                 onChange={(e) => setFollowUpTimeline(e.target.value)}
                 options={[
-                  { value: "1 week", label: "1 Week" },
-                  { value: "2 weeks", label: "2 Weeks" },
-                  { value: "3 weeks", label: "3 Weeks" },
-                  { value: "1 month", label: "1 Month" },
-                  { value: "2 months", label: "2 Months" },
-                  { value: "3 months", label: "3 Months" },
+                  { value: "1 week", label: "Within 1 Week" },
+                  { value: "2 weeks", label: "Within 2 Weeks" },
+                  { value: "3 weeks", label: "Within 3 Weeks" },
+                  { value: "1 month", label: "Within 1 Month" },
+                  { value: "2 months", label: "Within 2 Months" },
+                  { value: "3 months", label: "Within 3 Months" },
                 ]}
                 required
               />
               <Textarea
-                label="Follow-Up Notes / Instructions"
-                placeholder="e.g. Suture removal, check recovery progress, review blood reports..."
+                label="Follow-Up Instructions"
+                placeholder="e.g. Review blood glucose reports, suture inspection, adjust medication dosage..."
                 value={followUpNotes}
                 onChange={(e) => setFollowUpNotes(e.target.value)}
-                rows={3}
+                rows={2}
               />
             </div>
           )}
 
-          <div className="flex justify-end gap-3 border-t border-border pt-4 mt-4">
+          <div className="flex justify-end gap-2.5 border-t border-border/60 pt-3">
             <Button
               variant="outline"
               type="button"
+              size="sm"
               onClick={() => setCompleteModalOpen(false)}
               disabled={completingSubmitting}
+              className="rounded-xl font-semibold"
             >
               Cancel
             </Button>
-            <Button type="submit" loading={completingSubmitting}>
-              Complete Consultation
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={completingSubmitting}
+              className="font-semibold rounded-xl shadow-xs"
+            >
+              Conclude Visit & Save Record
             </Button>
           </div>
         </form>

@@ -95,7 +95,7 @@ const Tabs = memo(function Tabs({
         onKeyDown={handleKeyDown}
         className={cn(
           "relative flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth max-w-full select-none touch-manipulation",
-          variant === "underline" ? "border-b border-border pb-px" : "bg-surface-alt rounded-xl p-1"
+          variant === "underline" ? "border-b border-border/80 pb-px" : "bg-surface-alt/70 border border-border/70 rounded-xl p-1 shadow-2xs"
         )}
       >
         {/* Underline Slider */}
@@ -113,7 +113,7 @@ const Tabs = memo(function Tabs({
         {/* Pills Slider */}
         {variant === "pills" && (
           <div
-            className="absolute bg-surface/90 backdrop-blur-md rounded-lg shadow-sm border border-border/60 transform-gpu transition-all duration-300 ease-spring"
+            className="absolute bg-surface rounded-lg shadow-xs border border-border/70 transform-gpu transition-all duration-300 ease-spring"
             style={{
               top: "4px",
               bottom: "4px",

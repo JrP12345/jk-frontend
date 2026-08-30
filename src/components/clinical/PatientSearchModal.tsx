@@ -116,7 +116,7 @@ export function PatientSearchModal({ isOpen, onClose, patientId }: PatientSearch
             placeholder="Search notes, medications, lab orders, or diagnoses..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full px-4 py-2.5 bg-surface-hover border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 text-text"
+            className="w-full px-4 py-2.5 bg-surface-alt/70 border border-border/80 rounded-xl text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 text-text shadow-2xs transition-all"
             autoFocus
           />
           {loading && (
@@ -133,10 +133,10 @@ export function PatientSearchModal({ isOpen, onClose, patientId }: PatientSearch
               key={cat}
               type="button"
               onClick={() => setCategory(cat)}
-              className={`px-3 py-1 rounded-full capitalize font-medium transition-colors ${
+              className={`px-3 py-1 rounded-xl capitalize font-semibold transition-all cursor-pointer shadow-2xs ${
                 category === cat
-                  ? "bg-primary-600 text-white"
-                  : "bg-surface-hover text-text-secondary hover:text-text"
+                  ? "bg-primary-600 text-white shadow-xs border border-primary-500"
+                  : "bg-surface-alt/70 text-text-secondary border border-border/70 hover:bg-surface-hover hover:text-text"
               }`}
             >
               {cat}

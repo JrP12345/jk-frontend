@@ -324,7 +324,7 @@ export function FloatingAICopilot() {
                 ? "bg-surface-hover text-text border border-border/80 shadow-md rotate-90 scale-105"
                 : "bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:scale-108 active:scale-95"
             }`}
-            title={isOpen ? "Close AI Copilot" : "Open Ananta AI Copilot"}
+            title={isOpen ? "Close AI Copilot" : "Open Anant AI Copilot"}
             aria-label="Toggle AI Copilot"
           >
             {isOpen ? (
@@ -341,7 +341,7 @@ export function FloatingAICopilot() {
       {/* Floating Popover Copilot Window */}
       {isOpen && (
         <div
-          className={`fixed z-50 bg-surface border border-border/80 rounded-2xl shadow-2xl flex flex-col transition-all duration-200 animate-in fade-in slide-in-from-bottom-3 ${
+          className={`fixed z-50 bg-surface/95 backdrop-blur-2xl border border-border/80 rounded-2xl shadow-2xl shadow-black/25 flex flex-col transition-all duration-300 ease-spring animate-popover-in ${
             isExpanded
               ? "inset-4 md:inset-6 md:left-auto md:w-[640px] md:h-[calc(100vh-3rem)]"
               : "bottom-20 right-6 w-[400px] max-w-[calc(100vw-2rem)] h-[580px] max-h-[82vh]"
@@ -355,7 +355,7 @@ export function FloatingAICopilot() {
               </div>
               <div className="truncate">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-xs font-bold text-text truncate">Ananta AI Copilot</h3>
+                  <h3 className="text-xs font-bold text-text truncate">Anant AI Copilot</h3>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                 </div>
               </div>
@@ -555,10 +555,10 @@ export function FloatingAICopilot() {
                   Patient Roster
                 </button>
                 <button
-                  onClick={() => handleSendMessage(undefined, "What is our current hospital bed occupancy and active admissions?")}
+                  onClick={() => handleSendMessage(undefined, "What are our clinic appointments and queue metrics for today?")}
                   className="px-2.5 py-1 bg-surface-alt/50 hover:bg-surface-hover text-text-muted hover:text-text rounded-lg transition-colors whitespace-nowrap cursor-pointer"
                 >
-                  Bed Occupancy
+                  Appointments & Queue
                 </button>
                 <button
                   onClick={handleRegenerate}
@@ -614,7 +614,7 @@ export function FloatingAICopilot() {
                 type="text"
                 value={inputQuery}
                 onChange={(e) => setInputQuery(e.target.value)}
-                placeholder={isVoiceActive ? "Listening..." : "Ask Ananta AI..."}
+                placeholder={isVoiceActive ? "Listening..." : "Ask Anant AI..."}
                 className="flex-1 bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none px-2 py-1"
               />
 

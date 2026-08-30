@@ -152,16 +152,38 @@ export default function Table<T extends Record<string, any>>({
     setCurrentPage(1);
   };
 
+  // Helper to extract searchable string representation recursively
+  const extractSearchableText = (obj: any): string => {
+    if (obj === null || obj === undefined) return "";
+    if (typeof obj !== "object") return String(obj);
+    if (Array.isArray(obj)) return obj.map(extractSearchableText).join(" ");
+    return Object.values(obj).map(extractSearchableText).join(" ");
+  };
+
   // Global Search & Column Filter Matching
   const filteredData = useMemo(() => {
     return data.filter((row) => {
       // 1. Global Search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchesGlobal = Object.values(row).some((val) =>
-          String(val ?? "").toLowerCase().includes(q)
-        );
-        if (!matchesGlobal) return false;
+        // Check row's flat values, nested objects, and column accessors
+        const deepRowString = extractSearchableText(row).toLowerCase();
+        let matches = deepRowString.includes(q);
+
+        if (!matches) {
+          // Also check explicit column accessors
+          matches = columns.some((col) => {
+            if (typeof col.accessor === "function") {
+              const res = col.accessor(row, 0);
+              return typeof res === "string" || typeof res === "number"
+                ? String(res).toLowerCase().includes(q)
+                : false;
+            }
+            return false;
+          });
+        }
+
+        if (!matches) return false;
       }
 
       // 2. Column-Level Filters
@@ -175,7 +197,7 @@ export default function Table<T extends Record<string, any>>({
 
       return true;
     });
-  }, [data, searchQuery, columnFilters]);
+  }, [data, searchQuery, columnFilters, columns]);
 
   // Sorting
   const sortedData = useMemo(() => {
@@ -198,6 +220,24 @@ export default function Table<T extends Record<string, any>>({
     const start = (currentPage - 1) * rowsPerPage;
     return sortedData.slice(start, start + rowsPerPage);
   }, [sortedData, currentPage, rowsPerPage, pagination]);
+
+  // Dynamic Sliding Pagination Window
+  const paginationRange = useMemo(() => {
+    const delta = 2; // Number of pages before and after current
+    const range: (number | string)[] = [];
+    const left = Math.max(2, currentPage - delta);
+    const right = Math.min(totalPages - 1, currentPage + delta);
+
+    range.push(1);
+    if (left > 2) range.push("ellipsis-left");
+    for (let i = left; i <= right; i++) {
+      range.push(i);
+    }
+    if (right < totalPages - 1) range.push("ellipsis-right");
+    if (totalPages > 1) range.push(totalPages);
+
+    return range;
+  }, [currentPage, totalPages]);
 
   // Selection Logic
   const toggleAll = () => {
@@ -227,16 +267,30 @@ export default function Table<T extends Record<string, any>>({
     return data.filter((d) => selected.has(d[keyField]));
   }, [data, selected, keyField]);
 
+  // Clean CSV Export Helper
+  const extractCellCSV = (col: Column<T>, row: T, idx: number): string => {
+    if (typeof col.accessor === "function") {
+      const res = col.accessor(row, idx);
+      return typeof res === "string" || typeof res === "number" ? String(res) : "";
+    }
+    const key = col.key || (typeof col.accessor === "string" ? col.accessor : "");
+    if (!key) return "";
+    const val = (row as any)[key];
+    if (val === null || val === undefined) return "";
+    if (typeof val === "object") {
+      return val.name || val.title || val.label || val.id || JSON.stringify(val);
+    }
+    return String(val);
+  };
+
   // CSV Export
   const exportToCSV = () => {
     if (!data || data.length === 0) return;
-    const headers = visibleColumns.map((c) => c.header).join(",");
-    const rows = sortedData.map((row) =>
+    const headers = visibleColumns.map((c) => `"${c.header.replace(/"/g, '""')}"`).join(",");
+    const rows = sortedData.map((row, idx) =>
       visibleColumns
         .map((col) => {
-          const key = col.key || (typeof col.accessor === "string" ? col.accessor : "");
-          const val = key ? row[key] : "";
-          const str = String(val ?? "").replace(/"/g, '""');
+          const str = extractCellCSV(col, row, idx).replace(/"/g, '""');
           return `"${str}"`;
         })
         .join(",")
@@ -259,18 +313,18 @@ export default function Table<T extends Record<string, any>>({
     <div className={cn("w-full flex flex-col relative", className)}>
       {/* UNIFIED PREMIUM CARD WRAPPER */}
       <div className={cn(
-        "w-full rounded-2xl border border-border/80 bg-surface shadow-sm overflow-hidden flex flex-col transition-all",
-        variant === "bordered" && "border-2 border-border",
+        "w-full rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden flex flex-col transition-all",
+        variant === "bordered" && "border border-border",
         variant === "flat" && "border-none shadow-none bg-transparent"
       )}>
 
         {/* 1. TOP TOOLBAR BAR (TITLE, ACTION, PILL SEARCH & FILTER CONTROLS) */}
-        <div className="p-3 sm:p-4 bg-surface-alt/30 border-b border-border/70 flex flex-col gap-2.5 sm:gap-3">
+        <div className="p-3.5 sm:p-4 bg-surface-alt/40 border-b border-border/80 flex flex-col gap-2.5 sm:gap-3">
           {/* Title & Primary Action Row */}
           {(title || description || action) && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2.5 border-b border-border/40">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2.5 border-b border-border/60">
               <div>
-                {title && <h3 className="text-base sm:text-lg font-bold text-text">{title}</h3>}
+                {title && <h3 className="text-base sm:text-lg font-bold text-text tracking-tight">{title}</h3>}
                 {description && <p className="text-xs text-text-muted mt-0.5">{description}</p>}
               </div>
               {action && <div className="shrink-0 flex items-center">{action}</div>}
@@ -284,7 +338,7 @@ export default function Table<T extends Record<string, any>>({
               <div className="relative flex-1">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                   </svg>
                 </span>
                 <input
@@ -292,7 +346,7 @@ export default function Table<T extends Record<string, any>>({
                   value={searchQuery}
                   onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                   placeholder={searchPlaceholder}
-                  className="w-full bg-surface-alt/70 border border-border/80 rounded-full pl-10 pr-9 py-2 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 transition-all"
+                  className="w-full bg-surface border border-border/80 rounded-xl pl-10 pr-9 py-2 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 transition-all shadow-2xs"
                 />
                 {searchQuery && (
                   <button
@@ -313,7 +367,7 @@ export default function Table<T extends Record<string, any>>({
                   type="button"
                   onClick={() => setShowFilterRow(!showFilterRow)}
                   className={cn(
-                    "p-2 rounded-lg border border-border text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors relative cursor-pointer",
+                    "p-2 rounded-xl border border-border/80 bg-surface text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors relative cursor-pointer shadow-2xs",
                     (showFilterRow || activeFiltersCount > 0) && "border-primary-500 text-primary-500 bg-primary-500/10"
                   )}
                   title="Toggle Header Filters"
@@ -330,7 +384,7 @@ export default function Table<T extends Record<string, any>>({
                   trigger={
                     <button
                       type="button"
-                      className="p-2 rounded-lg border border-border text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
+                      className="p-2 rounded-xl border border-border/80 bg-surface text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer shadow-2xs"
                       title="Column Visibility"
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -355,7 +409,7 @@ export default function Table<T extends Record<string, any>>({
                 <button
                   type="button"
                   onClick={exportToCSV}
-                  className="p-2 rounded-lg border border-border text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
+                  className="p-2 rounded-xl border border-border/80 bg-surface text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer shadow-2xs"
                   title="Export to CSV"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -369,7 +423,7 @@ export default function Table<T extends Record<string, any>>({
                 <button
                   type="button"
                   onClick={onAddClick}
-                  className="p-2 rounded-lg bg-primary-600 hover:bg-primary-500 text-white font-bold text-xs shadow-xs transition-all active:scale-95 flex items-center justify-center shrink-0 cursor-pointer"
+                  className="p-2 rounded-xl bg-primary-600 hover:bg-primary-500 text-white font-bold text-xs shadow-xs transition-all active:scale-95 flex items-center justify-center shrink-0 cursor-pointer"
                   title={actionLabel || "Add New Entry"}
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -382,7 +436,7 @@ export default function Table<T extends Record<string, any>>({
 
           {/* Second Row: Toolbar Filters (Fluid Responsive Flex on Mobile & Desktop) */}
           {toolbarFilters && (
-            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/40 w-full">
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/60 w-full">
               {toolbarFilters}
             </div>
           )}
@@ -393,11 +447,11 @@ export default function Table<T extends Record<string, any>>({
           <table className="w-full text-sm border-collapse text-left min-w-[650px] sm:min-w-full">
             <thead>
               <tr className={cn(
-                "border-b border-border/80 bg-surface-alt/80 backdrop-blur-md text-text font-bold text-xs uppercase tracking-wider",
+                "border-b border-border/80 bg-surface-alt/70 text-text font-bold text-xs uppercase tracking-wider",
                 stickyHeader && "sticky top-0 z-10"
               )}>
                 {selectable && (
-                  <th className="w-10 px-3 py-3 align-middle text-center border-r border-border/40">
+                  <th className="w-10 px-3 py-3 align-middle text-center border-r border-border/60">
                     <Checkbox
                       checked={selected.size === currentData.length && currentData.length > 0}
                       onChange={toggleAll}
@@ -417,7 +471,7 @@ export default function Table<T extends Record<string, any>>({
                       style={col.width ? { width: col.width } : undefined}
                       className={cn(
                         "px-4 py-3 text-text-secondary select-none font-bold text-xs tracking-wider whitespace-nowrap",
-                        !isLast && "border-r border-border/40",
+                        !isLast && "border-r border-border/60",
                         alignClass
                       )}
                     >
@@ -468,16 +522,25 @@ export default function Table<T extends Record<string, any>>({
               )}
             </thead>
 
-            <tbody className={cn("divide-y divide-border/50", variant === "striped" && "[&>tr:nth-child(even)]:bg-surface-alt/25")}>
+            <tbody className={cn("divide-y divide-border/60", variant === "striped" && "[&>tr:nth-child(even)]:bg-surface-alt/30")}>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/40">
-                    {selectable && <td className="px-3 py-3 align-middle text-center"><div className="h-4 w-4 rounded-md skeleton-shimmer" /></td>}
-                    {visibleColumns.map((col, idx) => (
-                      <td key={col.key || String(idx)} className={densityPadding[density]}>
-                        <div className="h-4 w-4/5 rounded-lg skeleton-shimmer" />
+                    {selectable && (
+                      <td className="px-3 py-3 align-middle text-center border-r border-border/40">
+                        <div className="h-4 w-4 mx-auto rounded-md skeleton-shimmer" />
                       </td>
-                    ))}
+                    )}
+                    {visibleColumns.map((col, idx) => {
+                      const isLast = idx === visibleColumns.length - 1;
+                      const widths = ["75%", "55%", "85%", "65%", "45%", "60%"];
+                      const width = widths[(i + idx) % widths.length];
+                      return (
+                        <td key={col.key || String(idx)} className={cn(densityPadding[density], !isLast && "border-r border-border/30")}>
+                          <div className="h-4 rounded-lg skeleton-shimmer" style={{ width }} />
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))
               ) : currentData.length === 0 ? (
@@ -508,16 +571,17 @@ export default function Table<T extends Record<string, any>>({
                         }
                       } : undefined}
                       className={cn(
-                        "transform-gpu transition-all duration-200 ease-smooth border-b border-border/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset",
+                        "transform-gpu transition-all duration-150 ease-smooth border-b border-border/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset",
                         onRowClick && "cursor-pointer",
-                        isSelected ? "bg-primary-500/10 text-primary-400 font-medium" : "hover:bg-surface-hover/50"
+                        isSelected ? "bg-primary-500/10 text-primary-400 font-medium" : "hover:bg-surface-hover/60"
                       )}
                     >
                       {selectable && (
-                        <td className="px-3 py-3 align-middle text-center">
+                        <td className="px-3 py-3 align-middle text-center border-r border-border/40">
                           <Checkbox
                             checked={isSelected}
                             onChange={() => toggleRow(row)}
+                            aria-label={`Select row ${val ?? i}`}
                           />
                         </td>
                       )}
@@ -558,7 +622,7 @@ export default function Table<T extends Record<string, any>>({
 
         {/* 3. FOOTER PAGINATION BAR (ALIGNED & RESPONSIVE) */}
         {pagination && !loading && (
-          <div className="px-4 py-3 border-t border-border/70 bg-surface-alt/30 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-muted">
+          <div className="px-4 py-3 border-t border-border/80 bg-surface-alt/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-muted">
             <div className="flex items-center justify-between w-full sm:w-auto gap-4 font-medium">
               <span className="shrink-0">
                 Showing {sortedData.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} to {Math.min(currentPage * rowsPerPage, sortedData.length)} of {sortedData.length}
@@ -587,13 +651,20 @@ export default function Table<T extends Record<string, any>>({
                   type="button"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="px-2 py-1 rounded-md border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="px-2.5 py-1 rounded-lg border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-2xs cursor-pointer"
                 >
                   ‹
                 </button>
 
-                {Array.from({ length: totalPages }).slice(0, 5).map((_, idx) => {
-                  const pNum = idx + 1;
+                {paginationRange.map((item, idx) => {
+                  if (typeof item === "string") {
+                    return (
+                      <span key={`${item}-${idx}`} className="h-7 w-6 flex items-center justify-center text-xs text-text-muted select-none">
+                        …
+                      </span>
+                    );
+                  }
+                  const pNum = item;
                   const isActive = currentPage === pNum;
                   return (
                     <button
@@ -601,8 +672,8 @@ export default function Table<T extends Record<string, any>>({
                       type="button"
                       onClick={() => setCurrentPage(pNum)}
                       className={cn(
-                        "h-6 w-6 rounded-full flex items-center justify-center font-bold text-xs transition-all cursor-pointer",
-                        isActive ? "bg-primary-600 text-white shadow-xs" : "text-text-muted hover:text-text hover:bg-surface-hover"
+                        "h-7 min-w-[28px] px-1.5 rounded-lg flex items-center justify-center font-bold text-xs transition-all cursor-pointer shadow-2xs",
+                        isActive ? "bg-primary-600 text-white shadow-xs border border-primary-500" : "border border-border/80 bg-surface text-text-muted hover:text-text hover:bg-surface-hover"
                       )}
                     >
                       {pNum}
@@ -614,14 +685,14 @@ export default function Table<T extends Record<string, any>>({
                   type="button"
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="px-2 py-1 rounded-md border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="px-2.5 py-1 rounded-lg border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-2xs cursor-pointer"
                 >
                   ›
                 </button>
               </div>
 
               {selectable && (
-                <div className="px-3 py-1 rounded-lg border border-border/80 bg-surface text-xs font-semibold text-text-secondary">
+                <div className="px-3 py-1 rounded-xl border border-border/80 bg-surface text-xs font-semibold text-text-secondary shadow-2xs">
                   {selected.size} Selected
                 </div>
               )}
@@ -632,7 +703,7 @@ export default function Table<T extends Record<string, any>>({
 
       {/* Floating Bulk Actions Bar */}
       {selectable && selected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-surface border border-primary-500/40 text-text px-5 py-3 rounded-2xl shadow-2xl backdrop-blur-xl flex items-center gap-4 animate-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-surface/95 border border-primary-500/40 text-text px-5 py-3 rounded-2xl shadow-xl shadow-slate-900/10 dark:shadow-black/70 ring-1 ring-black/5 dark:ring-white/10 backdrop-blur-xl flex items-center gap-4 animate-fade-up">
           <span className="text-xs font-bold text-primary-500">
             {selected.size} item{selected.size > 1 ? "s" : ""} selected
           </span>

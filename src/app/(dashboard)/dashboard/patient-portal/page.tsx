@@ -15,9 +15,11 @@ import {
   Select,
   useToast,
   Modal,
+  cn,
 } from "@/components/ui";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
+import { Link2, Plus, Download } from "lucide-react";
 
 interface PatientProfile {
   id: string;
@@ -160,8 +162,8 @@ export default function PatientPortalPage() {
 
       const token = res.data?.data?.tokenNumber;
       toast({
-        title: "Appointment Booked! 🩺",
-        description: `Successfully booked. Assigned Queue Token: #${token}`,
+        title: "Appointment Confirmed",
+        description: `Your appointment has been booked. Queue Token: #${token}`,
         variant: "success",
       });
 
@@ -170,7 +172,7 @@ export default function PatientPortalPage() {
       setSelfNotes("");
       router.push("/dashboard/bills");
     } catch (err: any) {
-      toast({ title: "Booking Failed", description: err.response?.data?.message || "Failed to book appointment", variant: "error" });
+      toast({ title: "Booking Unsuccessful", description: err.response?.data?.message || "Unable to book appointment. Please select another time slot.", variant: "error" });
     } finally {
       setSubmittingSelfBook(false);
     }
@@ -360,7 +362,7 @@ export default function PatientPortalPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Spinner size="lg" label="Loading Patient Portal..." />
+        <Spinner size="lg" label="Loading health records & appointments..." />
       </div>
     );
   }
@@ -383,7 +385,7 @@ export default function PatientPortalPage() {
 
         <div className="flex items-center gap-3">
           <Button size="sm" onClick={openSelfBookModal}>
-            📅 Book Appointment
+            Book Appointment
           </Button>
           <Button variant="outline" size="sm" onClick={() => setEditProfileModalOpen(true)}>
             Edit Medical Info
@@ -392,7 +394,7 @@ export default function PatientPortalPage() {
       </div>
 
       {/* Portal Tabs */}
-      <div className="flex border-b border-border space-x-6 overflow-x-auto">
+      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
         {[
           { key: "profile", label: "Medical Profile" },
           { key: "family", label: `My Family (${familyMembers.length})` },
@@ -403,11 +405,12 @@ export default function PatientPortalPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key as any)}
-            className={`pb-3 text-sm font-semibold transition-colors border-b-2 cursor-pointer whitespace-nowrap ${
+            className={cn(
+              "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
               activeTab === tab.key
-                ? "border-primary-500 text-primary-500"
-                : "border-transparent text-text-muted hover:text-text"
-            }`}
+                ? "bg-surface text-text shadow-xs font-bold border border-border/60"
+                : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
+            )}
           >
             {tab.label}
           </button>
@@ -505,11 +508,13 @@ export default function PatientPortalPage() {
               <p className="text-xs text-text-muted mt-0.5">Manage family profiles and book appointments on their behalf</p>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setClaimModalOpen(true)}>
-                🔗 Claim Existing Clinic Record
+              <Button size="sm" variant="outline" onClick={() => setClaimModalOpen(true)} className="rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs">
+                <Link2 className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
+                Claim Existing Record
               </Button>
-              <Button size="sm" onClick={() => setAddFamilyModalOpen(true)}>
-                ➕ Add Family Member
+              <Button size="sm" onClick={() => setAddFamilyModalOpen(true)} className="font-semibold rounded-xl shadow-xs">
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Add Family Member
               </Button>
             </div>
           </div>
@@ -548,7 +553,7 @@ export default function PatientPortalPage() {
                         openSelfBookModal();
                       }}
                     >
-                      📅 Book for {p?.name?.split(" ")[0] || "Member"}
+                      Book for {p?.name?.split(" ")[0] || "Member"}
                     </Button>
                   </div>
                 </Card>

@@ -176,7 +176,7 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
               zIndex: 99999,
             }}
             className={cn(
-              "bg-surface/95 rounded-2xl border border-border/80 shadow-2xl shadow-black/40 p-1.5 focus:outline-none backdrop-blur-2xl ring-1 ring-white/10 transform-gpu select-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent overflow-hidden",
+              "bg-surface/98 rounded-2xl border border-border/80 shadow-xl p-1.5 focus:outline-none backdrop-blur-2xl ring-1 ring-border/50 transform-gpu select-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent overflow-hidden",
               isExiting ? "animate-dropdown-out" : "animate-dropdown-in",
               width
             )}

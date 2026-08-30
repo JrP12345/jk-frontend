@@ -3,9 +3,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { SOAPService } from "@/services/soap.service";
-import { Modal, Button, Badge, Spinner, Textarea, Select } from "@/components/ui";
+import { Modal, Button, Badge, Spinner, Textarea, Select, Dropdown, Card, Input } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "./UnifiedDocumentModal";
 import { PreviousVisitsSidebar } from "./PreviousVisitsSidebar";
+import { Sparkles, Printer, History, Save, Lock, CheckCircle2, Edit3, Plus, Trash2, FileSpreadsheet, ChevronDown } from "lucide-react";
 
 interface SOAPNoteEditorProps {
   patientId: string;
@@ -66,7 +67,8 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
 
   // Local Storage Autosave Draft Recovery State
   const [recoveredDraft, setRecoveredDraft] = useState<any | null>(null);
-  const draftStorageKey = `soap_draft_${appointmentId || patientId}`;
+  const [lastAutoSavedAt, setLastAutoSavedAt] = useState<string | null>(null);
+  const draftStorageKey = `soap_draft_${appointmentId || initialEncounterId || patientId}`;
 
   // History Drawer State
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -267,7 +269,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
     setUnifiedDoc({
       documentType: "prescription",
       title: "PRESCRIPTION RX",
-      clinicName: "ANANTA Healthcare System",
+      clinicName: "ANANT Healthcare System",
       doctorName: "Attending Physician",
       doctorSpecialization: "Outpatient General Medicine",
       patientName: "Patient Profile",
@@ -307,6 +309,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
 
     const timer = setInterval(() => {
       try {
+        const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         const draftObj = {
           chiefComplaint,
           historyOfPresentIllness,
@@ -325,6 +328,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
           savedAt: new Date().toISOString(),
         };
         localStorage.setItem(draftStorageKey, JSON.stringify(draftObj));
+        setLastAutoSavedAt(nowStr);
       } catch {
         // Ignore storage write errors
       }
@@ -381,11 +385,22 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
   }, [appointmentId, activePatientId, activeClinicId]);
 
   const handleAddMedication = () => {
-    if (!medName || !medDosage) return;
-    setPrescriptions((prev) => [...prev, { name: medName, dosage: medDosage, duration: medDuration || "5 days" }]);
+    if (!medName.trim() || !medDosage.trim()) return;
+    const cleanName = medName.trim();
+    // Guard against duplicate prescription
+    const isDuplicate = prescriptions.some(
+      (p) => p.name.toLowerCase() === cleanName.toLowerCase()
+    );
+    if (isDuplicate) {
+      setMessage({ type: "error", text: `"${cleanName}" is already added to this prescription list.` });
+      return;
+    }
+
+    setPrescriptions((prev) => [...prev, { name: cleanName, dosage: medDosage.trim(), duration: medDuration.trim() || "5 days" }]);
     setMedName("");
     setMedDosage("");
     setMedDuration("");
+    setMessage(null);
   };
 
   const handleStartEncounter = async (): Promise<string | null> => {
@@ -531,12 +546,12 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
   };
 
   return (
-    <div className="bg-white dark:bg-[#12131a] rounded-xl border border-zinc-200 dark:border-[#1e1f26] p-6 space-y-6">
+    <div className="bg-surface rounded-2xl border border-border/80 p-5 sm:p-6 space-y-6 shadow-xs">
       {/* Top Banner & Action Controls */}
-      <div className="flex items-center justify-between border-b border-zinc-200 dark:border-[#1e1f26] pb-4">
+      <div className="flex items-center justify-between border-b border-border/60 pb-4">
         <div>
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Clinical SOAP Consultation Note</h2>
-          <p className="text-xs text-zinc-500">Standardized medical documentation workspace</p>
+          <h2 className="text-lg font-bold text-text">Clinical SOAP Consultation Note</h2>
+          <p className="text-xs text-text-muted">Standardized medical documentation workspace</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Quick Load Clinical Template Dropdown & Real AI Generator */}
@@ -547,34 +562,36 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                 variant="primary"
                 disabled={generatingAI}
                 onClick={handleGenerateAISOAP}
-                className="flex items-center gap-1.5 font-bold"
+                className="font-semibold rounded-xl shadow-xs"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2" />
-                </svg>
+                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
                 <span>{generatingAI ? "Generating AI SOAP..." : "AI Auto-Draft SOAP"}</span>
               </Button>
-              <select
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleApplyTemplate(e.target.value);
-                    e.target.value = "";
-                  }
-                }}
-                className="px-3 py-1.5 bg-surface text-text border border-border/80 rounded-xl text-xs font-semibold cursor-pointer hover:bg-surface-hover transition-colors"
-              >
-                <option value="">Load Clinical Template...</option>
-                {CLINICAL_TEMPLATES.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-                {dbTemplates.map((t) => (
-                  <option key={t.id || t._id} value={t.id || t._id}>
-                    {t.title} ({t.specialty})
-                  </option>
-                ))}
-              </select>
+              <Dropdown
+                align="right"
+                trigger={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="font-semibold rounded-xl shadow-xs text-xs gap-1.5 hover:bg-surface-hover"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-text-secondary" />
+                    <span>Load Clinical Template...</span>
+                    <ChevronDown className="w-3 h-3 text-text-muted ml-0.5" />
+                  </Button>
+                }
+                items={[
+                  ...CLINICAL_TEMPLATES.map((t) => ({
+                    label: t.name,
+                    onClick: () => handleApplyTemplate(t.id),
+                  })),
+                  ...(dbTemplates.length > 0 ? [{ divider: true, label: "" }] : []),
+                  ...dbTemplates.map((t) => ({
+                    label: `${t.title} (${t.specialty})`,
+                    onClick: () => handleApplyTemplate(t.id || t._id),
+                  })),
+                ]}
+              />
             </>
           )}
 
@@ -582,26 +599,38 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
             size="sm"
             variant="outline"
             onClick={handleOpenPrintModal}
+            className="rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs"
           >
-            🖨️ Print Rx PDF
+            <Printer className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
+            Print Rx PDF
           </Button>
           <Button
             size="sm"
             variant="outline"
             onClick={handleFetchHistory}
+            className="rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs"
           >
-            📜 Version History
+            <History className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
+            Version History
           </Button>
 
           {!isSigned ? (
-            <>
+            <div className="flex items-center gap-2">
+              {lastAutoSavedAt && (
+                <span className="text-[11px] text-text-muted hidden md:inline-flex items-center gap-1 font-medium bg-surface-alt/60 px-2.5 py-1 rounded-lg border border-border/50">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Auto-saved {lastAutoSavedAt}
+                </span>
+              )}
               <Button
                 size="sm"
                 variant="primary"
                 onClick={handleSaveDraft}
                 disabled={loading || signing}
+                className="font-semibold rounded-xl shadow-xs"
               >
-                {loading ? "Saving..." : "Save Draft SOAP Note"}
+                <Save className="w-3.5 h-3.5 mr-1.5" />
+                {loading ? "Saving..." : "Save Draft SOAP"}
               </Button>
 
               {currentNoteId && (
@@ -610,22 +639,27 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                   variant="success"
                   onClick={handleSignNote}
                   disabled={signing || loading}
+                  className="font-semibold rounded-xl shadow-xs"
                 >
+                  <Lock className="w-3.5 h-3.5 mr-1.5" />
                   {signing ? "Signing..." : "Sign & Lock Note"}
                 </Button>
               )}
-            </>
+            </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Badge variant="success" className="px-3 py-1.5 text-xs font-bold">
-                ✓ Signed & Locked Note
+              <Badge variant="success" className="px-3 py-1.5 text-xs font-bold inline-flex items-center gap-1.5 rounded-xl">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Signed & Locked Note
               </Badge>
 
               <Button
                 size="sm"
                 variant="warning"
                 onClick={() => setAmendOpen(true)}
+                className="rounded-xl text-xs font-semibold shadow-xs"
               >
+                <Edit3 className="w-3.5 h-3.5 mr-1.5" />
                 Amend Note
               </Button>
             </div>
@@ -640,10 +674,10 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
             <b>Unsaved Local Draft Detected:</b> Saved locally at {new Date(recoveredDraft.savedAt).toLocaleTimeString()}.
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={handleApplyRecoveredDraft} className="px-3 py-1 bg-amber-600 text-white rounded font-bold text-[11px]">
+            <button type="button" onClick={handleApplyRecoveredDraft} className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] shadow-xs cursor-pointer">
               Restore Draft
             </button>
-            <button type="button" onClick={handleDiscardRecoveredDraft} className="px-2 py-1 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded font-medium text-[11px]">
+            <button type="button" onClick={handleDiscardRecoveredDraft} className="px-2.5 py-1 bg-surface border border-border/80 text-text hover:bg-surface-hover rounded-lg font-medium text-[11px] cursor-pointer shadow-xs">
               Discard
             </button>
           </div>
@@ -664,105 +698,114 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
       {/* 4 SOAP Sections */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* S: Subjective */}
-        <div className="p-4 bg-zinc-50 dark:bg-[#1a1b23] rounded-xl border border-zinc-200 dark:border-[#252631] space-y-3">
-          <h3 className="font-semibold text-sm text-primary-600 dark:text-primary-400">S — Subjective (Patient Complaints)</h3>
+        <div className="p-4 sm:p-5 bg-surface-alt/70 rounded-2xl border border-border/80 space-y-3.5 shadow-2xs">
+          <h3 className="font-bold text-sm text-primary-600 dark:text-primary-400 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
+            S — Subjective (Patient Complaints)
+          </h3>
           <div>
-            <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Chief Complaint *</label>
+            <label className="text-xs font-semibold text-text-secondary">Chief Complaint *</label>
             <input
               type="text"
               placeholder="e.g. High fever, productive cough for 3 days"
               value={chiefComplaint}
               onChange={(e) => setChiefComplaint(e.target.value)}
               disabled={isSigned}
-              className="w-full mt-1 px-3 py-1.5 text-sm bg-white dark:bg-[#12131a] border border-zinc-200 dark:border-[#252631] rounded-lg disabled:opacity-60"
+              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Symptoms (comma-separated)</label>
+            <label className="text-xs font-semibold text-text-secondary">Symptoms (comma-separated)</label>
             <input
               type="text"
               placeholder="Fever, Cough, Myalgia"
               value={symptomsText}
               onChange={(e) => setSymptomsText(e.target.value)}
               disabled={isSigned}
-              className="w-full mt-1 px-3 py-1.5 text-sm bg-white dark:bg-[#12131a] border border-zinc-200 dark:border-[#252631] rounded-lg disabled:opacity-60"
+              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">History of Present Illness (HPI)</label>
+            <label className="text-xs font-semibold text-text-secondary">History of Present Illness (HPI)</label>
             <textarea
               rows={2}
               placeholder="Detailed clinical history..."
               value={historyOfPresentIllness}
               onChange={(e) => setHistoryOfPresentIllness(e.target.value)}
               disabled={isSigned}
-              className="w-full mt-1 px-3 py-1.5 text-sm bg-white dark:bg-[#12131a] border border-zinc-200 dark:border-[#252631] rounded-lg disabled:opacity-60"
+              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
             />
           </div>
         </div>
 
         {/* O: Objective */}
-        <div className="p-4 bg-zinc-50 dark:bg-[#1a1b23] rounded-xl border border-zinc-200 dark:border-[#252631] space-y-3">
-          <h3 className="font-semibold text-sm text-blue-600 dark:text-blue-400">O — Objective (Vitals & Physical Exam)</h3>
+        <div className="p-4 sm:p-5 bg-surface-alt/70 rounded-2xl border border-border/80 space-y-3.5 shadow-2xs">
+          <h3 className="font-bold text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+            O — Objective (Vitals & Physical Exam)
+          </h3>
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">BP Systolic</label>
-              <input type="number" placeholder="120" value={bpSystolic} onChange={(e) => setBpSystolic(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border border-zinc-200 dark:border-[#252631] rounded disabled:opacity-60" />
+              <label className="text-[11px] font-semibold text-text-secondary">BP Systolic</label>
+              <input type="number" placeholder="120" value={bpSystolic} onChange={(e) => setBpSystolic(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">BP Diastolic</label>
-              <input type="number" placeholder="80" value={bpDiastolic} onChange={(e) => setBpDiastolic(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border border-zinc-200 dark:border-[#252631] rounded disabled:opacity-60" />
+              <label className="text-[11px] font-semibold text-text-secondary">BP Diastolic</label>
+              <input type="number" placeholder="80" value={bpDiastolic} onChange={(e) => setBpDiastolic(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">Heart Rate (bpm)</label>
-              <input type="number" placeholder="72" value={pulseRate} onChange={(e) => setPulseRate(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border border-zinc-200 dark:border-[#252631] rounded disabled:opacity-60" />
+              <label className="text-[11px] font-semibold text-text-secondary">Heart Rate</label>
+              <input type="number" placeholder="72" value={pulseRate} onChange={(e) => setPulseRate(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">SpO₂ (%)</label>
-              <input type="number" placeholder="98" value={spO2} onChange={(e) => setSpO2(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border border-zinc-200 dark:border-[#252631] rounded disabled:opacity-60" />
+              <label className="text-[11px] font-semibold text-text-secondary">SpO₂ (%)</label>
+              <input type="number" placeholder="98" value={spO2} onChange={(e) => setSpO2(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">Temp (°F)</label>
-              <input type="number" step="0.1" placeholder="98.6" value={temperatureF} onChange={(e) => setTemperatureF(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border border-zinc-200 dark:border-[#252631] rounded disabled:opacity-60" />
+              <label className="text-[11px] font-semibold text-text-secondary">Temp (°F)</label>
+              <input type="number" step="0.1" placeholder="98.6" value={temperatureF} onChange={(e) => setTemperatureF(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Physical Examination Notes</label>
+            <label className="text-xs font-semibold text-text-secondary">Physical Examination Notes</label>
             <textarea
               rows={2}
               placeholder="Systemic examination findings..."
               value={physicalExamination}
               onChange={(e) => setPhysicalExamination(e.target.value)}
               disabled={isSigned}
-              className="w-full mt-1 px-3 py-1.5 text-sm bg-white dark:bg-[#12131a] border border-zinc-200 dark:border-[#252631] rounded-lg disabled:opacity-60"
+              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
             />
           </div>
         </div>
 
         {/* A: Assessment */}
-        <div className="p-4 bg-zinc-50 dark:bg-[#1a1b23] rounded-xl border border-zinc-200 dark:border-[#252631] space-y-3">
-          <h3 className="font-semibold text-sm text-indigo-600 dark:text-indigo-400">A — Assessment (Diagnosis & Coding)</h3>
+        <div className="p-4 sm:p-5 bg-surface-alt/70 rounded-2xl border border-border/80 space-y-3.5 shadow-2xs">
+          <h3 className="font-bold text-sm text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
+            A — Assessment (Diagnosis & Coding)
+          </h3>
           <div>
-            <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Primary Diagnosis</label>
+            <label className="text-xs font-semibold text-text-secondary">Primary Diagnosis</label>
             <input
               type="text"
               placeholder="e.g. Acute Bronchitis"
               value={primaryDiagnosis}
               onChange={(e) => setPrimaryDiagnosis(e.target.value)}
               disabled={isSigned}
-              className="w-full mt-1 px-3 py-1.5 text-sm bg-white dark:bg-[#12131a] border border-zinc-200 dark:border-[#252631] rounded-lg disabled:opacity-60"
+              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
             />
           </div>
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">ICD-10 Code</label>
+              <label className="text-xs font-semibold text-text-secondary">ICD-10 Code</label>
               <input
                 type="text"
                 placeholder="J20.9"
                 value={icdCode}
                 onChange={(e) => setIcdCode(e.target.value)}
                 disabled={isSigned}
-                className="w-full mt-1 px-3 py-1.5 text-sm bg-white dark:bg-[#12131a] border border-zinc-200 dark:border-[#252631] rounded-lg disabled:opacity-60"
+                className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
               />
             </div>
             <div className="w-1/2">
@@ -784,27 +827,30 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
         </div>
 
         {/* P: Plan */}
-        <div className="p-4 bg-zinc-50 dark:bg-[#1a1b23] rounded-xl border border-zinc-200 dark:border-[#252631] space-y-3">
-          <h3 className="font-semibold text-sm text-amber-600 dark:text-amber-400">P — Plan (Treatment & Rx Builder)</h3>
+        <div className="p-4 sm:p-5 bg-surface-alt/70 rounded-2xl border border-border/80 space-y-3.5 shadow-2xs">
+          <h3 className="font-bold text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+            P — Plan (Treatment & Rx Builder)
+          </h3>
           <div>
-            <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Treatment Plan</label>
+            <label className="text-xs font-semibold text-text-secondary">Treatment Plan</label>
             <textarea
               rows={2}
               placeholder="Clinical recommendations..."
               value={treatmentPlan}
               onChange={(e) => setTreatmentPlan(e.target.value)}
               disabled={isSigned}
-              className="w-full mt-1 px-3 py-1.5 text-sm bg-white dark:bg-[#12131a] border border-zinc-200 dark:border-[#252631] rounded-lg disabled:opacity-60"
+              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
             />
           </div>
 
           {/* Rx Medication Add Bar with Catalog Autocomplete */}
-          <div className="space-y-2 border-t border-zinc-200 dark:border-[#252631] pt-3 relative">
+          <div className="space-y-2 border-t border-border/60 pt-3 relative">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Add Rx Medication (Search Catalog)</span>
+              <span className="text-xs font-semibold text-text">Add Rx Medication (Search Catalog)</span>
               {selectedMedStock !== null && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${selectedMedStock < 10 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>
-                  Inventory Stock: {selectedMedStock} units
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${selectedMedStock < 10 ? "bg-amber-500/15 text-amber-600 border-amber-500/30" : "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"}`}>
+                  Stock: {selectedMedStock} units
                 </span>
               )}
             </div>
@@ -818,14 +864,14 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                   onChange={(e) => setMedName(e.target.value)}
                   onFocus={() => { if (medicineResults.length > 0) setShowMedDropdown(true); }}
                   disabled={isSigned}
-                  className="w-full px-2 py-1 text-xs bg-white dark:bg-[#12131a] border rounded disabled:opacity-60"
+                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text"
                 />
 
                 {/* Autocomplete Dropdown Overlay */}
                 {showMedDropdown && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-[#1a1b23] border border-border shadow-lg rounded-lg z-50 max-h-48 overflow-y-auto divide-y divide-border text-xs">
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-surface border border-border/80 shadow-2xl shadow-black/20 rounded-xl z-50 max-h-48 overflow-y-auto divide-y divide-border/60 text-xs">
                     {searchingMeds ? (
-                      <div className="p-2 text-center text-text-muted">Searching catalog...</div>
+                      <div className="p-2.5 text-center text-text-muted">Searching catalog...</div>
                     ) : (
                       medicineResults.map((m) => (
                         <div
@@ -835,14 +881,14 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                             setSelectedMedStock(m.stockQuantity);
                             setShowMedDropdown(false);
                           }}
-                          className="p-2 hover:bg-primary-50 dark:hover:bg-primary-900/30 cursor-pointer flex justify-between items-center"
+                          className="p-2.5 hover:bg-surface-hover cursor-pointer flex justify-between items-center transition-colors"
                         >
                           <div>
                             <span className="font-bold text-text block">{m.name}</span>
                             <span className="text-[11px] text-text-secondary">{m.genericName}</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-xs font-bold text-primary-600">₹{m.price}</span>
+                            <span className="text-xs font-bold text-primary-600 dark:text-primary-400">₹{m.price}</span>
                             <span className="text-[10px] text-text-muted block">Stock: {m.stockQuantity}</span>
                           </div>
                         </div>
@@ -852,21 +898,21 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                 )}
               </div>
 
-              <input type="text" placeholder="Dosage (e.g. 1 tab)" value={medDosage} onChange={(e) => setMedDosage(e.target.value)} disabled={isSigned} className="w-28 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border rounded disabled:opacity-60" />
-              <input type="text" placeholder="Duration" value={medDuration} onChange={(e) => setMedDuration(e.target.value)} disabled={isSigned} className="w-24 px-2 py-1 text-xs bg-white dark:bg-[#12131a] border rounded disabled:opacity-60" />
-              <Button size="xs" variant="primary" onClick={handleAddMedication} disabled={isSigned}>Add Rx</Button>
+              <input type="text" placeholder="Dosage" value={medDosage} onChange={(e) => setMedDosage(e.target.value)} disabled={isSigned} className="w-24 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
+              <input type="text" placeholder="Duration" value={medDuration} onChange={(e) => setMedDuration(e.target.value)} disabled={isSigned} className="w-20 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
+              <Button size="xs" variant="primary" onClick={handleAddMedication} disabled={isSigned} className="rounded-xl font-bold">Add Rx</Button>
             </div>
 
             {prescriptions.length > 0 && (
-              <div className="space-y-1 pt-1">
+              <div className="space-y-1.5 pt-1">
                 {prescriptions.map((p, i) => (
-                  <div key={i} className="text-xs text-zinc-700 dark:text-zinc-300 bg-white dark:bg-[#12131a] px-3 py-1.5 rounded border border-zinc-200 dark:border-[#252631] flex justify-between items-center">
+                  <div key={i} className="text-xs text-text bg-surface px-3 py-2 rounded-xl border border-border flex justify-between items-center shadow-2xs">
                     <span><b>{i + 1}.</b> {p.name} — {p.dosage} ({p.duration})</span>
                     {!isSigned && (
                       <button
                         type="button"
                         onClick={() => setPrescriptions((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="text-red-500 hover:text-red-700 text-xs font-bold"
+                        className="text-danger-500 hover:text-danger-600 text-xs font-bold cursor-pointer"
                       >
                         ✕ Remove
                       </button>

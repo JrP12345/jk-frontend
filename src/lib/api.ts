@@ -11,12 +11,16 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to automatically attach active clinic context
+// Request interceptor to automatically attach active clinic and organization context
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const activeClinicId = localStorage.getItem("ananta_active_clinic_id");
     if (activeClinicId && !config.headers["x-clinic-id"]) {
       config.headers["x-clinic-id"] = activeClinicId;
+    }
+    const activeOrgId = localStorage.getItem("ananta_active_org_id");
+    if (activeOrgId && !config.headers["x-organization-id"]) {
+      config.headers["x-organization-id"] = activeOrgId;
     }
   }
   return config;

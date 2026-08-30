@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { cn } from "./utils";
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   ANANTA Healthcare OS — Production-Grade 3D Stacked Toast Notification Engine
+   ANANT Healthcare OS — Production-Grade Top-Center 3D Stacked Toast Notification Engine
    ───────────────────────────────────────────────────────────────────────────── */
 
 export type ToastVariant = "default" | "success" | "error" | "warning" | "info";
@@ -50,11 +50,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       const duration = options.duration || 4500;
 
       setToasts((prev) => {
-        // If an explicit ID matches an active toast, update it cleanly
         if (options.id && prev.some((t) => t.id === options.id)) {
           return prev.map((t) => (t.id === options.id ? { ...t, ...options, duration, timestamp: now } : t));
         }
-        // Cap max active toasts at 4 to maintain compact, clean stacking without screen overflow
         const updated = [...prev, { ...options, id, variant, duration, timestamp: now } as Toast];
         return updated.slice(-4);
       });
@@ -70,6 +68,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts([]);
   }, []);
 
+  const totalToasts = toasts.length;
+  const isStacked = totalToasts > 1;
+
   return (
     <ToastContext.Provider value={{ toast: addToast, dismiss, clearAll }}>
       {children}
@@ -78,37 +79,83 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            className="fixed bottom-5 right-5 z-[9999] p-4 -m-4 flex flex-col items-end w-[92vw] sm:w-[360px] pointer-events-none select-none"
+            className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] p-3 -m-3 flex flex-col items-center w-[92vw] sm:w-[420px] max-w-full pointer-events-none select-none"
           >
-            {/* Stable Stack Container */}
-            <div className="relative w-full min-h-[64px]">
+            {/* Expanded Header Clear All Action */}
+            {isHovered && isStacked && (
+              <div className="w-full flex justify-between items-center px-2 mb-2 pointer-events-auto animate-fade-in text-[11px] font-semibold text-text-muted">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
+                  {totalToasts} notifications in stack
+                </span>
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className="px-2 py-0.5 rounded-md hover:bg-surface-hover text-text-secondary hover:text-text cursor-pointer transition-colors border border-border/60"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+
+            {/* Stable Top-Center Stack Container */}
+            <div 
+              className="relative w-full transition-all duration-350 ease-[cubic-bezier(0.32,0.72,0,1)]"
+              style={{
+                height: isHovered 
+                  ? `${toasts.length * 76}px` 
+                  : `${64 + (Math.min(totalToasts - 1, 2) * 14) + (isStacked ? 22 : 0)}px`
+              }}
+            >
               {toasts.map((t, index) => {
-                const total = toasts.length;
-                const depth = total - 1 - index; // 0 = newest front toast (depth 0), 1 = behind (depth 1)
+                const depth = totalToasts - 1 - index; // 0 = front/newest, 1 = behind, 2 = behind
                 const isVisible = isHovered || depth < 3;
 
-                // Continuous Hardware Accelerated Transforms:
-                // Collapsed: depth 0 = 0px, depth 1 = -8px, depth 2 = -16px
-                // Expanded: depth 0 = 0px, depth 1 = -92px, depth 2 = -184px, depth 3 = -276px (16px distinct gap between cards)
-                const translateY = isHovered ? -depth * 92 : -depth * 8;
-                const scale = isHovered ? 1 : Math.max(0.88, 1 - depth * 0.04);
-                const opacity = isVisible ? (isHovered ? 1 : Math.max(0.45, 1 - depth * 0.22)) : 0;
+                // Precision Sonner-Grade Layered Stack Physics:
+                // Collapsed: depth 0 = 0px, depth 1 = 14px, depth 2 = 28px (visible bottom lip & stepped elevation)
+                // Expanded (Hover): depth 0 = 0px, depth 1 = 76px, depth 2 = 152px, depth 3 = 228px
+                const translateY = isHovered ? depth * 76 : depth * 14;
+                const scale = isHovered ? 1 : Math.max(0.88, 1 - depth * 0.045);
+                const opacity = isVisible ? (isHovered ? 1 : Math.max(0.65, 1 - depth * 0.2)) : 0;
+                const brightness = isHovered ? 1 : Math.max(0.82, 1 - depth * 0.08);
 
                 return (
                   <div
                     key={t.id}
-                    className="absolute bottom-0 right-0 w-full pointer-events-auto transition-all duration-350 ease-[cubic-bezier(0.32,0.72,0,1)] transform-gpu"
+                    className="absolute top-0 left-0 right-0 w-full pointer-events-auto transition-all duration-350 ease-[cubic-bezier(0.32,0.72,0,1)] transform-gpu"
                     style={{
                       transform: `translate3d(0, ${translateY}px, 0) scale(${scale})`,
                       opacity: opacity,
+                      filter: `brightness(${brightness})`,
                       zIndex: 100 - depth,
-                      transformOrigin: "bottom right",
+                      transformOrigin: "top center",
                     }}
                   >
                     <ToastItem {...t} onDismiss={() => dismiss(t.id)} isHoveredStack={isHovered} />
                   </div>
                 );
               })}
+
+              {/* Floating Multi-Stack Indicator Pill (shows when multiple toasts exist & collapsed) */}
+              {isStacked && !isHovered && (
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 pointer-events-auto transition-all duration-350 ease-[cubic-bezier(0.32,0.72,0,1)]"
+                  style={{
+                    transform: `translate3d(-50%, ${Math.min(totalToasts - 1, 2) * 14 + 58}px, 0)`,
+                    zIndex: 110,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setIsHovered(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-tight bg-surface/90 dark:bg-surface-alt/90 text-text-secondary border border-border/80 shadow-md backdrop-blur-md hover:bg-surface-hover hover:text-text cursor-pointer transition-all hover:scale-105"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
+                    <span>+{totalToasts - 1} more</span>
+                    <span className="text-text-muted text-[9px] font-normal">• hover to view</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>,
           document.body
@@ -183,10 +230,10 @@ interface ToastItemProps extends Toast {
 function ToastItem({ id, title, description, variant, duration, onDismiss, isHoveredStack }: ToastItemProps) {
   const [exiting, setExiting] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [dragX, setDragX] = useState(0);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
 
-  const startXRef = useRef(0);
+  const startPosRef = useRef({ x: 0, y: 0 });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isPaused = paused || isHoveredStack;
@@ -196,7 +243,7 @@ function ToastItem({ id, title, description, variant, duration, onDismiss, isHov
     if (isPaused) return;
     timerRef.current = setTimeout(() => {
       setExiting(true);
-      setTimeout(onDismiss, 180);
+      setTimeout(onDismiss, 200);
     }, duration);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -208,17 +255,18 @@ function ToastItem({ id, title, description, variant, duration, onDismiss, isHov
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const diff = e.clientX - startXRef.current;
-      setDragX(diff);
+      const dx = e.clientX - startPosRef.current.x;
+      const dy = Math.min(0, e.clientY - startPosRef.current.y); // only allow dragging up
+      setDragOffset({ x: dx, y: dy });
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      if (Math.abs(dragX) > 100) {
+      if (Math.abs(dragOffset.x) > 90 || dragOffset.y < -35) {
         setExiting(true);
-        setTimeout(onDismiss, 150);
+        setTimeout(onDismiss, 160);
       } else {
-        setDragX(0);
+        setDragOffset({ x: 0, y: 0 });
       }
     };
 
@@ -229,32 +277,33 @@ function ToastItem({ id, title, description, variant, duration, onDismiss, isHov
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDragging, dragX, onDismiss]);
+  }, [isDragging, dragOffset, onDismiss]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
-    startXRef.current = e.clientX;
+    startPosRef.current = { x: e.clientX, y: e.clientY };
     setIsDragging(true);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    startXRef.current = e.touches[0].clientX;
+    startPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     setIsDragging(true);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return;
-    const diff = e.touches[0].clientX - startXRef.current;
-    setDragX(diff);
+    const dx = e.touches[0].clientX - startPosRef.current.x;
+    const dy = Math.min(0, e.touches[0].clientY - startPosRef.current.y);
+    setDragOffset({ x: dx, y: dy });
   };
 
   const handleTouchEnd = () => {
     setIsDragging(false);
-    if (Math.abs(dragX) > 100) {
+    if (Math.abs(dragOffset.x) > 90 || dragOffset.y < -35) {
       setExiting(true);
-      setTimeout(onDismiss, 150);
+      setTimeout(onDismiss, 160);
     } else {
-      setDragX(0);
+      setDragOffset({ x: 0, y: 0 });
     }
   };
 
@@ -263,6 +312,8 @@ function ToastItem({ id, title, description, variant, duration, onDismiss, isHov
     setExiting(true);
     setTimeout(onDismiss, 180);
   };
+
+  const hasDrag = dragOffset.x !== 0 || dragOffset.y !== 0;
 
   return (
     <div
@@ -273,13 +324,13 @@ function ToastItem({ id, title, description, variant, duration, onDismiss, isHov
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       className={cn(
-        "relative flex items-start gap-3 border rounded-2xl p-3 px-3.5 shadow-2xl backdrop-blur-xl bg-surface/95 dark:bg-surface/90 cursor-grab active:cursor-grabbing select-none overflow-hidden transform-gpu transition-all duration-200",
+        "relative flex items-start gap-3 border rounded-2xl p-3 px-3.5 min-h-[58px] shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)] backdrop-blur-2xl bg-surface/95 dark:bg-surface/90 cursor-grab active:cursor-grabbing select-none overflow-hidden transform-gpu transition-all duration-200 before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/40 dark:before:via-white/15 before:to-transparent",
         variantBorders[variant],
-        exiting ? "animate-toast-exit opacity-0 scale-95 translate-x-4" : "animate-toast-enter"
+        exiting ? "animate-toast-exit opacity-0 scale-95 -translate-y-4" : "animate-toast-enter"
       )}
       style={{
-        transform: dragX !== 0 ? `translateX(${dragX}px)` : undefined,
-        opacity: dragX !== 0 ? Math.max(0, 1 - Math.abs(dragX) / 250) : undefined,
+        transform: hasDrag ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)` : undefined,
+        opacity: hasDrag ? Math.max(0, 1 - Math.hypot(dragOffset.x, dragOffset.y) / 200) : undefined,
         transition: isDragging ? "none" : undefined,
       }}
       role="status"

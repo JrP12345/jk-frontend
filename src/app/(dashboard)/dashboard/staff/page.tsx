@@ -3,8 +3,26 @@
 import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
 import {
-  Card, CardHeader, CardTitle, CardContent,
-  Table, Tabs, Button, Modal, Input, useToast, Spinner, ImageUpload, ConfirmDialog, ScheduleEditor, Select, SkeletonTable, Dropdown, Badge, cn
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Table,
+  Tabs,
+  Button,
+  Modal,
+  Input,
+  useToast,
+  Spinner,
+  ImageUpload,
+  ConfirmDialog,
+  ScheduleEditor,
+  Select,
+  SkeletonTable,
+  Dropdown,
+  Badge,
+  StatCard,
+  cn,
 } from "@/components/ui";
 import { useR2Upload } from "@/hooks/useR2Upload";
 import { hasAnyPermission } from "@/lib/permissions";
@@ -12,6 +30,28 @@ import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import { RBACPermissionMatrix } from "@/components/clinical/RBACPermissionMatrix";
 import { ExecutiveAnalytics } from "@/components/analytics/ExecutiveAnalytics";
+import {
+  RotateCw,
+  Plus,
+  UserPlus,
+  UserCheck,
+  Users,
+  Stethoscope,
+  User,
+  ShieldCheck,
+  MoreHorizontal,
+  Edit3,
+  Trash2,
+  Building2,
+  Mail,
+  Phone,
+  Clock,
+  Activity,
+  Eye,
+  EyeOff,
+  Ticket,
+  CheckCircle2,
+} from "lucide-react";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -51,6 +91,7 @@ export default function StaffPage() {
   const [customStaff, setCustomStaff] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<string>("doctor");
   const [formData, setFormData] = useState<any>({});
@@ -80,7 +121,7 @@ export default function StaffPage() {
 
     roles.forEach((r) => {
       if (!builtInMap[r.name] && r.name !== "admin" && r.name !== "root" && r.name !== "patient") {
-        const formattedLabel = `⚙️ ${r.name.replace(/_/g, " ").toUpperCase()} (Custom Role)`;
+        const formattedLabel = `${r.name.replace(/_/g, " ").toUpperCase()} (Custom Role)`;
         options.push({ value: r.name, label: formattedLabel });
       }
     });
@@ -90,13 +131,68 @@ export default function StaffPage() {
 
   const allStaffMembers = useMemo(() => {
     const list: any[] = [];
-    doctors.forEach(d => list.push({ ...d, roleType: "doctor", roleLabel: "Doctor", details: d.specialization ? `${d.specialization} (${d.qualification || "MD"})` : (d.qualification || "-") }));
-    receptionists.forEach(r => list.push({ ...r, roleType: "receptionist", roleLabel: "Receptionist", details: r.clinicName ? `Clinic: ${r.clinicName}` : (r.shift || "-") }));
-    nurses.forEach(n => list.push({ ...n, roleType: "nurse", roleLabel: "Nurse", details: n.clinicName ? `Clinic: ${n.clinicName}` : (n.organizationName ? `Org: ${n.organizationName}` : "Nurse Staff") }));
-    labTechs.forEach(l => list.push({ ...l, roleType: "lab_tech", roleLabel: "Lab Tech", details: l.clinicName ? `Clinic: ${l.clinicName}` : (l.organizationName ? `Org: ${l.organizationName}` : "Lab Technician") }));
-    pharmacists.forEach(p => list.push({ ...p, roleType: "pharmacist", roleLabel: "Pharmacist", details: p.clinicName ? `Clinic: ${p.clinicName}` : (p.organizationName ? `Org: ${p.organizationName}` : "Pharmacist") }));
-    cashiers.forEach(c => list.push({ ...c, roleType: "cashier", roleLabel: "Cashier", details: c.clinicName ? `Clinic: ${c.clinicName}` : (c.organizationName ? `Org: ${c.organizationName}` : "Billing Cashier") }));
-    customStaff.forEach(s => list.push({ ...s, roleType: s.role, roleLabel: s.role.replace(/_/g, " ").toUpperCase(), details: s.clinicName ? `Clinic: ${s.clinicName}` : (s.organizationName ? `Org: ${s.organizationName}` : (s.department || s.specialization || "Staff Member")) }));
+    doctors.forEach((d) =>
+      list.push({
+        ...d,
+        roleType: "doctor",
+        roleLabel: "Doctor",
+        details: d.specialization
+          ? `${d.specialization} (${d.qualification || "MD"})`
+          : d.qualification || "—",
+      })
+    );
+    receptionists.forEach((r) =>
+      list.push({
+        ...r,
+        roleType: "receptionist",
+        roleLabel: "Receptionist",
+        details: r.clinicName ? `Clinic: ${r.clinicName}` : r.shift || "—",
+      })
+    );
+    nurses.forEach((n) =>
+      list.push({
+        ...n,
+        roleType: "nurse",
+        roleLabel: "Nurse",
+        details: n.clinicName ? `Clinic: ${n.clinicName}` : n.organizationName ? `Org: ${n.organizationName}` : "Nurse Staff",
+      })
+    );
+    labTechs.forEach((l) =>
+      list.push({
+        ...l,
+        roleType: "lab_tech",
+        roleLabel: "Lab Tech",
+        details: l.clinicName ? `Clinic: ${l.clinicName}` : l.organizationName ? `Org: ${l.organizationName}` : "Lab Technician",
+      })
+    );
+    pharmacists.forEach((p) =>
+      list.push({
+        ...p,
+        roleType: "pharmacist",
+        roleLabel: "Pharmacist",
+        details: p.clinicName ? `Clinic: ${p.clinicName}` : p.organizationName ? `Org: ${p.organizationName}` : "Pharmacist",
+      })
+    );
+    cashiers.forEach((c) =>
+      list.push({
+        ...c,
+        roleType: "cashier",
+        roleLabel: "Cashier",
+        details: c.clinicName ? `Clinic: ${c.clinicName}` : c.organizationName ? `Org: ${c.organizationName}` : "Billing Cashier",
+      })
+    );
+    customStaff.forEach((s) =>
+      list.push({
+        ...s,
+        roleType: s.role,
+        roleLabel: (s.role || "").replace(/_/g, " ").toUpperCase(),
+        details: s.clinicName
+          ? `Clinic: ${s.clinicName}`
+          : s.organizationName
+          ? `Org: ${s.organizationName}`
+          : s.department || s.specialization || "Staff Member",
+      })
+    );
     return list;
   }, [doctors, receptionists, nurses, labTechs, pharmacists, cashiers, customStaff]);
 
@@ -119,7 +215,7 @@ export default function StaffPage() {
     Object.keys(customCounts).forEach((roleName) => {
       tabs.push({
         key: roleName,
-        label: `⚙️ ${roleName.replace(/_/g, " ").toUpperCase()}`,
+        label: roleName.replace(/_/g, " ").toUpperCase(),
         count: customCounts[roleName],
       });
     });
@@ -127,7 +223,6 @@ export default function StaffPage() {
     return tabs;
   }, [allStaffMembers, doctors, receptionists, nurses, labTechs, pharmacists, cashiers, customStaff]);
 
-  // Dynamic Validation State
   const [staffErrors, setStaffErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
 
@@ -147,28 +242,41 @@ export default function StaffPage() {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
-  const [newAssignment, setNewAssignment] = useState<any>({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: "" });
+  const [newAssignment, setNewAssignment] = useState<any>({
+    clinicId: "",
+    fees: 100,
+    appointmentDuration: 15,
+    workingHours: "",
+  });
   const [savingAssignment, setSavingAssignment] = useState(false);
 
   const filteredStaff = useMemo(() => {
     if (selectedRoleFilter === "all") return allStaffMembers;
-    return allStaffMembers.filter(s => s.roleType === selectedRoleFilter);
+    return allStaffMembers.filter((s) => s.roleType === selectedRoleFilter);
   }, [allStaffMembers, selectedRoleFilter]);
 
   const handleEnableAdminDoctorProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminDoctorData.specialization) {
-      toast({ title: "Validation Error", description: "Specialization is required", variant: "error" });
+      toast({ title: "Validation Required", description: "Please enter your clinical specialization.", variant: "error" });
       return;
     }
     setSavingAdminDoctor(true);
     try {
       await api.post("/onboarding/admin/enable-doctor-profile", adminDoctorData);
-      toast({ title: "Success! 🩺", description: "Clinical Doctor Profile linked to your Admin account successfully!", variant: "success" });
+      toast({
+        title: "Doctor Profile Linked",
+        description: "Clinical doctor profile has been linked to your admin account.",
+        variant: "success",
+      });
       setIsAdminDoctorModalOpen(false);
       fetchStaff();
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to link Doctor profile", variant: "error" });
+      toast({
+        title: "Unable to Link Profile",
+        description: err.response?.data?.message || "Failed to link doctor profile. Please try again.",
+        variant: "error",
+      });
     } finally {
       setSavingAdminDoctor(false);
     }
@@ -233,8 +341,8 @@ export default function StaffPage() {
       const allStaff = data.allStaff || [];
       const builtInRoles = new Set(["doctor", "receptionist", "nurse", "lab_tech", "pharmacist", "cashier"]);
       setCustomStaff(allStaff.filter((s: any) => !builtInRoles.has(s.role)));
-    } catch (err) {
-      toast({ title: "Error", description: "Failed to load staff list", variant: "error", duration: 3000 });
+    } catch {
+      toast({ title: "Error", description: "Failed to load staff list", variant: "error" });
     }
   };
 
@@ -242,15 +350,19 @@ export default function StaffPage() {
     try {
       const res = await api.get("/roles");
       setRoles(res.data?.data || []);
-    } catch (err) {
+    } catch {
       console.error("Failed to load custom roles list");
     }
   };
 
   const loadData = async () => {
-    setLoading(true);
-    await Promise.all([fetchStaff(), fetchClinics(), fetchRoles()]);
-    setLoading(false);
+    try {
+      setIsRefreshing(true);
+      await Promise.all([fetchStaff(), fetchClinics(), fetchRoles()]);
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
   };
 
   useEffect(() => {
@@ -266,10 +378,13 @@ export default function StaffPage() {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (type: "doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier", row: any) => {
+  const openEditModal = (
+    type: "doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier",
+    row: any
+  ) => {
     setEditingId(row.id);
     setModalType(type);
-    setFormData({ ...row }); // Populate existing data
+    setFormData({ ...row });
     setStaffErrors({});
     setShowPassword(false);
     setIsModalOpen(true);
@@ -292,7 +407,7 @@ export default function StaffPage() {
     setSubmitting(true);
     try {
       let finalData = { ...formData };
-      
+
       // Handle deferred image upload
       if (finalData.image_url instanceof File) {
         toast({ title: "Uploading...", description: "Uploading profile image to Cloudflare R2", variant: "default" });
@@ -301,20 +416,31 @@ export default function StaffPage() {
       }
 
       if (editingId) {
-        const updateEndpoint = (modalType === "doctor" || modalType === "receptionist") ? `/onboarding/${modalType}/${editingId}` : `/onboarding/staff/${editingId}`;
+        const updateEndpoint =
+          modalType === "doctor" || modalType === "receptionist"
+            ? `/onboarding/${modalType}/${editingId}`
+            : `/onboarding/staff/${editingId}`;
         await api.put(updateEndpoint, finalData);
-        toast({ title: "Success", description: "Staff member updated successfully!", variant: "success", duration: 3000 });
+        toast({ title: "Success", description: "Staff member updated successfully!", variant: "success" });
       } else if (modalType === "doctor" || modalType === "receptionist") {
         await api.post(`/onboarding/${modalType}`, finalData);
-        toast({ title: "Success", description: "Staff member added successfully!", variant: "success", duration: 3000 });
+        toast({ title: "Success", description: "Staff member registered successfully!", variant: "success" });
       } else {
         await api.post(`/onboarding/staff`, { ...finalData, role: modalType });
-        toast({ title: "Success", description: `${modalType.replace("_", " ").toUpperCase()} added successfully!`, variant: "success", duration: 3000 });
+        toast({
+          title: "Success",
+          description: `${modalType.replace("_", " ").toUpperCase()} registered successfully!`,
+          variant: "success",
+        });
       }
       setIsModalOpen(false);
-      fetchStaff(); // Refresh the lists
+      fetchStaff();
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to save staff member", variant: "error", duration: 4000 });
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to save staff member",
+        variant: "error",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -324,10 +450,14 @@ export default function StaffPage() {
     if (!deletingId) return;
     try {
       await api.delete(`/onboarding/staff/${deletingId}`);
-      toast({ title: "Success", description: "Staff deactivated successfully!", variant: "success", duration: 3000 });
+      toast({ title: "Success", description: "Staff deactivated successfully!", variant: "success" });
       fetchStaff();
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to delete staff member", variant: "error", duration: 4000 });
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to delete staff member",
+        variant: "error",
+      });
     } finally {
       setDeletingId(null);
     }
@@ -350,12 +480,19 @@ export default function StaffPage() {
     try {
       const res = await api.get(`/onboarding/doctors/assignments?doctorId=${doctor.id}`);
       setAssignments(res.data.data || []);
-    } catch (err) {
+    } catch {
       toast({ title: "Error", description: "Failed to load clinic assignments", variant: "error" });
     } finally {
       setAssignmentLoading(false);
     }
-    setNewAssignment({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: DEFAULT_WORKING_HOURS, bookingMode: "sequential_queue", maxDailyTokens: "" });
+    setNewAssignment({
+      clinicId: "",
+      fees: 100,
+      appointmentDuration: 15,
+      workingHours: DEFAULT_WORKING_HOURS,
+      bookingMode: "sequential_queue",
+      maxDailyTokens: "",
+    });
   };
 
   const handleStartEditAssignment = (asg: any) => {
@@ -372,16 +509,30 @@ export default function StaffPage() {
 
   const handleCancelEditAssignment = () => {
     setEditingAssignmentId(null);
-    setNewAssignment({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: DEFAULT_WORKING_HOURS, bookingMode: "sequential_queue", maxDailyTokens: "" });
+    setNewAssignment({
+      clinicId: "",
+      fees: 100,
+      appointmentDuration: 15,
+      workingHours: DEFAULT_WORKING_HOURS,
+      bookingMode: "sequential_queue",
+      maxDailyTokens: "",
+    });
   };
 
   const handleAddAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAssignment.clinicId || newAssignment.fees === undefined) {
-      toast({ title: "Validation Error", description: "Please select a clinic location and set consultation fees", variant: "error" });
+      toast({
+        title: "Validation Error",
+        description: "Please select a clinic location and set consultation fees.",
+        variant: "error",
+      });
       return;
     }
-    const finalHours = newAssignment.workingHours && newAssignment.workingHours !== "{}" ? newAssignment.workingHours : DEFAULT_WORKING_HOURS;
+    const finalHours =
+      newAssignment.workingHours && newAssignment.workingHours !== "{}"
+        ? newAssignment.workingHours
+        : DEFAULT_WORKING_HOURS;
     setSavingAssignment(true);
     try {
       if (editingAssignmentId) {
@@ -392,7 +543,7 @@ export default function StaffPage() {
           bookingMode: (newAssignment as any).bookingMode || "sequential_queue",
           maxDailyTokens: (newAssignment as any).maxDailyTokens ? Number((newAssignment as any).maxDailyTokens) : null,
         });
-        toast({ title: "Success! 🏥", description: "Doctor clinic assignment updated successfully!", variant: "success" });
+        toast({ title: "Updated", description: "Doctor clinic assignment updated successfully.", variant: "success" });
       } else {
         await api.post("/onboarding/doctors/assignments", {
           doctorId: selectedDoctorForAssignments?.id,
@@ -403,13 +554,19 @@ export default function StaffPage() {
           bookingMode: (newAssignment as any).bookingMode || "sequential_queue",
           maxDailyTokens: (newAssignment as any).maxDailyTokens ? Number((newAssignment as any).maxDailyTokens) : null,
         });
-        toast({ title: "Success! 🏥", description: "Doctor assigned to clinic branch successfully!", variant: "success" });
+        toast({ title: "Assigned", description: "Doctor assigned to clinic branch successfully.", variant: "success" });
       }
-      // Refresh assignments
       const res = await api.get(`/onboarding/doctors/assignments?doctorId=${selectedDoctorForAssignments?.id}`);
       setAssignments(res.data.data || []);
       setEditingAssignmentId(null);
-      setNewAssignment({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: DEFAULT_WORKING_HOURS, bookingMode: "sequential_queue", maxDailyTokens: "" });
+      setNewAssignment({
+        clinicId: "",
+        fees: 100,
+        appointmentDuration: 15,
+        workingHours: DEFAULT_WORKING_HOURS,
+        bookingMode: "sequential_queue",
+        maxDailyTokens: "",
+      });
     } catch (err: any) {
       toast({ title: "Error", description: err.response?.data?.message || "Failed to save assignment", variant: "error" });
     } finally {
@@ -420,16 +577,26 @@ export default function StaffPage() {
   const handleRemoveAssignment = async (assignmentId: string) => {
     try {
       await api.delete(`/onboarding/doctors/assignments/${assignmentId}`);
-      toast({ title: "Success", description: "Doctor assignment removed successfully", variant: "success" });
+      toast({ title: "Removed", description: "Doctor assignment removed successfully.", variant: "success" });
       if (editingAssignmentId === assignmentId) {
         setEditingAssignmentId(null);
-        setNewAssignment({ clinicId: "", fees: 100, appointmentDuration: 15, workingHours: DEFAULT_WORKING_HOURS, bookingMode: "sequential_queue", maxDailyTokens: "" });
+        setNewAssignment({
+          clinicId: "",
+          fees: 100,
+          appointmentDuration: 15,
+          workingHours: DEFAULT_WORKING_HOURS,
+          bookingMode: "sequential_queue",
+          maxDailyTokens: "",
+        });
       }
-      // Refresh assignments
       const res = await api.get(`/onboarding/doctors/assignments?doctorId=${selectedDoctorForAssignments?.id}`);
       setAssignments(res.data.data || []);
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to remove assignment", variant: "error" });
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to remove assignment",
+        variant: "error",
+      });
     }
   };
 
@@ -439,7 +606,7 @@ export default function StaffPage() {
       const data = JSON.parse(timingsStr);
       const days = Object.keys(data);
       if (days.length === 0) return timingsStr;
-      
+
       for (const day of days) {
         if (data[day] && data[day].length > 0) {
           const firstSlot = data[day][0];
@@ -447,15 +614,18 @@ export default function StaffPage() {
         }
       }
       return "Not specified";
-    } catch (e) {
+    } catch {
       return timingsStr;
     }
   };
 
-  // Filter out clinics already assigned
   const availableClinics = clinics.filter(
-    c => !assignments.some(a => (a.clinicId?.id || a.clinicId) === c.id)
+    (c) => !assignments.some((a) => (a.clinicId?.id || a.clinicId) === c.id)
   );
+
+  const totalPhysicians = doctors.length;
+  const totalFrontDesk = receptionists.length;
+  const totalAllied = nurses.length + labTechs.length + pharmacists.length + cashiers.length + customStaff.length;
 
   if (loading) {
     return (
@@ -476,65 +646,110 @@ export default function StaffPage() {
   }
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
-      {/* Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Staff & Practitioner Management</h1>
-          <p className="text-xs text-text-muted mt-0.5">
-            Manage clinical practitioners, receptionists, access privileges, and RBAC governance.
-          </p>
-        </div>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Staff & Practitioner Management
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                HR & Workforce
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Manage clinical practitioners, receptionists, clinic branch assignments, and RBAC governance.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          {canManageStaff && (
-          <>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsAdminDoctorModalOpen(true)}
-            className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5 border-primary-500/40 text-primary-400 hover:bg-primary-500/10"
-          >
-            <span>🩺 Link Doctor Profile to Admin</span>
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => openModal("doctor")}
-            className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            <span>Add Staff Member</span>
-          </Button>
-          </>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadData}
-            loading={loading}
-            className="font-semibold rounded-xl cursor-pointer gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span>Refresh</span>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {canManageStaff && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAdminDoctorModalOpen(true)}
+                  className="rounded-xl text-xs font-semibold hover:bg-surface-hover"
+                >
+                  <UserCheck className="w-3.5 h-3.5 mr-1.5 text-primary-500" />
+                  Link Doctor to Admin
+                </Button>
+
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => openModal("doctor")}
+                  className="font-semibold rounded-xl shadow-xs"
+                >
+                  <UserPlus className="h-3.5 w-3.5 mr-1" />
+                  Add Staff Member
+                </Button>
+              </>
+            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadData}
+              disabled={isRefreshing}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+            >
+              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
+              Refresh
+            </Button>
+          </div>
         </div>
       </div>
 
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. WORKFORCE KPI STATS CARDS
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Total Staff Workforce"
+          value={allStaffMembers.length.toString()}
+          description="Active accounts in organization"
+          icon={<Users className="w-5 h-5 text-text-secondary" />}
+        />
+        <StatCard
+          label="Clinical Physicians"
+          value={totalPhysicians.toString()}
+          description="Assigned OPD specialists"
+          icon={<Stethoscope className="w-5 h-5 text-text-secondary" />}
+        />
+        <StatCard
+          label="Front Desk Reception"
+          value={totalFrontDesk.toString()}
+          description="Desk coordinators & intake"
+          icon={<User className="w-5 h-5 text-text-secondary" />}
+        />
+        <StatCard
+          label="Allied Specialists"
+          value={totalAllied.toString()}
+          description="Nurses, lab techs & pharmacy"
+          icon={<ShieldCheck className="w-5 h-5 text-text-secondary" />}
+        />
+      </div>
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          3. TABS NAVIGATION (DIRECTORY, RBAC, ANALYTICS)
+         ────────────────────────────────────────────────────────────────────────── */}
       <Tabs
+        variant="pills"
         tabs={[
           {
             id: "directory",
             label: `Staff Directory (${allStaffMembers.length})`,
+            icon: <Users className="w-4 h-4" />,
             content: (
-              <div className="space-y-4">
+              <div className="space-y-4 pt-1">
                 {/* Role Filter Bar */}
-                <div className="flex items-center gap-1.5 flex-wrap p-1.5 bg-surface border border-border rounded-2xl shadow-2xs">
-                  <span className="text-xs font-bold text-text-muted px-2">Filter Role:</span>
+                <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+                  <span className="text-[11px] font-bold text-text-muted px-2.5 shrink-0">Filter:</span>
                   {roleFilterTabs.map((filter) => {
                     const isSelected = selectedRoleFilter === filter.key;
                     return (
@@ -543,17 +758,21 @@ export default function StaffPage() {
                         type="button"
                         onClick={() => setSelectedRoleFilter(filter.key)}
                         className={cn(
-                          "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5",
+                          "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
                           isSelected
-                            ? "bg-primary-600 text-white border-primary-600 shadow-xs"
-                            : "bg-surface-alt/60 text-text-muted border-border/80 hover:bg-surface-hover hover:text-text"
+                            ? "bg-surface text-text shadow-xs font-bold border border-border/60"
+                            : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
                         )}
                       >
                         <span>{filter.label}</span>
-                        <span className={cn(
-                          "px-1.5 py-0.2 text-[10px] rounded-full font-black",
-                          isSelected ? "bg-white/20 text-white" : "bg-surface-alt text-text-muted"
-                        )}>
+                        <span
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
+                            isSelected
+                              ? "bg-primary-500/10 text-primary-600 dark:text-primary-400"
+                              : "bg-surface-alt text-text-muted"
+                          )}
+                        >
                           {filter.count}
                         </span>
                       </button>
@@ -561,306 +780,404 @@ export default function StaffPage() {
                   })}
                 </div>
 
-                <Table
-                  searchable
-                  searchPlaceholder="Search staff members by name, email, role, or specialty..."
-                  columns={[
-                    { 
-                      key: "name", 
-                      header: "Name", 
-                      sortable: true,
-                      render: (row) => <span className="font-bold text-text">{row.name}</span>
-                    },
-                    { 
-                      key: "roleLabel", 
-                      header: "Role Designation", 
-                      sortable: true,
-                      render: (row) => (
-                        <span className={cn(
-                          "px-2.5 py-0.5 rounded-full text-xs font-bold inline-block border",
-                          row.roleType === "doctor" && "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-950/40 dark:border-primary-800",
-                          row.roleType === "receptionist" && "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800",
-                          row.roleType === "nurse" && "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:border-purple-800",
-                          row.roleType === "lab_tech" && "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800",
-                          row.roleType === "pharmacist" && "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/40 dark:border-cyan-800",
-                          row.roleType === "cashier" && "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800"
-                        )}>
-                          {row.roleLabel}
-                        </span>
-                      )
-                    },
-                    { key: "email", header: "Email Address", sortable: true },
-                    { key: "phone", header: "Phone Number", sortable: true, render: (row) => <span>{row.phone || "-"}</span> },
-                    { key: "details", header: "Details / Branch", sortable: true },
-                    { 
-                      key: "actions", 
-                      header: "Actions",
-                      align: "right",
-                      width: "56px",
-                      render: (row) => (
-                        <div className="flex items-center justify-end">
-                          <Dropdown
-                            align="right"
-                            trigger={
-                              <Button size="sm" variant="outline" className="h-8 w-8 p-0 flex items-center justify-center rounded-lg cursor-pointer shrink-0" title="Row Actions">
-                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                                </svg>
-                              </Button>
-                            }
-                            items={[
-                              ...(row.roleType === "doctor" ? [{ label: "Manage Clinic Assignments", onClick: () => openAssignmentsModal(row) }] : []),
-                              { label: `Edit ${row.roleLabel}`, onClick: () => openEditModal(row.roleType, row) },
-                              { label: `Delete ${row.roleLabel}`, danger: true, onClick: () => setDeletingId(row.id) }
-                            ]}
-                          />
-                        </div>
-                      )
-                    }
-                  ]}
-                  data={filteredStaff}
-                  emptyMessage="No staff members match the selected filter."
+                <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+                  <CardContent className="p-0">
+                    <Table
+                      searchable
+                      searchPlaceholder="Search staff members by name, email, role, or specialty..."
+                      columns={[
+                        {
+                          key: "name",
+                          header: "Staff Member",
+                          sortable: true,
+                          render: (row) => (
+                            <div className="space-y-0.5 min-w-[140px]">
+                              <span className="font-bold text-text text-xs sm:text-sm">{row.name}</span>
+                            </div>
+                          ),
+                        },
+                        {
+                          key: "roleLabel",
+                          header: "Designation",
+                          sortable: true,
+                          render: (row) => (
+                            <Badge
+                              variant={
+                                row.roleType === "doctor"
+                                  ? "primary"
+                                  : row.roleType === "receptionist"
+                                  ? "success"
+                                  : row.roleType === "nurse"
+                                  ? "warning"
+                                  : "neutral"
+                              }
+                              size="sm"
+                              className="font-semibold text-[10px] capitalize"
+                            >
+                              {row.roleLabel}
+                            </Badge>
+                          ),
+                        },
+                        {
+                          key: "email",
+                          header: "Email Address",
+                          sortable: true,
+                          render: (row) => (
+                            <div className="flex items-center gap-1 text-xs text-text-secondary">
+                              <Mail className="w-3 h-3 text-text-muted shrink-0" />
+                              <span className="truncate max-w-[150px]">{row.email}</span>
+                            </div>
+                          ),
+                        },
+                        {
+                          key: "phone",
+                          header: "Phone Number",
+                          sortable: true,
+                          render: (row) => (
+                            <div className="flex items-center gap-1 text-xs text-text-secondary">
+                              <Phone className="w-3 h-3 text-text-muted shrink-0" />
+                              <span>{row.phone || "—"}</span>
+                            </div>
+                          ),
+                        },
+                        {
+                          key: "details",
+                          header: "Details / Branch",
+                          sortable: true,
+                          render: (row) => (
+                            <div className="flex items-center gap-1 text-xs text-text-muted">
+                              <Building2 className="w-3 h-3 text-text-muted shrink-0" />
+                              <span className="truncate max-w-[160px]">{row.details}</span>
+                            </div>
+                          ),
+                        },
+                        {
+                          key: "actions",
+                          header: "Actions",
+                          align: "right",
+                          width: "56px",
+                          render: (row) => (
+                            <div className="flex items-center justify-end">
+                              <Dropdown
+                                align="right"
+                                trigger={
+                                  <Button
+                                    size="xs"
+                                    variant="outline"
+                                    className="h-7 w-7 p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text"
+                                    title="Row Actions"
+                                  >
+                                    <MoreHorizontal className="h-3.5 w-3.5" />
+                                  </Button>
+                                }
+                                items={[
+                                  ...(row.roleType === "doctor"
+                                    ? [
+                                        {
+                                          label: "Manage Clinic Assignments",
+                                          icon: <Stethoscope className="w-4 h-4 text-primary-500" />,
+                                          onClick: () => openAssignmentsModal(row),
+                                        },
+                                      ]
+                                    : []),
+                                  {
+                                    label: `Edit ${row.roleLabel}`,
+                                    icon: <Edit3 className="w-4 h-4 text-text-muted" />,
+                                    onClick: () => openEditModal(row.roleType, row),
+                                  },
+                                  { divider: true, label: "" },
+                                  {
+                                    label: `Deactivate ${row.roleLabel}`,
+                                    icon: <Trash2 className="w-4 h-4 text-danger" />,
+                                    variant: "danger" as any,
+                                    onClick: () => setDeletingId(row.id),
+                                  },
+                                ]}
+                              />
+                            </div>
+                          ),
+                        },
+                      ]}
+                      data={filteredStaff}
+                      loading={loading}
+                      emptyMessage="No staff members match the selected filter."
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            ),
+          },
+          {
+            id: "rbac",
+            label: "RBAC Governance & Permissions",
+            content: (
+              <div className="pt-2">
+                <RBACPermissionMatrix
+                  users={allStaffMembers.map((s) => ({
+                    id: s.id,
+                    name: s.name,
+                    email: s.email,
+                    role: s.roleType,
+                    permissions: s.permissions || [],
+                  }))}
+                  onRefresh={loadData}
                 />
               </div>
-            )
+            ),
           },
-              {
-                id: "rbac",
-                label: "RBAC Governance & Permissions",
-                content: (
-                  <RBACPermissionMatrix
-                    users={allStaffMembers.map((s) => ({
-                      id: s.id,
-                      name: s.name,
-                      email: s.email,
-                      role: s.roleType,
-                      permissions: s.permissions || [],
-                    }))}
-                    onRefresh={loadData}
-                  />
-                )
-              },
-              {
-                id: "analytics",
-                label: "Executive BI & Analytics 📈",
-                content: <ExecutiveAnalytics />
-              }
-            ]}
-          />
+          {
+            id: "analytics",
+            label: "Executive BI & Analytics",
+            content: (
+              <div className="pt-2">
+                <ExecutiveAnalytics />
+              </div>
+            ),
+          },
+        ]}
+      />
 
-      {/* Staff Add/Edit Modal */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          4. STAFF ADD/EDIT MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={`${editingId ? "Update" : "Add New"} ${modalType.replace("_", " ").toUpperCase()} Profile`}
+        title={`${editingId ? "Update" : "Register"} ${modalType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())} Profile`}
+        description="Set staff credentials, contact details, clinic branch assignment, and professional credentials."
         size="xl"
       >
-        <form onSubmit={handleSave} className="space-y-4" noValidate>
+        <form onSubmit={handleSave} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1" noValidate>
           {!editingId && (
-            <div>
-              <Select
-                label="Staff Account Role & Designation *"
-                value={modalType}
-                onChange={(e) => {
-                  setModalType(e.target.value as any);
-                  setStaffErrors({});
-                }}
-                options={allRoleOptions}
-              />
-            </div>
+            <Select
+              label="Staff Account Role & Designation *"
+              value={modalType}
+              onChange={(e) => {
+                setModalType(e.target.value as any);
+                setStaffErrors({});
+              }}
+              options={allRoleOptions}
+            />
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <Input 
-              label="Full Name *" 
-              value={formData.name || ""} 
-              onChange={(e) => handleFieldChange("name", e.target.value)} 
+            <Input
+              label="Full Name *"
+              value={formData.name || ""}
+              onChange={(e) => handleFieldChange("name", e.target.value)}
               onBlur={() => validateStaffField("name", formData.name || "")}
               placeholder="e.g. Dr. Sarah Jenkins, MD"
               error={staffErrors.name}
-              required 
+              required
             />
-            <Input 
-              label="Phone Number" 
-              value={formData.phone || ""} 
-              onChange={(e) => handleFieldChange("phone", e.target.value)} 
+            <Input
+              label="Phone Number"
+              value={formData.phone || ""}
+              onChange={(e) => handleFieldChange("phone", e.target.value)}
               placeholder="e.g. +1 415 555 0199"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <Input 
-              label="Email Address *" 
-              type="email" 
-              value={formData.email || ""} 
-              onChange={(e) => handleFieldChange("email", e.target.value)} 
+            <Input
+              label="Email Address *"
+              type="email"
+              value={formData.email || ""}
+              onChange={(e) => handleFieldChange("email", e.target.value)}
               onBlur={() => validateStaffField("email", formData.email || "")}
               placeholder="e.g. sarah.jenkins@clinic.com"
               error={staffErrors.email}
-              required 
+              required
             />
-            {!editingId ? (
-              <Input 
-                label="Password *" 
-                type={showPassword ? "text" : "password"} 
-                value={formData.password || ""} 
-                onChange={(e) => handleFieldChange("password", e.target.value)} 
+            {!editingId && (
+              <Input
+                label="Password *"
+                type={showPassword ? "text" : "password"}
+                value={formData.password || ""}
+                onChange={(e) => handleFieldChange("password", e.target.value)}
                 onBlur={() => validateStaffField("password", formData.password || "")}
                 placeholder="Min 6 characters"
                 error={staffErrors.password}
-                required 
+                required
                 iconRight={
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="p-1 text-text-muted hover:text-text rounded-md hover:bg-surface-hover/50 transition-all active:scale-75 cursor-pointer"
+                    className="p-1 text-text-muted hover:text-text rounded-md hover:bg-surface-hover/50 transition-all cursor-pointer"
                     title={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? (
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                      </svg>
-                    ) : (
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    )}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 }
               />
-            ) : <div />}
+            )}
           </div>
-          
+
           {modalType === "doctor" && (
-            <div className="space-y-3.5 border-t border-border pt-3">
+            <div className="space-y-3.5 border-t border-border/60 pt-3">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                <Input 
-                  label="Specialization *" 
-                  placeholder="e.g. Cardiologist" 
-                  value={formData.specialization || ""} 
-                  onChange={(e) => handleFieldChange("specialization", e.target.value)} 
+                <Input
+                  label="Specialization *"
+                  placeholder="e.g. Cardiologist"
+                  value={formData.specialization || ""}
+                  onChange={(e) => handleFieldChange("specialization", e.target.value)}
                   onBlur={() => validateStaffField("specialization", formData.specialization || "")}
                   error={staffErrors.specialization}
                   required
                 />
-                <Input label="Qualification" placeholder="e.g. MBBS, MD" value={formData.qualification || ""} onChange={(e) => handleFieldChange("qualification", e.target.value)} />
-                <Input label="Experience (Years)" type="number" value={formData.experience_years || ""} onChange={(e) => handleFieldChange("experience_years", parseInt(e.target.value) || 0)} />
+                <Input
+                  label="Qualification"
+                  placeholder="e.g. MBBS, MD"
+                  value={formData.qualification || ""}
+                  onChange={(e) => handleFieldChange("qualification", e.target.value)}
+                />
+                <Input
+                  label="Experience (Years)"
+                  type="number"
+                  value={formData.experience_years || ""}
+                  onChange={(e) => handleFieldChange("experience_years", parseInt(e.target.value) || 0)}
+                />
               </div>
-              <ImageUpload 
-                label="Profile Image" 
-                value={formData.image_url || null} 
-                onChange={(val) => handleFieldChange("image_url", val)} 
+              <div className="bg-surface-alt p-3.5 border border-border/80 rounded-2xl">
+                <ImageUpload
+                  label="Practitioner Profile Photo"
+                  value={formData.image_url || null}
+                  onChange={(val) => handleFieldChange("image_url", val)}
+                />
+              </div>
+              <Input
+                label="Short Biography / Overview"
+                placeholder="About practitioner's background and achievements..."
+                value={formData.description || ""}
+                onChange={(e) => handleFieldChange("description", e.target.value)}
               />
-              <Input label="Short Biography / Overview" placeholder="About practitioner's background and achievements..." value={formData.description || ""} onChange={(e) => handleFieldChange("description", e.target.value)} />
             </div>
           )}
 
           {modalType === "receptionist" && (
-            <>
-              <Select 
-                label="Assign Clinic *" 
-                value={formData.clinicId || ""} 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 border-t border-border/60 pt-3">
+              <Select
+                label="Assign Clinic *"
+                value={formData.clinicId || ""}
                 onChange={(e) => handleFieldChange("clinicId", e.target.value)}
                 error={staffErrors.clinicId}
                 placeholder="Choose a clinic branch..."
-                options={clinics.map(c => ({ value: c.id, label: c.name }))}
+                options={clinics.map((c) => ({ value: c.id, label: c.name }))}
               />
-              <Input label="Shift" placeholder="e.g. Morning, Night" value={formData.shift || ""} onChange={(e) => handleFieldChange("shift", e.target.value)} />
-            </>
+              <Input
+                label="Shift Schedule"
+                placeholder="e.g. Morning (08:00 - 16:00)"
+                value={formData.shift || ""}
+                onChange={(e) => handleFieldChange("shift", e.target.value)}
+              />
+            </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
-            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={submitting}>Save</Button>
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60 mt-4">
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" variant="primary" loading={submitting} className="font-semibold rounded-xl shadow-xs">
+              {editingId ? "Update Staff Profile" : "Register Staff Member"}
+            </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Doctor Assignments Modal */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          5. DOCTOR CLINIC ASSIGNMENTS MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isAssignmentsModalOpen}
         onClose={() => setIsAssignmentsModalOpen(false)}
-        title={`Manage Clinic Assignments — Dr. ${selectedDoctorForAssignments?.name || ""}`}
+        title={`Clinic Branch Assignments — Dr. ${selectedDoctorForAssignments?.name || ""}`}
+        description="Link this practitioner to branch locations with custom consultation fees, slot durations, and working hours."
         size="2xl"
       >
-        <div className="space-y-6 font-sans">
-          {/* Informational Subtext */}
-          <div className="p-3.5 bg-primary-500/10 border border-primary-500/20 rounded-2xl flex items-start gap-3 text-xs text-text-secondary">
-            <span className="text-base shrink-0">🏥</span>
-            <div>
-              <p className="font-bold text-text">What are Active Assignments?</p>
-              <p className="mt-0.5 text-text-muted">
-                Active Assignments link this practitioner to specific clinic locations within your organization. Each clinic location can have custom consultation fees, slot durations (e.g. 15 mins), and operating day shifts for online appointment booking and OPD desk routing.
-              </p>
-            </div>
-          </div>
-
-          {/* Current Active Assignments Card */}
-          <div className="bg-surface-alt/40 border border-border/80 rounded-2xl p-4.5 space-y-3">
+        <div className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
+          {/* Active Assignments Card */}
+          <div className="border border-border/80 rounded-2xl p-4 space-y-3 bg-surface-alt/30">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-text tracking-tight flex items-center gap-2">
-                <span>📍 Active Clinic Assignments</span>
-                <Badge variant="primary" size="sm">{assignments.length}</Badge>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-text flex items-center gap-2">
+                <span>Active Branch Assignments</span>
+                <Badge variant="primary" size="sm" className="font-semibold">
+                  {assignments.length}
+                </Badge>
               </h3>
             </div>
 
             {assignmentLoading ? (
-              <div className="flex justify-center p-8"><Spinner size="md" /></div>
+              <div className="flex justify-center p-8">
+                <Spinner size="md" />
+              </div>
             ) : assignments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed border-border rounded-2xl bg-surface-alt/30 space-y-2">
-                <div className="w-10 h-10 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-400 text-lg">
-                  🏥
+              <div className="flex flex-col items-center justify-center text-center p-6 border border-dashed border-border/80 rounded-2xl bg-surface space-y-2">
+                <div className="w-10 h-10 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-500">
+                  <Building2 className="w-5 h-5" />
                 </div>
-                <h4 className="text-sm font-bold text-text">No Clinic Locations Assigned Yet</h4>
-                <p className="text-xs text-text-muted max-w-md">
-                  This practitioner has no active clinic branch assignments. Select an available clinic branch below to set consultation fees, slot durations, and working hours.
+                <h4 className="text-xs font-bold text-text">No Clinic Branches Assigned Yet</h4>
+                <p className="text-xs text-text-muted max-w-sm">
+                  Assign this practitioner to a clinic branch below to configure fees and consultation schedules.
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-border/80 shadow-2xs bg-surface">
+              <div className="overflow-x-auto rounded-2xl border border-border/80 bg-surface shadow-xs">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-border text-[11px] font-bold text-text-muted uppercase tracking-wider bg-surface-alt/50">
-                      <th className="p-3">Clinic Location</th>
-                      <th className="p-3">Consultation Fee</th>
+                    <tr className="border-b border-border/60 text-[10px] font-bold text-text-muted uppercase tracking-wider bg-surface-alt">
+                      <th className="p-3">Clinic Branch</th>
+                      <th className="p-3">Fee</th>
                       <th className="p-3">Slot Duration</th>
                       <th className="p-3">Booking Mode</th>
-                      <th className="p-3">Working Shift Hours</th>
-                      <th className="p-3 text-right w-36">Action</th>
+                      <th className="p-3">Working Shift</th>
+                      <th className="p-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-border/60">
                     {assignments.map((asg) => (
                       <tr key={asg.id || asg._id} className="hover:bg-surface-hover/50 transition-colors">
                         <td className="p-3 text-text font-bold whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                          <div className="flex items-center gap-1.5">
+                            <Building2 className="w-3.5 h-3.5 text-primary-500 shrink-0" />
                             <span>{asg.clinicId?.name || "Clinic Branch"}</span>
                           </div>
                         </td>
-                        <td className="p-3 text-emerald-400 font-extrabold text-sm whitespace-nowrap">
+                        <td className="p-3 text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">
                           ₹{asg.fees}
                         </td>
                         <td className="p-3 whitespace-nowrap">
-                          <span className="px-2.5 py-1 bg-surface-alt rounded-lg font-bold text-text-secondary border border-border/60">
+                          <span className="px-2 py-0.5 bg-surface-alt rounded-lg font-semibold text-text-secondary border border-border/60">
                             {asg.appointmentDuration} mins
                           </span>
                         </td>
                         <td className="p-3 whitespace-nowrap">
-                          <Badge variant={asg.bookingMode === "sequential_queue" ? "primary" : "neutral"} className="font-bold text-[10px]">
-                            {asg.bookingMode === "sequential_queue" ? "🎟 Token Queue" : "🗓 Time Slots"}
+                          <Badge
+                            variant={asg.bookingMode === "sequential_queue" ? "primary" : "neutral"}
+                            size="sm"
+                            className="font-semibold text-[10px]"
+                          >
+                            {asg.bookingMode === "sequential_queue" ? "Token Queue" : "Time Slots"}
                           </Badge>
                         </td>
-                        <td className="p-3 text-text-secondary whitespace-normal font-medium leading-relaxed">
+                        <td className="p-3 text-text-muted whitespace-normal text-xs">
                           {formatTimings(asg.workingHours)}
                         </td>
                         <td className="p-3 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
-                            <Button variant="outline" size="xs" onClick={() => handleStartEditAssignment(asg)} className="font-bold border-border">
-                              Edit ✏️
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => handleStartEditAssignment(asg)}
+                              className="font-semibold text-xs"
+                            >
+                              Edit
                             </Button>
-                            <Button variant="danger" size="xs" onClick={() => handleRemoveAssignment(asg.id || asg._id)} className="font-bold">
+                            <Button
+                              variant="danger"
+                              size="xs"
+                              onClick={() => handleRemoveAssignment(asg.id || asg._id)}
+                              className="font-semibold text-xs"
+                            >
                               Remove
                             </Button>
                           </div>
@@ -875,14 +1192,17 @@ export default function StaffPage() {
 
           {/* Add / Edit Assignment Form Card */}
           {availableClinics.length > 0 || editingAssignmentId ? (
-            <form onSubmit={handleAddAssignment} className="bg-surface-alt/40 border border-border/80 rounded-2xl p-4.5 space-y-4">
-              <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                <h3 className="text-sm font-bold text-text tracking-tight flex items-center gap-2">
-                  <span>{editingAssignmentId ? "✏️ Edit Clinic Location Assignment & Schedule" : "➕ Assign New Clinic Location & Schedule"}</span>
+            <form
+              onSubmit={handleAddAssignment}
+              className="border border-border/80 rounded-2xl p-4 space-y-3.5 bg-surface shadow-xs"
+            >
+              <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-text">
+                  {editingAssignmentId ? "Edit Branch Assignment & Schedule" : "Assign to New Clinic Branch"}
                 </h3>
                 {editingAssignmentId && (
-                  <Button type="button" variant="outline" size="xs" onClick={handleCancelEditAssignment} className="font-bold">
-                    Cancel Editing
+                  <Button type="button" variant="outline" size="xs" onClick={handleCancelEditAssignment}>
+                    Cancel Edit
                   </Button>
                 )}
               </div>
@@ -893,29 +1213,31 @@ export default function StaffPage() {
                   value={(newAssignment as any).bookingMode || "sequential_queue"}
                   onChange={(e) => setNewAssignment({ ...newAssignment, bookingMode: e.target.value } as any)}
                   options={[
-                    { value: "sequential_queue", label: "🎟 Sequential Queue Mode (Live Token Queue) - DEFAULT" },
-                    { value: "time_slot", label: "🗓 Time-Slot Mode (Fixed Time Slots)" },
+                    { value: "sequential_queue", label: "Sequential Queue Mode (Live Token Stream)" },
+                    { value: "time_slot", label: "Time-Slot Mode (Fixed Calendar Slots)" },
                   ]}
                   required
                 />
 
                 {editingAssignmentId ? (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold uppercase tracking-wider text-text-muted block">Clinic Branch Location</label>
-                    <div className="p-2.5 bg-surface border border-border/80 rounded-xl text-xs font-bold text-text flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-                      <span>{assignments.find(a => (a.id || a._id) === editingAssignmentId)?.clinicId?.name || "Selected Clinic Location"}</span>
-                      <Badge variant="neutral" size="sm" className="ml-auto text-[10px] font-semibold">Location Fixed</Badge>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-text block">Clinic Branch</label>
+                    <div className="p-2.5 bg-surface-alt border border-border/80 rounded-xl text-xs font-bold text-text flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-primary-500" />
+                      <span>
+                        {assignments.find((a) => (a.id || a._id) === editingAssignmentId)?.clinicId?.name ||
+                          "Selected Branch"}
+                      </span>
                     </div>
                   </div>
                 ) : (
-                  <Select 
-                    label="Select Clinic Location *"
+                  <Select
+                    label="Select Clinic Branch *"
                     value={newAssignment.clinicId}
                     onChange={(e) => setNewAssignment({ ...newAssignment, clinicId: e.target.value })}
                     options={[
                       { value: "", label: "Choose a clinic branch..." },
-                      ...availableClinics.map(c => ({ value: c.id, label: c.name }))
+                      ...availableClinics.map((c) => ({ value: c.id, label: c.name })),
                     ]}
                     required
                   />
@@ -923,61 +1245,74 @@ export default function StaffPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                <Input 
+                <Input
                   label="Consultation Fee (₹) *"
                   type="number"
                   value={newAssignment.fees}
                   onChange={(e) => setNewAssignment({ ...newAssignment, fees: Number(e.target.value) })}
                   required
                 />
-                <Input 
-                  label={(newAssignment as any).bookingMode === "time_slot" ? "Slot Duration (Minutes) *" : "Avg Time / Patient (Mins) *"}
+                <Input
+                  label={
+                    (newAssignment as any).bookingMode === "time_slot"
+                      ? "Slot Duration (Minutes) *"
+                      : "Avg Time / Patient (Mins) *"
+                  }
                   type="number"
                   value={newAssignment.appointmentDuration}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, appointmentDuration: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setNewAssignment({ ...newAssignment, appointmentDuration: Number(e.target.value) })
+                  }
                   required
                 />
                 <Input
-                  label="Max Daily Tokens (Optional Cap)"
+                  label="Max Daily Tokens (Optional)"
                   type="number"
                   placeholder="e.g. 40 (blank for unlimited)"
                   value={(newAssignment as any).maxDailyTokens || ""}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, maxDailyTokens: e.target.value } as any)}
+                  onChange={(e) =>
+                    setNewAssignment({ ...newAssignment, maxDailyTokens: e.target.value } as any)
+                  }
                 />
               </div>
 
-              <ScheduleEditor 
-                label="Working Days & Operating Timings *"
+              <ScheduleEditor
+                label="Working Days & Operating Hours *"
                 value={newAssignment.workingHours}
                 onChange={(val) => setNewAssignment({ ...newAssignment, workingHours: val })}
               />
 
-              <div className="flex justify-end gap-3 pt-2">
-                <Button type="submit" loading={savingAssignment} variant="primary" className="font-bold rounded-xl shadow-xs cursor-pointer">
-                  {editingAssignmentId ? "Update Clinic Location & Schedule 💾" : "Assign Clinic Location & Schedule"}
+              <div className="flex justify-end gap-2.5 pt-2 border-t border-border/60">
+                <Button
+                  type="submit"
+                  loading={savingAssignment}
+                  size="sm"
+                  variant="primary"
+                  className="font-semibold rounded-xl shadow-xs"
+                >
+                  {editingAssignmentId ? "Update Branch Assignment" : "Assign Clinic Branch"}
                 </Button>
               </div>
             </form>
           ) : (
-            <div className="text-xs text-text-muted text-center py-4 border border-border bg-surface-alt/50 rounded-2xl font-medium">
-              ✅ Dr. {selectedDoctorForAssignments?.name} is already assigned to all active clinic branches in your organization.
+            <div className="text-xs text-text-muted text-center py-4 border border-border/80 bg-surface-alt rounded-2xl font-medium">
+              Dr. {selectedDoctorForAssignments?.name} is already assigned to all active clinic branches.
             </div>
           )}
         </div>
       </Modal>
 
-      {/* Enable Clinical Doctor Profile for Admin Account Modal */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          6. LINK DOCTOR PROFILE TO ADMIN MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isAdminDoctorModalOpen}
         onClose={() => setIsAdminDoctorModalOpen(false)}
-        title="Link Clinical Doctor Profile to Admin Account 🩺"
+        title="Link Clinical Doctor Profile to Admin Account"
+        description="Enable a Clinical Doctor Profile on your Admin account to conduct OPD consultations and issue prescriptions."
         size="lg"
       >
-        <form onSubmit={handleEnableAdminDoctorProfile} className="space-y-4">
-          <p className="text-xs text-text-muted">
-            Solo practice owners and Doctor-Admins can enable a Clinical Doctor Profile linked directly to their Admin account. This allows you to conduct OPD consultations, issue prescriptions, and manage appointments while maintaining full 100% Admin Governance.
-          </p>
-
+        <form onSubmit={handleEnableAdminDoctorProfile} className="space-y-4 pt-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
               label="Medical Specialization *"
@@ -1011,22 +1346,34 @@ export default function StaffPage() {
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" type="button" onClick={() => setIsAdminDoctorModalOpen(false)}>Cancel</Button>
-            <Button variant="primary" type="submit" loading={savingAdminDoctor}>Link Clinical Doctor Profile</Button>
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsAdminDoctorModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              loading={savingAdminDoctor}
+              className="font-semibold rounded-xl shadow-xs"
+            >
+              Link Clinical Doctor Profile
+            </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Delete/Deactivate Confirmation Dialog */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          7. DEACTIVATE STAFF CONFIRM DIALOG
+         ────────────────────────────────────────────────────────────────────────── */}
       <ConfirmDialog
         open={!!deletingId}
         onClose={() => setDeletingId(null)}
         onConfirm={handleDelete}
-        title="Remove Staff Member?"
-        description="Are you sure you want to remove this staff member from your organization? They will lose access to the system."
+        title="Deactivate Staff Account?"
+        description="Are you sure you want to deactivate this staff member from your organization? They will lose access to the system."
         variant="danger"
-        confirmLabel="Remove"
+        confirmLabel="Deactivate Account"
       />
     </div>
   );

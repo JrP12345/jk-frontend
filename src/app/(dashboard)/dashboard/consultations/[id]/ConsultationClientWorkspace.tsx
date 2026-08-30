@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { EncounterProvider } from "@/providers/EncounterProvider";
 import { EncounterWorkspace } from "@/components/clinical/EncounterWorkspace";
 import { PatientHeaderData } from "@/components/clinical/PatientHeader";
-import { Spinner, Alert } from "@/components/ui";
+import { Spinner, Alert, Button, Card } from "@/components/ui";
+import { RotateCw, ArrowLeft } from "lucide-react";
 
 interface ConsultationClientWorkspaceProps {
   appointmentId: string;
@@ -18,8 +20,10 @@ export function ConsultationClientWorkspace({
   initialPatientId,
   initialClinicId,
 }: ConsultationClientWorkspaceProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const [encounterId, setEncounterId] = useState<string | null>(null);
   const [patientId, setPatientId] = useState<string>(initialPatientId || "");
@@ -122,7 +126,7 @@ export function ConsultationClientWorkspace({
     return () => {
       isMounted = false;
     };
-  }, [appointmentId]);
+  }, [appointmentId, retryCount]);
 
   if (loading) {
     return (
@@ -134,10 +138,30 @@ export function ConsultationClientWorkspace({
 
   if (error || !encounterId || !patientData) {
     return (
-      <div className="p-8 max-w-4xl mx-auto">
+      <div className="p-8 max-w-2xl mx-auto space-y-4">
         <Alert variant="error" title="Workspace Initialization Error">
           {error || "Unable to start active encounter session. Please try again or return to queue."}
         </Alert>
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/dashboard/queue")}
+            className="rounded-xl font-semibold text-xs gap-1.5"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Return to Outpatient Queue</span>
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setRetryCount((c) => c + 1)}
+            className="rounded-xl font-bold text-xs gap-1.5"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            <span>Retry Connection</span>
+          </Button>
+        </div>
       </div>
     );
   }

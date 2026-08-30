@@ -236,7 +236,7 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
 
     if (isMandatoryAdminPerm) {
       toast({
-        title: "Protected Core Entitlement 🔒",
+        title: "Protected Core Entitlement",
         description: `'${code}' is a mandatory administrative governance permission and cannot be disabled on the ${activeMatrixRole.toUpperCase()} role.`,
         variant: "warning",
       });

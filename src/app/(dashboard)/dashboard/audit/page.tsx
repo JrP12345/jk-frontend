@@ -6,8 +6,10 @@ import { useAuthStore } from "@/store/authStore";
 import { canViewAuditLogs } from "@/lib/permissions";
 import {
   Card, CardHeader, CardTitle, CardDescription, CardContent,
-  Table, Badge, Button, useToast, Spinner, Alert, SkeletonTable
+  Table, Badge, Button, useToast, Spinner, Alert, SkeletonTable,
+  ChartContainer, BarChart, cn
 } from "@/components/ui";
+import { RotateCw } from "lucide-react";
 
 interface AuditLogEntry {
   id: string;
@@ -114,44 +116,80 @@ export default function AuditLogsPage() {
   };
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
-      {/* Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Security Audit Trail</h1>
-          <p className="text-xs text-text-muted mt-0.5">
-            Immutable HIPAA compliance audit logs, queue overrides, and operational event tracking.
-          </p>
-        </div>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Audit Trail & Compliance Logs
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Security & Compliance
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Track clinical mutations, security access events, VIP overrides, and administrative modifications.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchLogs}
-            loading={loading}
-            className="font-semibold rounded-xl cursor-pointer gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span>Refresh Logs</span>
-          </Button>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchLogs}
+              disabled={loading}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+            >
+              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
+              Refresh Logs
+            </Button>
+          </div>
         </div>
       </div>
 
+      {/* PURPOSEFUL AUDIT EVENT DISTRIBUTION */}
+      {logs.length > 0 && (
+        <ChartContainer
+          title="Security Event Distribution"
+          description="Administrative and clinical operations breakdown"
+          loading={loading}
+          height={180}
+        >
+          <BarChart
+            data={(() => {
+              const counts: Record<string, number> = {};
+              logs.forEach((l) => {
+                const act = (l.action || "OTHER").replace(/_/g, " ");
+                counts[act] = (counts[act] || 0) + 1;
+              });
+              return Object.entries(counts).map(([name, count]) => ({
+                label: name.length > 14 ? name.substring(0, 12) + "..." : name,
+                count,
+              }));
+            })()}
+            series={[
+              { key: "count", name: "Events Logged", color: "var(--s-chart-1, #3b82f6)" },
+            ]}
+            height={180}
+            valueFormatter={(v) => `${v} events`}
+          />
+        </ChartContainer>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>System Activity Trail</CardTitle>
-          <CardDescription>Records the last 100 platform modifications for HIPAA security compliance and audit oversight.</CardDescription>
+          <CardTitle>Activity Log</CardTitle>
+          <CardDescription>Review system modifications, clinical status updates, and administrative events.</CardDescription>
         </CardHeader>
-        <CardContent>
-          {loading ? (
-            <SkeletonTable rows={6} cols={5} />
-          ) : (
-            <Table
-              searchable
-              searchPlaceholder="Search audit events by action, actor, or details..."
+        <CardContent className="p-0">
+          <Table
+            loading={loading}
+            searchable
+            searchPlaceholder="Search audit events by action, actor, or details..."
               columns={[
                 {
                   key: "createdAt",
@@ -202,7 +240,6 @@ export default function AuditLogsPage() {
               data={logs}
               emptyMessage="No security logs generated yet."
             />
-          )}
         </CardContent>
       </Card>
     </div>

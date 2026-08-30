@@ -90,7 +90,7 @@ export function NotificationDropdown({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="w-80 sm:w-96 bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] z-[999] transition-all duration-200">
+    <div className="w-80 sm:w-96 bg-surface/95 backdrop-blur-xl border border-border/80 rounded-2xl shadow-2xl shadow-black/20 overflow-hidden flex flex-col max-h-[85vh] z-[999] animate-popover-in">
       {/* Header */}
       <div className="p-4 border-b border-border flex items-center justify-between bg-surface-alt">
         <div className="flex items-center gap-2.5">

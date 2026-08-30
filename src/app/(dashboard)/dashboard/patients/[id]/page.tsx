@@ -95,8 +95,8 @@ export default function PatientDetailPage() {
       ]).then(([labRes, invRes]) => {
         const labs = labRes.data?.data || [];
         const invs = invRes.data?.data || [];
-        setLabOrders(labs.filter((l: any) => (l.patientId?.id || l.patientId?._id || l.patientId) === patientId));
-        setInvoices(invs.filter((i: any) => (i.patientId?.id || i.patientId?._id || i.patientId) === patientId));
+        setLabOrders(labs.filter((l: any) => String(l.patientId?.id || l.patientId?._id || l.patientId) === String(patientId)));
+        setInvoices(invs.filter((i: any) => String(i.patientId?.id || i.patientId?._id || i.patientId) === String(patientId)));
       });
 
     } catch (err: any) {
@@ -143,8 +143,8 @@ export default function PatientDetailPage() {
       loadPatientDetails();
     } catch (err: any) {
       toast({
-        title: "Update Failed",
-        description: err.response?.data?.message || "Could not update patient profile",
+        title: "Unable to Save Profile",
+        description: err.response?.data?.message || "Could not update patient demographics. Please try again.",
         variant: "error",
       });
     } finally {
@@ -155,21 +155,34 @@ export default function PatientDetailPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-3">
-        <Spinner size="lg" label="Loading Master Electronic Health Record..." />
+        <Spinner size="lg" label="Loading patient medical records..." />
       </div>
     );
   }
 
   if (!patientData) {
     return (
-      <div className="p-8 text-center space-y-4">
-        <h2 className="text-xl font-bold text-text">Patient Profile Not Found</h2>
-        <p className="text-sm text-text-muted">The requested patient record could not be retrieved.</p>
-        <Link href="/dashboard/patients">
-          <Button variant="outline" size="sm">
-            ← Back to Patient Directory
-          </Button>
-        </Link>
+      <div className="min-h-[50vh] flex items-center justify-center p-8">
+        <Card className="max-w-md w-full p-6 text-center space-y-4 rounded-2xl border border-border bg-surface">
+          <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-text-muted">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-text">Patient Record Not Found</h2>
+            <p className="text-xs text-text-muted mt-1 leading-relaxed">
+              The requested patient profile could not be located or has been archived.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link href="/dashboard/patients">
+              <Button variant="outline" size="sm" className="rounded-xl font-semibold">
+                Back to Patient Directory
+              </Button>
+            </Link>
+          </div>
+        </Card>
       </div>
     );
   }
@@ -306,6 +319,7 @@ export default function PatientDetailPage() {
 
       {/* Main Tabbed Interface */}
       <Tabs
+        variant="pills"
         activeTab={activeTab}
         onChange={setActiveTab}
         tabs={[
@@ -330,20 +344,16 @@ export default function PatientDetailPage() {
                     Comprehensive log of all scheduled, active, and completed consultations for this patient.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="pt-0">
-                  {appointments.length === 0 ? (
-                    <div className="py-12 text-center text-text-muted text-sm">
-                      No appointment records found for this patient.
-                    </div>
-                  ) : (
-                    <Table
-                      columns={appointmentColumns}
-                      data={appointments}
-                      searchable={false}
-                      pagination={true}
-                      defaultRowsPerPage={10}
-                    />
-                  )}
+                <CardContent className="p-0">
+                  <Table
+                    columns={appointmentColumns}
+                    data={appointments}
+                    loading={loading}
+                    searchable={false}
+                    pagination={true}
+                    defaultRowsPerPage={10}
+                    emptyMessage="No appointment records found for this patient."
+                  />
                 </CardContent>
               </Card>
             ),

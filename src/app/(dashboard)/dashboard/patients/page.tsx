@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { PatientService } from "@/services/patient.service";
 import {
   Card,
   CardHeader,
@@ -16,12 +17,34 @@ import {
   Button,
   Input,
   Select,
+  Textarea,
+  Modal,
   useToast,
   Badge,
   StatCard,
   SkeletonTable,
   Dropdown,
+  cn,
 } from "@/components/ui";
+import {
+  UserPlus,
+  RotateCw,
+  Search,
+  Users,
+  FileText,
+  User,
+  UserCheck,
+  MoreHorizontal,
+  AlertCircle,
+  CalendarPlus,
+  Activity,
+  ArrowLeft,
+  ArrowRight,
+  Mail,
+  Phone,
+  Droplets,
+  HeartPulse,
+} from "lucide-react";
 
 interface PatientUser {
   _id?: string;
@@ -52,15 +75,128 @@ export default function PatientsDirectoryPage() {
 
   const [patients, setPatients] = useState<PatientRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
+  // Register New Patient Modal State
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<any | null>(null);
+  const [registerForm, setRegisterForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    dob: "",
+    gender: "male",
+    bloodGroup: "",
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
+    allergies: "",
+    conditions: "",
+    emergencyContactName: "",
+    emergencyContactPhone: "",
+    emergencyContactRelation: "Spouse",
+  });
+
+  const resetRegisterForm = () => {
+    setRegisterForm({
+      name: "",
+      phone: "",
+      email: "",
+      dob: "",
+      gender: "male",
+      bloodGroup: "",
+      address: "",
+      city: "",
+      state: "",
+      pincode: "",
+      allergies: "",
+      conditions: "",
+      emergencyContactName: "",
+      emergencyContactPhone: "",
+      emergencyContactRelation: "Spouse",
+    });
+    setDuplicateWarning(null);
+  };
+
+  const handleRegisterSubmit = async (e: React.FormEvent, forceIgnoreDuplicate = false) => {
+    if (e) e.preventDefault();
+    if (!registerForm.name.trim() || (!registerForm.phone.trim() && !registerForm.email.trim())) {
+      toast({
+        title: "Validation Error",
+        description: "Patient Full Name and either Phone or Email are required.",
+        variant: "error",
+      });
+      return;
+    }
+
+    try {
+      setRegisterLoading(true);
+      const payload: Record<string, unknown> = {
+        name: registerForm.name.trim(),
+        phone: registerForm.phone.trim() || undefined,
+        email: registerForm.email.trim().toLowerCase() || undefined,
+        dob: registerForm.dob ? registerForm.dob : undefined,
+        gender: registerForm.gender,
+        bloodGroup: registerForm.bloodGroup || undefined,
+        address: registerForm.address.trim() || undefined,
+        city: registerForm.city.trim() || undefined,
+        state: registerForm.state.trim() || undefined,
+        pincode: registerForm.pincode.trim() || undefined,
+        allergies: registerForm.allergies ? registerForm.allergies.split(",").map((s) => s.trim()).filter(Boolean) : [],
+        conditions: registerForm.conditions ? registerForm.conditions.split(",").map((s) => s.trim()).filter(Boolean) : [],
+        ignoreDuplicate: forceIgnoreDuplicate,
+      };
+
+      if (registerForm.emergencyContactName.trim() && registerForm.emergencyContactPhone.trim()) {
+        payload.emergencyContacts = [
+          {
+            name: registerForm.emergencyContactName.trim(),
+            relationship: registerForm.emergencyContactRelation,
+            phone: registerForm.emergencyContactPhone.trim(),
+          },
+        ];
+      }
+
+      const res = await PatientService.createPatient(payload);
+      const created = res.data || res;
+      toast({
+        title: "Patient Registered 🏥",
+        description: `${registerForm.name} has been enrolled into the EMR directory.`,
+        variant: "success",
+      });
+      setIsRegisterOpen(false);
+      resetRegisterForm();
+      fetchPatients();
+    } catch (err: any) {
+      if (err.response?.status === 409) {
+        setDuplicateWarning(err.response?.data?.details || err.response?.data?.data || err.response?.data);
+        toast({
+          title: "Potential Duplicate Record Found",
+          description: "An existing patient record with similar details was detected. Review below to proceed.",
+          variant: "warning",
+        });
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: err.response?.data?.message || err.message || "Failed to register patient profile.",
+          variant: "error",
+        });
+      }
+    } finally {
+      setRegisterLoading(false);
+    }
+  };
+
   const fetchPatients = async () => {
     try {
-      setLoading(true);
+      setIsRefreshing(true);
       const queryParams = new URLSearchParams();
       if (search.trim()) queryParams.set("search", search.trim());
       if (genderFilter !== "all") queryParams.set("gender", genderFilter);
@@ -83,18 +219,28 @@ export default function PatientsDirectoryPage() {
       else setTotalPages(1);
     } catch (err: any) {
       toast({
-        title: "Error Loading Patients",
-        description: err.response?.data?.message || "Failed to fetch patient directory",
+        title: "Unable to Load Patients",
+        description: err.response?.data?.message || "Could not retrieve patient records.",
         variant: "error",
       });
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchPatients();
   }, [page, genderFilter]);
+
+  // Debounced auto-search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      fetchPatients();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,11 +265,25 @@ export default function PatientsDirectoryPage() {
       header: "Patient Identity",
       render: (p) => {
         const uName = p.userId?.name || "Patient Profile";
-        const uEmail = p.userId?.email || "No Email";
+        const uEmail = p.userId?.email || "";
+        const uPhone = p.userId?.phone || "";
         return (
-          <div className="space-y-0.5">
+          <div className="space-y-0.5 min-w-[160px]">
             <p className="font-bold text-text text-xs sm:text-sm">{uName}</p>
-            <p className="text-[11px] text-text-muted">{uEmail}</p>
+            <div className="flex items-center gap-2 text-xs text-text-muted flex-wrap">
+              {uEmail && (
+                <span className="inline-flex items-center gap-1">
+                  <Mail className="w-3 h-3 text-text-muted shrink-0" />
+                  {uEmail}
+                </span>
+              )}
+              {uPhone && (
+                <span className="inline-flex items-center gap-1">
+                  <Phone className="w-3 h-3 text-text-muted shrink-0" />
+                  {uPhone}
+                </span>
+              )}
+            </div>
           </div>
         );
       },
@@ -134,42 +294,62 @@ export default function PatientsDirectoryPage() {
         const pid = p.id || p._id;
         const mrnCode = p.mrn || `MRN-${pid.substring(0, 6).toUpperCase()}`;
         return (
-          <Badge variant="outline" size="sm" className="font-mono text-[10px] uppercase font-bold">
+          <span className="font-mono text-xs font-bold text-text-secondary px-2 py-0.5 rounded-lg bg-surface-alt border border-border/60">
             {mrnCode}
-          </Badge>
+          </span>
         );
       },
     },
     {
-      header: "Gender & Age",
+      key: "gender",
+      header: "Demographics",
       render: (p) => (
-        <div className="space-y-0.5">
-          <p className="capitalize text-xs font-semibold text-text">{p.gender || "Unknown"}</p>
-          <p className="text-[11px] text-text-muted">{calculateAge(p.dob)}</p>
+        <div className="space-y-0.5 min-w-[100px]">
+          <Badge variant="outline" size="sm" className="capitalize text-[10px] font-bold">
+            {p.gender || "Unspecified"}
+          </Badge>
+          <p className="text-xs text-text-muted">{calculateAge(p.dob)}</p>
         </div>
       ),
     },
     {
-      header: "Contact Phone",
-      render: (p) => (
-        <span className="text-xs font-mono text-text-secondary">{p.userId?.phone || "—"}</span>
-      ),
+      key: "bloodGroup",
+      header: "Blood Group",
+      render: (p) =>
+        p.bloodGroup ? (
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 font-mono font-bold text-[11px]">
+            <Droplets className="w-3 h-3 shrink-0" />
+            <span>{p.bloodGroup}</span>
+          </div>
+        ) : (
+          <span className="text-text-muted text-xs">&ndash;</span>
+        ),
     },
     {
-      header: "Allergies / Tags",
-      render: (p) => (
-        <div className="flex flex-wrap gap-1">
-          {p.allergies && p.allergies.length > 0 ? (
-            p.allergies.map((allergy, idx) => (
-              <Badge key={idx} variant="danger" size="sm" className="text-[9px] font-bold px-1.5 py-0.2">
-                {allergy}
+      key: "allergies",
+      header: "Allergies & Conditions",
+      render: (p) => {
+        const allergies = p.allergies || [];
+        const conditions = p.conditions || [];
+        if (allergies.length === 0 && conditions.length === 0) {
+          return <span className="text-text-muted text-xs font-normal">None recorded</span>;
+        }
+        return (
+          <div className="flex flex-wrap gap-1 max-w-[220px]">
+            {allergies.slice(0, 2).map((a, i) => (
+              <Badge key={i} variant="warning" size="sm" className="text-[9px] font-bold inline-flex items-center gap-0.5">
+                <AlertCircle className="w-2.5 h-2.5" />
+                <span>{a}</span>
               </Badge>
-            ))
-          ) : (
-            <span className="text-[11px] text-text-muted">No known allergies</span>
-          )}
-        </div>
-      ),
+            ))}
+            {conditions.slice(0, 2).map((c, i) => (
+              <Badge key={i} variant="outline" size="sm" className="text-[9px]">
+                {c}
+              </Badge>
+            ))}
+          </div>
+        );
+      },
     },
     {
       header: "Actions",
@@ -177,36 +357,35 @@ export default function PatientsDirectoryPage() {
       render: (p) => {
         const pid = p.id || p._id;
         return (
-          <div className="flex items-center justify-end gap-1.5">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={(e) => {
-                e.stopPropagation();
-                router.push(`/dashboard/patients/${pid}`);
-              }}
-              className="font-semibold rounded-lg cursor-pointer shrink-0"
-            >
-              View Profile →
-            </Button>
+          <div className="flex justify-end">
             <Dropdown
               align="right"
               trigger={
                 <Button
-                  size="sm"
                   variant="outline"
-                  className="h-8 w-8 p-0 flex items-center justify-center rounded-lg border-border hover:bg-surface-hover hover:text-text cursor-pointer transition-colors shrink-0"
-                  title="Row Actions"
+                  size="xs"
+                  className="h-7 w-7 p-0 rounded-lg text-text-secondary hover:text-text cursor-pointer"
+                  aria-label="Actions menu"
                 >
-                  <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                  </svg>
+                  <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
               }
               items={[
-                { label: "View Full Profile", onClick: () => router.push(`/dashboard/patients/${pid}`) },
-                { label: "Book Appointment", onClick: () => router.push(`/dashboard/appointments?patientId=${pid}`) },
-                { label: "Inspect EHR Timeline", onClick: () => router.push(`/dashboard/patients/${pid}/timeline`) },
+                {
+                  label: "View Patient Profile",
+                  icon: <User className="w-4 h-4 text-text-muted" />,
+                  onClick: () => router.push(`/dashboard/patients/${pid}`),
+                },
+                {
+                  label: "Book Appointment",
+                  icon: <CalendarPlus className="w-4 h-4 text-primary-500" />,
+                  onClick: () => router.push(`/dashboard/appointments?patientId=${pid}`),
+                },
+                {
+                  label: "Medical EHR Timeline",
+                  icon: <Activity className="w-4 h-4 text-emerald-500" />,
+                  onClick: () => router.push(`/dashboard/patients/${pid}/timeline`),
+                },
               ]}
             />
           </div>
@@ -216,100 +395,109 @@ export default function PatientsDirectoryPage() {
   ];
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
-      {/* Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">
-            Patient Directory & EHR Registry
-          </h1>
-          <p className="text-xs text-text-muted mt-0.5">
-            Search, manage, and inspect master electronic health records across the organization.
-          </p>
-        </div>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Patient Directory
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                EMR Directory
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Search, manage, and view electronic health records across your organization.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => router.push("/dashboard/appointments")}
-            className="font-bold rounded-xl shadow-xs cursor-pointer"
-            icon={
-              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-            }
-          >
-            Register / Book Patient
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchPatients}
-            loading={loading}
-            className="font-semibold rounded-xl cursor-pointer"
-            icon={
-              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            }
-          >
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchPatients}
+              disabled={isRefreshing}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+            >
+              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
+              Refresh
+            </Button>
+
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                resetRegisterForm();
+                setIsRegisterOpen(true);
+              }}
+              className="font-semibold rounded-xl shadow-xs cursor-pointer"
+            >
+              <UserPlus className="h-3.5 w-3.5 mr-1" />
+              Register Patient
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Summary Stat Cards (2-column on mobile) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. SUMMARY KPI STAT CARDS
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Total Registered Patients"
+          label="Total Patients"
           value={(totalCount || patients.length).toString()}
-          icon={
-            <svg className="h-4 sm:h-5 w-4 sm:w-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          }
+          description="Registered profiles in system"
+          icon={<Users className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
-          label="Active Page Count"
+          label="Directory Page Count"
           value={patients.length.toString()}
-          icon={
-            <svg className="h-4 sm:h-5 w-4 sm:w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          }
+          description="Currently displayed on page"
+          icon={<FileText className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
           label="Male Demographic"
           value={maleCount.toString()}
-          icon={
-            <svg className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          }
+          description="Registered male patients"
+          icon={<User className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
           label="Female Demographic"
           value={femaleCount.toString()}
-          icon={
-            <svg className="h-4 sm:h-5 w-4 sm:w-5 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          }
+          description="Registered female patients"
+          icon={<UserCheck className="w-5 h-5 text-text-secondary" />}
         />
       </div>
 
-      {/* Filter and Search Bar */}
-      <Card className="p-3.5 sm:p-4 rounded-2xl border border-border bg-surface">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          3. FILTER AND SEARCH BAR
+         ────────────────────────────────────────────────────────────────────────── */}
+      <Card className="p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs">
         <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
           <div className="sm:col-span-2 flex gap-2">
             <Input
+              size="sm"
+              icon={<Search className="w-4 h-4 text-text-muted" />}
               placeholder="Search patient by name, email, or phone number..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 text-xs"
+              onClear={() => {
+                setSearch("");
+                setPage(1);
+              }}
+              className="w-full"
             />
-            <Button type="submit" variant="primary" size="sm" disabled={loading} className="font-bold rounded-xl cursor-pointer">
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={loading}
+              className="font-semibold rounded-xl shrink-0 shadow-xs"
+            >
               Search
             </Button>
           </div>
@@ -331,38 +519,44 @@ export default function PatientsDirectoryPage() {
         </form>
       </Card>
 
-      {/* Main Table Card */}
-      <Card className="rounded-2xl border border-border bg-surface overflow-hidden">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-bold">Registered Patient Profiles</CardTitle>
-          <CardDescription className="text-xs text-text-muted">
-            Click "EHR Timeline" to view full medical history, past encounters, and lab diagnostic reports.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {loading ? (
-            <div className="p-6">
-              <SkeletonTable rows={6} cols={6} />
+      {/* ──────────────────────────────────────────────────────────────────────────
+          4. MAIN PATIENTS TABLE CARD
+         ────────────────────────────────────────────────────────────────────────── */}
+      <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+        <CardHeader className="pb-3 border-b border-border/60 bg-surface-alt/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base font-bold text-text">Registered Patient Profiles</CardTitle>
+              <CardDescription className="text-xs text-text-muted mt-0.5">
+                Select a patient record to view medical history, past encounters, and lab diagnostic reports.
+              </CardDescription>
             </div>
-          ) : (
-            <Table
-              columns={columns}
-              data={patients}
-              searchable={false}
-              pagination={false}
-              onRowClick={(p) => router.push(`/dashboard/patients/${p.id || p._id}`)}
-              emptyMessage="No patient profiles found. Try adjusting search criteria or register a new patient."
-            />
-          )}
+            <Badge variant="neutral" size="sm" className="font-semibold text-[10px]">
+              {totalCount || patients.length} Records
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table
+            columns={columns}
+            data={patients}
+            loading={loading}
+            searchable={false}
+            pagination={false}
+            onRowClick={(p) => router.push(`/dashboard/patients/${p.id || p._id}`)}
+            emptyMessage="No patient profiles found matching your search criteria."
+          />
         </CardContent>
       </Card>
 
-      {/* Pagination Footer */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          5. PAGINATION FOOTER
+         ────────────────────────────────────────────────────────────────────────── */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-1">
           <p className="text-xs text-text-muted">
-            Page <span className="font-semibold text-text">{page}</span> of{" "}
-            <span className="font-semibold text-text">{totalPages}</span>
+            Page <span className="font-bold text-text">{page}</span> of{" "}
+            <span className="font-bold text-text">{totalPages}</span>
           </p>
           <div className="flex gap-2">
             <Button
@@ -370,22 +564,230 @@ export default function PatientsDirectoryPage() {
               size="sm"
               disabled={page <= 1 || loading}
               onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-              className="rounded-xl text-xs cursor-pointer"
+              className="rounded-xl text-xs font-semibold"
             >
-              Previous Page
+              <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+              Previous
             </Button>
             <Button
               variant="outline"
               size="sm"
               disabled={page >= totalPages || loading}
               onClick={() => setPage((prev) => prev + 1)}
-              className="rounded-xl text-xs cursor-pointer"
+              className="rounded-xl text-xs font-semibold"
             >
-              Next Page
+              Next
+              <ArrowRight className="w-3.5 h-3.5 ml-1" />
             </Button>
           </div>
         </div>
       )}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          6. REGISTER NEW PATIENT MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
+      <Modal
+        open={isRegisterOpen}
+        onClose={() => {
+          setIsRegisterOpen(false);
+          resetRegisterForm();
+        }}
+        title="🏥 Register New Patient Profile"
+        description="Enroll a new or walk-in patient into the medical directory with comprehensive demographics."
+        size="lg"
+      >
+        <form onSubmit={(e) => handleRegisterSubmit(e, false)} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
+          {duplicateWarning && (
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2 animate-fade-in text-xs">
+              <div className="flex items-center gap-2 font-bold text-amber-700 dark:text-amber-400">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>Existing Matching Patient Detected</span>
+              </div>
+              <p className="text-text-secondary leading-relaxed">
+                One or more patient profiles match the provided details (Name, Phone, or Email). Please verify if this patient is already enrolled.
+              </p>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={() => resetRegisterForm()}
+                >
+                  Edit Information
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="primary"
+                  onClick={(e) => handleRegisterSubmit(e, true)}
+                  loading={registerLoading}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold"
+                >
+                  Proceed Anyway (Create Walk-in)
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <Input
+              label="Full Name *"
+              placeholder="e.g. Rajesh Kumar"
+              value={registerForm.name}
+              onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
+              required
+            />
+            <Input
+              label="Primary Phone Number"
+              placeholder="e.g. +91 9876543210"
+              value={registerForm.phone}
+              onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <Input
+              label="Email Address"
+              type="email"
+              placeholder="e.g. rajesh@example.com"
+              value={registerForm.email}
+              onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+            />
+            <Input
+              label="Date of Birth"
+              type="date"
+              value={registerForm.dob}
+              onChange={(e) => setRegisterForm({ ...registerForm, dob: e.target.value })}
+            />
+            <Select
+              label="Gender *"
+              value={registerForm.gender}
+              onChange={(e) => setRegisterForm({ ...registerForm, gender: e.target.value })}
+              options={[
+                { label: "Male", value: "male" },
+                { label: "Female", value: "female" },
+                { label: "Other", value: "other" },
+              ]}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <Select
+              label="Blood Group"
+              value={registerForm.bloodGroup}
+              onChange={(e) => setRegisterForm({ ...registerForm, bloodGroup: e.target.value })}
+              options={[
+                { label: "Select Blood Group", value: "" },
+                { label: "A+", value: "A+" },
+                { label: "A-", value: "A-" },
+                { label: "B+", value: "B+" },
+                { label: "B-", value: "B-" },
+                { label: "O+", value: "O+" },
+                { label: "O-", value: "O-" },
+                { label: "AB+", value: "AB+" },
+                { label: "AB-", value: "AB-" },
+              ]}
+            />
+            <Input
+              label="Residential Street Address"
+              placeholder="e.g. Flat 402, Green Valley Apts"
+              value={registerForm.address}
+              onChange={(e) => setRegisterForm({ ...registerForm, address: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <Input
+              label="City"
+              placeholder="e.g. Mumbai"
+              value={registerForm.city}
+              onChange={(e) => setRegisterForm({ ...registerForm, city: e.target.value })}
+            />
+            <Input
+              label="State"
+              placeholder="e.g. Maharashtra"
+              value={registerForm.state}
+              onChange={(e) => setRegisterForm({ ...registerForm, state: e.target.value })}
+            />
+            <Input
+              label="Postal Code (Pincode)"
+              placeholder="e.g. 400001"
+              value={registerForm.pincode}
+              onChange={(e) => setRegisterForm({ ...registerForm, pincode: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <Input
+              label="Known Drug / Food Allergies"
+              placeholder="e.g. Penicillin, Sulfa, Peanuts"
+              value={registerForm.allergies}
+              onChange={(e) => setRegisterForm({ ...registerForm, allergies: e.target.value })}
+            />
+            <Input
+              label="Chronic Pre-existing Conditions"
+              placeholder="e.g. Hypertension, Type 2 Diabetes"
+              value={registerForm.conditions}
+              onChange={(e) => setRegisterForm({ ...registerForm, conditions: e.target.value })}
+            />
+          </div>
+
+          <div className="p-3 bg-surface-alt/70 border border-border/80 rounded-2xl space-y-3">
+            <p className="text-xs font-bold text-text">Emergency Contact Person</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Input
+                label="Contact Name"
+                placeholder="e.g. Priya Kumar"
+                value={registerForm.emergencyContactName}
+                onChange={(e) => setRegisterForm({ ...registerForm, emergencyContactName: e.target.value })}
+              />
+              <Input
+                label="Contact Phone"
+                placeholder="e.g. +91 9812345678"
+                value={registerForm.emergencyContactPhone}
+                onChange={(e) => setRegisterForm({ ...registerForm, emergencyContactPhone: e.target.value })}
+              />
+              <Select
+                label="Relationship"
+                value={registerForm.emergencyContactRelation}
+                onChange={(e) => setRegisterForm({ ...registerForm, emergencyContactRelation: e.target.value })}
+                options={[
+                  { label: "Spouse", value: "Spouse" },
+                  { label: "Parent", value: "Parent" },
+                  { label: "Child", value: "Child" },
+                  { label: "Sibling", value: "Sibling" },
+                  { label: "Guardian", value: "Guardian" },
+                  { label: "Friend", value: "Friend" },
+                  { label: "Other", value: "Other" },
+                ]}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => {
+                setIsRegisterOpen(false);
+                resetRegisterForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              variant="primary"
+              loading={registerLoading}
+              className="font-semibold rounded-xl shadow-xs"
+            >
+              Enroll Patient Profile
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -96,7 +96,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
           {/* Letterhead Header */}
           <div className="border-b-2 border-primary-600 pb-3 flex justify-between items-start">
             <div>
-              <span className="text-[10px] uppercase tracking-widest font-black text-primary-600">ANANTA Healthcare OS</span>
+              <span className="text-[10px] uppercase tracking-widest font-black text-primary-600">ANANT Healthcare OS</span>
               <h2 className="text-xl font-black text-zinc-900 leading-tight">{document.clinicName}</h2>
               {document.clinicAddress && <p className="text-zinc-500 text-[11px]">{document.clinicAddress}</p>}
             </div>
@@ -251,7 +251,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
           {/* Reusable Footer Signature & Verification Seal */}
           <div className="pt-8 border-t border-zinc-200 flex justify-between items-end text-[11px] text-zinc-400">
             <div>
-              <p>Generated electronically by ANANTA Healthcare Operating System.</p>
+              <p>Generated electronically by ANANT Healthcare Operating System.</p>
               <p className="font-mono">Security Token Verification: Validated</p>
             </div>
             <div className="text-center">

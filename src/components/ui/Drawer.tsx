@@ -156,7 +156,7 @@ export const Drawer = memo(function Drawer({
           aria-labelledby={title ? "drawer-title" : undefined}
           aria-describedby={subtitle ? "drawer-subtitle" : undefined}
           className={cn(
-            "bg-surface border-border/80 shadow-2xl shadow-black/50 flex flex-col overflow-hidden transform-gpu focus:outline-none",
+            "bg-surface/98 backdrop-blur-2xl border-border/80 shadow-2xl ring-1 ring-border/50 flex flex-col overflow-hidden transform-gpu focus:outline-none",
             getAnimationClass(),
             width,
             position === "right" && "border-l",

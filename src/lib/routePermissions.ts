@@ -17,34 +17,13 @@ export const routePermissions: Record<string, string[]> = {
   "/dashboard/settings":            ["MANAGE_ORGANIZATION"],
   "/dashboard/settings/modules":    ["MANAGE_ORGANIZATION"],
   "/dashboard/audit":               ["VIEW_AUDIT_LOGS", "MANAGE_ORGANIZATION"],
-  "/dashboard/fhir":                ["VIEW_EHR", "MANAGE_ORGANIZATION"],
   "/dashboard/analytics":           ["VIEW_ANALYTICS", "MANAGE_ORGANIZATION"],
-  "/dashboard/biomedical":          ["MANAGE_ORGANIZATION"],
-  "/dashboard/biohazard":           ["MANAGE_ORGANIZATION"],
-  "/dashboard/cssd":                ["MANAGE_ORGANIZATION"],
-  "/dashboard/infection-control":   ["MANAGE_ORGANIZATION"],
-  "/dashboard/occupational-health": ["MANAGE_ORGANIZATION"],
 
-  // ── P2 / extended clinical ─────────────────────────────────────
-  "/dashboard/admissions":          ["VIEW_ADMISSIONS", "MANAGE_ADMISSIONS"],
-  "/dashboard/bills":               ["VIEW_EHR", "MANAGE_BILLING", "VIEW_BILLING"],
-  "/dashboard/ambulance-dispatch":  ["MANAGE_APPOINTMENTS", "MANAGE_ADMISSIONS"],
-  "/dashboard/emergency":           ["MANAGE_EHR", "VIEW_EHR", "MANAGE_ADMISSIONS"],
+  // ── P2 / Extended Clinical & Quality ───────────────────────────
   "/dashboard/laboratory":          ["MANAGE_LAB_TESTS", "MANAGE_ORDERS", "VIEW_EHR"],
   "/dashboard/radiology":           ["MANAGE_LAB_TESTS", "MANAGE_ORDERS", "VIEW_EHR"],
   "/dashboard/teleconsultation":    ["VIEW_EHR", "MANAGE_APPOINTMENTS"],
-  "/dashboard/cds":                 ["VIEW_EHR"],
   "/dashboard/insurance":           ["MANAGE_BILLING", "VIEW_BILLING"],
-
-  // ── P3 / specialty (dormant by default) ────────────────────────
-  "/dashboard/transplant":          ["VIEW_EHR"],
-  "/dashboard/genetics":            ["VIEW_EHR"],
-  "/dashboard/home-rpm":            ["VIEW_EHR"],
-  "/dashboard/hbot":                ["VIEW_EHR"],
-  "/dashboard/ot":                  ["VIEW_EHR"],
-  "/dashboard/blood-bank":          ["VIEW_EHR"],
-  "/dashboard/mortuary":            ["VIEW_EHR"],
-  "/dashboard/dietary":             ["VIEW_EHR"],
   "/dashboard/feedback":            ["VIEW_EHR"],
 };
 

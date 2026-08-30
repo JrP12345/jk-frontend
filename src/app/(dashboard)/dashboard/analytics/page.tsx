@@ -5,8 +5,10 @@ import { useAuthStore } from "@/store/authStore";
 import { canViewAnalytics } from "@/lib/permissions";
 import {
   Card, CardHeader, CardTitle, CardContent, Button,
-  Table, useToast, Spinner, Badge, StatCard, SkeletonCard, SkeletonTable
+  Table, useToast, Spinner, Badge, StatCard, SkeletonCard, SkeletonTable,
+  ChartContainer, DonutChart, BarChart, cn
 } from "@/components/ui";
+import { RotateCw, IndianRupee, AlertCircle, Building2, Boxes } from "lucide-react";
 
 interface ClinicPerformance {
   id: string;
@@ -111,53 +113,68 @@ export default function AnalyticsPage() {
   const { overall, clinicsPerformance, doctorSpecializations, referralStats } = data;
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
-      {/* Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Executive BI & Analytics Board</h1>
-          <p className="text-xs text-text-muted mt-0.5">
-            Comparative multi-clinic revenue analytics, active bed census utilization, and referral performance metrics.
-          </p>
-        </div>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Executive BI & Analytics
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Executive Analytics
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Comparative multi-clinic revenue analytics, active bed census utilization, and referral performance metrics.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchAnalytics}
-            loading={loading}
-            className="font-semibold rounded-xl cursor-pointer gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span>Refresh BI Feed</span>
-          </Button>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchAnalytics}
+              disabled={loading}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+            >
+              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
+              Refresh BI Feed
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* KPI Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. KPI STATS CARDS GRID
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Collections"
-          value={`₹${overall.totalRevenue.toLocaleString()}`}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-green-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          value={`₹${overall.totalRevenue.toLocaleString("en-IN")}`}
+          description="Cumulative collected revenue"
+          icon={<IndianRupee className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
           label="Outstanding Billings"
-          value={`₹${overall.outstandingBilling.toLocaleString()}`}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-red-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
+          value={`₹${overall.outstandingBilling.toLocaleString("en-IN")}`}
+          description="Unpaid patient balances"
+          icon={<AlertCircle className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
           label="Global Bed Census"
           value={`${overall.bedOccupancyRate}%`}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-blue-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12h18M5 12v7m14-7v7M3 7h2v5H3V7zm16 0h2v5h-2V7z" /></svg>}
+          description="Active inpatient occupancy"
+          icon={<Building2 className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
           label="Low Stock Warnings"
-          value={overall.lowStockWarnings}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-amber-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>}
+          value={overall.lowStockWarnings.toString()}
+          description="Pharmacy items below threshold"
+          icon={<Boxes className="w-5 h-5 text-text-secondary" />}
         />
       </div>
 
@@ -170,6 +187,7 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent className="p-0">
               <Table
+                loading={loading}
                 columns={[
                   { 
                     header: "Clinic Name", 
@@ -212,25 +230,22 @@ export default function AnalyticsPage() {
         {/* Doctor Specialization Distribution & Referrals */}
         <div className="space-y-6">
           {/* Doctor specializations card */}
-          <Card>
-            <CardHeader className="py-4 px-5 border-b border-border">
-              <CardTitle className="text-base font-bold text-text">Clinician Specializations</CardTitle>
-            </CardHeader>
-            <CardContent className="p-5 space-y-4">
-              {doctorSpecializations.length === 0 ? (
-                <p className="text-sm text-text-muted text-center py-4">No doctor profiles found.</p>
-              ) : (
-                doctorSpecializations.map((spec, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-sm border-b border-border/40 pb-2 last:border-b-0 last:pb-0">
-                    <span className="font-semibold text-text">{spec.name}</span>
-                    <Badge variant="default" className="text-xs">
-                      {spec.count} {spec.count === 1 ? "Doctor" : "Doctors"}
-                    </Badge>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+          <ChartContainer
+            title="Clinician Specializations"
+            description="Active clinical provider distribution"
+            height={200}
+            empty={doctorSpecializations.length === 0}
+            emptyMessage="No clinical specialists registered yet."
+          >
+            <DonutChart
+              data={doctorSpecializations.map((spec) => ({
+                name: spec.name,
+                value: spec.count,
+              }))}
+              height={200}
+              valueFormatter={(v) => `${v} doctors`}
+            />
+          </ChartContainer>
 
           {/* Referral loops performance card */}
           <Card>

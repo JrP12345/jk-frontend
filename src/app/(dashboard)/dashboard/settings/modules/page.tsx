@@ -3,8 +3,9 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Card, CardHeader, CardTitle, CardContent, CardDescription,
-  Button, Input, useToast, Spinner, Toggle
+  Button, Input, useToast, Spinner, Toggle, StatCard, Badge, cn
 } from "@/components/ui";
+import { Boxes, CheckCircle2, PowerOff, ShieldCheck } from "lucide-react";
 import { useModuleStore, type ModuleInfo } from "@/store/moduleStore";
 
 const PRIORITY_CONFIG = {
@@ -15,16 +16,10 @@ const PRIORITY_CONFIG = {
     description: "Core modules required for day-to-day clinic operations",
   },
   P2: {
-    label: "Important",
+    label: "Important / Extended",
     color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
     dot: "bg-amber-500",
-    description: "Valuable modules for enhanced clinical workflows",
-  },
-  P3: {
-    label: "Hospital / Specialty",
-    color: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
-    dot: "bg-slate-400",
-    description: "Advanced modules for hospital-grade or specialty operations",
+    description: "Valuable modules for enhanced outpatient clinical workflows",
   },
 } as const;
 
@@ -50,7 +45,7 @@ export default function ModulesSettingsPage() {
         (m.description || "").toLowerCase().includes(search.toLowerCase())
     );
 
-    const groups: Record<string, ModuleInfo[]> = { P1: [], P2: [], P3: [] };
+    const groups: Record<string, ModuleInfo[]> = { P1: [], P2: [] };
     for (const mod of filtered) {
       if (groups[mod.priority]) {
         groups[mod.priority].push(mod);
@@ -85,7 +80,7 @@ export default function ModulesSettingsPage() {
     }
   };
 
-  const handleBulkToggle = async (priority: "P1" | "P2" | "P3", enabled: boolean) => {
+  const handleBulkToggle = async (priority: "P1" | "P2", enabled: boolean) => {
     const target = modules.filter(
       (m) => m.priority === priority && !m.alwaysOn && m.enabled !== enabled
     );
@@ -126,25 +121,56 @@ export default function ModulesSettingsPage() {
   }
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      {/* Stats Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-surface rounded-xl border border-border/80 p-3.5 shadow-xs">
-          <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Total Modules</p>
-          <p className="text-2xl font-black text-text mt-0.5">{totalModules}</p>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Module Manager & Capability Flags
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Feature Governance
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Enable or disable clinical, diagnostic, pharmacy, and billing capabilities across your organization.
+            </p>
+          </div>
         </div>
-        <div className="bg-surface rounded-xl border border-border/80 p-3.5 shadow-xs">
-          <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Active</p>
-          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{totalEnabled}</p>
-        </div>
-        <div className="bg-surface rounded-xl border border-border/80 p-3.5 shadow-xs">
-          <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Disabled</p>
-          <p className="text-2xl font-black text-text-muted mt-0.5">{totalModules - totalEnabled}</p>
-        </div>
-        <div className="bg-surface rounded-xl border border-border/80 p-3.5 shadow-xs">
-          <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Always On</p>
-          <p className="text-2xl font-black text-primary mt-0.5">{modules.filter((m) => m.alwaysOn).length}</p>
-        </div>
+      </div>
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. KPI STATS CARDS GRID
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Total Modules"
+          value={totalModules.toString()}
+          description="Available platform capabilities"
+          icon={<Boxes className="w-5 h-5 text-text-secondary" />}
+        />
+        <StatCard
+          label="Active Modules"
+          value={totalEnabled.toString()}
+          description="Enabled for your organization"
+          icon={<CheckCircle2 className="w-5 h-5 text-text-secondary" />}
+        />
+        <StatCard
+          label="Disabled Modules"
+          value={(totalModules - totalEnabled).toString()}
+          description="Inactive features"
+          icon={<PowerOff className="w-5 h-5 text-text-secondary" />}
+        />
+        <StatCard
+          label="Always-On Core"
+          value={modules.filter((m) => m.alwaysOn).length.toString()}
+          description="Required hospital baseline"
+          icon={<ShieldCheck className="w-5 h-5 text-text-secondary" />}
+        />
       </div>
 
       {/* Search */}
@@ -158,7 +184,7 @@ export default function ModulesSettingsPage() {
       </div>
 
       {/* Priority Groups */}
-      {(["P1", "P2", "P3"] as const).map((priority) => {
+      {(["P1", "P2"] as const).map((priority) => {
         const config = PRIORITY_CONFIG[priority];
         const group = grouped[priority] || [];
         const enabledInGroup = group.filter((m) => m.enabled).length;

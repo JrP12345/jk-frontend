@@ -99,7 +99,7 @@ export default function BrowseClient() {
   }, [search, selectedCity, selectedSpecialty, sortBy]);
 
   return (
-    <div className="min-h-screen bg-surface-alt font-sans text-text antialiased selection:bg-primary-500/20 selection:text-primary-600">
+    <div className="min-h-screen bg-surface-alt font-sans text-text antialiased selection:bg-primary-500/20 selection:text-primary-600 animate-page-enter">
       <MarketplaceNavbar />
 
       {/* Hero Header Section */}

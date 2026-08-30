@@ -17,7 +17,7 @@ const sizeMap = {
 };
 
 /**
- * Ananta Icon Component — loads logo-d.png (light mode) and logo-w.png (dark mode)
+ * Anant Icon Component — loads logo-d.png (light mode) and logo-w.png (dark mode)
  * Uses data-mode="dark" attribute on <html> (not Tailwind dark class)
  */
 export function AnantaIcon({ className = "h-12 w-auto" }: { className?: string }) {
@@ -26,21 +26,23 @@ export function AnantaIcon({ className = "h-12 w-auto" }: { className?: string }
       {/* Light Mode Logo (dark ink on white) */}
       <img
         src="/logo-d.png"
-        alt="Ananta Logo"
+        alt="Anant Logo"
         className="h-full w-auto object-contain [html[data-mode=dark]_&]:hidden transform-gpu transition-transform duration-200 ease-smooth"
       />
       {/* Dark Mode Logo (white ink on dark) */}
       <img
         src="/logo-w.png"
-        alt="Ananta Logo"
+        alt="Anant Logo"
         className="h-full w-auto object-contain hidden [html[data-mode=dark]_&]:block transform-gpu transition-transform duration-200 ease-smooth"
       />
     </div>
   );
 }
 
+export const AnantIcon = AnantaIcon;
+
 /**
- * Ananta Official Brand Logo Component — auto-swaps light and dark assets from /public
+ * Anant Official Brand Logo Component — auto-swaps light and dark assets from /public
  * Responds to data-mode="dark" on <html> element set by ThemeProvider
  */
 export default function AnantaLogo({
@@ -54,16 +56,18 @@ export default function AnantaLogo({
       {/* Light Mode Logo Asset — hidden in dark mode */}
       <img
         src="/logo-d.png"
-        alt="Ananta Healthcare"
+        alt="Anant Healthcare"
         className={cn(sizeClass, "object-contain [html[data-mode=dark]_&]:hidden transform-gpu transition-transform group-hover:scale-105 duration-200 ease-smooth")}
       />
       {/* Dark Mode Logo Asset — shown only in dark mode */}
       <img
         src="/logo-w.png"
-        alt="Ananta Healthcare"
+        alt="Anant Healthcare"
         className={cn(sizeClass, "object-contain hidden [html[data-mode=dark]_&]:block transform-gpu transition-transform group-hover:scale-105 duration-200 ease-smooth")}
       />
     </div>
   );
 }
+
+export const AnantLogo = AnantaLogo;
 

@@ -20,6 +20,7 @@ import {
   StatCard,
   Dropdown,
 } from "@/components/ui";
+import { Plus, FileText, Stethoscope, FlaskConical, Building2 } from "lucide-react";
 
 interface ServiceItem {
   _id: string;
@@ -195,35 +196,81 @@ export default function ServiceCatalogPage() {
   const bedCount = services.filter((s) => s.category === "bed_charge").length;
 
   return (
-    <div className="space-y-6 w-full font-sans antialiased pb-10">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface p-5 rounded-2xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-2xl font-black text-text tracking-tight">Hospital Service Catalog & Rate Cards</h1>
-          <p className="text-xs text-text-muted mt-1">
-            Master fee schedule, HSN/SAC codes, and GST rates for automated encounter & OPD/IPD billing.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {totalCount === 0 && (
-            <Button variant="outline" size="sm" onClick={handleSeedDefaults} loading={seeding}>
-              Seed Default Rate Card
-            </Button>
-          )}
-          {hasAnyPermission(user, "MANAGE_BILLING") && (
-            <Button size="sm" onClick={handleOpenAddModal}>
-              + Add Service Item
-            </Button>
-          )}
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Hospital Service Catalog & Rate Cards
+              </h1>
+              <Badge variant="primary" size="sm" className="font-semibold">
+                Rate Master
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Master fee schedule, HSN/SAC codes, and GST rates for automated encounter & OPD/IPD billing.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            {totalCount === 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSeedDefaults}
+                disabled={seeding}
+                className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              >
+                Seed Default Rate Card
+              </Button>
+            )}
+            {hasAnyPermission(user, "MANAGE_BILLING") && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleOpenAddModal}
+                className="font-semibold rounded-xl shadow-xs"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Add Service Item
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Overview Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard title="Total Catalog Services" value={totalCount.toString()} icon="📋" />
-        <StatCard title="Consultation Tariff Types" value={consultationCount.toString()} icon="👨‍⚕️" />
-        <StatCard title="Lab Test Catalog" value={labCount.toString()} icon="🧪" />
-        <StatCard title="IPD Bed Charges" value={bedCount.toString()} icon="🛏️" />
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. KPI STATS CARDS GRID
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Total Catalog Services"
+          value={totalCount.toString()}
+          description="Active chargemaster items"
+          icon={<FileText className="w-5 h-5 text-text-secondary" />}
+        />
+        <StatCard
+          label="Consultation Tariffs"
+          value={consultationCount.toString()}
+          description="OPD / Specialist rates"
+          icon={<Stethoscope className="w-5 h-5 text-text-secondary" />}
+        />
+        <StatCard
+          label="Diagnostic Lab Tests"
+          value={labCount.toString()}
+          description="Pathology & Lab tariff list"
+          icon={<FlaskConical className="w-5 h-5 text-text-secondary" />}
+        />
+        <StatCard
+          label="IPD Bed Charges"
+          value={bedCount.toString()}
+          description="Ward / ICU room tariffs"
+          icon={<Building2 className="w-5 h-5 text-text-secondary" />}
+        />
       </div>
 
       {/* Filters & Search */}

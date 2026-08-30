@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { Modal, Badge, Button } from "@/components/ui";
+import { Modal, Badge, Button, cn } from "@/components/ui";
+import { Stethoscope, FlaskConical, Building2, CreditCard, FileText, Sparkles, Search, Clock } from "lucide-react";
 
 export interface TimelineEvent {
   id: string;
@@ -129,38 +130,45 @@ export function PatientTimeline({ patientId, events: initialEvents }: PatientTim
     }
   };
 
-  const getEventIcon = (icon: string) => {
+  const getEventIconComponent = (icon: string) => {
     switch (icon) {
       case "stethoscope":
-        return "🩺";
+        return <Stethoscope className="w-4 h-4 text-primary-500" />;
       case "flask":
-        return "🔬";
+        return <FlaskConical className="w-4 h-4 text-blue-500" />;
       case "bed":
-        return "🏥";
+        return <Building2 className="w-4 h-4 text-purple-500" />;
       case "credit-card":
-        return "💳";
+        return <CreditCard className="w-4 h-4 text-emerald-500" />;
       default:
-        return "📋";
+        return <FileText className="w-4 h-4 text-text-secondary" />;
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Search & Filter Header Toolbar */}
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between p-4 bg-zinc-50 dark:bg-[#12131a] rounded-xl border border-zinc-200 dark:border-[#1e1f26]">
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between p-3.5 sm:p-4 bg-surface rounded-2xl border border-border/80 shadow-xs">
         {/* Category Tabs */}
-        <div className="flex flex-wrap gap-2">
-          {["all", "consultation", "lab", "admission", "billing"].map((cat) => (
+        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+          {[
+            { id: "all", label: "All Events" },
+            { id: "consultation", label: "Consultations" },
+            { id: "lab", label: "Diagnostics" },
+            { id: "admission", label: "Admissions" },
+            { id: "billing", label: "Financial" },
+          ].map((cat) => (
             <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                category === cat
-                  ? "bg-primary-600 text-white shadow-sm"
-                  : "bg-white dark:bg-[#1a1b23] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-zinc-200 dark:border-[#252631]"
-              }`}
+              key={cat.id}
+              onClick={() => setCategory(cat.id)}
+              className={cn(
+                "px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
+                category === cat.id
+                  ? "bg-surface text-text shadow-xs font-bold border border-border/60"
+                  : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
+              )}
             >
-              {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              {cat.label}
             </button>
           ))}
         </div>
@@ -168,12 +176,13 @@ export function PatientTimeline({ patientId, events: initialEvents }: PatientTim
         {/* Search & Financial Toggle */}
         <div className="flex items-center gap-3 w-full md:w-auto">
           <form onSubmit={handleSearchSubmit} className="relative flex-1 md:w-64">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
             <input
               type="text"
               placeholder="Search diagnoses, meds, labs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3 py-1.5 text-sm bg-white dark:bg-[#1a1b23] border border-zinc-200 dark:border-[#252631] rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              className="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-surface-alt border border-border/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-text"
             />
           </form>
 
@@ -203,30 +212,30 @@ export function PatientTimeline({ patientId, events: initialEvents }: PatientTim
           {events.map((event) => (
             <div key={event.id} className="relative group">
               {/* Timeline Marker Bullet */}
-              <div className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-white dark:bg-[#090a0f] border-2 border-primary-500 flex items-center justify-center text-[10px]">
-                {getEventIcon(event.displayMetadata.icon)}
+              <div className="absolute -left-[35px] top-1.5 w-6 h-6 rounded-full bg-surface border-2 border-primary-500 flex items-center justify-center shadow-xs">
+                {getEventIconComponent(event.displayMetadata.icon)}
               </div>
 
               {/* Event Card */}
-              <div className="p-4 bg-white dark:bg-[#12131a] rounded-xl border border-zinc-200 dark:border-[#1e1f26] hover:border-primary-500/40 transition-all shadow-xs">
+              <div className="p-4 bg-surface rounded-2xl border border-border/80 hover:border-primary-500/40 transition-all shadow-xs space-y-3">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-sm text-zinc-900 dark:text-white">{event.title}</h4>
+                      <h4 className="font-semibold text-sm text-text">{event.title}</h4>
                       <span className={`px-2 py-0.5 rounded-full text-xs border font-medium ${getCategoryBadgeClass(event.displayMetadata.badgeColor)}`}>
                         {event.displayMetadata.statusLabel}
                       </span>
                     </div>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{event.summary}</p>
+                    <p className="text-xs text-text-muted mt-1">{event.summary}</p>
                   </div>
-                  <span className="text-xs text-zinc-400 whitespace-nowrap">
+                  <span className="text-xs text-text-muted whitespace-nowrap">
                     {new Date(event.occurredAt).toLocaleDateString()}
                   </span>
                 </div>
 
                 {/* Structured Clinical Metadata Badges */}
                 {event.clinicalMetadata.diagnoses && event.clinicalMetadata.diagnoses.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1">
                     {event.clinicalMetadata.diagnoses.map((d, i) => (
                       <span key={i} className="px-2 py-0.5 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded text-[11px] font-medium">
                         Diagnosis: {d}
@@ -237,26 +246,27 @@ export function PatientTimeline({ patientId, events: initialEvents }: PatientTim
 
                 {/* Prescriptions List */}
                 {event.clinicalMetadata.medications && event.clinicalMetadata.medications.length > 0 && (
-                  <div className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300">Medications: </span>
+                  <div className="text-xs text-text-secondary">
+                    <span className="font-medium text-text">Medications: </span>
                     {event.clinicalMetadata.medications.map((m) => `${m.name} (${m.dosage})`).join(", ")}
                   </div>
                 )}
 
                 {/* Footer Navigation Link & AI Explainer Trigger */}
-                <div className="mt-3 pt-2 border-t border-zinc-100 dark:border-[#1a1b23] flex items-center justify-between text-xs text-zinc-400">
+                <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-text-muted">
                   <span>Actor: {event.actor.name}</span>
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => handleOpenExplainer(event)}
-                      className="px-2 py-1 bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 rounded text-xs font-bold hover:bg-primary-100 transition-colors"
+                      className="px-2.5 py-1 bg-primary-500/10 hover:bg-primary-500/20 text-primary-600 dark:text-primary-400 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                     >
-                      💡 AI Explainer
+                      <Sparkles className="w-3 h-3" />
+                      <span>AI Explainer</span>
                     </button>
                     <a
                       href={event.sourceRef.link}
-                      className="text-primary-600 hover:text-primary-700 font-medium hover:underline flex items-center gap-1"
+                      className="text-primary-600 dark:text-primary-400 hover:underline font-medium flex items-center gap-1"
                     >
                       View Details &rarr;
                     </a>
@@ -273,7 +283,7 @@ export function PatientTimeline({ patientId, events: initialEvents }: PatientTim
           <button
             onClick={() => fetchTimeline(nextCursor || undefined, true)}
             disabled={loading}
-            className="px-4 py-2 bg-zinc-100 dark:bg-[#1a1b23] text-xs font-semibold rounded-lg hover:bg-zinc-200 dark:hover:bg-[#252631] transition-all"
+            className="px-4 py-2 bg-surface-alt border border-border/80 text-xs font-semibold text-text rounded-xl hover:bg-surface-hover transition-all cursor-pointer shadow-xs"
           >
             {loading ? "Loading..." : "Load Older Records"}
           </button>

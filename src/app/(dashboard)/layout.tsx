@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuthStore } from "@/store/authStore";
-import { Sidebar, Button, Spinner, Dropdown, ModeSwitcher, PaletteSwitcher, Avatar, useToast, AnantaLogo, AnantaIcon, Select } from "@/components/ui";
+import { Sidebar, Button, Spinner, Dropdown, ModeSwitcher, PaletteSwitcher, Avatar, useToast, AnantLogo, AnantIcon, AnantaLogo, AnantaIcon, Select, PageTransition } from "@/components/ui";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -11,6 +11,7 @@ import { FloatingAICopilot } from "@/components/ai/FloatingAICopilot";
 import { useModuleStore } from "@/store/moduleStore";
 import { useClinicStore } from "@/store/clinicStore";
 import { hasAnyPermission } from "@/lib/permissions";
+import { ClinicalScreenLock } from "@/components/auth/ClinicalScreenLock";
 import {
   LayoutDashboard,
   Calendar,
@@ -21,38 +22,23 @@ import {
   Building2,
   Users,
   FileText,
-  FileSpreadsheet,
   Video,
-  AlertTriangle,
-  Bed,
-  Activity,
   FlaskConical,
   Image as ImageIcon,
   Pill,
-  Droplet,
-  Dna,
-  Gauge,
   Receipt,
   ShieldCheck,
   ClipboardList,
   Clock,
-  Wrench,
-  Sparkles,
-  Trash2,
-  ShieldAlert,
-  HeartPulse,
-  Skull,
   MessageSquare,
   Settings,
-  Truck,
-  Stethoscope,
   ChevronLeft,
   ChevronRight,
   Menu,
   X,
   LogOut,
   SlidersHorizontal,
-  Share2,
+  Lock,
 } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -139,8 +125,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (isLoading || (user && user.role !== "patient" && !modulesLoaded)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface">
-        <Spinner size="lg" label="Initializing workspace & permissions..." />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-surface-alt animate-fade-in p-6">
+        <div className="flex flex-col items-center gap-5 max-w-sm text-center">
+          <AnantLogo size="lg" />
+          <Spinner size="md" label="Initializing workspace & permissions..." />
+        </div>
       </div>
     );
   }
@@ -196,41 +185,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { section: "Outpatient (OPD)", label: "Consultations", href: "/dashboard/consultations", icon: <FileText className="w-5 h-5" />, moduleKey: "consultations" },
     { section: "Outpatient (OPD)", label: "Teleconsultation", href: "/dashboard/teleconsultation", icon: <Video className="w-5 h-5" />, moduleKey: "teleconsultation" },
     { section: "Outpatient (OPD)", label: "Patients Directory", href: "/dashboard/patients", icon: <User className="w-5 h-5" />, moduleKey: "patients" },
-    { section: "Outpatient (OPD)", label: "CDS Engine", href: "/dashboard/cds", icon: <Activity className="w-5 h-5" />, moduleKey: "cds" },
-    { section: "Outpatient (OPD)", label: "Ambulance Dispatch", href: "/dashboard/ambulance-dispatch", icon: <Truck className="w-5 h-5" />, moduleKey: "ambulance-dispatch" },
-    { section: "Outpatient (OPD)", label: "Home RPM", href: "/dashboard/home-rpm", icon: <HeartPulse className="w-5 h-5" />, moduleKey: "home-rpm" },
 
-    // 3. Inpatient & Emergency (IPD)
-    { section: "Inpatient & Emergency", label: "Emergency Triage", href: "/dashboard/emergency", icon: <AlertTriangle className="w-5 h-5" />, moduleKey: "emergency" },
-    { section: "Inpatient & Emergency", label: "Ward Admissions", href: "/dashboard/admissions", icon: <Bed className="w-5 h-5" />, moduleKey: "admissions" },
-    { section: "Inpatient & Emergency", label: "Operating Theatre (OT)", href: "/dashboard/ot", icon: <Activity className="w-5 h-5" />, moduleKey: "ot" },
-    { section: "Inpatient & Emergency", label: "Dietary & Nutrition", href: "/dashboard/dietary", icon: <FileSpreadsheet className="w-5 h-5" />, moduleKey: "dietary" },
-    { section: "Inpatient & Emergency", label: "Transplant Management", href: "/dashboard/transplant", icon: <HeartPulse className="w-5 h-5" />, moduleKey: "transplant" },
-
-    // 4. Diagnostics & Pharmacy
+    // 3. Diagnostics & Pharmacy
     { section: "Diagnostics & Pharmacy", label: "Laboratory & LIS", href: "/dashboard/laboratory", icon: <FlaskConical className="w-5 h-5" />, moduleKey: "laboratory" },
     { section: "Diagnostics & Pharmacy", label: "Radiology & PACS", href: "/dashboard/radiology", icon: <ImageIcon className="w-5 h-5" />, moduleKey: "radiology" },
     { section: "Diagnostics & Pharmacy", label: "Pharmacy Inventory", href: "/dashboard/pharmacy", icon: <Pill className="w-5 h-5" />, moduleKey: "pharmacy" },
-    { section: "Diagnostics & Pharmacy", label: "Blood Bank", href: "/dashboard/blood-bank", icon: <Droplet className="w-5 h-5" />, moduleKey: "blood-bank" },
-    { section: "Diagnostics & Pharmacy", label: "Genetics & Molecular", href: "/dashboard/genetics", icon: <Dna className="w-5 h-5" />, moduleKey: "genetics" },
-    { section: "Diagnostics & Pharmacy", label: "HBOT Therapy", href: "/dashboard/hbot", icon: <Gauge className="w-5 h-5" />, moduleKey: "hbot" },
-    { section: "Diagnostics & Pharmacy", label: "FHIR Gateway", href: "/dashboard/fhir", icon: <Share2 className="w-5 h-5" />, moduleKey: "fhir" },
 
-    // 5. Billing & Finance
+    // 4. Billing & Finance
     { section: "Billing & Finance", label: "Patient Invoicing", href: "/dashboard/billing", icon: <Receipt className="w-5 h-5" />, moduleKey: "billing" },
     { section: "Billing & Finance", label: "Insurance & Claims", href: "/dashboard/insurance", icon: <ShieldCheck className="w-5 h-5" />, moduleKey: "insurance" },
     { section: "Billing & Finance", label: "Service Catalog", href: "/dashboard/billing/services", icon: <ClipboardList className="w-5 h-5" />, moduleKey: "service-catalog" },
 
-    // 6. Administration & Facilities
+    // 5. Administration & Facilities
     { section: "Administration & Facilities", label: "Clinic Branches", href: "/dashboard/clinics", icon: <Building2 className="w-5 h-5" />, moduleKey: "clinics" },
     { section: "Administration & Facilities", label: "Staff Accounts", href: "/dashboard/staff", icon: <Users className="w-5 h-5" />, moduleKey: "staff" },
     { section: "Administration & Facilities", label: "Shift Roster", href: "/dashboard/shifts", icon: <Clock className="w-5 h-5" />, moduleKey: "shifts" },
-    { section: "Administration & Facilities", label: "Biomedical Assets", href: "/dashboard/biomedical", icon: <Wrench className="w-5 h-5" />, moduleKey: "biomedical" },
-    { section: "Administration & Facilities", label: "CSSD Sterilization", href: "/dashboard/cssd", icon: <Sparkles className="w-5 h-5" />, moduleKey: "cssd" },
-    { section: "Administration & Facilities", label: "Biohazard Waste", href: "/dashboard/biohazard", icon: <Trash2 className="w-5 h-5" />, moduleKey: "biohazard" },
-    { section: "Administration & Facilities", label: "Infection Control", href: "/dashboard/infection-control", icon: <ShieldAlert className="w-5 h-5" />, moduleKey: "infection-control" },
-    { section: "Administration & Facilities", label: "Occupational Health", href: "/dashboard/occupational-health", icon: <Stethoscope className="w-5 h-5" />, moduleKey: "occupational-health" },
-    { section: "Administration & Facilities", label: "Mortuary Desk", href: "/dashboard/mortuary", icon: <Skull className="w-5 h-5" />, moduleKey: "mortuary" },
     { section: "Administration & Facilities", label: "Audit Logs", href: "/dashboard/audit", icon: <FileText className="w-5 h-5" />, moduleKey: "audit" },
     { section: "Administration & Facilities", label: "Patient Feedback", href: "/dashboard/feedback", icon: <MessageSquare className="w-5 h-5" />, moduleKey: "feedback" },
     { section: "Administration & Facilities", label: "System Settings", href: "/dashboard/settings", icon: <Settings className="w-5 h-5" />, moduleKey: "settings" }
@@ -275,9 +244,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           collapsed={sidebarCollapsed}
           brand={
             sidebarCollapsed ? (
-              <AnantaIcon className="h-7 w-7 text-primary-600 dark:text-primary-400" />
+              <AnantIcon className="h-7 w-7 text-primary-600 dark:text-primary-400" />
             ) : (
-              <AnantaLogo size="md" />
+              <AnantLogo size="md" />
             )
           }
           items={filteredNavItems.map(item => ({
@@ -285,9 +254,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             active: pathname === item.href
           }))}
           footer={
-            <Button variant="ghost" size="sm" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="w-full flex justify-center text-text-muted hover:text-text hidden md:flex">
-              {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-            </Button>
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-text-muted hover:text-text hover:bg-surface-hover border border-border/40 hover:border-border transition-all duration-200 cursor-pointer hidden md:flex"
+              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {!sidebarCollapsed && <span className="tracking-tight">Collapse sidebar</span>}
+              <span className={sidebarCollapsed ? "mx-auto" : ""}>
+                {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              </span>
+            </button>
           }
         />
       </div>
@@ -304,7 +281,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
-            <AnantaLogo size="sm" className="md:hidden" />
+            <AnantLogo size="sm" className="md:hidden" />
             <h1 className="text-base md:text-lg font-semibold text-text capitalize hidden sm:block">
               {user.role === "root" ? "Root Super-Admin" : user.role === "admin" ? "Organization Admin" : user.role} Dashboard
             </h1>
@@ -317,9 +294,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   size="sm"
                   options={[
                     ...(headerClinics.length > 1 || hasAnyPermission(user, "MANAGE_CLINICS", "VIEW_CLINICS")
-                      ? [{ value: "all", label: "📍 All Clinics / Branches" }]
+                      ? [{ value: "all", label: "All Clinics & Branches" }]
                       : []),
-                    ...headerClinics.map((c) => ({ value: c.id, label: `📍 ${c.name}` })),
+                    ...headerClinics.map((c) => ({ value: c.id, label: c.name })),
                   ]}
                   value={activeClinicId || (headerClinics[0] ? headerClinics[0].id : "all")}
                   onChange={(e) => setActiveClinic(e.target.value)}
@@ -348,6 +325,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   onClick: () => router.push(user.role === "patient" ? "/dashboard/patient-portal" : "/dashboard/settings"),
                   icon: <User className="w-4 h-4" />
                 },
+                ...(user.role !== "patient" ? [
+                  {
+                    label: "Lock Workstation",
+                    onClick: () => window.dispatchEvent(new CustomEvent("lock-workstation")),
+                    icon: <Lock className="w-4 h-4 text-text-secondary" />
+                  }
+                ] : []),
                 { divider: true, label: "" },
                 { 
                   label: "Sign out", 
@@ -371,6 +355,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Global Floating AI Copilot Drawer Button */}
       <FloatingAICopilot />
+
+      {/* Clinical Inactivity & Workstation Screen Lock */}
+      <ClinicalScreenLock />
     </div>
   );
 }

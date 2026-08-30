@@ -2,7 +2,20 @@ import api from "@/lib/api";
 import { EncounterEventBus, EncounterEvents } from "@/events/EncounterEventBus";
 
 export class OrdersService {
-  public static async placeOrder(encounterId: string, payload: { patientId: string; testId: string; priority?: string; clinicalReason?: string }) {
+  public static async placeOrder(
+    encounterIdOrPayload: string | { encounterId?: string; patientId: string; testId: string; priority?: string; clinicalReason?: string; clinicId?: string; doctorId?: string },
+    payloadArg?: { patientId: string; testId: string; priority?: string; clinicalReason?: string; clinicId?: string; doctorId?: string }
+  ) {
+    let encounterId: string;
+    let payload: any;
+    if (typeof encounterIdOrPayload === "string") {
+      encounterId = encounterIdOrPayload;
+      payload = payloadArg || {};
+    } else {
+      encounterId = encounterIdOrPayload.encounterId || "";
+      payload = encounterIdOrPayload;
+    }
+
     const res = await api.post(`/encounters/${encounterId}/orders`, payload);
     const orderData = res.data?.data || res.data;
     EncounterEventBus.emit(EncounterEvents.ORDER_CREATED, orderData);
@@ -36,7 +49,7 @@ export class OrdersService {
     return data;
   }
 
-  public static async cancelOrder(orderId: string, cancellationReason: string) {
+  public static async cancelOrder(orderId: string, cancellationReason: string = "Cancelled by clinician") {
     const res = await api.put(`/orders/${orderId}/cancel`, { cancellationReason });
     const data = res.data?.data || res.data;
     EncounterEventBus.emit(EncounterEvents.ORDER_CANCELLED, data);

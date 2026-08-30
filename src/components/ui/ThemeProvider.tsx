@@ -42,51 +42,72 @@ export const PALETTES: { id: Palette; label: string; swatch: string }[] = [
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeRaw] = useState<Mode>(() => {
-    if (typeof window !== "undefined") return (localStorage.getItem("jk-mode") as Mode) || "dark";
-    return "dark";
+    if (typeof window !== "undefined") {
+      const domMode = document.documentElement.getAttribute("data-mode") as Mode;
+      if (domMode) return (localStorage.getItem("jk-mode") as Mode) || domMode;
+      return (localStorage.getItem("jk-mode") as Mode) || "light";
+    }
+    return "light";
   });
   const [palette, setPaletteRaw] = useState<Palette>(() => {
-    if (typeof window !== "undefined") return (localStorage.getItem("jk-palette") as Palette) || "blue";
+    if (typeof window !== "undefined") {
+      const domPal = document.documentElement.getAttribute("data-palette") as Palette;
+      if (domPal) return domPal;
+      return (localStorage.getItem("jk-palette") as Palette) || "blue";
+    }
     return "blue";
   });
-  const [resolvedMode, setResolvedMode] = useState<"light" | "dark">(mode === "system" ? "dark" : mode);
+  const [resolvedMode, setResolvedMode] = useState<"light" | "dark">(() => {
+    if (typeof window !== "undefined") {
+      if (document.documentElement.classList.contains("dark")) return "dark";
+      if (mode === "system") {
+        return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      return mode === "dark" ? "dark" : "light";
+    }
+    return mode === "system" ? "light" : mode;
+  });
+
+  const applyThemeMode = useCallback((newMode: Mode, nextResolved: "light" | "dark") => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    root.classList.add("theme-transitioning");
+
+    root.setAttribute("data-mode", nextResolved);
+    root.classList.toggle("dark", nextResolved === "dark");
+    root.style.colorScheme = nextResolved;
+
+    setModeRaw(newMode);
+    setResolvedMode(nextResolved);
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("jk-mode", newMode);
+    }
+
+    window.setTimeout(() => {
+      root.classList.remove("theme-transitioning");
+    }, 350);
+  }, []);
 
   const setMode = useCallback((m: Mode) => {
     const nextResolved = m === "system"
       ? (typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
       : m;
-
-    const applyChange = () => {
-      document.documentElement.setAttribute("data-mode", nextResolved);
-      document.documentElement.classList.toggle("dark", nextResolved === "dark");
-      setModeRaw(m);
-      setResolvedMode(nextResolved);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("jk-mode", m);
-      }
-    };
-
-    if (typeof document !== "undefined" && "startViewTransition" in document) {
-      (document as any).startViewTransition(applyChange);
-    } else {
-      applyChange();
-    }
-  }, []);
+    applyThemeMode(m, nextResolved);
+  }, [applyThemeMode]);
 
   const setPalette = useCallback((p: Palette) => {
-    const applyChange = () => {
-      document.documentElement.setAttribute("data-palette", p);
-      setPaletteRaw(p);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("jk-palette", p);
-      }
-    };
-
-    if (typeof document !== "undefined" && "startViewTransition" in document) {
-      (document as any).startViewTransition(applyChange);
-    } else {
-      applyChange();
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    root.classList.add("theme-transitioning");
+    root.setAttribute("data-palette", p);
+    setPaletteRaw(p);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("jk-palette", p);
     }
+    window.setTimeout(() => {
+      root.classList.remove("theme-transitioning");
+    }, 350);
   }, []);
 
   const toggleMode = useCallback(() => {
@@ -101,11 +122,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const nextRes = mq.matches ? "dark" : "light";
       document.documentElement.setAttribute("data-mode", nextRes);
       document.documentElement.classList.toggle("dark", nextRes === "dark");
+      document.documentElement.style.colorScheme = nextRes;
       setResolvedMode(nextRes);
       const handler = (e: MediaQueryListEvent) => {
         const r = e.matches ? "dark" : "light";
         document.documentElement.setAttribute("data-mode", r);
         document.documentElement.classList.toggle("dark", r === "dark");
+        document.documentElement.style.colorScheme = r;
         setResolvedMode(r);
       };
       mq.addEventListener("change", handler);
@@ -118,6 +141,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     root.setAttribute("data-mode", resolvedMode);
     root.classList.toggle("dark", resolvedMode === "dark");
+    root.style.colorScheme = resolvedMode;
     root.setAttribute("data-palette", palette);
   }, [resolvedMode, palette]);
 
@@ -150,17 +174,17 @@ export function ModeSwitcher({ className = "" }: { className?: string }) {
       onClick={toggleMode}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       className={cn(
-        "relative h-8 w-14 rounded-full cursor-pointer p-0.5",
-        "transition-colors duration-300 ease-out",
+        "relative h-8 w-14 rounded-full cursor-pointer p-0.5 border border-border/80",
+        "transition-colors duration-300 ease-out shadow-xs",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2",
-        isDark ? "bg-primary-600" : "bg-text-muted/25",
+        isDark ? "bg-primary-600/90" : "bg-surface-alt",
         className,
       )}
     >
       {/* Track pill */}
       <span
         className={cn(
-          "flex items-center justify-center h-7 w-7 rounded-full bg-white shadow-md",
+          "flex items-center justify-center h-6.5 w-6.5 rounded-full bg-surface text-text shadow-sm border border-border/60",
           "transition-all duration-300 ease-out-expo",
           isDark ? "translate-x-6" : "translate-x-0",
         )}
@@ -168,7 +192,7 @@ export function ModeSwitcher({ className = "" }: { className?: string }) {
         {/* Sun */}
         <svg
           className={cn(
-            "absolute h-4 w-4 text-amber-500 transition-all duration-300",
+            "absolute h-3.5 w-3.5 text-amber-500 transition-all duration-300",
             isDark ? "opacity-0 rotate-90 scale-0" : "opacity-100 rotate-0 scale-100",
           )}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
@@ -179,7 +203,7 @@ export function ModeSwitcher({ className = "" }: { className?: string }) {
         {/* Moon */}
         <svg
           className={cn(
-            "absolute h-4 w-4 text-primary-600 transition-all duration-300",
+            "absolute h-3.5 w-3.5 text-primary-400 transition-all duration-300",
             isDark ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-0",
           )}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
@@ -219,17 +243,17 @@ export function PaletteSwitcher({ className = "" }: { className?: string }) {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Select color palette"
-        className="flex items-center justify-center h-8 w-8 rounded-full border border-border bg-surface hover:bg-surface-hover hover:border-primary-500/30 transition-all duration-300 ease-spring cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+        className="flex items-center justify-center h-8 w-8 rounded-full border border-border/80 bg-surface hover:bg-surface-hover hover:border-primary-500/30 transition-all duration-300 ease-spring cursor-pointer shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
       >
         <span
-          className="h-4 w-4 rounded-full shadow-sm"
+          className="h-4 w-4 rounded-full shadow-sm ring-1 ring-black/10 dark:ring-white/20"
           style={{ backgroundColor: activePalette.swatch }}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-border bg-surface p-3 shadow-lg animate-slide-down">
-          <h4 className="text-xs font-bold text-text-secondary mb-2.5 px-1 uppercase tracking-wider">Palette Theme</h4>
+        <div className="absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-border/80 bg-surface/98 backdrop-blur-2xl p-3.5 shadow-xl ring-1 ring-border/50 animate-slide-down">
+          <h4 className="text-xs font-bold text-text-secondary mb-2.5 px-1 uppercase tracking-wider">Color Theme Palette</h4>
           <div className="grid grid-cols-5 gap-2">
             {PALETTES.map(p => {
               const isSelected = p.id === palette;
@@ -243,12 +267,12 @@ export function PaletteSwitcher({ className = "" }: { className?: string }) {
                   }}
                   title={p.label}
                   className={cn(
-                    "h-8 w-8 rounded-full flex items-center justify-center transition-all duration-300 ease-spring cursor-pointer border hover:scale-105 active:scale-95",
-                    isSelected ? "border-primary-500 ring-2 ring-primary-500/30 scale-105" : "border-border hover:border-text-secondary"
+                    "h-9 w-9 rounded-xl flex items-center justify-center transition-all duration-300 ease-spring cursor-pointer border hover:scale-105 active:scale-95",
+                    isSelected ? "border-primary-500 ring-2 ring-primary-500/30 scale-105 bg-primary-500/10" : "border-border/60 hover:border-text-secondary bg-surface-alt/40"
                   )}
                 >
                   <span
-                    className="h-5.5 w-5.5 rounded-full shadow-inner"
+                    className="h-5 w-5 rounded-full shadow-inner"
                     style={{ backgroundColor: p.swatch }}
                   />
                 </button>

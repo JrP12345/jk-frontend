@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
-  Card, CardContent, Table, Button, Modal, useToast, Spinner, Badge
+  Card, CardContent, Table, Button, Modal, useToast, Spinner, Badge, cn
 } from "@/components/ui";
+import { RotateCw, Printer, CreditCard } from "lucide-react";
 
 interface InvoiceItem {
   description: string;
@@ -24,7 +25,9 @@ interface Invoice {
   tax: number;
   discount: number;
   totalAmount: number;
-  status: "unpaid" | "paid" | "refunded";
+  status: "unpaid" | "partially_paid" | "paid" | "refunded" | "cancelled";
+  amountPaid?: number;
+  balanceDue?: number;
   paymentMethod?: string;
   paymentDate?: string;
   createdAt: string;
@@ -53,7 +56,7 @@ export default function PatientBillsPage() {
       const res = await api.get("/invoices");
       setInvoices(res.data.data || []);
     } catch (err) {
-      toast({ title: "Error", description: "Failed to load billing history", variant: "error" });
+      toast({ title: "Unable to load invoices", description: "We could not fetch your billing statements. Please refresh the page.", variant: "error" });
     } finally {
       setLoading(false);
     }
@@ -78,8 +81,8 @@ export default function PatientBillsPage() {
       });
       
       toast({ 
-        title: "Payment Successful!", 
-        description: `Successfully paid ₹${activeInvoice.totalAmount} for Invoice #${activeInvoice.invoiceNumber}`, 
+        title: "Payment Successful", 
+        description: `Your payment of ₹${activeInvoice.totalAmount} for Invoice #${activeInvoice.invoiceNumber} was processed successfully.`, 
         variant: "success",
         duration: 5000
       });
@@ -87,7 +90,7 @@ export default function PatientBillsPage() {
       setActiveInvoice(null);
       fetchPatientBills();
     } catch (err: any) {
-      toast({ title: "Payment Failed", description: err.response?.data?.message || "Checkout failed", variant: "error" });
+      toast({ title: "Payment Failed", description: err.response?.data?.message || "Unable to complete transaction. Please try another payment method.", variant: "error" });
     } finally {
       setSubmittingPayment(false);
     }
@@ -120,7 +123,7 @@ export default function PatientBillsPage() {
         <body>
           <div class="receipt">
             <div class="center">
-              <h3 style="margin:2px 0;">ANANTA HEALTHCARE SYSTEM</h3>
+              <h3 style="margin:2px 0;">ANANT HEALTHCARE SYSTEM</h3>
               <p style="margin:2px 0; font-size:11px;">${inv.clinicId?.name}</p>
             </div>
             <div class="border-dashed"></div>
@@ -163,48 +166,93 @@ export default function PatientBillsPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div>
-        <h2 className="text-2xl font-bold text-text">My Bills & Invoices</h2>
-        <p className="text-sm text-text-secondary">View billing history, print medical receipts, and make outstanding payments online.</p>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                My Bills & Invoices
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Patient Billing
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              View billing history, print medical receipts, and make outstanding payments online.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchPatientBills}
+              disabled={loading}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+            >
+              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
+              Refresh
+            </Button>
+          </div>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          {loading ? (
-            <div className="flex justify-center py-8"><Spinner /></div>
-          ) : (
-            <Table
-              columns={[
-                { key: "invoiceNumber", header: "Invoice #", render: (row: Invoice) => <span className="font-bold text-text">#{row.invoiceNumber}</span> },
-                { key: "clinic", header: "Clinic", render: (row: Invoice) => <span>{row.clinicId?.name}</span> },
-                { key: "doctor", header: "Doctor", render: (row: Invoice) => <span>Dr. {row.doctorId?.name}</span> },
-                { key: "createdAt", header: "Date Issued", render: (row: Invoice) => <span>{new Date(row.createdAt).toLocaleDateString()}</span> },
-                { key: "totalAmount", header: "Total Due", render: (row: Invoice) => <span className="font-semibold text-text">₹{row.totalAmount}</span> },
-                { key: "status", header: "Status", render: (row: Invoice) => (
-                  <Badge variant={row.status === "paid" ? "success" : row.status === "unpaid" ? "danger" : "default"} className="capitalize">
-                    {row.status}
-                  </Badge>
-                )},
-                { key: "actions", header: "Actions", render: (row: Invoice) => (
-                  <div className="flex gap-2">
-                    {row.status === "unpaid" ? (
-                      <Button size="xs" variant="primary" onClick={() => {
-                        setActiveInvoice(row);
-                        setCheckoutOpen(true);
-                      }}>Pay Online</Button>
-                    ) : (
-                      <Button size="xs" variant="outline" onClick={() => handleOpenReceipt(row)}>View Receipt</Button>
-                    )}
-                  </div>
+      <div>
+        <Table
+          loading={loading}
+          columns={[
+            { key: "invoiceNumber", header: "Invoice #", render: (row: Invoice) => <span className="font-bold text-text">#{row.invoiceNumber}</span> },
+            { key: "clinic", header: "Clinic", render: (row: Invoice) => <span>{row.clinicId?.name}</span> },
+            { key: "doctor", header: "Doctor", render: (row: Invoice) => <span>Dr. {row.doctorId?.name}</span> },
+            { key: "createdAt", header: "Date Issued", render: (row: Invoice) => <span>{new Date(row.createdAt).toLocaleDateString()}</span> },
+            { key: "totalAmount", header: "Total Due", render: (row: Invoice) => {
+              const balance = row.balanceDue !== undefined ? row.balanceDue : (row.status === "paid" ? 0 : row.totalAmount);
+              return (
+                <div className="space-y-0.5">
+                  <span className="font-semibold text-text">₹{row.totalAmount}</span>
+                  {row.status === "partially_paid" && (
+                    <span className="block text-[10px] text-amber-600 dark:text-amber-400 font-bold">
+                      Bal: ₹{balance}
+                    </span>
+                  )}
+                </div>
+              );
+            }},
+            { key: "status", header: "Status", render: (row: Invoice) => (
+              <Badge
+                variant={
+                  row.status === "paid" ? "success" :
+                  row.status === "partially_paid" ? "warning" :
+                  row.status === "unpaid" ? "danger" : "default"
+                }
+                className="capitalize font-semibold"
+              >
+                {row.status.replace("_", " ")}
+              </Badge>
+            )},
+            { key: "actions", header: "Actions", render: (row: Invoice) => (
+              <div className="flex gap-2">
+                {row.status === "unpaid" || row.status === "partially_paid" ? (
+                  <Button size="xs" variant="primary" onClick={() => {
+                    setActiveInvoice(row);
+                    setCheckoutOpen(true);
+                  }}>
+                    {row.status === "partially_paid" ? "Pay Balance" : "Pay Online"}
+                  </Button>
+                ) : (
+                  <Button size="xs" variant="outline" onClick={() => handleOpenReceipt(row)}>View Receipt</Button>
                 )}
-              ]}
-              data={invoices}
-              emptyMessage="You have no generated bills."
-            />
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            )}
+          ]}
+          data={invoices}
+          emptyMessage="You have no generated bills."
+        />
+      </div>
 
       {/* Online Checkout Payment Modal — PCI-DSS SAQ A Compliant */}
       <Modal open={checkoutOpen} onClose={() => { setCheckoutOpen(false); setActiveInvoice(null); }} title="Pay Secure Outpatient Bill" size="sm">
@@ -216,7 +264,10 @@ export default function PatientBillsPage() {
               </span>
             </div>
             <p className="text-xs text-text-secondary font-medium pt-1">Invoice #{activeInvoice?.invoiceNumber} • Dr. {activeInvoice?.doctorId?.name}</p>
-            <p className="text-3xl font-black text-text tracking-tight pt-0.5">₹{activeInvoice?.totalAmount}</p>
+            <p className="text-3xl font-black text-text tracking-tight pt-0.5">₹{activeInvoice?.balanceDue ?? activeInvoice?.totalAmount}</p>
+            {activeInvoice?.balanceDue !== undefined && activeInvoice.balanceDue < activeInvoice.totalAmount && (
+              <p className="text-[11px] text-text-muted">Total Bill: ₹{activeInvoice.totalAmount} (₹{activeInvoice.amountPaid ?? (activeInvoice.totalAmount - activeInvoice.balanceDue)} previously paid)</p>
+            )}
           </div>
 
           {/* Payment Method Selector */}

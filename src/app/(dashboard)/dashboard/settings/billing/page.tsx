@@ -66,8 +66,8 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
       setInvoices(invoicesData);
     } catch (err: any) {
       toast({
-        title: "Error Loading Billing Data",
-        description: err.response?.data?.message || "Failed to load commercial subscription details.",
+        title: "Unable to Load Billing Data",
+        description: err.response?.data?.message || "Could not load subscription details. Please try again.",
         variant: "error",
       });
     } finally {
@@ -87,8 +87,8 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
       const isLoaded = await loadRazorpayScript();
       if (!isLoaded) {
         toast({
-          title: "Razorpay SDK Load Error",
-          description: "Could not load Razorpay SDK from checkout.js. Please check your internet connection.",
+          title: "Payment Gateway Unavailable",
+          description: "Could not connect to the secure payment gateway. Please check your internet connection.",
           variant: "error",
         });
         setIsProcessing(false);
@@ -100,7 +100,7 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
         key: order.keyId,
         amount: order.amount * 100, // in paise
         currency: order.currency,
-        name: "ANANTA Healthcare SaaS",
+        name: "ANANT Healthcare SaaS",
         description: `${plan.name} Plan (${billingCycle}) Subscription`,
         order_id: order.orderId,
         handler: async (response: any) => {
@@ -111,16 +111,16 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
               razorpaySignature: response.razorpay_signature,
             });
             toast({
-              title: "Subscription Activated! 🎉",
-              description: `Your ${plan.name} subscription is now active! Invoice email sent.`,
+              title: "Subscription Activated",
+              description: `Your ${plan.name} plan is now active. A confirmation invoice has been sent to your email.`,
               variant: "success",
             });
             setCheckoutModalOpen(false);
             loadBillingData();
           } catch (err: any) {
             toast({
-              title: "Payment Verification Failed",
-              description: err.response?.data?.message || "Invalid payment signature.",
+              title: "Verification Failed",
+              description: err.response?.data?.message || "Could not verify transaction signature. Please contact support if your account was debited.",
               variant: "error",
             });
           } finally {
@@ -171,9 +171,9 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
 
   if (loading) {
     return (
-      <div className="p-12 text-center">
-        <Spinner size="lg" label="Loading commercial subscription details..." />
-      </div>
+      <Card className="p-12 border border-border/80 shadow-xs flex justify-center">
+        <Spinner size="md" label="Loading commercial subscription & plan limits..." />
+      </Card>
     );
   }
 

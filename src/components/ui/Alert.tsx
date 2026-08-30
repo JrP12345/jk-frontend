@@ -18,7 +18,7 @@ export interface AlertProps {
 
 const variantStyles: Record<AlertVariant, { container: string; icon: ReactNode }> = {
   info: {
-    container: "bg-primary-500/10 border-primary-500/20 text-primary-900 dark:text-primary-200",
+    container: "bg-primary-500/10 border border-primary-500/30 text-text shadow-2xs backdrop-blur-xs",
     icon: (
       <svg className="h-5 w-5 text-primary-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
@@ -26,7 +26,7 @@ const variantStyles: Record<AlertVariant, { container: string; icon: ReactNode }
     ),
   },
   success: {
-    container: "bg-success-500/10 border-success-500/20 text-success-900 dark:text-success-200",
+    container: "bg-success-500/10 border border-success-500/30 text-text shadow-2xs backdrop-blur-xs",
     icon: (
       <svg className="h-5 w-5 text-success-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a10 10 0 11-20 0 10 10 0 0120 0z" />
@@ -34,7 +34,7 @@ const variantStyles: Record<AlertVariant, { container: string; icon: ReactNode }
     ),
   },
   warning: {
-    container: "bg-warning-500/10 border-warning-500/20 text-warning-900 dark:text-warning-200",
+    container: "bg-warning-500/10 border border-warning-500/30 text-text shadow-2xs backdrop-blur-xs",
     icon: (
       <svg className="h-5 w-5 text-warning-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M12 2l10 18H2L12 2z" />
@@ -42,7 +42,7 @@ const variantStyles: Record<AlertVariant, { container: string; icon: ReactNode }
     ),
   },
   error: {
-    container: "bg-danger-500/10 border-danger-500/20 text-danger-900 dark:text-danger-200",
+    container: "bg-danger-500/10 border border-danger-500/30 text-text shadow-2xs backdrop-blur-xs",
     icon: (
       <svg className="h-5 w-5 text-danger-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a10 10 0 11-20 0 10 10 0 0120 0z" />

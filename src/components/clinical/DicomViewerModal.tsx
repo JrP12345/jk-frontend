@@ -48,7 +48,7 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
   const patientName = study.patientId?.userId?.name || "Patient";
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`ðŸ–¼ï¸ PACS DICOM Viewer â€” ${study.modality}`} size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={`PACS DICOM Viewer — ${study.modality}`} size="xl">
       <div className="space-y-4 text-xs">
         {/* DICOM Header Metadata Bar */}
         <div className="p-3 bg-surface-alt rounded-2xl border border-border flex flex-wrap items-center justify-between gap-2">

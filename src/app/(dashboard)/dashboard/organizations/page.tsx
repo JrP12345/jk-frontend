@@ -21,6 +21,34 @@ import {
   useToast,
   cn,
 } from "@/components/ui";
+import {
+  Building2,
+  ShieldCheck,
+  Zap,
+  Crown,
+  RotateCw,
+  Plus,
+  Search,
+  ArrowRight,
+  ArrowLeft,
+  MoreHorizontal,
+  Edit3,
+  Power,
+  Trash2,
+  KeyRound,
+  Sparkles,
+  Copy,
+  Check,
+  CheckCircle2,
+  MapPin,
+  Mail,
+  Phone,
+  Shield,
+  Layers,
+  Clock,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
 interface Organization {
   id: string;
@@ -45,6 +73,7 @@ interface Organization {
 export default function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
 
   // Filters & Search
@@ -56,6 +85,7 @@ export default function OrganizationsPage() {
   const [wizardStep, setWizardStep] = useState<1 | 2>(1);
   const [submitting, setSubmitting] = useState(false);
   const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [formData, setFormData] = useState({
     orgName: "",
     city: "",
@@ -116,7 +146,7 @@ export default function OrganizationsPage() {
 
   const fetchOrganizations = async () => {
     try {
-      setLoading(true);
+      setIsRefreshing(true);
       const res = await api.get(`/organizations?t=${Date.now()}`, {
         headers: { "Cache-Control": "no-cache" },
       });
@@ -129,6 +159,7 @@ export default function OrganizationsPage() {
       });
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -196,7 +227,11 @@ export default function OrganizationsPage() {
     }
     setFormData((prev) => ({ ...prev, adminPassword: pass }));
     setShowAdminPassword(true);
-    toast({ title: "Password Generated", description: "Secure administrator password generated.", variant: "info" });
+    toast({
+      title: "Password Generated",
+      description: "Secure administrator password generated.",
+      variant: "info",
+    });
   };
 
   const handleCreateOrganizationSubmit = async (e: React.FormEvent) => {
@@ -204,7 +239,13 @@ export default function OrganizationsPage() {
 
     if (submitting) return;
 
-    if (!formData.orgName.trim() || !formData.city.trim() || !formData.adminName.trim() || !formData.adminEmail.trim() || !formData.adminPassword) {
+    if (
+      !formData.orgName.trim() ||
+      !formData.city.trim() ||
+      !formData.adminName.trim() ||
+      !formData.adminEmail.trim() ||
+      !formData.adminPassword
+    ) {
       toast({
         title: "Validation Error",
         description: "Organization name, city, admin name, admin email, and admin password are required.",
@@ -284,8 +325,10 @@ export default function OrganizationsPage() {
 
   const handleCopyCredentials = () => {
     if (!createdCredentialsSummary) return;
-    const text = `ANANTA Healthcare OS - Administrator Credentials\nOrganization: ${createdCredentialsSummary.orgName}\nLogin Portal: ${createdCredentialsSummary.loginUrl}\nEmail: ${createdCredentialsSummary.adminEmail}\nPassword: ${createdCredentialsSummary.adminPassword}`;
+    const text = `ANANT Healthcare OS - Administrator Credentials\nOrganization: ${createdCredentialsSummary.orgName}\nLogin Portal: ${createdCredentialsSummary.loginUrl}\nEmail: ${createdCredentialsSummary.adminEmail}\nPassword: ${createdCredentialsSummary.adminPassword}`;
     navigator.clipboard.writeText(text);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
     toast({
       title: "Credentials Copied",
       description: "Administrator email, password & portal link copied to clipboard.",
@@ -331,7 +374,9 @@ export default function OrganizationsPage() {
 
       const updated = res.data?.data;
       if (updated) {
-        setOrganizations((prev) => prev.map((o) => (o.id === editingOrg.id ? { ...o, ...updated } : o)));
+        setOrganizations((prev) =>
+          prev.map((o) => (o.id === editingOrg.id ? { ...o, ...updated } : o))
+        );
       }
 
       toast({
@@ -393,14 +438,16 @@ export default function OrganizationsPage() {
       await api.put(`/organizations/${org.id}`, { status: newStatus });
 
       setOrganizations((prev) =>
-        prev.map((o) => (o.id === org.id ? { ...o, status: newStatus, isActive: newStatus === "active" } : o))
+        prev.map((o) =>
+          o.id === org.id ? { ...o, status: newStatus, isActive: newStatus === "active" } : o
+        )
       );
 
       toast({
-        title: isCurrentlyInactive ? "Organization Reactivated" : "Organization Deactivated",
+        title: isCurrentlyInactive ? "Organization Reactivated" : "Organization Suspended",
         description: isCurrentlyInactive
           ? `${org.name} workspace has been reactivated.`
-          : `${org.name} workspace access has been locked.`,
+          : `${org.name} workspace access has been suspended.`,
         variant: isCurrentlyInactive ? "success" : "warning",
       });
 
@@ -417,38 +464,43 @@ export default function OrganizationsPage() {
   const tableColumns: Column<Organization>[] = [
     {
       header: "Organization & Identifiers",
-      accessor: (org) => (
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-text text-xs sm:text-sm">{org.name}</span>
-            {user?.organization_id === org.id && (
-              <Badge variant="primary" size="sm" className="text-[9px] px-1.5 py-0 font-extrabold uppercase">
-                Active Workspace
-              </Badge>
-            )}
+      accessor: (org) => {
+        const isCurrentOrg = user?.organization_id === org.id;
+        return (
+          <div className="space-y-1 min-w-[200px]">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-text text-xs sm:text-sm">{org.name}</span>
+              {isCurrentOrg && (
+                <Badge variant="primary" size="sm" dot pulse className="text-[10px] font-bold">
+                  Active Workspace
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              <span>{org.email || "No email listed"}</span>
+              {org.taxId && <span>&bull; Tax ID: {org.taxId}</span>}
+            </div>
           </div>
-          <p className="text-[11px] text-text-muted">
-            {org.email || "No email listed"}
-            {org.taxId ? ` · Tax ID: ${org.taxId}` : ""}
-          </p>
-        </div>
-      ),
+        );
+      },
     },
     {
-      header: "Plan & Quotas",
+      header: "Plan & Capacity",
       accessor: (org) => {
         const plan = org.plan || "starter";
         const variant = plan === "enterprise" ? "primary" : plan === "pro" ? "info" : "secondary";
         return (
-          <div className="space-y-0.5">
+          <div className="space-y-1 min-w-[150px]">
             <div className="flex items-center gap-1.5">
-              <Badge variant={variant as any} size="sm" className="uppercase font-extrabold text-[9px] tracking-wider">
+              <Badge variant={variant as any} size="sm" className="uppercase font-bold text-[10px] tracking-wide">
                 {plan}
               </Badge>
-              <span className="text-[10px] text-text-muted font-bold">{org.currency || "INR"}</span>
+              <span className="text-[10px] text-text-muted font-bold px-1.5 py-0.5 rounded bg-surface-alt border border-border/60">
+                {org.currency || "INR"}
+              </span>
             </div>
-            <p className="text-[10px] text-text-muted">
-              {org.maxClinics ?? (plan === "enterprise" ? "Unlimited" : plan === "pro" ? 5 : 1)} Branch ·{" "}
+            <p className="text-xs text-text-muted">
+              {org.maxClinics ?? (plan === "enterprise" ? "Unlimited" : plan === "pro" ? 5 : 1)} Branches &bull;{" "}
               {org.maxDoctors ?? (plan === "enterprise" ? "Unlimited" : plan === "pro" ? 15 : 2)} Docs
             </p>
           </div>
@@ -460,18 +512,26 @@ export default function OrganizationsPage() {
       accessor: (org) => {
         const isInactive = org.status === "inactive" || org.isActive === false;
         return (
-          <div className="flex items-center gap-1.5 text-xs font-semibold">
-            <span className={`w-2 h-2 rounded-full ${isInactive ? "bg-red-500" : "bg-emerald-500 animate-pulse"}`} />
-            <span className={isInactive ? "text-text-muted" : "text-text"}>
-              {isInactive ? "Suspended" : "Active"}
-            </span>
-          </div>
+          <Badge
+            variant={isInactive ? "neutral" : "success"}
+            size="sm"
+            dot
+            pulse={!isInactive}
+            className="font-semibold text-[11px]"
+          >
+            {isInactive ? "Suspended" : "Active"}
+          </Badge>
         );
       },
     },
     {
       header: "Location",
-      accessor: (org) => <span className="text-xs text-text-secondary">{org.city}</span>,
+      accessor: (org) => (
+        <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+          <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" />
+          <span>{org.city || "Not specified"}</span>
+        </div>
+      ),
     },
     {
       header: "Actions",
@@ -483,40 +543,42 @@ export default function OrganizationsPage() {
         return (
           <div className="flex items-center justify-end gap-1.5">
             <Button
-              variant={isCurrentOrg ? "secondary" : "outline"}
-              size="sm"
+              variant={isCurrentOrg ? "secondary" : "primary"}
+              size="xs"
               loading={switchingId === org.id}
               onClick={() => handleEnterWorkspace(org.id, org.name)}
-              className="text-xs font-semibold rounded-lg cursor-pointer shrink-0"
+              className="text-xs font-semibold rounded-lg shrink-0 shadow-xs"
             >
-              {isCurrentOrg ? "Active Workspace" : "Enter Workspace →"}
+              {isCurrentOrg ? "Active Workspace" : "Enter Workspace"}
+              {!isCurrentOrg && <ArrowRight className="w-3.5 h-3.5 ml-1" />}
             </Button>
             <Dropdown
               align="right"
+              width="w-48"
               trigger={
                 <Button
-                  size="sm"
+                  size="xs"
                   variant="outline"
-                  className="h-8 w-8 p-0 flex items-center justify-center rounded-lg border-border hover:bg-surface-hover hover:text-text cursor-pointer transition-colors shrink-0"
-                  title="Row Actions"
+                  className="h-7 px-2 text-xs font-semibold rounded-lg text-text-secondary hover:text-text"
                 >
-                  <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                  </svg>
+                  <MoreHorizontal className="w-4 h-4" />
                 </Button>
               }
               items={[
                 {
                   label: "Edit Details",
+                  icon: <Edit3 className="w-4 h-4 text-text-muted" />,
                   onClick: () => handleOpenEditModal(org),
                 },
                 {
-                  label: isInactive ? "Activate Workspace" : "Suspend Workspace",
-                  variant: isInactive ? "default" : "warning",
+                  label: isInactive ? "Reactivate Workspace" : "Suspend Workspace",
+                  icon: <Power className={`w-4 h-4 ${isInactive ? "text-emerald-500" : "text-amber-500"}`} />,
                   onClick: () => handleToggleOrgStatus(org),
                 },
+                { divider: true, label: "" },
                 {
                   label: "Delete Organization",
+                  icon: <Trash2 className="w-4 h-4 text-danger" />,
                   variant: "danger",
                   onClick: () => handleOpenDeleteModal(org),
                 },
@@ -530,137 +592,197 @@ export default function OrganizationsPage() {
 
   if (user?.role !== "root") {
     return (
-      <div className="p-8 text-center space-y-3 max-w-md mx-auto">
-        <h2 className="text-lg font-bold text-text">Access Restricted</h2>
-        <p className="text-xs text-text-secondary">
-          Only Root Super Admin accounts can view and manage all platform organizations.
-        </p>
+      <div className="py-16 text-center space-y-4 max-w-md mx-auto">
+        <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-text-secondary">
+          <Shield className="w-6 h-6 text-primary-500" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-text">Root Super-Admin Access Required</h2>
+          <p className="text-xs text-text-muted mt-1 leading-relaxed">
+            Only platform super-administrators can view and manage multi-tenant organizations across the system.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push("/dashboard")}
+          className="rounded-xl font-semibold"
+        >
+          Return to Dashboard
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
-      {/* Executive Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Organizations & Tenants</h1>
-            <Badge variant="primary" size="sm" className="font-extrabold text-[10px] uppercase">
-              Root Super Admin
-            </Badge>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. EXECUTIVE TOP BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Organizations & Tenants
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Root Super Admin
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Multi-tenant healthcare organizations, subscription quotas, and active workspace contexts.
+            </p>
           </div>
-          <p className="text-xs text-text-muted mt-0.5">
-            Manage multi-tenant healthcare organizations, subscription quotas, and active workspace contexts.
-          </p>
-        </div>
 
-        <Button
-          variant="primary"
-          size="sm"
-          className="font-bold rounded-xl shadow-xs shrink-0 cursor-pointer"
-          onClick={() => {
-            setWizardStep(1);
-            setIsModalOpen(true);
-          }}
-        >
-          + Create Organization
-        </Button>
-      </div>
-
-      {/* KPI Stats Summary Cards using Design System StatCard Component */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard
-          title="Total Workspaces"
-          value={stats.total}
-          description={`${stats.active} Active · ${stats.inactive} Suspended`}
-        />
-        <StatCard
-          title="Starter Tier"
-          value={stats.starterCount}
-          description="Single-Clinic Tier"
-        />
-        <StatCard
-          title="Pro Tier"
-          value={stats.proCount}
-          description="Multi-Branch Clinics"
-        />
-        <StatCard
-          title="Enterprise Tier"
-          value={stats.enterpriseCount}
-          description="Unlimited Capacity"
-        />
-      </div>
-
-      {/* Filter Tabs & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface p-3 rounded-2xl border border-border">
-        {/* Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-          {[
-            { id: "all", label: `All (${stats.total})` },
-            { id: "active", label: `Active (${stats.active})` },
-            { id: "inactive", label: `Suspended (${stats.inactive})` },
-            { id: "starter", label: `Starter (${stats.starterCount})` },
-            { id: "pro", label: `Pro (${stats.proCount})` },
-            { id: "enterprise", label: `Enterprise (${stats.enterpriseCount})` },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer",
-                activeTab === tab.id
-                  ? "bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/30"
-                  : "text-text-secondary hover:text-text hover:bg-surface-hover"
-              )}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchOrganizations}
+              disabled={isRefreshing}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
             >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+              <RotateCw className={`h-3.5 w-3.5 mr-1.5 text-text-secondary ${isRefreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
 
-        {/* Search */}
-        <div className="w-full sm:w-64">
-          <Input
-            placeholder="Search by name or city..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="text-xs h-9"
+            <Button
+              variant="primary"
+              size="sm"
+              className="font-semibold rounded-xl shadow-xs"
+              onClick={() => {
+                setWizardStep(1);
+                setIsModalOpen(true);
+              }}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Create Organization
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. KPI PLATFORM METRICS
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Total Workspaces"
+          value={stats.total.toString()}
+          description={`${stats.active} Active · ${stats.inactive} Suspended`}
+          icon={<Building2 className="w-5 h-5 text-text-secondary" />}
+        />
+        <StatCard
+          label="Starter Tier"
+          value={stats.starterCount.toString()}
+          description="Single-Clinic Setups"
+          icon={<ShieldCheck className="w-5 h-5 text-text-secondary" />}
+        />
+        <StatCard
+          label="Pro Tier"
+          value={stats.proCount.toString()}
+          description="Multi-Branch Centers"
+          icon={<Zap className="w-5 h-5 text-text-secondary" />}
+        />
+        <StatCard
+          label="Enterprise Tier"
+          value={stats.enterpriseCount.toString()}
+          description="Unlimited Facilities"
+          icon={<Crown className="w-5 h-5 text-text-secondary" />}
+        />
+      </div>
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          3. FILTER TABS & SEARCH BAR
+         ────────────────────────────────────────────────────────────────────────── */}
+      <Card className="p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* Segmented Filter Tabs */}
+          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+            {[
+              { id: "all", label: "All Organizations", count: stats.total },
+              { id: "active", label: "Active", count: stats.active },
+              { id: "inactive", label: "Suspended", count: stats.inactive },
+              { id: "starter", label: "Starter", count: stats.starterCount },
+              { id: "pro", label: "Pro", count: stats.proCount },
+              { id: "enterprise", label: "Enterprise", count: stats.enterpriseCount },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id as any)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
+                  activeTab === tab.id
+                    ? "bg-surface text-text shadow-xs font-bold border border-border/60"
+                    : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
+                )}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={cn(
+                    "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
+                    activeTab === tab.id
+                      ? "bg-primary-500/20 text-primary-700 dark:text-primary-300"
+                      : "bg-surface-alt text-text-muted"
+                  )}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Search Input */}
+          <div className="relative w-full sm:w-72 shrink-0">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by name, city, email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+            />
+          </div>
+        </div>
+      </Card>
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          4. ORGANIZATIONS DATA TABLE & RESPONSIVE CARDS
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="space-y-4">
+        {/* Desktop Table View */}
+        <div className="hidden sm:block">
+          <Table
+            columns={tableColumns}
+            data={filteredOrganizations}
+            searchable={false}
+            loading={loading}
+            emptyMessage="No tenant organizations registered yet."
           />
         </div>
-      </div>
 
-      {/* Organizations Table Card (Desktop) & Responsive Cards (Mobile) */}
-      <Card className="rounded-2xl border border-border bg-surface overflow-hidden">
-        <CardContent className="p-0">
+        {/* Mobile Card List View */}
+        <div className="block sm:hidden">
           {loading ? (
-            <div className="py-12 text-center">
+            <div className="p-8 text-center bg-surface border border-border/80 rounded-2xl shadow-xs">
               <Spinner size="md" label="Loading platform organizations..." />
             </div>
           ) : filteredOrganizations.length === 0 ? (
-            <div className="py-12 text-center space-y-3">
-              <p className="text-text-muted text-xs font-semibold">No organizations match the selected criteria.</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearchQuery("");
-                  setActiveTab("all");
-                }}
-                className="rounded-xl font-bold cursor-pointer"
-              >
-                Clear Search & Filters
-              </Button>
+            <div className="flex flex-col items-center justify-center py-14 px-4 text-center text-text-muted bg-surface border border-border/80 rounded-2xl shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-surface-alt flex items-center justify-center mb-3 border border-border/70 text-text-secondary">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <p className="font-semibold text-text text-sm">No Organizations Found</p>
+              <p className="text-xs text-text-muted mt-1 max-w-sm">
+                {searchQuery || activeTab !== "all"
+                  ? "No organizations match your active filters. Try resetting the filters."
+                  : "No tenant organizations have been registered yet."}
+              </p>
             </div>
           ) : (
-            <>
-              {/* Desktop Table View */}
-              <div className="hidden sm:block">
-                <Table columns={tableColumns} data={filteredOrganizations} searchable={false} />
-              </div>
-
-              {/* Mobile Card List View */}
-              <div className="block sm:hidden divide-y divide-border">
+            <div className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden divide-y divide-border/60">
                 {filteredOrganizations.map((org) => {
                   const isCurrentOrg = user?.organization_id === org.id;
                   const isInactive = org.status === "inactive" || org.isActive === false;
@@ -668,12 +790,12 @@ export default function OrganizationsPage() {
 
                   return (
                     <div key={org.id} className="p-4 space-y-3 bg-surface">
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-2">
                         <div>
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-bold text-text text-sm">{org.name}</span>
                             {isCurrentOrg && (
-                              <Badge variant="primary" size="sm" className="text-[8px] px-1 py-0 uppercase">
+                              <Badge variant="primary" size="sm" dot className="text-[9px] font-bold uppercase">
                                 Active
                               </Badge>
                             )}
@@ -683,57 +805,86 @@ export default function OrganizationsPage() {
                         <Badge
                           variant={plan === "enterprise" ? "primary" : plan === "pro" ? "info" : "secondary"}
                           size="sm"
-                          className="uppercase text-[9px] font-extrabold"
+                          className="uppercase text-[9px] font-bold"
                         >
                           {plan}
                         </Badge>
                       </div>
 
                       <div className="flex items-center justify-between text-xs text-text-secondary pt-1">
-                        <span>City: <strong>{org.city}</strong></span>
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-2 h-2 rounded-full ${isInactive ? "bg-red-500" : "bg-emerald-500"}`} />
-                          <span>{isInactive ? "Suspended" : "Active"}</span>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-text-muted" />
+                          <span>{org.city}</span>
                         </div>
+                        <Badge variant={isInactive ? "neutral" : "success"} size="sm" dot className="text-[10px]">
+                          {isInactive ? "Suspended" : "Active"}
+                        </Badge>
                       </div>
 
                       <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
                         <Button
-                          variant={isCurrentOrg ? "secondary" : "outline"}
+                          variant={isCurrentOrg ? "secondary" : "primary"}
                           size="sm"
                           loading={switchingId === org.id}
                           onClick={() => handleEnterWorkspace(org.id, org.name)}
                           className="text-xs font-semibold rounded-lg w-full"
                         >
-                          {isCurrentOrg ? "Active Workspace" : "Enter Workspace →"}
+                          {isCurrentOrg ? "Active Workspace" : "Enter Workspace"}
+                          {!isCurrentOrg && <ArrowRight className="w-3.5 h-3.5 ml-1" />}
                         </Button>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+            )}
+        </div>
+      </div>
 
-      {/* Modal: 2-Step Responsive Create Organization Wizard */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          5. 2-STEP ORGANIZATION PROVISIONING WIZARD
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Create Tenant Organization"
-        description="Provision a new healthcare organization workspace and administrator."
+        title="Provision Tenant Organization"
+        description="Set up an organization workspace, subscription tier, and primary administrator."
+        size="lg"
       >
-        {/* Wizard Step Progress Bar */}
-        <div className="flex items-center justify-between border-b border-border pb-3 mb-4 text-xs font-bold">
-          <div className={`flex items-center gap-2 ${wizardStep === 1 ? "text-primary-600 dark:text-primary-400" : "text-text-muted"}`}>
-            <span className="w-5 h-5 rounded-full bg-primary-500/20 flex items-center justify-center text-[10px]">1</span>
+        {/* Wizard Step Progress Indicator */}
+        <div className="flex items-center justify-between border-b border-border/60 pb-3 mb-4 text-xs font-semibold">
+          <div
+            className={cn(
+              "flex items-center gap-2",
+              wizardStep === 1 ? "text-primary-600 dark:text-primary-400 font-bold" : "text-text-muted"
+            )}
+          >
+            <span
+              className={cn(
+                "w-5 h-5 rounded-full flex items-center justify-center text-[11px]",
+                wizardStep === 1 ? "bg-primary-500 text-white font-bold" : "bg-surface-alt border border-border"
+              )}
+            >
+              1
+            </span>
             <span>Organization & Tier</span>
           </div>
-          <div className="h-0.5 flex-1 mx-3 bg-border" />
-          <div className={`flex items-center gap-2 ${wizardStep === 2 ? "text-primary-600 dark:text-primary-400" : "text-text-muted"}`}>
-            <span className="w-5 h-5 rounded-full bg-primary-500/20 flex items-center justify-center text-[10px]">2</span>
-            <span>Administrator & Options</span>
+          <div className="h-0.5 flex-1 mx-3 bg-border/60" />
+          <div
+            className={cn(
+              "flex items-center gap-2",
+              wizardStep === 2 ? "text-primary-600 dark:text-primary-400 font-bold" : "text-text-muted"
+            )}
+          >
+            <span
+              className={cn(
+                "w-5 h-5 rounded-full flex items-center justify-center text-[11px]",
+                wizardStep === 2 ? "bg-primary-500 text-white font-bold" : "bg-surface-alt border border-border"
+              )}
+            >
+              2
+            </span>
+            <span>Administrator & Branch</span>
           </div>
         </div>
 
@@ -750,35 +901,38 @@ export default function OrganizationsPage() {
               />
 
               {/* Subscription Tier Radio Cards */}
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <label className="text-xs font-semibold text-text">Subscription Plan Tier *</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {[
-                    { id: "starter", title: "Starter", desc: "1 Clinic · 2 Doctors · 5 Staff" },
-                    { id: "pro", title: "Pro", desc: "5 Clinics · 15 Doctors · Multi-Branch" },
-                    { id: "enterprise", title: "Enterprise", desc: "Unlimited Capacity · Dedicated AI" },
+                    { id: "starter", title: "Starter", desc: "1 Clinic · 2 Doctors · 5 Staff", icon: <ShieldCheck className="w-4 h-4" /> },
+                    { id: "pro", title: "Pro", desc: "5 Clinics · 15 Doctors · Multi-Branch", icon: <Zap className="w-4 h-4" /> },
+                    { id: "enterprise", title: "Enterprise", desc: "Unlimited Capacity · Dedicated AI", icon: <Crown className="w-4 h-4" /> },
                   ].map((tier) => (
                     <button
                       type="button"
                       key={tier.id}
                       onClick={() => setFormData({ ...formData, plan: tier.id as any })}
                       className={cn(
-                        "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                        "p-3 rounded-xl border text-left transition-all cursor-pointer select-none",
                         formData.plan === tier.id
                           ? "border-primary-500 bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold shadow-xs"
-                          : "border-border hover:bg-surface-hover text-text-secondary"
+                          : "border-border/80 hover:bg-surface-hover text-text-secondary"
                       )}
                     >
-                      <p className="text-xs font-bold uppercase">{tier.title}</p>
-                      <p className="text-[10px] opacity-80 mt-1 leading-snug">{tier.desc}</p>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-bold uppercase tracking-wide">{tier.title}</p>
+                        {tier.icon}
+                      </div>
+                      <p className="text-[10px] opacity-80 leading-snug">{tier.desc}</p>
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-surface-alt/40 border border-border/80">
+              <div className="p-3.5 rounded-xl bg-surface-alt border border-border/80 space-y-1">
                 <Input
-                  label="Custom Free Trial Duration (Days) *"
+                  label="Free Trial Duration (Days) *"
                   type="number"
                   min={1}
                   max={365}
@@ -786,12 +940,12 @@ export default function OrganizationsPage() {
                   value={formData.trialDays || 15}
                   onChange={(e) => setFormData({ ...formData, trialDays: Number(e.target.value) || 15 })}
                 />
-                <p className="text-[10px] text-text-muted mt-1">
-                  Root Admin Override: Enter custom trial duration (e.g., 7, 15, 30, 60, or 90 days).
+                <p className="text-[10px] text-text-muted">
+                  Root Admin Override: Configure initial trial period for this tenant.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <Input
                   label="City *"
                   placeholder="e.g. San Francisco"
@@ -808,7 +962,7 @@ export default function OrganizationsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <Input
                   label="Tax ID / GSTIN (Optional)"
                   placeholder="22AAAAA0000A1Z5"
@@ -823,7 +977,7 @@ export default function OrganizationsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <Select
                   label="Currency"
                   value={formData.currency}
@@ -850,7 +1004,7 @@ export default function OrganizationsPage() {
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
                 <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
                   Cancel
                 </Button>
@@ -860,9 +1014,10 @@ export default function OrganizationsPage() {
                   size="sm"
                   disabled={!formData.orgName.trim() || !formData.city.trim()}
                   onClick={() => setWizardStep(2)}
-                  className="font-bold rounded-xl"
+                  className="font-semibold rounded-xl shadow-xs"
                 >
-                  Configure Administrator →
+                  Configure Administrator
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                 </Button>
               </div>
             </div>
@@ -871,18 +1026,18 @@ export default function OrganizationsPage() {
           {/* STEP 2: Administrator & Primary Branch */}
           {wizardStep === 2 && (
             <div className="space-y-4 animate-fade-in">
-              <div className="p-3 bg-surface-alt rounded-xl border border-border space-y-1">
-                <p className="text-xs font-bold text-text">Primary Hospital / Clinic Branch</p>
+              <div className="p-3.5 bg-surface-alt rounded-2xl border border-border/80 space-y-1.5">
+                <p className="text-xs font-bold text-text">Primary Clinic Branch</p>
                 <Input
-                  placeholder={formData.orgName ? `${formData.orgName} (Main Branch)` : "Main Clinic Branch Name"}
+                  placeholder={formData.orgName ? `${formData.orgName} (Main Facility)` : "Main Branch Name"}
                   value={formData.clinicName}
                   onChange={(e) => setFormData({ ...formData, clinicName: e.target.value })}
                   className="text-xs"
                 />
               </div>
 
-              <div className="space-y-3 border-t border-border pt-3">
-                <p className="text-xs font-bold text-text">Organization Administrator Account</p>
+              <div className="space-y-3.5 border-t border-border/60 pt-3">
+                <p className="text-xs font-bold text-text">Primary Administrator Account</p>
                 <Input
                   label="Administrator Name *"
                   placeholder="Dr. Jay Patel"
@@ -909,20 +1064,22 @@ export default function OrganizationsPage() {
                     minLength={6}
                     required
                   />
-                  <div className="flex justify-between items-center pt-1.5">
+                  <div className="flex justify-between items-center pt-2">
                     <button
                       type="button"
                       onClick={() => setShowAdminPassword(!showAdminPassword)}
-                      className="text-[11px] font-semibold text-text-muted hover:text-text cursor-pointer"
+                      className="text-[11px] font-semibold text-text-muted hover:text-text cursor-pointer inline-flex items-center gap-1"
                     >
+                      {showAdminPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                       {showAdminPassword ? "Hide password" : "Show password"}
                     </button>
                     <button
                       type="button"
                       onClick={handleGeneratePassword}
-                      className="text-[11px] font-bold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer"
+                      className="text-[11px] font-bold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer inline-flex items-center gap-1"
                     >
-                      + Generate Secure Password
+                      <Sparkles className="w-3 h-3" />
+                      Generate Secure Password
                     </button>
                   </div>
                 </div>
@@ -937,16 +1094,23 @@ export default function OrganizationsPage() {
                 </div>
               </div>
 
-              <div className="flex justify-between items-center pt-3 border-t border-border">
+              <div className="flex justify-between items-center pt-3 border-t border-border/60">
                 <Button type="button" variant="outline" size="sm" onClick={() => setWizardStep(1)}>
-                  ← Back
+                  <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                  Back
                 </Button>
                 <div className="flex gap-2">
                   <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" variant="primary" size="sm" loading={submitting} className="font-bold rounded-xl">
-                    Create & Provision Workspace
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    loading={submitting}
+                    className="font-semibold rounded-xl shadow-xs"
+                  >
+                    Provision Workspace
                   </Button>
                 </div>
               </div>
@@ -955,41 +1119,43 @@ export default function OrganizationsPage() {
         </form>
       </Modal>
 
-      {/* Modal: Post-Creation Credentials Summary */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          6. POST-CREATION CREDENTIALS SUMMARY MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isSummaryModalOpen}
         onClose={() => setIsSummaryModalOpen(false)}
         title="Workspace Provisioned Successfully"
-        description="Save or copy the administrator login credentials below."
+        description="Save or securely transmit the administrator login credentials below."
       >
         <div className="space-y-4 pt-1">
           {createdCredentialsSummary && (
             <div className="space-y-3">
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl space-y-2">
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <p className="font-extrabold text-emerald-700 dark:text-emerald-400 text-sm">
+                  <p className="font-bold text-emerald-700 dark:text-emerald-400 text-sm">
                     {createdCredentialsSummary.orgName}
                   </p>
-                  <Badge variant="success" size="sm" className="text-[9px] font-extrabold uppercase">
+                  <Badge variant="success" size="sm" className="text-[10px] font-bold uppercase">
                     Provisioned
                   </Badge>
                 </div>
                 <p className="text-xs text-text-secondary">
-                  Primary administrator account created and linked to workspace.
+                  Primary administrator account created and linked to this workspace.
                 </p>
               </div>
 
-              <div className="space-y-2 bg-surface-alt p-3.5 rounded-xl border border-border text-xs">
+              <div className="space-y-2.5 bg-surface-alt p-4 rounded-2xl border border-border/80 text-xs">
                 <div className="flex justify-between py-1 border-b border-border/60">
-                  <span className="text-text-muted">Login Portal URL:</span>
-                  <span className="font-bold text-text select-all">{createdCredentialsSummary.loginUrl}</span>
+                  <span className="text-text-muted font-medium">Login Portal:</span>
+                  <span className="font-semibold text-text select-all">{createdCredentialsSummary.loginUrl}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-border/60">
-                  <span className="text-text-muted">Administrator Email:</span>
-                  <span className="font-bold text-text select-all">{createdCredentialsSummary.adminEmail}</span>
+                  <span className="text-text-muted font-medium">Administrator Email:</span>
+                  <span className="font-semibold text-text select-all">{createdCredentialsSummary.adminEmail}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-text-muted">Administrator Password:</span>
+                  <span className="text-text-muted font-medium">Password:</span>
                   <span className="font-mono font-bold text-primary-600 dark:text-primary-400 select-all">
                     {createdCredentialsSummary.adminPassword}
                   </span>
@@ -998,22 +1164,23 @@ export default function OrganizationsPage() {
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleCopyCredentials}
-              className="font-bold rounded-xl"
+              className="font-semibold rounded-xl"
             >
-              📋 Copy Credentials
+              {isCopied ? <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+              {isCopied ? "Copied" : "Copy Credentials"}
             </Button>
             <Button
               type="button"
               variant="primary"
               size="sm"
               onClick={() => setIsSummaryModalOpen(false)}
-              className="font-bold rounded-xl"
+              className="font-semibold rounded-xl shadow-xs"
             >
               Done
             </Button>
@@ -1021,12 +1188,14 @@ export default function OrganizationsPage() {
         </div>
       </Modal>
 
-      {/* Modal: Edit Organization */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          7. EDIT ORGANIZATION MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         title="Edit Organization Details"
-        description="Update subscription plan tier, name, or contact details."
+        description="Update subscription plan tier, facility name, or contact details."
       >
         <form onSubmit={handleUpdateOrganization} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
           <Input
@@ -1048,11 +1217,12 @@ export default function OrganizationsPage() {
                   type="button"
                   key={tier.id}
                   onClick={() => setEditFormData({ ...editFormData, plan: tier.id as any })}
-                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  className={cn(
+                    "p-2.5 rounded-xl border text-left transition-all cursor-pointer select-none",
                     editFormData.plan === tier.id
-                      ? "border-primary-500 bg-primary-500/10 text-primary-600 font-bold"
-                      : "border-border hover:bg-surface-hover text-text-secondary"
-                  }`}
+                      ? "border-primary-500 bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold shadow-xs"
+                      : "border-border/80 hover:bg-surface-hover text-text-secondary"
+                  )}
                 >
                   <p className="text-xs font-bold capitalize">{tier.title}</p>
                   <p className="text-[10px] opacity-80 mt-0.5">{tier.desc}</p>
@@ -1061,7 +1231,7 @@ export default function OrganizationsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
               label="City *"
               value={editFormData.city}
@@ -1075,7 +1245,7 @@ export default function OrganizationsPage() {
               onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
             />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
               label="Tax ID / GSTIN"
               value={editFormData.taxId}
@@ -1088,37 +1258,46 @@ export default function OrganizationsPage() {
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsEditModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" loading={updating} className="font-bold rounded-xl">
+            <Button type="submit" variant="primary" size="sm" loading={updating} className="font-semibold rounded-xl shadow-xs">
               Save Changes
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Modal: Delete Organization Confirmation */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          8. DELETE CONFIRMATION MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        title="Delete Organization"
-        description="Are you sure you want to delete this organization? This action cannot be undone."
+        title="Delete Tenant Organization"
+        description="Are you sure you want to delete this organization? All linked clinics, appointments, and staff records will be removed."
       >
         <div className="space-y-4 pt-1">
           {deletingOrg && (
-            <div className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl text-xs space-y-1">
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-xs space-y-1">
               <p className="font-bold text-red-600 dark:text-red-400 text-sm">{deletingOrg.name}</p>
-              <p className="text-text-secondary">City: {deletingOrg.city} · Plan: {deletingOrg.plan?.toUpperCase()}</p>
+              <p className="text-text-secondary">City: {deletingOrg.city} &bull; Plan: {deletingOrg.plan?.toUpperCase()}</p>
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsDeleteModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" variant="danger" size="sm" loading={deleting} onClick={handleDeleteOrganization} className="font-bold rounded-xl">
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              loading={deleting}
+              onClick={handleDeleteOrganization}
+              className="font-semibold rounded-xl shadow-xs"
+            >
               Delete Organization
             </Button>
           </div>

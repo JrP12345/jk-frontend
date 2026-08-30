@@ -287,7 +287,7 @@ function OnboardingInner() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-surface-alt relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-surface-alt relative overflow-hidden animate-page-enter">
       {/* Background Glow */}
       <div className="absolute top-[-15%] left-[-15%] w-[50%] h-[50%] bg-primary-500/15 rounded-full blur-[140px] pointer-events-none animate-pulse duration-[8s]" />
       <div className="absolute bottom-[-15%] right-[-15%] w-[50%] h-[50%] bg-blue-500/15 rounded-full blur-[140px] pointer-events-none animate-pulse duration-[6s] delay-1000" />
@@ -301,7 +301,7 @@ function OnboardingInner() {
         <div className="text-center mb-6 select-none flex flex-col items-center justify-center">
           <AnantaLogo size="md" className="mb-2" />
           <h1 className="text-xl font-bold text-text tracking-tight">Organization & Workspace Setup</h1>
-          <p className="text-text-secondary text-xs mt-0.5">ANANTA Enterprise Platform</p>
+          <p className="text-text-secondary text-xs mt-0.5">ANANT Enterprise Platform</p>
         </div>
 
         {/* Wizard Card Container */}
@@ -632,7 +632,7 @@ export default function OnboardingPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-surface-alt flex items-center justify-center">
-        <div className="h-8 w-8 rounded-full border-2 border-primary-600 border-t-transparent animate-spin" />
+        <Spinner size="lg" label="Initializing onboarding..." />
       </div>
     }>
       <OnboardingInner />

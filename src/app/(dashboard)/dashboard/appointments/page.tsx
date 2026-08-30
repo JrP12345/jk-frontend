@@ -7,31 +7,73 @@ import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import {
-  Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, DatePicker, Select, Textarea, useToast, Spinner, Badge, ConfirmDialog, Stepper, Dropdown
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Table,
+  Button,
+  Modal,
+  Input,
+  DatePicker,
+  Select,
+  Textarea,
+  useToast,
+  Spinner,
+  Badge,
+  ConfirmDialog,
+  Stepper,
+  Dropdown,
+  cn,
 } from "@/components/ui";
 import { PatientQueueTracker } from "@/components/clinical/PatientQueueTracker";
 import { PatientMedicalRecords } from "@/components/ehr/PatientMedicalRecords";
 import { AppointmentCalendarView } from "@/components/clinical/AppointmentCalendarView";
+import {
+  RotateCw,
+  Plus,
+  LayoutList,
+  Calendar,
+  Search,
+  Ticket,
+  FileText,
+  MoreHorizontal,
+  Stethoscope,
+  MapPin,
+  User,
+  Clock,
+  UserPlus,
+  ArrowRight,
+  ArrowLeft,
+  Printer,
+  Star,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  CalendarClock,
+  Sparkles,
+  Phone,
+  Building2,
+} from "lucide-react";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const BOOKING_STEPS = [
-  { label: "Patient", description: "Search/Register" },
+  { label: "Patient", description: "Search or Register" },
   { label: "Practitioner", description: "Facility & Doctor" },
-  { label: "Schedule", description: "DateTime & Notes" }
+  { label: "Schedule", description: "Time & Notes" },
 ];
 
 interface Appointment {
   id: string;
   clinicId: { id: string; name: string; city: string; address: string };
   doctorId: { id: string; name: string; email: string; phone: string; specialization: string };
-  patientId: { 
-    id: string; 
-    dob: string; 
-    gender: string; 
-    allergies: string[]; 
+  patientId: {
+    id: string;
+    dob: string;
+    gender: string;
+    allergies: string[];
     conditions: string[];
-    userId: { name: string; email: string; phone: string } 
+    userId: { name: string; email: string; phone: string };
   };
   appointmentTime: string;
   appointmentType: string;
@@ -49,7 +91,8 @@ export default function AppointmentsPage() {
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // Filter States
   const [doctors, setDoctors] = useState<any[]>([]);
   const getTodayISO = () => {
@@ -89,7 +132,16 @@ export default function AppointmentsPage() {
   // New Patient Form
   const [isNewPatient, setIsNewPatient] = useState(false);
   const [newPatientForm, setNewPatientForm] = useState({
-    name: "", dob: "", gender: "male", phone: "", email: "", password: "", address: "", allergies: "", conditions: "", medicalNotes: ""
+    name: "",
+    dob: "",
+    gender: "male",
+    phone: "",
+    email: "",
+    password: "",
+    address: "",
+    allergies: "",
+    conditions: "",
+    medicalNotes: "",
   });
 
   // Doctor & Slot Booking Details
@@ -138,7 +190,7 @@ export default function AppointmentsPage() {
         if (mode === "sequential_queue") {
           setBookingTime(`${selectedSlotDate}T00:00:00`);
         }
-      } catch (err) {
+      } catch {
         setAvailableSlots([]);
         setDoctorBookingMode("sequential_queue");
       } finally {
@@ -181,7 +233,7 @@ export default function AppointmentsPage() {
   };
 
   const handleNewPatientChange = (field: string, value: string) => {
-    setNewPatientForm(prev => ({ ...prev, [field]: value }));
+    setNewPatientForm((prev) => ({ ...prev, [field]: value }));
     if (bookingErrors[field]) {
       setBookingErrors((prev) => {
         const next = { ...prev };
@@ -198,17 +250,21 @@ export default function AppointmentsPage() {
       const isEmailValid = validateNewPatientField("email", newPatientForm.email);
       const isPasswordValid = validateNewPatientField("password", newPatientForm.password);
       if (!isNameValid || !isDobValid || !isEmailValid || !isPasswordValid) {
-        toast({ title: "Validation Error", description: "Please correct highlighted fields before proceeding.", variant: "error" });
+        toast({
+          title: "Validation Error",
+          description: "Please correct highlighted fields before proceeding.",
+          variant: "error",
+        });
         return;
       }
     }
     setBookingStep(3);
   };
 
-  // Phase 2: View Layout Toggle State
+  // View Layout Toggle State
   const [viewLayout, setViewLayout] = useState<"table" | "calendar">("table");
 
-  // Phase 2: Ticket Slip State
+  // Ticket Slip State
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<any>(null);
 
@@ -229,7 +285,11 @@ export default function AppointmentsPage() {
   const handleRescheduleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rescheduleTargetAppt || !rescheduleTime) {
-      toast({ title: "Validation Error", description: "Please select a valid new appointment date & time", variant: "error" });
+      toast({
+        title: "Validation Error",
+        description: "Please select a valid new appointment date & time.",
+        variant: "error",
+      });
       return;
     }
 
@@ -241,17 +301,25 @@ export default function AppointmentsPage() {
         ...(currentLockId ? { lockId: currentLockId } : {}),
       });
 
-      toast({ title: "Rescheduled! 🗓️", description: res.data?.message || "Appointment successfully rescheduled", variant: "success" });
+      toast({
+        title: "Appointment Rescheduled",
+        description: res.data?.message || "Appointment successfully updated.",
+        variant: "success",
+      });
       setRescheduleTargetAppt(null);
       fetchAppointments();
     } catch (err: any) {
-      toast({ title: "Reschedule Failed", description: err.response?.data?.message || "Could not reschedule appointment", variant: "error" });
+      toast({
+        title: "Reschedule Failed",
+        description: err.response?.data?.message || "Could not reschedule appointment.",
+        variant: "error",
+      });
     } finally {
       setSubmittingReschedule(false);
     }
   };
 
-  // Phase 2: Doctor Reviews State
+  // Doctor Reviews State
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewDoctorId, setReviewDoctorId] = useState("");
   const [reviewDoctorName, setReviewDoctorName] = useState("");
@@ -267,17 +335,18 @@ export default function AppointmentsPage() {
       const res = await api.get(`/encounters/${appt.id}/summary-report`);
       const report = res.data?.data || res.data || {};
       const symptoms = report.chiefComplaint || (report.symptoms || []).join(", ") || "";
-      const diagnosis = report.primaryDiagnosis || (report.diagnoses || []).map((d: any) => d.description || d.code).join(", ") || "";
+      const diagnosis =
+        report.primaryDiagnosis || (report.diagnoses || []).map((d: any) => d.description || d.code).join(", ") || "";
       const prescriptions = report.prescriptions || [];
 
       setActiveRecord({
         ...appt,
         symptoms,
         diagnosis,
-        prescriptions
+        prescriptions,
       });
       setRecordModalOpen(true);
-    } catch (err) {
+    } catch {
       setActiveRecord(appt);
       setRecordModalOpen(true);
     }
@@ -289,10 +358,10 @@ export default function AppointmentsPage() {
       patientName: appt.patientId?.userId?.name || "Patient",
       doctorName: appt.doctorId?.name || "Doctor",
       doctorSpecialty: appt.doctorId?.specialization || "General Medicine",
-      clinicName: appt.clinicId?.name || "MedLife Clinic",
+      clinicName: appt.clinicId?.name || "Healthcare Facility",
       clinicAddress: appt.clinicId?.address || "Clinic Address",
       appointmentTime: appt.appointmentTime,
-      status: appt.status
+      status: appt.status,
     });
     setTicketModalOpen(true);
   };
@@ -309,10 +378,18 @@ export default function AppointmentsPage() {
     setReviewSubmitting(true);
     try {
       await api.post(`/doctors/${reviewDoctorId}/reviews`, { rating: ratingValue });
-      toast({ title: "Review Submitted", description: `Thank you for rating Dr. ${reviewDoctorName}!`, variant: "success" });
+      toast({
+        title: "Review Submitted",
+        description: `Thank you for rating Dr. ${reviewDoctorName}!`,
+        variant: "success",
+      });
       setReviewModalOpen(false);
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to submit review", variant: "error" });
+      toast({
+        title: "Review Error",
+        description: err.response?.data?.message || "Failed to submit review.",
+        variant: "error",
+      });
     } finally {
       setReviewSubmitting(false);
     }
@@ -330,11 +407,11 @@ export default function AppointmentsPage() {
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f3f4f6; padding: 20px; }
             .ticket { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 32px; width: 380px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); text-align: left; }
             .header { text-align: center; border-bottom: 2px dashed #e5e7eb; padding-bottom: 20px; margin-bottom: 20px; }
-            .brand { font-size: 12px; font-weight: 800; color: #2563eb; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+            .brand { font-size: 12px; font-weight: 800; color: #0d9488; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
             .clinic-name { font-size: 18px; font-weight: 700; color: #1f2937; margin: 0; }
             .token-box { text-align: center; margin: 16px 0; }
             .token-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; font-weight: 600; }
-            .token-num { font-size: 48px; font-weight: 800; color: #2563eb; margin: 4px 0; line-height: 1; }
+            .token-num { font-size: 48px; font-weight: 800; color: #0d9488; margin: 4px 0; line-height: 1; }
             .details { font-size: 13px; color: #4b5563; }
             .row { display: flex; justify-content: space-between; margin-bottom: 8px; }
             .label { font-weight: 500; color: #6b7280; }
@@ -349,14 +426,14 @@ export default function AppointmentsPage() {
         <body>
           <div class="ticket">
             <div class="header">
-              <div class="brand">MedLife HealthOS</div>
+              <div class="brand">ANANT Health OS</div>
               <h1 class="clinic-name">${ticketData.clinicName}</h1>
               <p style="margin: 4px 0 0; font-size: 12px; color: #6b7280;">${ticketData.clinicAddress}</p>
             </div>
             <div class="token-box">
               <span class="token-label">Queue Token Number</span>
               <div class="token-num">#${ticketData.tokenNumber}</div>
-              <span style="font-size: 12px; color: #10b981; font-weight: 700;">✓ Booked Successfully</span>
+              <span style="font-size: 12px; color: #10b981; font-weight: 700;">✓ Confirmed Schedule</span>
             </div>
             <div class="details">
               <div class="row">
@@ -372,13 +449,12 @@ export default function AppointmentsPage() {
                 <span class="val">${ticketData.doctorSpecialty}</span>
               </div>
               <div class="row">
-                <span class="label">Appt Time:</span>
+                <span class="label">Schedule Slot:</span>
                 <span class="val">${new Date(ticketData.appointmentTime).toLocaleString()}</span>
               </div>
             </div>
             <div class="footer">
-              Please present this slip at the front desk upon arrival.<br>
-              Powered by HealthOS Security Queue Systems.
+              Please present this slip at the reception upon arrival.
             </div>
           </div>
           <script>
@@ -392,7 +468,7 @@ export default function AppointmentsPage() {
 
   const fetchAppointments = async () => {
     try {
-      setLoading(true);
+      setIsRefreshing(true);
       const queryParams = [];
       if (filterClinic) queryParams.push(`clinicId=${filterClinic}`);
       if (filterDoctor) queryParams.push(`doctorId=${filterDoctor}`);
@@ -406,24 +482,26 @@ export default function AppointmentsPage() {
           queryParams.push(`date=${filterDate}`);
         }
       }
-      
+
       const queryString = queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
       const res = await api.get(`/appointments${queryString}`);
       setAppointments(res.data.data || []);
-    } catch (err) {
-      toast({ title: "Error", description: "Failed to load appointments list", variant: "error" });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to load appointments list",
+        variant: "error",
+      });
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
   const fetchClinicsAndDoctors = async () => {
     if (!user || user.role === "patient") return;
     try {
-      const [, staffRes] = await Promise.all([
-        fetchClinics(),
-        api.get("/onboarding/staff"),
-      ]);
+      const [, staffRes] = await Promise.all([fetchClinics(), api.get("/onboarding/staff")]);
       setDoctors(staffRes.data.data.doctors || []);
     } catch (err) {
       console.error("Failed to load clinics or doctors", err);
@@ -451,7 +529,7 @@ export default function AppointmentsPage() {
         const res = await api.get(`/onboarding/doctors/assignments?clinicId=${bookingClinicId}`);
         setDoctorAssignments(res.data.data || []);
       } catch (err) {
-        console.error("Failed to load doctor assignments");
+        console.error("Failed to load doctor assignments", err);
       }
     };
     fetchAssignments();
@@ -463,7 +541,7 @@ export default function AppointmentsPage() {
     try {
       const res = await api.get(`/patients?search=${patientSearch}`);
       setSearchResults(res.data.data || []);
-    } catch (err) {
+    } catch {
       toast({ title: "Error", description: "Patient search failed", variant: "error" });
     } finally {
       setSearchLoading(false);
@@ -487,7 +565,11 @@ export default function AppointmentsPage() {
       const isDobValid = validateNewPatientField("dob", newPatientForm.dob);
       if (!isNameValid || !isDobValid) {
         setBookingStep(2);
-        toast({ title: "Validation Error", description: "Please enter patient name and date of birth before submitting.", variant: "error" });
+        toast({
+          title: "Validation Error",
+          description: "Please enter patient name and date of birth before submitting.",
+          variant: "error",
+        });
         return;
       }
     }
@@ -506,8 +588,8 @@ export default function AppointmentsPage() {
       if (isNewPatient) {
         bookingData.patientDetails = {
           ...newPatientForm,
-          allergies: newPatientForm.allergies ? newPatientForm.allergies.split(",").map(s => s.trim()) : [],
-          conditions: newPatientForm.conditions ? newPatientForm.conditions.split(",").map(s => s.trim()) : []
+          allergies: newPatientForm.allergies ? newPatientForm.allergies.split(",").map((s) => s.trim()) : [],
+          conditions: newPatientForm.conditions ? newPatientForm.conditions.split(",").map((s) => s.trim()) : [],
         };
       } else {
         bookingData.patientId = selectedPatient.id;
@@ -516,18 +598,22 @@ export default function AppointmentsPage() {
       const res = await api.post("/appointments", bookingData);
       const token = res.data.data.tokenNumber;
 
-      toast({ 
-        title: "Appointment Booked!", 
-        description: `Successfully booked. Assigned Token: #${token}`, 
-        variant: "success", 
-        duration: 5000 
+      toast({
+        title: "Appointment Booked",
+        description: `Successfully scheduled with Token #${token}.`,
+        variant: "success",
+        duration: 5000,
       });
 
       setIsBookModalOpen(false);
       fetchAppointments();
       resetBookingForm();
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to book appointment", variant: "error" });
+      toast({
+        title: "Booking Failed",
+        description: err.response?.data?.message || "Failed to book appointment.",
+        variant: "error",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -541,7 +627,16 @@ export default function AppointmentsPage() {
     setIsNewPatient(false);
     setBookingErrors({});
     setNewPatientForm({
-      name: "", dob: "", gender: "male", phone: "", email: "", password: "", address: "", allergies: "", conditions: "", medicalNotes: ""
+      name: "",
+      dob: "",
+      gender: "male",
+      phone: "",
+      email: "",
+      password: "",
+      address: "",
+      allergies: "",
+      conditions: "",
+      medicalNotes: "",
     });
     setBookingClinicId("");
     setBookingDoctorId("");
@@ -554,10 +649,15 @@ export default function AppointmentsPage() {
     if (currentLockId && lockedSlotTime && bookingClinicId && bookingDoctorId) {
       try {
         await api.delete("/appointments/lock-slot", {
-          data: { clinicId: bookingClinicId, doctorId: bookingDoctorId, slotTime: lockedSlotTime, lockId: currentLockId },
+          data: {
+            clinicId: bookingClinicId,
+            doctorId: bookingDoctorId,
+            slotTime: lockedSlotTime,
+            lockId: currentLockId,
+          },
         });
       } catch {
-        // Non-critical: lock will auto-expire via TTL
+        // Non-critical: lock will auto-expire
       }
     }
     setCurrentLockId(null);
@@ -568,16 +668,13 @@ export default function AppointmentsPage() {
     if (!slot.available || slot.lockedByOther) return;
     const fullSlotISO = `${selectedSlotDate}T${slot.time}:00`;
 
-    // If clicking the same already-locked slot, just keep it
     if (lockedSlotTime === fullSlotISO && currentLockId) {
       setBookingTime(fullSlotISO);
       return;
     }
 
-    // Release previous lock if any
     await releaseCurrentLock();
 
-    // Acquire new lock
     setLockingSlot(true);
     try {
       const res = await api.post("/appointments/lock-slot", {
@@ -592,12 +689,15 @@ export default function AppointmentsPage() {
     } catch (err: any) {
       const msg = err.response?.data?.message || "Could not reserve this slot";
       toast({ title: "Slot Unavailable", description: msg, variant: "error" });
-      // Refresh slots to show updated lock state
       setFetchingSlots(true);
       try {
         const res = await api.get(`/doctors/${bookingDoctorId}/slots?clinicId=${bookingClinicId}&date=${selectedSlotDate}`);
         setAvailableSlots(res.data?.data?.slots || []);
-      } catch { /* ignore */ } finally { setFetchingSlots(false); }
+      } catch {
+        /* ignore */
+      } finally {
+        setFetchingSlots(false);
+      }
     } finally {
       setLockingSlot(false);
     }
@@ -620,29 +720,45 @@ export default function AppointmentsPage() {
     const targetStatus = confirmStatus;
     try {
       await api.put(`/appointments/${targetId}/status`, { status: targetStatus });
-      toast({ title: "Success", description: `Appointment updated to ${targetStatus}`, variant: "success" });
+      toast({
+        title: "Status Updated",
+        description: `Appointment updated to ${targetStatus.replace("-", " ")}.`,
+        variant: "success",
+      });
       fetchAppointments();
       if (targetStatus === "in-consultation") {
         router.push(`/dashboard/consultations/${targetId}`);
       }
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to update appointment status", variant: "error" });
+      toast({
+        title: "Update Failed",
+        description: err.response?.data?.message || "Failed to update appointment status.",
+        variant: "error",
+      });
     } finally {
       setUpdatingStatusId(null);
       setConfirmStatus(null);
     }
   };
 
-  const getStatusBadgeVariant = (status: string): "default" | "primary" | "success" | "warning" | "danger" | "outline" => {
+  const getStatusBadgeVariant = (status: string): "default" | "primary" | "success" | "warning" | "danger" | "info" => {
     switch (status) {
-      case "pending": return "warning";
-      case "confirmed": return "primary";
-      case "checked-in": return "primary";
-      case "in-consultation": return "success";
-      case "completed": return "success";
-      case "cancelled": return "danger";
-      case "no-show": return "danger";
-      default: return "default";
+      case "pending":
+        return "warning";
+      case "confirmed":
+        return "primary";
+      case "checked-in":
+        return "info";
+      case "in-consultation":
+        return "success";
+      case "completed":
+        return "success";
+      case "cancelled":
+        return "danger";
+      case "no-show":
+        return "danger";
+      default:
+        return "default";
     }
   };
 
@@ -654,26 +770,49 @@ export default function AppointmentsPage() {
   if (!user) return null;
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
-      {/* Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Appointments</h1>
-          <p className="text-xs text-text-muted mt-0.5">
-            Manage clinical appointments, queue tokens, and patient encounter schedules.
-          </p>
-        </div>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">Appointments</h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Roster Desk
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Manage clinical appointments, queue tokens, slot reservations, and patient encounter workflows.
+            </p>
+          </div>
 
-        {canManageAppointments && user.role !== "doctor" && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={openBookModal}
-            className="font-bold rounded-xl shadow-xs shrink-0 cursor-pointer"
-          >
-            + Book Appointment
-          </Button>
-        )}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchAppointments}
+              disabled={isRefreshing}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+            >
+              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
+              Refresh
+            </Button>
+
+            {canManageAppointments && user.role !== "doctor" && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={openBookModal}
+                className="font-semibold rounded-xl shadow-xs"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Book Appointment
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Live Patient Queue Tracker (if active appointment today) */}
@@ -691,367 +830,506 @@ export default function AppointmentsPage() {
         );
       })()}
 
-      {/* View Layout Switcher Bar */}
-      <div className="flex justify-between items-center bg-surface p-3.5 rounded-2xl border border-border/80 shadow-xs">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. VIEW LAYOUT SWITCHER BAR
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface p-3 sm:p-4 rounded-2xl border border-border/80 shadow-xs">
         <span className="text-xs font-bold text-text-muted uppercase tracking-wider">Schedule View Mode</span>
-        <div className="flex items-center gap-1.5 bg-surface-alt/70 p-1 rounded-xl border border-border/60">
-          <Button
-            size="xs"
-            variant={viewLayout === "table" ? "primary" : "ghost"}
+        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit">
+          <button
+            type="button"
             onClick={() => setViewLayout("table")}
-            className="font-bold rounded-lg cursor-pointer"
-            icon={
-              <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18M3 18h18M3 6h18" />
-              </svg>
-            }
+            className={cn(
+              "px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
+              viewLayout === "table"
+                ? "bg-surface text-text shadow-xs font-bold border border-border/60"
+                : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
+            )}
           >
-            Table List
-          </Button>
-          <Button
-            size="xs"
-            variant={viewLayout === "calendar" ? "primary" : "ghost"}
+            <LayoutList className={cn("h-3.5 w-3.5", viewLayout === "table" ? "text-primary-500" : "text-text-muted")} />
+            <span>Table List</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setViewLayout("calendar")}
-            className="font-bold rounded-lg cursor-pointer"
-            icon={
-              <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            }
+            className={cn(
+              "px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
+              viewLayout === "calendar"
+                ? "bg-surface text-text shadow-xs font-bold border border-border/60"
+                : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
+            )}
           >
-            Calendar View
-          </Button>
+            <Calendar className={cn("h-3.5 w-3.5", viewLayout === "calendar" ? "text-primary-500" : "text-text-muted")} />
+            <span>Calendar View</span>
+          </button>
         </div>
       </div>
 
+      {/* ──────────────────────────────────────────────────────────────────────────
+          3. MAIN APPOINTMENTS ROSTER (TABLE OR CALENDAR)
+         ────────────────────────────────────────────────────────────────────────── */}
       {viewLayout === "calendar" ? (
         <AppointmentCalendarView
           appointments={appointments as any}
           onRescheduleClick={(appt: any) => handleOpenRescheduleModal(appt)}
         />
       ) : (
-        /* Main Roster Table */
-        <Table
-          data={appointments || []}
-        exportFilename="appointments_list"
-        searchPlaceholder="Search appointments..."
-        loading={loading}
-        toolbarFilters={
-          user.role !== "patient" && (
-            <>
-              <div className="w-full sm:w-48">
-                <DatePicker
-                  size="sm"
-                  variant="outline"
-                  mode="range"
-                  placeholder="Filter Date..."
-                  value={filterDate}
-                  onChange={(val) => setFilterDate(typeof val === "string" ? val : val.target.value)}
-                />
-              </div>
-              {doctors.length > 1 && (
-                <div className="w-full sm:w-40">
-                  <Select
-                    size="sm"
-                    placeholder="All Doctors"
-                    value={filterDoctor}
-                    onChange={(e) => setFilterDoctor(e.target.value)}
-                    options={[{ value: "", label: "All Doctors" }, ...doctors.map(d => ({ value: d.id, label: `Dr. ${(d.name || "").replace(/^dr\.?\s+/i, "")}` }))]}
-                  />
-                </div>
-              )}
-              <div className="w-full sm:w-40">
-                <Select
-                  size="sm"
-                  placeholder="All Statuses"
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  options={[
-                    { value: "", label: "All Statuses" },
-                    { value: "pending", label: "Pending" },
-                    { value: "confirmed", label: "Confirmed" },
-                    { value: "checked-in", label: "Checked-In" },
-                    { value: "in-consultation", label: "In Consultation" },
-                    { value: "completed", label: "Completed" },
-                    { value: "cancelled", label: "Cancelled" },
-                    { value: "no-show", label: "No Show" },
-                  ]}
-                />
-              </div>
-            </>
-          )
-        }
-        columns={[
-          { 
-            key: "tokenNumber", 
-            header: "Token", 
-            width: "70px",
-            sortable: true,
-            filterable: true,
-            render: (row: Appointment) => (
-              <button 
-                onClick={() => handleViewSlip(row)}
-                className="font-bold text-base text-primary-500 hover:text-primary-400 hover:underline cursor-pointer focus:outline-none"
-                title="View Booking Slip"
-              >
-                #{row.tokenNumber}
-              </button>
-            )
-          },
-          { 
-            key: "patientName", 
-            header: "Patient",
-            sortable: true,
-            filterable: true,
-            render: (row: Appointment) => (
-              <div className="flex flex-col">
-                <span className="font-medium text-text">{row.patientId?.userId?.name || "Self"}</span>
-                {row.patientId?.userId?.phone && row.patientId?.userId?.phone !== "-" && (
-                  <span className="text-xs text-text-muted">{row.patientId?.userId?.phone}</span>
-                )}
-              </div>
-            )
-          },
-          { 
-            key: "clinic", 
-            header: "Location", 
-            sortable: true,
-            filterable: true,
-            render: (row: Appointment) => <span>{row.clinicId?.name}</span>
-          },
-          { 
-            key: "doctor", 
-            header: "Doctor", 
-            sortable: true,
-            filterable: true,
-            render: (row: Appointment) => <span>Dr. {(row.doctorId?.name || "Unassigned").replace(/^dr\.?\s+/i, "")}</span>
-          },
-          { 
-            key: "appointmentTime", 
-            header: "Date & Time",
-            sortable: true,
-            render: (row: Appointment) => <span>{formatDateTime(row.appointmentTime)}</span>
-          },
-          { 
-            key: "appointmentType", 
-            header: "Type",
-            sortable: true,
-            filterable: true,
-            render: (row: Appointment) => <span className="capitalize">{row.appointmentType}</span>
-          },
-          { 
-            key: "status", 
-            header: "Status",
-            sortable: true,
-            filterable: true,
-            filterType: "select",
-            filterOptions: [
-              { label: "Pending", value: "pending" },
-              { label: "Confirmed", value: "confirmed" },
-              { label: "Checked-In", value: "checked-in" },
-              { label: "In Consultation", value: "in-consultation" },
-              { label: "Completed", value: "completed" },
-              { label: "Cancelled", value: "cancelled" },
-              { label: "No Show", value: "no-show" },
-            ],
-            render: (row: Appointment) => (
-              <Badge variant={getStatusBadgeVariant(row.status)} className="capitalize">{row.status.replace("-", " ")}</Badge>
-            )
-          },
-          {
-            key: "actions",
-            header: "Actions",
-            align: "right",
-            width: "240px",
-            render: (row: Appointment) => (
-              <div className="flex items-center justify-end gap-1.5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleViewSlip(row)}
-                  className="font-semibold rounded-lg cursor-pointer shrink-0"
-                >
-                  View Slip
-                </Button>
-                <Dropdown
-                  align="right"
-                  trigger={
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 w-8 p-0 flex items-center justify-center rounded-lg border-border hover:bg-surface-hover hover:text-text cursor-pointer transition-colors shrink-0"
-                      title="Row Actions"
+        <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+          <CardContent className="p-0">
+            <Table
+              data={appointments || []}
+              exportFilename="appointments_list"
+              searchPlaceholder="Search by patient, doctor, or token..."
+              loading={loading}
+              toolbarFilters={
+                user.role !== "patient" && (
+                  <>
+                    <div className="w-full sm:w-48">
+                      <DatePicker
+                        size="sm"
+                        variant="outline"
+                        mode="range"
+                        placeholder="Filter Date..."
+                        value={filterDate}
+                        onChange={(val) => setFilterDate(typeof val === "string" ? val : val.target.value)}
+                      />
+                    </div>
+                    {doctors.length > 1 && (
+                      <div className="w-full sm:w-40">
+                        <Select
+                          size="sm"
+                          placeholder="All Doctors"
+                          value={filterDoctor}
+                          onChange={(e) => setFilterDoctor(e.target.value)}
+                          options={[
+                            { value: "", label: "All Doctors" },
+                            ...doctors.map((d) => ({
+                              value: d.id,
+                              label: `Dr. ${(d.name || "").replace(/^dr\.?\s+/i, "")}`,
+                            })),
+                          ]}
+                        />
+                      </div>
+                    )}
+                    <div className="w-full sm:w-36">
+                      <Select
+                        size="sm"
+                        placeholder="All Statuses"
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        options={[
+                          { value: "", label: "All Statuses" },
+                          { value: "pending", label: "Pending" },
+                          { value: "confirmed", label: "Confirmed" },
+                          { value: "checked-in", label: "Checked-In" },
+                          { value: "in-consultation", label: "In Consultation" },
+                          { value: "completed", label: "Completed" },
+                          { value: "cancelled", label: "Cancelled" },
+                          { value: "no-show", label: "No Show" },
+                        ]}
+                      />
+                    </div>
+                  </>
+                )
+              }
+              columns={[
+                {
+                  key: "tokenNumber",
+                  header: "Token",
+                  width: "80px",
+                  sortable: true,
+                  render: (row: Appointment) => (
+                    <button
+                      type="button"
+                      onClick={() => handleViewSlip(row)}
+                      className="font-mono font-bold text-xs sm:text-sm text-primary-600 dark:text-primary-400 hover:underline cursor-pointer focus:outline-none inline-flex items-center gap-1"
+                      title="View Booking Slip"
                     >
-                      <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                      </svg>
-                    </Button>
-                  }
-                  items={[
-                    { label: "View Booking Slip", onClick: () => handleViewSlip(row) },
-                    { label: "View Rx / EHR Summary", onClick: () => handleOpenRecordModal(row) },
-                    ...(row.status !== "completed" && row.status !== "cancelled" ? [{ label: "Reschedule Appointment", onClick: () => handleOpenRescheduleModal(row) }] : []),
-                    ...(user.role === "doctor" && (row.status === "confirmed" || row.status === "checked-in" || row.status === "in-consultation")
-                      ? [{ label: "Open Encounter Workspace", onClick: () => router.push(`/dashboard/consultations/${row.id}`) }]
-                      : []),
-                    ...(row.status === "pending" ? [{ label: "Mark Confirmed", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("confirmed"); } }] : []),
-                    ...(row.status === "confirmed" ? [{ label: "Mark Checked-In", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("checked-in"); } }] : []),
-                    ...(row.status === "checked-in" ? [{ label: "Start Consultation", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("in-consultation"); } }] : []),
-                    ...(row.status === "in-consultation" ? [{ label: "Mark Completed", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("completed"); } }] : []),
-                    ...(row.status !== "completed" && row.status !== "cancelled" ? [{ label: "Cancel Appointment", onClick: () => { setUpdatingStatusId(row.id); setConfirmStatus("cancelled"); } }] : [])
-                  ]}
-                />
-              </div>
-            )
-          }
-        ]}
-        emptyMessage="No appointments scheduled."
-      />
+                      <Ticket className="w-3.5 h-3.5 shrink-0 opacity-70" />
+                      #{row.tokenNumber}
+                    </button>
+                  ),
+                },
+                {
+                  key: "patientName",
+                  header: "Patient",
+                  sortable: true,
+                  render: (row: Appointment) => (
+                    <div className="space-y-0.5 min-w-[140px]">
+                      <span className="font-bold text-text text-xs sm:text-sm">
+                        {row.patientId?.userId?.name || "Self"}
+                      </span>
+                      {row.patientId?.userId?.phone && row.patientId?.userId?.phone !== "-" && (
+                        <span className="text-xs text-text-muted block flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-text-muted shrink-0" />
+                          {row.patientId?.userId?.phone}
+                        </span>
+                      )}
+                    </div>
+                  ),
+                },
+                {
+                  key: "clinic",
+                  header: "Location",
+                  sortable: true,
+                  render: (row: Appointment) => (
+                    <div className="flex items-center gap-1.5 text-xs text-text-secondary min-w-[120px]">
+                      <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                      <span>{row.clinicId?.name || "Clinic"}</span>
+                    </div>
+                  ),
+                },
+                {
+                  key: "doctor",
+                  header: "Doctor",
+                  sortable: true,
+                  render: (row: Appointment) => (
+                    <div className="space-y-0.5 min-w-[140px]">
+                      <div className="flex items-center gap-1 text-xs font-semibold text-text">
+                        <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                        <span>Dr. {(row.doctorId?.name || "Unassigned").replace(/^dr\.?\s+/i, "")}</span>
+                      </div>
+                      <span className="text-[10px] text-text-muted block pl-4.5">
+                        {row.doctorId?.specialization || "General Medicine"}
+                      </span>
+                    </div>
+                  ),
+                },
+                {
+                  key: "appointmentTime",
+                  header: "Date & Time",
+                  sortable: true,
+                  render: (row: Appointment) => (
+                    <div className="flex items-center gap-1.5 text-xs text-text-secondary min-w-[140px]">
+                      <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                      <span>{formatDateTime(row.appointmentTime)}</span>
+                    </div>
+                  ),
+                },
+                {
+                  key: "appointmentType",
+                  header: "Type",
+                  sortable: true,
+                  render: (row: Appointment) => (
+                    <span className="uppercase font-semibold text-[10px] tracking-wider px-1.5 py-0.5 rounded bg-surface-alt border border-border/60 text-text-secondary">
+                      {row.appointmentType}
+                    </span>
+                  ),
+                },
+                {
+                  key: "status",
+                  header: "Status",
+                  sortable: true,
+                  render: (row: Appointment) => (
+                    <Badge
+                      variant={getStatusBadgeVariant(row.status)}
+                      size="sm"
+                      dot
+                      className="capitalize font-semibold text-[10px]"
+                    >
+                      {row.status.replace("-", " ")}
+                    </Badge>
+                  ),
+                },
+                {
+                  key: "actions",
+                  header: "Actions",
+                  align: "right",
+                  width: "180px",
+                  render: (row: Appointment) => (
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        onClick={() => handleViewSlip(row)}
+                        className="font-semibold rounded-lg text-xs shrink-0"
+                      >
+                        <Ticket className="w-3.5 h-3.5 mr-1" />
+                        Slip
+                      </Button>
+                      <Dropdown
+                        align="right"
+                        trigger={
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            className="h-7 w-7 p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text"
+                          >
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </Button>
+                        }
+                        items={[
+                          {
+                            label: "View Booking Slip",
+                            icon: <Ticket className="w-4 h-4 text-text-muted" />,
+                            onClick: () => handleViewSlip(row),
+                          },
+                          {
+                            label: "View Rx / EHR Summary",
+                            icon: <FileText className="w-4 h-4 text-text-muted" />,
+                            onClick: () => handleOpenRecordModal(row),
+                          },
+                          ...(row.status !== "completed" && row.status !== "cancelled"
+                            ? [
+                                {
+                                  label: "Reschedule Appointment",
+                                  icon: <CalendarClock className="w-4 h-4 text-text-muted" />,
+                                  onClick: () => handleOpenRescheduleModal(row),
+                                },
+                              ]
+                            : []),
+                          ...(user.role === "doctor" &&
+                          (row.status === "confirmed" || row.status === "checked-in" || row.status === "in-consultation")
+                            ? [
+                                {
+                                  label: "Open Encounter Workspace",
+                                  icon: <Stethoscope className="w-4 h-4 text-primary-500" />,
+                                  onClick: () => router.push(`/dashboard/consultations/${row.id}`),
+                                },
+                              ]
+                            : []),
+                          ...(row.status === "pending"
+                            ? [
+                                {
+                                  label: "Mark Confirmed",
+                                  icon: <CheckCircle2 className="w-4 h-4 text-primary-500" />,
+                                  onClick: () => {
+                                    setUpdatingStatusId(row.id);
+                                    setConfirmStatus("confirmed");
+                                  },
+                                },
+                              ]
+                            : []),
+                          ...(row.status === "confirmed"
+                            ? [
+                                {
+                                  label: "Mark Checked-In",
+                                  icon: <CheckCircle2 className="w-4 h-4 text-info-500" />,
+                                  onClick: () => {
+                                    setUpdatingStatusId(row.id);
+                                    setConfirmStatus("checked-in");
+                                  },
+                                },
+                              ]
+                            : []),
+                          ...(row.status === "checked-in"
+                            ? [
+                                {
+                                  label: "Start Consultation",
+                                  icon: <Stethoscope className="w-4 h-4 text-emerald-500" />,
+                                  onClick: () => {
+                                    setUpdatingStatusId(row.id);
+                                    setConfirmStatus("in-consultation");
+                                  },
+                                },
+                              ]
+                            : []),
+                          ...(row.status === "in-consultation"
+                            ? [
+                                {
+                                  label: "Mark Completed",
+                                  icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
+                                  onClick: () => {
+                                    setUpdatingStatusId(row.id);
+                                    setConfirmStatus("completed");
+                                  },
+                                },
+                              ]
+                            : []),
+                          ...(row.status !== "completed" && row.status !== "cancelled"
+                            ? [
+                                { divider: true, label: "" },
+                                {
+                                  label: "Cancel Appointment",
+                                  icon: <XCircle className="w-4 h-4 text-danger" />,
+                                  variant: "danger" as any,
+                                  onClick: () => {
+                                    setUpdatingStatusId(row.id);
+                                    setConfirmStatus("cancelled");
+                                  },
+                                },
+                              ]
+                            : []),
+                        ]}
+                      />
+                    </div>
+                  ),
+                },
+              ]}
+              emptyMessage="No clinical appointments found for active filters."
+            />
+          </CardContent>
+        </Card>
       )}
 
       {/* Patient Medical Records & Prescription Downloads */}
       {user.role === "patient" && (
-        <div className="pt-6 border-t border-border">
+        <div className="pt-6 border-t border-border/80">
           <PatientMedicalRecords patientId={user.id} />
         </div>
       )}
 
-      {/* Book Appointment Modal (Multi-step flow) */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          4. BOOK APPOINTMENT MODAL (3-STEP STEPPER WIZARD)
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isBookModalOpen}
         onClose={handleCloseBookModal}
-        title="Schedule Clinic Appointment"
+        title="Schedule Clinical Appointment"
+        description="Book a patient consultation, select practitioner time slot, and reserve queue token."
         size="lg"
       >
-        <div className="space-y-6">
-          {/* Booking Progress Indicator */}
-          <div className="border-b border-border bg-surface-alt/50 p-4 rounded-xl">
-            <Stepper
-              steps={BOOKING_STEPS}
-              currentStep={bookingStep - 1}
-            />
+        <div className="space-y-5">
+          {/* Stepper Progress */}
+          <div className="border border-border/80 bg-surface-alt/50 p-3 rounded-2xl">
+            <Stepper steps={BOOKING_STEPS} currentStep={bookingStep - 1} />
           </div>
 
           {/* STEP 1: Patient Selection */}
           {bookingStep === 1 && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-text">Choose Patient</h3>
+            <div className="space-y-4 animate-fade-in">
+              <h3 className="text-xs font-bold text-text uppercase tracking-wider">Choose or Search Patient</h3>
               <div className="flex gap-2">
-                <Input 
-                  placeholder="Search by patient name, email, or mobile..." 
-                  value={patientSearch}
-                  onChange={(e) => setPatientSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handlePatientSearch()}
-                />
-                <Button onClick={handlePatientSearch} loading={searchLoading}>Search</Button>
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                  <Input
+                    placeholder="Search by patient name, email, or mobile..."
+                    value={patientSearch}
+                    onChange={(e) => setPatientSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handlePatientSearch()}
+                    className="pl-9"
+                  />
+                </div>
+                <Button onClick={handlePatientSearch} loading={searchLoading} className="font-semibold rounded-xl">
+                  Search
+                </Button>
               </div>
 
               {searchResults.length > 0 && (
-                <div className="border border-border rounded-lg overflow-hidden bg-surface max-h-60 overflow-y-auto">
+                <div className="border border-border/80 rounded-2xl overflow-hidden bg-surface max-h-56 overflow-y-auto divide-y divide-border/60">
                   {searchResults.map((pt) => (
-                    <div key={pt.id} className="p-3 border-b border-border hover:bg-surface-hover flex justify-between items-center transition-colors">
+                    <div
+                      key={pt.id}
+                      className="p-3 hover:bg-surface-hover flex justify-between items-center transition-colors gap-2"
+                    >
                       <div>
-                        <p className="font-semibold text-text">{pt.userId?.name}</p>
-                        <p className="text-xs text-text-secondary">{pt.userId?.phone} • {pt.userId?.email}</p>
+                        <p className="font-bold text-text text-xs sm:text-sm">{pt.userId?.name}</p>
+                        <p className="text-xs text-text-muted">
+                          {pt.userId?.phone} &bull; {pt.userId?.email}
+                        </p>
                       </div>
-                      <Button size="xs" onClick={() => handleSelectPatient(pt)}>Select</Button>
+                      <Button size="xs" variant="primary" onClick={() => handleSelectPatient(pt)} className="rounded-lg font-semibold">
+                        Select
+                      </Button>
                     </div>
                   ))}
                 </div>
               )}
 
-              <div className="text-center py-6 border border-dashed border-border rounded-lg bg-surface-alt mt-2">
-                <p className="text-sm text-text-secondary mb-3">Cannot find patient? Register a new patient profile.</p>
-                <Button variant="outline" onClick={handleCreateNewPatient}>Register New Patient</Button>
+              <div className="text-center py-6 border border-dashed border-border/80 rounded-2xl bg-surface-alt/50 space-y-2">
+                <UserPlus className="w-8 h-8 mx-auto text-text-muted" />
+                <p className="text-xs text-text-muted">Cannot find existing record? Register a new patient profile.</p>
+                <Button variant="outline" size="sm" onClick={handleCreateNewPatient} className="rounded-xl font-semibold">
+                  Register New Patient
+                </Button>
               </div>
             </div>
           )}
 
-          {/* STEP 2: Location, Doctor & Clinical Profile (if new patient) */}
+          {/* STEP 2: Location, Doctor & Registration */}
           {bookingStep === 2 && (
-            <div className="space-y-5">
+            <div className="space-y-4 animate-fade-in max-h-[70vh] overflow-y-auto pr-1">
               {isNewPatient && (
-                <div className="space-y-4 border-b border-border pb-5">
-                  <h3 className="text-sm font-bold text-text">Patient Registration</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input 
-                      label="Full Name *" 
-                      value={newPatientForm.name} 
-                      onChange={(e) => handleNewPatientChange("name", e.target.value)} 
+                <div className="space-y-3.5 border-b border-border/60 pb-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-text">Patient Registration</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <Input
+                      label="Full Name *"
+                      placeholder="e.g. Rahul Sharma"
+                      value={newPatientForm.name}
+                      onChange={(e) => handleNewPatientChange("name", e.target.value)}
                       onBlur={() => validateNewPatientField("name", newPatientForm.name)}
                       error={bookingErrors.name}
-                      required 
+                      required
                     />
-                    <DatePicker 
-                      label="Date of Birth *" 
-                      value={newPatientForm.dob} 
+                    <DatePicker
+                      label="Date of Birth *"
+                      value={newPatientForm.dob}
                       maxDate={new Date()}
                       onChange={(val) => {
                         const strVal = typeof val === "string" ? val : val.target.value;
                         handleNewPatientChange("dob", strVal);
                         validateNewPatientField("dob", strVal);
-                      }} 
+                      }}
                       error={bookingErrors.dob}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Select 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <Select
                       label="Gender *"
-                      value={newPatientForm.gender} 
-                      onChange={(e) => handleNewPatientChange("gender", e.target.value)} 
-                      options={[{ value: "male", label: "Male" }, { value: "female", label: "Female" }, { value: "other", label: "Other" }]}
-                      required 
+                      value={newPatientForm.gender}
+                      onChange={(e) => handleNewPatientChange("gender", e.target.value)}
+                      options={[
+                        { value: "male", label: "Male" },
+                        { value: "female", label: "Female" },
+                        { value: "other", label: "Other" },
+                      ]}
+                      required
                     />
-                    <Input 
-                      label="Mobile Phone Number" 
-                      value={newPatientForm.phone} 
-                      onChange={(e) => handleNewPatientChange("phone", e.target.value)} 
+                    <Input
+                      label="Mobile Phone Number"
+                      placeholder="+91 98765 43210"
+                      value={newPatientForm.phone}
+                      onChange={(e) => handleNewPatientChange("phone", e.target.value)}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input 
-                      label="Email Address (Optional)" 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <Input
+                      label="Email Address"
                       type="email"
-                      value={newPatientForm.email} 
-                      onChange={(e) => handleNewPatientChange("email", e.target.value)} 
+                      placeholder="rahul@example.com"
+                      value={newPatientForm.email}
+                      onChange={(e) => handleNewPatientChange("email", e.target.value)}
                     />
-                    <Input 
-                      label="Full Address" 
-                      value={newPatientForm.address} 
-                      onChange={(e) => handleNewPatientChange("address", e.target.value)} 
+                    <Input
+                      label="Address"
+                      placeholder="City, District"
+                      value={newPatientForm.address}
+                      onChange={(e) => handleNewPatientChange("address", e.target.value)}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input 
-                      label="Allergies (comma separated)" 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <Input
+                      label="Allergies (comma separated)"
                       placeholder="e.g. Penicillin, Peanuts"
-                      value={newPatientForm.allergies} 
-                      onChange={(e) => setNewPatientForm({ ...newPatientForm, allergies: e.target.value })} 
+                      value={newPatientForm.allergies}
+                      onChange={(e) => setNewPatientForm({ ...newPatientForm, allergies: e.target.value })}
                     />
-                    <Input 
-                      label="Chronic Conditions (comma separated)" 
-                      placeholder="e.g. Asthma, Hypertension"
-                      value={newPatientForm.conditions} 
-                      onChange={(e) => setNewPatientForm({ ...newPatientForm, conditions: e.target.value })} 
+                    <Input
+                      label="Chronic Conditions (comma separated)"
+                      placeholder="e.g. Hypertension, Diabetes"
+                      value={newPatientForm.conditions}
+                      onChange={(e) => setNewPatientForm({ ...newPatientForm, conditions: e.target.value })}
                     />
                   </div>
                   <Textarea
-                    label="Clinical Medical Notes"
-                    placeholder="Past medical history details..."
+                    label="Medical Notes / Medical History"
+                    placeholder="Relevant clinical background..."
                     value={newPatientForm.medicalNotes}
                     onChange={(e) => setNewPatientForm({ ...newPatientForm, medicalNotes: e.target.value })}
+                    rows={2}
                   />
                 </div>
               )}
 
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold text-text">Select Facility & Practitioner</h3>
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3.5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-text">Facility & Practitioner</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <Select
                     label="Choose Clinic Location *"
                     value={bookingClinicId}
                     onChange={(e) => setBookingClinicId(e.target.value)}
-                    options={[{ value: "", label: "Select clinic..." }, ...clinics.map(c => ({ value: c.id, label: c.name }))]}
+                    options={[{ value: "", label: "Select clinic facility..." }, ...clinics.map((c) => ({ value: c.id, label: c.name }))]}
                     required
                   />
                   <Select
@@ -1059,8 +1337,11 @@ export default function AppointmentsPage() {
                     value={bookingDoctorId}
                     onChange={(e) => setBookingDoctorId(e.target.value)}
                     options={[
-                      { value: "", label: "Select doctor..." },
-                      ...doctorAssignments.map(a => ({ value: a.doctorId?.id || a.doctorId, label: `Dr. ${a.doctorId?.name} (${a.doctorId?.specialization || "General"})` }))
+                      { value: "", label: "Select practitioner..." },
+                      ...doctorAssignments.map((a) => ({
+                        value: a.doctorId?.id || a.doctorId,
+                        label: `Dr. ${a.doctorId?.name} (${a.doctorId?.specialization || "General"})`,
+                      })),
                     ]}
                     disabled={!bookingClinicId}
                     required
@@ -1068,101 +1349,119 @@ export default function AppointmentsPage() {
                 </div>
               </div>
 
-              <div className="flex justify-between border-t border-border pt-4 mt-6">
-                <Button variant="outline" type="button" onClick={() => setBookingStep(1)}>Back</Button>
-                <Button type="button" onClick={handleStep2Next} disabled={!bookingClinicId || !bookingDoctorId}>Next</Button>
+              <div className="flex justify-between border-t border-border/60 pt-3.5 mt-4">
+                <Button variant="outline" type="button" size="sm" onClick={() => setBookingStep(1)}>
+                  <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="primary"
+                  onClick={handleStep2Next}
+                  disabled={!bookingClinicId || !bookingDoctorId}
+                  className="font-semibold rounded-xl shadow-xs"
+                >
+                  Configure Schedule
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                </Button>
               </div>
             </div>
           )}
 
           {/* STEP 3: Live Time Slots & Schedule Picker */}
           {bookingStep === 3 && (
-            <form onSubmit={handleConfirmBooking} className="space-y-4">
-              <h3 className="text-sm font-semibold text-text">Choose Schedule Date & Working Hours Slot</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <DatePicker
-                    label="Select Date *"
-                    mode="date"
-                    value={selectedSlotDate}
-                    onChange={(val) => setSelectedSlotDate(typeof val === "string" ? val : val.target.value)}
-                    fullWidth
-                  />
-                </div>
+            <form onSubmit={handleConfirmBooking} className="space-y-4 animate-fade-in max-h-[70vh] overflow-y-auto pr-1">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-text">Date & Time Slot</h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <DatePicker
+                  label="Select Date *"
+                  mode="date"
+                  value={selectedSlotDate}
+                  onChange={(val) => setSelectedSlotDate(typeof val === "string" ? val : val.target.value)}
+                  fullWidth
+                />
 
                 <Select
-                  label="Appointment Booking Type"
+                  label="Appointment Type"
                   value={bookingType}
                   onChange={(e) => setBookingType(e.target.value as any)}
                   options={[
                     { value: "reception", label: "Reception Booking" },
-                    { value: "walk-in", label: "Walk-In" },
-                    { value: "online", label: "Online Booking" }
+                    { value: "walk-in", label: "Walk-In Consultation" },
+                    { value: "online", label: "Online Telehealth Booking" },
                   ]}
                 />
               </div>
 
               {/* Slot Availability Grid OR Sequential Queue Notice */}
               {doctorBookingMode === "sequential_queue" ? (
-                <div className="p-4 bg-gradient-to-r from-primary-600/10 via-surface to-surface border border-primary-500/30 rounded-xl space-y-2">
+                <div className="p-4 bg-primary-500/[0.04] border border-primary-500/20 rounded-2xl space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-text">🎟 Live Sequential Token Queue</span>
-                    <Badge variant="primary" className="font-bold">Sequential Token Assignment</Badge>
+                    <span className="font-bold text-xs sm:text-sm text-text">Sequential Token Queue</span>
+                    <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                      Auto-Token
+                    </Badge>
                   </div>
-                  <p className="text-xs text-text-secondary">
-                    Practitioner operates in sequential queue mode. Confirming booking will automatically issue Token <strong className="text-primary-600 font-black">#{nextTokenNum || (tokensTodayCount + 1)}</strong> for today.
-                  </p>
-                  <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                    Estimated Turn Time: <strong className="font-bold text-text">~{Math.max(0, (nextTokenNum ? nextTokenNum - 1 : tokensTodayCount) * 15)} mins</strong> (based on ~15 mins avg / patient)
+                  <p className="text-xs text-text-secondary leading-relaxed">
+                    Practitioner operates in sequential queue mode. Confirming will issue Token{" "}
+                    <strong className="text-primary-600 dark:text-primary-400 font-bold">
+                      #{nextTokenNum || tokensTodayCount + 1}
+                    </strong>{" "}
+                    for today.
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2 border-t border-border pt-3">
+                <div className="space-y-2 border-t border-border/60 pt-3">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-text">Available Doctor Slots for {selectedSlotDate}</span>
-                    {fetchingSlots && <span className="text-text-muted text-[11px]">Calculating slots...</span>}
+                    <span className="font-bold text-text">Available Time Slots for {selectedSlotDate}</span>
+                    {fetchingSlots && <span className="text-text-muted text-[11px]">Calculating...</span>}
                   </div>
 
                   {fetchingSlots ? (
-                    <div className="py-4 text-center"><Spinner size="sm" label="Fetching time slots..." /></div>
+                    <div className="py-4 text-center">
+                      <Spinner size="sm" label="Fetching time slots..." />
+                    </div>
                   ) : availableSlots.length === 0 ? (
-                    <div className="p-3 bg-amber-50/50 dark:bg-amber-900/10 border border-amber-200 rounded-lg text-xs text-amber-800 dark:text-amber-300">
-                      No 15-min open slots for this date. You may specify custom time below or pick another date.
+                    <div className="p-3 bg-amber-500/[0.06] border border-amber-500/20 rounded-xl text-xs text-amber-700 dark:text-amber-300">
+                      No 15-min open slots for this date. You may specify a custom time below or choose another date.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-40 overflow-y-auto p-1">
-                      {availableSlots.filter(s => s.available).map((slot) => {
-                        const fullSlotISO = `${selectedSlotDate}T${slot.time}:00`;
-                        const isSelected = bookingTime === fullSlotISO;
-                        const isHeldByOther = slot.lockedByOther;
-                        const isMyLock = lockedSlotTime === fullSlotISO && currentLockId;
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-36 overflow-y-auto p-1">
+                      {availableSlots
+                        .filter((s) => s.available)
+                        .map((slot) => {
+                          const fullSlotISO = `${selectedSlotDate}T${slot.time}:00`;
+                          const isSelected = bookingTime === fullSlotISO;
+                          const isHeldByOther = slot.lockedByOther;
+                          const isMyLock = lockedSlotTime === fullSlotISO && currentLockId;
 
-                        return (
-                          <button
-                            key={slot.time}
-                            type="button"
-                            disabled={!!isHeldByOther || lockingSlot}
-                            onClick={() => handleSlotClick(slot)}
-                            className={`px-2 py-1.5 text-xs font-bold rounded-lg border transition-all relative ${
-                              isSelected
-                                ? "bg-primary-600 text-white border-primary-600 shadow-sm"
-                                : isHeldByOther
-                                  ? "bg-amber-50 dark:bg-amber-900/20 text-amber-500 border-amber-300 cursor-not-allowed opacity-70"
-                                  : "bg-surface hover:bg-primary-50 text-text border-border"
-                            }`}
-                            title={isHeldByOther ? "This slot is being held by another user" : slot.time}
-                          >
-                            {slot.time}
-                            {isHeldByOther && (
-                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 border border-white dark:border-gray-800" title="Held by another user" />
-                            )}
-                            {isMyLock && (
-                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-400 border border-white dark:border-gray-800" title="Reserved by you" />
-                            )}
-                          </button>
-                        );
-                      })}
+                          return (
+                            <button
+                              key={slot.time}
+                              type="button"
+                              disabled={!!isHeldByOther || lockingSlot}
+                              onClick={() => handleSlotClick(slot)}
+                              className={cn(
+                                "px-2 py-1.5 text-xs font-bold rounded-xl border transition-all relative select-none cursor-pointer",
+                                isSelected
+                                  ? "bg-primary-500 text-white border-primary-500 shadow-xs"
+                                  : isHeldByOther
+                                  ? "bg-amber-500/10 text-amber-500 border-amber-300 cursor-not-allowed opacity-60"
+                                  : "bg-surface hover:bg-surface-hover text-text border-border"
+                              )}
+                            >
+                              {slot.time}
+                              {isHeldByOther && (
+                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400" />
+                              )}
+                              {isMyLock && (
+                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400" />
+                              )}
+                            </button>
+                          );
+                        })}
                     </div>
                   )}
 
@@ -1178,33 +1477,46 @@ export default function AppointmentsPage() {
                 </div>
               )}
 
-              <Textarea 
-                label="Appointment Notes" 
-                placeholder="Reason for visit, symptoms..." 
+              <Textarea
+                label="Appointment Notes"
+                placeholder="Reason for visit, presenting symptoms..."
                 value={bookingNotes}
                 onChange={(e) => setBookingNotes(e.target.value)}
+                rows={2}
               />
 
-              <div className="p-4 bg-surface-alt border border-border rounded-lg space-y-2">
-                <h4 className="text-sm font-semibold text-text">Booking Summary Confirmation</h4>
-                <p className="text-xs text-text-secondary">
-                  <strong>Patient:</strong> {isNewPatient ? newPatientForm.name : selectedPatient?.userId?.name} <br />
-                  <strong>Location:</strong> {clinics.find(c => c.id === bookingClinicId)?.name} <br />
-                  <strong>Doctor:</strong> Dr. {doctors.find(d => d.id === bookingDoctorId)?.name} <br />
-                  <strong>Type:</strong> <span className="capitalize">{bookingType}</span>
+              <div className="p-3.5 bg-surface-alt border border-border/80 rounded-2xl space-y-1 text-xs">
+                <h4 className="font-bold text-text">Booking Summary Confirmation</h4>
+                <p className="text-text-muted">
+                  <strong>Patient:</strong> {isNewPatient ? newPatientForm.name : selectedPatient?.userId?.name} &bull;{" "}
+                  <strong>Doctor:</strong> Dr. {doctors.find((d) => d.id === bookingDoctorId)?.name} &bull;{" "}
+                  <strong>Location:</strong> {clinics.find((c) => c.id === bookingClinicId)?.name}
                 </p>
               </div>
 
-              <div className="flex justify-between border-t border-border pt-4 mt-6">
-                <Button variant="outline" type="button" onClick={() => setBookingStep(2)}>Back</Button>
-                <Button type="submit" loading={submitting}>Book Appointment</Button>
+              <div className="flex justify-between border-t border-border/60 pt-3.5 mt-4">
+                <Button variant="outline" type="button" size="sm" onClick={() => setBookingStep(2)}>
+                  <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                  Back
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="primary"
+                  loading={submitting}
+                  className="font-semibold rounded-xl shadow-xs"
+                >
+                  Confirm & Schedule
+                </Button>
               </div>
             </form>
           )}
         </div>
       </Modal>
 
-      {/* Confirm Status Change dialog */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          5. CONFIRM STATUS CHANGE DIALOG
+         ────────────────────────────────────────────────────────────────────────── */}
       <ConfirmDialog
         open={!!updatingStatusId && !!confirmStatus}
         onClose={() => {
@@ -1218,7 +1530,9 @@ export default function AppointmentsPage() {
         confirmLabel="Update Status"
       />
 
-      {/* Appointment Ticket Slip Modal */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          6. APPOINTMENT TOKEN SLIP MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={ticketModalOpen}
         onClose={() => setTicketModalOpen(false)}
@@ -1226,43 +1540,47 @@ export default function AppointmentsPage() {
         size="sm"
       >
         {createdTicket && (
-          <div className="space-y-6 py-2">
-            <div className="border border-border rounded-xl p-5 bg-surface-alt relative overflow-hidden shadow-sm">
-              <div className="text-center border-b border-border/80 border-dashed pb-4 mb-4">
-                <span className="text-[10px] font-extrabold text-primary-600 tracking-wider uppercase block">JK Healthcare System</span>
+          <div className="space-y-4 py-1">
+            <div className="border border-border/80 rounded-2xl p-4 sm:p-5 bg-surface-alt relative overflow-hidden shadow-xs space-y-3">
+              <div className="text-center border-b border-border/60 border-dashed pb-3">
+                <span className="text-[10px] font-bold text-primary-600 dark:text-primary-400 tracking-wider uppercase block">
+                  Healthcare System
+                </span>
                 <h3 className="text-base font-bold text-text mt-0.5">{createdTicket.clinicName}</h3>
                 <p className="text-[10px] text-text-muted mt-0.5">{createdTicket.clinicAddress}</p>
               </div>
 
-              <div className="text-center my-4">
-                <span className="text-[10px] text-text-muted uppercase tracking-wider block font-semibold">Queue Token Number</span>
-                <div className="text-4xl font-extrabold text-primary-600 tracking-tight my-1">#{createdTicket.tokenNumber}</div>
-                <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border mt-1 capitalize ${
-                  createdTicket.status === "completed" 
-                    ? "bg-success-50 text-success-700 border-success-200" 
-                    : createdTicket.status === "cancelled" 
-                    ? "bg-danger-50 text-danger-700 border-danger-200" 
-                    : "bg-primary-50 text-primary-700 border-primary-200"
-                }`}>
-                  ✓ {createdTicket.status.replace("-", " ")}
+              <div className="text-center my-2">
+                <span className="text-[10px] text-text-muted uppercase tracking-wider block font-semibold">
+                  Queue Token Number
                 </span>
+                <div className="text-4xl font-black text-primary-600 dark:text-primary-400 tracking-tight my-1">
+                  #{createdTicket.tokenNumber}
+                </div>
+                <Badge
+                  variant={getStatusBadgeVariant(createdTicket.status)}
+                  size="sm"
+                  className="capitalize font-bold text-[10px]"
+                >
+                  {createdTicket.status.replace("-", " ")}
+                </Badge>
               </div>
 
-              <div className="space-y-2 text-xs text-text-secondary border-t border-border/40 pt-4">
+              <div className="space-y-2 text-xs text-text-secondary border-t border-border/60 pt-3">
                 <div className="flex justify-between">
-                  <span className="text-text-muted">Patient Name:</span>
+                  <span className="text-text-muted">Patient:</span>
                   <span className="font-semibold text-text">{createdTicket.patientName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-muted">Specialist Doctor:</span>
+                  <span className="text-text-muted">Practitioner:</span>
                   <span className="font-semibold text-text">Dr. {createdTicket.doctorName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-muted">Specialization:</span>
+                  <span className="text-text-muted">Specialty:</span>
                   <span className="font-semibold text-text">{createdTicket.doctorSpecialty}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-muted">Schedule Slot:</span>
+                  <span className="text-text-muted">Scheduled Slot:</span>
                   <span className="font-semibold text-text">
                     {formatDateTime(createdTicket.appointmentTime)}
                   </span>
@@ -1270,27 +1588,40 @@ export default function AppointmentsPage() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2 pt-2">
-              <Button variant="outline" className="w-full text-center" onClick={() => handlePrintSlip(createdTicket)}>
-                Print Token Slip
+            <div className="flex gap-2 pt-2 border-t border-border/60">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full font-semibold rounded-xl"
+                onClick={() => handlePrintSlip(createdTicket)}
+              >
+                <Printer className="w-3.5 h-3.5 mr-1.5" />
+                Print Slip
               </Button>
-              <Button variant="primary" className="w-full text-center" onClick={() => setTicketModalOpen(false)}>
-                Close
+              <Button
+                variant="primary"
+                size="sm"
+                className="w-full font-semibold rounded-xl shadow-xs"
+                onClick={() => setTicketModalOpen(false)}
+              >
+                Done
               </Button>
             </div>
           </div>
         )}
       </Modal>
 
-      {/* Leave Review Modal */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          7. DOCTOR REVIEW MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={reviewModalOpen}
         onClose={() => setReviewModalOpen(false)}
         title={`Review Dr. ${reviewDoctorName}`}
         size="sm"
       >
-        <form onSubmit={handleSubmitReview} className="space-y-4">
-          <p className="text-xs text-text-secondary leading-relaxed">
+        <form onSubmit={handleSubmitReview} className="space-y-4 pt-1">
+          <p className="text-xs text-text-muted leading-relaxed">
             How was your clinical consultation experience with Dr. {reviewDoctorName}? Please select a star rating.
           </p>
 
@@ -1300,99 +1631,120 @@ export default function AppointmentsPage() {
                 key={star}
                 type="button"
                 onClick={() => setRatingValue(star)}
-                className="focus:outline-none text-2xl cursor-pointer transition-transform duration-100 hover:scale-110"
+                className="focus:outline-none text-2xl cursor-pointer transition-transform hover:scale-110"
               >
-                <span className={star <= ratingValue ? "text-warning-500" : "text-text-muted"}>★</span>
+                <span className={star <= ratingValue ? "text-amber-400" : "text-border"}>★</span>
               </button>
             ))}
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
-            <Button variant="outline" type="button" onClick={() => setReviewModalOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={reviewSubmitting}>
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
+            <Button variant="outline" size="sm" type="button" onClick={() => setReviewModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" variant="primary" loading={reviewSubmitting} className="font-semibold rounded-xl shadow-xs">
               Submit Review
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* EHR Summary Record Modal */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          8. EHR RECORD & PRESCRIPTION PRINT MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={recordModalOpen}
-        onClose={() => { setRecordModalOpen(false); setActiveRecord(null); }}
+        onClose={() => {
+          setRecordModalOpen(false);
+          setActiveRecord(null);
+        }}
         title="Clinical Consultation Record"
         size="xl"
       >
         {activeRecord && (
-          <div className="space-y-6 py-2">
-            <div id="printable-prescription" className="border border-border/80 rounded-xl p-6 bg-surface-alt text-text space-y-5 shadow-sm relative overflow-hidden">
-              <div className="border-b border-border/80 pb-4 flex justify-between items-start">
+          <div className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
+            <div
+              id="printable-prescription"
+              className="border border-border/80 rounded-2xl p-5 sm:p-6 bg-surface-alt text-text space-y-4 shadow-xs"
+            >
+              <div className="border-b border-border/60 pb-3 flex justify-between items-start">
                 <div>
-                  <h1 className="text-xl font-extrabold text-primary-500 uppercase tracking-wider">{activeRecord.clinicId?.name || "MedLife Specialist Clinic"}</h1>
-                  <p className="text-xs text-text-muted mt-1">{[activeRecord.clinicId?.address, activeRecord.clinicId?.city].filter(Boolean).join(", ") || "Main HealthOS Campus"}</p>
+                  <h2 className="text-base sm:text-lg font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wide">
+                    {activeRecord.clinicId?.name || "Healthcare Facility"}
+                  </h2>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    {[activeRecord.clinicId?.address, activeRecord.clinicId?.city].filter(Boolean).join(", ") ||
+                      "Main Facility Campus"}
+                  </p>
                 </div>
-                <div className="text-right">
-                  <Badge variant="primary" className="text-xs font-bold px-3 py-1">Token #{activeRecord.tokenNumber || "1"}</Badge>
-                </div>
+                <Badge variant="primary" size="sm" className="font-bold">
+                  Token #{activeRecord.tokenNumber || "1"}
+                </Badge>
               </div>
 
               {/* Consultation Summary Metas */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs bg-surface/80 border border-border/60 p-4 rounded-xl rx-meta-box">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-surface border border-border/60 p-3.5 rounded-xl">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Patient Name</span>
-                  <span className="font-semibold text-text text-sm">{activeRecord.patientId?.userId?.name || "Patient"}</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Patient</span>
+                  <span className="font-bold text-text">{activeRecord.patientId?.userId?.name || "Patient"}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Attending Doctor</span>
-                  <span className="font-semibold text-text text-sm">
-                    {`Dr. ${(activeRecord.doctorId?.name || "Practitioner").replace(/^dr\.?\s+/i, "")}`} ({activeRecord.doctorId?.specialization || "General Medicine"})
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Practitioner</span>
+                  <span className="font-bold text-text">
+                    Dr. {(activeRecord.doctorId?.name || "Doctor").replace(/^dr\.?\s+/i, "")}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Consultation Date</span>
-                  <span className="font-semibold text-text">{new Date(activeRecord.appointmentTime).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Date</span>
+                  <span className="font-medium text-text">
+                    {new Date(activeRecord.appointmentTime).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-muted block">Medical Record Status</span>
-                  <span className="font-semibold text-success-500">Verified EHR Record</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">EHR Status</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">Verified Record</span>
                 </div>
               </div>
 
-              {/* Chief Complaints / Symptoms */}
+              {/* Symptoms */}
               <div className="space-y-1">
-                <span className="text-[10px] uppercase tracking-wider font-extrabold text-text-muted block border-b border-border/40 pb-1">Chief Complaints / Symptoms</span>
-                <p className="text-sm text-text-secondary pt-1 font-medium">
-                  {activeRecord.symptoms || "No symptoms recorded."}
-                </p>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-text-muted block border-b border-border/60 pb-1">
+                  Chief Complaints / Presenting Symptoms
+                </span>
+                <p className="text-xs text-text-secondary pt-0.5">{activeRecord.symptoms || "No symptoms recorded."}</p>
               </div>
 
-              {/* Clinical Diagnosis */}
+              {/* Diagnosis */}
               <div className="space-y-1">
-                <span className="text-[10px] uppercase tracking-wider font-extrabold text-text-muted block border-b border-border/40 pb-1">Diagnosis & Clinical Assessment</span>
-                <p className="text-sm text-text font-bold">
-                  {activeRecord.diagnosis || "No diagnosis recorded."}
-                </p>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-text-muted block border-b border-border/60 pb-1">
+                  Diagnosis & Clinical Assessment
+                </span>
+                <p className="text-xs text-text font-bold pt-0.5">{activeRecord.diagnosis || "No diagnosis recorded."}</p>
               </div>
 
-              {/* Prescriptions Table */}
+              {/* Prescriptions */}
               <div className="space-y-2">
-                <div className="text-2xl font-serif font-black italic text-primary-500">Rx</div>
+                <div className="text-xl font-serif font-black italic text-primary-600 dark:text-primary-400">Rx</div>
                 {activeRecord.prescriptions && activeRecord.prescriptions.length > 0 ? (
                   <div className="border border-border/60 rounded-xl overflow-hidden bg-surface">
                     <table className="w-full text-xs text-left border-collapse">
                       <thead>
-                        <tr className="bg-surface-alt border-b border-border/60 text-text font-bold uppercase">
-                          <th className="p-3">Medicine Name</th>
-                          <th className="p-3">Dosage / Instructions</th>
-                          <th className="p-3">Duration</th>
+                        <tr className="bg-surface-alt border-b border-border/60 text-text font-bold uppercase text-[10px]">
+                          <th className="p-2.5">Medication Name</th>
+                          <th className="p-2.5">Dosage / Instructions</th>
+                          <th className="p-2.5">Duration</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/40 text-text-secondary">
                         {activeRecord.prescriptions.map((med: any, idx: number) => (
-                          <tr key={idx} className="hover:bg-surface-hover/30">
-                            <td className="p-3 font-bold text-text">{med.name}</td>
-                            <td className="p-3">{med.dosage}</td>
-                            <td className="p-3">{med.duration}</td>
+                          <tr key={idx}>
+                            <td className="p-2.5 font-bold text-text">{med.name}</td>
+                            <td className="p-2.5">{med.dosage}</td>
+                            <td className="p-2.5">{med.duration}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1402,58 +1754,54 @@ export default function AppointmentsPage() {
                   <p className="text-xs italic text-text-muted">No medications prescribed.</p>
                 )}
               </div>
-
-              {/* Follow-up Note */}
-              {activeRecord.followUpRecommended && (
-                <div className="pt-2 space-y-1 text-xs">
-                  <span className="text-[10px] uppercase tracking-wider font-extrabold text-text-muted block border-b border-border/40 pb-1">Follow-up Plan</span>
-                  <p className="font-semibold text-text">Recommended follow-up within {activeRecord.followUpTimeline}</p>
-                  {activeRecord.followUpNotes && (
-                    <p className="text-text-secondary italic">&ldquo;{activeRecord.followUpNotes}&rdquo;</p>
-                  )}
-                </div>
-              )}
-
-              {/* Signature Line */}
-              <div className="pt-8 flex justify-end">
-                <div className="border-t border-border/80 pt-2 text-center w-56">
-                  <div className="font-bold text-xs text-text">{`Dr. ${(activeRecord.doctorId?.name || "Practitioner").replace(/^dr\.?\s+/i, "")}`}</div>
-                  <div className="text-[10px] text-text-muted">Authorized Signatory</div>
-                </div>
-              </div>
-
-              <div className="border-t border-border/40 pt-3 text-center text-[10px] text-text-muted">
-                Official Electronic Medical Prescription • Generated by MedLife HealthOS EMR
-              </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="outline" onClick={() => { setRecordModalOpen(false); setActiveRecord(null); }}>
+            <div className="flex justify-end gap-2.5 pt-2 border-t border-border/60">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setRecordModalOpen(false);
+                  setActiveRecord(null);
+                }}
+              >
                 Close
               </Button>
-              <Button 
+              <Button
                 variant="primary"
+                size="sm"
+                className="font-semibold rounded-xl shadow-xs"
                 onClick={() => {
                   if (!activeRecord) return;
-                  
-                  const clinicName = activeRecord.clinicId?.name || "MedLife Specialist Clinic";
-                  const clinicAddress = [activeRecord.clinicId?.address, activeRecord.clinicId?.city].filter(Boolean).join(", ") || "Main HealthOS Campus";
+
+                  const clinicName = activeRecord.clinicId?.name || "Healthcare Facility";
+                  const clinicAddress =
+                    [activeRecord.clinicId?.address, activeRecord.clinicId?.city].filter(Boolean).join(", ") ||
+                    "Main Facility Campus";
                   const patientName = activeRecord.patientId?.userId?.name || "Patient";
                   const rawDoctorName = activeRecord.doctorId?.name || "Practitioner";
                   const cleanDoctorName = rawDoctorName.replace(/^dr\.?\s+/i, "");
                   const doctorFormatted = `Dr. ${cleanDoctorName}`;
                   const doctorSpec = activeRecord.doctorId?.specialization || "General Medicine";
-                  const apptDate = new Date(activeRecord.appointmentTime).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+                  const apptDate = new Date(activeRecord.appointmentTime).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  });
                   const tokenNo = activeRecord.tokenNumber || "1";
                   const symptoms = activeRecord.symptoms || "No symptoms recorded.";
                   const diagnosis = activeRecord.diagnosis || "No diagnosis recorded.";
-                  const rxItems = (activeRecord.prescriptions || []).map((m: any) => `
+                  const rxItems = (activeRecord.prescriptions || [])
+                    .map(
+                      (m: any) => `
                     <tr>
                       <td style="padding: 8px 12px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #e2e8f0;">${m.name}</td>
                       <td style="padding: 8px 12px; color: #334155; border-bottom: 1px solid #e2e8f0;">${m.dosage}</td>
                       <td style="padding: 8px 12px; color: #334155; border-bottom: 1px solid #e2e8f0;">${m.duration}</td>
                     </tr>
-                  `).join("");
+                  `
+                    )
+                    .join("");
 
                   const printFrame = document.createElement("iframe");
                   printFrame.style.position = "fixed";
@@ -1481,7 +1829,7 @@ export default function AppointmentsPage() {
                           .clinic-title { font-size: 20px; font-weight: 800; color: #0f766e; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
                           .clinic-sub { font-size: 11px; color: #6b7280; margin-top: 3px; }
                           .token-badge { background: #0f766e; color: #ffffff; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 12px; display: inline-block; }
-                          .meta-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 18px; display: grid; grid-template-cols: 1fr 1fr; gap: 10px; font-size: 12px; }
+                          .meta-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; }
                           .meta-label { font-weight: 600; color: #64748b; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
                           .meta-value { font-weight: 700; color: #0f172a; margin-top: 1px; }
                           .rx-header { font-size: 28px; font-weight: 900; color: #0f766e; font-style: italic; margin-bottom: 6px; font-family: Georgia, serif; }
@@ -1531,7 +1879,9 @@ export default function AppointmentsPage() {
                         <div class="section-body"><strong>${diagnosis}</strong></div>
 
                         <div class="rx-header">Rx</div>
-                        ${rxItems.length > 0 ? `
+                        ${
+                          rxItems.length > 0
+                            ? `
                           <table>
                             <thead>
                               <tr>
@@ -1544,15 +1894,9 @@ export default function AppointmentsPage() {
                               ${rxItems}
                             </tbody>
                           </table>
-                        ` : `<p style="font-size: 12px; color: #64748b; font-style: italic;">No medications prescribed.</p>`}
-
-                        ${activeRecord.followUpRecommended ? `
-                          <div class="section-title" style="margin-top: 16px;">Follow-up Plan</div>
-                          <div class="section-body">
-                            Recommended follow-up within <strong>${activeRecord.followUpTimeline || "1 week"}</strong>.<br/>
-                            ${activeRecord.followUpNotes ? `Instructions: <em>"${activeRecord.followUpNotes}"</em>` : ""}
-                          </div>
-                        ` : ""}
+                        `
+                            : `<p style="font-size: 12px; color: #64748b; font-style: italic;">No medications prescribed.</p>`
+                        }
 
                         <div class="signature-box">
                           <div class="sig-line">
@@ -1562,7 +1906,7 @@ export default function AppointmentsPage() {
                         </div>
 
                         <div class="footer-bar">
-                          Official Electronic Medical Prescription • Generated by MedLife HealthOS EMR
+                          Official Electronic Medical Prescription &bull; HealthOS EMR
                         </div>
                       </body>
                     </html>
@@ -1580,6 +1924,7 @@ export default function AppointmentsPage() {
                   }, 250);
                 }}
               >
+                <Printer className="w-3.5 h-3.5 mr-1.5" />
                 Print Prescription Slip
               </Button>
             </div>
@@ -1587,18 +1932,23 @@ export default function AppointmentsPage() {
         )}
       </Modal>
 
-      {/* Reschedule Appointment Modal */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          9. RESCHEDULE APPOINTMENT MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={!!rescheduleTargetAppt}
         onClose={() => setRescheduleTargetAppt(null)}
         title={`Reschedule Appointment #${rescheduleTargetAppt?.tokenNumber || ""}`}
         size="md"
       >
-        <form onSubmit={handleRescheduleSubmit} className="space-y-4">
-          <div className="p-3 bg-surface-alt rounded-lg border border-border text-xs">
+        <form onSubmit={handleRescheduleSubmit} className="space-y-4 pt-1">
+          <div className="p-3.5 bg-surface-alt rounded-2xl border border-border/80 text-xs space-y-1">
             <p className="font-bold text-text">Patient: {rescheduleTargetAppt?.patientId?.userId?.name}</p>
-            <p className="text-text-secondary">Doctor: Dr. {rescheduleTargetAppt?.doctorId?.name}</p>
-            <p className="text-text-secondary">Current Time: {rescheduleTargetAppt?.appointmentTime ? new Date(rescheduleTargetAppt.appointmentTime).toLocaleString() : ""}</p>
+            <p className="text-text-muted">Doctor: Dr. {rescheduleTargetAppt?.doctorId?.name}</p>
+            <p className="text-text-muted">
+              Current Time:{" "}
+              {rescheduleTargetAppt?.appointmentTime ? new Date(rescheduleTargetAppt.appointmentTime).toLocaleString() : ""}
+            </p>
           </div>
 
           <DatePicker
@@ -1611,16 +1961,17 @@ export default function AppointmentsPage() {
 
           <Textarea
             label="Reason for Rescheduling (Optional)"
-            placeholder="Patient request, practitioner unavailability..."
+            placeholder="e.g. Patient requested time change, practitioner schedule adjustment..."
             value={rescheduleReason}
             onChange={(e) => setRescheduleReason(e.target.value)}
+            rows={2}
           />
 
-          <div className="flex justify-between border-t border-border pt-4 mt-4">
-            <Button variant="outline" type="button" onClick={() => setRescheduleTargetAppt(null)}>
+          <div className="flex justify-between border-t border-border/60 pt-3.5">
+            <Button variant="outline" type="button" size="sm" onClick={() => setRescheduleTargetAppt(null)}>
               Cancel
             </Button>
-            <Button type="submit" loading={submittingReschedule}>
+            <Button type="submit" size="sm" variant="primary" loading={submittingReschedule} className="font-semibold rounded-xl shadow-xs">
               Confirm Reschedule
             </Button>
           </div>

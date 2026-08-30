@@ -13,7 +13,6 @@ export interface SaaSPlan {
   displayOrder: number;
   isPopular: boolean;
   limits: {
-    maxHospitals: number;
     maxClinics: number;
     maxDoctors: number;
     maxStaff: number;
@@ -45,7 +44,6 @@ export interface SubscriptionInfo {
 
 export interface UsageInfo {
   usage: {
-    hospitalsCount: number;
     clinicsCount: number;
     doctorsCount: number;
     staffCount: number;

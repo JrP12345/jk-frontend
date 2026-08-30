@@ -1,6 +1,7 @@
 "use client";
 
-import { Badge } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
+import { Search } from "lucide-react";
 
 export interface PatientHeaderData {
   id: string;
@@ -58,32 +59,34 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
 
         {/* Clinical Allergies & Diagnoses Indicators */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="text-xs flex items-center gap-1.5 bg-surface-hover px-2.5 py-1 rounded-lg border border-border">
+          <div className="text-xs flex items-center gap-1.5 bg-surface-alt px-2.5 py-1 rounded-xl border border-border/80">
             <span className="font-semibold text-text-secondary">Allergies:</span>
             {allergies.map((a, i) => (
-              <span key={i} className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${a.includes("NKDA") ? "bg-success-500/10 text-success-700" : "bg-error-500/10 text-error-700"}`}>
+              <Badge key={i} variant={a.includes("NKDA") ? "success" : "danger"} size="sm">
                 {a}
-              </span>
+              </Badge>
             ))}
           </div>
 
-          <div className="text-xs flex items-center gap-1.5 bg-surface-hover px-2.5 py-1 rounded-lg border border-border">
+          <div className="text-xs flex items-center gap-1.5 bg-surface-alt px-2.5 py-1 rounded-xl border border-border/80">
             <span className="font-semibold text-text-secondary">Diagnoses:</span>
             {conditions.slice(0, 2).map((c, i) => (
-              <span key={i} className="bg-primary-500/10 text-primary-700 px-1.5 py-0.5 rounded text-[11px] font-medium">
+              <Badge key={i} variant="primary" size="sm">
                 {c}
-              </span>
+              </Badge>
             ))}
           </div>
 
           {onOpenSearch && (
-            <button
-              type="button"
+            <Button
+              size="xs"
+              variant="primary"
               onClick={onOpenSearch}
-              className="px-3 py-1 bg-primary-600 text-white rounded-lg text-xs font-medium hover:bg-primary-700 transition-colors shadow-sm"
+              className="rounded-xl font-bold text-xs shadow-xs"
             >
-              Search (Cmd+K)
-            </button>
+              <Search className="w-3.5 h-3.5 mr-1" />
+              <span>Search (Cmd+K)</span>
+            </Button>
           )}
         </div>
       </div>

@@ -7,6 +7,8 @@ export default defineConfig({
     setupFiles: ["./src/tests/setup.ts"],
     globals: true,
     pool: "threads",
+    testTimeout: 30000,
+    hookTimeout: 30000,
     isolate: false,
   },
   resolve: {

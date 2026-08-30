@@ -343,7 +343,7 @@ const Select = memo(
                   zIndex: 99999,
                 }}
                 className={cn(
-                  "flex flex-col rounded-2xl border border-border/80 bg-surface/95 shadow-2xl shadow-black/30 overflow-hidden backdrop-blur-xl ring-1 ring-white/10 select-none transform-gpu",
+                  "flex flex-col rounded-2xl border border-border/80 bg-surface/98 shadow-xl overflow-hidden backdrop-blur-xl ring-1 ring-border/50 select-none transform-gpu",
                   isExiting ? "animate-popover-out" : "animate-popover-in"
                 )}
               >

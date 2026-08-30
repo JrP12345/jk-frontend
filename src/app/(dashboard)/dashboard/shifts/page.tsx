@@ -235,53 +235,77 @@ export default function NursingShiftRosterPage() {
   };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text">
-            Nursing Shift Roster & Staff Scheduling Desk
-          </h1>
-          <p className="text-sm text-text-secondary mt-1">
-            Ward staffing coverage, clinical handover notes, nurse-to-patient ratios & shift check-ins
-          </p>
-        </div>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Staff Shifts & Duty Rostering
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Staff Duty Roster
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Ward staffing coverage, clinical handover notes, nurse-to-patient ratios & shift check-ins.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={fetchShifts} size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" /> Refresh
-          </Button>
-          <Button variant="primary" onClick={() => setIsAssignModalOpen(true)} size="sm">
-            <Plus className="w-4 h-4 mr-2" /> Assign Shift Roster
-          </Button>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchShifts}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
+              Refresh
+            </Button>
+
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsAssignModalOpen(true)}
+              className="font-semibold rounded-xl shadow-xs"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Assign Shift Roster
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* KPI Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. KPI STATS CARDS GRID
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Scheduled Staff"
-          value={metrics.totalScheduled}
-          icon={<Users className="w-5 h-5" />}
+          label="Scheduled Staff"
+          value={metrics.totalScheduled.toString()}
           description="Active Roster Shifts"
+          icon={<Users className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
-          title="Checked-In On Duty"
-          value={metrics.checkedInCount}
-          icon={<UserCheck className="w-5 h-5 text-success-500" />}
+          label="Checked-In On Duty"
+          value={metrics.checkedInCount.toString()}
           description="Verified On-Site"
+          icon={<UserCheck className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
-          title="Nurse-to-Patient Ratio"
+          label="Nurse-to-Patient Ratio"
           value={metrics.nurseToPatientRatio}
-          icon={<Stethoscope className="w-5 h-5 text-primary-500" />}
           description="Target Safe Care Standard"
+          icon={<Stethoscope className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
-          title="Total Assigned Patients"
-          value={metrics.totalPatientsAssigned}
-          icon={<Activity className="w-5 h-5 text-warning-500" />}
-          description="Ward Active Beds"
+          label="Inpatients Assigned"
+          value={metrics.totalPatientsAssigned.toString()}
+          description="Across Ward Beds"
+          icon={<Building2 className="w-5 h-5 text-text-secondary" />}
         />
       </div>
 

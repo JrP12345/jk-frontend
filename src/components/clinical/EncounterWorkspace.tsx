@@ -6,18 +6,14 @@ import { PatientHeader, PatientHeaderData } from "./PatientHeader";
 import { PatientSearchModal } from "./PatientSearchModal";
 import { LabStatusBadge, LabOrderStatus } from "./LabStatusBadge";
 import { ReferenceRange } from "./ReferenceRange";
-import { MARRow } from "./MARRow";
-import { DischargeSummaryModal } from "./DischargeSummaryModal";
 import { SOAPNoteEditor } from "./SOAPNoteEditor";
 import { NEWS2Calculator } from "./NEWS2Calculator";
 import { PatientTimeline } from "../ehr/PatientTimeline";
 import { DoctorCopilotCard } from "./DoctorCopilotCard";
-import { Tabs, Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, DatePicker, Select, Modal, useToast, Table, Spinner } from "@/components/ui";
+import { Tabs, Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, Select, Modal, useToast, Table, Spinner } from "@/components/ui";
 import api from "@/lib/api";
-import { NEWS2Service } from "@/services/news2.service";
 import { OrdersService } from "@/services/orders.service";
-import { MARService } from "@/services/mar.service";
-import { FHIRService } from "@/services/fhir.service";
+import { Receipt, Megaphone, Plus, Activity, FileText, Clock, Layers } from "lucide-react";
 
 interface EncounterWorkspaceProps {
   patient: PatientHeaderData;
@@ -32,30 +28,16 @@ export function EncounterWorkspace({
 }: EncounterWorkspaceProps) {
   const {
     encounterId,
-    patientId,
     clinicId,
     doctorId,
     loading: contextLoading,
     orders,
-    marItems,
-    scores,
     refreshOrders,
-    refreshMAR,
-    refreshScores,
   } = useEncounterContext();
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("soap");
   const { toast } = useToast();
-
-  // NEWS2 State
-  const [spo2, setSpo2] = useState("98");
-  const [hr, setHr] = useState("72");
-  const [rr, setRr] = useState("16");
-  const [temp, setTemp] = useState("36.8");
-  const [sbp, setSbp] = useState("120");
-  const [news2Score, setNews2Score] = useState<any>(null);
-  const [evaluating, setEvaluating] = useState(false);
 
   // Diagnostic Orders State
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
@@ -73,15 +55,6 @@ export function EncounterWorkspace({
   const [isAbnormal, setIsAbnormal] = useState(false);
   const [submittingResult, setSubmittingResult] = useState(false);
 
-  // MAR Modal State
-  const [isMarModalOpen, setIsMarModalOpen] = useState(false);
-  const [marPrescriptionId, setMarPrescriptionId] = useState("");
-  const [marRoute, setMarRoute] = useState("oral");
-  const [marScheduledTime, setMarScheduledTime] = useState(new Date().toISOString().slice(0, 16));
-  const [submittingMar, setSubmittingMar] = useState(false);
-
-  // Export FHIR State
-  const [exportingFhir, setExportingFhir] = useState(false);
   const [callingNext, setCallingNext] = useState(false);
 
   // Auto Charge Capture State
@@ -141,74 +114,27 @@ export function EncounterWorkspace({
     }
   };
 
-  const handleScheduleMar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!marPrescriptionId) {
-      toast({ title: "Validation Error", description: "Please enter or select a Prescription ID", variant: "error" });
-      return;
-    }
-    setSubmittingMar(true);
-    try {
-      await MARService.scheduleDose(encounterId, {
-        prescriptionId: marPrescriptionId,
-        route: marRoute,
-        scheduledTime: marScheduledTime,
-      });
-      toast({ title: "MAR Dose Scheduled", description: "Scheduled dose added to MAR record", variant: "success" });
-      setIsMarModalOpen(false);
-      setMarPrescriptionId("");
-      refreshMAR();
-    } catch (err: any) {
-      toast({ title: "Schedule Failed", description: err.response?.data?.message || "Failed to schedule MAR dose", variant: "error" });
-    } finally {
-      setSubmittingMar(false);
-    }
-  };
-
-  const handleEvaluateNews2 = async () => {
-    setEvaluating(true);
-    try {
-      const data = await NEWS2Service.evaluateScore(encounterId, "NEWS2");
-      const scoreObj = data.score || data;
-      setNews2Score(scoreObj);
-      toast({
-        title: "NEWS2 Evaluation Complete",
-        description: `Score: ${scoreObj.totalScore || 0} (${scoreObj.riskCategory || "Low"} Risk)`,
-        variant: scoreObj.riskCategory === "High" ? "error" : "success",
-      });
-      refreshScores();
-    } catch (err: any) {
-      toast({
-        title: "Evaluation Error",
-        description: err.response?.data?.message || err.message || "Failed to evaluate NEWS2 score",
-        variant: "error",
-      });
-    } finally {
-      setEvaluating(false);
-    }
-  };
-
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTestId) {
-      toast({ title: "Validation Error", description: "Please select a diagnostic test", variant: "error" });
-      return;
-    }
+    if (!selectedTestId) return;
     setSubmittingOrder(true);
     try {
-      await OrdersService.placeOrder(encounterId, {
-        patientId,
+      await OrdersService.placeOrder({
+        encounterId,
+        patientId: patient.id,
+        clinicId,
+        doctorId,
         testId: selectedTestId,
         priority,
         clinicalReason,
       });
-      toast({ title: "Order Placed", description: "Diagnostic order placed successfully.", variant: "success" });
+      toast({ title: "Order Placed", description: "Diagnostic lab order submitted successfully", variant: "success" });
       setIsOrderModalOpen(false);
       setSelectedTestId("");
       setClinicalReason("");
       refreshOrders();
     } catch (err: any) {
-      toast({ title: "Order Failed", description: err.response?.data?.message || "Failed to place order", variant: "error" });
+      toast({ title: "Order Error", description: err.response?.data?.message || "Failed to place order", variant: "error" });
     } finally {
       setSubmittingOrder(false);
     }
@@ -217,31 +143,30 @@ export function EncounterWorkspace({
   const handleCollectSample = async (orderId: string) => {
     try {
       await OrdersService.collectSample(orderId);
-      toast({ title: "Sample Collected", description: "Order status updated to sample-collected", variant: "success" });
+      toast({ title: "Sample Collected", description: "Specimen draw recorded for lab tracking", variant: "success" });
+      refreshOrders();
+    } catch (err: any) {
+      toast({ title: "Action Failed", description: err.response?.data?.message || "Failed to collect sample", variant: "error" });
+    }
+  };
+
+  const handleMarkProcessing = async (orderId: string) => {
+    try {
+      await OrdersService.markProcessing(orderId);
+      toast({ title: "Status Updated", description: "Order is now processing in lab", variant: "success" });
       refreshOrders();
     } catch (err: any) {
       toast({ title: "Action Failed", description: err.response?.data?.message || "Failed to update order", variant: "error" });
     }
   };
-  const handleMarkProcessing = async (orderId: string) => {
-    try {
-      await OrdersService.markProcessing(orderId);
-      toast({ title: "Sample Processing", description: "Order status updated to processing", variant: "success" });
-      refreshOrders();
-    } catch (err: any) {
-      toast({ title: "Action Failed", description: err.response?.data?.message || "Failed to mark order processing", variant: "error" });
-    }
-  };
 
   const handleCancelOrder = async (orderId: string) => {
-    const reason = window.prompt("Reason for order cancellation:", "Duplicate order");
-    if (!reason) return;
     try {
-      await OrdersService.cancelOrder(orderId, reason);
-      toast({ title: "Order Cancelled", description: "Diagnostic order cancelled successfully", variant: "warning" });
+      await OrdersService.cancelOrder(orderId);
+      toast({ title: "Order Cancelled", description: "Diagnostic order cancelled", variant: "default" });
       refreshOrders();
     } catch (err: any) {
-      toast({ title: "Cancellation Failed", description: err.response?.data?.message || "Failed to cancel order", variant: "error" });
+      toast({ title: "Action Failed", description: err.response?.data?.message || "Failed to cancel order", variant: "error" });
     }
   };
 
@@ -267,34 +192,6 @@ export function EncounterWorkspace({
     }
   };
 
-  const handleExportFHIR = async () => {
-    setExportingFhir(true);
-    try {
-      const bundle = await FHIRService.exportEncounterBundle(encounterId);
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(bundle, null, 2));
-      const downloadAnchor = document.createElement("a");
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `fhir-encounter-${encounterId}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-
-      toast({
-        title: "FHIR Export Complete",
-        description: "Encounter FHIR R4 Bundle downloaded successfully.",
-        variant: "success",
-      });
-    } catch (err: any) {
-      toast({
-        title: "Export Failed",
-        description: err.response?.data?.message || "Failed to export FHIR bundle",
-        variant: "error",
-      });
-    } finally {
-      setExportingFhir(false);
-    }
-  };
-
   if (contextLoading) {
     return (
       <div className="py-20 text-center">
@@ -315,80 +212,54 @@ export function EncounterWorkspace({
       <div className="p-4 max-w-7xl mx-auto w-full space-y-4">
         {/* ANANTA 20-Second Doctor Pre-Visit Briefing Card */}
         <DoctorCopilotCard patientName={patient.name} />
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <Tabs
+            variant="pills"
             activeTab={activeTab}
             onChange={setActiveTab}
             tabs={[
-              { id: "soap", label: "SOAP Note Editor" },
-              { id: "mar", label: "Medication Administration (MAR)" },
-              { id: "orders", label: "Diagnostic Orders & Results" },
-              { id: "discharge", label: "Discharge & Reconciliation" },
-              { id: "timeline", label: "EHR Timeline" },
-              { id: "news2", label: "NEWS2 Vitals Calculator" },
+              { id: "soap", label: "SOAP Note Editor", icon: <FileText className="w-4 h-4" /> },
+              { id: "orders", label: `Diagnostic Orders (${orders.length})`, icon: <Activity className="w-4 h-4" /> },
+              { id: "timeline", label: "EHR Timeline", icon: <Clock className="w-4 h-4" /> },
+              { id: "news2", label: "NEWS2 Vitals Calculator", icon: <Activity className="w-4 h-4" /> },
             ]}
           />
 
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleOpenChargePreview}>
-              💳 Auto Charge Capture
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenChargePreview}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs"
+            >
+              <Receipt className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
+              Auto Charge Capture
             </Button>
-            <Button variant="primary" size="sm" onClick={handleCallNextPatient} loading={callingNext}>
-              📢 Call Next Patient
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExportFHIR} loading={exportingFhir}>
-              ⚡ Export FHIR R4 Bundle
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleCallNextPatient}
+              loading={callingNext}
+              className="font-semibold rounded-xl shadow-xs"
+            >
+              <Megaphone className="w-3.5 h-3.5 mr-1.5" />
+              Call Next Patient
             </Button>
           </div>
         </div>
 
         {/* Tab 1: SOAP Note Editor */}
         {activeTab === "soap" && (
-          <div className="bg-surface rounded-xl border border-border shadow-sm p-2">
-            <SOAPNoteEditor
-              encounterId={encounterId}
-              patientId={patient.id}
-              clinicId={clinicId}
-              doctorId={doctorId}
-              initialNoteId={initialNoteId}
-            />
-          </div>
+          <SOAPNoteEditor
+            encounterId={encounterId}
+            patientId={patient.id}
+            clinicId={clinicId}
+            doctorId={doctorId}
+            initialNoteId={initialNoteId}
+          />
         )}
 
-        {/* Tab 2: MAR Workflow */}
-        {activeTab === "mar" && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center bg-surface p-4 rounded-xl border border-border">
-              <div>
-                <h3 className="font-bold text-base text-text">Medication Administration Record (MAR)</h3>
-                <p className="text-xs text-text-secondary">Verify 5 Rights of Medication Safety, check CDS warnings, and record administration</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button size="sm" onClick={() => setIsMarModalOpen(true)}>+ Schedule MAR Dose</Button>
-                <Button size="sm" variant="secondary" onClick={refreshMAR}>Refresh MAR</Button>
-              </div>
-            </div>
-
-            {marItems.length > 0 ? (
-              <div className="space-y-3">
-                {marItems.map((item) => (
-                  <MARRow
-                    key={item.id || item._id}
-                    encounterId={encounterId}
-                    patientId={patient.id}
-                    clinicId={clinicId}
-                    item={item}
-                    onRefresh={refreshMAR}
-                  />
-                ))}
-              </div>
-            ) : (
-              <Card><CardContent className="text-center py-8 text-text-muted text-sm">No scheduled medication doses for this encounter.</CardContent></Card>
-            )}
-          </div>
-        )}
-
-        {/* Tab 3: Diagnostic Orders & Results */}
+        {/* Tab 2: Diagnostic Orders & Results */}
         {activeTab === "orders" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center bg-surface p-4 rounded-xl border border-border">
@@ -473,24 +344,14 @@ export function EncounterWorkspace({
           </div>
         )}
 
-        {/* Tab 4: Discharge Summary */}
-        {activeTab === "discharge" && (
-          <DischargeSummaryModal
-            encounterId={encounterId}
-            patientName={patient.name}
-            mrn={patient.mrn}
-            onDischargeSuccess={() => {}}
-          />
-        )}
-
-        {/* Tab 5: EHR Timeline */}
+        {/* Tab 3: EHR Timeline */}
         {activeTab === "timeline" && (
           <div className="bg-surface rounded-xl border border-border shadow-sm p-4">
             <PatientTimeline events={initialTimelineEvents} patientId={patient.id} />
           </div>
         )}
 
-        {/* Tab 6: NEWS2 Monitoring Engine */}
+        {/* Tab 4: NEWS2 Monitoring Engine */}
         {activeTab === "news2" && (
           <NEWS2Calculator encounterId={encounterId} patientId={patient.id} />
         )}
@@ -570,53 +431,12 @@ export function EncounterWorkspace({
         </form>
       </Modal>
 
-      {/* Modal 3: Schedule MAR Dose */}
-      <Modal isOpen={isMarModalOpen} onClose={() => setIsMarModalOpen(false)} title="Schedule MAR Dose">
-        <form onSubmit={handleScheduleMar} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-text-secondary mb-1">Prescription ID or Medicine Name *</label>
-            <Input
-              value={marPrescriptionId}
-              onChange={(e) => setMarPrescriptionId(e.target.value)}
-              placeholder="e.g. 6a60a9702868a33a6fbbcb9e or Prescription ID"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-text-secondary mb-1">Route of Administration</label>
-            <Select
-              value={marRoute}
-              onChange={(e) => setMarRoute(e.target.value)}
-              options={[
-                { value: "oral", label: "Oral (PO)" },
-                { value: "iv", label: "Intravenous (IV)" },
-                { value: "im", label: "Intramuscular (IM)" },
-                { value: "topical", label: "Topical" },
-                { value: "inhaled", label: "Inhaled" },
-                { value: "sublingual", label: "Sublingual" },
-                { value: "rectal", label: "Rectal" },
-              ]}
-            />
-          </div>
-            <DatePicker
-              label="Scheduled Date & Time"
-              mode="datetime"
-              value={marScheduledTime}
-              onChange={(val) => setMarScheduledTime(typeof val === "string" ? val : val.target.value)}
-            />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setIsMarModalOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={submittingMar}>Schedule Dose</Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Modal 4: Auto Charge Capture & Invoice Preview */}
+      {/* Modal 3: Auto Charge Capture & Invoice Preview */}
       <Modal open={isChargeModalOpen} onClose={() => setIsChargeModalOpen(false)} title="Auto-Captured Encounter Charges & Invoice Preview" size="lg">
         <div className="space-y-4">
           {loadingCharges ? (
             <div className="py-12 text-center">
-              <Spinner size="lg" label="Compiling consultation fees, lab orders, prescriptions & bed charges..." />
+              <Spinner size="lg" label="Compiling consultation fees, lab orders & prescriptions..." />
             </div>
           ) : !chargePreview || !chargePreview.items || chargePreview.items.length === 0 ? (
             <div className="p-6 text-center text-text-muted">

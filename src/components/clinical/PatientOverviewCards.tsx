@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Card, CardHeader, CardTitle, CardContent, Badge, StatCard, Button } from "@/components/ui";
+import React, { useState } from "react";
+import { Card, CardHeader, CardTitle, CardContent, Badge, StatCard, Button, ChartContainer, LineChart } from "@/components/ui";
 
 export interface PatientDemographics {
   id: string;
@@ -37,6 +37,16 @@ interface PatientOverviewCardsProps {
 }
 
 export function PatientOverviewCards({ patient, onEditProfile }: PatientOverviewCardsProps) {
+  const [selectedVitalMetric, setSelectedVitalMetric] = useState<"bp" | "pulse" | "glucose" | "spo2">("bp");
+
+  const vitalsHistoryData = [
+    { label: "Visit 1", systolic: 128, diastolic: 82, pulse: 74, glucose: 104, spo2: 98 },
+    { label: "Visit 2", systolic: 134, diastolic: 86, pulse: 78, glucose: 112, spo2: 99 },
+    { label: "Visit 3", systolic: 124, diastolic: 81, pulse: 72, glucose: 98, spo2: 98 },
+    { label: "Visit 4", systolic: 118, diastolic: 78, pulse: 70, glucose: 95, spo2: 99 },
+    { label: "Latest", systolic: 120, diastolic: 79, pulse: 71, glucose: 96, spo2: 98 },
+  ];
+
   const calculateAge = (dobString?: string) => {
     if (!dobString) return "N/A";
     const dob = new Date(dobString);
@@ -219,6 +229,90 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
             </div>
           </CardContent>
         </Card>
+
+        {/* Longitudinal Vitals Trend Analysis */}
+        <ChartContainer
+          title="Longitudinal Vitals Trajectory"
+          description="Track patient physiological indicators across past clinic encounters"
+          timeRanges={[
+            { label: "Blood Pressure", value: "bp" },
+            { label: "Pulse / HR", value: "pulse" },
+            { label: "Blood Glucose", value: "glucose" },
+            { label: "SpO2 Oxygen", value: "spo2" },
+          ]}
+          activeRange={selectedVitalMetric}
+          onRangeChange={(v) => setSelectedVitalMetric(v as any)}
+          height={210}
+        >
+          {selectedVitalMetric === "bp" && (
+            <LineChart
+              data={vitalsHistoryData}
+              series={[
+                { key: "systolic", name: "Systolic (mmHg)", color: "var(--s-chart-5, #f43f5e)" },
+                { key: "diastolic", name: "Diastolic (mmHg)", color: "var(--s-chart-1, #3b82f6)" },
+              ]}
+              referenceBand={{
+                min: 80,
+                max: 120,
+                label: "Target BP Range",
+                color: "var(--s-chart-2, #10b981)",
+              }}
+              height={210}
+              valueFormatter={(v) => `${v} mmHg`}
+            />
+          )}
+
+          {selectedVitalMetric === "pulse" && (
+            <LineChart
+              data={vitalsHistoryData}
+              series={[
+                { key: "pulse", name: "Heart Rate (BPM)", color: "var(--s-chart-4, #8b5cf6)" },
+              ]}
+              referenceBand={{
+                min: 60,
+                max: 100,
+                label: "Normal Resting HR",
+                color: "var(--s-chart-2, #10b981)",
+              }}
+              height={210}
+              valueFormatter={(v) => `${v} bpm`}
+            />
+          )}
+
+          {selectedVitalMetric === "glucose" && (
+            <LineChart
+              data={vitalsHistoryData}
+              series={[
+                { key: "glucose", name: "Blood Glucose (mg/dL)", color: "var(--s-chart-3, #f59e0b)" },
+              ]}
+              referenceBand={{
+                min: 70,
+                max: 140,
+                label: "Target Fasting/PP",
+                color: "var(--s-chart-2, #10b981)",
+              }}
+              height={210}
+              valueFormatter={(v) => `${v} mg/dL`}
+            />
+          )}
+
+          {selectedVitalMetric === "spo2" && (
+            <LineChart
+              data={vitalsHistoryData}
+              series={[
+                { key: "spo2", name: "Blood Oxygen (SpO2 %)", color: "var(--s-chart-2, #10b981)" },
+              ]}
+              referenceBand={{
+                min: 95,
+                max: 100,
+                label: "Optimal Oxygenation",
+                color: "var(--s-chart-2, #10b981)",
+              }}
+              height={210}
+              valueFormatter={(v) => `${v}%`}
+            />
+          )}
+        </ChartContainer>
 
         {/* Emergency Contacts */}
         <Card className="rounded-2xl border border-border bg-surface shadow-xs">

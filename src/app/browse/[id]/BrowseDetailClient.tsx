@@ -952,7 +952,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
       <Modal
         open={ticketModalOpen}
         onClose={() => setTicketModalOpen(false)}
-        title="Appointment Confirmed! 🎉"
+        title="Appointment Confirmed"
         size="sm"
       >
         <div className="text-center space-y-4 py-2">

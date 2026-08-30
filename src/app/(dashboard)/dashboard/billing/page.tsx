@@ -1,15 +1,53 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import {
-  Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, Dropdown
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Table,
+  Button,
+  Modal,
+  Input,
+  Select,
+  Textarea,
+  useToast,
+  Spinner,
+  Badge,
+  StatCard,
+  Dropdown,
+  ChartContainer,
+  AreaChart,
+  DonutChart,
+  cn,
 } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
+import {
+  RotateCw,
+  Plus,
+  FileText,
+  IndianRupee,
+  AlertCircle,
+  Receipt,
+  CreditCard,
+  CheckCircle2,
+  Printer,
+  Search,
+  Building2,
+  Stethoscope,
+  Phone,
+  Trash2,
+  MoreHorizontal,
+  ArrowRight,
+  Clock,
+  Check,
+} from "lucide-react";
 
 interface InvoiceItem {
   description: string;
@@ -36,7 +74,12 @@ interface Invoice {
   createdAt: string;
 }
 
+export const roundCurrency = (val: number): number => {
+  return Math.round((Number(val || 0) + Number.EPSILON) * 100) / 100;
+};
+
 export default function BillingPage() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const { clinics, fetchClinics } = useClinicStore();
   const { toast } = useToast();
@@ -44,6 +87,7 @@ export default function BillingPage() {
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filters State
   const [filterClinic, setFilterClinic] = useState("");
@@ -55,7 +99,7 @@ export default function BillingPage() {
   const [selectedClinicId, setSelectedClinicId] = useState("");
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const [doctorAssignments, setDoctorAssignments] = useState<any[]>([]);
-  
+
   // Patient lookup
   const [patientSearch, setPatientSearch] = useState("");
   const [patientResults, setPatientResults] = useState<any[]>([]);
@@ -64,7 +108,7 @@ export default function BillingPage() {
 
   // Invoice Items Builder
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([
-    { description: "General Consultation Fee", amount: 0, quantity: 1 }
+    { description: "General Consultation Fee", amount: 0, quantity: 1 },
   ]);
   const [taxAmount, setTaxAmount] = useState(0);
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -73,7 +117,9 @@ export default function BillingPage() {
   // Collect Payment Modal State
   const [isCollectOpen, setIsCollectOpen] = useState(false);
   const [activeInvoice, setActiveInvoice] = useState<Invoice | null>(null);
-  const [collectMethod, setCollectMethod] = useState<"cash" | "card" | "upi" | "net-banking" | "insurance" | "online">("cash");
+  const [collectMethod, setCollectMethod] = useState<
+    "cash" | "card" | "upi" | "net-banking" | "insurance" | "online"
+  >("cash");
   const [submittingPayment, setSubmittingPayment] = useState(false);
 
   // Partial / Installment Payment Modal State
@@ -98,24 +144,47 @@ export default function BillingPage() {
   const handleRecordPartialPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!partialTargetInvoice || partialAmount <= 0) {
-      toast({ title: "Validation Error", description: "Please enter a valid payment amount", variant: "error" });
+      toast({ title: "Validation Error", description: "Please enter a valid payment amount greater than 0.", variant: "error" });
+      return;
+    }
+
+    const currentBalance = roundCurrency(
+      partialTargetInvoice.balanceDue !== undefined
+        ? partialTargetInvoice.balanceDue
+        : partialTargetInvoice.totalAmount - (partialTargetInvoice.amountPaid || 0)
+    );
+
+    if (roundCurrency(partialAmount) > currentBalance) {
+      toast({
+        title: "Validation Error",
+        description: `Payment amount cannot exceed remaining balance of ₹${currentBalance}`,
+        variant: "error",
+      });
       return;
     }
 
     setSubmittingPartial(true);
     try {
       const res = await api.post(`/invoices/${partialTargetInvoice.id}/payments`, {
-        amount: partialAmount,
+        amount: roundCurrency(partialAmount),
         paymentMethod: partialMethod,
         referenceNumber: partialRef,
         notes: partialNotes,
       });
 
-      toast({ title: "Payment Recorded! 💰", description: res.data?.message || "Payment installment updated", variant: "success" });
+      toast({
+        title: "Payment Recorded",
+        description: res.data?.message || "Payment installment recorded successfully.",
+        variant: "success",
+      });
       setIsPartialModalOpen(false);
       fetchInvoices();
     } catch (err: any) {
-      toast({ title: "Payment Failed", description: err.response?.data?.message || "Failed to record payment", variant: "error" });
+      toast({
+        title: "Payment Failed",
+        description: err.response?.data?.message || "Unable to record payment installment.",
+        variant: "error",
+      });
     } finally {
       setSubmittingPartial(false);
     }
@@ -133,13 +202,17 @@ export default function BillingPage() {
     setUnifiedDoc({
       documentType: "invoice",
       title: `INVOICE #${inv.invoiceNumber}`,
-      clinicName: inv.clinicId?.name || "ANANTA Healthcare Center",
+      clinicName: inv.clinicId?.name || "Healthcare Center",
       clinicAddress: inv.clinicId?.address || inv.clinicId?.city,
       doctorName: inv.doctorId?.name,
       doctorSpecialization: inv.doctorId?.specialization,
       patientName: inv.patientId?.userId?.name || "Patient Profile",
       patientId: inv.patientId?.id,
-      date: new Date(inv.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+      date: new Date(inv.createdAt).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }),
       referenceNumber: inv.invoiceNumber,
       invoiceItems: inv.items || [],
       invoiceTotals: {
@@ -156,7 +229,13 @@ export default function BillingPage() {
   // Validation State
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const validateInvoiceField = (field: string, value: any, idx?: number, currentSubtotal = subtotal, currentTax = taxAmount) => {
+  const validateInvoiceField = (
+    field: string,
+    value: any,
+    idx?: number,
+    currentSubtotal = subtotal,
+    currentTax = taxAmount
+  ) => {
     let error = "";
     if (field === "clinicId" && !value) {
       error = "Clinic Location is required";
@@ -178,7 +257,10 @@ export default function BillingPage() {
         error = "Description is required";
       } else if (field === "itemAmount" && (isNaN(Number(value)) || Number(value) <= 0)) {
         error = "Amount must be a positive number";
-      } else if (field === "itemQuantity" && (isNaN(Number(value)) || Number(value) <= 0 || !Number.isInteger(Number(value)))) {
+      } else if (
+        field === "itemQuantity" &&
+        (isNaN(Number(value)) || Number(value) <= 0 || !Number.isInteger(Number(value)))
+      ) {
         error = "Quantity must be a positive integer";
       }
     }
@@ -197,7 +279,10 @@ export default function BillingPage() {
     if (!selectedPatient) newErrors.patient = "Patient selection is required";
     if (!selectedClinicId) newErrors.clinicId = "Clinic Location is required";
     if (!selectedDoctorId) newErrors.doctorId = "Doctor is required";
-    
+    if (!invoiceItems || invoiceItems.length === 0) {
+      newErrors.items = "At least one invoice line item is required";
+    }
+
     if (taxAmount < 0) newErrors.tax = "Tax must be a non-negative number";
     if (discountAmount < 0) {
       newErrors.discount = "Discount must be a non-negative number";
@@ -225,21 +310,21 @@ export default function BillingPage() {
     if (user && user.role !== "patient") fetchClinics();
   }, [user?.id, user?.role, fetchClinics]);
 
-  // Load Invoices
   const fetchInvoices = async () => {
     try {
-      setLoading(true);
-      let queryParams = [];
+      setIsRefreshing(true);
+      const queryParams = [];
       if (filterClinic) queryParams.push(`clinicId=${filterClinic}`);
       if (filterStatus) queryParams.push(`status=${filterStatus}`);
       const queryString = queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
-      
+
       const res = await api.get(`/invoices${queryString}`);
       setInvoices(res.data.data || []);
-    } catch (err) {
+    } catch {
       toast({ title: "Error", description: "Failed to load invoices", variant: "error" });
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -247,7 +332,6 @@ export default function BillingPage() {
     if (user) fetchInvoices();
   }, [user, filterClinic, filterStatus]);
 
-  // Fetch doctor assignments when creating invoice clinic changes
   useEffect(() => {
     if (!selectedClinicId) {
       setDoctorAssignments([]);
@@ -258,21 +342,18 @@ export default function BillingPage() {
         const res = await api.get(`/onboarding/doctors/assignments?clinicId=${selectedClinicId}`);
         setDoctorAssignments(res.data.data || []);
       } catch (err) {
-        console.error("Failed to load doctor assignments");
+        console.error("Failed to load doctor assignments", err);
       }
     };
     fetchAssignments();
   }, [selectedClinicId]);
 
-  // Handle Doctor select to auto-populate consultation fee
   useEffect(() => {
     if (!selectedDoctorId || !selectedClinicId) return;
-    const activeAssign = doctorAssignments.find(a => 
-      (a.doctorId?.id || a.doctorId) === selectedDoctorId
-    );
+    const activeAssign = doctorAssignments.find((a) => (a.doctorId?.id || a.doctorId) === selectedDoctorId);
     if (activeAssign) {
       const fee = activeAssign.fees || 200;
-      setInvoiceItems(prev => {
+      setInvoiceItems((prev) => {
         const updated = [...prev];
         updated[0] = { ...updated[0], amount: fee };
         return updated;
@@ -280,13 +361,35 @@ export default function BillingPage() {
     }
   }, [selectedDoctorId, selectedClinicId, doctorAssignments]);
 
+  // Debounced Patient Lookup
+  useEffect(() => {
+    if (!patientSearch.trim() || patientSearch.length < 2) {
+      setPatientResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await api.get(`/patients?search=${encodeURIComponent(patientSearch.trim())}`);
+        setPatientResults(res.data.data || []);
+      } catch {
+        // Non-critical search error
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [patientSearch]);
+
   const handlePatientSearch = async () => {
-    if (!patientSearch) return;
+    if (!patientSearch.trim()) return;
     setSearchLoading(true);
     try {
-      const res = await api.get(`/patients?search=${patientSearch}`);
+      const res = await api.get(`/patients?search=${encodeURIComponent(patientSearch.trim())}`);
       setPatientResults(res.data.data || []);
-    } catch (err) {
+    } catch {
       toast({ title: "Error", description: "Patient search failed", variant: "error" });
     } finally {
       setSearchLoading(false);
@@ -298,15 +401,18 @@ export default function BillingPage() {
   };
 
   const removeInvoiceItem = (idx: number) => {
-    if (idx === 0) return; // Prevent removing base consultation fee
+    if (idx === 0) return;
     const updated = invoiceItems.filter((_, i) => i !== idx);
     setInvoiceItems(updated);
-    
-    // Shift validation errors down
+
     setErrors((prev) => {
       const next: Record<string, string> = {};
-      Object.keys(prev).forEach(key => {
-        if (key.startsWith("itemDescription_") || key.startsWith("itemAmount_") || key.startsWith("itemQuantity_")) {
+      Object.keys(prev).forEach((key) => {
+        if (
+          key.startsWith("itemDescription_") ||
+          key.startsWith("itemAmount_") ||
+          key.startsWith("itemQuantity_")
+        ) {
           const parts = key.split("_");
           const fieldName = parts[0];
           const rowIdx = Number(parts[1]);
@@ -328,9 +434,9 @@ export default function BillingPage() {
     if (field === "amount" || field === "quantity") {
       const numVal = Number(val) || 0;
       updated[idx] = { ...updated[idx], [field]: numVal };
-      
+
       const tempItems = [...updated];
-      const tempSubtotal = tempItems.reduce((acc, curr) => acc + (curr.amount * curr.quantity), 0);
+      const tempSubtotal = tempItems.reduce((acc, curr) => acc + curr.amount * curr.quantity, 0);
       validateInvoiceField(field === "amount" ? "itemAmount" : "itemQuantity", numVal, idx, tempSubtotal, taxAmount);
     } else if (field === "description") {
       updated[idx] = { ...updated[idx], description: String(val) };
@@ -339,9 +445,8 @@ export default function BillingPage() {
     setInvoiceItems(updated);
   };
 
-  // Live Totals
-  const subtotal = invoiceItems.reduce((acc, curr) => acc + (curr.amount * curr.quantity), 0);
-  const totalAmount = Math.max(0, subtotal + taxAmount - discountAmount);
+  const subtotal = roundCurrency(invoiceItems.reduce((acc, curr) => acc + (Number(curr.amount) || 0) * (Number(curr.quantity) || 1), 0));
+  const totalAmount = roundCurrency(Math.max(0, subtotal + (Number(taxAmount) || 0) - (Number(discountAmount) || 0)));
 
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -358,9 +463,9 @@ export default function BillingPage() {
         doctorId: selectedDoctorId,
         items: invoiceItems,
         tax: taxAmount,
-        discount: discountAmount
+        discount: discountAmount,
       });
-      toast({ title: "Success", description: "Invoice generated successfully", variant: "success" });
+      toast({ title: "Invoice Created", description: "Invoice generated successfully.", variant: "success" });
       setIsCreateOpen(false);
       resetCreateForm();
       fetchInvoices();
@@ -389,7 +494,11 @@ export default function BillingPage() {
     try {
       setSubmittingPayment(true);
       await api.put(`/invoices/${activeInvoice.id}/pay`, { paymentMethod: collectMethod });
-      toast({ title: "Payment Recorded", description: `Collected successfully via ${collectMethod.toUpperCase()}`, variant: "success" });
+      toast({
+        title: "Payment Recorded",
+        description: `Collected successfully via ${collectMethod.toUpperCase()}.`,
+        variant: "success",
+      });
       setIsCollectOpen(false);
       setActiveInvoice(null);
       fetchInvoices();
@@ -428,7 +537,7 @@ export default function BillingPage() {
         <body>
           <div class="receipt">
             <div class="center">
-              <h3 class="title">ANANTA HEALTHCARE SYSTEM</h3>
+              <h3 class="title">ANANT HEALTHCARE SYSTEM</h3>
               <p style="margin:2px 0; font-size:11px;">${ticketData.clinicId?.name}</p>
               <p style="margin:2px 0; font-size:10px;">${ticketData.clinicId?.address}, ${ticketData.clinicId?.city}</p>
             </div>
@@ -447,13 +556,17 @@ export default function BillingPage() {
                 </tr>
               </thead>
               <tbody>
-                ${ticketData.items.map(item => `
+                ${ticketData.items
+                  .map(
+                    (item) => `
                   <tr>
                     <td>${item.description}</td>
                     <td style="text-align:right;">${item.quantity}</td>
                     <td style="text-align:right;">₹${item.amount * item.quantity}</td>
                   </tr>
-                `).join("")}
+                `
+                  )
+                  .join("")}
               </tbody>
             </table>
             <div class="border-dashed"></div>
@@ -468,7 +581,11 @@ export default function BillingPage() {
               <span style="font-size: 13px; font-weight: bold; background: #e6f4ea; color: #137333; padding: 4px 12px; border-radius: 99px; text-transform: uppercase;">
                 ${ticketData.status}
               </span>
-              ${ticketData.paymentMethod ? `<p style="font-size:11px; margin-top:10px;">Method: ${ticketData.paymentMethod.toUpperCase()}</p>` : ""}
+              ${
+                ticketData.paymentMethod
+                  ? `<p style="font-size:11px; margin-top:10px;">Method: ${ticketData.paymentMethod.toUpperCase()}</p>`
+                  : ""
+              }
             </div>
           </div>
           <script>
@@ -480,8 +597,7 @@ export default function BillingPage() {
     printWindow.document.close();
   };
 
-  // Search filtered invoices locally
-  const filteredInvoices = invoices.filter(inv => {
+  const filteredInvoices = invoices.filter((inv) => {
     const patientName = inv.patientId?.userId?.name || "";
     const phone = inv.patientId?.userId?.phone || "";
     const num = inv.invoiceNumber || "";
@@ -489,7 +605,6 @@ export default function BillingPage() {
     return patientName.toLowerCase().includes(query) || phone.includes(query) || num.toLowerCase().includes(query);
   });
 
-  // Calculate billing analytics metrics
   const todayStr = new Date().toISOString().split("T")[0];
   const todaysPaidAmount = invoices.reduce((acc, curr) => {
     if (curr.status !== "paid") return acc;
@@ -501,244 +616,495 @@ export default function BillingPage() {
     return curr.status === "unpaid" ? acc + curr.totalAmount : acc;
   }, 0);
 
-  const unpaidCount = invoices.filter(i => i.status === "unpaid").length;
+  const unpaidCount = invoices.filter((i) => i.status === "unpaid").length;
+
+  const cashflowTrendData = (() => {
+    const result = [];
+    const now = new Date();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateKey = d.toISOString().split("T")[0];
+      const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+      const dayInvoices = invoices.filter((inv) => {
+        const iDate = (inv.paymentDate || inv.createdAt || "").split("T")[0];
+        return iDate === dateKey;
+      });
+
+      const collected = dayInvoices
+        .filter((inv) => inv.status === "paid")
+        .reduce((sum, inv) => sum + (inv.amountPaid || inv.totalAmount || 0), 0);
+
+      const pending = dayInvoices
+        .filter((inv) => inv.status !== "paid")
+        .reduce((sum, inv) => sum + (inv.balanceDue !== undefined ? inv.balanceDue : inv.totalAmount), 0);
+
+      result.push({
+        label,
+        collected,
+        pending,
+      });
+    }
+    return result;
+  })();
+
+  const paymentMethodsData = (() => {
+    const counts: Record<string, number> = {
+      UPI: 0,
+      Card: 0,
+      Cash: 0,
+      "Insurance / TPA": 0,
+      "Net Banking": 0,
+    };
+
+    invoices.forEach((inv) => {
+      const m = (inv.paymentMethod || "").toLowerCase();
+      if (m.includes("upi")) counts["UPI"] += inv.totalAmount || 1;
+      else if (m.includes("card")) counts["Card"] += inv.totalAmount || 1;
+      else if (m.includes("cash")) counts["Cash"] += inv.totalAmount || 1;
+      else if (m.includes("insur")) counts["Insurance / TPA"] += inv.totalAmount || 1;
+      else if (inv.status === "paid") counts["Net Banking"] += inv.totalAmount || 1;
+    });
+
+    const colors: Record<string, string> = {
+      UPI: "var(--s-chart-1, #3b82f6)",
+      Card: "var(--s-chart-4, #8b5cf6)",
+      Cash: "var(--s-chart-2, #10b981)",
+      "Insurance / TPA": "var(--s-chart-3, #f59e0b)",
+      "Net Banking": "#06b6d4",
+    };
+
+    return Object.entries(counts)
+      .filter(([_, val]) => val > 0)
+      .map(([name, value]) => ({
+        name,
+        value,
+        color: colors[name],
+      }));
+  })();
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
-      {/* Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Invoices & Billing</h1>
-          <p className="text-xs text-text-muted mt-0.5">
-            Track payments, create manual bills, and collect outpatient fees.
-          </p>
-        </div>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Invoices & Revenue Billing
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Revenue Desk
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Track outpatient collections, generate medical invoices, and record installment payments.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {canManageBilling && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setIsCreateOpen(true)}
-            className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5"
-            icon={
-              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-            }
-          >
-            Create Invoice
-          </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.location.href = "/dashboard/billing/services"}
-            className="font-semibold rounded-xl cursor-pointer"
-            icon={
-              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            }
-          >
-            Service Rate Cards
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchInvoices}
-            loading={loading}
-            className="font-semibold rounded-xl cursor-pointer"
-            icon={
-              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            }
-          >
-            Refresh
-          </Button>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/dashboard/billing/services")}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover"
+            >
+              <FileText className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
+              Rate Cards
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchInvoices}
+              disabled={isRefreshing}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+            >
+              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
+              Refresh
+            </Button>
+
+            {canManageBilling && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsCreateOpen(true)}
+                className="font-semibold rounded-xl shadow-xs"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Create Invoice
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* KPI Stats Analytics grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-4">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. FINANCIAL KPI STATS CARDS
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           label="Today's Collections"
-          value={`₹${todaysPaidAmount}`}
-          icon={
-            <svg className="h-5 w-5 text-success-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
+          value={`₹${todaysPaidAmount.toLocaleString("en-IN")}`}
+          description="Settled outpatient receipts"
+          icon={<IndianRupee className="w-5 h-5 text-emerald-500" />}
         />
         <StatCard
           label="Outstanding Balances"
-          value={`₹${pendingAmount}`}
-          icon={
-            <svg className="h-5 w-5 text-warning-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          }
+          value={`₹${pendingAmount.toLocaleString("en-IN")}`}
+          description="Uncollected pending receivables"
+          icon={<AlertCircle className="w-5 h-5 text-amber-500" />}
         />
         <StatCard
           label="Unpaid Invoices"
           value={unpaidCount.toString()}
-          icon={
-            <svg className="h-5 w-5 text-danger-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          }
+          description="Invoices awaiting settlement"
+          icon={<Receipt className="w-5 h-5 text-rose-500" />}
         />
       </div>
 
-      {/* Invoices List Table */}
-      <Table
-        searchPlaceholder="Search patient name, phone, or invoice #..."
-        loading={loading}
-        toolbarFilters={
-          <>
-            {clinics.length > 1 && (
-              <div className="flex-1 min-w-[130px] sm:max-w-[160px]">
-                <Select
-                  size="sm"
-                  placeholder="All Clinics"
-                  value={filterClinic}
-                  onChange={(e) => setFilterClinic(e.target.value)}
-                  options={[{ value: "", label: "All Clinics" }, ...clinics.map(c => ({ value: c.id, label: c.name }))]}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          3. BILLING ANALYTICS & CASHFLOW CHARTS
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+        <ChartContainer
+          title="Cashflow Velocity & Aging"
+          description="14-day comparison of collected revenue vs pending receivables"
+          className="lg:col-span-2"
+          loading={loading}
+          empty={invoices.length === 0}
+          emptyMessage="No historical invoices or collections recorded yet."
+        >
+          <AreaChart
+            data={cashflowTrendData}
+            series={[
+              { key: "collected", name: "Collections Inflow", color: "var(--s-chart-2, #10b981)" },
+              { key: "pending", name: "Outstanding Aging", color: "var(--s-chart-3, #f59e0b)" },
+            ]}
+            height={210}
+            valueFormatter={(v) => `₹${v.toLocaleString("en-IN")}`}
+          />
+        </ChartContainer>
+
+        <ChartContainer
+          title="Settlement Channels"
+          description="Payment method volume distribution"
+          className="lg:col-span-1"
+          loading={loading}
+          empty={paymentMethodsData.length === 0}
+          emptyMessage="No payment method transactions yet."
+        >
+          <DonutChart
+            data={paymentMethodsData}
+            height={210}
+            valueFormatter={(v) => `₹${v.toLocaleString("en-IN")}`}
+          />
+        </ChartContainer>
+      </div>
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          4. INVOICES ROSTER TABLE
+         ────────────────────────────────────────────────────────────────────────── */}
+      <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+        <CardContent className="p-0">
+          <Table
+            searchPlaceholder="Search patient name, phone, or invoice #..."
+            loading={loading}
+            toolbarFilters={
+              <>
+                {clinics.length > 1 && (
+                  <div className="flex-1 min-w-[130px] sm:max-w-[160px]">
+                    <Select
+                      size="sm"
+                      placeholder="All Clinics"
+                      value={filterClinic}
+                      onChange={(e) => setFilterClinic(e.target.value)}
+                      options={[{ value: "", label: "All Clinics" }, ...clinics.map((c) => ({ value: c.id, label: c.name }))]}
+                    />
+                  </div>
+                )}
+                <div className="flex-1 min-w-[130px] sm:max-w-[160px]">
+                  <Select
+                    size="sm"
+                    placeholder="All Statuses"
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    options={[
+                      { value: "", label: "All Statuses" },
+                      { value: "unpaid", label: "Unpaid" },
+                      { value: "paid", label: "Paid" },
+                      { value: "refunded", label: "Refunded" },
+                    ]}
+                  />
+                </div>
+              </>
+            }
+            columns={[
+              {
+                key: "invoiceNumber",
+                header: "Invoice #",
+                render: (row: Invoice) => (
+                  <span className="font-mono font-bold text-xs text-primary-600 dark:text-primary-400">
+                    #{row.invoiceNumber}
+                  </span>
+                ),
+              },
+              {
+                key: "patient",
+                header: "Patient",
+                render: (row: Invoice) => (
+                  <div className="space-y-0.5 min-w-[140px]">
+                    <span className="font-bold text-text text-xs sm:text-sm">
+                      {row.patientId?.userId?.name || "Patient Profile"}
+                    </span>
+                    <span className="text-xs text-text-muted flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-text-muted" />
+                      {row.patientId?.userId?.phone || "No phone"}
+                    </span>
+                  </div>
+                ),
+              },
+              {
+                key: "clinic",
+                header: "Facility",
+                render: (row: Invoice) => (
+                  <div className="flex items-center gap-1.5 text-xs text-text-secondary min-w-[120px]">
+                    <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                    <span>{row.clinicId?.name || "Clinic"}</span>
+                  </div>
+                ),
+              },
+              {
+                key: "doctor",
+                header: "Doctor",
+                render: (row: Invoice) => (
+                  <div className="flex items-center gap-1 text-xs font-semibold text-text min-w-[130px]">
+                    <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                    <span>Dr. {(row.doctorId?.name || "").replace(/^dr\.?\s+/i, "")}</span>
+                  </div>
+                ),
+              },
+              {
+                key: "totalAmount",
+                header: "Total / Balance",
+                render: (row: Invoice) => (
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-text text-xs sm:text-sm">
+                      ₹{row.totalAmount.toLocaleString("en-IN")}
+                    </span>
+                    {row.status !== "paid" && (
+                      <span className="text-xs font-bold text-rose-500 block">
+                        Due: ₹
+                        {(row.balanceDue !== undefined
+                          ? row.balanceDue
+                          : row.totalAmount - (row.amountPaid || 0)
+                        ).toLocaleString("en-IN")}
+                      </span>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                key: "status",
+                header: "Status",
+                render: (row: Invoice) => (
+                  <Badge
+                    variant={
+                      row.status === "paid" ? "success" : row.status === "partially_paid" ? "warning" : "danger"
+                    }
+                    size="sm"
+                    dot
+                    className="capitalize font-semibold text-[10px]"
+                  >
+                    {row.status === "partially_paid" ? "Partially Paid" : row.status}
+                  </Badge>
+                ),
+              },
+              {
+                key: "actions",
+                header: "Actions",
+                align: "right",
+                render: (row: Invoice) => (
+                  <div className="flex items-center justify-end gap-1.5">
+                    {row.status !== "paid" ? (
+                      <Button
+                        size="xs"
+                        variant="primary"
+                        onClick={() => openPartialPaymentModal(row)}
+                        className="shrink-0 font-semibold rounded-lg shadow-xs"
+                      >
+                        <CreditCard className="w-3.5 h-3.5 mr-1" />
+                        Pay ₹
+                        {(row.balanceDue !== undefined
+                          ? row.balanceDue
+                          : row.totalAmount - (row.amountPaid || 0)
+                        ).toLocaleString("en-IN")}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        onClick={() => handleOpenPrintInvoice(row)}
+                        className="shrink-0 font-semibold rounded-lg"
+                      >
+                        <FileText className="w-3.5 h-3.5 mr-1" />
+                        PDF
+                      </Button>
+                    )}
+                    <Dropdown
+                      align="right"
+                      trigger={
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          className="h-7 w-7 p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text"
+                          title="Row Actions"
+                        >
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                        </Button>
+                      }
+                      items={[
+                        ...(row.status !== "paid"
+                          ? [
+                              {
+                                label: "Record Installment Payment",
+                                icon: <CreditCard className="w-4 h-4 text-primary-500" />,
+                                onClick: () => openPartialPaymentModal(row),
+                              },
+                            ]
+                          : []),
+                        ...(row.status === "unpaid"
+                          ? [
+                              {
+                                label: "Collect Full Payment",
+                                icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
+                                onClick: () => {
+                                  setActiveInvoice(row);
+                                  setIsCollectOpen(true);
+                                },
+                              },
+                            ]
+                          : []),
+                        {
+                          label: "View & Print Receipt",
+                          icon: <Printer className="w-4 h-4 text-text-muted" />,
+                          onClick: () => handlePrintReceipt(row),
+                        },
+                        {
+                          label: "Print Official PDF",
+                          icon: <FileText className="w-4 h-4 text-text-muted" />,
+                          onClick: () => handleOpenPrintInvoice(row),
+                        },
+                      ]}
+                    />
+                  </div>
+                ),
+              },
+            ]}
+            data={filteredInvoices}
+            emptyMessage="No clinical invoices found for selected filter."
+          />
+        </CardContent>
+      </Card>
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          5. CREATE MANUAL INVOICE MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
+      <Modal
+        open={isCreateOpen}
+        onClose={() => {
+          setIsCreateOpen(false);
+          resetCreateForm();
+        }}
+        title="Create Manual Medical Invoice"
+        description="Generate an outpatient invoice itemized by consultation fees, diagnostics, and procedures."
+        size="lg"
+      >
+        <form onSubmit={handleCreateInvoice} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
+          {/* Step 1: Choose Patient */}
+          <div className="space-y-2 border-b border-border/60 pb-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-text">1. Choose Patient</h3>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                <Input
+                  placeholder="Search patient name, email, or mobile..."
+                  value={patientSearch}
+                  onChange={(e) => setPatientSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handlePatientSearch()}
+                  className="pl-9"
                 />
               </div>
-            )}
-            <div className="flex-1 min-w-[130px] sm:max-w-[160px]">
-              <Select
-                size="sm"
-                placeholder="All Statuses"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                options={[
-                  { value: "", label: "All Statuses" },
-                  { value: "unpaid", label: "Unpaid" },
-                  { value: "paid", label: "Paid" },
-                  { value: "refunded", label: "Refunded" }
-                ]}
-              />
-            </div>
-          </>
-        }
-        columns={[
-          { key: "invoiceNumber", header: "Invoice #", render: (row: Invoice) => <span className="font-bold text-primary-600">#{row.invoiceNumber}</span> },
-          { key: "patient", header: "Patient", render: (row: Invoice) => (
-            <div className="flex flex-col">
-              <span className="font-medium text-text">{row.patientId?.userId?.name || "Patient Profile"}</span>
-              <span className="text-xs text-text-secondary">{row.patientId?.userId?.phone}</span>
-            </div>
-          )},
-          { key: "clinic", header: "Clinic Location", render: (row: Invoice) => <span>{row.clinicId?.name}</span> },
-          { key: "doctor", header: "Doctor", render: (row: Invoice) => <span>Dr. {row.doctorId?.name}</span> },
-          { key: "totalAmount", header: "Total / Balance", render: (row: Invoice) => (
-            <div className="flex flex-col">
-              <span className="font-semibold text-text">₹{row.totalAmount}</span>
-              {row.status !== "paid" && (
-                <span className="text-xs font-bold text-danger-500">
-                  Due: ₹{row.balanceDue !== undefined ? row.balanceDue : row.totalAmount - (row.amountPaid || 0)}
-                </span>
-              )}
-            </div>
-          )},
-          { key: "status", header: "Status", render: (row: Invoice) => (
-            <Badge variant={row.status === "paid" ? "success" : row.status === "partially_paid" ? "warning" : "danger"} className="capitalize">
-              {row.status === "partially_paid" ? "Partially Paid" : row.status}
-            </Badge>
-          )},
-          { key: "actions", header: "Actions", align: "right", render: (row: Invoice) => (
-            <div className="flex items-center justify-end gap-1.5">
-              {row.status !== "paid" ? (
-                <Button size="sm" variant="primary" onClick={() => openPartialPaymentModal(row)} className="shrink-0 font-bold">
-                  Pay ₹{row.balanceDue !== undefined ? row.balanceDue : row.totalAmount - (row.amountPaid || 0)}
-                </Button>
-              ) : (
-                <Button size="sm" variant="outline" onClick={() => handleOpenPrintInvoice(row)} className="shrink-0">
-                  PDF Invoice
-                </Button>
-              )}
-              <Dropdown
-                align="right"
-                trigger={
-                  <Button size="sm" variant="outline" className="h-8 w-8 p-0 flex items-center justify-center rounded-lg border-border hover:bg-surface-hover hover:text-text cursor-pointer transition-colors shrink-0" title="Row Actions">
-                    <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                    </svg>
-                  </Button>
-                }
-                items={[
-                  ...(row.status !== "paid" ? [{ label: "Record Installment Payment", onClick: () => openPartialPaymentModal(row) }] : []),
-                  ...(row.status === "unpaid" ? [{ label: "Collect Full Payment", onClick: () => { setActiveInvoice(row); setIsCollectOpen(true); } }] : []),
-                  { label: "View & Print Receipt", onClick: () => handlePrintReceipt(row) },
-                  { label: "Print Official PDF", onClick: () => handleOpenPrintInvoice(row) },
-                ]}
-              />
-            </div>
-          )}
-        ]}
-        data={filteredInvoices}
-        emptyMessage="No invoices found."
-      />
-
-      {/* Create Manual Invoice Modal */}
-      <Modal open={isCreateOpen} onClose={() => { setIsCreateOpen(false); resetCreateForm(); }} title="Create Manual Invoice" size="lg">
-        <form onSubmit={handleCreateInvoice} className="space-y-4">
-          
-          {/* Step 1: Choose Patient */}
-          <div className="space-y-2 border-b border-border pb-4">
-            <h3 className="text-sm font-bold text-text">1. Choose Patient</h3>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Search patient name, email, or mobile..."
-                value={patientSearch}
-                onChange={(e) => setPatientSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handlePatientSearch()}
-              />
-              <Button type="button" onClick={handlePatientSearch} loading={searchLoading}>Search</Button>
+              <Button type="button" onClick={handlePatientSearch} loading={searchLoading} className="font-semibold rounded-xl">
+                Search
+              </Button>
             </div>
 
             {patientResults.length > 0 && (
-              <div className="border border-border rounded-lg max-h-40 overflow-y-auto bg-surface mt-2 divide-y divide-border">
-                {patientResults.map(p => (
-                  <div key={p.id} className="p-2.5 flex justify-between items-center hover:bg-surface-hover transition-colors">
+              <div className="border border-border/80 rounded-2xl max-h-40 overflow-y-auto bg-surface mt-2 divide-y divide-border/60">
+                {patientResults.map((p) => (
+                  <div
+                    key={p.id}
+                    className="p-2.5 flex justify-between items-center hover:bg-surface-hover transition-colors"
+                  >
                     <div>
-                      <p className="font-semibold text-sm text-text">{p.userId?.name}</p>
-                      <p className="text-xs text-text-secondary">{p.userId?.phone} • {p.userId?.email}</p>
+                      <p className="font-bold text-xs sm:text-sm text-text">{p.userId?.name}</p>
+                      <p className="text-xs text-text-muted">
+                        {p.userId?.phone} &bull; {p.userId?.email}
+                      </p>
                     </div>
-                    <Button size="xs" variant="secondary" type="button" onClick={() => {
-                      setSelectedPatient(p);
-                      setPatientResults([]);
-                      setPatientSearch("");
-                      validateInvoiceField("patient", p);
-                    }}>Select</Button>
+                    <Button
+                      size="xs"
+                      variant="primary"
+                      type="button"
+                      onClick={() => {
+                        setSelectedPatient(p);
+                        setPatientResults([]);
+                        setPatientSearch("");
+                        validateInvoiceField("patient", p);
+                      }}
+                      className="rounded-lg font-semibold"
+                    >
+                      Select
+                    </Button>
                   </div>
                 ))}
               </div>
             )}
 
             {selectedPatient && (
-              <div className="p-3 bg-success-50 dark:bg-success-950/20 border border-success-200 dark:border-success-900/40 rounded-lg flex items-center justify-between mt-2">
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-between mt-2">
                 <div>
-                  <p className="text-sm font-semibold text-success-800 dark:text-success-300">Selected Patient: {selectedPatient.userId?.name}</p>
-                  <p className="text-xs text-success-600 dark:text-success-400">{selectedPatient.userId?.phone} • {selectedPatient.userId?.email}</p>
+                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                    Selected: {selectedPatient.userId?.name}
+                  </p>
+                  <p className="text-[11px] text-text-muted">
+                    {selectedPatient.userId?.phone} &bull; {selectedPatient.userId?.email}
+                  </p>
                 </div>
-                <button type="button" onClick={() => {
-                  setSelectedPatient(null);
-                  validateInvoiceField("patient", null);
-                }} className="text-xs text-text-muted hover:text-danger-600 underline">Change</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPatient(null);
+                    validateInvoiceField("patient", null);
+                  }}
+                  className="text-xs font-bold text-rose-500 hover:underline cursor-pointer"
+                >
+                  Change
+                </button>
               </div>
             )}
 
             {!selectedPatient && errors.patient && (
-              <p className="text-xs text-danger-500 mt-1.5 animate-fade-in">{errors.patient}</p>
+              <p className="text-xs text-rose-500 mt-1">{errors.patient}</p>
             )}
           </div>
 
           {/* Step 2: Clinic & Doctor Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 border-b border-border pb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 border-b border-border/60 pb-4">
             <Select
               label="Choose Clinic Location *"
               value={selectedClinicId}
@@ -748,7 +1114,7 @@ export default function BillingPage() {
                 setSelectedDoctorId("");
                 validateInvoiceField("clinicId", val);
               }}
-              options={[{ value: "", label: "Select clinic..." }, ...clinics.map(c => ({ value: c.id, label: c.name }))]}
+              options={[{ value: "", label: "Select clinic..." }, ...clinics.map((c) => ({ value: c.id, label: c.name }))]}
               error={errors.clinicId}
               required
             />
@@ -762,12 +1128,12 @@ export default function BillingPage() {
               }}
               options={[
                 { value: "", label: "Select doctor..." },
-                ...doctorAssignments.map(a => {
+                ...doctorAssignments.map((a) => {
                   const docName = a.doctorId?.name || "";
                   const formattedName = docName.startsWith("Dr.") ? docName : `Dr. ${docName}`;
                   const spec = a.doctorId?.specialization ? ` (${a.doctorId.specialization})` : "";
                   return { value: a.doctorId?.id || a.doctorId, label: `${formattedName}${spec}` };
-                })
+                }),
               ]}
               disabled={!selectedClinicId}
               error={errors.doctorId}
@@ -776,23 +1142,16 @@ export default function BillingPage() {
           </div>
 
           {/* Step 3: Invoice Line Items Table */}
-          <div className="space-y-2 border-b border-border pb-4">
+          <div className="space-y-2 border-b border-border/60 pb-4">
             <div className="flex justify-between items-center mb-1">
-              <h3 className="text-sm font-bold text-text">3. Invoice Line Items</h3>
-              <Button type="button" size="xs" variant="outline" onClick={addInvoiceItem} className="cursor-pointer font-semibold">
-                + Add Custom Charge
+              <h3 className="text-xs font-bold uppercase tracking-wider text-text">3. Invoice Line Items</h3>
+              <Button type="button" size="xs" variant="outline" onClick={addInvoiceItem} className="font-semibold rounded-lg">
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Add Line Item
               </Button>
             </div>
 
             <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-              {/* Table Column Headers */}
-              <div className="flex gap-2 text-xs font-semibold text-text-muted px-1">
-                <div className="flex-1">Item Description / Charge *</div>
-                <div className="w-24 text-right">Amount (₹) *</div>
-                <div className="w-20 text-right">Qty *</div>
-                <div className="w-9"></div> {/* Action Spacer Column */}
-              </div>
-
               {invoiceItems.map((item, idx) => (
                 <div key={idx} className="flex gap-2 items-start">
                   <div className="flex-1">
@@ -805,7 +1164,7 @@ export default function BillingPage() {
                       required
                     />
                   </div>
-                  <div className="w-24">
+                  <div className="w-28">
                     <Input
                       type="number"
                       value={item.amount || ""}
@@ -825,20 +1184,16 @@ export default function BillingPage() {
                       required
                     />
                   </div>
-                  <div className="w-9 flex justify-center pt-1.5 shrink-0">
-                    {idx > 0 ? (
+                  <div className="w-8 flex justify-center pt-1.5 shrink-0">
+                    {idx > 0 && (
                       <button
                         type="button"
                         onClick={() => removeInvoiceItem(idx)}
-                        className="h-8 w-8 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center transition-colors cursor-pointer"
+                        className="h-7 w-7 rounded-lg text-rose-500 hover:bg-rose-500/10 flex items-center justify-center transition-colors cursor-pointer"
                         title="Remove Line Item"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    ) : (
-                      <div className="w-8 h-8" />
                     )}
                   </div>
                 </div>
@@ -847,7 +1202,7 @@ export default function BillingPage() {
           </div>
 
           {/* Totals Summary */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 border-t border-border pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 border-t border-border/60 pt-3.5">
             <div className="space-y-3">
               <Input
                 label="Add Tax (₹)"
@@ -875,30 +1230,76 @@ export default function BillingPage() {
                 error={errors.discount}
               />
             </div>
-            <div className="p-4 bg-surface-alt border border-border rounded-xl flex flex-col justify-center text-right space-y-1">
-              <p className="text-xs text-text-secondary">Subtotal: <span className="font-semibold text-text">₹{subtotal}</span></p>
-              <p className="text-xs text-text-secondary">Tax: <span className="font-semibold text-text">+₹{taxAmount}</span></p>
-              <p className="text-xs text-text-secondary">Discount: <span className="font-semibold text-text">-₹{discountAmount}</span></p>
-              <div className="border-t border-border/80 my-1 pt-1">
-                <p className="text-base font-extrabold text-text">Total Due: <span className="text-primary-600">₹{totalAmount}</span></p>
+            <div className="p-4 bg-surface-alt border border-border/80 rounded-2xl flex flex-col justify-center text-right space-y-1">
+              <p className="text-xs text-text-muted">
+                Subtotal: <span className="font-semibold text-text">₹{subtotal.toLocaleString("en-IN")}</span>
+              </p>
+              <p className="text-xs text-text-muted">
+                Tax: <span className="font-semibold text-text">+₹{taxAmount.toLocaleString("en-IN")}</span>
+              </p>
+              <p className="text-xs text-text-muted">
+                Discount: <span className="font-semibold text-text">-₹{discountAmount.toLocaleString("en-IN")}</span>
+              </p>
+              <div className="border-t border-border/60 my-1 pt-1.5">
+                <p className="text-base font-bold text-text">
+                  Total Due: <span className="text-primary-600 dark:text-primary-400 font-mono">₹{totalAmount.toLocaleString("en-IN")}</span>
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 border-t border-border pt-4 mt-6">
-            <Button variant="outline" type="button" onClick={() => { setIsCreateOpen(false); resetCreateForm(); }}>Cancel</Button>
-            <Button type="submit" loading={submittingInvoice} disabled={!selectedPatient || !selectedClinicId || !selectedDoctorId}>Generate Invoice</Button>
+          <div className="flex justify-end gap-2.5 border-t border-border/60 pt-3.5 mt-4">
+            <Button
+              variant="outline"
+              type="button"
+              size="sm"
+              onClick={() => {
+                setIsCreateOpen(false);
+                resetCreateForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              variant="primary"
+              loading={submittingInvoice}
+              disabled={!selectedPatient || !selectedClinicId || !selectedDoctorId}
+              className="font-semibold rounded-xl shadow-xs"
+            >
+              Generate Invoice
+            </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Collect Payment Modal */}
-      <Modal open={isCollectOpen} onClose={() => { setIsCollectOpen(false); setActiveInvoice(null); }} title="Record Invoice Payment" size="sm">
-        <form onSubmit={handleCollectPayment} className="space-y-4">
-          <div className="p-4 bg-surface-alt border border-border rounded-xl space-y-1">
-            <p className="text-xs text-text-secondary">Invoice Reference: <span className="font-bold text-text">#{activeInvoice?.invoiceNumber}</span></p>
-            <p className="text-xs text-text-secondary">Patient: <span className="font-semibold text-text">{activeInvoice?.patientId?.userId?.name}</span></p>
-            <p className="text-sm font-bold text-text mt-1">Total Amount Due: <span className="text-primary-600">₹{activeInvoice?.totalAmount}</span></p>
+      {/* ──────────────────────────────────────────────────────────────────────────
+          6. COLLECT FULL PAYMENT MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
+      <Modal
+        open={isCollectOpen}
+        onClose={() => {
+          setIsCollectOpen(false);
+          setActiveInvoice(null);
+        }}
+        title="Record Invoice Payment"
+        size="sm"
+      >
+        <form onSubmit={handleCollectPayment} className="space-y-4 pt-1">
+          <div className="p-4 bg-surface-alt border border-border/80 rounded-2xl space-y-1 text-xs">
+            <p className="text-text-muted">
+              Invoice Reference: <span className="font-mono font-bold text-text">#{activeInvoice?.invoiceNumber}</span>
+            </p>
+            <p className="text-text-muted">
+              Patient: <span className="font-bold text-text">{activeInvoice?.patientId?.userId?.name}</span>
+            </p>
+            <p className="text-sm font-bold text-text pt-1">
+              Total Amount Due:{" "}
+              <span className="text-primary-600 dark:text-primary-400 font-mono">
+                ₹{activeInvoice?.totalAmount.toLocaleString("en-IN")}
+              </span>
+            </p>
           </div>
 
           <Select
@@ -907,41 +1308,77 @@ export default function BillingPage() {
             onChange={(e) => setCollectMethod(e.target.value as any)}
             options={[
               { value: "cash", label: "Cash Payment" },
-              { value: "card", label: "Card swipe / POS" },
+              { value: "card", label: "Card Swipe / POS Terminal" },
               { value: "upi", label: "UPI Desk QR Scan" },
-              { value: "insurance", label: "Insurance claim settlement" }
+              { value: "insurance", label: "Insurance / TPA Settlement" },
             ]}
             required
           />
 
-          <div className="flex justify-end gap-3 border-t border-border pt-4 mt-4">
-            <Button variant="outline" type="button" onClick={() => { setIsCollectOpen(false); setActiveInvoice(null); }}>Cancel</Button>
-            <Button type="submit" loading={submittingPayment}>Record Payment</Button>
+          <div className="flex justify-end gap-2.5 border-t border-border/60 pt-3.5">
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => {
+                setIsCollectOpen(false);
+                setActiveInvoice(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" variant="primary" loading={submittingPayment} className="font-semibold rounded-xl shadow-xs">
+              Record Settlement
+            </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Printable Receipt Preview Modal */}
-      <Modal open={receiptOpen} onClose={() => { setReceiptOpen(false); setReceiptInvoice(null); }} title="Cash Payment Receipt" size="md">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          7. CASH RECEIPT PREVIEW MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
+      <Modal
+        open={receiptOpen}
+        onClose={() => {
+          setReceiptOpen(false);
+          setReceiptInvoice(null);
+        }}
+        title="Cash Payment Receipt"
+        size="md"
+      >
         {receiptInvoice && (
-          <div className="space-y-6">
-            <div className="border border-border rounded-xl p-5 bg-surface-alt font-mono text-sm space-y-4">
-              <div className="text-center border-b border-border/80 border-dashed pb-4 mb-2">
-                <h3 className="font-extrabold text-base tracking-tight text-text">JK HEALTHCARE SYSTEM</h3>
-                <p className="text-xs text-text-muted mt-0.5">{receiptInvoice.clinicId?.name}</p>
-                <p className="text-[11px] text-text-muted">{receiptInvoice.clinicId?.address}, {receiptInvoice.clinicId?.city}</p>
+          <div className="space-y-4 py-1">
+            <div className="border border-border/80 rounded-2xl p-5 bg-surface-alt font-mono text-xs space-y-3">
+              <div className="text-center border-b border-border/60 border-dashed pb-3 mb-2">
+                <h3 className="font-bold text-sm tracking-tight text-text">HEALTHCARE RECEIPT</h3>
+                <p className="text-[11px] text-text-muted mt-0.5">{receiptInvoice.clinicId?.name}</p>
+                <p className="text-[10px] text-text-muted">
+                  {receiptInvoice.clinicId?.address}, {receiptInvoice.clinicId?.city}
+                </p>
               </div>
 
-              <div className="space-y-1 border-b border-border/80 border-dashed pb-3">
-                <div className="flex justify-between"><span className="text-text-muted">Invoice No:</span><span className="font-bold text-text">#{receiptInvoice.invoiceNumber}</span></div>
-                <div className="flex justify-between"><span className="text-text-muted">Invoice Date:</span><span>{new Date(receiptInvoice.createdAt).toLocaleString()}</span></div>
-                <div className="flex justify-between"><span className="text-text-muted">Patient:</span><span className="font-semibold text-text">{receiptInvoice.patientId?.userId?.name}</span></div>
-                <div className="flex justify-between"><span className="text-text-muted">Doctor:</span><span>Dr. {receiptInvoice.doctorId?.name}</span></div>
+              <div className="space-y-1 border-b border-border/60 border-dashed pb-2.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Invoice No:</span>
+                  <span className="font-bold text-text">#{receiptInvoice.invoiceNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Invoice Date:</span>
+                  <span>{new Date(receiptInvoice.createdAt).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Patient:</span>
+                  <span className="font-semibold text-text">{receiptInvoice.patientId?.userId?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Doctor:</span>
+                  <span>Dr. {receiptInvoice.doctorId?.name}</span>
+                </div>
               </div>
 
               {/* Items List */}
-              <div className="space-y-2">
-                <div className="flex justify-between font-bold border-b border-border pb-1">
+              <div className="space-y-1.5">
+                <div className="flex justify-between font-bold border-b border-border/60 pb-1">
                   <span>Item Description</span>
                   <span className="w-12 text-right">Qty</span>
                   <span className="w-20 text-right">Amount</span>
@@ -950,68 +1387,100 @@ export default function BillingPage() {
                   <div key={idx} className="flex justify-between text-xs py-0.5">
                     <span className="truncate max-w-[200px]">{item.description}</span>
                     <span className="w-12 text-right">{item.quantity}</span>
-                    <span className="w-20 text-right">₹{item.amount * item.quantity}</span>
+                    <span className="w-20 text-right">₹{(item.amount * item.quantity).toLocaleString("en-IN")}</span>
                   </div>
                 ))}
               </div>
 
               {/* Summary */}
-              <div className="border-t border-border/80 border-dashed pt-3 space-y-1.5 text-xs text-right">
-                <div className="flex justify-between"><span>Subtotal:</span><span>₹{receiptInvoice.subtotal}</span></div>
-                <div className="flex justify-between"><span>Tax Charges:</span><span>₹{receiptInvoice.tax}</span></div>
-                <div className="flex justify-between"><span>Discounts:</span><span>-₹{receiptInvoice.discount}</span></div>
-                <div className="flex justify-between font-extrabold text-sm border-t border-border/60 pt-1.5 text-text">
-                  <span>Total Amount Paid:</span><span>₹{receiptInvoice.totalAmount}</span>
+              <div className="border-t border-border/60 border-dashed pt-2.5 space-y-1 text-right">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>₹{receiptInvoice.subtotal.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tax:</span>
+                  <span>₹{receiptInvoice.tax.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Discount:</span>
+                  <span>-₹{receiptInvoice.discount.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between font-bold text-sm border-t border-border/60 pt-1.5 text-text">
+                  <span>Total Paid:</span>
+                  <span>₹{receiptInvoice.totalAmount.toLocaleString("en-IN")}</span>
                 </div>
               </div>
 
               <div className="text-center pt-2">
-                <span className={`inline-block font-extrabold text-xs px-4 py-1.5 rounded-full uppercase border ${
-                  receiptInvoice.status === "paid" 
-                    ? "bg-success-100/50 text-success-800 border-success-300/40" 
-                    : "bg-danger-100/50 text-danger-800 border-danger-300/40"
-                }`}>
+                <span className="inline-block font-bold text-[10px] px-3 py-1 rounded-full uppercase border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
                   {receiptInvoice.status}
                 </span>
                 {receiptInvoice.paymentMethod && (
-                  <p className="text-[11px] text-text-muted mt-2">Paid via {receiptInvoice.paymentMethod.toUpperCase()} on {receiptInvoice.paymentDate ? new Date(receiptInvoice.paymentDate).toLocaleDateString() : ""}</p>
+                  <p className="text-[10px] text-text-muted mt-1.5">
+                    Settled via {receiptInvoice.paymentMethod.toUpperCase()}
+                  </p>
                 )}
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-border pt-4">
-              <Button variant="outline" onClick={() => { setReceiptOpen(false); setReceiptInvoice(null); }}>Close</Button>
-              <Button onClick={() => triggerBrowserPrint(receiptInvoice)}>Print Receipt</Button>
+            <div className="flex justify-end gap-2.5 border-t border-border/60 pt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setReceiptOpen(false);
+                  setReceiptInvoice(null);
+                }}
+              >
+                Close
+              </Button>
+              <Button size="sm" variant="primary" onClick={() => triggerBrowserPrint(receiptInvoice)} className="font-semibold rounded-xl shadow-xs">
+                <Printer className="w-3.5 h-3.5 mr-1.5" />
+                Print Receipt
+              </Button>
             </div>
           </div>
         )}
       </Modal>
 
-      {/* Official Invoice PDF Modal */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          8. OFFICIAL INVOICE PDF MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <UnifiedDocumentModal
         open={printModalOpen}
         onClose={() => setPrintModalOpen(false)}
         document={unifiedDoc}
       />
 
-      {/* Record Partial Payment Modal */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          9. RECORD PARTIAL PAYMENT MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isPartialModalOpen}
         onClose={() => setIsPartialModalOpen(false)}
-        title={`Record Installment Payment: Invoice #${partialTargetInvoice?.invoiceNumber || ""}`}
+        title={`Record Installment: Invoice #${partialTargetInvoice?.invoiceNumber || ""}`}
         size="md"
       >
-        <form onSubmit={handleRecordPartialPayment} className="space-y-4">
-          <div className="p-3 bg-surface-alt rounded-lg border border-border text-xs space-y-1">
+        <form onSubmit={handleRecordPartialPayment} className="space-y-4 pt-1">
+          <div className="p-3.5 bg-surface-alt rounded-2xl border border-border/80 text-xs space-y-1">
             <p className="font-bold text-text">Patient: {partialTargetInvoice?.patientId?.userId?.name}</p>
-            <p className="text-text-secondary">Invoice Total: ₹{partialTargetInvoice?.totalAmount}</p>
-            <p className="text-text-secondary">Amount Previously Paid: ₹{partialTargetInvoice?.amountPaid || 0}</p>
-            <p className="font-bold text-danger-500">
-              Remaining Balance Due: ₹{partialTargetInvoice?.balanceDue !== undefined ? partialTargetInvoice.balanceDue : (partialTargetInvoice?.totalAmount || 0) - (partialTargetInvoice?.amountPaid || 0)}
+            <p className="text-text-muted">
+              Total Invoice Amount: ₹{partialTargetInvoice?.totalAmount.toLocaleString("en-IN")}
+            </p>
+            <p className="text-text-muted">
+              Previously Settled: ₹{(partialTargetInvoice?.amountPaid || 0).toLocaleString("en-IN")}
+            </p>
+            <p className="font-bold text-rose-500 pt-1">
+              Remaining Balance Due: ₹
+              {(partialTargetInvoice?.balanceDue !== undefined
+                ? partialTargetInvoice.balanceDue
+                : (partialTargetInvoice?.totalAmount || 0) - (partialTargetInvoice?.amountPaid || 0)
+              ).toLocaleString("en-IN")}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
               label="Installment Payment Amount (₹) *"
               type="number"
@@ -1049,23 +1518,16 @@ export default function BillingPage() {
             onChange={(e) => setPartialNotes(e.target.value)}
           />
 
-          <div className="flex justify-between border-t border-border pt-4 mt-4">
-            <Button variant="outline" type="button" onClick={() => setIsPartialModalOpen(false)}>
+          <div className="flex justify-between border-t border-border/60 pt-3.5">
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsPartialModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" loading={submittingPartial}>
+            <Button type="submit" size="sm" variant="primary" loading={submittingPartial} className="font-semibold rounded-xl shadow-xs">
               Record Installment
             </Button>
           </div>
         </form>
       </Modal>
-
-      {/* Official Invoice Print / Receipt Modal */}
-      <UnifiedDocumentModal
-        open={printModalOpen}
-        onClose={() => setPrintModalOpen(false)}
-        document={unifiedDoc}
-      />
     </div>
   );
 }

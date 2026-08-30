@@ -166,7 +166,7 @@ export default function Modal({
         aria-labelledby={title ? "modal-title" : undefined}
         aria-describedby={description ? "modal-desc" : undefined}
         className={cn(
-          "relative w-full bg-surface/95 backdrop-blur-2xl rounded-2xl shadow-2xl shadow-black/50 border border-border/80 ring-1 ring-white/10 flex flex-col focus:outline-none overflow-hidden max-h-[90vh] transform-gpu before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/40 before:to-transparent",
+          "relative w-full bg-surface/98 backdrop-blur-2xl rounded-2xl shadow-xl border border-border/80 ring-1 ring-border/50 flex flex-col focus:outline-none overflow-hidden max-h-[90vh] transform-gpu before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/40 before:to-transparent",
           isExiting ? "animate-dialog-out" : "animate-dialog-in",
           sizeStyles[size],
           className

@@ -5,9 +5,11 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, ImageUpload, SkeletonTable, Dropdown, ConfirmDialog
+  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, ImageUpload, SkeletonTable, Dropdown, ConfirmDialog,
+  ChartContainer, DonutChart, cn
 } from "@/components/ui";
 import { useR2Upload } from "@/hooks/useR2Upload";
+import { Activity, Layers, RotateCw, Plus, FlaskConical, Clock, CheckCircle2 } from "lucide-react";
 
 const LAB_DEPARTMENTS = ["Biochemistry", "Hematology", "Radiology", "Microbiology", "Immunology", "Pathology", "Urinalysis", "Cardiology"];
 
@@ -423,88 +425,142 @@ export default function LaboratoryPage() {
 
   return (
     <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
-      {/* Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Laboratory & Diagnostics</h1>
-          <p className="text-xs text-text-muted mt-0.5">
-            Order medical lab examinations, manage catalog test departments, and upload result reports.
-          </p>
-        </div>
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Diagnostics Laboratory
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Diagnostics Worklist
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Track diagnostic specimen collection, sample processing, automated normal ranges, and pathology pricing.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {user && user.role !== "patient" && (
-            <>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => { setSelectedPatient(null); setPatientSearch(""); setSelectedTestId(""); setSelectedDoctorId(""); setIsOrderOpen(true); }}
-                className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                <span>Place Lab Order</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchData}
-                loading={loading}
-                className="font-semibold rounded-xl cursor-pointer gap-1.5"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span>Refresh</span>
-              </Button>
-            </>
-          )}
+          <div className="flex items-center gap-2.5 shrink-0">
+            {user && user.role !== "patient" && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchData}
+                  disabled={loading}
+                  className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+                >
+                  <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
+                  Refresh
+                </Button>
+
+                {activeTab === "catalog" ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      setEditingTestId(null);
+                      setTestName("");
+                      setTestCode("");
+                      setTestDepartment("");
+                      setTestSampleType("");
+                      setTestPrice(0);
+                      setTestNormalRange("");
+                      setErrors({});
+                      setIsTestModalOpen(true);
+                    }}
+                    className="font-semibold rounded-xl shadow-xs cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Add Test to Catalog
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => { setSelectedPatient(null); setPatientSearch(""); setSelectedTestId(""); setSelectedDoctorId(""); setIsOrderOpen(true); }}
+                    className="font-semibold rounded-xl shadow-xs cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Place Lab Order
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Stats Cards (Staff Only) */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. KPI STATS CARDS GRID (STAFF ONLY)
+         ────────────────────────────────────────────────────────────────────────── */}
       {user && user.role !== "patient" && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Total Lab Orders"
-            value={totalOrders}
-            icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-blue-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>}
+            value={totalOrders.toString()}
+            description="Diagnostic test requests"
+            icon={<FlaskConical className="w-5 h-5 text-text-secondary" />}
           />
           <StatCard
             label="Samples Pending"
-            value={pendingSamples}
-            icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-amber-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>}
+            value={pendingSamples.toString()}
+            description="Awaiting phlebotomy collection"
+            icon={<Clock className="w-5 h-5 text-text-secondary" />}
           />
           <StatCard
             label="Results Awaiting"
-            value={pendingResults}
-            icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-purple-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>}
+            value={pendingResults.toString()}
+            description="Under processing / analysis"
+            icon={<Activity className="w-5 h-5 text-text-secondary" />}
           />
           <StatCard
             label="Completed Results"
-            value={completedOrders}
-            icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-green-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a10 10 0 11-20 0 10 10 0 0120 0z" /></svg>}
+            value={completedOrders.toString()}
+            description="Signed & verified reports"
+            icon={<CheckCircle2 className="w-5 h-5 text-text-secondary" />}
           />
         </div>
       )}
 
       {/* Tabs Menu (Staff Only) */}
       {user && user.role !== "patient" && (
-        <div className="flex items-center border-b border-border gap-3 sm:gap-6 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth pb-px">
+        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
           <button
             type="button"
             onClick={() => setActiveTab("worklist")}
-            className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "worklist" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
+            className={cn(
+              "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+              activeTab === "worklist"
+                ? "bg-surface text-text shadow-xs font-bold border border-border/60"
+                : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
+            )}
           >
-            Diagnostics Worklist
+            <Activity className={cn("w-3.5 h-3.5", activeTab === "worklist" ? "text-primary-500" : "text-text-muted")} />
+            <span>Diagnostics Worklist</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
+              {labOrders.length}
+            </span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("catalog")}
-            className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "catalog" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
+            className={cn(
+              "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+              activeTab === "catalog"
+                ? "bg-surface text-text shadow-xs font-bold border border-border/60"
+                : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
+            )}
           >
-            Tests Pricing Catalog
+            <Layers className={cn("w-3.5 h-3.5", activeTab === "catalog" ? "text-primary-500" : "text-text-muted")} />
+            <span>Tests Pricing Catalog</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
+              {labTests.length}
+            </span>
           </button>
         </div>
       )}
@@ -512,6 +568,42 @@ export default function LaboratoryPage() {
       {/* TAB 1: WORKLIST (STAFF) */}
       {activeTab === "worklist" && user?.role !== "patient" && (
         <div className="space-y-6">
+          {/* PURPOSEFUL DIAGNOSTIC WORKLOAD DISTRIBUTION */}
+          {labOrders.length > 0 && (
+            <ChartContainer
+              title="Diagnostic Workload by Department"
+              description="Active lab test orders categorized across clinical specialties"
+              loading={loading}
+              height={200}
+            >
+              <DonutChart
+                data={(() => {
+                  const counts: Record<string, number> = {};
+                  labOrders.forEach((o) => {
+                    const dept = o.testId?.department || "General Lab";
+                    counts[dept] = (counts[dept] || 0) + 1;
+                  });
+                  const colors = [
+                    "var(--s-chart-1, #3b82f6)",
+                    "var(--s-chart-2, #10b981)",
+                    "var(--s-chart-3, #f59e0b)",
+                    "var(--s-chart-4, #8b5cf6)",
+                    "var(--s-chart-5, #ec4899)",
+                    "#06b6d4",
+                    "#f97316",
+                  ];
+                  return Object.entries(counts).map(([name, value], idx) => ({
+                    name,
+                    value,
+                    color: colors[idx % colors.length],
+                  }));
+                })()}
+                height={200}
+                valueFormatter={(v) => `${v} orders`}
+              />
+            </ChartContainer>
+          )}
+
           <Card className="overflow-hidden">
             <Table
               loading={loading}
@@ -647,6 +739,7 @@ export default function LaboratoryPage() {
 
               <Card className="overflow-hidden">
                 <Table
+                  loading={loading}
                   columns={[
                     { header: "Test Name", key: "name" },
                     { header: "Code / Lab Room", key: "code" },

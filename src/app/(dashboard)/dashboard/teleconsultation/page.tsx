@@ -16,7 +16,9 @@ import {
   Badge,
   StatCard,
   Spinner,
+  cn,
 } from "@/components/ui";
+import { RotateCw, Plus, Video, Clock, Activity, CheckCircle2 } from "lucide-react";
 
 export interface TeleconsultationAppointment {
   id: string;
@@ -302,26 +304,22 @@ export default function TeleconsultationPage() {
 
     try {
       setSavingRx(true);
-      if (activeApptForCall?.patientId?.id) {
-        await api.post("/prescriptions", {
-          patientId: activeApptForCall.patientId.id,
-          doctorId: activeApptForCall.doctorId?.id,
-          appointmentId: activeApptForCall.id,
-          medications: [
-            {
-              name: rxForm.drugName,
-              dosage: rxForm.dosage,
-              frequency: rxForm.frequency,
-              duration: rxForm.durationDays,
-              instructions: rxForm.instructions,
-            },
-          ],
-          notes: `Prescribed during video consultation (${activeSession?.sessionRoomId || "Telehealth"}).`,
-        });
+      const rxLine = `\n• Rx: ${rxForm.drugName} ${rxForm.dosage} | Frequency: ${rxForm.frequency} | Duration: ${rxForm.durationDays} days | Instructions: ${rxForm.instructions}`;
+      const updatedNotes = clinicalNotesInput ? `${clinicalNotesInput}\n${rxLine}` : `Prescription Items:${rxLine}`;
+      setClinicalNotesInput(updatedNotes);
+
+      if (activeSession) {
+        const sId = activeSession.id || activeSession._id;
+        if (sId) {
+          await api.put(`/teleconsultation/session/${sId}/notes`, {
+            clinicalNotes: updatedNotes,
+            vitalsRecorded: vitalsInput,
+          });
+        }
       }
 
       toast({
-        title: "Prescription Issued ✓",
+        title: "Prescription Added to Consultation Notes ✓",
         description: `Prescribed ${rxForm.drugName} to patient.`,
         variant: "success",
       });
@@ -330,7 +328,7 @@ export default function TeleconsultationPage() {
     } catch (err: any) {
       toast({
         title: "Prescription Save Failed",
-        description: err.response?.data?.message || "Could not save prescription draft",
+        description: err.response?.data?.message || "Could not save prescription into notes",
         variant: "error",
       });
     } finally {
@@ -441,87 +439,116 @@ export default function TeleconsultationPage() {
   const completedCount = appointments.filter((a) => a.status === "completed").length;
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
-      {/* Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight flex items-center gap-2">
-            <span className="text-purple-600">📹</span> Teleconsultation & Virtual Care Desk
-          </h1>
-          <p className="text-xs text-text-muted mt-0.5">
-            Real-time virtual waiting room, WebRTC video consultation workspace, live vitals, and instant prescribing.
-          </p>
-        </div>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Teleconsultation & Virtual Care
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Virtual Care Desk
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Real-time virtual waiting room, WebRTC video consultation workspace, live vitals, and instant prescribing.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setIsLaunchModalOpen(true)}
-            className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5 bg-purple-600 hover:bg-purple-700 text-white"
-          >
-            <span>+ Launch Virtual Room</span>
-          </Button>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchData}
+              disabled={loading}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+            >
+              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
+              Refresh Desk
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchData}
-            loading={loading}
-            className="font-semibold rounded-xl cursor-pointer gap-1.5"
-          >
-            <span>Refresh Desk</span>
-          </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsLaunchModalOpen(true)}
+              className="font-semibold rounded-xl shadow-xs"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Launch Virtual Room
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* KPI Stats Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. KPI STATS CARDS GRID
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Telehealth Visits"
-          value={totalVirtual}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-blue-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>}
+          value={totalVirtual.toString()}
+          description="Registered online encounters"
+          icon={<Video className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
           label="Virtual Waiting Room"
-          value={waitingCount}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-amber-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          value={waitingCount.toString()}
+          description="Checked-in patients queue"
+          icon={<Clock className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
           label="Active Video Calls"
-          value={activeCallCount}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-purple-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>}
+          value={activeCallCount.toString()}
+          description="Currently ongoing encounters"
+          icon={<Activity className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
-          label="Completed Virtual Visits"
-          value={completedCount}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-emerald-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          label="Completed Visits"
+          value={completedCount.toString()}
+          description="Finished virtual consultations"
+          icon={<CheckCircle2 className="w-5 h-5 text-text-secondary" />}
         />
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="p-4 bg-surface rounded-2xl border border-border/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          3. FILTER TOOLBAR
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="p-3.5 sm:p-4 bg-surface rounded-2xl border border-border/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Status Pills */}
-        <div className="flex items-center gap-1.5 flex-wrap text-xs">
-          <span className="font-bold text-text-muted mr-1">Queue Status:</span>
+        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
           {[
-            { key: "all", label: "All Telehealth Visits" },
-            { key: "checked-in", label: "Waiting Room" },
-            { key: "in-consultation", label: "In Active Video Call" },
-            { key: "confirmed", label: "Scheduled Online" },
-            { key: "completed", label: "Completed" },
+            { key: "all", label: "All Telehealth Visits", count: totalVirtual },
+            { key: "checked-in", label: "Waiting Room", count: waitingCount },
+            { key: "in-consultation", label: "In Active Call", count: activeCallCount },
+            { key: "confirmed", label: "Scheduled", count: appointments.filter((a) => a.status === "confirmed").length },
+            { key: "completed", label: "Completed", count: completedCount },
           ].map((s) => (
             <button
               key={s.key}
               type="button"
               onClick={() => setStatusFilter(s.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+              className={cn(
+                "px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
                 statusFilter === s.key
-                  ? "bg-purple-600 text-white border-purple-600 shadow-xs"
-                  : "bg-surface-alt text-text-muted border-border/80 hover:text-text"
-              }`}
+                  ? "bg-surface text-text shadow-xs font-bold border border-border/60"
+                  : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
+              )}
             >
-              {s.label}
+              <span>{s.label}</span>
+              <span
+                className={cn(
+                  "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
+                  statusFilter === s.key
+                    ? "bg-primary-500/10 text-primary-600 dark:text-primary-400"
+                    : "bg-surface-alt text-text-muted"
+                )}
+              >
+                {s.count}
+              </span>
             </button>
           ))}
         </div>

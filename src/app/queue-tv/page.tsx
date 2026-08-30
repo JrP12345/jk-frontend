@@ -5,7 +5,7 @@ import { Badge, Card, CardHeader, CardTitle, CardContent, Spinner } from "@/comp
 import api from "@/lib/api";
 
 export default function WaitingRoomTvQueueBoard() {
-  const [clinicName, setClinicName] = useState("ANANTA Healthcare Desk");
+  const [clinicName, setClinicName] = useState("ANANT Healthcare Desk");
   const [activeToken, setActiveToken] = useState<any | null>(null);
   const [waitingQueue, setWaitingQueue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,7 +154,7 @@ export default function WaitingRoomTvQueueBoard() {
       {/* Footer ticker */}
       <div className="bg-zinc-900 px-6 py-3 rounded-2xl border border-zinc-800 text-xs text-zinc-400 flex justify-between items-center">
         <span>Emergency Services available 24/7. Please contact Reception Desk for urgent assistance.</span>
-        <span className="font-bold text-primary-400">ANANTA HealthOS v2.0</span>
+        <span className="font-bold text-primary-400">ANANT HealthOS v2.0</span>
       </div>
     </div>
   );

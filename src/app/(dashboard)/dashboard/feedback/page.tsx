@@ -7,6 +7,7 @@ import {
   Card, CardHeader, CardTitle, CardContent,
   Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, SkeletonTable
 } from "@/components/ui";
+import { Plus, Target, Star, MessageSquare, Sparkles } from "lucide-react";
 
 interface AspectRatings {
   waitTime?: number;
@@ -207,147 +208,145 @@ export default function PatientExperienceFeedbackPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 text-white p-6 rounded-2xl shadow-xl">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold uppercase tracking-wider text-emerald-100">
-            ★ PEC & Quality Accreditation Governance
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Patient Experience & CSAT Feedback
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Accreditation Governance
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Real-time patient satisfaction tracking, 5-Star CSAT indices, Net Promoter Score (NPS) governance, and aspect-level care quality ratings.
+            </p>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Patient Experience & NPS Feedback Analytics</h1>
-          <p className="text-emerald-100 text-sm max-w-2xl">
-            Real-time patient satisfaction tracking, 5-Star CSAT indices, Net Promoter Score (NPS) governance, and aspect-level care quality ratings.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={() => setIsSurveyModalOpen(true)}
-            className="bg-white text-emerald-800 hover:bg-emerald-50 font-semibold shadow-md border-0 text-sm px-4 py-2.5 rounded-xl transition-all"
-          >
-            + Submit Patient Survey
-          </Button>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsSurveyModalOpen(true)}
+              className="font-semibold rounded-xl shadow-xs"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Submit Patient Survey
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* KPI Stats Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. KPI STATS CARDS GRID
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Net Promoter Score (NPS)"
+          label="Net Promoter Score (NPS)"
           value={`${stats.netPromoterScore > 0 ? `+${stats.netPromoterScore}` : stats.netPromoterScore}`}
-          change={{ value: `${stats.npsCategory} Sentiment`, positive: stats.netPromoterScore >= 50 }}
-          icon={
-            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-lg">
-              🎯
-            </div>
-          }
+          description={`${stats.npsCategory} Sentiment`}
+          icon={<Target className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
-          title="Average CSAT Rating"
+          label="Average CSAT Rating"
           value={`${stats.averageCsatRating} / 5.0`}
-          change={{ value: "Verified Visits", positive: true }}
-          icon={
-            <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-lg">
-              ⭐️
-            </div>
-          }
+          description="Verified Patient Encounters"
+          icon={<Star className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
-          title="Total Survey Responses"
+          label="Total Survey Responses"
           value={stats.totalResponses.toString()}
-          change={{ value: "Completed Forms", positive: true }}
-          icon={
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-lg">
-              📝
-            </div>
-          }
+          description="Completed Clinical Feedbacks"
+          icon={<MessageSquare className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
-          title="Hygiene & Care Rating"
+          label="Hygiene & Care Rating"
           value={formatAspectRating(stats.averageAspectRatings.cleanliness)}
-          change={{ value: stats.averageAspectRatings.cleanliness === null ? "No responses" : "Recorded surveys", positive: stats.averageAspectRatings.cleanliness !== null }}
-          icon={
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 rounded-lg">
-              ✨
-            </div>
-          }
+          description="Cleanliness Index"
+          icon={<Sparkles className="w-5 h-5 text-text-secondary" />}
         />
       </div>
 
       {/* Aspect Ratings & Sentiment Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-5 shadow-sm border border-gray-100 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900">
+        <Card className="p-5 shadow-xs border border-border/80 rounded-2xl bg-surface">
           <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2 text-text">
               <span>⏱</span> OPD Wait Time Satisfaction
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 dark:text-gray-400">Average Rating</span>
-              <span className="font-bold text-gray-900 dark:text-gray-100">{formatAspectRating(stats.averageAspectRatings.waitTime)}</span>
+              <span className="text-text-muted">Average Rating</span>
+              <span className="font-bold text-text">{formatAspectRating(stats.averageAspectRatings.waitTime)}</span>
             </div>
-            <div className="w-full bg-gray-100 dark:bg-gray-800 h-2.5 rounded-full overflow-hidden">
+            <div className="w-full bg-surface-alt h-2.5 rounded-full overflow-hidden">
               <div className="bg-emerald-500 h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.waitTime) }} />
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Target: Avg consult wait time under 15 minutes.</p>
+            <p className="text-xs text-text-muted">Target: Avg consult wait time under 15 minutes.</p>
           </CardContent>
         </Card>
 
-        <Card className="p-5 shadow-sm border border-gray-100 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900">
+        <Card className="p-5 shadow-xs border border-border/80 rounded-2xl bg-surface">
           <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2 text-text">
               <span>👨‍⚕️</span> Doctor Communication & Attitude
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 dark:text-gray-400">Average Rating</span>
-              <span className="font-bold text-gray-900 dark:text-gray-100">{formatAspectRating(stats.averageAspectRatings.doctorAttitude)}</span>
+              <span className="text-text-muted">Average Rating</span>
+              <span className="font-bold text-text">{formatAspectRating(stats.averageAspectRatings.doctorAttitude)}</span>
             </div>
-            <div className="w-full bg-gray-100 dark:bg-gray-800 h-2.5 rounded-full overflow-hidden">
+            <div className="w-full bg-surface-alt h-2.5 rounded-full overflow-hidden">
               <div className="bg-teal-500 h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.doctorAttitude) }} />
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">High patient trust in clinical explanation & empathy.</p>
+            <p className="text-xs text-text-muted">High patient trust in clinical explanation & empathy.</p>
           </CardContent>
         </Card>
 
-        <Card className="p-5 shadow-sm border border-gray-100 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900">
+        <Card className="p-5 shadow-xs border border-border/80 rounded-2xl bg-surface">
           <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2 text-text">
               <span>✨</span> Facility & Ward Cleanliness
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 dark:text-gray-400">Average Rating</span>
-              <span className="font-bold text-gray-900 dark:text-gray-100">{formatAspectRating(stats.averageAspectRatings.cleanliness)}</span>
+              <span className="text-text-muted">Average Rating</span>
+              <span className="font-bold text-text">{formatAspectRating(stats.averageAspectRatings.cleanliness)}</span>
             </div>
-            <div className="w-full bg-gray-100 dark:bg-gray-800 h-2.5 rounded-full overflow-hidden">
+            <div className="w-full bg-surface-alt h-2.5 rounded-full overflow-hidden">
               <div className="bg-indigo-500 h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.cleanliness) }} />
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Sanitization & room hygiene standards compliant.</p>
+            <p className="text-xs text-text-muted">Sanitization & room hygiene standards compliant.</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Patient Survey Reviews Feed & Filter Table */}
-      <Card className="shadow-sm border border-gray-100 dark:border-gray-800 rounded-2xl bg-white dark:bg-gray-900">
-        <CardHeader className="p-5 border-b border-gray-100 dark:border-gray-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <Card className="shadow-xs border border-border/80 rounded-2xl bg-surface">
+        <CardHeader className="p-5 border-b border-border/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <CardTitle className="text-lg font-bold text-gray-900 dark:text-gray-100">
+            <CardTitle className="text-lg font-bold text-text">
               Patient Feedback & Review Feed
             </CardTitle>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-text-muted">
               Verified clinical visit reviews and qualitative feedback comments.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-medium">Filter Sentiment:</span>
+            <span className="text-xs text-text-muted font-medium">Filter Sentiment:</span>
             <select
               value={filterRating}
               onChange={(e) => setFilterRating(e.target.value)}
-              className="text-xs py-1.5 px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="text-xs py-1.5 px-3 rounded-xl border border-border/80 bg-surface text-text font-semibold cursor-pointer"
             >
               <option value="all">All Feedback (100%)</option>
               <option value="promoter">🟢 Promoters (9-10 NPS)</option>
@@ -368,24 +367,24 @@ export default function PatientExperienceFeedbackPage() {
               <p className="text-sm font-medium">No patient feedback matching current sentiment filter.</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            <div className="divide-y divide-border/60">
               {filteredFeedbacks.map((fb) => (
-                <div key={fb.id} className="p-5 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors space-y-3">
+                <div key={fb.id} className="p-5 hover:bg-surface-hover/50 transition-colors space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold flex items-center justify-center text-sm">
+                      <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-sm border border-emerald-500/20">
                         {fb.patientId?.userId?.name?.charAt(0) || "P"}
                       </div>
                       <div>
-                        <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm flex items-center gap-2">
+                        <div className="font-semibold text-text text-sm flex items-center gap-2">
                           {fb.patientId?.userId?.name || "Anonymous Patient"}
-                          <span className="text-xs text-gray-400 font-normal">
+                          <span className="text-xs text-text-muted font-normal">
                             · Attending: {fb.doctorId?.name || "Attending Physician"} ({fb.doctorId?.specialization || "Opd"})
                           </span>
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
                           <div className="flex">{renderStars(fb.rating)}</div>
-                          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">({fb.rating}/5 CSAT)</span>
+                          <span className="text-xs font-semibold text-text-secondary">({fb.rating}/5 CSAT)</span>
                         </div>
                       </div>
                     </div>
@@ -393,23 +392,23 @@ export default function PatientExperienceFeedbackPage() {
                   </div>
 
                   {fb.comments && (
-                    <p className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/60 p-3 rounded-xl border border-gray-100 dark:border-gray-700/50 italic">
+                    <p className="text-sm text-text-secondary bg-surface-alt/70 p-3 rounded-xl border border-border/60 italic">
                       "{fb.comments}"
                     </p>
                   )}
 
                   {fb.aspectRatings && (
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400 pt-1">
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-text-muted pt-1">
                       {fb.aspectRatings.waitTime && (
-                        <span>⏱ Wait Time: <strong className="text-gray-700 dark:text-gray-300">{fb.aspectRatings.waitTime}/5</strong></span>
+                        <span>⏱ Wait Time: <strong className="text-text">{fb.aspectRatings.waitTime}/5</strong></span>
                       )}
                       {fb.aspectRatings.doctorAttitude && (
-                        <span>👨‍⚕️ Doctor Care: <strong className="text-gray-700 dark:text-gray-300">{fb.aspectRatings.doctorAttitude}/5</strong></span>
+                        <span>👨‍⚕️ Doctor Care: <strong className="text-text">{fb.aspectRatings.doctorAttitude}/5</strong></span>
                       )}
                       {fb.aspectRatings.cleanliness && (
-                        <span>✨ Hygiene: <strong className="text-gray-700 dark:text-gray-300">{fb.aspectRatings.cleanliness}/5</strong></span>
+                        <span>✨ Hygiene: <strong className="text-text">{fb.aspectRatings.cleanliness}/5</strong></span>
                       )}
-                      <span className="ml-auto text-gray-400">
+                      <span className="ml-auto text-text-muted">
                         {new Date(fb.createdAt).toLocaleDateString()}
                       </span>
                     </div>
@@ -429,13 +428,13 @@ export default function PatientExperienceFeedbackPage() {
       >
         <form onSubmit={handleSubmitSurvey} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-xs font-semibold text-text mb-1">
               Select Completed Clinical Visit *
             </label>
             <select
               value={selectedAppointmentId}
               onChange={(e) => setSelectedAppointmentId(e.target.value)}
-              className="w-full text-xs p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="w-full text-xs p-2.5 rounded-xl border border-border/80 bg-surface text-text font-medium"
               required
             >
               {appointments.length === 0 ? (
@@ -452,13 +451,13 @@ export default function PatientExperienceFeedbackPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-text mb-1">
                 Overall CSAT Rating (1 - 5 Stars) *
               </label>
               <select
                 value={csatRating.toString()}
                 onChange={(e) => setCsatRating(Number(e.target.value))}
-                className="w-full text-xs p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                className="w-full text-xs p-2.5 rounded-xl border border-border/80 bg-surface text-text font-medium"
               >
                 <option value="5">⭐️⭐️⭐️⭐️⭐️ (5 - Excellent)</option>
                 <option value="4">⭐️⭐️⭐️⭐️ (4 - Very Good)</option>
@@ -469,7 +468,7 @@ export default function PatientExperienceFeedbackPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-text mb-1">
                 Net Promoter Score (NPS 0 - 10) *
               </label>
               <Input
@@ -485,13 +484,13 @@ export default function PatientExperienceFeedbackPage() {
           </div>
 
           {/* Aspect Ratings */}
-          <div className="border-t border-gray-100 dark:border-gray-800 pt-3 space-y-3">
-            <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider">
+          <div className="border-t border-border/60 pt-3 space-y-3">
+            <h4 className="text-xs font-bold text-text uppercase tracking-wider">
               Care Quality Aspect Breakdown (1 - 5)
             </h4>
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">⏱ Wait Time</label>
+                <label className="block text-xs text-text-muted mb-1">⏱ Wait Time</label>
                 <Input
                   type="number"
                   min={1}
@@ -502,7 +501,7 @@ export default function PatientExperienceFeedbackPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">👨‍⚕️ Doctor Attitude</label>
+                <label className="block text-xs text-text-muted mb-1">👨‍⚕️ Doctor Attitude</label>
                 <Input
                   type="number"
                   min={1}
@@ -513,7 +512,7 @@ export default function PatientExperienceFeedbackPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">✨ Cleanliness</label>
+                <label className="block text-xs text-text-muted mb-1">✨ Cleanliness</label>
                 <Input
                   type="number"
                   min={1}
@@ -527,7 +526,7 @@ export default function PatientExperienceFeedbackPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-xs font-semibold text-text mb-1">
               Patient Comments & Qualitative Feedback
             </label>
             <Textarea
@@ -544,12 +543,12 @@ export default function PatientExperienceFeedbackPage() {
               type="button"
               variant="outline"
               onClick={() => setIsSurveyModalOpen(false)}
-              className="text-xs"
+              className="text-xs rounded-xl"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting} className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white">
-              {submitting ? <Spinner size="sm" /> : "Submit Feedback"}
+            <Button type="submit" disabled={submitting} variant="primary" className="text-xs rounded-xl font-semibold">
+              {submitting ? "Submitting..." : "Save Patient Feedback"}
             </Button>
           </div>
         </form>

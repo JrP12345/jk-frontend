@@ -254,7 +254,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-surface-alt relative overflow-hidden font-sans text-text">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-surface-alt relative overflow-hidden font-sans text-text animate-page-enter">
       {/* Background ambient glow */}
       <div className="absolute top-[-15%] left-[-15%] w-[50%] h-[50%] bg-primary-500/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-[-15%] right-[-15%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
@@ -367,7 +367,7 @@ export default function LoginPage() {
                     <Input
                       label="Email Address *"
                       type="email"
-                      placeholder="doctor@ananta.health"
+                      placeholder="doctor@anant.health"
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
@@ -455,7 +455,7 @@ export default function LoginPage() {
                   <Input
                     label="Registered Email *"
                     type="email"
-                    placeholder="doctor@ananta.health"
+                    placeholder="doctor@anant.health"
                     value={resetEmail}
                     onChange={(e) => {
                       setResetEmail(e.target.value);

@@ -76,7 +76,7 @@ const ConfirmDialog = memo(function ConfirmDialog({
             onClick={onClose}
             disabled={loading}
             size="sm"
-            className="text-xs font-medium rounded-lg cursor-pointer"
+            className="text-xs font-medium rounded-xl cursor-pointer"
           >
             {cancelLabel}
           </Button>
@@ -85,7 +85,7 @@ const ConfirmDialog = memo(function ConfirmDialog({
             onClick={onConfirm}
             loading={loading}
             size="sm"
-            className="text-xs font-medium rounded-lg shadow-xs cursor-pointer"
+            className="text-xs font-medium rounded-xl shadow-xs cursor-pointer"
           >
             {confirmLabel}
           </Button>

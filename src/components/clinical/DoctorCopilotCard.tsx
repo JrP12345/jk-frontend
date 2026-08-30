@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { Card, Badge } from "@/components/ui";
 
 export interface BriefingDelta {
   metric: string;
@@ -39,23 +40,23 @@ export function DoctorCopilotCard({ patientName, briefing, isLoading = false }: 
 
   if (isLoading) {
     return (
-      <div className="bg-gradient-to-r from-primary-900/10 via-surface to-primary-900/10 border border-primary-500/20 rounded-xl p-4 my-3 animate-pulse">
+      <Card className="p-4 my-2 animate-pulse bg-surface border-border/80 shadow-xs">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-5 h-5 rounded-full bg-primary-500/30" />
           <div className="h-4 bg-primary-500/30 rounded w-48" />
         </div>
-        <div className="h-3 bg-surface-hover rounded w-3/4 mb-2" />
-        <div className="h-3 bg-surface-hover rounded w-1/2" />
-      </div>
+        <div className="h-3 bg-surface-alt rounded w-3/4 mb-2" />
+        <div className="h-3 bg-surface-alt rounded w-1/2" />
+      </Card>
     );
   }
 
   if (!briefing) {
     return (
-      <div className="bg-surface border border-border rounded-xl p-4 my-3 text-sm text-text-secondary">
-        <div className="font-semibold text-text">20-Second Pre-Visit Briefing</div>
-        <p className="mt-1">No generated briefing is available for {patientName}. Clinical decisions must use the verified patient record.</p>
-      </div>
+      <Card className="p-4 my-2 text-xs text-text-secondary border-border/80 shadow-xs">
+        <div className="font-bold text-sm text-text">20-Second Pre-Visit Briefing</div>
+        <p className="mt-1 text-text-muted">No generated briefing is available for {patientName}. Clinical decisions must use the verified patient record.</p>
+      </Card>
     );
   }
 
@@ -78,22 +79,27 @@ export function DoctorCopilotCard({ patientName, briefing, isLoading = false }: 
       {/* Header Bar */}
       <div className="flex items-center justify-between cursor-pointer select-none" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-primary-600/20 text-primary-600 dark:text-primary-400 font-bold flex items-center justify-center text-xs border border-primary-500/30">
-            ⚡
+          <div className="w-7 h-7 rounded-xl bg-primary-500/15 text-primary-600 dark:text-primary-400 font-bold flex items-center justify-center text-xs border border-primary-500/30 shrink-0 shadow-xs">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
           </div>
           <div>
             <h3 className="font-bold text-sm text-text flex items-center gap-2">
               20-Second Pre-Visit Briefing
-              <span className="text-[10px] font-semibold uppercase tracking-wider bg-primary-500/10 text-primary-700 dark:text-primary-300 px-2 py-0.5 rounded border border-primary-500/20">
-                AI Copilot
+              <span className="text-[10px] font-semibold uppercase tracking-wider bg-primary-500/10 text-primary-700 dark:text-primary-300 px-2 py-0.5 rounded-full border border-primary-500/20">
+                Anant Copilot
               </span>
             </h3>
             <p className="text-xs text-text-secondary">{data.visitIntent}</p>
           </div>
         </div>
 
-        <button type="button" className="text-xs text-primary-600 dark:text-primary-400 font-semibold hover:underline">
-          {isExpanded ? "Collapse ▲" : "Expand Briefing ▼"}
+        <button type="button" className="text-xs text-primary-600 dark:text-primary-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer">
+          <span>{isExpanded ? "Collapse" : "Expand Briefing"}</span>
+          <svg className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
         </button>
       </div>
 

@@ -112,8 +112,8 @@ export default function RegisterPage() {
       if (res.data?.success) {
         login(res.data.data.user);
         toast({
-          title: "Registration Successful 🎉",
-          description: `Welcome to ANANTA Healthcare, ${res.data.data.user.name}!`,
+          title: "Registration Successful",
+          description: `Welcome to ANANT Healthcare, ${res.data.data.user.name}!`,
           variant: "success",
         });
         router.push("/dashboard/patient-portal");
@@ -131,7 +131,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-surface-alt relative overflow-hidden font-sans text-text">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-surface-alt relative overflow-hidden font-sans text-text animate-page-enter">
       <div className="absolute top-[-15%] left-[-15%] w-[50%] h-[50%] bg-primary-500/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-[-15%] right-[-15%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
 

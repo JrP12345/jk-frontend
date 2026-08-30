@@ -29,7 +29,7 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
           user: {
             id: "user-123",
             name: "Dr. Aarti Sharma",
-            email: "aarti@ananta.health",
+            email: "aarti@anant.health",
             role: "doctor",
             organization_id: "org-1",
             permissions: ["VIEW_APPOINTMENTS", "MANAGE_APPOINTMENTS", "VIEW_EHR", "MANAGE_CLINICAL_NOTES"],

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Check, Zap, Building2, Shield, Sparkles, HelpCircle, ArrowRight } from "lucide-react";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
+import { Spinner } from "@/components/ui";
 import { billingService, SaaSPlan } from "@/services/billing.service";
 
 export default function PricingPage() {
@@ -33,7 +34,7 @@ export default function PricingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-white">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-white animate-page-enter">
       {/* Public Navbar */}
       <MarketplaceNavbar />
 
@@ -84,7 +85,7 @@ export default function PricingPage() {
       <section className="max-w-7xl mx-auto px-4 pb-24 w-full">
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" color="text-cyan-400" label="Loading pricing tiers..." />
           </div>
         ) : error ? (
           <div className="py-20 text-center text-slate-400">{error}</div>
@@ -236,7 +237,7 @@ export default function PricingPage() {
 
       {/* Footer */}
       <footer className="mt-auto border-t border-slate-800 py-8 px-4 text-center text-xs text-slate-500">
-        © 2026 ANANTA Healthcare Infrastructure Platform. All rights reserved. Razorpay Secured.
+        © 2026 ANANT Healthcare Infrastructure Platform. All rights reserved. Razorpay Secured.
       </footer>
     </div>
   );

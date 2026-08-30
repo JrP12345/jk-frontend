@@ -35,10 +35,13 @@ export function PreviousVisitsSidebar({ patientId, onCopyForward }: PreviousVisi
   if (!patientId) return null;
 
   return (
-    <div className="bg-surface rounded-xl border border-border p-4 space-y-4">
-      <div className="flex items-center justify-between border-b border-border pb-2">
-        <h3 className="font-bold text-sm text-text flex items-center gap-1.5">
-          📜 Previous Patient Visits
+    <div className="bg-surface rounded-2xl border border-border/80 p-4 space-y-4 shadow-xs">
+      <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+        <h3 className="font-bold text-sm text-text flex items-center gap-2">
+          <svg className="w-4 h-4 text-primary-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+          </svg>
+          <span>Previous Patient Visits</span>
           <Badge variant="primary" size="sm">{history.length}</Badge>
         </h3>
       </div>

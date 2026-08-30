@@ -575,7 +575,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
               right: alignRight ? coords.right : undefined,
               zIndex: 99999,
             }}
-            className="w-72 rounded-2xl border border-border bg-surface-alt p-4 shadow-2xl backdrop-blur-xl bg-surface-alt/95 animate-in fade-in zoom-in-95 duration-150"
+            className="w-72 rounded-2xl border border-border/80 bg-surface/95 p-4 shadow-2xl shadow-black/25 backdrop-blur-xl animate-popover-in ring-1 ring-white/10"
           >
             {mode === "datetime" && timeScreenOpen ? (
               /* SCREEN MODE 2: WHEEL TIME PICKER SCREEN (Matching Reference Image) */

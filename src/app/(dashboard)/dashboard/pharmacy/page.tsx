@@ -6,10 +6,47 @@ import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import {
-  Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, DatePicker, Select, useToast, Spinner, Badge, StatCard, SkeletonTable, Dropdown, ConfirmDialog
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Table,
+  Button,
+  Modal,
+  Input,
+  DatePicker,
+  Select,
+  useToast,
+  Spinner,
+  Badge,
+  StatCard,
+  Dropdown,
+  ConfirmDialog,
+  ChartContainer,
+  DonutChart,
+  cn,
 } from "@/components/ui";
 import { PharmacyAlertsCenter } from "@/components/pharmacy/PharmacyAlertsCenter";
+import {
+  RotateCw,
+  Plus,
+  Pill,
+  AlertTriangle,
+  Clock,
+  Package,
+  FileText,
+  MoreHorizontal,
+  Edit3,
+  Trash2,
+  Receipt,
+  Stethoscope,
+  Phone,
+  ArrowRight,
+  CheckCircle2,
+  Calendar,
+  AlertCircle,
+  Sparkles,
+} from "lucide-react";
 
 interface MedicineType {
   id: string;
@@ -56,9 +93,11 @@ export default function PharmacyPage() {
   useEffect(() => {
     setSelectedClinicId(activeClinicId || "");
   }, [activeClinicId]);
+
   const [medicines, setMedicines] = useState<MedicineType[]>([]);
   const [pendingPrescriptionGroups, setPendingPrescriptionGroups] = useState<PendingPrescriptionGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Add/Edit Medicine Modal State
   const [isMedModalOpen, setIsMedModalOpen] = useState(false);
@@ -103,7 +142,11 @@ export default function PharmacyPage() {
   const handleAddBatchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!batchTargetMed || !newBatchNum || !newBatchExpiry || newBatchQty <= 0) {
-      toast({ title: "Validation Error", description: "Batch number, expiry date, and quantity are required", variant: "error" });
+      toast({
+        title: "Validation Error",
+        description: "Batch number, expiry date, and quantity are required.",
+        variant: "error",
+      });
       return;
     }
 
@@ -119,11 +162,19 @@ export default function PharmacyPage() {
         sellingPrice: newBatchPrice,
       });
 
-      toast({ title: "Batch Stock Added! 📦", description: `Added ${newBatchQty} units of Batch #${newBatchNum}`, variant: "success" });
+      toast({
+        title: "Batch Stock Added",
+        description: `Added ${newBatchQty} units of Batch #${newBatchNum}.`,
+        variant: "success",
+      });
       setIsBatchModalOpen(false);
       fetchData();
     } catch (err: any) {
-      toast({ title: "Batch Error", description: err.response?.data?.message || "Failed to add batch", variant: "error" });
+      toast({
+        title: "Batch Error",
+        description: err.response?.data?.message || "Failed to add batch.",
+        variant: "error",
+      });
     } finally {
       setSubmittingBatch(false);
     }
@@ -182,9 +233,8 @@ export default function PharmacyPage() {
 
   const getDispenseError = (idx: number): string => {
     const item = dispenseItems[idx];
-    if (!item) return "";
-    if (!item.medicineId) return "";
-    const med = medicines.find(m => m.id === item.medicineId);
+    if (!item || !item.medicineId) return "";
+    const med = medicines.find((m) => m.id === item.medicineId);
     if (!med) return "";
     if (item.quantity <= 0) {
       return "Quantity must be greater than 0";
@@ -195,9 +245,9 @@ export default function PharmacyPage() {
     return "";
   };
 
-  const hasDispenseErrors = dispenseItems.some((item, idx) => {
+  const hasDispenseErrors = dispenseItems.some((item) => {
     if (!item.medicineId) return false;
-    const med = medicines.find(m => m.id === item.medicineId);
+    const med = medicines.find((m) => m.id === item.medicineId);
     if (!med) return true;
     return item.quantity <= 0 || item.quantity > med.stockQuantity;
   });
@@ -206,10 +256,9 @@ export default function PharmacyPage() {
     if (user && user.role !== "patient") fetchClinics();
   }, [user?.id, user?.role, fetchClinics]);
 
-  // Fetch data on Clinic change
   const fetchData = async () => {
     try {
-      setLoading(true);
+      setIsRefreshing(true);
       const query = selectedClinicId ? `?clinicId=${selectedClinicId}` : "";
       const [medsRes, pendingRes] = await Promise.all([
         api.get(`/medicines${query}`),
@@ -219,10 +268,11 @@ export default function PharmacyPage() {
       ]);
       setMedicines(medsRes.data.data || []);
       setPendingPrescriptionGroups(pendingRes.data.data || []);
-    } catch (err) {
+    } catch {
       toast({ title: "Error", description: "Failed to load pharmacy data", variant: "error" });
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -230,7 +280,6 @@ export default function PharmacyPage() {
     fetchData();
   }, [selectedClinicId]);
 
-  // Handle Medicine Submit
   const handleMedSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateMedForm()) {
@@ -248,7 +297,7 @@ export default function PharmacyPage() {
         price: retailPrice,
         costPrice,
         expiryDate,
-        batchNumber
+        batchNumber,
       };
 
       if (editingMedId) {
@@ -277,15 +326,13 @@ export default function PharmacyPage() {
     }
   };
 
-  // Delete Confirmation State
   const [deletingMedId, setDeletingMedId] = useState<string | null>(null);
 
-  // Delete Medicine
   const handleDeleteMed = async () => {
     if (!deletingMedId) return;
     try {
       await api.delete(`/medicines/${deletingMedId}`);
-      toast({ title: "Success", description: "Medicine deleted successfully", variant: "warning" });
+      toast({ title: "Deleted", description: "Medicine deleted successfully.", variant: "warning" });
       setDeletingMedId(null);
       fetchData();
     } catch (err: any) {
@@ -299,9 +346,7 @@ export default function PharmacyPage() {
     const initialMappings = (group.prescriptions || []).map((rx) => {
       const matched = rx.medicineId
         ? medicines.find((m) => m.id === rx.medicineId && m.stockQuantity > 0)
-        : medicines.find(
-            (m) => m.name.toLowerCase().includes(rx.name.toLowerCase()) && m.stockQuantity > 0
-          );
+        : medicines.find((m) => m.name.toLowerCase().includes(rx.name.toLowerCase()) && m.stockQuantity > 0);
       return {
         medicineId: matched ? matched.id : "",
         quantity: 10,
@@ -312,7 +357,6 @@ export default function PharmacyPage() {
     setIsDispenseOpen(true);
   };
 
-  // Handle Dispense Submit
   const handleDispenseSubmit = async () => {
     if (!activePrescriptionGroup) return;
 
@@ -320,7 +364,7 @@ export default function PharmacyPage() {
     if (validItems.length === 0) {
       toast({
         title: "Validation Error",
-        description: "Please link at least one prescription item to a stock medicine",
+        description: "Please link at least one prescription item to stock inventory.",
         variant: "warning",
       });
       return;
@@ -337,8 +381,8 @@ export default function PharmacyPage() {
       });
 
       toast({
-        title: "Success",
-        description: "Medicines dispensed and billing invoice generated",
+        title: "Dispensed & Billed",
+        description: "Medicines dispensed and billing invoice generated.",
         variant: "success",
       });
 
@@ -348,7 +392,7 @@ export default function PharmacyPage() {
     } catch (err: any) {
       toast({
         title: "Dispense Failed",
-        description: err.response?.data?.message || "Failed to complete dispensing request",
+        description: err.response?.data?.message || "Failed to complete dispensing request.",
         variant: "error",
       });
     } finally {
@@ -356,98 +400,155 @@ export default function PharmacyPage() {
     }
   };
 
-  // Stats Calculations
   const totalItems = medicines.length;
-  const lowStockCount = medicines.filter(m => m.stockQuantity < 10).length;
-  const expiredCount = medicines.filter(m => new Date(m.expiryDate) < new Date()).length;
-
+  const lowStockCount = medicines.filter((m) => m.stockQuantity < 10).length;
+  const expiredCount = medicines.filter((m) => new Date(m.expiryDate) < new Date()).length;
   const canManageMedicines = hasAnyPermission(user, "MANAGE_MEDICINES");
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
-      {/* Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 sm:p-5 rounded-2xl border border-border/80 shadow-xs">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight">Pharmacy Desk & Inventory</h1>
-          <p className="text-xs text-text-muted mt-0.5">
-            Dispense practitioner prescriptions, log medicine batches, and track inventory stock levels.
-          </p>
-        </div>
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          1. TOP EXECUTIVE HEADER BANNER
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                Pharmacy Desk & Inventory
+              </h1>
+              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
+                Dispensary Operations
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
+              Dispense practitioner prescriptions, log medicine batches, and track inventory stock levels.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {canManageMedicines && (
+          <div className="flex items-center gap-2.5 shrink-0">
             <Button
-              variant="primary"
+              variant="outline"
               size="sm"
-              onClick={() => { setEditingMedId(null); setMedName(""); setGenericName(""); setStockQuantity(0); setRetailPrice(0); setCostPrice(0); setExpiryDate(""); setBatchNumber(""); setMedErrors({}); setIsMedModalOpen(true); }}
-              className="font-bold rounded-xl shadow-xs cursor-pointer gap-1.5"
+              onClick={fetchData}
+              disabled={isRefreshing}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              <span>Add Medicine</span>
+              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
+              Refresh
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchData}
-            loading={loading}
-            className="font-semibold rounded-xl cursor-pointer gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <span>Refresh</span>
-          </Button>
+
+            {canManageMedicines && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setEditingMedId(null);
+                  setMedName("");
+                  setGenericName("");
+                  setStockQuantity(0);
+                  setRetailPrice(0);
+                  setCostPrice(0);
+                  setExpiryDate("");
+                  setBatchNumber("");
+                  setMedErrors({});
+                  setIsMedModalOpen(true);
+                }}
+                className="font-semibold rounded-xl shadow-xs"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Add Medicine
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* KPI Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. KPI STATS CARDS
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
-          label="Total Med Types"
-          value={totalItems}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-blue-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>}
+          label="Total Catalog Items"
+          value={totalItems.toString()}
+          description="Registered medicine formulations"
+          icon={<Pill className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
           label="Low Stock Warnings"
-          value={lowStockCount}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-red-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
+          value={lowStockCount.toString()}
+          description="Items with < 10 units remaining"
+          icon={<AlertTriangle className="w-5 h-5 text-amber-500" />}
         />
         <StatCard
-          label="Expired / Expiring soon"
-          value={expiredCount}
-          icon={<svg fill="none" viewBox="0 0 24 24" className="h-5 w-5 text-amber-500" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          label="Expired / Expiring Soon"
+          value={expiredCount.toString()}
+          description="Batches past validity date"
+          icon={<Clock className="w-5 h-5 text-rose-500" />}
         />
       </div>
 
-      {/* Tabs Menu (Scrollable on mobile) */}
-      <div className="flex items-center border-b border-border gap-3 sm:gap-6 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth pb-px">
+      {/* ──────────────────────────────────────────────────────────────────────────
+          3. SEGMENTED TABS NAVIGATION BAR
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
         <button
           type="button"
           onClick={() => setActiveTab("inventory")}
-          className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "inventory" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
+          className={cn(
+            "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+            activeTab === "inventory"
+              ? "bg-surface text-text shadow-xs font-bold border border-border/60"
+              : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
+          )}
         >
-          Inventory Stock Catalog
+          <Package className={cn("w-3.5 h-3.5", activeTab === "inventory" ? "text-primary-500" : "text-text-muted")} />
+          <span>Inventory Stock Catalog</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
+            {medicines.length}
+          </span>
         </button>
+
         <button
           type="button"
           onClick={() => setActiveTab("alerts")}
-          className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "alerts" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
+          className={cn(
+            "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+            activeTab === "alerts"
+              ? "bg-surface text-text shadow-xs font-bold border border-border/60"
+              : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
+          )}
         >
-          ⚠️ Low Stock & Expiry Alerts
+          <AlertTriangle className={cn("w-3.5 h-3.5", activeTab === "alerts" ? "text-amber-500" : "text-text-muted")} />
+          <span>Low Stock & Expiry Alerts</span>
+          {(lowStockCount > 0 || expiredCount > 0) && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400">
+              {lowStockCount + expiredCount}
+            </span>
+          )}
         </button>
+
         <button
           type="button"
           onClick={() => setActiveTab("dispensing")}
-          className={`pb-2.5 pt-1 text-xs sm:text-sm font-semibold transition-colors shrink-0 whitespace-nowrap cursor-pointer ${activeTab === "dispensing" ? "border-b-2 border-primary-600 text-primary-600 font-bold" : "text-text-muted hover:text-text"}`}
+          className={cn(
+            "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+            activeTab === "dispensing"
+              ? "bg-surface text-text shadow-xs font-bold border border-border/60"
+              : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
+          )}
         >
-          Dispensing Prescription Desk ({pendingPrescriptionGroups.length})
+          <Receipt className={cn("w-3.5 h-3.5", activeTab === "dispensing" ? "text-primary-500" : "text-text-muted")} />
+          <span>Dispensing Prescription Desk</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
+            {pendingPrescriptionGroups.length}
+          </span>
         </button>
       </div>
 
-      {/* TAB: LOW STOCK & EXPIRY ALERTS */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          4. TAB: LOW STOCK & EXPIRY ALERTS
+         ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "alerts" && (
         <PharmacyAlertsCenter
           clinicId={selectedClinicId}
@@ -457,201 +558,282 @@ export default function PharmacyPage() {
         />
       )}
 
-      {/* TAB 1: INVENTORY STOCK CATALOG */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          5. TAB 1: INVENTORY STOCK CATALOG
+         ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "inventory" && (
-        <div className="space-y-6">
-          <Card className="overflow-hidden">
-            <Table
+        <div className="space-y-6 animate-fade-in">
+          {/* Inventory Health Donut Chart */}
+          {medicines.length > 0 && (
+            <ChartContainer
+              title="Inventory Health & Expiry Risk Status"
+              description="Stock distribution across critical inventory thresholds"
               loading={loading}
-                  columns={[
-                    { header: "Brand Name", key: "name" },
-                    { header: "Generic Name", key: "generic" },
-                    { header: "Batch", key: "batch" },
-                    { header: "Expiry Date", key: "expiry" },
-                    { header: "Retail Price", key: "price" },
-                    { header: "Stock count", key: "stock" },
-                    { header: "Actions", key: "actions", align: "right" }
-                  ]}
-                  data={medicines.map(med => {
-                    const isExpired = new Date(med.expiryDate) < new Date();
-                    return {
-                      id: med.id,
-                      name: <span className="font-bold text-text">{med.name}</span>,
-                      generic: <span className="text-sm text-text-muted italic">{med.genericName}</span>,
-                      batch: <Badge variant="default" className="font-mono text-xs">{med.batchNumber}</Badge>,
-                      expiry: (
-                        <span className={isExpired ? "text-red-500 font-semibold text-sm" : "text-sm text-text"}>
-                          {new Date(med.expiryDate).toLocaleDateString()} {isExpired && "(Expired)"}
+              height={200}
+            >
+              <DonutChart
+                data={(() => {
+                  const now = new Date();
+                  let optimal = 0;
+                  let low = 0;
+                  let outOfStock = 0;
+                  let expired = 0;
+
+                  medicines.forEach((m) => {
+                    const isExp = new Date(m.expiryDate) < now;
+                    if (isExp) expired++;
+                    else if (m.stockQuantity === 0) outOfStock++;
+                    else if (m.stockQuantity < 10) low++;
+                    else optimal++;
+                  });
+
+                  return [
+                    { name: "Optimal Stock", value: optimal, color: "var(--s-chart-2, #10b981)" },
+                    { name: "Low Stock (<10)", value: low, color: "var(--s-chart-3, #f59e0b)" },
+                    { name: "Out of Stock", value: outOfStock, color: "var(--s-chart-5, #f43f5e)" },
+                    { name: "Expired Batches", value: expired, color: "#dc2626" },
+                  ].filter((item) => item.value > 0);
+                })()}
+                height={200}
+                valueFormatter={(v) => `${v} formulations`}
+              />
+            </ChartContainer>
+          )}
+
+          <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+            <CardContent className="p-0">
+              <Table
+                loading={loading}
+                columns={[
+                  { header: "Brand Name", key: "name" },
+                  { header: "Generic Name", key: "generic" },
+                  { header: "Batch", key: "batch" },
+                  { header: "Expiry Date", key: "expiry" },
+                  { header: "Retail Price", key: "price" },
+                  { header: "Stock Quantity", key: "stock" },
+                  { header: "Actions", key: "actions", align: "right" },
+                ]}
+                data={medicines.map((med) => {
+                  const isExpired = new Date(med.expiryDate) < new Date();
+                  return {
+                    id: med.id,
+                    name: (
+                      <div className="space-y-0.5">
+                        <span className="font-bold text-text text-xs sm:text-sm">{med.name}</span>
+                      </div>
+                    ),
+                    generic: <span className="text-xs text-text-muted italic">{med.genericName}</span>,
+                    batch: (
+                      <Badge variant="outline" size="sm" className="font-mono text-[10px] uppercase font-bold">
+                        {med.batchNumber}
+                      </Badge>
+                    ),
+                    expiry: (
+                      <span className={cn("text-xs", isExpired ? "text-rose-500 font-bold" : "text-text-secondary")}>
+                        {new Date(med.expiryDate).toLocaleDateString()} {isExpired && "(Expired)"}
+                      </span>
+                    ),
+                    price: <span className="text-text font-bold text-xs">₹{med.price.toLocaleString("en-IN")}</span>,
+                    stock: (
+                      <div className="flex items-center gap-1.5">
+                        <span className={cn("font-bold text-xs", med.stockQuantity < 10 ? "text-rose-500" : "text-text")}>
+                          {med.stockQuantity}
                         </span>
-                      ),
-                      price: <span className="text-text font-medium">₹{med.price}</span>,
-                      stock: (
-                        <div className="flex items-center gap-2">
-                          <span className={`font-bold ${med.stockQuantity < 10 ? "text-red-500" : "text-text"}`}>
-                            {med.stockQuantity}
-                          </span>
-                          {med.stockQuantity < 10 && (
-                            <Badge variant="danger" className="text-[9px] px-1 py-0 uppercase">Low Stock</Badge>
-                          )}
-                        </div>
-                      ),
-                      actions: (
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Dropdown
-                            align="right"
-                            trigger={
-                              <Button size="sm" variant="outline" className="h-8 w-8 p-0 flex items-center justify-center rounded-lg border-border hover:bg-surface-hover hover:text-text cursor-pointer transition-colors shrink-0" title="Row Actions">
-                                <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                                </svg>
-                              </Button>
-                            }
-                            items={[
-                              {
-                                label: "+ Add Batch Stock",
-                                onClick: () => openAddBatchModal(med),
-                              },
-                              {
-                                label: "Edit Stock",
-                                onClick: () => {
-                                  setEditingMedId(med.id);
-                                  setMedName(med.name);
-                                  setGenericName(med.genericName);
-                                  setStockQuantity(med.stockQuantity);
-                                  setRetailPrice(med.price);
-                                  setCostPrice(med.costPrice);
-                                  setExpiryDate(new Date(med.expiryDate).toISOString().split("T")[0]);
-                                  setBatchNumber(med.batchNumber);
-                                  setMedErrors({});
-                                  setIsMedModalOpen(true);
-                                },
-                              },
-                              {
-                                label: "Delete Medicine",
-                                danger: true,
-                                onClick: () => setDeletingMedId(med.id),
-                              },
-                            ]}
-                          />
-                        </div>
-                      )
-                    };
-                  })}
-                  emptyMessage="No medicines registered for this clinic catalog."
-                />
-              </Card>
-            </div>
-          )}
-
-          {/* TAB 2: DISPENSING PRESCRIPTION DESK */}
-          {activeTab === "dispensing" && (
-            <div className="space-y-6">
-              <Card className="overflow-hidden">
-                <Table
-                  columns={[
-                    { header: "Patient Details", key: "patient" },
-                    { header: "Attending Doctor", key: "doctor" },
-                    { header: "Visit Time", key: "time" },
-                    { header: "Prescription", key: "rx" },
-                    { header: "Actions", key: "action", align: "right" }
-                  ]}
-                  data={pendingPrescriptionGroups.map((group) => ({
-                    id: group.encounterId,
-                    patient: (
-                      <div>
-                        <div className="font-semibold text-text">{group.patientId.name}</div>
-                        <div className="text-xs text-text-muted">{group.patientId.phone || "—"}</div>
+                        {med.stockQuantity < 10 && (
+                          <Badge variant="danger" size="sm" className="text-[9px] uppercase font-bold px-1.5 py-0.2">
+                            Low
+                          </Badge>
+                        )}
                       </div>
                     ),
-                    doctor: (
-                      <div className="font-medium text-text">
-                        {group.doctorId.name}
-                      </div>
-                    ),
-                    time: group.appointmentTime
-                      ? new Date(group.appointmentTime).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
-                      : "—",
-                    rx: (
-                      <div className="space-y-1 py-1">
-                        {group.prescriptions?.map((item) => (
-                          <div key={item.id} className="text-xs text-text">
-                            💊 <span className="font-bold">{item.name}</span> — <span className="text-text-muted">{item.dosage} ({item.duration})</span>
-                          </div>
-                        ))}
-                      </div>
-                    ),
-                    action: (
+                    actions: (
                       <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => openDispenseModal(group)}
-                          className="shrink-0 font-bold"
-                        >
-                          Dispense & Bill
-                        </Button>
+                        <Dropdown
+                          align="right"
+                          trigger={
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              className="h-7 w-7 p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text"
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </Button>
+                          }
+                          items={[
+                            {
+                              label: "Add Batch Stock",
+                              icon: <Plus className="w-4 h-4 text-primary-500" />,
+                              onClick: () => openAddBatchModal(med),
+                            },
+                            {
+                              label: "Edit Stock Item",
+                              icon: <Edit3 className="w-4 h-4 text-text-muted" />,
+                              onClick: () => {
+                                setEditingMedId(med.id);
+                                setMedName(med.name);
+                                setGenericName(med.genericName);
+                                setStockQuantity(med.stockQuantity);
+                                setRetailPrice(med.price);
+                                setCostPrice(med.costPrice);
+                                setExpiryDate(new Date(med.expiryDate).toISOString().split("T")[0]);
+                                setBatchNumber(med.batchNumber);
+                                setMedErrors({});
+                                setIsMedModalOpen(true);
+                              },
+                            },
+                            { divider: true, label: "" },
+                            {
+                              label: "Delete Medicine",
+                              icon: <Trash2 className="w-4 h-4 text-danger" />,
+                              variant: "danger" as any,
+                              onClick: () => setDeletingMedId(med.id),
+                            },
+                          ]}
+                        />
                       </div>
                     ),
-                  }))}
-                  emptyMessage="No active prescriptions awaiting dispensing at this clinic location."
-                />
-              </Card>
-            </div>
-          )}
+                  };
+                })}
+                emptyMessage="No medicines registered in this clinic catalog."
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-      {/* ADD / EDIT MEDICINE MODAL */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          6. TAB 2: DISPENSING PRESCRIPTION DESK
+         ────────────────────────────────────────────────────────────────────────── */}
+      {activeTab === "dispensing" && (
+        <div className="space-y-6 animate-fade-in">
+          <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+            <CardContent className="p-0">
+              <Table
+                loading={loading}
+                columns={[
+                  { header: "Patient Details", key: "patient" },
+                  { header: "Attending Physician", key: "doctor" },
+                  { header: "Encounter Time", key: "time" },
+                  { header: "Prescribed Items", key: "rx" },
+                  { header: "Actions", key: "action", align: "right" },
+                ]}
+                data={pendingPrescriptionGroups.map((group) => ({
+                  id: group.encounterId,
+                  patient: (
+                    <div className="space-y-0.5">
+                      <div className="font-bold text-text text-xs sm:text-sm">{group.patientId.name}</div>
+                      <div className="text-xs text-text-muted flex items-center gap-1">
+                        <Phone className="w-3 h-3 text-text-muted" />
+                        {group.patientId.phone || "No phone"}
+                      </div>
+                    </div>
+                  ),
+                  doctor: (
+                    <div className="flex items-center gap-1 text-xs font-semibold text-text">
+                      <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                      <span>Dr. {group.doctorId.name.replace(/^dr\.?\s+/i, "")}</span>
+                    </div>
+                  ),
+                  time: (
+                    <div className="flex items-center gap-1 text-xs text-text-muted">
+                      <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                      <span>
+                        {group.appointmentTime
+                          ? new Date(group.appointmentTime).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "—"}
+                      </span>
+                    </div>
+                  ),
+                  rx: (
+                    <div className="space-y-1 py-1 max-w-sm">
+                      {group.prescriptions?.map((item) => (
+                        <div key={item.id} className="text-xs text-text flex items-center gap-1.5">
+                          <Pill className="w-3 h-3 text-primary-500 shrink-0" />
+                          <span className="font-bold">{item.name}</span>
+                          <span className="text-text-muted">
+                            &bull; {item.dosage} ({item.duration})
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ),
+                  action: (
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        variant="primary"
+                        size="xs"
+                        onClick={() => openDispenseModal(group)}
+                        className="font-semibold rounded-lg shadow-xs"
+                      >
+                        <Receipt className="w-3.5 h-3.5 mr-1" />
+                        Dispense & Bill
+                      </Button>
+                    </div>
+                  ),
+                }))}
+                emptyMessage="No active prescriptions awaiting dispensing at this clinic location."
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          7. ADD / EDIT MEDICINE MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isMedModalOpen}
         onClose={() => setIsMedModalOpen(false)}
-        title={editingMedId ? "Update Inventory Item" : "Register Medicine Stock"}
+        title={editingMedId ? "Update Inventory Formulation" : "Register Medicine Stock"}
+        description="Configure pharmaceutical item details, batch numbers, pricing, and expiry date."
+        size="md"
       >
-        <form onSubmit={handleMedSubmit} className="space-y-4">
+        <form onSubmit={handleMedSubmit} className="space-y-4 pt-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="text-xs font-semibold text-text mb-1 block">Brand Name *</label>
-              <Input
-                value={medName}
-                onChange={(e) => {
-                  setMedName(e.target.value);
-                  validateMedField("name", e.target.value);
-                }}
-                onBlur={(e) => validateMedField("name", e.target.value)}
-                placeholder="e.g. Lipitor 10mg"
-                required
-                error={medErrors.name}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-text mb-1 block">Generic Composition *</label>
-              <Input
-                value={genericName}
-                onChange={(e) => {
-                  setGenericName(e.target.value);
-                  validateMedField("genericName", e.target.value);
-                }}
-                onBlur={(e) => validateMedField("genericName", e.target.value)}
-                placeholder="e.g. Atorvastatin"
-                required
-                error={medErrors.genericName}
-              />
-            </div>
+            <Input
+              label="Brand Name *"
+              value={medName}
+              onChange={(e) => {
+                setMedName(e.target.value);
+                validateMedField("name", e.target.value);
+              }}
+              onBlur={(e) => validateMedField("name", e.target.value)}
+              placeholder="e.g. Lipitor 10mg"
+              required
+              error={medErrors.name}
+            />
+            <Input
+              label="Generic Composition *"
+              value={genericName}
+              onChange={(e) => {
+                setGenericName(e.target.value);
+                validateMedField("genericName", e.target.value);
+              }}
+              onBlur={(e) => validateMedField("genericName", e.target.value)}
+              placeholder="e.g. Atorvastatin"
+              required
+              error={medErrors.genericName}
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="text-xs font-semibold text-text mb-1 block">Batch Number *</label>
-              <Input
-                value={batchNumber}
-                onChange={(e) => {
-                  setBatchNumber(e.target.value);
-                  validateMedField("batchNumber", e.target.value);
-                }}
-                onBlur={(e) => validateMedField("batchNumber", e.target.value)}
-                placeholder="e.g. LPT-889A"
-                required
-                error={medErrors.batchNumber}
-              />
-            </div>
+            <Input
+              label="Batch Number *"
+              value={batchNumber}
+              onChange={(e) => {
+                setBatchNumber(e.target.value);
+                validateMedField("batchNumber", e.target.value);
+              }}
+              onBlur={(e) => validateMedField("batchNumber", e.target.value)}
+              placeholder="e.g. LPT-889A"
+              required
+              error={medErrors.batchNumber}
+            />
             <DatePicker
               label="Expiry Date *"
               value={expiryDate}
@@ -666,96 +848,99 @@ export default function PharmacyPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="text-xs font-semibold text-text mb-1 block">Purchase Cost (₹) *</label>
-              <Input
-                type="number"
-                step="0.01"
-                value={costPrice === 0 ? "" : costPrice}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setCostPrice(val);
-                  validateMedField("costPrice", val, val, retailPrice);
-                }}
-                onBlur={(e) => validateMedField("costPrice", Number(e.target.value), Number(e.target.value), retailPrice)}
-                placeholder="e.g. 5.50"
-                required
-                error={medErrors.costPrice}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-text mb-1 block">Retail Price (₹) *</label>
-              <Input
-                type="number"
-                step="0.01"
-                value={retailPrice === 0 ? "" : retailPrice}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setRetailPrice(val);
-                  validateMedField("price", val, costPrice, val);
-                }}
-                onBlur={(e) => validateMedField("price", Number(e.target.value), costPrice, Number(e.target.value))}
-                placeholder="e.g. 12.00"
-                required
-                error={medErrors.price}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-text mb-1 block">Quantity in Stock *</label>
             <Input
+              label="Purchase Cost (₹) *"
               type="number"
-              value={stockQuantity === 0 ? "" : stockQuantity}
+              step="0.01"
+              value={costPrice === 0 ? "" : costPrice}
               onChange={(e) => {
                 const val = Number(e.target.value);
-                setStockQuantity(val);
-                validateMedField("stockQuantity", val);
+                setCostPrice(val);
+                validateMedField("costPrice", val, val, retailPrice);
               }}
-              onBlur={(e) => validateMedField("stockQuantity", Number(e.target.value))}
-              placeholder="e.g. 100"
+              onBlur={(e) => validateMedField("costPrice", Number(e.target.value), Number(e.target.value), retailPrice)}
+              placeholder="e.g. 5.50"
               required
-              error={medErrors.stockQuantity}
+              error={medErrors.costPrice}
+            />
+            <Input
+              label="Retail Price (₹) *"
+              type="number"
+              step="0.01"
+              value={retailPrice === 0 ? "" : retailPrice}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setRetailPrice(val);
+                validateMedField("price", val, costPrice, val);
+              }}
+              onBlur={(e) => validateMedField("price", Number(e.target.value), costPrice, Number(e.target.value))}
+              placeholder="e.g. 12.00"
+              required
+              error={medErrors.price}
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button type="button" variant="ghost" onClick={() => setIsMedModalOpen(false)}>
+          <Input
+            label="Quantity in Stock *"
+            type="number"
+            value={stockQuantity === 0 ? "" : stockQuantity}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              setStockQuantity(val);
+              validateMedField("stockQuantity", val);
+            }}
+            onBlur={(e) => validateMedField("stockQuantity", Number(e.target.value))}
+            placeholder="e.g. 100"
+            required
+            error={medErrors.stockQuantity}
+          />
+
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsMedModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={submittingMed}>
+            <Button type="submit" variant="primary" size="sm" disabled={submittingMed} className="font-semibold rounded-xl shadow-xs">
               {submittingMed ? "Saving..." : "Save Medicine Stock"}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* DISPENSING DRAWER MODAL */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          8. DISPENSING DRAWER MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isDispenseOpen}
         onClose={() => setIsDispenseOpen(false)}
         title="Dispensing Fulfillment Desk"
+        description="Fulfill prescribed items against clinic inventory stock and create billing charges."
+        size="lg"
       >
         {activePrescriptionGroup && (
-          <div className="space-y-4">
-            <div className="p-3 bg-surface-hover rounded-xl border border-border">
-              <div className="text-xs text-text-muted">Patient Recipient:</div>
+          <div className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
+            <div className="p-3.5 bg-surface-alt rounded-2xl border border-border/80">
+              <div className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Patient Recipient:</div>
               <div className="text-sm font-bold text-text mt-0.5">{activePrescriptionGroup.patientId.name}</div>
             </div>
 
             <div className="space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wider text-text-muted">Prescribed Items vs Catalog Matches</h4>
-              
+
               {activePrescriptionGroup.prescriptions?.map((rx, idx) => (
-                <div key={rx.id} className="p-3 border border-border/80 rounded-xl space-y-2">
+                <div key={rx.id} className="p-3.5 border border-border/80 rounded-2xl space-y-2 bg-surface">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold text-text">💊 Prescribed: {rx.name}</span>
-                    <span className="text-text-muted">Dosage: {rx.dosage} | Days: {rx.duration}</span>
+                    <span className="font-bold text-text flex items-center gap-1">
+                      <Pill className="w-3.5 h-3.5 text-primary-500" />
+                      Prescribed: {rx.name}
+                    </span>
+                    <span className="text-text-muted">
+                      Dosage: {rx.dosage} &bull; {rx.duration}
+                    </span>
                   </div>
 
                   {/* Stock mapping select and Quantity */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="col-span-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2">
                       <Select
                         value={dispenseItems[idx]?.medicineId || ""}
                         onChange={(e) => {
@@ -763,11 +948,11 @@ export default function PharmacyPage() {
                           updated[idx].medicineId = e.target.value;
                           setDispenseItems(updated);
                         }}
-                        placeholder="-- No Stock Match / Skip --"
-                        options={medicines.map(med => ({
+                        placeholder="-- Select stock formulation --"
+                        options={medicines.map((med) => ({
                           value: med.id,
-                          label: `${med.name} (Qty: ${med.stockQuantity} available) - ₹${med.price}/ea`,
-                          disabled: med.stockQuantity <= 0
+                          label: `${med.name} (Stock: ${med.stockQuantity}) - ₹${med.price}/ea`,
+                          disabled: med.stockQuantity <= 0,
                         }))}
                       />
                     </div>
@@ -791,22 +976,30 @@ export default function PharmacyPage() {
             </div>
 
             {/* Total Price Estimate */}
-            <div className="border-t border-border pt-4 flex justify-between items-center text-base font-bold text-primary-600">
+            <div className="border-t border-border/60 pt-3.5 flex justify-between items-center text-sm font-bold text-text">
               <span>Estimated Billing Subtotal:</span>
-              <span>
+              <span className="text-primary-600 dark:text-primary-400 font-mono text-base">
                 ₹
-                {dispenseItems.reduce((sum, item) => {
-                  const med = medicines.find(m => m.id === item.medicineId);
-                  return sum + (med ? med.price * item.quantity : 0);
-                }, 0)}
+                {dispenseItems
+                  .reduce((sum, item) => {
+                    const med = medicines.find((m) => m.id === item.medicineId);
+                    return sum + (med ? med.price * item.quantity : 0);
+                  }, 0)
+                  .toLocaleString("en-IN")}
               </span>
             </div>
 
-            <div className="pt-4 border-t border-border flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setIsDispenseOpen(false)}>
+            <div className="pt-3 border-t border-border/60 flex justify-end gap-2.5">
+              <Button variant="outline" size="sm" onClick={() => setIsDispenseOpen(false)}>
                 Cancel
               </Button>
-              <Button disabled={submittingDispense || hasDispenseErrors} onClick={handleDispenseSubmit}>
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={submittingDispense || hasDispenseErrors}
+                onClick={handleDispenseSubmit}
+                className="font-semibold rounded-xl shadow-xs"
+              >
                 {submittingDispense ? "Dispensing..." : "Dispense & Bill Patient"}
               </Button>
             </div>
@@ -814,7 +1007,9 @@ export default function PharmacyPage() {
         )}
       </Modal>
 
-      {/* ── Delete Medicine Confirm Dialog ──────────────────────────────── */}
+      {/* ──────────────────────────────────────────────────────────────────────────
+          9. DELETE CONFIRMATION DIALOG
+         ────────────────────────────────────────────────────────────────────────── */}
       <ConfirmDialog
         open={!!deletingMedId}
         onClose={() => setDeletingMedId(null)}
@@ -825,15 +1020,22 @@ export default function PharmacyPage() {
         confirmLabel="Delete Medicine"
       />
 
-      {/* ── Add Batch Stock Modal ─────────────────────────────────────── */}
-      <Modal open={isBatchModalOpen} onClose={() => setIsBatchModalOpen(false)} title={`Add Batch Stock: ${batchTargetMed?.name || ""}`} size="md">
-        <form onSubmit={handleAddBatchSubmit} className="space-y-4">
-          <div className="p-3 bg-surface-alt rounded-lg border border-border text-xs">
-            <p className="font-bold text-text">Medicine: {batchTargetMed?.name}</p>
-            <p className="text-text-secondary">Generic: {batchTargetMed?.genericName}</p>
+      {/* ──────────────────────────────────────────────────────────────────────────
+          10. ADD BATCH STOCK MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
+      <Modal
+        open={isBatchModalOpen}
+        onClose={() => setIsBatchModalOpen(false)}
+        title={`Add Batch Stock: ${batchTargetMed?.name || ""}`}
+        size="md"
+      >
+        <form onSubmit={handleAddBatchSubmit} className="space-y-4 pt-1">
+          <div className="p-3.5 bg-surface-alt rounded-2xl border border-border/80 text-xs space-y-0.5">
+            <p className="font-bold text-text">{batchTargetMed?.name}</p>
+            <p className="text-text-muted italic">{batchTargetMed?.genericName}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
               label="Batch Number *"
               placeholder="e.g. BATCH-2026-09"
@@ -850,7 +1052,7 @@ export default function PharmacyPage() {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <Input
               label="Quantity *"
               type="number"
@@ -879,12 +1081,12 @@ export default function PharmacyPage() {
             />
           </div>
 
-          <div className="flex justify-between border-t border-border pt-4 mt-4">
-            <Button variant="outline" type="button" onClick={() => setIsBatchModalOpen(false)}>
+          <div className="flex justify-between border-t border-border/60 pt-3.5">
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsBatchModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" loading={submittingBatch}>
-              + Add Batch Stock
+            <Button type="submit" size="sm" variant="primary" loading={submittingBatch} className="font-semibold rounded-xl shadow-xs">
+              Add Batch Stock
             </Button>
           </div>
         </form>

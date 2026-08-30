@@ -59,7 +59,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await api.post("/auth/switch-org", { organizationId });
       const res = await api.get("/auth/me");
-      if (typeof window !== "undefined") localStorage.removeItem("ananta_active_clinic_id");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("ananta_active_clinic_id");
+        if (organizationId) localStorage.setItem("ananta_active_org_id", organizationId);
+        else localStorage.removeItem("ananta_active_org_id");
+      }
       set({ user: res.data.data.user, isAuthenticated: true, activeClinicId: null });
     } catch (err) {
       console.error("Failed to switch organization context:", err);
@@ -76,8 +80,18 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 }));
 
-// Listen for the custom "auth-expired" event from the axios interceptor
+// Listen for cross-tab context changes (active clinic, active org, or logout)
 if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === "ananta_active_clinic_id") {
+      useAuthStore.setState({ activeClinicId: e.newValue });
+    } else if (e.key === "ananta_active_org_id") {
+      // Re-verify auth when organization changes across tabs
+      useAuthStore.getState().checkAuth();
+    }
+  });
+
+  // Listen for the custom "auth-expired" event from the axios interceptor
   window.addEventListener("auth-expired", async () => {
     // Clear state
     useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });

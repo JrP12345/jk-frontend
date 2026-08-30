@@ -1,4 +1,4 @@
-# HealthOS / Ananta Health — Frontend Web Application
+# HealthOS / Anant Health — Frontend Web Application
 
 An enterprise healthcare platform frontend built with **Next.js 16 (App Router)**, **React 19**, **Zustand**, **TanStack Query**, and custom **Tailwind CSS v4** design components.
 
