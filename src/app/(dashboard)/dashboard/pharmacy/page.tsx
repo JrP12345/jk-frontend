@@ -27,6 +27,7 @@ import {
   cn,
 } from "@/components/ui";
 import { PharmacyAlertsCenter } from "@/components/pharmacy/PharmacyAlertsCenter";
+import { playChimeSound } from "@/utils/audioChimes";
 import {
   RotateCw,
   Plus,
@@ -46,6 +47,7 @@ import {
   Calendar,
   AlertCircle,
   Sparkles,
+  Search,
 } from "lucide-react";
 
 interface MedicineType {
@@ -77,14 +79,15 @@ interface PendingPrescriptionGroup {
   encounterId: string;
   appointmentId: string | null;
   appointmentTime: string | null;
+  tokenNumber?: number | null;
   patientId: { id: string; name: string; phone?: string };
   doctorId: { id: string; name: string };
   prescriptions: PrescriptionItem[];
 }
 
 export default function PharmacyPage() {
-  const { user, activeClinicId } = useAuthStore();
-  const { clinics, fetchClinics } = useClinicStore();
+  const { user } = useAuthStore();
+  const { clinics, fetchClinics, activeClinicId } = useClinicStore();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"inventory" | "alerts" | "dispensing">("inventory");
@@ -96,6 +99,7 @@ export default function PharmacyPage() {
 
   const [medicines, setMedicines] = useState<MedicineType[]>([]);
   const [pendingPrescriptionGroups, setPendingPrescriptionGroups] = useState<PendingPrescriptionGroup[]>([]);
+  const [dispenseSearch, setDispenseSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -278,6 +282,48 @@ export default function PharmacyPage() {
 
   useEffect(() => {
     fetchData();
+
+    let ws: WebSocket | null = null;
+    if (typeof window !== "undefined" && selectedClinicId) {
+      try {
+        const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+        const wsHost = apiUrl.replace(/^https?:\/\//, "").replace(/\/api\/?$/, "");
+        ws = new WebSocket(`${wsProto}//${wsHost}/api/queue/ws?clinicId=${selectedClinicId}`);
+
+        ws.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(event.data);
+            if (payload.type === "PRESCRIPTION_ISSUED") {
+              playChimeSound("ding-dong");
+              toast({
+                title: "💊 New e-Prescription Received!",
+                description: `Token #${payload.data?.tokenNumber || "OPD"} (${payload.data?.patientName || "Patient"}) - ${payload.data?.prescriptionCount || 1} medication(s) prescribed.`,
+                variant: "info",
+                duration: 8000,
+              });
+              fetchData();
+            } else if (payload.type === "PRESCRIPTION_DISPENSED") {
+              fetchData();
+            }
+          } catch (parseErr) {
+            console.error("Pharmacy WebSocket parse error:", parseErr);
+          }
+        };
+
+        ws.onerror = (err) => {
+          console.warn("Pharmacy WebSocket error:", err);
+        };
+      } catch (connErr) {
+        console.warn("Could not initiate Pharmacy WebSocket:", connErr);
+      }
+    }
+
+    return () => {
+      if (ws) {
+        ws.close();
+      }
+    };
   }, [selectedClinicId]);
 
   const handleMedSubmit = async (e: React.FormEvent) => {
@@ -371,14 +417,21 @@ export default function PharmacyPage() {
     }
 
     try {
-      setSubmittingDispense(true);
-      await api.post("/pharmacy/dispense", {
+      const payload: Record<string, any> = {
         patientId: activePrescriptionGroup.patientId.id,
         clinicId: selectedClinicId,
-        doctorId: activePrescriptionGroup.doctorId.id,
+        doctorId: activePrescriptionGroup.doctorId?.id,
         prescriptionIds: activePrescriptionGroup.prescriptions.map((rx) => rx.id),
         items: validItems,
-      });
+      };
+      if (activePrescriptionGroup.encounterId && activePrescriptionGroup.encounterId.length === 24) {
+        payload.encounterId = activePrescriptionGroup.encounterId;
+      }
+      if (activePrescriptionGroup.appointmentId && activePrescriptionGroup.appointmentId.length === 24) {
+        payload.appointmentId = activePrescriptionGroup.appointmentId;
+      }
+
+      await api.post("/pharmacy/dispense", payload);
 
       toast({
         title: "Dispensed & Billed",
@@ -540,7 +593,14 @@ export default function PharmacyPage() {
         >
           <Receipt className={cn("w-3.5 h-3.5", activeTab === "dispensing" ? "text-primary-500" : "text-text-muted")} />
           <span>Dispensing Prescription Desk</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
+          <span
+            className={cn(
+              "text-[10px] px-2 py-0.5 rounded-full font-bold transition-all",
+              pendingPrescriptionGroups.length > 0
+                ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 animate-pulse border border-amber-500/30 font-extrabold"
+                : "bg-surface-alt text-text-muted"
+            )}
+          >
             {pendingPrescriptionGroups.length}
           </span>
         </button>
@@ -705,29 +765,69 @@ export default function PharmacyPage() {
           6. TAB 2: DISPENSING PRESCRIPTION DESK
          ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "dispensing" && (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-4 animate-fade-in">
+          {/* Quick Search & Filter Header */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface p-3.5 rounded-2xl border border-border/80 shadow-xs">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
+              <input
+                type="text"
+                placeholder="Find prescription by Patient Name, Token # (e.g. #14), or Medicine..."
+                value={dispenseSearch}
+                onChange={(e) => setDispenseSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-surface-alt rounded-xl text-xs text-text border border-border/70 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+              />
+            </div>
+            {dispenseSearch && (
+              <button
+                type="button"
+                onClick={() => setDispenseSearch("")}
+                className="text-xs text-text-muted hover:text-text font-semibold px-2 py-1 cursor-pointer"
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
+
           <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
             <CardContent className="p-0">
               <Table
                 loading={loading}
                 columns={[
-                  { header: "Patient Details", key: "patient" },
+                  { header: "Patient & Token", key: "patient" },
                   { header: "Attending Physician", key: "doctor" },
                   { header: "Encounter Time", key: "time" },
                   { header: "Prescribed Items", key: "rx" },
                   { header: "Actions", key: "action", align: "right" },
                 ]}
-                data={pendingPrescriptionGroups.map((group) => ({
-                  id: group.encounterId,
-                  patient: (
-                    <div className="space-y-0.5">
-                      <div className="font-bold text-text text-xs sm:text-sm">{group.patientId.name}</div>
-                      <div className="text-xs text-text-muted flex items-center gap-1">
-                        <Phone className="w-3 h-3 text-text-muted" />
-                        {group.patientId.phone || "No phone"}
+                data={pendingPrescriptionGroups
+                  .filter((group) => {
+                    if (!dispenseSearch.trim()) return true;
+                    const q = dispenseSearch.toLowerCase().trim();
+                    const nameMatch = group.patientId?.name?.toLowerCase().includes(q);
+                    const tokenMatch = group.tokenNumber ? String(group.tokenNumber).includes(q.replace("#", "")) : false;
+                    const phoneMatch = group.patientId?.phone?.includes(q);
+                    const medMatch = group.prescriptions?.some((p) => p.name.toLowerCase().includes(q));
+                    return nameMatch || tokenMatch || phoneMatch || medMatch;
+                  })
+                  .map((group) => ({
+                    id: group.encounterId,
+                    patient: (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-text text-xs sm:text-sm">{group.patientId.name}</span>
+                          {group.tokenNumber ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                              Token #{group.tokenNumber}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="text-xs text-text-muted flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-text-muted" />
+                          {group.patientId.phone || "No phone"}
+                        </div>
                       </div>
-                    </div>
-                  ),
+                    ),
                   doctor: (
                     <div className="flex items-center gap-1 text-xs font-semibold text-text">
                       <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />

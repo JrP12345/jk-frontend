@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuthStore } from "@/store/authStore";
-import { Sidebar, Button, Spinner, Dropdown, ModeSwitcher, PaletteSwitcher, Avatar, useToast, AnantLogo, AnantIcon, AnantaLogo, AnantaIcon, Select, PageTransition } from "@/components/ui";
+import { Sidebar, Button, Spinner, Dropdown, ModeSwitcher, PaletteSwitcher, Avatar, useToast, AnantLogo, AnantIcon, AnantaLogo, AnantaIcon, Select } from "@/components/ui";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -42,12 +42,12 @@ import {
 } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout, isLoading, activeClinicId, setActiveClinic } = useAuthStore();
+  const { user, logout, isLoading } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { clinics: headerClinics, fetchClinics } = useClinicStore();
+  const { clinics: headerClinics, fetchClinics, activeClinicId, setActiveClinic } = useClinicStore();
   const { toast } = useToast();
   const { isLoaded: modulesLoaded, fetchModules, isModuleEnabled } = useModuleStore();
 
@@ -123,19 +123,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => window.removeEventListener("auth-forbidden", handleForbidden);
   }, [router, toast]);
 
-  if (isLoading || (user && user.role !== "patient" && !modulesLoaded)) {
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/login");
+    }
+  }, [isLoading, user, router]);
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-surface-alt animate-fade-in p-6">
         <div className="flex flex-col items-center gap-5 max-w-sm text-center">
           <AnantLogo size="lg" />
-          <Spinner size="md" label="Initializing workspace & permissions..." />
+          <Spinner size="md" label="Initializing workspace..." />
         </div>
       </div>
     );
   }
 
   if (!user) {
-    return null; // Proxy will handle redirect, but just in case
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-surface-alt animate-fade-in p-6">
+        <div className="flex flex-col items-center gap-5 max-w-sm text-center">
+          <AnantLogo size="lg" />
+          <Spinner size="md" label="Redirecting to secure login..." />
+        </div>
+      </div>
+    );
   }
 
   const handleLogout = async () => {

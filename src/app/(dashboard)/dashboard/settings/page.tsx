@@ -27,6 +27,7 @@ import { useAuthStore } from "@/store/authStore";
 import { isRootUser } from "@/lib/permissions";
 import BillingSettingsPage from "./billing/page";
 import ModulesSettingsPage from "./modules/page";
+import WhatsAppSettingsCard from "./WhatsAppSettingsCard";
 import {
   Building2,
   Bell,
@@ -60,7 +61,7 @@ const TABS: { id: Tab; label: string; rootOnly?: boolean; icon: React.ReactNode 
   },
   {
     id: "notifications",
-    label: "Notifications & Email Gateway",
+    label: "Notifications & Messaging Gateway",
     icon: <Bell className="w-4 h-4" />,
   },
   {
@@ -435,6 +436,9 @@ function NotificationsTab({ selectedOrgId }: { selectedOrgId?: string }) {
           </div>
         </div>
       </Card>
+
+      {/* Meta WhatsApp Business Gateway & Notification Credits */}
+      <WhatsAppSettingsCard selectedOrgId={selectedOrgId} />
 
       {/* Event Categories */}
       <Card className="p-5 border border-border/80 shadow-xs rounded-2xl space-y-4 bg-surface">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
@@ -41,6 +41,17 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isShaking, setIsShaking] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+
+  useEffect(() => {
+    let interval: any;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
 
   const validateDetails = () => {
     const errs: Record<string, string> = {};
@@ -72,6 +83,7 @@ export default function RegisterPage() {
       });
 
       setOtpSent(true);
+      setResendTimer(30);
       toast({
         title: "OTP Dispatched! 📱",
         description: res.data?.data?.devOtp
@@ -105,7 +117,10 @@ export default function RegisterPage() {
       const res = await api.post("/auth/otp/verify", {
         phone: formData.phone,
         otp: otpCode,
-        name: formData.name,
+        name: formData.name.trim(),
+        gender: formData.gender,
+        dateOfBirth: formData.dateOfBirth || undefined,
+        email: formData.email.trim().toLowerCase() || undefined,
         purpose: "authentication",
       });
 
@@ -113,7 +128,7 @@ export default function RegisterPage() {
         login(res.data.data.user);
         toast({
           title: "Registration Successful",
-          description: `Welcome to ANANT Healthcare, ${res.data.data.user.name}!`,
+          description: `Welcome to ANANTA Healthcare, ${res.data.data.user.name}!`,
           variant: "success",
         });
         router.push("/dashboard/patient-portal");
@@ -179,6 +194,7 @@ export default function RegisterPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   error={errors.name}
+                  autoComplete="name"
                   required
                 />
 
@@ -186,9 +202,11 @@ export default function RegisterPage() {
                   <Input
                     label="Mobile Phone Number *"
                     placeholder="9876543210"
+                    type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     error={errors.phone}
+                    autoComplete="tel"
                     required
                   />
 
@@ -199,6 +217,7 @@ export default function RegisterPage() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     error={errors.email}
+                    autoComplete="email"
                   />
                 </div>
 
@@ -221,6 +240,7 @@ export default function RegisterPage() {
                     type="date"
                     value={formData.dateOfBirth}
                     onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    autoComplete="bday"
                   />
                 </div>
               </CardContent>
@@ -254,8 +274,30 @@ export default function RegisterPage() {
                   inputMode="numeric"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                  autoComplete="one-time-code"
                   required
                 />
+                <div className="flex items-center justify-between text-xs px-1">
+                  <button
+                    type="button"
+                    onClick={() => setOtpSent(false)}
+                    className="text-text-muted hover:text-text cursor-pointer underline"
+                  >
+                    Change Details
+                  </button>
+                  {resendTimer > 0 ? (
+                    <span className="text-text-muted font-medium">Resend in {resendTimer}s</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleRequestOtp}
+                      disabled={loading}
+                      className="text-primary-600 font-semibold hover:underline cursor-pointer"
+                    >
+                      Resend OTP
+                    </button>
+                  )}
+                </div>
               </CardContent>
 
               <CardFooter className="p-0 pt-2 flex flex-col gap-3">

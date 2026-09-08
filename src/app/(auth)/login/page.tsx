@@ -22,6 +22,7 @@ import {
   Spinner,
   cn,
 } from "@/components/ui";
+import { AlertTriangle } from "lucide-react";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -31,6 +32,7 @@ export default function LoginPage() {
   const [phoneOtp, setPhoneOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,18 +56,48 @@ export default function LoginPage() {
   const [resetEmailError, setResetEmailError] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
   const [isResetSent, setIsResetSent] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const router = useRouter();
   const { isAuthenticated, isLoading, login } = useAuthStore();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("expired") === "1" || params.get("error")) {
+        setSessionExpired(true);
+        useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
+        document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        if (params.get("expired") === "1") {
+          toast({
+            title: "Session Expired",
+            description: "Your session has timed out for security. Please sign in again.",
+            variant: "warning",
+            duration: 6000,
+          });
+        }
+      }
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (!sessionExpired && !isLoading && isAuthenticated) {
       router.replace("/dashboard");
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, sessionExpired, router]);
 
-  if (isLoading || isAuthenticated) {
+  useEffect(() => {
+    let interval: any;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  if (!sessionExpired && (isLoading || isAuthenticated)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface">
         <Spinner size="lg" label="Signing into workspace..." />
@@ -85,6 +117,7 @@ export default function LoginPage() {
     try {
       const res = await api.post("/auth/otp/request", { phone, purpose: "authentication" });
       setOtpSent(true);
+      setResendTimer(30);
       toast({
         title: "OTP Dispatched! 📱",
         description: res.data?.data?.devOtp
@@ -152,22 +185,6 @@ export default function LoginPage() {
   const validatePassword = (val: string) => {
     if (!val) {
       setPasswordError("Password is required");
-      return false;
-    }
-    if (val.length < 8) {
-      setPasswordError("Password must be at least 8 characters");
-      return false;
-    }
-    if (!/[A-Z]/.test(val)) {
-      setPasswordError("Password must contain at least one uppercase letter");
-      return false;
-    }
-    if (!/[a-z]/.test(val)) {
-      setPasswordError("Password must contain at least one lowercase letter");
-      return false;
-    }
-    if (!/[0-9]/.test(val)) {
-      setPasswordError("Password must contain at least one digit");
       return false;
     }
     setPasswordError("");
@@ -283,6 +300,13 @@ export default function LoginPage() {
           <p className="text-text-secondary text-xs sm:text-sm mt-2">Sign in to ANANTA Healthcare OS</p>
         </div>
 
+        {sessionExpired && (
+          <div className="mb-4 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
+            <span>Your session has expired for security. Please sign in again to continue.</span>
+          </div>
+        )}
+
         {/* Auth Card Container */}
         <Card
           className={cn(
@@ -299,8 +323,12 @@ export default function LoginPage() {
                 </CardDescription>
                 
                 {/* Auth Mode Tabs */}
-                <div className="grid grid-cols-2 p-1 bg-surface-alt rounded-xl border border-border/60 mt-4">
+                <div role="tablist" aria-label="Sign in options" className="grid grid-cols-2 p-1 bg-surface-alt rounded-xl border border-border/60 mt-4">
                   <button
+                    id="tab-mobile"
+                    role="tab"
+                    aria-selected={authTab === "mobile"}
+                    aria-controls="panel-mobile"
                     type="button"
                     onClick={() => { setAuthTab("mobile"); setOtpSent(false); setPhoneOtp(""); }}
                     className={cn(
@@ -311,6 +339,10 @@ export default function LoginPage() {
                     📱 Mobile OTP
                   </button>
                   <button
+                    id="tab-email"
+                    role="tab"
+                    aria-selected={authTab === "email"}
+                    aria-controls="panel-email"
                     type="button"
                     onClick={() => setAuthTab("email")}
                     className={cn(
@@ -326,13 +358,14 @@ export default function LoginPage() {
               {authTab === "mobile" ? (
                 /* Mobile OTP Form */
                 !otpSent ? (
-                  <form onSubmit={handleRequestPhoneOtp} className="space-y-4">
+                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleRequestPhoneOtp} className="space-y-4">
                     <Input
                       label="Mobile Phone Number *"
                       type="tel"
                       placeholder="9876543210"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
+                      autoComplete="tel"
                       required
                     />
                     <Button type="submit" fullWidth loading={otpLoading} size="lg" className="rounded-xl font-bold">
@@ -340,7 +373,7 @@ export default function LoginPage() {
                     </Button>
                   </form>
                 ) : (
-                  <form onSubmit={handleVerifyPhoneOtp} className="space-y-4">
+                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleVerifyPhoneOtp} className="space-y-4">
                     <Input
                       label={`6-Digit OTP Sent to ${phone} *`}
                       placeholder="123456"
@@ -348,21 +381,38 @@ export default function LoginPage() {
                       inputMode="numeric"
                       value={phoneOtp}
                       onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, ""))}
+                      autoComplete="one-time-code"
                       required
                     />
-                    <div className="flex gap-2">
-                      <Button type="button" variant="outline" onClick={() => setOtpSent(false)} className="rounded-xl">
+                    <div className="flex items-center justify-between text-xs px-1">
+                      <button
+                        type="button"
+                        onClick={() => setOtpSent(false)}
+                        className="text-text-muted hover:text-text cursor-pointer underline"
+                      >
                         Change Number
-                      </Button>
-                      <Button type="submit" fullWidth loading={otpLoading} size="lg" className="rounded-xl font-bold flex-1">
-                        Verify & Sign In
-                      </Button>
+                      </button>
+                      {resendTimer > 0 ? (
+                        <span className="text-text-muted font-medium">Resend in {resendTimer}s</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleRequestPhoneOtp}
+                          disabled={otpLoading}
+                          className="text-primary-600 font-semibold hover:underline cursor-pointer"
+                        >
+                          Resend OTP
+                        </button>
+                      )}
                     </div>
+                    <Button type="submit" fullWidth loading={otpLoading} size="lg" className="rounded-xl font-bold">
+                      Verify & Sign In
+                    </Button>
                   </form>
                 )
               ) : (
                 /* Email Password Form */
-                <form onSubmit={handleLogin} noValidate autoComplete="off" className="space-y-4">
+                <form id="panel-email" role="tabpanel" aria-labelledby="tab-email" onSubmit={handleLogin} noValidate className="space-y-4">
                   <CardContent className="p-0 space-y-4">
                     <Input
                       label="Email Address *"
@@ -376,7 +426,7 @@ export default function LoginPage() {
                       onBlur={() => validateEmail(email)}
                       error={emailError}
                       required
-                      autoComplete="off"
+                      autoComplete="username"
                     />
 
                     <div>
@@ -392,7 +442,7 @@ export default function LoginPage() {
                         onBlur={() => validatePassword(password)}
                         error={passwordError}
                         required
-                        autoComplete="off"
+                        autoComplete="current-password"
                         iconRight={
                           <button
                             type="button"
@@ -437,6 +487,16 @@ export default function LoginPage() {
                   </CardFooter>
                 </form>
               )}
+
+              {/* Patient Registration Link */}
+              <div className="mt-6 pt-4 border-t border-border/50 text-center">
+                <p className="text-xs text-text-secondary">
+                  Don't have an account?{" "}
+                  <Link href="/register" className="font-semibold text-primary-600 hover:underline">
+                    Sign up as a Patient
+                  </Link>
+                </p>
+              </div>
             </div>
           ) : (
             /* Forgot Password Form */

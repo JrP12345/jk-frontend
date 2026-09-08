@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { useClinicStore } from "@/store/clinicStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import {
   Card,
@@ -91,7 +92,8 @@ export interface ClinicalNoteRecord {
 
 export default function ConsultationsPage() {
   const router = useRouter();
-  const { user, activeClinicId } = useAuthStore();
+  const { user } = useAuthStore();
+  const { activeClinicId } = useClinicStore();
   const canStartConsultation = hasAnyPermission(user, "MANAGE_CLINICAL_NOTES", "MANAGE_APPOINTMENTS");
   const { toast } = useToast();
 

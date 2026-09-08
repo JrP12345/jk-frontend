@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
@@ -229,12 +229,18 @@ export default function PatientsDirectoryPage() {
     }
   };
 
+  const isFirstSearchMount = useRef(true);
+
   useEffect(() => {
     fetchPatients();
   }, [page, genderFilter]);
 
   // Debounced auto-search
   useEffect(() => {
+    if (isFirstSearchMount.current) {
+      isFirstSearchMount.current = false;
+      return;
+    }
     const timer = setTimeout(() => {
       setPage(1);
       fetchPatients();

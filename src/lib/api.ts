@@ -6,6 +6,7 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true, // Send httpOnly cookies cross-origin with every request
+  timeout: 20000,        // 20s timeout to prevent hanging connections in production
   headers: {
     "Content-Type": "application/json",
   },
@@ -15,11 +16,11 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const activeClinicId = localStorage.getItem("ananta_active_clinic_id");
-    if (activeClinicId && !config.headers["x-clinic-id"]) {
+    if (activeClinicId && activeClinicId !== "[object Object]" && activeClinicId !== "undefined" && !config.headers["x-clinic-id"]) {
       config.headers["x-clinic-id"] = activeClinicId;
     }
     const activeOrgId = localStorage.getItem("ananta_active_org_id");
-    if (activeOrgId && !config.headers["x-organization-id"]) {
+    if (activeOrgId && activeOrgId !== "[object Object]" && activeOrgId !== "undefined" && !config.headers["x-organization-id"]) {
       config.headers["x-organization-id"] = activeOrgId;
     }
   }

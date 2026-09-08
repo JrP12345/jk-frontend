@@ -19,6 +19,7 @@ import {
   Breadcrumbs,
 } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
+import { AlertCircle } from "lucide-react";
 
 interface Doctor {
   id: string;
@@ -37,6 +38,11 @@ interface Doctor {
   bookingMode?: string;
   maxDailyTokens?: number | null;
   workingHours?: string;
+  isAvailable?: boolean;
+  overrideStatus?: string;
+  overrideReason?: string | null;
+  isOnlineBookingClosed?: boolean;
+  onlineBookingClosedReason?: string | null;
 }
 
 interface ClinicDetail {
@@ -51,6 +57,12 @@ interface ClinicDetail {
   timings: string;
   facilities?: string[];
   doctors: Doctor[];
+}
+
+interface SlotItem {
+  time: string;
+  available: boolean;
+  isLocked?: boolean;
 }
 
 // ─── Helper: Format 24-hour time to 12-hour AM/PM ─────────────────
@@ -251,8 +263,9 @@ export default function BrowseDetailClient({ id }: { id: string }) {
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
-  // Booking Modal State
+  // Booking Modal State (2-Step Flow)
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [bookingStep, setBookingStep] = useState<1 | 2>(1);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
 
@@ -278,6 +291,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
   const [paymentMode, setPaymentMode] = useState<"pay_at_clinic" | "online">("pay_at_clinic");
 
   const resetBookingForm = () => {
+    setBookingStep(1);
     setBookingNotes("");
     setGuestForm({ name: "", phone: "", email: "" });
     setSelectedDate("");
@@ -302,22 +316,24 @@ export default function BrowseDetailClient({ id }: { id: string }) {
     fetchClinic();
   }, [id, router, toast]);
 
+  // Handle deep-link / auto-open booking (from single-doctor browse card or follow-up)
   useEffect(() => {
     if (!clinic) return;
 
     const doctorId = searchParams.get("doctorId");
     const followUp = searchParams.get("followUp");
     const prevApptId = searchParams.get("prevAppointmentId");
+    const openBooking = searchParams.get("openBooking");
 
-    if (doctorId && followUp === "true") {
+    if (doctorId && (followUp === "true" || openBooking === "true")) {
       const doc = clinic.doctors.find((d) => d.id === doctorId);
       if (doc) {
-        setSelectedDoctor(doc);
-        setIsBookingOpen(true);
-        setIsGuest(!isAuthenticated || user?.role !== "patient");
-        setBookingNotes("Follow-up appointment for clinical recommendation.");
-        if (prevApptId) {
-          setFollowUpForAppointmentId(prevApptId);
+        handleOpenBooking(doc);
+        if (followUp === "true") {
+          setBookingNotes("Follow-up appointment for clinical recommendation.");
+          if (prevApptId) {
+            setFollowUpForAppointmentId(prevApptId);
+          }
         }
       }
     }
@@ -395,6 +411,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
 
   const handleOpenBooking = async (doc: Doctor) => {
     setSelectedDoctor(doc);
+    setBookingStep(1);
     setIsBookingOpen(true);
     setIsGuest(!isAuthenticated || user?.role !== "patient");
     resetBookingForm();
@@ -443,17 +460,14 @@ export default function BrowseDetailClient({ id }: { id: string }) {
     }
   };
 
-interface SlotItem {
-  time: string;
-  available: boolean;
-  isLocked?: boolean;
-}
-
   // Generate slots locally or from API response
   const activeSlotsList = useMemo<SlotItem[]>(() => {
     if (!selectedDoctor || !selectedDate) return [];
 
-    // If API returned structured slots, use them
+    if (doctorSlotInfo && doctorSlotInfo.isWorkingDay === false) {
+      return [];
+    }
+
     if (doctorSlotInfo?.slots && Array.isArray(doctorSlotInfo.slots) && doctorSlotInfo.slots.length > 0) {
       const now = new Date();
       const isToday = selectedDate === now.toISOString().split("T")[0];
@@ -542,8 +556,19 @@ interface SlotItem {
 
   const handleBookAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (selectedDate === todayStr && selectedDoctor?.isOnlineBookingClosed) {
+      toast({
+        title: "Same-Day Online Booking Closed",
+        description: selectedDoctor.onlineBookingClosedReason || "Queue backlog safety cutoff reached. Please book for tomorrow or register as a walk-in at clinic reception.",
+        variant: "error",
+      });
+      return;
+    }
+
     if (!selectedDate || (!selectedTime && doctorSlotInfo?.bookingMode !== "sequential_queue")) {
       toast({ title: "Validation Error", description: "Please select a consultation date and time slot.", variant: "error" });
+      setBookingStep(1);
       return;
     }
 
@@ -608,15 +633,17 @@ interface SlotItem {
       }
 
       setCreatedTicket({
+        appointmentId: appt._id || appt.id,
         tokenNumber: token,
         patientName: isGuest ? guestForm.name : user?.name || "Patient",
+        patientPhone: isGuest ? guestForm.phone : (user as any)?.phone || "",
         appointmentTime: mergedBookingTime,
         selectedDate,
         selectedTime: timeToUse,
         doctorName: selectedDoctor?.name,
         specialization: selectedDoctor?.specialization,
         clinicName: clinic?.name,
-        clinicAddress: clinic?.address,
+        clinicAddress: clinic?.address && clinic.address.trim() !== "." ? clinic.address : clinic?.city,
         fees: selectedDoctor?.fees,
         paymentMode,
       });
@@ -683,13 +710,18 @@ interface SlotItem {
             </div>
             <div class="details-row">
               <span class="label">Time Slot:</span>
-              <span class="value">${format12Hour(createdTicket.selectedTime)}</span>
+              <span class="value">${doctorSlotInfo?.bookingMode === "sequential_queue" ? "OPD Queue Token" : format12Hour(createdTicket.selectedTime)}</span>
             </div>
             <div class="details-row">
               <span class="label">Consultation Fee:</span>
-              <span class="value">₹${createdTicket.fees || 0} (${createdTicket.paymentMode === "online" ? "Online Paid" : "Pay at Reception"})</span>
+              <span class="value">₹${createdTicket.fees || 0} (${createdTicket.paymentMode === "online" ? "Online Paid" : "Pay at Reception Desk"})</span>
             </div>
             <div class="footer">
+              ${createdTicket.appointmentId ? `
+              <p style="margin: 0 0 4px 0; font-weight: 700; color: #2563eb;">Live Mobile Queue Tracker:</p>
+              <p style="margin: 0 0 10px 0; word-break: break-all; font-family: monospace; font-size: 11px; color: #0284c7;">
+                ${window.location.origin}/track/${createdTicket.appointmentId}
+              </p>` : ""}
               Please arrive 10 minutes prior to your scheduled time. Present this token at the reception desk.
             </div>
           </div>
@@ -729,7 +761,7 @@ interface SlotItem {
       {/* Clinic Header Banner */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
         <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-xs">
-          <div className="h-56 sm:h-72 w-full relative bg-surface-alt overflow-hidden">
+          <div className="h-48 sm:h-64 w-full relative bg-surface-alt overflow-hidden">
             {clinic.image_url ? (
               <img src={clinic.image_url} alt={clinic.name} className="w-full h-full object-cover" />
             ) : (
@@ -760,15 +792,19 @@ interface SlotItem {
                   <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <span>{clinic.address}</span>
+                  <span>{clinic.address && clinic.address.trim() !== "." ? clinic.address : clinic.city}</span>
                 </div>
-                <span>•</span>
-                <div className="flex items-center gap-1.5">
-                  <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  <span>{clinic.phone || "Direct Desk Available"}</span>
-                </div>
+                {clinic.phone && (
+                  <>
+                    <span>•</span>
+                    <div className="flex items-center gap-1.5">
+                      <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      <span>{clinic.phone}</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Facilities Badges */}
@@ -786,35 +822,19 @@ interface SlotItem {
         </div>
       </div>
 
-      {/* Main Content Layout Grid */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: About & Operating Hours */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-bold">About Facility</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <p className="text-xs text-text-secondary leading-relaxed">
-                {clinic.description || "A premier healthcare facility offering specialized medical services, diagnostics, and doctor consultations."}
-              </p>
-
-              <div>
-                <h4 className="text-xs font-bold text-text mb-2 uppercase tracking-wider">Clinic Operating Hours</h4>
-                {renderTimings(clinic.timings)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Column: Specialists Practitioner Cards */}
-        <div className="lg:col-span-2 space-y-5">
-          <h2 className="text-xl font-bold text-text flex items-center gap-2">
-            Available Specialists
-            <Badge variant="neutral" className="text-xs">
-              {clinic.doctors.length}
-            </Badge>
-          </h2>
+      {/* Main Content Layout - Specialists First on Mobile for Instant Booking */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col lg:grid lg:grid-cols-3 gap-6">
+        {/* Right Column: Specialists Practitioner Cards (Renders First on Mobile) */}
+        <div className="order-1 lg:order-2 lg:col-span-2 space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-text flex items-center gap-2">
+              Available Specialists
+              <Badge variant="neutral" className="text-xs">
+                {clinic.doctors.length}
+              </Badge>
+            </h2>
+            <span className="text-xs text-text-muted">Instant Booking (No OTP required)</span>
+          </div>
 
           {clinic.doctors.length === 0 ? (
             <Card className="p-8 text-center text-text-muted text-xs border-dashed">
@@ -860,6 +880,21 @@ interface SlotItem {
                         <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{doc.fees}</span>
                       </div>
                     </div>
+
+                    {/* Queue or Slot Mode Indicator & Backlog/Override Badges */}
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-text-secondary">
+                      <span>{doc.bookingMode === "sequential_queue" ? "🎟️ Live OPD Queue Token" : "🕒 Fixed 15-Min Slots"}</span>
+                      {doc.isOnlineBookingClosed && (
+                        <Badge variant="warning" size="sm" className="font-bold text-[10px]">
+                          Online Closed Today
+                        </Badge>
+                      )}
+                      {doc.isAvailable === false && (
+                        <Badge variant="danger" size="sm" className="font-bold text-[10px]">
+                          Unavailable Today
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   {/* Book Button */}
@@ -873,391 +908,463 @@ interface SlotItem {
             </div>
           )}
         </div>
+
+        {/* Left Column: About & Operating Hours (Below Specialists on Mobile) */}
+        <div className="order-2 lg:order-1 lg:col-span-1 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-bold">About Facility</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <p className="text-xs text-text-secondary leading-relaxed">
+                {clinic.description || "A premier healthcare facility offering specialized medical services, diagnostics, and doctor consultations."}
+              </p>
+
+              <div>
+                <h4 className="text-xs font-bold text-text mb-2 uppercase tracking-wider">Clinic Operating Hours</h4>
+                {renderTimings(clinic.timings)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Refined Booking Modal */}
+      {/* Refined 2-Step Progressive Booking Modal */}
       <Modal
         open={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}
-        title={`Book Consultation — Dr. ${selectedDoctor?.name}`}
+        title={bookingStep === 1 ? `Step 1: Choose Slot — Dr. ${selectedDoctor?.name}` : `Step 2: Patient Info — Dr. ${selectedDoctor?.name}`}
         size="lg"
       >
-        <form onSubmit={handleBookAppointment} className="space-y-5 pt-1">
-          {/* Doctor Info Card */}
-          <div className="p-4 bg-gradient-to-r from-primary-600/10 via-primary-500/5 to-surface rounded-2xl border border-primary-500/20 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-primary-600/15 border border-primary-500/30 flex items-center justify-center font-black text-primary-600 text-lg shrink-0">
-                {selectedDoctor?.image_url ? (
-                  <img src={selectedDoctor.image_url} alt={selectedDoctor.name} className="w-full h-full object-cover rounded-xl" />
-                ) : (
-                  "Dr"
-                )}
-              </div>
-              <div>
-                <p className="font-bold text-text text-sm">Dr. {selectedDoctor?.name}</p>
-                <p className="text-xs text-primary-600 dark:text-primary-400 font-semibold">{selectedDoctor?.specialization}</p>
-                <p className="text-[11px] text-text-muted">{clinic.name} • {clinic.city}</p>
-              </div>
-            </div>
-            <div className="text-right shrink-0">
-              <span className="text-[10px] uppercase font-bold text-text-muted block">Fee</span>
-              <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
-                ₹{selectedDoctor?.fees || 0}
-              </span>
-            </div>
-          </div>
+        {/* Step Progress Bar */}
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <div className={`flex-1 h-1.5 rounded-full transition-colors ${bookingStep >= 1 ? "bg-primary-600" : "bg-border"}`} />
+          <div className={`flex-1 h-1.5 rounded-full transition-colors ${bookingStep >= 2 ? "bg-primary-600" : "bg-border"}`} />
+        </div>
 
-          {/* Doctor Working Hours & Shift Start Time Banner for Selected Date */}
-          {selectedDaySchedule && (
-            <div className="bg-surface-alt rounded-2xl p-4 border border-border/80 space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-primary-600/10 text-primary-600 flex items-center justify-center font-bold text-sm shrink-0">
-                    🕒
+        <form onSubmit={handleBookAppointment} className="space-y-4">
+          {/* STEP 1: Date & Time Slot / Queue Selection */}
+          {bookingStep === 1 && (
+            <div className="space-y-4">
+              {/* Doctor Info Card */}
+              <div className="p-3.5 bg-gradient-to-r from-primary-600/10 via-primary-500/5 to-surface rounded-2xl border border-primary-500/20 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-primary-600/15 border border-primary-500/30 flex items-center justify-center font-black text-primary-600 text-base shrink-0">
+                    {selectedDoctor?.image_url ? (
+                      <img src={selectedDoctor.image_url} alt={selectedDoctor.name} className="w-full h-full object-cover rounded-xl" />
+                    ) : (
+                      "Dr"
+                    )}
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-text block">
-                      Doctor's Shift ({selectedDaySchedule.dayName})
-                    </span>
-                    <span className="text-xs font-bold text-primary-600 dark:text-primary-400">
-                      {selectedDaySchedule.isWorkingDay ? selectedDaySchedule.workingHoursLabel : "Not Available on this day"}
-                    </span>
+                    <p className="font-bold text-text text-sm">Dr. {selectedDoctor?.name}</p>
+                    <p className="text-xs text-primary-600 dark:text-primary-400 font-semibold">{selectedDoctor?.specialization}</p>
+                    <p className="text-[11px] text-text-muted">{clinic.name}</p>
                   </div>
                 </div>
-
-                {selectedDaySchedule.isWorkingDay && (
-                  <div className="flex items-center gap-2">
-                    <Badge variant="primary" className="text-[11px] font-bold py-1 px-2.5">
-                      Starts at {selectedDaySchedule.startFormatted}
-                    </Badge>
-                    <span className="text-[11px] text-text-muted font-medium">⏱️ 15 min slots</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Step 1: Date Selection */}
-          <div className="space-y-2.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-text flex items-center justify-between">
-              <span>1. Select Consultation Date *</span>
-              {selectedDate && (
-                <span className="text-primary-600 font-semibold lowercase tracking-normal">
-                  {upcomingDays.find((d) => d.dateString === selectedDate)?.label || selectedDate}
-                </span>
-              )}
-            </label>
-
-            {upcomingDays.length === 0 ? (
-              <p className="text-xs text-danger-500 p-3 bg-danger-500/10 rounded-xl border border-danger-500/20">
-                No active schedules configured for this doctor currently.
-              </p>
-            ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                {upcomingDays.map((d) => (
-                  <button
-                    key={d.dateString}
-                    type="button"
-                    onClick={() => {
-                      if (selectedDoctor) {
-                        loadSlotsForDate(d.dateString, selectedDoctor);
-                      }
-                    }}
-                    className={`p-2.5 rounded-xl border text-center transition-all duration-150 ${
-                      selectedDate === d.dateString
-                        ? "bg-primary-600 text-white border-primary-600 shadow-md ring-2 ring-primary-500/20 font-bold"
-                        : "bg-surface hover:border-primary-500/50 hover:bg-surface-alt text-text border-border"
-                    }`}
-                  >
-                    <span className="text-[10px] font-bold uppercase tracking-wider block opacity-75">{d.dayShort}</span>
-                    <span className="text-xs font-black block mt-0.5">{d.dateNum}</span>
-                    {d.isToday && (
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full inline-block mt-1 ${selectedDate === d.dateString ? "bg-white/20 text-white" : "bg-primary-500/10 text-primary-600"}`}>
-                        Today
-                      </span>
-                    )}
-                    {d.isTomorrow && (
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full inline-block mt-1 ${selectedDate === d.dateString ? "bg-white/20 text-white" : "bg-surface-alt text-text-muted"}`}>
-                        Tmrw
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Step 2: Time Slots Picker OR Sequential Queue Card */}
-          {fetchingDoctorSlots ? (
-            <div className="py-8 text-center bg-surface-alt rounded-2xl border border-border/60">
-              <Spinner size="sm" label="Loading available slots & doctor shift..." />
-            </div>
-          ) : doctorSlotInfo?.bookingMode === "sequential_queue" ? (
-            <div className="p-4 bg-gradient-to-r from-primary-600/10 via-primary-500/5 to-surface rounded-2xl border border-primary-500/30 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-sm text-text flex items-center gap-1.5">
-                  <span>🎟</span> Live OPD Token Queue
-                </span>
-                <Badge variant="primary" className="font-bold">
-                  {selectedDate ? upcomingDays.find((d) => d.dateString === selectedDate)?.label || selectedDate : "Today"}
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <div className="bg-surface p-3 rounded-xl border border-border text-center">
-                  <span className="text-[10px] text-text-muted uppercase font-semibold block">Your Queue Token</span>
-                  <span className="text-2xl font-black text-primary-600">#{doctorSlotInfo.nextToken || 1}</span>
-                </div>
-                <div className="bg-surface p-3 rounded-xl border border-border text-center">
-                  <span className="text-[10px] text-text-muted uppercase font-semibold block">Est. Wait / Turn Time</span>
-                  <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
-                    ~{Math.max(0, ((doctorSlotInfo.nextToken || 1) - 1) * (doctorSlotInfo.appointmentDuration || 15))} mins
+                <div className="text-right shrink-0">
+                  <span className="text-[10px] uppercase font-bold text-text-muted block">Fee</span>
+                  <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                    ₹{selectedDoctor?.fees || 0}
                   </span>
                 </div>
               </div>
-              {doctorSlotInfo.maxDailyTokens && (
-                <p className="text-[11px] text-text-muted text-center">
-                  Daily Limit: {doctorSlotInfo.maxDailyTokens} Patients Maximum
-                </p>
+
+              {/* Online Booking Backlog Buffer Banner */}
+              {selectedDate === new Date().toISOString().slice(0, 10) && selectedDoctor?.isOnlineBookingClosed && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-bold">Same-Day Online Booking Closed</p>
+                    <p className="opacity-90 leading-relaxed">
+                      {selectedDoctor.onlineBookingClosedReason || "Doctor's current queue backlog has reached the online safety cutoff. Walk-in registration is still accepted at the clinic reception."}
+                    </p>
+                    <p className="text-[11px] font-semibold text-primary-600 dark:text-primary-400 mt-1">
+                      👉 Please select tomorrow or an upcoming date above to book online.
+                    </p>
+                  </div>
+                </div>
               )}
-            </div>
-          ) : (
-            selectedDate && (
-              <div className="space-y-3 pt-1">
+
+              {/* Doctor Shift Schedule Banner */}
+              {selectedDaySchedule && (
+                <div className="bg-surface-alt rounded-2xl p-3 border border-border/80 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🕒</span>
+                    <div>
+                      <span className="font-bold text-text block">Shift: {selectedDaySchedule.dayName}</span>
+                      <span className="text-text-secondary text-[11px]">
+                        {selectedDaySchedule.isWorkingDay ? selectedDaySchedule.workingHoursLabel : "Doctor Closed / Off"}
+                      </span>
+                    </div>
+                  </div>
+                  {selectedDaySchedule.isWorkingDay && (
+                    <Badge variant="primary" className="text-[11px] font-bold">
+                      Starts {selectedDaySchedule.startFormatted}
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              {/* Date Selection Chips */}
+              <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-text flex items-center justify-between">
-                  <span>2. Select Time Slot *</span>
-                  {selectedTime && (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                      Selected: {format12Hour(selectedTime)}
+                  <span>1. Choose Date *</span>
+                  {selectedDate && (
+                    <span className="text-primary-600 font-semibold lowercase tracking-normal">
+                      {upcomingDays.find((d) => d.dateString === selectedDate)?.label || selectedDate}
                     </span>
                   )}
                 </label>
 
-                {activeSlotsList.length === 0 ? (
-                  <div className="p-4 text-center bg-surface-alt rounded-2xl border border-border text-xs text-text-muted">
-                    No available time slots for this date. Please choose another day above.
-                  </div>
+                {upcomingDays.length === 0 ? (
+                  <p className="text-xs text-danger-500 p-3 bg-danger-500/10 rounded-xl border border-danger-500/20">
+                    No active schedules configured for this doctor currently.
+                  </p>
                 ) : (
-                  <div className="space-y-3 bg-surface-alt p-4 rounded-2xl border border-border/80 max-h-56 overflow-y-auto">
-                    {/* Morning Slots */}
-                    {categorizedSlots.morning.length > 0 && (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-text-secondary">
-                          <span>🌅</span> Morning ({categorizedSlots.morning.length} slots)
-                        </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          {categorizedSlots.morning.map((s) => (
-                            <button
-                              key={s.time}
-                              type="button"
-                              onClick={() => setSelectedTime(s.time)}
-                              className={`p-2 rounded-xl text-xs font-bold text-center transition-all ${
-                                selectedTime === s.time
-                                  ? "bg-primary-600 text-white border-primary-600 shadow-xs ring-2 ring-primary-500/20"
-                                  : "bg-surface hover:border-primary-500/60 hover:text-primary-600 text-text border border-border"
-                              }`}
-                            >
-                              {format12Hour(s.time)}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Afternoon Slots */}
-                    {categorizedSlots.afternoon.length > 0 && (
-                      <div className="space-y-1.5 pt-1">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-text-secondary">
-                          <span>☀️</span> Afternoon ({categorizedSlots.afternoon.length} slots)
-                        </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          {categorizedSlots.afternoon.map((s) => (
-                            <button
-                              key={s.time}
-                              type="button"
-                              onClick={() => setSelectedTime(s.time)}
-                              className={`p-2 rounded-xl text-xs font-bold text-center transition-all ${
-                                selectedTime === s.time
-                                  ? "bg-primary-600 text-white border-primary-600 shadow-xs ring-2 ring-primary-500/20"
-                                  : "bg-surface hover:border-primary-500/60 hover:text-primary-600 text-text border border-border"
-                              }`}
-                            >
-                              {format12Hour(s.time)}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Evening Slots */}
-                    {categorizedSlots.evening.length > 0 && (
-                      <div className="space-y-1.5 pt-1">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-text-secondary">
-                          <span>🌆</span> Evening ({categorizedSlots.evening.length} slots)
-                        </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          {categorizedSlots.evening.map((s) => (
-                            <button
-                              key={s.time}
-                              type="button"
-                              onClick={() => setSelectedTime(s.time)}
-                              className={`p-2 rounded-xl text-xs font-bold text-center transition-all ${
-                                selectedTime === s.time
-                                  ? "bg-primary-600 text-white border-primary-600 shadow-xs ring-2 ring-primary-500/20"
-                                  : "bg-surface hover:border-primary-500/60 hover:text-primary-600 text-text border border-border"
-                              }`}
-                            >
-                              {format12Hour(s.time)}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {upcomingDays.map((d) => (
+                      <button
+                        key={d.dateString}
+                        type="button"
+                        onClick={() => {
+                          if (selectedDoctor) {
+                            loadSlotsForDate(d.dateString, selectedDoctor);
+                          }
+                        }}
+                        className={`p-2 rounded-xl border text-center transition-all duration-150 cursor-pointer ${
+                          selectedDate === d.dateString
+                            ? "bg-primary-600 text-white border-primary-600 shadow-md ring-2 ring-primary-500/20 font-bold"
+                            : "bg-surface hover:border-primary-500/50 hover:bg-surface-alt text-text border-border"
+                        }`}
+                      >
+                        <span className="text-[10px] font-bold uppercase tracking-wider block opacity-75">{d.dayShort}</span>
+                        <span className="text-xs font-black block mt-0.5">{d.dateNum}</span>
+                        {d.isToday && (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full inline-block mt-0.5 ${selectedDate === d.dateString ? "bg-white/20 text-white" : "bg-primary-500/10 text-primary-600"}`}>
+                            Today
+                          </span>
+                        )}
+                        {d.isTomorrow && (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full inline-block mt-0.5 ${selectedDate === d.dateString ? "bg-white/20 text-white" : "bg-surface-alt text-text-muted"}`}>
+                            Tmrw
+                          </span>
+                        )}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
-            )
+
+              {/* Time Slots OR Queue Mode */}
+              {fetchingDoctorSlots ? (
+                <div className="py-6 text-center bg-surface-alt rounded-2xl border border-border/60">
+                  <Spinner size="sm" label="Loading available slots..." />
+                </div>
+              ) : doctorSlotInfo?.bookingMode === "sequential_queue" ? (
+                <div className="p-4 bg-gradient-to-r from-primary-600/10 via-primary-500/5 to-surface rounded-2xl border border-primary-500/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-text flex items-center gap-1.5">
+                      <span>🎟</span> Live OPD Token Queue
+                    </span>
+                    <Badge variant="primary" className="font-bold">
+                      {selectedDate ? upcomingDays.find((d) => d.dateString === selectedDate)?.label || selectedDate : "Today"}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="bg-surface p-3 rounded-xl border border-border text-center">
+                      <span className="text-[10px] text-text-muted uppercase font-semibold block">Your Queue Token</span>
+                      <span className="text-2xl font-black text-primary-600">#{doctorSlotInfo.nextToken || 1}</span>
+                    </div>
+                    <div className="bg-surface p-3 rounded-xl border border-border text-center">
+                      <span className="text-[10px] text-text-muted uppercase font-semibold block">Est. Wait / Turn Time</span>
+                      <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
+                        ~{Math.max(0, ((doctorSlotInfo.nextToken || 1) - 1) * (doctorSlotInfo.appointmentDuration || 15))} mins
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Explicit Arrival Timing Guidance */}
+                  <div className="p-3 bg-surface rounded-xl border border-primary-500/20 text-xs space-y-1">
+                    <p className="font-bold text-primary-700 dark:text-primary-400 flex items-center gap-1">
+                      <span>⏰</span> Arrival Time Guidance:
+                    </p>
+                    <p className="text-text-secondary leading-relaxed text-[11px]">
+                      Doctor's OPD shift begins at <strong>{selectedDaySchedule?.startFormatted || "09:00 AM"}</strong> on <strong>{upcomingDays.find((d) => d.dateString === selectedDate)?.label || selectedDate}</strong>.
+                      Please report to clinic reception 15 minutes before shift starts to confirm your token.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                selectedDate && (
+                  <div className="space-y-2.5 pt-1">
+                    <label className="text-xs font-bold uppercase tracking-wider text-text flex items-center justify-between">
+                      <span>2. Select Time Slot *</span>
+                      {selectedTime && (
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                          Selected: {format12Hour(selectedTime)}
+                        </span>
+                      )}
+                    </label>
+
+                    {activeSlotsList.length === 0 ? (
+                      <div className="p-4 text-center bg-surface-alt rounded-2xl border border-border text-xs text-text-muted">
+                        No available time slots for this date. Please choose another day above.
+                      </div>
+                    ) : (
+                      <div className="space-y-3 bg-surface-alt p-3.5 rounded-2xl border border-border/80 max-h-52 overflow-y-auto">
+                        {/* Morning Slots */}
+                        {categorizedSlots.morning.length > 0 && (
+                          <div className="space-y-1.5">
+                            <div className="text-[11px] font-bold text-text-secondary">
+                              🌅 Morning ({categorizedSlots.morning.length})
+                            </div>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                              {categorizedSlots.morning.map((s) => (
+                                <button
+                                  key={s.time}
+                                  type="button"
+                                  onClick={() => setSelectedTime(s.time)}
+                                  className={`p-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer ${
+                                    selectedTime === s.time
+                                      ? "bg-primary-600 text-white border-primary-600 shadow-xs ring-2 ring-primary-500/20"
+                                      : "bg-surface hover:border-primary-500/60 hover:text-primary-600 text-text border border-border"
+                                  }`}
+                                >
+                                  {format12Hour(s.time)}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Afternoon Slots */}
+                        {categorizedSlots.afternoon.length > 0 && (
+                          <div className="space-y-1.5 pt-1">
+                            <div className="text-[11px] font-bold text-text-secondary">
+                              ☀️ Afternoon ({categorizedSlots.afternoon.length})
+                            </div>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                              {categorizedSlots.afternoon.map((s) => (
+                                <button
+                                  key={s.time}
+                                  type="button"
+                                  onClick={() => setSelectedTime(s.time)}
+                                  className={`p-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer ${
+                                    selectedTime === s.time
+                                      ? "bg-primary-600 text-white border-primary-600 shadow-xs ring-2 ring-primary-500/20"
+                                      : "bg-surface hover:border-primary-500/60 hover:text-primary-600 text-text border border-border"
+                                  }`}
+                                >
+                                  {format12Hour(s.time)}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Evening Slots */}
+                        {categorizedSlots.evening.length > 0 && (
+                          <div className="space-y-1.5 pt-1">
+                            <div className="text-[11px] font-bold text-text-secondary">
+                              🌆 Evening ({categorizedSlots.evening.length})
+                            </div>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                              {categorizedSlots.evening.map((s) => (
+                                <button
+                                  key={s.time}
+                                  type="button"
+                                  onClick={() => setSelectedTime(s.time)}
+                                  className={`p-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer ${
+                                    selectedTime === s.time
+                                      ? "bg-primary-600 text-white border-primary-600 shadow-xs ring-2 ring-primary-500/20"
+                                      : "bg-surface hover:border-primary-500/60 hover:text-primary-600 text-text border border-border"
+                                  }`}
+                                >
+                                  {format12Hour(s.time)}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              )}
+
+              {/* Step 1 Actions Footer */}
+              <div className="pt-3 border-t border-border/50 flex items-center justify-between">
+                <Button variant="ghost" size="sm" onClick={() => setIsBookingOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="button"
+                  disabled={!selectedDate || (!selectedTime && doctorSlotInfo?.bookingMode !== "sequential_queue")}
+                  onClick={() => setBookingStep(2)}
+                  className="font-bold px-5 rounded-xl shadow-xs"
+                >
+                  Continue to Patient Info →
+                </Button>
+              </div>
+            </div>
           )}
 
-          {/* Step 3: Patient Information (NO OTP REQUIRED!) */}
-          <div className="space-y-3 pt-1">
-            <label className="text-xs font-bold uppercase tracking-wider text-text block">
-              3. Patient Details *
-            </label>
-
-            {isGuest ? (
-              <div className="bg-surface-alt p-4 rounded-2xl border border-border/80 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-text flex items-center gap-1.5">
-                    <span>👤</span> Guest Patient Booking
+          {/* STEP 2: Patient Info & Confirmation */}
+          {bookingStep === 2 && (
+            <div className="space-y-4">
+              {/* Selected Slot Summary Bar */}
+              <div className="p-3 bg-surface-alt rounded-2xl border border-border flex items-center justify-between gap-3 text-xs">
+                <div className="space-y-0.5 min-w-0">
+                  <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider block">Selected Appointment</span>
+                  <p className="font-bold text-text truncate">
+                    📅 {upcomingDays.find((d) => d.dateString === selectedDate)?.label || selectedDate} •{" "}
+                    {doctorSlotInfo?.bookingMode === "sequential_queue" ? "OPD Queue Token" : format12Hour(selectedTime)}
                   </p>
-                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                    ⚡ Instant Booking (No OTP required)
-                  </span>
+                  <p className="text-[11px] text-primary-600 truncate">
+                    Dr. {selectedDoctor?.name} • ₹{selectedDoctor?.fees || 0} consultation fee
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setBookingStep(1)}
+                  className="shrink-0 text-xs font-bold text-primary-600 hover:text-primary-700 bg-surface px-2.5 py-1.5 rounded-xl border border-border/80 shadow-xs cursor-pointer"
+                >
+                  Change Slot ↺
+                </button>
+              </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Input
-                    label="Patient Full Name *"
-                    placeholder="e.g. Ramesh Lad"
-                    value={guestForm.name}
-                    onChange={(e) => setGuestForm({ ...guestForm, name: e.target.value })}
-                    required
-                  />
-                  <Input
-                    label="Mobile Phone Number *"
-                    type="tel"
-                    placeholder="e.g. 9876543210"
-                    value={guestForm.phone}
-                    onChange={(e) => setGuestForm({ ...guestForm, phone: e.target.value })}
-                    required
-                  />
+              {/* Patient Details Input */}
+              <div className="space-y-2.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-text block">
+                  Patient Details *
+                </label>
+
+                {isGuest ? (
+                  <div className="bg-surface-alt p-4 rounded-2xl border border-border/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-text flex items-center gap-1.5">
+                        <span>👤</span> Guest Booking
+                      </p>
+                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                        ⚡ Instant Booking (No OTP required)
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        label="Patient Full Name *"
+                        placeholder="e.g. Ramesh Patel"
+                        value={guestForm.name}
+                        onChange={(e) => setGuestForm({ ...guestForm, name: e.target.value })}
+                        required
+                      />
+                      <Input
+                        label="Mobile Phone Number *"
+                        type="tel"
+                        placeholder="e.g. 9876543210"
+                        value={guestForm.phone}
+                        onChange={(e) => setGuestForm({ ...guestForm, phone: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Input
+                        label="Email Address (Optional)"
+                        type="email"
+                        placeholder="patient@example.com"
+                        value={guestForm.email}
+                        onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })}
+                      />
+                      <p className="text-[11px] text-text-muted mt-1">We'll send your OPD token slip & booking receipt here.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-primary-500/10 border border-primary-500/20 p-3.5 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-text font-bold">
+                        Booking as: <span className="text-primary-600">{user?.name}</span>
+                      </p>
+                      <p className="text-[11px] text-text-secondary mt-0.5">
+                        {(user as any)?.phone || user?.email || "Authenticated Account"}
+                      </p>
+                    </div>
+                    <Badge variant="success" className="text-[10px] font-bold">Logged In</Badge>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Preference (Default to Pay at Clinic Reception) */}
+              {selectedDoctor?.fees && selectedDoctor.fees > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold uppercase tracking-wider text-text block">
+                      Payment Preference
+                    </label>
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                      Total: ₹{selectedDoctor.fees}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMode("pay_at_clinic")}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                        paymentMode === "pay_at_clinic"
+                          ? "bg-primary-600/10 border-primary-600 text-primary-600 font-bold shadow-xs ring-1 ring-primary-500/20"
+                          : "bg-surface border-border text-text hover:border-primary-500/50"
+                      }`}
+                    >
+                      <span className="text-xs block font-bold">💵 Pay at Clinic Reception</span>
+                      <span className="text-[10px] text-text-muted block mt-0.5">Pay ₹{selectedDoctor.fees} upon arrival at counter</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMode("online")}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                        paymentMode === "online"
+                          ? "bg-primary-600/10 border-primary-600 text-primary-600 font-bold shadow-xs ring-1 ring-primary-500/20"
+                          : "bg-surface border-border text-text hover:border-primary-500/50"
+                      }`}
+                    >
+                      <span className="text-xs block font-bold">💳 Pay Online Now</span>
+                      <span className="text-[10px] text-text-muted block mt-0.5">Pay ₹{selectedDoctor.fees} via UPI / Card</span>
+                    </button>
+                  </div>
                 </div>
+              ) : null}
+
+              {/* Optional Reason for Visit */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-text">Reason for Visit / Symptoms (Optional)</label>
                 <Input
-                  label="Email Address (Optional)"
-                  type="email"
-                  placeholder="patient@example.com (for booking receipt)"
-                  value={guestForm.email}
-                  onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })}
+                  placeholder="e.g. Fever, routine checkup, follow-up"
+                  value={bookingNotes}
+                  onChange={(e) => setBookingNotes(e.target.value)}
                 />
               </div>
-            ) : (
-              <div className="bg-primary-500/10 border border-primary-500/20 p-3.5 rounded-2xl flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-text font-bold">
-                    Booking as: <span className="text-primary-600">{user?.name}</span>
-                  </p>
-                  <p className="text-[11px] text-text-secondary mt-0.5">
-                    {(user as any)?.phone || user?.email || "Authenticated Account"}
-                  </p>
-                </div>
-                <Badge variant="success" className="text-[10px] font-bold">Logged In</Badge>
-              </div>
-            )}
-          </div>
 
-          {/* Step 4: Payment Method */}
-          {selectedDoctor?.fees && selectedDoctor.fees > 0 ? (
-            <div className="space-y-2.5 pt-1">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold uppercase tracking-wider text-text block">
-                  4. Payment Preference
-                </label>
-                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-                  Total: ₹{selectedDoctor.fees}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMode("pay_at_clinic")}
-                  className={`p-3.5 rounded-2xl border text-left transition-all ${
-                    paymentMode === "pay_at_clinic"
-                      ? "bg-primary-600/10 border-primary-600 text-primary-600 font-bold shadow-xs ring-1 ring-primary-500/20"
-                      : "bg-surface border-border text-text hover:border-primary-500/50"
-                  }`}
+              {/* Step 2 Actions Footer */}
+              <div className="pt-3 border-t border-border/50 flex items-center justify-between">
+                <Button variant="outline" size="sm" type="button" onClick={() => setBookingStep(1)}>
+                  ← Back to Slots
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="submit"
+                  loading={bookingLoading}
+                  className="font-bold px-6 rounded-xl shadow-xs"
                 >
-                  <span className="text-xs block font-bold">💵 Pay at Clinic Reception</span>
-                  <span className="text-[10px] text-text-muted block mt-0.5">Pay ₹{selectedDoctor.fees} upon arrival</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMode("online")}
-                  className={`p-3.5 rounded-2xl border text-left transition-all ${
-                    paymentMode === "online"
-                      ? "bg-primary-600/10 border-primary-600 text-primary-600 font-bold shadow-xs ring-1 ring-primary-500/20"
-                      : "bg-surface border-border text-text hover:border-primary-500/50"
-                  }`}
-                >
-                  <span className="text-xs block font-bold">💳 Pay Online Now</span>
-                  <span className="text-[10px] text-text-muted block mt-0.5">Pay ₹{selectedDoctor.fees} via UPI / Card</span>
-                </button>
+                  Confirm Appointment ✓
+                </Button>
               </div>
             </div>
-          ) : null}
-
-          {/* Reason for Visit (Optional) */}
-          <div className="space-y-1.5 pt-1">
-            <label className="text-xs font-medium text-text">Reason for Visit / Symptoms (Optional)</label>
-            <Input
-              placeholder="e.g. Fever, routine checkup, follow-up"
-              value={bookingNotes}
-              onChange={(e) => setBookingNotes(e.target.value)}
-            />
-          </div>
-
-          {/* Summary & Confirm Actions */}
-          <div className="pt-4 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="text-xs text-text-secondary">
-              {selectedDate && (selectedTime || doctorSlotInfo?.bookingMode === "sequential_queue") ? (
-                <span>
-                  📅 <strong>{selectedDate}</strong> at{" "}
-                  <strong>
-                    {doctorSlotInfo?.bookingMode === "sequential_queue" ? "OPD Queue" : format12Hour(selectedTime)}
-                  </strong>
-                </span>
-              ) : (
-                <span>Please select a date & slot above</span>
-              )}
-            </div>
-
-            <div className="flex gap-2 w-full sm:w-auto justify-end">
-              <Button variant="ghost" size="sm" onClick={() => setIsBookingOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                type="submit"
-                loading={bookingLoading}
-                disabled={!selectedDate || (!selectedTime && doctorSlotInfo?.bookingMode !== "sequential_queue")}
-                className="font-bold px-5 rounded-xl shadow-xs"
-              >
-                Confirm Appointment
-              </Button>
-            </div>
-          </div>
+          )}
         </form>
       </Modal>
 
@@ -1268,16 +1375,16 @@ interface SlotItem {
         title="Appointment Confirmed"
         size="sm"
       >
-        <div className="text-center space-y-4 py-2">
+        <div className="text-center space-y-4 py-1">
           <div className="p-5 bg-gradient-to-b from-emerald-500/15 via-emerald-500/5 to-surface border border-emerald-500/30 rounded-2xl space-y-3">
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-500/20 text-emerald-600 flex items-center justify-center text-2xl">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-500/20 text-emerald-600 flex items-center justify-center text-2xl font-bold">
               ✓
             </div>
             <div>
               <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400 block">
                 #{createdTicket?.tokenNumber}
               </span>
-              <p className="text-xs font-bold text-text uppercase tracking-wider mt-0.5">Queue Token Slip</p>
+              <p className="text-xs font-bold text-text uppercase tracking-wider mt-0.5">OPD Queue Token Slip</p>
             </div>
 
             {createdTicket && (
@@ -1296,13 +1403,15 @@ interface SlotItem {
                 </div>
                 <div className="flex justify-between">
                   <span>Time:</span>
-                  <strong className="text-text">{format12Hour(createdTicket.selectedTime)}</strong>
+                  <strong className="text-text">
+                    {doctorSlotInfo?.bookingMode === "sequential_queue" ? "OPD Queue Token" : format12Hour(createdTicket.selectedTime)}
+                  </strong>
                 </div>
                 {createdTicket.fees !== undefined && (
                   <div className="flex justify-between">
                     <span>Fee:</span>
                     <strong className="text-emerald-600 dark:text-emerald-400">
-                      ₹{createdTicket.fees} ({createdTicket.paymentMode === "online" ? "Online Paid" : "Pay at Reception"})
+                      ₹{createdTicket.fees} ({createdTicket.paymentMode === "online" ? "Online Paid" : "Pay at Reception Desk"})
                     </strong>
                   </div>
                 )}
@@ -1310,16 +1419,72 @@ interface SlotItem {
             )}
           </div>
 
-          <p className="text-xs text-text-secondary">
-            Your appointment has been confirmed. Please arrive at the clinic 10 minutes prior to your consultation time.
-          </p>
+          <div className="p-3 bg-surface-alt rounded-xl border border-border text-xs text-left space-y-1">
+            <p className="font-bold text-text flex items-center gap-1.5">
+              <span>📍</span> Next Steps:
+            </p>
+            <p className="text-text-secondary text-[11px] leading-relaxed">
+              Please arrive at the clinic 10-15 minutes prior to your consultation time. Present this token at the reception desk upon arrival.
+            </p>
+          </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="w-full" onClick={() => setTicketModalOpen(false)}>
+          {/* Live Mobile Tracker Hub */}
+          {createdTicket?.appointmentId && (
+            <div className="p-3.5 bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-surface rounded-2xl border border-primary-500/20 text-left space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-primary-600 dark:text-primary-400 flex items-center gap-1.5">
+                  📱 Live Mobile Queue Tracker
+                </span>
+                <span className="text-[10px] bg-emerald-500/10 text-emerald-600 font-bold px-2 py-0.5 rounded-full">
+                  Zero Login
+                </span>
+              </div>
+              <p className="text-[11px] text-text-muted leading-relaxed">
+                Track live waiting time, see when your turn is coming, or self check-in upon arrival directly from your phone.
+              </p>
+              <div className="flex gap-2 pt-1">
+                <Link href={`/track/${createdTicket.appointmentId}`} target="_blank" className="w-full">
+                  <Button size="sm" className="w-full text-xs font-bold rounded-xl shadow-xs">
+                    Open Live Tracker ⚡
+                  </Button>
+                </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 text-xs rounded-xl"
+                  onClick={() => {
+                    const trackingUrl = `${window.location.origin}/track/${createdTicket.appointmentId}`;
+                    navigator.clipboard.writeText(trackingUrl);
+                    toast({ title: "Link Copied! 📋", description: "Mobile tracking URL copied to clipboard", variant: "success" });
+                  }}
+                  title="Copy Tracking Link"
+                >
+                  Copy Link 🔗
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons Hub */}
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="w-full" onClick={handlePrintSlip}>
+                Print Slip 🖨️
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                className="w-full font-bold"
+                onClick={() => {
+                  setTicketModalOpen(false);
+                  router.push("/dashboard/appointments");
+                }}
+              >
+                My Appointments 📅
+              </Button>
+            </div>
+            <Button variant="ghost" size="sm" className="w-full text-xs text-text-muted" onClick={() => setTicketModalOpen(false)}>
               Done
-            </Button>
-            <Button variant="primary" size="sm" className="w-full font-bold" onClick={handlePrintSlip}>
-              Print Slip 🖨️
             </Button>
           </div>
         </div>

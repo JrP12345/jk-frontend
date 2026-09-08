@@ -3,8 +3,8 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: "Anant — Healthcare Platform",
-  description: "Anant Integrated Digital Health Operating System",
+  title: "ANANTA — Healthcare Platform",
+  description: "ANANTA Integrated Digital Health Operating System",
   icons: {
     icon: "/logo-w.png",
     shortcut: "/logo-w.png",

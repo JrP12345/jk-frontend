@@ -8,15 +8,19 @@ export interface ClinicInfo {
   address?: string;
   phone?: string;
   email?: string;
+  upiVpa?: string;
+  merchantName?: string;
   [key: string]: unknown;
 }
 
 interface ClinicState {
   clinics: ClinicInfo[];
+  activeClinicId: string | null;
   isLoaded: boolean;
   isLoading: boolean;
   error: string | null;
   fetchClinics: (force?: boolean) => Promise<ClinicInfo[]>;
+  setActiveClinic: (clinicId: string | null) => void;
 }
 
 function normalizeClinic(raw: Record<string, unknown>): ClinicInfo {
@@ -30,9 +34,18 @@ function normalizeClinic(raw: Record<string, unknown>): ClinicInfo {
 
 export const useClinicStore = create<ClinicState>((set, get) => ({
   clinics: [],
+  activeClinicId: typeof window !== "undefined" ? localStorage.getItem("ananta_active_clinic_id") : null,
   isLoaded: false,
   isLoading: false,
   error: null,
+
+  setActiveClinic: (clinicId: string | null) => {
+    if (typeof window !== "undefined") {
+      if (clinicId) localStorage.setItem("ananta_active_clinic_id", clinicId);
+      else localStorage.removeItem("ananta_active_clinic_id");
+    }
+    set({ activeClinicId: clinicId });
+  },
 
   fetchClinics: async (force = false) => {
     if (get().isLoading) return get().clinics;
@@ -51,3 +64,11 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
     }
   },
 }));
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === "ananta_active_clinic_id") {
+      useClinicStore.setState({ activeClinicId: e.newValue });
+    }
+  });
+}

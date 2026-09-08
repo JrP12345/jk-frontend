@@ -58,8 +58,7 @@ export function hasRoutePermission(
       "/dashboard/patient-portal",
       "/dashboard/laboratory",
       "/dashboard/radiology",
-      "/dashboard/bills",
-      "/dashboard/invoices"
+      "/dashboard/bills"
     ];
     return patientAllowed.some(p => p === "/dashboard" ? route === "/dashboard" : (route === p || route.startsWith(p + "/")));
   }

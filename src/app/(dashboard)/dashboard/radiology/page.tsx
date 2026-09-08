@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { useClinicStore } from "@/store/clinicStore";
 import {
   Card,
   CardHeader,
@@ -34,7 +35,8 @@ interface PatientProfile {
 }
 
 export default function RadiologyPage() {
-  const { user, activeClinicId } = useAuthStore();
+  const { user } = useAuthStore();
+  const { activeClinicId } = useClinicStore();
   const { toast } = useToast();
 
   const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");

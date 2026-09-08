@@ -159,3 +159,67 @@ export function playChimeSound(type: ChimeType = "bell") {
     console.warn("Audio chime playback error:", e);
   }
 }
+
+export type VoiceAnnounceLanguage = "off" | "en" | "hi" | "both";
+
+export interface AnnouncePatientOptions {
+  tokenNumber: number;
+  doctorName?: string;
+  cabinName?: string;
+  language?: VoiceAnnounceLanguage;
+  chimeType?: ChimeType;
+}
+
+/**
+ * Multi-lingual Web Speech Synthesizer for Doorway & Waiting Room Token Summons
+ * Plays chime sound followed by spoken announcement in English, Hindi, or Both.
+ */
+export function announcePatientToken({
+  tokenNumber,
+  doctorName,
+  cabinName,
+  language = "en",
+  chimeType = "ding-dong",
+}: AnnouncePatientOptions) {
+  if (language === "off" || typeof window === "undefined") return;
+
+  // 1. Play audio chime first
+  if (chimeType !== "mute") {
+    playChimeSound(chimeType);
+  }
+
+  // 2. Synthesize voice speech via Web Speech API after slight delay for chime to ring
+  if (!("speechSynthesis" in window)) return;
+
+  setTimeout(() => {
+    try {
+      window.speechSynthesis.cancel(); // Cancel any lingering speech
+
+      const room = cabinName || (doctorName ? `Cabin Dr. ${doctorName.replace(/^Dr\.\s*/i, "")}` : "Doctor Cabin");
+      const utterances: SpeechSynthesisUtterance[] = [];
+
+      if (language === "en" || language === "both") {
+        const textEn = `Token Number ${tokenNumber}. Please proceed to ${room}.`;
+        const utterEn = new SpeechSynthesisUtterance(textEn);
+        utterEn.lang = "en-IN";
+        utterEn.rate = 0.95;
+        utterEn.pitch = 1.0;
+        utterances.push(utterEn);
+      }
+
+      if (language === "hi" || language === "both") {
+        const roomHi = cabinName ? `${cabinName}` : (doctorName ? `डॉक्टर ${doctorName.replace(/^Dr\.\s*/i, "")} के केबिन` : "डॉक्टर केबिन");
+        const textHi = `टोकन नंबर ${tokenNumber}. कृपया ${roomHi} में आइए.`;
+        const utterHi = new SpeechSynthesisUtterance(textHi);
+        utterHi.lang = "hi-IN";
+        utterHi.rate = 0.95;
+        utterHi.pitch = 1.0;
+        utterances.push(utterHi);
+      }
+
+      utterances.forEach((u) => window.speechSynthesis.speak(u));
+    } catch (err) {
+      console.warn("Speech synthesis error:", err);
+    }
+  }, 450);
+}

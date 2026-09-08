@@ -24,6 +24,7 @@ import {
   ConfirmDialog,
   Stepper,
   Dropdown,
+  Checkbox,
   cn,
 } from "@/components/ui";
 import { PatientQueueTracker } from "@/components/clinical/PatientQueueTracker";
@@ -84,8 +85,8 @@ interface Appointment {
 
 export default function AppointmentsPage() {
   const router = useRouter();
-  const { user, activeClinicId } = useAuthStore();
-  const { clinics, fetchClinics } = useClinicStore();
+  const { user } = useAuthStore();
+  const { clinics, fetchClinics, activeClinicId } = useClinicStore();
   const canManageAppointments = hasAnyPermission(user, "MANAGE_APPOINTMENTS");
   const { toast } = useToast();
 
@@ -122,6 +123,7 @@ export default function AppointmentsPage() {
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [bookingStep, setBookingStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [forceBooking, setForceBooking] = useState(false);
 
   // Search Patient State
   const [patientSearch, setPatientSearch] = useState("");
@@ -583,6 +585,7 @@ export default function AppointmentsPage() {
         appointmentType: bookingType,
         notes: bookingNotes,
         ...(currentLockId ? { lockId: currentLockId } : {}),
+        ...(forceBooking ? { forceBooking: true } : {}),
       };
 
       if (isNewPatient) {
@@ -643,6 +646,7 @@ export default function AppointmentsPage() {
     setBookingTime("");
     setBookingType("reception");
     setBookingNotes("");
+    setForceBooking(false);
   };
 
   const releaseCurrentLock = async () => {
@@ -821,11 +825,16 @@ export default function AppointmentsPage() {
           ["pending", "confirmed", "checked-in", "in-consultation"].includes(a.status)
         );
         if (!activeAppt) return null;
+        const clinicObj = activeAppt.clinicId as any;
+        const doctorObj = activeAppt.doctorId as any;
+        const resolvedClinicId = clinicObj?._id || clinicObj?.id || (typeof clinicObj === "string" ? clinicObj : "");
+        const resolvedDoctorId = doctorObj?._id || doctorObj?.id || (typeof doctorObj === "string" ? doctorObj : "");
+        if (!resolvedClinicId || !resolvedDoctorId) return null;
         return (
           <PatientQueueTracker
-            appointmentId={activeAppt.id}
-            clinicId={activeAppt.clinicId?.id || (activeAppt.clinicId as any)}
-            doctorId={activeAppt.doctorId?.id || (activeAppt.doctorId as any)}
+            appointmentId={activeAppt.id || (activeAppt as any)._id}
+            clinicId={resolvedClinicId}
+            doctorId={resolvedDoctorId}
           />
         );
       })()}
@@ -1484,6 +1493,18 @@ export default function AppointmentsPage() {
                 onChange={(e) => setBookingNotes(e.target.value)}
                 rows={2}
               />
+
+              <div className="p-3 bg-amber-500/[0.06] border border-amber-500/20 rounded-xl">
+                <Checkbox
+                  id="forceBooking"
+                  label="Emergency Walk-in / Capacity Override (Bypass Closing Cutoff)"
+                  checked={forceBooking}
+                  onChange={(e) => setForceBooking(e.target.checked)}
+                />
+                <p className="text-[11px] text-text-muted mt-1 ml-6 leading-relaxed">
+                  Enable this to book an urgent patient even if queue backlog exceeds doctor&apos;s remaining hours today.
+                </p>
+              </div>
 
               <div className="p-3.5 bg-surface-alt border border-border/80 rounded-2xl space-y-1 text-xs">
                 <h4 className="font-bold text-text">Booking Summary Confirmation</h4>

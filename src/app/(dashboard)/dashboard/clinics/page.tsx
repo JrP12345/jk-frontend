@@ -45,6 +45,7 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from "lucide-react";
+import ClinicQrPosterModal from "@/components/dashboard/ClinicQrPosterModal";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -59,6 +60,8 @@ interface Clinic {
   image_url?: string;
   timings?: string;
   facilities?: string[];
+  upiVpa?: string;
+  merchantName?: string;
   [key: string]: unknown;
 }
 
@@ -143,14 +146,19 @@ export default function ClinicsPage() {
   const openModal = () => {
     setEditingId(null);
     const defaultOrgId = organizations.length > 0 ? organizations[0].id || organizations[0]._id : "";
-    setFormData({ facilities: [], organizationId: defaultOrgId });
+    setFormData({ facilities: [], organizationId: defaultOrgId, upiVpa: "", merchantName: "" });
     setClinicErrors({});
     setIsModalOpen(true);
   };
 
   const openEditModal = (row: Clinic) => {
     setEditingId(row.id);
-    setFormData({ ...row, facilities: row.facilities || [] });
+    setFormData({
+      ...row,
+      facilities: row.facilities || [],
+      upiVpa: row.upiVpa || "",
+      merchantName: row.merchantName || "",
+    });
     setClinicErrors({});
     setIsModalOpen(true);
   };
@@ -409,6 +417,25 @@ export default function ClinicsPage() {
                 ),
               },
               {
+                key: "upiVpa",
+                header: "UPI Settlement VPA",
+                render: (row: Clinic) => (
+                  <div className="space-y-0.5">
+                    {row.upiVpa ? (
+                      <Badge variant="success" size="sm" className="font-mono text-[10px] font-semibold flex items-center gap-1 w-fit">
+                        <span>⚡</span>
+                        <span>{row.upiVpa}</span>
+                      </Badge>
+                    ) : (
+                      <span className="text-text-muted text-xs italic">Default Gateway VPA</span>
+                    )}
+                    {row.merchantName && (
+                      <p className="text-[10px] text-text-muted truncate max-w-[150px]">{row.merchantName}</p>
+                    )}
+                  </div>
+                ),
+              },
+              {
                 key: "actions",
                 header: "Actions",
                 align: "right",
@@ -595,6 +622,36 @@ export default function ClinicsPage() {
             </div>
           </div>
 
+          {/* Section 3: Digital Payments & Countertop UPI Soundbox Routing */}
+          <div className="space-y-3.5 border-b border-border/60 pb-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                3. Digital Payments & Countertop UPI Soundbox Routing
+              </h3>
+              <Badge variant="success" size="sm" className="text-[10px] font-bold">
+                NPCI / Soundbox
+              </Badge>
+            </div>
+            <p className="text-[11px] text-text-muted">
+              Configure your clinic branch&apos;s direct UPI VPA for countertop dynamic QR generation, mobile 1-tap intent payments, and autonomous soundbox announcements.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <Input
+                label="Clinic UPI Virtual Payment Address (VPA)"
+                value={formData.upiVpa || ""}
+                onChange={(e) => handleFieldChange("upiVpa", e.target.value)}
+                placeholder="e.g. apollo.southmumbai@icici"
+              />
+              <Input
+                label="Official Merchant Settlement Name"
+                value={formData.merchantName || ""}
+                onChange={(e) => handleFieldChange("merchantName", e.target.value)}
+                placeholder="e.g. Apollo South Mumbai Clinic Ltd"
+              />
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
             <Button variant="outline" size="sm" type="button" onClick={() => setIsModalOpen(false)}>
               Cancel
@@ -620,89 +677,13 @@ export default function ClinicsPage() {
       />
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          6. RECEPTION QR CODE MODAL
+          6. CLINIC QR POSTER MODAL (A4 STANDEE & DIRECT JOIN FLOW)
          ────────────────────────────────────────────────────────────────────────── */}
-      <Modal
+      <ClinicQrPosterModal
         open={!!qrClinic}
         onClose={() => setQrClinic(null)}
-        title="Clinic Reception QR Code"
-        description="Display this QR card at your reception desk so patients can scan to book online."
-        size="md"
-      >
-        {qrClinic && (
-          <div className="space-y-4 text-center pt-1">
-            {/* Printable QR Card Frame */}
-            <div
-              id="printable-qr-card"
-              className="border border-border rounded-2xl p-6 bg-white max-w-sm mx-auto shadow-md text-slate-800 animate-fade-in"
-            >
-              <div className="text-center space-y-1 mb-3">
-                <span className="text-[10px] font-bold tracking-widest text-primary-600 uppercase">
-                  Healthcare Portal
-                </span>
-                <h3 className="text-lg font-bold text-slate-900">{qrClinic.name}</h3>
-                <p className="text-xs text-slate-500 font-medium">{qrClinic.city}</p>
-              </div>
-
-              <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 flex justify-center items-center my-3">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
-                    `${typeof window !== "undefined" ? window.location.origin : ""}/browse/${qrClinic.id}`
-                  )}`}
-                  alt={`${qrClinic.name} Booking QR`}
-                  className="w-44 h-44 bg-white border border-slate-200 p-2 shadow-xs rounded-lg"
-                />
-              </div>
-
-              <div className="text-center space-y-0.5 mt-3">
-                <p className="text-xs font-bold text-slate-900">SCAN TO BOOK</p>
-                <p className="text-[10px] text-slate-500 font-semibold">Check live queues & book appointments</p>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
-              <Button variant="outline" size="sm" type="button" onClick={() => setQrClinic(null)}>
-                Close
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                className="font-semibold rounded-xl shadow-xs"
-                onClick={() => {
-                  const printContent = document.getElementById("printable-qr-card")?.innerHTML;
-                  if (printContent) {
-                    const printWindow = window.open("", "_blank");
-                    if (printWindow) {
-                      printWindow.document.write(`
-                        <html>
-                          <head>
-                            <title>Print QR Card - ${qrClinic.name}</title>
-                            <style>
-                              body { margin: 0; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: white; }
-                              .card { border: 2px solid #e2e8f0; border-radius: 1rem; padding: 2rem; max-width: 320px; text-align: center; }
-                            </style>
-                          </head>
-                          <body>
-                            <div class="card">${printContent}</div>
-                            <script>
-                              window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); };
-                            </script>
-                          </body>
-                        </html>
-                      `);
-                      printWindow.document.close();
-                    }
-                  }
-                }}
-              >
-                <Printer className="w-3.5 h-3.5 mr-1.5" />
-                Print QR Card
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+        clinic={qrClinic}
+      />
     </div>
   );
 }

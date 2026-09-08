@@ -14,13 +14,21 @@ export function PatientQueueTracker({ appointmentId, clinicId, doctorId }: Patie
   const [queueInfo, setQueueInfo] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const cleanClinicId = typeof clinicId === "object" ? (clinicId as any)?._id || (clinicId as any)?.id || "" : (clinicId && clinicId !== "[object Object]" ? String(clinicId) : "");
+  const cleanDoctorId = typeof doctorId === "object" ? (doctorId as any)?._id || (doctorId as any)?.id || "" : (doctorId && doctorId !== "[object Object]" ? String(doctorId) : "");
+  const cleanApptId = typeof appointmentId === "object" ? (appointmentId as any)?._id || (appointmentId as any)?.id || "" : String(appointmentId || "");
+
   const fetchQueueInfo = async () => {
+    if (!cleanClinicId || !cleanDoctorId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const res = await api.get(`/queue?clinicId=${clinicId}&doctorId=${doctorId}`);
+      const res = await api.get(`/queue?clinicId=${cleanClinicId}&doctorId=${cleanDoctorId}`);
       const queueList: any[] = res.data?.data || [];
       
-      const currentPatientAppt = queueList.find((a) => (a.id || a._id) === appointmentId);
+      const currentPatientAppt = queueList.find((a) => (a.id || a._id) === cleanApptId);
       const inConsultationAppt = queueList.find((a) => a.status === "in-consultation");
 
       setQueueInfo({
@@ -38,12 +46,14 @@ export function PatientQueueTracker({ appointmentId, clinicId, doctorId }: Patie
   };
 
   useEffect(() => {
-    if (appointmentId && clinicId && doctorId) {
+    if (cleanApptId && cleanClinicId && cleanDoctorId) {
       fetchQueueInfo();
       const interval = setInterval(fetchQueueInfo, 10000); // Live poll every 10 sec
       return () => clearInterval(interval);
+    } else {
+      setLoading(false);
     }
-  }, [appointmentId, clinicId, doctorId]);
+  }, [cleanApptId, cleanClinicId, cleanDoctorId]);
 
   if (loading && !queueInfo) {
     return (

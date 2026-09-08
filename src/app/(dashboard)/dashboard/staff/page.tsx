@@ -78,8 +78,8 @@ interface Receptionist {
 export default function StaffPage() {
   const { toast } = useToast();
   const { uploadFile } = useR2Upload();
-  const { activeClinicId, user } = useAuthStore();
-  const { clinics, fetchClinics } = useClinicStore();
+  const { user } = useAuthStore();
+  const { clinics, fetchClinics, activeClinicId } = useClinicStore();
   const canManageStaff = hasAnyPermission(user, "MANAGE_STAFF");
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);

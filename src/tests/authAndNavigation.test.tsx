@@ -11,7 +11,6 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
       user: null,
       isAuthenticated: false,
       isLoading: false,
-      activeClinicId: null,
     });
     useModuleStore.setState({
       modules: [],

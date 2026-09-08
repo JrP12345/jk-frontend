@@ -6,6 +6,19 @@ const nextConfig: NextConfig = {
   },
   /* config options here */
   reactCompiler: false,
+  async rewrites() {
+    const backendUrl = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACKEND_URL;
+    if (backendUrl) {
+      const cleanBackend = backendUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
+      return [
+        {
+          source: "/api/:path*",
+          destination: `${cleanBackend}/api/:path*`,
+        },
+      ];
+    }
+    return [];
+  },
   async headers() {
     return [
       {

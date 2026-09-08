@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { useClinicStore } from "@/store/clinicStore";
 import {
   Card,
   CardHeader,
@@ -101,7 +102,8 @@ interface InvoiceItem {
 }
 
 export default function InsurancePage() {
-  const { user, activeClinicId } = useAuthStore();
+  const { user } = useAuthStore();
+  const { activeClinicId } = useClinicStore();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"preAuth" | "claims">("preAuth");

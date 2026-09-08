@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { useClinicStore } from "@/store/clinicStore";
 import {
   Card, CardHeader, CardTitle, CardContent,
   Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, ImageUpload, SkeletonTable, Dropdown, ConfirmDialog,
@@ -58,7 +59,8 @@ interface LabOrderType {
 }
 
 export default function LaboratoryPage() {
-  const { user, activeClinicId } = useAuthStore();
+  const { user } = useAuthStore();
+  const { activeClinicId } = useClinicStore();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"worklist" | "catalog" | "patientVault">("worklist");

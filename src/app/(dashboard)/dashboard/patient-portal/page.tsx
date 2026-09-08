@@ -137,11 +137,26 @@ export default function PatientPortalPage() {
       const list = res.data?.data || [];
       setSelfClinics(list);
       if (list.length > 0) {
-        setSelfDoctors(list[0].doctors || []);
+        const firstClinic = list[0];
+        const cid = firstClinic.id || firstClinic._id;
+        setSelfClinicId(cid);
+        const docs = firstClinic.doctorsSummary || firstClinic.doctors || [];
+        setSelfDoctors(docs);
+        if (docs.length > 0) {
+          setSelfDoctorId(docs[0].id || docs[0]._id);
+        }
       }
     } catch {
       // Non-critical
     }
+  };
+
+  const handleSelfClinicChange = (cid: string) => {
+    setSelfClinicId(cid);
+    const selectedClinic = selfClinics.find((c) => (c.id || c._id) === cid);
+    const docs = selectedClinic?.doctorsSummary || selectedClinic?.doctors || [];
+    setSelfDoctors(docs);
+    setSelfDoctorId(docs[0]?.id || docs[0]?._id || "");
   };
 
   const handleSelfBookSubmit = async (e: React.FormEvent) => {
@@ -887,7 +902,7 @@ export default function PatientPortalPage() {
           <Select
             label="Clinic Location *"
             value={selfClinicId}
-            onChange={(e) => setSelfClinicId(e.target.value)}
+            onChange={(e) => handleSelfClinicChange(e.target.value)}
             options={selfClinics.map((c) => ({ value: c.id || c._id, label: `${c.name} - ${c.city}` }))}
             required
           />

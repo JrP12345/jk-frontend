@@ -167,7 +167,7 @@ export default function PricingPage() {
                   </div>
 
                   <Link
-                    href={isEnterprise ? "/contact" : "/login"}
+                    href={isEnterprise ? "/contact" : `/onboarding?mode=new_org&plan=${encodeURIComponent(plan.id || "standard")}`}
                     className={`w-full py-3.5 rounded-xl font-semibold text-center transition-all duration-200 flex items-center justify-center gap-2 ${
                       plan.isPopular
                         ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:opacity-90 shadow-lg shadow-cyan-500/25"
