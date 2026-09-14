@@ -1038,7 +1038,10 @@ export default function QueuePage() {
       try {
         const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-        const wsHost = apiUrl.replace(/^https?:\/\//, "").replace(/\/api\/?$/, "");
+        let wsHost = apiUrl.replace(/^https?:\/\//, "").replace(/\/api\/?$/, "");
+        if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+          wsHost = wsHost.replace("localhost", window.location.hostname).replace("127.0.0.1", window.location.hostname);
+        }
         ws = new WebSocket(`${wsProto}//${wsHost}/api/queue/ws?clinicId=${selectedClinic}`);
 
         ws.onmessage = (event) => {
@@ -1645,7 +1648,7 @@ export default function QueuePage() {
   const canManageQueue = hasAnyPermission(user, "MANAGE_QUEUE");
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -1665,112 +1668,119 @@ export default function QueuePage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            {/* Chime selector pill */}
-            <div className="flex items-center gap-1.5 bg-surface-alt p-1 rounded-xl border border-border/80">
-              <Select
-                size="sm"
-                value={chimeType}
-                onChange={(e) => handleChimeChange(e.target.value as ChimeType)}
-                options={CHIME_OPTIONS.map((c) => ({ value: c.id, label: `${c.icon} ${c.label}` }))}
-                className="w-44 text-xs font-semibold"
-              />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-2.5 shrink-0 w-full sm:w-auto">
+            {/* Primary Action Row for Mobile: Call Next & Walk-In */}
+            <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto order-1 sm:order-2">
               <Button
-                variant="ghost"
-                size="xs"
-                type="button"
-                onClick={() => playChimeSound(chimeType)}
-                className="text-xs font-semibold rounded-lg px-2 text-text-secondary hover:text-text"
-                title="Test Chime Sound"
+                variant="primary"
+                size="sm"
+                onClick={openQuickWalkInModal}
+                className="font-bold rounded-xl shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none justify-center min-h-[42px] sm:min-h-[36px]"
               >
-                <Volume2 className="w-3.5 h-3.5" />
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                <span>Walk-In (+)</span>
+              </Button>
+
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleCallNext(false)}
+                loading={callingNext}
+                className="font-semibold rounded-xl shadow-xs justify-center min-h-[42px] sm:min-h-[36px]"
+              >
+                <Megaphone className="w-3.5 h-3.5 mr-1.5" />
+                <span>Call Next</span>
               </Button>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                fetchActiveOverride();
-                setIsAvailabilityModalOpen(true);
-              }}
-              className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text"
-            >
-              <CalendarClock className="w-3.5 h-3.5 mr-1.5 text-primary" />
-              Doctor Availability
-            </Button>
+            {/* Secondary Tools Row: Chime & Operations */}
+            <div className="flex items-center gap-2 overflow-x-auto touch-pan-x scrollbar-none pb-1 sm:pb-0 w-full sm:w-auto order-2 sm:order-1">
+              {/* Chime selector pill */}
+              <div className="flex items-center gap-1.5 bg-surface-alt p-1 rounded-xl border border-border/80 shrink-0">
+                <Select
+                  size="sm"
+                  value={chimeType}
+                  onChange={(e) => handleChimeChange(e.target.value as ChimeType)}
+                  options={CHIME_OPTIONS.map((c) => ({ value: c.id, label: `${c.icon} ${c.label}` }))}
+                  className="w-36 sm:w-44 text-xs font-semibold"
+                />
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  type="button"
+                  onClick={() => playChimeSound(chimeType)}
+                  className="text-xs font-semibold rounded-lg px-2 text-text-secondary hover:text-text min-h-[34px] min-w-[34px] flex items-center justify-center"
+                  title="Test Chime Sound"
+                  aria-label="Test chime sound"
+                >
+                  <Volume2 className="w-4 h-4" />
+                </Button>
+              </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const currentClinic = clinics.find((c) => (c.id || c._id) === selectedClinic);
-                setQrPosterClinic(currentClinic || { id: selectedClinic, name: "Our Clinic" });
-                setQrPosterOpen(true);
-              }}
-              className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text"
-              title="Print A4 QR poster for clinic waiting room entrance"
-            >
-              <QrCode className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
-              Clinic QR Poster
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  fetchActiveOverride();
+                  setIsAvailabilityModalOpen(true);
+                }}
+                className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
+              >
+                <CalendarClock className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                Availability
+              </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAbdmModalOpen(true)}
-              className="font-bold rounded-xl border-blue-500/40 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 dark:text-blue-400"
-              title="Ayushman Bharat Digital Mission (ABHA) & 3-Second Counter Scan & Share"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-blue-600 dark:text-blue-400" />
-              ABHA / ABDM (3s)
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const currentClinic = clinics.find((c) => (c.id || c._id) === selectedClinic);
+                  setQrPosterClinic(currentClinic || { id: selectedClinic, name: "Our Clinic" });
+                  setQrPosterOpen(true);
+                }}
+                className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
+                title="Print A4 QR poster for clinic waiting room entrance"
+              >
+                <QrCode className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                QR Poster
+              </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSelectedDocGenPatient(null);
-                setClinicalDocGenOpen(true);
-              }}
-              className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text"
-              title="Generate Hospital Referral Letter, Medical Sick Leave, or Fitness Certificate"
-            >
-              <FileText className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
-              Certificates & Referral
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAbdmModalOpen(true)}
+                className="font-bold rounded-xl border-blue-500/40 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 dark:text-blue-400 whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
+                title="Ayushman Bharat Digital Mission (ABHA) & 3-Second Counter Scan & Share"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-blue-600 dark:text-blue-400" />
+                ABHA
+              </Button>
 
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={openQuickWalkInModal}
-              className="font-bold rounded-xl shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none"
-            >
-              <Plus className="w-3.5 h-3.5 mr-1.5" />
-              Quick Walk-In (+)
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedDocGenPatient(null);
+                  setClinicalDocGenOpen(true);
+                }}
+                className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
+                title="Generate Hospital Referral Letter, Medical Sick Leave, or Fitness Certificate"
+              >
+                <FileText className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+                Certificates
+              </Button>
 
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => handleCallNext(false)}
-              loading={callingNext}
-              className="font-semibold rounded-xl shadow-xs"
-            >
-              <Megaphone className="w-3.5 h-3.5 mr-1.5" />
-              Call Next Patient
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchQueue}
-              loading={loadingQueue}
-              className="font-semibold rounded-xl hover:bg-surface-hover"
-            >
-              <RotateCw className={cn("w-3.5 h-3.5 mr-1.5 text-text-secondary", loadingQueue && "animate-spin")} />
-              Refresh
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchQueue}
+                loading={loadingQueue}
+                className="font-semibold rounded-xl hover:bg-surface-hover whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
+              >
+                <RotateCw className={cn("w-3.5 h-3.5 mr-1.5 text-text-secondary", loadingQueue && "animate-spin")} />
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -1812,7 +1822,7 @@ export default function QueuePage() {
 
             {/* Doctor OPD Session Controls */}
             {selectedClinic && selectedDoctor && (
-              <div className="ml-auto flex items-center gap-2">
+              <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 flex-wrap">
                 {queueStatusData?.opdSession?.status === "active" ? (
                   <div className="flex items-center gap-2 flex-wrap">
                     {queueStatusData.opdSession.isOnBreak ? (
@@ -2438,15 +2448,15 @@ export default function QueuePage() {
 
                               {/* VIP Queue Reorder, Bump Late, and Park Standby */}
                               {canManageQueue && (
-                                <div className="flex items-center gap-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
                                   {!isInConsultation && (
                                     <button
                                       type="button"
                                       onClick={() => openParkModal(appt)}
-                                      className="px-2 py-1 text-[10px] font-semibold rounded-lg text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-colors cursor-pointer flex items-center gap-1"
+                                      className="px-2.5 py-1.5 text-xs font-semibold rounded-xl text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-colors cursor-pointer flex items-center gap-1.5 min-h-[36px]"
                                       title="Patient stepped out: Hold in Standby"
                                     >
-                                      <PauseCircle className="w-3 h-3" />
+                                      <PauseCircle className="w-3.5 h-3.5" />
                                       Park
                                     </button>
                                   )}
@@ -2454,7 +2464,7 @@ export default function QueuePage() {
                                   <button
                                     type="button"
                                     onClick={() => handleBumpBack(appt.id)}
-                                    className="px-2 py-1 text-[10px] font-semibold rounded-lg text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-colors cursor-pointer"
+                                    className="px-2.5 py-1.5 text-xs font-semibold rounded-xl text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-colors cursor-pointer min-h-[36px]"
                                     title="Late Arrival: Move 2 positions back in queue"
                                   >
                                     Bump (+2)
@@ -2463,10 +2473,10 @@ export default function QueuePage() {
                                   <button
                                     type="button"
                                     onClick={() => openResendTrackerModal(appt)}
-                                    className="px-2 py-1 text-[10px] font-semibold rounded-lg text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors cursor-pointer flex items-center gap-1"
+                                    className="px-2.5 py-1.5 text-xs font-semibold rounded-xl text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors cursor-pointer flex items-center gap-1.5 min-h-[36px]"
                                     title="Resend live queue tracking link via WhatsApp / SMS"
                                   >
-                                    <Send className="w-3 h-3" />
+                                    <Send className="w-3.5 h-3.5" />
                                     Tracker
                                   </button>
 
@@ -2476,24 +2486,24 @@ export default function QueuePage() {
                                       onClick={() => moveQueueItem(idx, "up")}
                                       disabled={isFirst}
                                       className={cn(
-                                        "p-1.5 rounded-lg transition-colors cursor-pointer",
+                                        "p-2 rounded-lg transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center",
                                         isFirst ? "text-text-muted/40 cursor-not-allowed" : "text-text-secondary hover:text-text hover:bg-surface"
                                       )}
                                       title="Move Up (VIP Override)"
                                     >
-                                      <ChevronUp className="h-3.5 w-3.5" />
+                                      <ChevronUp className="h-4 w-4" />
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => moveQueueItem(idx, "down")}
                                       disabled={isLast}
                                       className={cn(
-                                        "p-1.5 rounded-lg transition-colors cursor-pointer",
+                                        "p-2 rounded-lg transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center",
                                         isLast ? "text-text-muted/40 cursor-not-allowed" : "text-text-secondary hover:text-text hover:bg-surface"
                                       )}
                                       title="Move Down (VIP Override)"
                                     >
-                                      <ChevronDown className="h-3.5 w-3.5" />
+                                      <ChevronDown className="h-4 w-4" />
                                     </button>
                                   </div>
                                 </div>
@@ -3411,14 +3421,14 @@ export default function QueuePage() {
             </div>
           )}
 
-          <div className="flex justify-end gap-2.5 border-t border-border/60 pt-3">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 border-t border-border/60 pt-3">
             <Button
               variant="outline"
               type="button"
               size="sm"
               onClick={() => setCompleteModalOpen(false)}
               disabled={completingSubmitting}
-              className="rounded-xl font-semibold"
+              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
             </Button>
@@ -3427,7 +3437,7 @@ export default function QueuePage() {
               variant="primary"
               size="sm"
               loading={completingSubmitting}
-              className="font-semibold rounded-xl shadow-xs"
+              className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
             >
               Conclude Visit & Save Record
             </Button>
@@ -3448,14 +3458,14 @@ export default function QueuePage() {
 
           <div>
             <label className="text-xs font-bold text-text mb-1.5 block">Expected Break Duration</label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 xs:grid-cols-4 gap-2">
               {[10, 15, 20, 30].map((mins) => (
                 <button
                   key={mins}
                   type="button"
                   onClick={() => setBreakMinutes(mins)}
                   className={cn(
-                    "py-2 px-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer",
+                    "py-2.5 px-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer min-h-[44px] flex items-center justify-center",
                     breakMinutes === mins
                       ? "border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-300 ring-2 ring-amber-500/20"
                       : "border-border hover:bg-surface-hover text-text-secondary"
@@ -3486,13 +3496,13 @@ export default function QueuePage() {
             <span>Patients in waiting lounge will be notified via TV chime and display banner.</span>
           </div>
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-border">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsBreakModalOpen(false)}
               disabled={isTogglingBreak}
-              className="rounded-xl font-semibold"
+              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
             </Button>
@@ -3501,7 +3511,7 @@ export default function QueuePage() {
               size="sm"
               onClick={() => handleToggleDoctorBreak(true, breakReasonInput, breakMinutes)}
               loading={isTogglingBreak}
-              className="font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
+              className="font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
             >
               Start Break ({breakMinutes}m)
             </Button>
@@ -3609,7 +3619,7 @@ export default function QueuePage() {
             />
           </div>
 
-          <div className="flex justify-end gap-2.5 pt-2 border-t border-border">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2 border-t border-border">
             <Button
               type="button"
               variant="outline"
@@ -3619,6 +3629,7 @@ export default function QueuePage() {
                 setApptToStatEmergency(null);
                 setEmergencyReason("");
               }}
+              className="min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
             </Button>
@@ -3628,7 +3639,7 @@ export default function QueuePage() {
               size="sm"
               loading={Boolean(statEmergencyLoading)}
               onClick={handleTriggerStatEmergency}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer"
+              className="bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
             >
               🚨 Confirm STAT Priority
             </Button>
@@ -3736,14 +3747,14 @@ export default function QueuePage() {
               </Button>
             ) : <div />}
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto justify-end">
               <Button
                 variant="outline"
                 type="button"
                 size="sm"
                 onClick={() => setIsAvailabilityModalOpen(false)}
                 disabled={savingOverride}
-                className="rounded-xl font-semibold"
+                className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
               >
                 Cancel
               </Button>
@@ -3752,7 +3763,7 @@ export default function QueuePage() {
                 variant="primary"
                 size="sm"
                 loading={savingOverride}
-                className="font-semibold rounded-xl shadow-xs"
+                className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
               >
                 Save Availability
               </Button>
@@ -3870,14 +3881,14 @@ export default function QueuePage() {
           </div>
 
           {/* Footer Actions */}
-          <div className="flex justify-end items-center gap-2 border-t border-border/60 pt-4">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setIsQuickWalkInOpen(false)}
               disabled={submittingWalkIn}
-              className="rounded-xl font-semibold"
+              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
             </Button>
@@ -3887,7 +3898,7 @@ export default function QueuePage() {
               size="sm"
               loading={submittingWalkIn}
               className={cn(
-                "font-bold rounded-xl shadow-xs",
+                "font-bold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center",
                 walkInPriority === "emergency" ? "bg-rose-600 hover:bg-rose-700 text-white border-none" : "bg-emerald-600 hover:bg-emerald-700 text-white border-none"
               )}
             >
@@ -3934,12 +3945,12 @@ export default function QueuePage() {
             Would you like to auto-complete the previous consultation and summon the next waiting patient now?
           </p>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-border/60">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setConflictModalOpen(false)}
-              className="rounded-xl font-semibold"
+              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Keep Current & Dismiss
             </Button>
@@ -3948,7 +3959,7 @@ export default function QueuePage() {
               size="sm"
               onClick={() => handleCallNext(true)}
               loading={callingNext}
-              className="rounded-xl font-bold bg-primary-600 hover:bg-primary-700 text-white"
+              className="rounded-xl font-bold bg-primary-600 hover:bg-primary-700 text-white min-h-[44px] w-full sm:w-auto justify-center"
             >
               Complete & Call Next
             </Button>
@@ -4031,12 +4042,12 @@ export default function QueuePage() {
             </p>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2 border-t border-border/60">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsResendTrackerModalOpen(false)}
-              className="rounded-xl font-semibold"
+              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
             </Button>
@@ -4046,7 +4057,7 @@ export default function QueuePage() {
               onClick={handleResendTrackerSubmit}
               loading={resendingTracker}
               disabled={!resendPhone.trim()}
-              className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white min-h-[44px] w-full sm:w-auto justify-center"
             >
               <Send className="w-3.5 h-3.5 mr-1.5" />
               Send Live Tracker
@@ -4082,12 +4093,12 @@ export default function QueuePage() {
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2 border-t border-border/60">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsParkModalOpen(false)}
-              className="rounded-xl font-semibold"
+              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
             </Button>
@@ -4096,7 +4107,7 @@ export default function QueuePage() {
               size="sm"
               onClick={handleParkPatient}
               loading={submittingPark}
-              className="rounded-xl font-bold bg-amber-600 hover:bg-amber-700 text-white"
+              className="rounded-xl font-bold bg-amber-600 hover:bg-amber-700 text-white min-h-[44px] w-full sm:w-auto justify-center"
             >
               Hold in Standby
             </Button>
@@ -4151,8 +4162,8 @@ export default function QueuePage() {
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-            <Button variant="ghost" size="sm" onClick={() => setIsInvestigationModalOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="ghost" size="sm" onClick={() => setIsInvestigationModalOpen(false)} className="min-h-[44px] w-full sm:w-auto justify-center">
               Cancel
             </Button>
             <Button
@@ -4160,7 +4171,7 @@ export default function QueuePage() {
               size="sm"
               onClick={handleSendToInvestigation}
               loading={isSubmittingInvestigation}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl"
+              className="bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl min-h-[44px] w-full sm:w-auto justify-center"
             >
               <span>🔬</span> Send for Tests & Free Room
             </Button>
@@ -4196,8 +4207,8 @@ export default function QueuePage() {
                   <p className="text-[10px] uppercase font-bold text-amber-700 dark:text-amber-300">Unresumed Standby</p>
                   <p className="text-xl font-black text-amber-600">{endOpdSummary?.counts?.standby ?? 0}</p>
                 </div>
-                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-center">
-                  <p className="text-[10px] uppercase font-bold text-rose-700 dark:text-rose-300">Unserved Waiting</p>
+                <div className="p-3 rounded-xl bg-surface-alt border border-border text-center">
+                  <p className="text-[10px] uppercase font-bold text-text-muted">Unserved Waiting</p>
                   <p className="text-xl font-black text-rose-600">{endOpdSummary?.counts?.waiting ?? 0}</p>
                 </div>
               </div>
@@ -4210,7 +4221,7 @@ export default function QueuePage() {
                 <p className="text-[11px] text-text-muted">
                   Patients who stepped out for lab tests or personal breaks and never returned to the clinic.
                 </p>
-                <div className="flex items-center gap-4 pt-1">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-1">
                   <label className="flex items-center gap-2 text-xs cursor-pointer font-medium">
                     <input
                       type="radio"
@@ -4244,7 +4255,7 @@ export default function QueuePage() {
                 <p className="text-[11px] text-text-muted">
                   Registered patients who were not called before concluding consultations for today.
                 </p>
-                <div className="flex items-center gap-4 pt-1">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-1">
                   <label className="flex items-center gap-2 text-xs cursor-pointer font-medium">
                     <input
                       type="radio"
@@ -4270,8 +4281,8 @@ export default function QueuePage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
-                <Button variant="ghost" size="sm" onClick={() => setIsEndOpdModalOpen(false)}>
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border">
+                <Button variant="ghost" size="sm" onClick={() => setIsEndOpdModalOpen(false)} className="min-h-[44px] w-full sm:w-auto justify-center">
                   Keep OPD Open
                 </Button>
                 <Button
@@ -4279,7 +4290,7 @@ export default function QueuePage() {
                   size="sm"
                   onClick={handleExecuteEndOpdReconcile}
                   loading={isSubmittingEndOpd}
-                  className="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl"
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl min-h-[44px] w-full sm:w-auto justify-center"
                 >
                   <span>🛑</span> Confirm & Close OPD Shift
                 </Button>
@@ -4462,7 +4473,7 @@ export default function QueuePage() {
             </p>
           </div>
 
-          <div className="flex justify-end gap-2.5 border-t border-border/60 pt-3">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 border-t border-border/60 pt-3">
             <Button
               variant="outline"
               size="sm"
@@ -4471,7 +4482,7 @@ export default function QueuePage() {
                 setResendRxAppt(null);
               }}
               disabled={resendingRx}
-              className="rounded-xl font-semibold cursor-pointer"
+              className="rounded-xl font-semibold cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
             </Button>
@@ -4480,7 +4491,7 @@ export default function QueuePage() {
               size="sm"
               onClick={handleResendRxSubmit}
               loading={resendingRx}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
             >
               <Send className="w-3.5 h-3.5" />
               Dispatch Digital Rx Now

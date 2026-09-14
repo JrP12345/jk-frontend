@@ -21,9 +21,10 @@ export interface SidebarProps {
   footer?: ReactNode;
   collapsed?: boolean;
   className?: string;
+  loading?: boolean;
 }
 
-export default function Sidebar({ brand, items, footer, collapsed = false, className = "" }: SidebarProps) {
+export default function Sidebar({ brand, items, footer, collapsed = false, className = "", loading = false }: SidebarProps) {
   return (
     <aside
       className={cn(
@@ -46,15 +47,31 @@ export default function Sidebar({ brand, items, footer, collapsed = false, class
         </div>
       )}
 
-      {/* Navigation Links */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5 custom-scrollbar">
+      {/* Loading Skeleton */}
+      {loading ? (
+        <div className="flex-1 py-3 px-2.5 space-y-4 animate-pulse">
+          <div className="space-y-1.5 px-2">
+            {!collapsed && <div className="h-2.5 w-16 bg-border/60 rounded mb-2.5" />}
+            <div className={cn("h-9 bg-surface-alt/70 rounded-xl", collapsed && "w-10 mx-auto")} />
+            <div className={cn("h-9 bg-surface-alt/70 rounded-xl", collapsed && "w-10 mx-auto")} />
+          </div>
+          <div className="space-y-1.5 px-2 pt-2">
+            {!collapsed && <div className="h-2.5 w-20 bg-border/60 rounded mb-2.5" />}
+            <div className={cn("h-9 bg-surface-alt/70 rounded-xl", collapsed && "w-10 mx-auto")} />
+            <div className={cn("h-9 bg-surface-alt/70 rounded-xl", collapsed && "w-10 mx-auto")} />
+            <div className={cn("h-9 bg-surface-alt/70 rounded-xl", collapsed && "w-10 mx-auto")} />
+          </div>
+        </div>
+      ) : (
+        /* Navigation Links */
+        <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-0.5 custom-scrollbar">
         <ul className="flex flex-col gap-1">
           {items.map((item, i) => {
             const showSection = item.section && (i === 0 || items[i - 1]?.section !== item.section);
             return (
               <div key={i} className="flex flex-col">
                 {showSection && !collapsed && (
-                  <li className="pt-3.5 pb-1 px-3 text-[10px] font-extrabold tracking-widest text-text-muted/70 uppercase flex items-center gap-2">
+                  <li className="pt-3.5 pb-1 px-3 text-[11px] font-extrabold tracking-widest text-text-muted/70 uppercase flex items-center gap-2">
                     <span>{item.section}</span>
                     <span className="flex-1 h-px bg-border/40" />
                   </li>
@@ -67,7 +84,8 @@ export default function Sidebar({ brand, items, footer, collapsed = false, class
             );
           })}
         </ul>
-      </nav>
+        </nav>
+      )}
 
       {/* Footer Area */}
       {footer && (
@@ -86,7 +104,7 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
       aria-current={item.active ? "page" : undefined}
       className={cn(
         "group relative flex items-center gap-3 rounded-xl text-[13px] font-medium cursor-pointer transform-gpu transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 active:scale-[0.98] overflow-hidden",
-        collapsed ? "justify-center h-10 w-10 mx-auto p-0" : "px-3 py-2.5",
+        collapsed ? "justify-center h-10 w-10 mx-auto p-0" : "px-3 py-3 sm:py-2.5",
         item.active
           ? "bg-primary-500/10 dark:bg-primary-500/15 text-primary-600 dark:text-primary-400 font-semibold border border-primary-500/20 shadow-xs"
           : "text-text-secondary hover:text-text hover:bg-surface-hover/80 hover:translate-x-0.5 border border-transparent"
@@ -94,7 +112,7 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
     >
       {/* Active Glowing Leading Indicator Bar */}
       {item.active && !collapsed && (
-        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-primary-400 to-primary-600 shadow-[0_0_8px_rgba(37,99,235,0.5)] animate-fade-in" />
+        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full bg-gradient-to-b from-primary-400 to-primary-600 shadow-[0_0_8px_rgba(37,99,235,0.5)] animate-fade-in" />
       )}
 
       {item.icon && (

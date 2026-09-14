@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
@@ -22,7 +22,22 @@ import {
   Spinner,
   cn,
 } from "@/components/ui";
-import { AlertTriangle } from "lucide-react";
+import {
+  AlertTriangle,
+  Smartphone,
+  Mail,
+  Lock,
+  KeyRound,
+  Eye,
+  EyeOff,
+  ArrowLeft,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
+  Clock,
+  RotateCcw,
+  Sparkles,
+} from "lucide-react";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -65,11 +80,18 @@ export default function LoginPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("expired") === "1" || params.get("error")) {
+      if (params.get("expired") === "1" || params.get("error") || params.get("logout") === "1") {
         setSessionExpired(true);
         useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
         document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        if (params.get("expired") === "1") {
+        if (params.get("logout") === "1") {
+          toast({
+            title: "Signed Out",
+            description: "You have been successfully signed out.",
+            variant: "info",
+            duration: 4000,
+          });
+        } else if (params.get("expired") === "1") {
           toast({
             title: "Session Expired",
             description: "Your session has timed out for security. Please sign in again.",
@@ -97,13 +119,6 @@ export default function LoginPage() {
     return () => clearInterval(interval);
   }, [resendTimer]);
 
-  if (!sessionExpired && (isLoading || isAuthenticated)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-surface">
-        <Spinner size="lg" label="Signing into workspace..." />
-      </div>
-    );
-  }
 
   const handleRequestPhoneOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,38 +286,47 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-surface-alt relative overflow-hidden font-sans text-text animate-page-enter">
-      {/* Background ambient glow */}
-      <div className="absolute top-[-15%] left-[-15%] w-[50%] h-[50%] bg-primary-500/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-[-15%] right-[-15%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 py-10 bg-surface-alt relative font-sans text-text animate-page-enter">
+      {/* Background ambient glow & subtle pattern */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-20%] left-[-15%] w-[60%] h-[60%] bg-primary-500/12 rounded-full blur-[160px]" />
+        <div className="absolute bottom-[-20%] right-[-15%] w-[60%] h-[60%] bg-blue-500/10 rounded-full blur-[160px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(var(--color-border)_1px,transparent_1px)] [background-size:24px_24px] opacity-30 dark:opacity-20" />
+      </div>
 
       {/* Top Header Navigation */}
-      <div className="absolute top-6 left-6 z-20">
+      <div className="absolute top-[max(1.25rem,env(safe-area-inset-top))] left-4 sm:left-8 z-20">
         <Link
           href="/browse"
-          className="text-xs font-semibold text-text-secondary hover:text-text flex items-center gap-1.5 bg-surface/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-border/60 transition-all hover:border-border"
+          className="text-xs font-semibold text-text-secondary hover:text-text flex items-center gap-2 bg-surface/80 hover:bg-surface backdrop-blur-md px-3.5 py-2 rounded-full border border-border/80 hover:border-primary-500/30 transition-all shadow-2xs hover:shadow-xs group min-h-[40px] sm:min-h-0"
         >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Browse Clinics
+          <ArrowLeft className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.25} />
+          <span>Browse Clinics</span>
         </Link>
       </div>
 
-      <div className="absolute top-6 right-6 z-20">
+      <div className="absolute top-[max(1.25rem,env(safe-area-inset-top))] right-4 sm:right-8 z-20">
         <ModeSwitcher />
       </div>
 
       <div className="w-full max-w-md relative z-10 animate-fade-up">
         {/* Brand Header */}
         <div className="text-center mb-6 flex flex-col items-center justify-center">
-          <AnantaLogo size="xl" />
-          <p className="text-text-secondary text-xs sm:text-sm mt-2">Sign in to ANANTA Healthcare OS</p>
+          <div className="relative mb-2">
+            <div className="absolute inset-0 bg-primary-500/20 blur-xl rounded-full scale-150 pointer-events-none" />
+            <div className="relative">
+              <AnantaLogo size="xl" />
+            </div>
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-[11px] font-bold text-primary-600 dark:text-primary-400 mt-2 shadow-2xs">
+            <Sparkles className="w-3 h-3" strokeWidth={2} />
+            <span>ANANTA Healthcare OS</span>
+          </div>
         </div>
 
         {sessionExpired && (
-          <div className="mb-4 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
+          <div className="mb-4 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5 shadow-2xs">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" strokeWidth={2} />
             <span>Your session has expired for security. Please sign in again to continue.</span>
           </div>
         )}
@@ -310,33 +334,48 @@ export default function LoginPage() {
         {/* Auth Card Container */}
         <Card
           className={cn(
-            "shadow-xl border-border/80 backdrop-blur-md bg-surface p-0 rounded-2xl overflow-hidden transition-transform duration-300",
+            "shadow-2xl shadow-primary-950/10 dark:shadow-black/50 border border-border/80 backdrop-blur-xl bg-surface/95 dark:bg-surface/90 p-0 rounded-3xl overflow-hidden transition-transform duration-300 relative before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-transparent before:via-primary-500 before:to-transparent ring-1 ring-border/40",
             isShaking && "animate-shake"
           )}
         >
           {!isForgotPassword ? (
-            <div className="p-5 sm:p-6 space-y-4">
-              <CardHeader className="p-0 mb-4 text-center">
-                <CardTitle className="text-xl sm:text-2xl font-black text-text">Welcome Back</CardTitle>
-                <CardDescription className="text-xs text-text-muted mt-1">
-                  Sign in with Mobile OTP or Staff Credentials
+            <div className="p-6 sm:p-7 space-y-4">
+              <CardHeader className="p-0 mb-3 text-center">
+                <CardTitle className="text-2xl font-black text-text tracking-tight">Welcome Back</CardTitle>
+                <CardDescription className="text-xs text-text-muted mt-1 font-medium">
+                  Access your patient portal or healthcare workspace
                 </CardDescription>
-                
+
                 {/* Auth Mode Tabs */}
-                <div role="tablist" aria-label="Sign in options" className="grid grid-cols-2 p-1 bg-surface-alt rounded-xl border border-border/60 mt-4">
+                <div role="tablist" aria-label="Sign in options" className="grid grid-cols-2 p-1.5 bg-surface-alt/90 rounded-2xl border border-border/70 mt-4 gap-1.5">
                   <button
                     id="tab-mobile"
                     role="tab"
                     aria-selected={authTab === "mobile"}
                     aria-controls="panel-mobile"
                     type="button"
-                    onClick={() => { setAuthTab("mobile"); setOtpSent(false); setPhoneOtp(""); }}
+                    onClick={() => {
+                      startTransition(() => {
+                        setAuthTab("mobile");
+                        setOtpSent(false);
+                        setPhoneOtp("");
+                      });
+                    }}
                     className={cn(
-                      "py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
-                      authTab === "mobile" ? "bg-surface text-primary-600 shadow-sm" : "text-text-muted hover:text-text"
+                      "py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer min-h-[44px] sm:min-h-0 flex items-center justify-center gap-1.5",
+                      authTab === "mobile"
+                        ? "bg-surface text-primary-600 dark:text-primary-400 shadow-xs border border-border/70"
+                        : "text-text-muted hover:text-text hover:bg-surface/40"
                     )}
                   >
-                    📱 Mobile OTP
+                    <Smartphone className="w-4 h-4 shrink-0" strokeWidth={authTab === "mobile" ? 2.25 : 1.75} />
+                    <span>Mobile OTP</span>
+                    <span className={cn(
+                      "text-[10px] px-1.5 py-0.5 rounded-md font-semibold hidden sm:inline-block",
+                      authTab === "mobile" ? "bg-primary-500/10 text-primary-600 dark:text-primary-400" : "bg-surface-alt text-text-muted"
+                    )}>
+                      Patient
+                    </span>
                   </button>
                   <button
                     id="tab-email"
@@ -344,13 +383,26 @@ export default function LoginPage() {
                     aria-selected={authTab === "email"}
                     aria-controls="panel-email"
                     type="button"
-                    onClick={() => setAuthTab("email")}
+                    onClick={() => {
+                      startTransition(() => {
+                        setAuthTab("email");
+                      });
+                    }}
                     className={cn(
-                      "py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
-                      authTab === "email" ? "bg-surface text-primary-600 shadow-sm" : "text-text-muted hover:text-text"
+                      "py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer min-h-[44px] sm:min-h-0 flex items-center justify-center gap-1.5",
+                      authTab === "email"
+                        ? "bg-surface text-primary-600 dark:text-primary-400 shadow-xs border border-border/70"
+                        : "text-text-muted hover:text-text hover:bg-surface/40"
                     )}
                   >
-                    ✉️ Staff Email
+                    <Mail className="w-4 h-4 shrink-0" strokeWidth={authTab === "email" ? 2.25 : 1.75} />
+                    <span>Staff Email</span>
+                    <span className={cn(
+                      "text-[10px] px-1.5 py-0.5 rounded-md font-semibold hidden xs:inline-block",
+                      authTab === "email" ? "bg-primary-500/10 text-primary-600 dark:text-primary-400" : "bg-surface-alt text-text-muted"
+                    )}>
+                      Clinic
+                    </span>
                   </button>
                 </div>
               </CardHeader>
@@ -358,66 +410,106 @@ export default function LoginPage() {
               {authTab === "mobile" ? (
                 /* Mobile OTP Form */
                 !otpSent ? (
-                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleRequestPhoneOtp} className="space-y-4">
+                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleRequestPhoneOtp} className="space-y-4 animate-fade-in">
                     <Input
                       label="Mobile Phone Number *"
                       type="tel"
+                      inputMode="tel"
                       placeholder="9876543210"
+                      icon={<Smartphone className="w-4 h-4 text-text-muted" strokeWidth={2} />}
+                      prefix="+91"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                       autoComplete="tel"
                       required
                     />
-                    <Button type="submit" fullWidth loading={otpLoading} size="lg" className="rounded-xl font-bold">
-                      Send Verification OTP
+                    <Button
+                      type="submit"
+                      fullWidth
+                      loading={otpLoading}
+                      size="lg"
+                      className="rounded-xl font-bold min-h-[46px] shadow-md shadow-primary-500/20 hover:shadow-lg hover:shadow-primary-500/30 transition-all flex items-center justify-center gap-2 group"
+                    >
+                      <span>Send Verification OTP</span>
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
                     </Button>
                   </form>
                 ) : (
-                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleVerifyPhoneOtp} className="space-y-4">
-                    <Input
-                      label={`6-Digit OTP Sent to ${phone} *`}
-                      placeholder="123456"
-                      maxLength={6}
-                      inputMode="numeric"
-                      value={phoneOtp}
-                      onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, ""))}
-                      autoComplete="one-time-code"
-                      required
-                    />
-                    <div className="flex items-center justify-between text-xs px-1">
+                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleVerifyPhoneOtp} className="space-y-4 animate-fade-in">
+                    {/* Active Mobile Chip */}
+                    <div className="flex items-center justify-between p-3 bg-primary-500/8 dark:bg-primary-500/10 rounded-2xl border border-primary-500/20 text-xs">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="text-[11px] text-text-muted font-medium">OTP dispatched to</span>
+                          <span className="font-bold text-text text-xs tracking-wide">+91 {phone}</span>
+                        </div>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => setOtpSent(false)}
-                        className="text-text-muted hover:text-text cursor-pointer underline"
+                        onClick={() => { setOtpSent(false); setPhoneOtp(""); }}
+                        className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer px-2.5 py-1 rounded-lg hover:bg-primary-500/10 transition-colors"
                       >
                         Change Number
                       </button>
+                    </div>
+
+                    <Input
+                      label="6-Digit Verification OTP *"
+                      placeholder="••••••"
+                      maxLength={6}
+                      inputMode="numeric"
+                      icon={<KeyRound className="w-4 h-4 text-text-muted" strokeWidth={2} />}
+                      className="tracking-[0.4em] font-mono text-center text-lg sm:text-base font-bold placeholder:tracking-normal placeholder:font-sans"
+                      value={phoneOtp}
+                      onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      autoComplete="one-time-code"
+                      required
+                    />
+
+                    <div className="flex items-center justify-between text-xs px-1">
+                      <span className="text-text-muted flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" strokeWidth={2} />
+                        <span>Didn't receive code?</span>
+                      </span>
                       {resendTimer > 0 ? (
-                        <span className="text-text-muted font-medium">Resend in {resendTimer}s</span>
+                        <span className="text-primary-600 dark:text-primary-400 font-semibold bg-primary-500/10 px-2.5 py-0.5 rounded-full text-[11px]">
+                          Resend in {resendTimer}s
+                        </span>
                       ) : (
                         <button
                           type="button"
                           onClick={handleRequestPhoneOtp}
                           disabled={otpLoading}
-                          className="text-primary-600 font-semibold hover:underline cursor-pointer"
+                          className="text-primary-600 dark:text-primary-400 font-bold hover:underline cursor-pointer flex items-center gap-1 text-xs"
                         >
-                          Resend OTP
+                          <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
+                          <span>Resend OTP</span>
                         </button>
                       )}
                     </div>
-                    <Button type="submit" fullWidth loading={otpLoading} size="lg" className="rounded-xl font-bold">
-                      Verify & Sign In
+
+                    <Button
+                      type="submit"
+                      fullWidth
+                      loading={otpLoading}
+                      size="lg"
+                      className="rounded-xl font-bold min-h-[46px] shadow-md shadow-primary-500/20 hover:shadow-lg hover:shadow-primary-500/30 transition-all flex items-center justify-center gap-2 group"
+                    >
+                      <span>Verify & Sign In</span>
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
                     </Button>
                   </form>
                 )
               ) : (
                 /* Email Password Form */
-                <form id="panel-email" role="tabpanel" aria-labelledby="tab-email" onSubmit={handleLogin} noValidate className="space-y-4">
+                <form id="panel-email" role="tabpanel" aria-labelledby="tab-email" onSubmit={handleLogin} noValidate className="space-y-4 animate-fade-in">
                   <CardContent className="p-0 space-y-4">
                     <Input
-                      label="Email Address *"
+                      label="Staff Email Address *"
                       type="email"
                       placeholder="doctor@anant.health"
+                      icon={<Mail className="w-4 h-4 text-text-muted" strokeWidth={2} />}
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
@@ -434,6 +526,7 @@ export default function LoginPage() {
                         label="Password *"
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
+                        icon={<Lock className="w-4 h-4 text-text-muted" strokeWidth={2} />}
                         value={password}
                         onChange={(e) => {
                           setPassword(e.target.value);
@@ -443,22 +536,18 @@ export default function LoginPage() {
                         error={passwordError}
                         required
                         autoComplete="current-password"
-                        iconRight={
+                        rightIcon={
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="p-1 text-text-muted hover:text-text rounded-md transition-all cursor-pointer"
+                            className="p-1 text-text-muted hover:text-text rounded-md transition-all cursor-pointer flex items-center justify-center min-h-[28px] min-w-[28px]"
                             title={showPassword ? "Hide password" : "Show password"}
+                            aria-label={showPassword ? "Hide password" : "Show password"}
                           >
                             {showPassword ? (
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                              </svg>
+                              <EyeOff className="w-4 h-4" strokeWidth={2} />
                             ) : (
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
+                              <Eye className="w-4 h-4" strokeWidth={2} />
                             )}
                           </button>
                         }
@@ -472,7 +561,7 @@ export default function LoginPage() {
                             setResetEmail("");
                             setResetEmailError("");
                           }}
-                          className="text-xs font-semibold text-primary-600 hover:underline cursor-pointer"
+                          className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer"
                         >
                           Forgot Password?
                         </button>
@@ -481,28 +570,34 @@ export default function LoginPage() {
                   </CardContent>
 
                   <CardFooter className="p-0 pt-2 flex flex-col gap-3">
-                    <Button type="submit" fullWidth loading={loading} size="lg" className="rounded-xl font-bold">
-                      Sign In to Dashboard
+                    <Button
+                      type="submit"
+                      fullWidth
+                      loading={loading}
+                      size="lg"
+                      className="rounded-xl font-bold min-h-[46px] shadow-md shadow-primary-500/20 hover:shadow-lg hover:shadow-primary-500/30 transition-all flex items-center justify-center gap-2 group"
+                    >
+                      <span>Sign In to Dashboard</span>
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
                     </Button>
                   </CardFooter>
                 </form>
               )}
 
               {/* Patient Registration Link */}
-              <div className="mt-6 pt-4 border-t border-border/50 text-center">
-                <p className="text-xs text-text-secondary">
-                  Don't have an account?{" "}
-                  <Link href="/register" className="font-semibold text-primary-600 hover:underline">
-                    Sign up as a Patient
-                  </Link>
-                </p>
+              <div className="mt-6 pt-4 border-t border-border/60 text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-xs text-text-secondary">
+                <span>New to ANANTA Health?</span>
+                <Link href="/register" className="font-bold text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1">
+                  <span>Create Patient Account</span>
+                  <ArrowRight className="w-3 h-3 inline" strokeWidth={2} />
+                </Link>
               </div>
             </div>
           ) : (
             /* Forgot Password Form */
-            <form onSubmit={handleResetPassword} noValidate className="p-5 sm:p-6 space-y-4">
+            <form onSubmit={handleResetPassword} noValidate className="p-6 sm:p-7 space-y-4 animate-fade-in">
               <CardHeader className="p-0 mb-3">
-                <CardTitle className="text-xl font-bold">Recover Password</CardTitle>
+                <CardTitle className="text-xl font-bold tracking-tight">Recover Password</CardTitle>
                 <CardDescription className="text-xs text-text-muted mt-1">
                   {!isResetSent
                     ? "Enter your email address and we will send password recovery instructions."
@@ -516,6 +611,7 @@ export default function LoginPage() {
                     label="Registered Email *"
                     type="email"
                     placeholder="doctor@anant.health"
+                    icon={<Mail className="w-4 h-4 text-text-muted" strokeWidth={2} />}
                     value={resetEmail}
                     onChange={(e) => {
                       setResetEmail(e.target.value);
@@ -527,10 +623,8 @@ export default function LoginPage() {
                     autoComplete="email"
                   />
                 ) : (
-                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs leading-relaxed flex gap-2.5">
-                    <svg className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a10 10 0 11-20 0 10 10 0 0120 0z" />
-                    </svg>
+                  <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs leading-relaxed flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" strokeWidth={2} />
                     <div>
                       Instructions have been sent to <strong className="text-text">{resetEmail}</strong>. Please check your inbox.
                     </div>
@@ -540,29 +634,50 @@ export default function LoginPage() {
 
               <CardFooter className="p-0 pt-2 flex flex-col gap-3">
                 {!isResetSent && (
-                  <Button type="submit" fullWidth loading={resetLoading} size="md" className="rounded-xl font-bold">
-                    Send Recovery Link
+                  <Button
+                    type="submit"
+                    fullWidth
+                    loading={resetLoading}
+                    size="md"
+                    className="rounded-xl font-bold min-h-[44px] shadow-md shadow-primary-500/20 hover:shadow-lg hover:shadow-primary-500/30 transition-all flex items-center justify-center gap-2 group"
+                  >
+                    <span>Send Recovery Link</span>
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
                   </Button>
                 )}
                 <button
                   type="button"
                   onClick={() => setIsForgotPassword(false)}
-                  className="text-xs font-semibold text-text-secondary hover:text-text transition-colors cursor-pointer"
+                  className="text-xs font-semibold text-text-secondary hover:text-text transition-colors cursor-pointer flex items-center justify-center gap-1.5 py-1 min-h-[36px]"
                 >
-                  &larr; Back to Sign In
+                  <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2} />
+                  <span>Back to Sign In</span>
                 </button>
               </CardFooter>
             </form>
           )}
         </Card>
+
+        {/* Security & Compliance Badges */}
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-text-muted font-medium">
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" strokeWidth={2.25} />
+            <span>256-Bit SSL Encrypted</span>
+          </span>
+          <span className="w-1 h-1 rounded-full bg-border" />
+          <span className="flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-primary-500" strokeWidth={2} />
+            <span>ABDM & HIPAA Compliant</span>
+          </span>
+        </div>
       </div>
 
       {/* 2FA OTP Verification Modal */}
       {isTwoFactorModalOpen && (
         <Modal
-          isOpen={isTwoFactorModalOpen}
+          open={isTwoFactorModalOpen}
           onClose={() => setIsTwoFactorModalOpen(false)}
-          title="Two-Factor Authentication Required"
+          title="Two-Factor Authentication"
           description="Enter the 6-digit verification code from your authenticator app"
         >
           <form
@@ -605,18 +720,27 @@ export default function LoginPage() {
             className="space-y-4"
           >
             <Input
-              label="6-Digit OTP Code"
-              placeholder="123456"
+              label="6-Digit OTP Code *"
+              placeholder="••••••"
               maxLength={6}
               inputMode="numeric"
               pattern="[0-9]{6}"
+              icon={<ShieldCheck className="w-4 h-4 text-text-muted" strokeWidth={2} />}
+              className="tracking-[0.4em] font-mono text-center font-bold text-lg placeholder:tracking-normal placeholder:font-sans"
               autoComplete="one-time-code"
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
               required
             />
-            <Button type="submit" loading={otpLoading} fullWidth variant="primary">
-              Verify & Sign In
+            <Button
+              type="submit"
+              loading={otpLoading}
+              fullWidth
+              size="lg"
+              className="rounded-xl font-bold min-h-[46px] shadow-md shadow-primary-500/20 hover:shadow-lg hover:shadow-primary-500/30 transition-all flex items-center justify-center gap-2 group"
+            >
+              <span>Verify & Sign In</span>
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
             </Button>
           </form>
         </Modal>

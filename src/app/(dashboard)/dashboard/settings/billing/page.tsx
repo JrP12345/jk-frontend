@@ -15,9 +15,15 @@ import {
   Table,
   Modal,
   Spinner,
+  Skeleton,
+  SkeletonCard,
+  SkeletonStats,
+  SkeletonForm,
   useToast,
 } from "@/components/ui";
-import { billingService, SaaSPlan, SubscriptionInfo, UsageInfo } from "@/services/billing.service";
+import { billingService, SaaSPlan, SubscriptionInfo, UsageInfo, DowngradeValidationResult } from "@/services/billing.service";
+import api from "@/lib/api";
+import { AlertTriangle, Building2, Users, ExternalLink, CheckCircle2, ArrowRight } from "lucide-react";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { useAuthStore } from "@/store/authStore";
 
@@ -35,6 +41,11 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+
+  // Downgrade resolution state
+  const [downgradeModalOpen, setDowngradeModalOpen] = useState(false);
+  const [downgradeValidation, setDowngradeValidation] = useState<DowngradeValidationResult | null>(null);
+  const [deactivatingClinicId, setDeactivatingClinicId] = useState<string | null>(null);
 
   // Organization GST & Billing Details
   const [billingForm, setBillingForm] = useState({
@@ -75,15 +86,99 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
     }
   }
 
+  async function handleDeactivateClinic(clinicId: string) {
+    setDeactivatingClinicId(clinicId);
+    try {
+      await api.delete(`/clinics/${clinicId}`);
+      toast({
+        title: "Branch Deactivated",
+        description: "Clinic branch has been archived. It no longer counts toward your active branch quota.",
+        variant: "success",
+      });
+
+      // Re-validate feasibility with target plan if open
+      if (selectedPlan) {
+        const recheck = await billingService.validatePlanDowngrade(selectedPlan.id, selectedOrgId);
+        setDowngradeValidation(recheck);
+        if (recheck.canDowngrade) {
+          toast({
+            title: "Quota Requirements Met!",
+            description: `You are now eligible to switch to the ${selectedPlan.name} plan.`,
+            variant: "success",
+          });
+        }
+      }
+      loadBillingData();
+    } catch (err: any) {
+      toast({
+        title: "Cannot Deactivate Branch",
+        description: err.response?.data?.message || "Please reassign or complete active appointments first.",
+        variant: "error",
+      });
+    } finally {
+      setDeactivatingClinicId(null);
+    }
+  }
+
   async function handleInitiateCheckout(plan: SaaSPlan) {
     setSelectedPlan(plan);
-    setIsProcessing(true);
 
+    // 1. Pre-flight check: validate if active resources fit within target plan
     try {
-      // 1. Create order on backend (calls Razorpay REST API POST /v1/orders with user's keys)
+      const validation = await billingService.validatePlanDowngrade(plan.id, selectedOrgId);
+      if (!validation.canDowngrade) {
+        setDowngradeValidation(validation);
+        setDowngradeModalOpen(true);
+        return;
+      }
+    } catch (err: any) {
+      if (err.response?.status === 409) {
+        const violationData = err.response?.data?.data || err.response?.data;
+        setDowngradeValidation(violationData);
+        setDowngradeModalOpen(true);
+        return;
+      }
+    }
+
+    const price = billingCycle === "annual" ? plan.annualPrice : plan.monthlyPrice;
+
+    // 2. Direct switch for free plans (e.g. Starter at ₹0)
+    if (price === 0) {
+      setIsProcessing(true);
+      try {
+        await billingService.directSwitchPlan(plan.id, billingCycle, selectedOrgId);
+        toast({
+          title: "Plan Changed Successfully",
+          description: `Your subscription has been switched to ${plan.name} (${billingCycle}).`,
+          variant: "success",
+        });
+        setCheckoutModalOpen(false);
+        setDowngradeModalOpen(false);
+        loadBillingData();
+      } catch (err: any) {
+        if (err.response?.status === 409) {
+          const violationData = err.response?.data?.data || err.response?.data;
+          setDowngradeValidation(violationData);
+          setDowngradeModalOpen(true);
+        } else {
+          toast({
+            title: "Switch Failed",
+            description: err.response?.data?.message || "Could not switch plan.",
+            variant: "error",
+          });
+        }
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+
+    // 3. Paid plan: Proceed to Razorpay checkout order creation
+    setIsProcessing(true);
+    try {
       const order = await billingService.createCheckoutOrder(plan.id, billingCycle, selectedOrgId);
 
-      // 2. Load official Razorpay Checkout SDK
+      // Load official Razorpay Checkout SDK
       const isLoaded = await loadRazorpayScript();
       if (!isLoaded) {
         toast({
@@ -95,7 +190,7 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
         return;
       }
 
-      // 3. Open Official Razorpay Checkout Window Modal
+      // Open Official Razorpay Checkout Window Modal
       const options = {
         key: order.keyId,
         amount: order.amount * 100, // in paise
@@ -116,6 +211,7 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
               variant: "success",
             });
             setCheckoutModalOpen(false);
+            setDowngradeModalOpen(false);
             loadBillingData();
           } catch (err: any) {
             toast({
@@ -147,11 +243,18 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
       });
       razorpayInstance.open();
     } catch (err: any) {
-      toast({
-        title: "Checkout Error",
-        description: err.response?.data?.message || err.message || "Failed to initiate Razorpay checkout.",
-        variant: "error",
-      });
+      if (err.response?.status === 409) {
+        const violationData = err.response?.data?.data || err.response?.data;
+        setDowngradeValidation(violationData);
+        setDowngradeModalOpen(true);
+      } else {
+        toast({
+          title: "Checkout Error",
+          description: err.response?.data?.message || err.message || "Failed to initiate Razorpay checkout.",
+          variant: "error",
+        });
+      }
+    } finally {
       setIsProcessing(false);
     }
   }
@@ -171,9 +274,22 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
 
   if (loading) {
     return (
-      <Card className="p-12 border border-border/80 shadow-xs flex justify-center">
-        <Spinner size="md" label="Loading commercial subscription & plan limits..." />
-      </Card>
+      <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading commercial subscription and plan limits">
+        {/* Current Plan Overview Skeleton */}
+        <div className="p-5 sm:p-6 bg-surface border border-border/80 rounded-2xl shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <Skeleton width="180px" height="1.5rem" rounded="md" />
+            <Skeleton width="90px" height="1.5rem" rounded="full" />
+          </div>
+          <Skeleton width="280px" height="0.875rem" rounded="sm" />
+        </div>
+
+        {/* Quotas / Usage Stats Skeleton */}
+        <SkeletonStats count={4} />
+
+        {/* Form Skeleton */}
+        <SkeletonForm fields={3} />
+      </div>
     );
   }
 
@@ -240,11 +356,11 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
               )}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
               <Button
                 variant="primary"
                 size="md"
-                className="font-bold rounded-xl gap-2 shadow-xs cursor-pointer"
+                className="font-bold rounded-xl gap-2 shadow-xs cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
                 onClick={() => setCheckoutModalOpen(true)}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -308,15 +424,15 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
 
       {/* Commercial Plans Matrix */}
       <Card className="border border-border/80 shadow-xs">
-        <CardHeader className="border-b border-border/60 pb-3 flex flex-row items-center justify-between">
+        <CardHeader className="border-b border-border/60 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <CardTitle className="text-base font-bold text-text">Commercial SaaS Plans</CardTitle>
             <CardDescription className="text-xs text-text-muted">Select or change your organization plan.</CardDescription>
           </div>
-          <div className="flex items-center gap-1 bg-surface-alt p-1 rounded-xl border border-border/60">
+          <div className="flex items-center gap-1 bg-surface-alt p-1 rounded-xl border border-border/60 w-fit">
             <button
               onClick={() => setBillingCycle("monthly")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all min-h-[36px] sm:min-h-[30px] ${
                 billingCycle === "monthly" ? "bg-primary text-white shadow-xs" : "text-text-muted hover:text-text"
               }`}
             >
@@ -324,7 +440,7 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
             </button>
             <button
               onClick={() => setBillingCycle("annual")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all min-h-[36px] sm:min-h-[30px] ${
                 billingCycle === "annual" ? "bg-primary text-white shadow-xs" : "text-text-muted hover:text-text"
               }`}
             >
@@ -364,7 +480,7 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
                     size="sm"
                     disabled={isCurrent || isProcessing}
                     onClick={() => handleInitiateCheckout(plan)}
-                    className="w-full font-bold rounded-xl cursor-pointer"
+                    className="w-full font-bold rounded-xl cursor-pointer min-h-[44px] sm:min-h-[36px]"
                   >
                     {isCurrent ? "Current Plan" : `Upgrade to ${plan.name}`}
                   </Button>
@@ -379,14 +495,14 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
       <Card className="border border-border/80 shadow-xs">
         <form onSubmit={handleSaveBillingInfo}>
           <CardHeader className="border-b border-border/60 pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <CardTitle className="text-base font-bold text-text">GSTIN & Billing Information</CardTitle>
                 <CardDescription className="text-xs text-text-muted">
                   Tax information printed on your commercial SaaS invoices.
                 </CardDescription>
               </div>
-              <Button variant="primary" size="sm" loading={savingBilling} className="font-bold rounded-xl cursor-pointer">
+              <Button variant="primary" size="sm" loading={savingBilling} className="font-bold rounded-xl cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 Save Details
               </Button>
             </div>
@@ -431,6 +547,7 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
           ) : (
             <Table
               data={invoices}
+              mobileCardView={true}
               columns={[
                 {
                   header: "Invoice #",
@@ -477,9 +594,161 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
                 >
                   <div className="font-bold text-text text-sm">{p.name}</div>
                   <div className="text-lg font-black text-primary">₹{p.monthlyPrice.toLocaleString("en-IN")}/mo</div>
-                  <Button variant="primary" size="xs" className="w-full font-bold cursor-pointer">Select {p.name}</Button>
+                  <Button variant="primary" size="xs" className="w-full font-bold cursor-pointer min-h-[36px]">Select {p.name}</Button>
                 </div>
               ))}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Downgrade Limit Resolution Modal */}
+      {downgradeModalOpen && downgradeValidation && (
+        <Modal
+          isOpen={downgradeModalOpen}
+          onClose={() => setDowngradeModalOpen(false)}
+          title="Plan Downgrade Action Required"
+          size="lg"
+        >
+          <div className="space-y-4 pt-1">
+            {downgradeValidation.canDowngrade ? (
+              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-start gap-3 animate-fade-in">
+                <div className="p-2 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0 mt-0.5">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-text">
+                    Resource Requirements Satisfied!
+                  </h4>
+                  <p className="text-xs text-text-muted leading-relaxed">
+                    Your active resources now comply with the limits of the <strong>{downgradeValidation.targetPlan?.name}</strong> plan. You are ready to complete the transition.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3 animate-fade-in">
+                <div className="p-2 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl shrink-0 mt-0.5">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-text">
+                    Resource Footprint Exceeds {downgradeValidation.targetPlan?.name || "Target Plan"} Limits
+                  </h4>
+                  <p className="text-xs text-text-muted leading-relaxed">
+                    Your organization currently has active branches or staff that exceed the allowed limits of the <strong>{downgradeValidation.targetPlan?.name}</strong> plan.
+                    To protect your clinical operations and prevent accidental data loss, please archive excess resources before switching.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* List of Resource Violations */}
+            {downgradeValidation.violations.length > 0 && (
+              <div className="space-y-2.5">
+                {downgradeValidation.violations.map((v, i) => (
+                  <div key={i} className="p-3 bg-surface-alt/60 rounded-xl border border-border space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className="capitalize text-text flex items-center gap-1.5">
+                        {v.resource === "clinics" ? <Building2 className="w-3.5 h-3.5 text-text-muted" /> : <Users className="w-3.5 h-3.5 text-text-muted" />}
+                        <span>Active {v.resource}</span>
+                      </span>
+                      <Badge variant="error" size="sm">
+                        {v.current} Active / {v.allowed} Allowed ({v.excess} in excess)
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-text-muted">{v.message}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Doctors / Staff Resolution Guidance */}
+            {downgradeValidation.violations.some((v) => v.resource === "doctors" || v.resource === "staff") && (
+              <div className="p-3 bg-surface rounded-xl border border-border flex items-center justify-between gap-3 text-xs">
+                <div className="space-y-0.5">
+                  <div className="font-bold text-text flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-primary-600" />
+                    <span>Manage Practitioner & Staff Roster</span>
+                  </div>
+                  <p className="text-[11px] text-text-muted">
+                    Deactivate or suspend excess doctors and staff accounts in Staff Management.
+                  </p>
+                </div>
+                <Link
+                  href="/dashboard/staff"
+                  className="px-3 py-1.5 rounded-lg bg-surface-alt hover:bg-border text-text font-semibold text-xs flex items-center gap-1 shrink-0 border border-border"
+                >
+                  <span>Go to Staff</span>
+                  <ExternalLink className="w-3 h-3 text-text-muted" />
+                </Link>
+              </div>
+            )}
+
+            {/* Active Clinics Quick Archival Section */}
+            {downgradeValidation.activeClinics && downgradeValidation.activeClinics.length > 0 && (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-text-muted">
+                    Active Clinic Branches ({downgradeValidation.activeClinics.length})
+                  </span>
+                  <Link
+                    href="/dashboard/clinics"
+                    className="text-xs text-primary-600 dark:text-primary-400 font-semibold hover:underline flex items-center gap-1"
+                  >
+                    <span>Manage All Branches</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </Link>
+                </div>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto touch-scroll">
+                  {downgradeValidation.activeClinics.map((clinic) => (
+                    <div
+                      key={clinic.id}
+                      className="p-2.5 bg-surface rounded-xl border border-border flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="min-w-0">
+                        <div className="font-bold text-text truncate">{clinic.name}</div>
+                        <div className="text-[11px] text-text-muted truncate">{clinic.city} {clinic.address ? `• ${clinic.address}` : ""}</div>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="xs"
+                        loading={deactivatingClinicId === clinic.id}
+                        disabled={deactivatingClinicId === clinic.id}
+                        onClick={() => handleDeactivateClinic(clinic.id)}
+                        className="text-error-600 hover:text-error-700 hover:bg-error-500/10 border-border font-semibold shrink-0 cursor-pointer"
+                      >
+                        Deactivate Branch
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Footer Action Buttons */}
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDowngradeModalOpen(false)}
+                className="text-xs font-semibold"
+              >
+                Close
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={!downgradeValidation.canDowngrade}
+                onClick={() => {
+                  setDowngradeModalOpen(false);
+                  if (selectedPlan) {
+                    handleInitiateCheckout(selectedPlan);
+                  }
+                }}
+                className="font-bold text-xs"
+              >
+                {downgradeValidation.canDowngrade ? "Proceed to Checkout" : "Deactivate Resources to Proceed"}
+              </Button>
             </div>
           </div>
         </Modal>

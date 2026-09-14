@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import api from "@/lib/api";
+import api, { getApiUrl } from "@/lib/api";
 import {
   Card,
   CardHeader,
@@ -12,6 +12,7 @@ import {
   Button,
   Badge,
   Spinner,
+  Skeleton,
   Modal,
   useToast,
   cn,
@@ -340,7 +341,10 @@ export default function PublicLiveQueueTracker() {
       try {
         const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-        const wsHost = apiUrl.replace(/^https?:\/\//, "").replace(/\/api\/?$/, "");
+        let wsHost = apiUrl.replace(/^https?:\/\//, "").replace(/\/api\/?$/, "");
+        if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+          wsHost = wsHost.replace("localhost", window.location.hostname).replace("127.0.0.1", window.location.hostname);
+        }
         ws = new WebSocket(`${wsProto}//${wsHost}/api/queue/ws?clinicId=${clinicId}`);
 
         ws.onmessage = (event) => {
@@ -501,12 +505,8 @@ export default function PublicLiveQueueTracker() {
   };
 
   const getPrintPrescriptionUrl = () => {
-    let backendBase = process.env.NEXT_PUBLIC_API_URL;
-    if (!backendBase && typeof window !== "undefined") {
-      backendBase = `${window.location.protocol}//${window.location.hostname}:5000/api`;
-    }
-    const cleanBase = (backendBase || "http://localhost:5000/api").replace(/\/+$/, "");
-    return `${cleanBase}/public/track/${appointmentId}/prescription/print?autoPrint=1`;
+    const base = getApiUrl().replace(/\/+$/, "");
+    return `${base}/public/track/${appointmentId}/prescription/print?autoPrint=1`;
   };
 
   const handleDownloadPrescription = () => {
@@ -516,9 +516,47 @@ export default function PublicLiveQueueTracker() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-4">
-        <Spinner size="lg" label="Connecting to Live Queue Tracker..." />
-        <p className="text-xs text-text-muted mt-3">Syncing real-time clinic queue metrics...</p>
+      <div className="min-h-screen bg-surface-alt font-sans text-text antialiased p-4 sm:p-6" aria-busy="true" aria-label="Connecting to Live Queue Tracker">
+        <div className="max-w-2xl mx-auto space-y-5 animate-fade-in">
+          {/* Clinic Brand Header Skeleton */}
+          <div className="p-4 sm:p-5 bg-surface border border-border/80 rounded-3xl shadow-xs flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Skeleton width="3rem" height="3rem" rounded="2xl" />
+              <div className="space-y-1.5">
+                <Skeleton width="160px" height="1.25rem" rounded="md" />
+                <Skeleton width="120px" height="0.75rem" rounded="sm" />
+              </div>
+            </div>
+            <Skeleton width="90px" height="2rem" rounded="xl" />
+          </div>
+
+          {/* Live Queue Token Card Skeleton */}
+          <div className="p-6 bg-surface border border-border/80 rounded-3xl shadow-xs text-center space-y-4">
+            <div className="mx-auto w-24 h-24 rounded-3xl bg-surface-alt border border-border flex items-center justify-center">
+              <Skeleton width="4rem" height="3rem" rounded="xl" />
+            </div>
+            <div className="space-y-2 max-w-xs mx-auto">
+              <Skeleton height="1.5rem" width="70%" rounded="md" className="mx-auto" />
+              <Skeleton height="0.875rem" width="90%" rounded="sm" className="mx-auto" />
+            </div>
+            <div className="pt-4 border-t border-border/60 flex justify-around">
+              <div className="space-y-1.5 flex flex-col items-center">
+                <Skeleton width="60px" height="0.75rem" rounded="sm" />
+                <Skeleton width="40px" height="1.25rem" rounded="md" />
+              </div>
+              <div className="space-y-1.5 flex flex-col items-center">
+                <Skeleton width="60px" height="0.75rem" rounded="sm" />
+                <Skeleton width="50px" height="1.25rem" rounded="md" />
+              </div>
+            </div>
+          </div>
+
+          {/* Doctor & Clinic Info Card Skeleton */}
+          <div className="p-5 bg-surface border border-border/80 rounded-3xl shadow-xs space-y-3">
+            <Skeleton height="1.25rem" width="40%" rounded="md" />
+            <Skeleton height="0.875rem" width="75%" rounded="sm" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -581,9 +619,9 @@ export default function PublicLiveQueueTracker() {
     : null;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#090a0f] text-text font-sans antialiased pb-16">
+    <div className="min-h-screen bg-surface-alt text-text font-sans antialiased pb-16">
       {/* Top Floating App Bar */}
-      <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-border/70 px-4 py-3">
+      <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-border/70 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-primary-600 flex items-center justify-center text-white font-black text-sm shadow-xs">
@@ -603,25 +641,27 @@ export default function PublicLiveQueueTracker() {
                 if (!soundEnabled) playChimeSound();
               }}
               className={cn(
-                "p-2 rounded-xl border transition-colors cursor-pointer text-xs",
+                "p-2.5 rounded-xl border transition-colors cursor-pointer text-xs min-h-[40px] min-w-[40px] flex items-center justify-center",
                 soundEnabled
                   ? "bg-primary-500/10 border-primary-500/30 text-primary-600 dark:text-primary-400"
                   : "bg-surface border-border/70 text-text-muted hover:text-text"
               )}
               title={soundEnabled ? "Chime sound enabled" : "Chime muted"}
+              aria-label={soundEnabled ? "Disable chime" : "Enable chime"}
             >
-              {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
 
             <button
               onClick={() => fetchTrackerData(false)}
               disabled={refreshing}
-              className="p-2 rounded-xl bg-surface border border-border/70 hover:bg-surface-alt transition-colors text-text-muted hover:text-text cursor-pointer"
+              className="p-2.5 rounded-xl bg-surface border border-border/70 hover:bg-surface-alt transition-colors text-text-muted hover:text-text cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center"
               title="Refresh Queue"
+              aria-label="Refresh Queue Data"
             >
-              <RotateCw className={cn("w-3.5 h-3.5", refreshing && "animate-spin text-primary-500")} />
+              <RotateCw className={cn("w-4 h-4", refreshing && "animate-spin text-primary-500")} />
             </button>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
               Live
             </div>
@@ -719,7 +759,7 @@ export default function PublicLiveQueueTracker() {
                         type="button"
                         onClick={handleNotifyReturn}
                         disabled={notifyingReturn}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all text-xs cursor-pointer"
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all text-xs cursor-pointer min-h-[44px]"
                       >
                         <span>🟢</span>
                         <span>{notifyingReturn ? "Notifying Reception..." : "I Have Returned to Waiting Room"}</span>
@@ -1614,12 +1654,12 @@ export default function PublicLiveQueueTracker() {
             </div>
           )}
 
-          <div className="flex gap-2.5 pt-3 border-t border-border/60">
+          <div className="flex flex-col sm:flex-row gap-2.5 pt-3 border-t border-border/60">
             <Button
               type="button"
               variant="outline"
               size="md"
-              className="flex-1 rounded-xl"
+              className="flex-1 rounded-xl min-h-[44px] flex items-center justify-center"
               onClick={() => setIsPayModalOpen(false)}
             >
               Cancel
@@ -1628,7 +1668,7 @@ export default function PublicLiveQueueTracker() {
               type="button"
               variant="primary"
               size="md"
-              className="flex-1 rounded-xl font-bold shadow-md"
+              className="flex-1 rounded-xl font-bold shadow-md min-h-[44px] flex items-center justify-center"
               onClick={handleProcessPayment}
               loading={isPaying}
             >
@@ -1670,12 +1710,12 @@ export default function PublicLiveQueueTracker() {
             </p>
           )}
 
-          <div className="flex gap-2.5 pt-3 border-t border-border/60">
+          <div className="flex flex-col sm:flex-row gap-2.5 pt-3 border-t border-border/60">
             <Button
               type="button"
               variant="outline"
               size="md"
-              className="flex-1 rounded-xl"
+              className="flex-1 rounded-xl min-h-[44px] flex items-center justify-center"
               onClick={() => setIsDisruptionModalOpen(false)}
             >
               Close
@@ -1685,7 +1725,7 @@ export default function PublicLiveQueueTracker() {
               variant="primary"
               size="md"
               className={cn(
-                "flex-1 rounded-xl font-bold",
+                "flex-1 rounded-xl font-bold min-h-[44px] flex items-center justify-center",
                 disruptionActionType === "cancel" && "bg-rose-600 hover:bg-rose-700 text-white"
               )}
               onClick={handleExecuteDisruptionAction}

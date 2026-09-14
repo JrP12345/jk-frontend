@@ -53,7 +53,7 @@ export default function AuditLogsPage() {
     return (
       <div className="space-y-6 animate-fade-in">
         <Alert variant="error" title="Access Denied">
-          You do not have the required administrative permissions to view the security audit trail.
+          Only Platform Superadmin (Root) has permission to view the security audit trail.
         </Alert>
       </div>
     );
@@ -116,7 +116,7 @@ export default function AuditLogsPage() {
   };
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -136,13 +136,13 @@ export default function AuditLogsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={fetchLogs}
               disabled={loading}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
             >
               <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
               Refresh Logs
@@ -189,6 +189,7 @@ export default function AuditLogsPage() {
           <Table
             loading={loading}
             searchable
+            mobileCardView={true}
             searchPlaceholder="Search audit events by action, actor, or details..."
               columns={[
                 {
@@ -239,6 +240,43 @@ export default function AuditLogsPage() {
               ]}
               data={logs}
               emptyMessage="No security logs generated yet."
+              renderMobileCard={(row: AuditLogEntry) => (
+                <div
+                  key={row.id}
+                  className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <Badge variant={getActionBadgeVariant(row.action)} className="text-[10px] tracking-wide font-bold">
+                      {row.action.replace(/_/g, " ")}
+                    </Badge>
+                    <span className="text-[11px] font-mono text-text-muted shrink-0">
+                      {formatDateTime(row.createdAt)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-surface-alt border border-border flex items-center justify-center font-bold text-xs text-text shrink-0">
+                      {(row.userId?.name || "S").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-text text-xs truncate">{row.userId?.name || "System Automated"}</p>
+                      <p className="text-[10px] font-mono text-text-muted truncate">
+                        {row.userId?.role || "System"} • {row.userId?.email || "internal"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 bg-surface-alt/70 rounded-xl border border-border/60 space-y-1 text-xs">
+                    <div className="flex items-center justify-between text-[11px] text-text-muted pb-1 border-b border-border/40">
+                      <span>Target Entity:</span>
+                      <span className="font-mono text-text font-semibold">{row.targetModel}</span>
+                    </div>
+                    <div className="pt-0.5">
+                      {renderDetails(row)}
+                    </div>
+                  </div>
+                </div>
+              )}
             />
         </CardContent>
       </Card>

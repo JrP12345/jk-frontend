@@ -166,7 +166,7 @@ export default function PatientBillsPage() {
   };
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -186,13 +186,13 @@ export default function PatientBillsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={fetchPatientBills}
               disabled={loading}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
             >
               <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
               Refresh
@@ -204,6 +204,7 @@ export default function PatientBillsPage() {
       <div>
         <Table
           loading={loading}
+          mobileCardView
           columns={[
             { key: "invoiceNumber", header: "Invoice #", render: (row: Invoice) => <span className="font-bold text-text">#{row.invoiceNumber}</span> },
             { key: "clinic", header: "Clinic", render: (row: Invoice) => <span>{row.clinicId?.name}</span> },
@@ -237,18 +238,96 @@ export default function PatientBillsPage() {
             { key: "actions", header: "Actions", render: (row: Invoice) => (
               <div className="flex gap-2">
                 {row.status === "unpaid" || row.status === "partially_paid" ? (
-                  <Button size="xs" variant="primary" onClick={() => {
+                  <Button size="xs" variant="primary" className="min-h-[36px] px-3.5 font-bold cursor-pointer" onClick={() => {
                     setActiveInvoice(row);
                     setCheckoutOpen(true);
                   }}>
                     {row.status === "partially_paid" ? "Pay Balance" : "Pay Online"}
                   </Button>
                 ) : (
-                  <Button size="xs" variant="outline" onClick={() => handleOpenReceipt(row)}>View Receipt</Button>
+                  <Button size="xs" variant="outline" className="min-h-[36px] px-3.5 font-bold cursor-pointer" onClick={() => handleOpenReceipt(row)}>View Receipt</Button>
                 )}
               </div>
             )}
           ]}
+          renderMobileCard={(row: Invoice) => {
+            const balance = row.balanceDue !== undefined ? row.balanceDue : (row.status === "paid" ? 0 : row.totalAmount);
+            const isUnpaid = row.status === "unpaid" || row.status === "partially_paid";
+            return (
+              <div
+                key={row.id}
+                className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="font-mono font-bold text-sm text-text">#{row.invoiceNumber}</span>
+                    <p className="text-xs text-text-muted mt-0.5">{new Date(row.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <Badge
+                    variant={
+                      row.status === "paid" ? "success" :
+                      row.status === "partially_paid" ? "warning" :
+                      row.status === "unpaid" ? "danger" : "default"
+                    }
+                    size="sm"
+                    className="capitalize font-semibold text-[10px]"
+                  >
+                    {row.status.replace("_", " ")}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs py-2 px-3 rounded-xl bg-surface-alt/70 border border-border/50">
+                  <div>
+                    <span className="text-text-muted text-[10px] uppercase font-bold block">Facility</span>
+                    <span className="font-semibold text-text truncate mt-0.5 block">{row.clinicId?.name || "Clinic"}</span>
+                  </div>
+                  <div>
+                    <span className="text-text-muted text-[10px] uppercase font-bold block">Practitioner</span>
+                    <span className="font-semibold text-text truncate mt-0.5 block">Dr. {row.doctorId?.name?.replace(/^dr\.?\s+/i, "") || "Doctor"}</span>
+                  </div>
+                  <div className="col-span-2 pt-1 border-t border-border/40 flex items-center justify-between">
+                    <div>
+                      <span className="text-text-muted text-[10px] uppercase font-bold block">Total Amount</span>
+                      <span className="font-bold text-sm text-text mt-0.5 block">₹{row.totalAmount}</span>
+                    </div>
+                    {row.status === "partially_paid" && (
+                      <div className="text-right">
+                        <span className="text-amber-600 dark:text-amber-400 text-[10px] uppercase font-bold block">Balance Due</span>
+                        <span className="font-bold text-sm text-amber-600 dark:text-amber-400 mt-0.5 block">₹{balance}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-1">
+                  {isUnpaid ? (
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="w-full min-h-[44px] font-bold text-xs rounded-xl shadow-xs justify-center cursor-pointer"
+                      onClick={() => {
+                        setActiveInvoice(row);
+                        setCheckoutOpen(true);
+                      }}
+                    >
+                      <CreditCard className="w-4 h-4 mr-1.5" />
+                      {row.status === "partially_paid" ? `Pay Balance (₹${balance})` : `Pay Online (₹${row.totalAmount})`}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full min-h-[44px] font-bold text-xs rounded-xl justify-center cursor-pointer"
+                      onClick={() => handleOpenReceipt(row)}
+                    >
+                      <Printer className="w-4 h-4 mr-1.5" />
+                      View & Print Receipt
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          }}
           data={invoices}
           emptyMessage="You have no generated bills."
         />
@@ -318,9 +397,9 @@ export default function PatientBillsPage() {
             </div>
           )}
 
-          <div className="flex justify-end gap-3 border-t border-border/80 pt-4 mt-6">
-            <Button variant="outline" type="button" onClick={() => { setCheckoutOpen(false); setActiveInvoice(null); }}>Cancel</Button>
-            <Button type="submit" loading={submittingPayment} variant="primary" className="font-bold">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 border-t border-border/80 pt-4 mt-6">
+            <Button variant="outline" type="button" onClick={() => { setCheckoutOpen(false); setActiveInvoice(null); }} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">Cancel</Button>
+            <Button type="submit" loading={submittingPayment} variant="primary" className="font-bold w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               {submittingPayment ? "Processing..." : `Pay ₹${activeInvoice?.totalAmount}`}
             </Button>
           </div>
@@ -381,9 +460,9 @@ export default function PatientBillsPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-border pt-4">
-              <Button variant="outline" onClick={() => { setReceiptOpen(false); setReceiptInvoice(null); }}>Close</Button>
-              <Button onClick={() => triggerPrint(receiptInvoice)}>Print Receipt</Button>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 border-t border-border pt-4">
+              <Button variant="outline" onClick={() => { setReceiptOpen(false); setReceiptInvoice(null); }} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">Close</Button>
+              <Button onClick={() => triggerPrint(receiptInvoice)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">Print Receipt</Button>
             </div>
           </div>
         )}

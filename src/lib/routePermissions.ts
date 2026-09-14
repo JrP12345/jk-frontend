@@ -41,7 +41,13 @@ export function hasRoutePermission(
   userPermissions: string[] = []
 ): boolean {
   // Platform Root Super-Admin exclusive routes
-  const ROOT_ONLY_ROUTES = ["/dashboard/organizations", "/dashboard/admin/billing"];
+  const ROOT_ONLY_ROUTES = [
+    "/dashboard/organizations",
+    "/dashboard/admin/billing",
+    "/dashboard/admin/users",
+    "/dashboard/admin/monitor",
+    "/dashboard/audit"
+  ];
   if (ROOT_ONLY_ROUTES.some(r => route === r || route.startsWith(r + "/"))) {
     return userRole === "root";
   }

@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { EncounterProvider } from "@/providers/EncounterProvider";
 import { EncounterWorkspace } from "@/components/clinical/EncounterWorkspace";
-import { PatientHeaderData } from "@/components/clinical/PatientHeader";
-import { Spinner, Alert, Button, Card } from "@/components/ui";
+import type { PatientHeaderData } from "@/components/clinical/PatientHeader";
+import { Spinner, Alert, Button, Card, Skeleton, SkeletonCard } from "@/components/ui";
 import { RotateCw, ArrowLeft } from "lucide-react";
 
 interface ConsultationClientWorkspaceProps {
@@ -130,8 +130,42 @@ export function ConsultationClientWorkspace({
 
   if (loading) {
     return (
-      <div className="py-24 text-center">
-        <Spinner size="lg" label="Loading clinical consultation workspace & patient EHR..." />
+      <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Initializing clinical encounter workspace">
+        {/* Patient Header Banner Skeleton */}
+        <div className="p-4 sm:p-5 bg-surface border border-border/80 rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <Skeleton width="3rem" height="3rem" rounded="xl" />
+            <div className="space-y-1.5">
+              <Skeleton width="160px" height="1.25rem" rounded="md" />
+              <Skeleton width="220px" height="0.75rem" rounded="sm" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton width="100px" height="2rem" rounded="xl" />
+            <Skeleton width="100px" height="2rem" rounded="xl" />
+          </div>
+        </div>
+
+        {/* Workspace Split Panels Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 space-y-4">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+          <div className="lg:col-span-2 space-y-4">
+            <div className="bg-surface border border-border/80 rounded-2xl p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                <Skeleton width="140px" height="1.25rem" rounded="md" />
+                <Skeleton width="80px" height="1.75rem" rounded="xl" />
+              </div>
+              <div className="space-y-3">
+                <Skeleton width="100%" height="3.5rem" rounded="xl" />
+                <Skeleton width="100%" height="4.5rem" rounded="xl" />
+                <Skeleton width="100%" height="6rem" rounded="xl" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -142,12 +176,12 @@ export function ConsultationClientWorkspace({
         <Alert variant="error" title="Workspace Initialization Error">
           {error || "Unable to start active encounter session. Please try again or return to queue."}
         </Alert>
-        <div className="flex items-center justify-end gap-3 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => router.push("/dashboard/queue")}
-            className="rounded-xl font-semibold text-xs gap-1.5"
+            className="w-full sm:w-auto min-h-[44px] rounded-xl font-semibold text-xs gap-1.5"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Return to Outpatient Queue</span>
@@ -156,7 +190,7 @@ export function ConsultationClientWorkspace({
             variant="primary"
             size="sm"
             onClick={() => setRetryCount((c) => c + 1)}
-            className="rounded-xl font-bold text-xs gap-1.5"
+            className="w-full sm:w-auto min-h-[44px] rounded-xl font-bold text-xs gap-1.5"
           >
             <RotateCw className="w-3.5 h-3.5" />
             <span>Retry Connection</span>

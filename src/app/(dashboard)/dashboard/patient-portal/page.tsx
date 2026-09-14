@@ -10,6 +10,8 @@ import {
   Button,
   Badge,
   Spinner,
+  Skeleton,
+  SkeletonCard,
   Input,
   DatePicker,
   Select,
@@ -376,40 +378,67 @@ export default function PatientPortalPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Spinner size="lg" label="Loading health records & appointments..." />
+      <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading patient portal">
+        {/* Header Banner Skeleton */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-6 bg-surface border border-border/80 rounded-2xl shadow-xs">
+          <div className="flex items-center gap-4">
+            <Skeleton width="3.5rem" height="3.5rem" rounded="2xl" />
+            <div className="space-y-2">
+              <Skeleton width="180px" height="1.5rem" rounded="md" />
+              <Skeleton width="220px" height="0.875rem" rounded="sm" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton width="130px" height="2.5rem" rounded="xl" />
+            <Skeleton width="120px" height="2.5rem" rounded="xl" />
+          </div>
+        </div>
+
+        {/* Portal Tabs Skeleton */}
+        <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+          <Skeleton width="110px" height="2.25rem" rounded="xl" />
+          <Skeleton width="100px" height="2.25rem" rounded="xl" />
+          <Skeleton width="150px" height="2.25rem" rounded="xl" />
+          <Skeleton width="120px" height="2.25rem" rounded="xl" />
+        </div>
+
+        {/* Content Skeleton Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-gradient-to-r from-primary-900/30 via-surface to-surface border border-primary-500/20 rounded-2xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-6 bg-gradient-to-r from-primary-900/30 via-surface to-surface border border-primary-500/20 rounded-2xl">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-primary-600/20 border border-primary-500/30 flex items-center justify-center text-2xl font-black text-primary-400">
+          <div className="w-14 h-14 rounded-2xl bg-primary-600/20 border border-primary-500/30 flex items-center justify-center text-2xl font-black text-primary-400 shrink-0">
             {user?.name?.[0]?.toUpperCase() || "P"}
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-text">{user?.name}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-text">{user?.name}</h1>
             <p className="text-xs text-text-muted mt-0.5">
               {user?.email} • {patient?.bloodGroup ? `Blood Group: ${patient.bloodGroup}` : "Patient Portal Active"}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button size="sm" onClick={openSelfBookModal}>
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full md:w-auto">
+          <Button size="sm" onClick={openSelfBookModal} className="flex-1 md:flex-initial min-h-[40px] rounded-xl font-bold">
             Book Appointment
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setEditProfileModalOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setEditProfileModalOpen(true)} className="flex-1 md:flex-initial min-h-[40px] rounded-xl font-semibold">
             Edit Medical Info
           </Button>
         </div>
       </div>
 
       {/* Portal Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-full md:w-fit max-w-full touch-pan-x scrollbar-none">
         {[
           { key: "profile", label: "Medical Profile" },
           { key: "family", label: `My Family (${familyMembers.length})` },
@@ -421,7 +450,7 @@ export default function PatientPortalPage() {
             key={tab.key}
             onClick={() => setActiveTab(tab.key as any)}
             className={cn(
-              "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
+              "px-3.5 py-2 min-h-[38px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
               activeTab === tab.key
                 ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -517,17 +546,17 @@ export default function PatientPortalPage() {
       {/* TAB: My Family */}
       {activeTab === "family" && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center bg-surface-alt p-4 rounded-xl border border-border">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-alt p-4 rounded-xl border border-border">
             <div>
               <h3 className="font-bold text-sm text-text">Family Members & Dependents</h3>
               <p className="text-xs text-text-muted mt-0.5">Manage family profiles and book appointments on their behalf</p>
             </div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setClaimModalOpen(true)} className="rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+              <Button size="sm" variant="outline" onClick={() => setClaimModalOpen(true)} className="flex-1 sm:flex-initial min-h-[38px] rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs">
                 <Link2 className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
                 Claim Existing Record
               </Button>
-              <Button size="sm" onClick={() => setAddFamilyModalOpen(true)} className="font-semibold rounded-xl shadow-xs">
+              <Button size="sm" onClick={() => setAddFamilyModalOpen(true)} className="flex-1 sm:flex-initial min-h-[38px] font-semibold rounded-xl shadow-xs">
                 <Plus className="w-3.5 h-3.5 mr-1" />
                 Add Family Member
               </Button>
@@ -582,10 +611,11 @@ export default function PatientPortalPage() {
       {activeTab === "records" && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base font-bold flex items-center justify-between">
+            <CardTitle className="text-base font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <span>Longitudinal Medical Records & Document Bundle</span>
               <Button
                 size="sm"
+                className="w-full sm:w-auto min-h-[38px]"
                 onClick={async () => {
                   try {
                     const res = await api.get("/patient-portal/records");
@@ -744,7 +774,7 @@ export default function PatientPortalPage() {
           title="Edit Medical & Profile Details"
         >
           <form onSubmit={handleSaveProfile} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
                 label="Full Name"
                 value={editForm.name}
@@ -758,7 +788,7 @@ export default function PatientPortalPage() {
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Input
                 label="Date of Birth"
                 type="date"
@@ -800,7 +830,7 @@ export default function PatientPortalPage() {
 
             <div className="border-t border-border pt-3">
               <h4 className="text-xs font-bold text-text-muted mb-2 uppercase">Emergency Contact</h4>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <Input
                   label="Contact Name"
                   value={editForm.emergencyName}
@@ -821,7 +851,7 @@ export default function PatientPortalPage() {
 
             <div className="border-t border-border pt-3">
               <h4 className="text-xs font-bold text-text-muted mb-2 uppercase">Insurance Details</h4>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <Input
                   label="Provider Name"
                   value={editForm.insuranceProvider}
@@ -841,11 +871,11 @@ export default function PatientPortalPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
-              <Button variant="outline" type="button" onClick={() => setEditProfileModalOpen(false)}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-border">
+              <Button variant="outline" type="button" onClick={() => setEditProfileModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
                 Cancel
               </Button>
-              <Button type="submit" loading={savingProfile}>
+              <Button type="submit" loading={savingProfile} className="w-full sm:w-auto min-h-[44px]">
                 Save Profile
               </Button>
             </div>
@@ -871,11 +901,11 @@ export default function PatientPortalPage() {
               placeholder="e.g. Completed 7-day dosage, require extension for persistent mild symptoms."
               required
             />
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
-              <Button variant="outline" type="button" onClick={() => setSelectedPrescription(null)}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-border">
+              <Button variant="outline" type="button" onClick={() => setSelectedPrescription(null)} className="w-full sm:w-auto min-h-[44px]">
                 Cancel
               </Button>
-              <Button type="submit" loading={submittingRefill}>
+              <Button type="submit" loading={submittingRefill} className="w-full sm:w-auto min-h-[44px]">
                 Submit Request
               </Button>
             </div>
@@ -942,11 +972,11 @@ export default function PatientPortalPage() {
             onChange={(e) => setSelfNotes(e.target.value)}
           />
 
-          <div className="flex justify-between border-t border-border pt-4 mt-4">
-            <Button variant="outline" type="button" onClick={() => setIsSelfBookOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-between gap-3 border-t border-border pt-4 mt-4">
+            <Button variant="outline" type="button" onClick={() => setIsSelfBookOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" loading={submittingSelfBook}>
+            <Button type="submit" loading={submittingSelfBook} className="w-full sm:w-auto min-h-[44px]">
               Confirm Booking & Get Token
             </Button>
           </div>
@@ -984,7 +1014,7 @@ export default function PatientPortalPage() {
               ]}
             />
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
                 label="Date of Birth"
                 type="date"
@@ -1004,11 +1034,11 @@ export default function PatientPortalPage() {
               />
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-border pt-4">
-              <Button variant="outline" type="button" onClick={() => setAddFamilyModalOpen(false)}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 border-t border-border pt-4">
+              <Button variant="outline" type="button" onClick={() => setAddFamilyModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
                 Cancel
               </Button>
-              <Button type="submit" loading={addingFamily}>
+              <Button type="submit" loading={addingFamily} className="w-full sm:w-auto min-h-[44px]">
                 Save Family Member
               </Button>
             </div>
@@ -1034,11 +1064,11 @@ export default function PatientPortalPage() {
               onChange={(e) => setClaimPatientId(e.target.value)}
               required
             />
-            <div className="flex justify-end gap-3 border-t border-border pt-4">
-              <Button variant="outline" type="button" onClick={() => setClaimModalOpen(false)}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 border-t border-border pt-4">
+              <Button variant="outline" type="button" onClick={() => setClaimModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
                 Cancel
               </Button>
-              <Button type="submit" loading={claiming}>
+              <Button type="submit" loading={claiming} className="w-full sm:w-auto min-h-[44px]">
                 Claim & Link Record
               </Button>
             </div>

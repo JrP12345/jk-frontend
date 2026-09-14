@@ -309,8 +309,8 @@ export function FloatingAICopilot() {
 
   return (
     <>
-      {/* Floating Trigger Button (Bottom Right) */}
-      <div className="fixed bottom-6 right-6 z-50">
+      {/* Floating Trigger Button (Bottom Right - with clearance for mobile bottom nav) */}
+      <div className="fixed bottom-20 md:bottom-20 lg:bottom-6 right-4 sm:right-6 z-45">
         <div className="relative group">
           {/* Glowing Ambient Aura Ring */}
           {!isOpen && (
@@ -319,7 +319,7 @@ export function FloatingAICopilot() {
 
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className={`relative w-13 h-13 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 shadow-xl ${
+            className={`relative w-12 h-12 sm:w-13 sm:h-13 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 shadow-xl ${
               isOpen
                 ? "bg-surface-hover text-text border border-border/80 shadow-md rotate-90 scale-105"
                 : "bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:scale-108 active:scale-95"
@@ -332,23 +332,28 @@ export function FloatingAICopilot() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             ) : (
-              <AISparkIcon className="w-6 h-6 text-white animate-pulse" />
+              <AISparkIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white animate-pulse" />
             )}
           </button>
         </div>
       </div>
 
-      {/* Floating Popover Copilot Window */}
+      {/* Floating Popover Copilot Window — Mobile Bottom Sheet + Desktop Floating Window */}
       {isOpen && (
         <div
-          className={`fixed z-50 bg-surface/95 backdrop-blur-2xl border border-border/80 rounded-2xl shadow-2xl shadow-black/25 flex flex-col transition-all duration-300 ease-spring animate-popover-in ${
+          className={`fixed z-50 bg-surface/98 backdrop-blur-2xl border border-border/80 shadow-2xl shadow-black/25 flex flex-col transition-all duration-300 ease-spring animate-popover-in ${
             isExpanded
-              ? "inset-4 md:inset-6 md:left-auto md:w-[640px] md:h-[calc(100vh-3rem)]"
-              : "bottom-20 right-6 w-[400px] max-w-[calc(100vw-2rem)] h-[580px] max-h-[82vh]"
+              ? "inset-0 sm:inset-4 md:inset-6 md:left-auto md:w-[640px] md:h-[calc(100vh-3rem)] rounded-none sm:rounded-2xl"
+              : "inset-x-0 bottom-0 rounded-t-3xl sm:rounded-2xl sm:inset-auto sm:bottom-20 sm:right-6 sm:w-[420px] max-h-[85vh] sm:max-h-[82vh] h-[85vh] sm:h-[580px] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:pb-0"
           }`}
         >
+          {/* Mobile Sheet Drag Handle */}
+          <div className="w-full flex items-center justify-center pt-2.5 pb-0.5 sm:hidden shrink-0">
+            <div className="w-10 h-1.5 rounded-full bg-border" />
+          </div>
+
           {/* Header Bar */}
-          <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between shrink-0 bg-surface-alt/30 rounded-t-2xl">
+          <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between shrink-0 bg-surface-alt/30 rounded-t-3xl sm:rounded-t-2xl">
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <AISparkIcon className="w-4 h-4" />
@@ -615,7 +620,7 @@ export function FloatingAICopilot() {
                 value={inputQuery}
                 onChange={(e) => setInputQuery(e.target.value)}
                 placeholder={isVoiceActive ? "Listening..." : "Ask Anant AI..."}
-                className="flex-1 bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none px-2 py-1"
+                className="flex-1 bg-transparent text-base sm:text-xs text-text placeholder:text-text-muted focus:outline-none px-2 py-1.5"
               />
 
               {isThinking ? (

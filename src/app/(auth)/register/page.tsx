@@ -146,14 +146,16 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-surface-alt relative overflow-hidden font-sans text-text animate-page-enter">
-      <div className="absolute top-[-15%] left-[-15%] w-[50%] h-[50%] bg-primary-500/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-[-15%] right-[-15%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-surface-alt relative font-sans text-text animate-page-enter">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-15%] left-[-15%] w-[50%] h-[50%] bg-primary-500/10 rounded-full blur-[140px]" />
+        <div className="absolute bottom-[-15%] right-[-15%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[140px]" />
+      </div>
 
-      <div className="absolute top-6 left-6 z-20">
+      <div className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 sm:left-6 z-20">
         <Link
           href="/browse"
-          className="text-xs font-semibold text-text-secondary hover:text-text flex items-center gap-1.5 bg-surface/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-border/60 transition-all hover:border-border"
+          className="text-xs font-semibold text-text-secondary hover:text-text flex items-center gap-1.5 bg-surface/90 backdrop-blur-md px-3.5 py-2.5 sm:py-1.5 rounded-full border border-border/60 transition-all hover:border-border min-h-[44px] sm:min-h-0"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -162,7 +164,7 @@ export default function RegisterPage() {
         </Link>
       </div>
 
-      <div className="absolute top-6 right-6 z-20">
+      <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 sm:right-6 z-20">
         <ModeSwitcher />
       </div>
 

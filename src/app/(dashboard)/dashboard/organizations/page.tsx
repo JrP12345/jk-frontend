@@ -21,10 +21,11 @@ import {
   useToast,
   cn,
 } from "@/components/ui";
+import ImageUpload from "@/components/ui/ImageUpload";
+import { useR2Upload } from "@/hooks/useR2Upload";
 import {
   Building2,
   ShieldCheck,
-  Zap,
   Crown,
   RotateCw,
   Plus,
@@ -33,10 +34,8 @@ import {
   ArrowLeft,
   MoreHorizontal,
   Edit3,
-  Power,
   Trash2,
   KeyRound,
-  Sparkles,
   Copy,
   Check,
   CheckCircle2,
@@ -45,9 +44,13 @@ import {
   Phone,
   Shield,
   Layers,
-  Clock,
   Eye,
   EyeOff,
+  Users,
+  UserCheck,
+  Power,
+  Zap,
+  Sparkles,
 } from "lucide-react";
 
 interface Organization {
@@ -57,6 +60,9 @@ interface Organization {
   address?: string;
   email?: string;
   phone?: string;
+  logo_url?: string;
+  images?: string[];
+  image_url?: string;
   plan?: "starter" | "pro" | "enterprise";
   status?: "active" | "inactive";
   isActive?: boolean;
@@ -100,6 +106,7 @@ export default function OrganizationsPage() {
     timezone: "Asia/Kolkata",
     adminName: "",
     adminEmail: "",
+    adminPhone: "",
     adminPassword: "",
     clinicName: "",
     sendWelcomeEmail: true,
@@ -116,19 +123,35 @@ export default function OrganizationsPage() {
   } | null>(null);
 
   // Edit & Delete Modal States
+  const { uploadFile } = useR2Upload();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
-  const [editFormData, setEditFormData] = useState({
+  const [editFormData, setEditFormData] = useState<{
+    name: string;
+    city: string;
+    address: string;
+    phone: string;
+    email: string;
+    plan: "starter" | "pro" | "enterprise";
+    taxId: string;
+    licenseNumber: string;
+    currency: string;
+    timezone: string;
+    logo_url: File | string | null;
+    image_url: File | string | null;
+  }>({
     name: "",
     city: "",
     address: "",
     phone: "",
     email: "",
-    plan: "starter" as "starter" | "pro" | "enterprise",
+    plan: "starter",
     taxId: "",
     licenseNumber: "",
     currency: "INR",
     timezone: "Asia/Kolkata",
+    logo_url: null,
+    image_url: null,
   });
   const [updating, setUpdating] = useState(false);
 
@@ -136,9 +159,14 @@ export default function OrganizationsPage() {
   const [deletingOrg, setDeletingOrg] = useState<Organization | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const { user, switchOrg } = useAuthStore();
+  const { user, switchOrg, impersonate } = useAuthStore();
   const router = useRouter();
   const { toast } = useToast();
+
+  const [membersModalOrg, setMembersModalOrg] = useState<Organization | null>(null);
+  const [orgMembersList, setOrgMembersList] = useState<any[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [impersonatingUserId, setImpersonatingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrganizations();
@@ -219,13 +247,85 @@ export default function OrganizationsPage() {
     }
   };
 
-  const handleGeneratePassword = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-    let pass = "";
-    for (let i = 0; i < 12; i++) {
-      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+  const handleLoginAsOrgAdmin = async (org: Organization) => {
+    try {
+      setImpersonatingUserId(org.id);
+      await impersonate({ organizationId: org.id, role: "admin" });
+      toast({
+        title: "Workspace Entered as Admin",
+        description: `Now logged in as Administrator for ${org.name}.`,
+        variant: "success",
+      });
+      router.push("/dashboard");
+    } catch (err: any) {
+      toast({
+        title: "Login Failed",
+        description: err.response?.data?.message || "Failed to impersonate organization admin.",
+        variant: "error",
+      });
+    } finally {
+      setImpersonatingUserId(null);
     }
-    setFormData((prev) => ({ ...prev, adminPassword: pass }));
+  };
+
+  const handleOpenMembersModal = async (org: Organization) => {
+    setMembersModalOrg(org);
+    setLoadingMembers(true);
+    try {
+      const res = await api.get(`/onboarding/organizations/${org.id}/members`);
+      setOrgMembersList(res.data?.data?.members || []);
+    } catch (err: any) {
+      toast({
+        title: "Failed to load members",
+        description: err.response?.data?.message || "Could not fetch members list.",
+        variant: "error",
+      });
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  const handleImpersonateMember = async (member: any) => {
+    try {
+      setImpersonatingUserId(member.id);
+      await impersonate({ userId: member.id });
+      toast({
+        title: "Session Switched",
+        description: `Now signed in as ${member.name} (${member.role.toUpperCase()}) for ${membersModalOrg?.name}.`,
+        variant: "success",
+      });
+      setMembersModalOrg(null);
+      router.push("/dashboard");
+    } catch (err: any) {
+      toast({
+        title: "Impersonation Failed",
+        description: err.response?.data?.message || "Could not impersonate user.",
+        variant: "error",
+      });
+    } finally {
+      setImpersonatingUserId(null);
+    }
+  };
+
+  const handleGeneratePassword = () => {
+    const uppers = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const lowers = "abcdefghijkmnopqrstuvwxyz";
+    const numbers = "23456789";
+    const specials = "!@#$%^&*";
+    const all = uppers + lowers + numbers + specials;
+
+    const passChars = [
+      uppers[Math.floor(Math.random() * uppers.length)],
+      lowers[Math.floor(Math.random() * lowers.length)],
+      numbers[Math.floor(Math.random() * numbers.length)],
+      specials[Math.floor(Math.random() * specials.length)],
+    ];
+    for (let i = passChars.length; i < 12; i++) {
+      passChars.push(all[Math.floor(Math.random() * all.length)]);
+    }
+    const securePass = passChars.sort(() => 0.5 - Math.random()).join("");
+
+    setFormData((prev) => ({ ...prev, adminPassword: securePass }));
     setShowAdminPassword(true);
     toast({
       title: "Password Generated",
@@ -254,6 +354,30 @@ export default function OrganizationsPage() {
       return;
     }
 
+    if (
+      formData.adminPassword.length < 8 ||
+      !/[A-Z]/.test(formData.adminPassword) ||
+      !/[a-z]/.test(formData.adminPassword) ||
+      !/[0-9]/.test(formData.adminPassword) ||
+      !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.adminPassword)
+    ) {
+      toast({
+        title: "Weak Password",
+        description: "Password must be at least 8 characters and include uppercase, lowercase, number, and a special character.",
+        variant: "warning",
+      });
+      return;
+    }
+
+    if (/^[0-9+\s-]{6,}$/.test(formData.city.trim())) {
+      toast({
+        title: "Validation Error",
+        description: "City appears to be a phone number. Please enter a valid city name (e.g. Mumbai, New York).",
+        variant: "warning",
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       await api.post("/onboarding/organization", {
@@ -263,6 +387,9 @@ export default function OrganizationsPage() {
         org_phone: formData.orgPhone.trim() ? formData.orgPhone.trim() : undefined,
         org_email: formData.orgEmail.trim() ? formData.orgEmail.trim() : undefined,
         plan: formData.plan,
+        maxClinics: formData.plan === "enterprise" ? 99 : formData.plan === "pro" ? 5 : 1,
+        maxDoctors: formData.plan === "enterprise" ? 999 : formData.plan === "pro" ? 15 : 2,
+        maxStaff: formData.plan === "enterprise" ? 999 : formData.plan === "pro" ? 25 : 5,
         trialDays: formData.trialDays || 15,
         taxId: formData.taxId.trim() || undefined,
         licenseNumber: formData.licenseNumber.trim() || undefined,
@@ -270,6 +397,7 @@ export default function OrganizationsPage() {
         timezone: formData.timezone,
         admin_name: formData.adminName.trim(),
         admin_email: formData.adminEmail.trim().toLowerCase(),
+        admin_phone: formData.adminPhone.trim() ? formData.adminPhone.trim() : undefined,
         admin_password: formData.adminPassword,
         clinic_name: formData.clinicName.trim() || undefined,
         sendWelcomeEmail: formData.sendWelcomeEmail,
@@ -307,6 +435,7 @@ export default function OrganizationsPage() {
         timezone: "Asia/Kolkata",
         adminName: "",
         adminEmail: "",
+        adminPhone: "",
         adminPassword: "",
         clinicName: "",
         sendWelcomeEmail: true,
@@ -344,11 +473,13 @@ export default function OrganizationsPage() {
       address: org.address || "",
       phone: org.phone || "",
       email: org.email || "",
-      plan: org.plan || "starter",
+      plan: (org.plan as any) || "starter",
       taxId: org.taxId || "",
       licenseNumber: org.licenseNumber || "",
       currency: org.currency || "INR",
       timezone: org.timezone || "Asia/Kolkata",
+      logo_url: org.logo_url || null,
+      image_url: org.image_url || null,
     });
     setIsEditModalOpen(true);
   };
@@ -357,8 +488,32 @@ export default function OrganizationsPage() {
     e.preventDefault();
     if (!editingOrg) return;
 
+    if (/^[0-9+\s-]{6,}$/.test(editFormData.city.trim())) {
+      toast({
+        title: "Validation Error",
+        description: "City appears to be a phone number. Please enter a valid city name.",
+        variant: "warning",
+      });
+      return;
+    }
+
     setUpdating(true);
     try {
+      let finalLogoUrl = editFormData.logo_url;
+      let finalImageUrl = editFormData.image_url;
+
+      if (finalLogoUrl instanceof File) {
+        toast({ title: "Uploading...", description: "Uploading brand logo", variant: "default" });
+        const res = await uploadFile(finalLogoUrl);
+        finalLogoUrl = res.publicUrl;
+      }
+
+      if (finalImageUrl instanceof File) {
+        toast({ title: "Uploading...", description: "Uploading cover image", variant: "default" });
+        const res = await uploadFile(finalImageUrl);
+        finalImageUrl = res.publicUrl;
+      }
+
       const res = await api.put(`/organizations/${editingOrg.id}`, {
         name: editFormData.name,
         city: editFormData.city,
@@ -366,10 +521,15 @@ export default function OrganizationsPage() {
         phone: editFormData.phone || undefined,
         email: editFormData.email || undefined,
         plan: editFormData.plan,
+        maxClinics: editFormData.plan === "enterprise" ? 99 : editFormData.plan === "pro" ? 5 : 1,
+        maxDoctors: editFormData.plan === "enterprise" ? 999 : editFormData.plan === "pro" ? 15 : 2,
+        maxStaff: editFormData.plan === "enterprise" ? 999 : editFormData.plan === "pro" ? 25 : 5,
         taxId: editFormData.taxId || undefined,
         licenseNumber: editFormData.licenseNumber || undefined,
         currency: editFormData.currency,
         timezone: editFormData.timezone,
+        logo_url: typeof finalLogoUrl === "string" ? finalLogoUrl : undefined,
+        image_url: typeof finalImageUrl === "string" ? finalImageUrl : undefined,
       });
 
       const updated = res.data?.data;
@@ -466,19 +626,39 @@ export default function OrganizationsPage() {
       header: "Organization & Identifiers",
       accessor: (org) => {
         const isCurrentOrg = user?.organization_id === org.id;
+        const orgLogo = org.logo_url || org.image_url;
         return (
-          <div className="space-y-1 min-w-[200px]">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-text text-xs sm:text-sm">{org.name}</span>
-              {isCurrentOrg && (
-                <Badge variant="primary" size="sm" dot pulse className="text-[10px] font-bold">
-                  Active Workspace
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-2 text-xs text-text-muted">
-              <span>{org.email || "No email listed"}</span>
-              {org.taxId && <span>&bull; Tax ID: {org.taxId}</span>}
+          <div className="flex items-center gap-3 min-w-[240px]">
+            {orgLogo ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={orgLogo}
+                alt={org.name}
+                className="w-10 h-10 rounded-xl object-cover border border-border/80 shadow-xs shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 flex items-center justify-center font-bold text-sm shrink-0">
+                {org.name.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-text text-xs sm:text-sm">{org.name}</span>
+                {isCurrentOrg && (
+                  <Badge variant="primary" size="sm" dot pulse className="text-[10px] font-bold">
+                    Active Workspace
+                  </Badge>
+                )}
+                {org.images && org.images.length > 0 && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-surface-alt text-text-muted border border-border/60">
+                    📷 {org.images.length} photos
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <span>{org.email || "No email listed"}</span>
+                {org.taxId && <span>&bull; Tax ID: {org.taxId}</span>}
+              </div>
             </div>
           </div>
         );
@@ -547,7 +727,7 @@ export default function OrganizationsPage() {
               size="xs"
               loading={switchingId === org.id}
               onClick={() => handleEnterWorkspace(org.id, org.name)}
-              className="text-xs font-semibold rounded-lg shrink-0 shadow-xs"
+              className="text-xs font-semibold rounded-lg shrink-0 shadow-xs min-h-[36px]"
             >
               {isCurrentOrg ? "Active Workspace" : "Enter Workspace"}
               {!isCurrentOrg && <ArrowRight className="w-3.5 h-3.5 ml-1" />}
@@ -559,12 +739,23 @@ export default function OrganizationsPage() {
                 <Button
                   size="xs"
                   variant="outline"
-                  className="h-7 px-2 text-xs font-semibold rounded-lg text-text-secondary hover:text-text"
+                  className="h-9 w-9 p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text min-h-[36px] min-w-[36px]"
                 >
                   <MoreHorizontal className="w-4 h-4" />
                 </Button>
               }
               items={[
+                {
+                  label: "Login as Admin",
+                  icon: <KeyRound className="w-4 h-4 text-amber-500" />,
+                  onClick: () => handleLoginAsOrgAdmin(org),
+                },
+                {
+                  label: "Members & Impersonate",
+                  icon: <Users className="w-4 h-4 text-primary-500" />,
+                  onClick: () => handleOpenMembersModal(org),
+                },
+                { divider: true, label: "" },
                 {
                   label: "Edit Details",
                   icon: <Edit3 className="w-4 h-4 text-text-muted" />,
@@ -615,7 +806,7 @@ export default function OrganizationsPage() {
   }
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. EXECUTIVE TOP BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -635,13 +826,13 @@ export default function OrganizationsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full sm:w-auto shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={fetchOrganizations}
               disabled={isRefreshing}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors justify-center"
             >
               <RotateCw className={`h-3.5 w-3.5 mr-1.5 text-text-secondary ${isRefreshing ? "animate-spin" : ""}`} />
               Refresh
@@ -650,14 +841,14 @@ export default function OrganizationsPage() {
             <Button
               variant="primary"
               size="sm"
-              className="font-semibold rounded-xl shadow-xs"
+              className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs justify-center"
               onClick={() => {
                 setWizardStep(1);
                 setIsModalOpen(true);
               }}
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
-              Create Organization
+              Create Org
             </Button>
           </div>
         </div>
@@ -699,9 +890,9 @@ export default function OrganizationsPage() {
       <Card className="p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Segmented Filter Tabs */}
-          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto no-scrollbar touch-pan-x w-fit max-w-full">
             {[
-              { id: "all", label: "All Organizations", count: stats.total },
+              { id: "all", label: "All", count: stats.total },
               { id: "active", label: "Active", count: stats.active },
               { id: "inactive", label: "Suspended", count: stats.inactive },
               { id: "starter", label: "Starter", count: stats.starterCount },
@@ -713,7 +904,7 @@ export default function OrganizationsPage() {
                 type="button"
                 onClick={() => setActiveTab(tab.id as any)}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0 min-h-[36px] sm:min-h-[30px]",
                   activeTab === tab.id
                     ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                     : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -751,94 +942,132 @@ export default function OrganizationsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           4. ORGANIZATIONS DATA TABLE & RESPONSIVE CARDS
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="space-y-4">
-        {/* Desktop Table View */}
-        <div className="hidden sm:block">
-          <Table
-            columns={tableColumns}
-            data={filteredOrganizations}
-            searchable={false}
-            loading={loading}
-            emptyMessage="No tenant organizations registered yet."
-          />
-        </div>
+      <div>
+        <Table
+          columns={tableColumns}
+          data={filteredOrganizations}
+          searchable={false}
+          loading={loading}
+          emptyMessage="No tenant organizations registered yet."
+          renderMobileCard={(org: Organization) => {
+            const isCurrentOrg = user?.organization_id === org.id;
+            const isInactive = org.status === "inactive" || org.isActive === false;
+            const plan = org.plan || "starter";
 
-        {/* Mobile Card List View */}
-        <div className="block sm:hidden">
-          {loading ? (
-            <div className="p-8 text-center bg-surface border border-border/80 rounded-2xl shadow-xs">
-              <Spinner size="md" label="Loading platform organizations..." />
-            </div>
-          ) : filteredOrganizations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-14 px-4 text-center text-text-muted bg-surface border border-border/80 rounded-2xl shadow-xs">
-              <div className="w-12 h-12 rounded-2xl bg-surface-alt flex items-center justify-center mb-3 border border-border/70 text-text-secondary">
-                <Building2 className="w-6 h-6" />
-              </div>
-              <p className="font-semibold text-text text-sm">No Organizations Found</p>
-              <p className="text-xs text-text-muted mt-1 max-w-sm">
-                {searchQuery || activeTab !== "all"
-                  ? "No organizations match your active filters. Try resetting the filters."
-                  : "No tenant organizations have been registered yet."}
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden divide-y divide-border/60">
-                {filteredOrganizations.map((org) => {
-                  const isCurrentOrg = user?.organization_id === org.id;
-                  const isInactive = org.status === "inactive" || org.isActive === false;
-                  const plan = org.plan || "starter";
-
-                  return (
-                    <div key={org.id} className="p-4 space-y-3 bg-surface">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-text text-sm">{org.name}</span>
-                            {isCurrentOrg && (
-                              <Badge variant="primary" size="sm" dot className="text-[9px] font-bold uppercase">
-                                Active
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-text-muted">{org.email || "No email listed"}</p>
-                        </div>
-                        <Badge
-                          variant={plan === "enterprise" ? "primary" : plan === "pro" ? "info" : "secondary"}
-                          size="sm"
-                          className="uppercase text-[9px] font-bold"
-                        >
-                          {plan}
-                        </Badge>
+            return (
+              <div
+                key={org.id}
+                className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {org.logo_url || org.image_url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={org.logo_url || org.image_url}
+                        alt={org.name}
+                        className="w-10 h-10 rounded-xl object-cover border border-border/80 shadow-xs shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 flex items-center justify-center font-bold text-sm shrink-0">
+                        {org.name.slice(0, 2).toUpperCase()}
                       </div>
-
-                      <div className="flex items-center justify-between text-xs text-text-secondary pt-1">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-text-muted" />
-                          <span>{org.city}</span>
-                        </div>
-                        <Badge variant={isInactive ? "neutral" : "success"} size="sm" dot className="text-[10px]">
-                          {isInactive ? "Suspended" : "Active"}
-                        </Badge>
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-text text-sm truncate">{org.name}</span>
+                        {isCurrentOrg && (
+                          <Badge variant="primary" size="sm" dot className="text-[9px] font-bold uppercase">
+                            Active
+                          </Badge>
+                        )}
+                        {org.images && org.images.length > 0 && (
+                          <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-surface-alt text-text-muted border border-border/60">
+                            📷 {org.images.length}
+                          </span>
+                        )}
                       </div>
-
-                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
-                        <Button
-                          variant={isCurrentOrg ? "secondary" : "primary"}
-                          size="sm"
-                          loading={switchingId === org.id}
-                          onClick={() => handleEnterWorkspace(org.id, org.name)}
-                          className="text-xs font-semibold rounded-lg w-full"
-                        >
-                          {isCurrentOrg ? "Active Workspace" : "Enter Workspace"}
-                          {!isCurrentOrg && <ArrowRight className="w-3.5 h-3.5 ml-1" />}
-                        </Button>
-                      </div>
+                      <p className="text-xs text-text-muted mt-0.5 truncate">{org.email || "No email listed"}</p>
                     </div>
-                  );
-                })}
+                  </div>
+                  <Badge
+                    variant={plan === "enterprise" ? "primary" : plan === "pro" ? "info" : "secondary"}
+                    size="sm"
+                    className="uppercase text-[9px] font-bold shrink-0"
+                  >
+                    {plan}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-text-secondary pt-1 border-t border-border/40">
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                    <span>{org.city}</span>
+                  </div>
+                  <Badge variant={isInactive ? "neutral" : "success"} size="sm" dot className="text-[10px]">
+                    {isInactive ? "Suspended" : "Active"}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
+                  <Button
+                    variant={isCurrentOrg ? "secondary" : "primary"}
+                    size="sm"
+                    loading={switchingId === org.id}
+                    onClick={() => handleEnterWorkspace(org.id, org.name)}
+                    className="text-xs font-semibold rounded-xl flex-1 min-h-[40px] justify-center"
+                  >
+                    {isCurrentOrg ? "Active Workspace" : "Enter Workspace"}
+                    {!isCurrentOrg && <ArrowRight className="w-3.5 h-3.5 ml-1" />}
+                  </Button>
+                  <Dropdown
+                    align="right"
+                    width="w-48"
+                    trigger={
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="h-10 w-10 p-0 flex items-center justify-center rounded-xl text-text-secondary hover:text-text min-h-[40px] min-w-[40px]"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    }
+                    items={[
+                      {
+                        label: "Login as Admin",
+                        icon: <KeyRound className="w-4 h-4 text-amber-500" />,
+                        onClick: () => handleLoginAsOrgAdmin(org),
+                      },
+                      {
+                        label: "Members & Impersonate",
+                        icon: <Users className="w-4 h-4 text-primary-500" />,
+                        onClick: () => handleOpenMembersModal(org),
+                      },
+                      { divider: true, label: "" },
+                      {
+                        label: "Edit Details",
+                        icon: <Edit3 className="w-4 h-4 text-text-muted" />,
+                        onClick: () => handleOpenEditModal(org),
+                      },
+                      {
+                        label: isInactive ? "Reactivate Workspace" : "Suspend Workspace",
+                        icon: <Power className={`w-4 h-4 ${isInactive ? "text-emerald-500" : "text-amber-500"}`} />,
+                        onClick: () => handleToggleOrgStatus(org),
+                      },
+                      { divider: true, label: "" },
+                      {
+                        label: "Delete Organization",
+                        icon: <Trash2 className="w-4 h-4 text-danger" />,
+                        variant: "danger",
+                        onClick: () => handleOpenDeleteModal(org),
+                      },
+                    ]}
+                  />
+                </div>
               </div>
-            )}
-        </div>
+            );
+          }}
+        />
       </div>
 
       {/* ──────────────────────────────────────────────────────────────────────────
@@ -888,17 +1117,19 @@ export default function OrganizationsPage() {
           </div>
         </div>
 
-        <form onSubmit={handleCreateOrganizationSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+        <form onSubmit={handleCreateOrganizationSubmit} className="flex flex-col max-h-[75vh]" autoComplete="off">
           {/* STEP 1: Organization & Subscription Tier */}
           {wizardStep === 1 && (
-            <div className="space-y-4 animate-fade-in">
-              <Input
-                label="Organization Name *"
-                placeholder="e.g. Apollo Healthcare System"
-                value={formData.orgName}
-                onChange={(e) => setFormData({ ...formData, orgName: e.target.value })}
-                required
-              />
+            <>
+              <div className="overflow-y-auto flex-1 space-y-4 pr-1 pb-3">
+                <Input
+                  label="Organization Name *"
+                  placeholder="e.g. Apollo Healthcare System"
+                  value={formData.orgName}
+                  onChange={(e) => setFormData({ ...formData, orgName: e.target.value })}
+                  autoComplete="off"
+                  required
+                />
 
               {/* Subscription Tier Radio Cards */}
               <div className="space-y-2">
@@ -947,11 +1178,12 @@ export default function OrganizationsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <Input
-                  label="City *"
-                  placeholder="e.g. San Francisco"
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  required
+                  label="Contact Phone Number"
+                  type="tel"
+                  placeholder="+91 98765 43210"
+                  value={formData.orgPhone}
+                  onChange={(e) => setFormData({ ...formData, orgPhone: e.target.value })}
+                  autoComplete="off"
                 />
                 <Input
                   label="Contact Email"
@@ -959,6 +1191,25 @@ export default function OrganizationsPage() {
                   placeholder="contact@apollo.health"
                   value={formData.orgEmail}
                   onChange={(e) => setFormData({ ...formData, orgEmail: e.target.value })}
+                  autoComplete="off"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <Input
+                  label="City *"
+                  placeholder="e.g. Mumbai, New York"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  autoComplete="off"
+                  required
+                />
+                <Input
+                  label="Physical / Facility Address"
+                  placeholder="Street address, building, suite"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  autoComplete="off"
                 />
               </div>
 
@@ -1003,35 +1254,39 @@ export default function OrganizationsPage() {
                   ]}
                 />
               </div>
-
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
-                <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  disabled={!formData.orgName.trim() || !formData.city.trim()}
-                  onClick={() => setWizardStep(2)}
-                  className="font-semibold rounded-xl shadow-xs"
-                >
-                  Configure Administrator
-                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                </Button>
-              </div>
             </div>
-          )}
 
-          {/* STEP 2: Administrator & Primary Branch */}
-          {wizardStep === 2 && (
-            <div className="space-y-4 animate-fade-in">
+            {/* Static Footer — Step 1 Action Buttons */}
+            <div className="shrink-0 flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/80 bg-surface/95 backdrop-blur-md">
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={!formData.orgName.trim() || !formData.city.trim()}
+                onClick={() => setWizardStep(2)}
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
+              >
+                Configure Administrator
+                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* STEP 2: Administrator & Primary Branch */}
+        {wizardStep === 2 && (
+          <>
+            <div className="overflow-y-auto flex-1 space-y-4 pr-1 pb-3 animate-fade-in">
               <div className="p-3.5 bg-surface-alt rounded-2xl border border-border/80 space-y-1.5">
                 <p className="text-xs font-bold text-text">Primary Clinic Branch</p>
                 <Input
-                  placeholder={formData.orgName ? `${formData.orgName} (Main Facility)` : "Main Branch Name"}
+                  placeholder={formData.orgName ? `${formData.orgName}` : "Clinic Branch Name"}
                   value={formData.clinicName}
                   onChange={(e) => setFormData({ ...formData, clinicName: e.target.value })}
+                  autoComplete="off"
                   className="text-xs"
                 />
               </div>
@@ -1043,17 +1298,29 @@ export default function OrganizationsPage() {
                   placeholder="Dr. Jay Patel"
                   value={formData.adminName}
                   onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
+                  autoComplete="off"
                   required
                 />
-                <Input
-                  label="Administrator Email *"
-                  type="email"
-                  placeholder="admin@apollo.health"
-                  value={formData.adminEmail}
-                  onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
-                  hint="Each organization administrator must have a unique email address."
-                  required
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <Input
+                    label="Administrator Email *"
+                    type="email"
+                    placeholder="admin@apollo.health"
+                    value={formData.adminEmail}
+                    onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
+                    hint="Each organization administrator must have a unique email address."
+                    autoComplete="off"
+                    required
+                  />
+                  <Input
+                    label="Administrator Phone"
+                    type="tel"
+                    placeholder="+91 98765 43210"
+                    value={formData.adminPhone}
+                    onChange={(e) => setFormData({ ...formData, adminPhone: e.target.value })}
+                    autoComplete="off"
+                  />
+                </div>
                 <div>
                   <Input
                     label="Administrator Password *"
@@ -1062,6 +1329,7 @@ export default function OrganizationsPage() {
                     value={formData.adminPassword}
                     onChange={(e) => setFormData({ ...formData, adminPassword: e.target.value })}
                     minLength={6}
+                    autoComplete="new-password"
                     required
                   />
                   <div className="flex justify-between items-center pt-2">
@@ -1093,30 +1361,32 @@ export default function OrganizationsPage() {
                   />
                 </div>
               </div>
+            </div>
 
-              <div className="flex justify-between items-center pt-3 border-t border-border/60">
-                <Button type="button" variant="outline" size="sm" onClick={() => setWizardStep(1)}>
-                  <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                  Back
+            {/* Static Footer — Step 2 Action Buttons */}
+            <div className="shrink-0 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-2 pt-3 border-t border-border/80 bg-surface/95 backdrop-blur-md">
+              <Button type="button" variant="outline" size="sm" onClick={() => setWizardStep(1)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
+                <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                Back
+              </Button>
+              <div className="flex flex-col-reverse sm:flex-row gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
+                  Cancel
                 </Button>
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="sm"
-                    loading={submitting}
-                    className="font-semibold rounded-xl shadow-xs"
-                  >
-                    Provision Workspace
-                  </Button>
-                </div>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  loading={submitting}
+                  className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
+                >
+                  Provision Workspace
+                </Button>
               </div>
             </div>
-          )}
-        </form>
+          </>
+        )}
+      </form>
       </Modal>
 
       {/* ──────────────────────────────────────────────────────────────────────────
@@ -1164,13 +1434,13 @@ export default function OrganizationsPage() {
             </div>
           )}
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleCopyCredentials}
-              className="font-semibold rounded-xl"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl"
             >
               {isCopied ? <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
               {isCopied ? "Copied" : "Copy Credentials"}
@@ -1180,7 +1450,7 @@ export default function OrganizationsPage() {
               variant="primary"
               size="sm"
               onClick={() => setIsSummaryModalOpen(false)}
-              className="font-semibold rounded-xl shadow-xs"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
             >
               Done
             </Button>
@@ -1197,72 +1467,144 @@ export default function OrganizationsPage() {
         title="Edit Organization Details"
         description="Update subscription plan tier, facility name, or contact details."
       >
-        <form onSubmit={handleUpdateOrganization} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
-          <Input
-            label="Organization Name *"
-            value={editFormData.name}
-            onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-            required
-          />
+        <form onSubmit={handleUpdateOrganization} className="flex flex-col max-h-[75vh]" autoComplete="off">
+          <div className="overflow-y-auto flex-1 space-y-4 pr-1 pb-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <ImageUpload
+                label="Organization Brand Logo"
+                helperText="Square icon (PNG, JPG, SVG)"
+                value={editFormData.logo_url}
+                onChange={(val) => setEditFormData({ ...editFormData, logo_url: val })}
+              />
+              <ImageUpload
+                label="Cover / Hero Photo"
+                helperText="Header photo (PNG, JPG)"
+                value={editFormData.image_url}
+                onChange={(val) => setEditFormData({ ...editFormData, image_url: val })}
+              />
+            </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-text">Subscription Plan Tier *</label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: "starter", title: "Starter", desc: "1 Clinic, 2 Docs" },
-                { id: "pro", title: "Pro", desc: "5 Clinics, 15 Docs" },
-                { id: "enterprise", title: "Enterprise", desc: "Unlimited" },
-              ].map((tier) => (
-                <button
-                  type="button"
-                  key={tier.id}
-                  onClick={() => setEditFormData({ ...editFormData, plan: tier.id as any })}
-                  className={cn(
-                    "p-2.5 rounded-xl border text-left transition-all cursor-pointer select-none",
-                    editFormData.plan === tier.id
-                      ? "border-primary-500 bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold shadow-xs"
-                      : "border-border/80 hover:bg-surface-hover text-text-secondary"
-                  )}
-                >
-                  <p className="text-xs font-bold capitalize">{tier.title}</p>
-                  <p className="text-[10px] opacity-80 mt-0.5">{tier.desc}</p>
-                </button>
-              ))}
+            <Input
+              label="Organization Name *"
+              value={editFormData.name}
+              onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+              autoComplete="off"
+              required
+            />
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-text">Subscription Plan Tier *</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: "starter", title: "Starter", desc: "1 Clinic, 2 Docs" },
+                  { id: "pro", title: "Pro", desc: "5 Clinics, 15 Docs" },
+                  { id: "enterprise", title: "Enterprise", desc: "Unlimited" },
+                ].map((tier) => (
+                  <button
+                    type="button"
+                    key={tier.id}
+                    onClick={() => setEditFormData({ ...editFormData, plan: tier.id as any })}
+                    className={cn(
+                      "p-2.5 rounded-xl border text-left transition-all cursor-pointer select-none",
+                      editFormData.plan === tier.id
+                        ? "border-primary-500 bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold shadow-xs"
+                        : "border-border/80 hover:bg-surface-hover text-text-secondary"
+                    )}
+                  >
+                    <p className="text-xs font-bold capitalize">{tier.title}</p>
+                    <p className="text-[10px] opacity-80 mt-0.5">{tier.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <Input
+                label="Contact Phone Number"
+                type="tel"
+                placeholder="+91 98765 43210"
+                value={editFormData.phone}
+                onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                autoComplete="off"
+              />
+              <Input
+                label="Contact Email"
+                type="email"
+                placeholder="contact@apollo.health"
+                value={editFormData.email}
+                onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <Input
+                label="City *"
+                placeholder="e.g. Mumbai, New York"
+                value={editFormData.city}
+                onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
+                autoComplete="off"
+                required
+              />
+              <Input
+                label="Physical / Facility Address"
+                placeholder="Street address, building, suite"
+                value={editFormData.address}
+                onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <Input
+                label="Tax ID / GSTIN"
+                placeholder="22AAAAA0000A1Z5"
+                value={editFormData.taxId}
+                onChange={(e) => setEditFormData({ ...editFormData, taxId: e.target.value })}
+                autoComplete="off"
+              />
+              <Input
+                label="License Number"
+                placeholder="HOSP-REG-2026-8901"
+                value={editFormData.licenseNumber}
+                onChange={(e) => setEditFormData({ ...editFormData, licenseNumber: e.target.value })}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <Select
+                label="Currency"
+                value={editFormData.currency}
+                onChange={(e) => setEditFormData({ ...editFormData, currency: e.target.value })}
+                options={[
+                  { value: "INR", label: "INR (₹)" },
+                  { value: "USD", label: "USD ($)" },
+                  { value: "EUR", label: "EUR (€)" },
+                  { value: "GBP", label: "GBP (£)" },
+                  { value: "AED", label: "AED (د.إ)" },
+                ]}
+              />
+              <Select
+                label="Operating Timezone"
+                value={editFormData.timezone}
+                onChange={(e) => setEditFormData({ ...editFormData, timezone: e.target.value })}
+                options={[
+                  { value: "Asia/Kolkata", label: "Asia/Kolkata (IST +5:30)" },
+                  { value: "America/New_York", label: "America/New_York (EST -5:00)" },
+                  { value: "Europe/London", label: "Europe/London (GMT +0:00)" },
+                  { value: "Asia/Dubai", label: "Asia/Dubai (GST +4:00)" },
+                ]}
+              />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <Input
-              label="City *"
-              value={editFormData.city}
-              onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
-              required
-            />
-            <Input
-              label="Contact Email"
-              type="email"
-              value={editFormData.email}
-              onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <Input
-              label="Tax ID / GSTIN"
-              value={editFormData.taxId}
-              onChange={(e) => setEditFormData({ ...editFormData, taxId: e.target.value })}
-            />
-            <Input
-              label="License Number"
-              value={editFormData.licenseNumber}
-              onChange={(e) => setEditFormData({ ...editFormData, licenseNumber: e.target.value })}
-            />
-          </div>
-
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsEditModalOpen(false)}>
+          {/* Static Footer — Edit Action Buttons */}
+          <div className="shrink-0 flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/80 bg-surface/95 backdrop-blur-md">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsEditModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" loading={updating} className="font-semibold rounded-xl shadow-xs">
+            <Button type="submit" variant="primary" size="sm" loading={updating} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs">
               Save Changes
             </Button>
           </div>
@@ -1286,8 +1628,8 @@ export default function OrganizationsPage() {
             </div>
           )}
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsDeleteModalOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsDeleteModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
             <Button
@@ -1296,9 +1638,100 @@ export default function OrganizationsPage() {
               size="sm"
               loading={deleting}
               onClick={handleDeleteOrganization}
-              className="font-semibold rounded-xl shadow-xs"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
             >
               Delete Organization
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          9. ORGANIZATION MEMBERS & IMPERSONATION MODAL
+         ────────────────────────────────────────────────────────────────────────── */}
+      <Modal
+        open={!!membersModalOrg}
+        onClose={() => setMembersModalOrg(null)}
+        title={membersModalOrg ? `Members of ${membersModalOrg.name}` : "Organization Members"}
+        description="View registered doctors, administrators, and staff in this organization. Impersonate any account to view the platform directly in their place."
+        size="lg"
+      >
+        <div className="space-y-4 pt-1">
+          {loadingMembers ? (
+            <div className="py-12 flex flex-col items-center justify-center space-y-3">
+              <Spinner size="lg" label="Loading members directory..." />
+              <p className="text-xs text-text-muted">Fetching registered accounts for this tenant...</p>
+            </div>
+          ) : orgMembersList.length === 0 ? (
+            <div className="py-12 text-center text-text-muted bg-surface-alt/40 border border-border/70 rounded-2xl">
+              <Users className="w-8 h-8 mx-auto mb-2 text-text-muted opacity-60" />
+              <p className="font-semibold text-text text-sm">No Members Found</p>
+              <p className="text-xs text-text-muted mt-1">This organization has no associated accounts yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+              <div className="text-xs font-semibold text-text-muted uppercase tracking-wider px-1">
+                {orgMembersList.length} Registered {orgMembersList.length === 1 ? "Member" : "Members"}
+              </div>
+              <div className="divide-y divide-border/60 rounded-2xl border border-border/80 overflow-hidden bg-surface">
+                {orgMembersList.map((member) => (
+                  <div
+                    key={member.id}
+                    className="p-3.5 flex items-center justify-between gap-3 hover:bg-surface-alt/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold flex items-center justify-center shrink-0 text-xs border border-primary-500/20">
+                        {member.name ? member.name.charAt(0).toUpperCase() : "?"}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-xs sm:text-sm text-text truncate">{member.name}</p>
+                          <Badge
+                            variant={
+                              member.role === "admin"
+                                ? "primary"
+                                : member.role === "doctor"
+                                ? "info"
+                                : member.role === "receptionist"
+                                ? "warning"
+                                : "neutral"
+                            }
+                            size="sm"
+                            className="uppercase text-[9px] font-bold shrink-0"
+                          >
+                            {member.role}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-text-muted truncate mt-0.5">
+                          {member.email || "No email"} {member.phone ? `• ${member.phone}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size="xs"
+                      variant="primary"
+                      loading={impersonatingUserId === member.id}
+                      onClick={() => handleImpersonateMember(member)}
+                      className="font-semibold text-xs rounded-xl flex items-center gap-1.5 shrink-0 min-h-[34px]"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      Login As
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-3 border-t border-border/60">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setMembersModalOrg(null)}
+              className="w-full sm:w-auto min-h-[40px] sm:min-h-[36px]"
+            >
+              Close
             </Button>
           </div>
         </div>
@@ -1306,3 +1739,4 @@ export default function OrganizationsPage() {
     </div>
   );
 }
+

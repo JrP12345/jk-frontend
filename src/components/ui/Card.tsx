@@ -2,6 +2,7 @@
 
 import { type ReactNode, useState, useRef, memo } from "react";
 import { cn } from "./utils";
+import Spinner from "./Spinner";
 
 export type CardVariant = "default" | "outline" | "flat" | "glass";
 export type CardPadding = "none" | "sm" | "md" | "lg";
@@ -13,6 +14,8 @@ export interface CardProps {
   hover?: boolean;
   className?: string;
   onClick?: () => void;
+  loading?: boolean;
+  loadingText?: string;
 }
 
 const paddings: Record<CardPadding, string> = {
@@ -36,6 +39,8 @@ const Card = memo(function Card({
   hover = false,
   className = "",
   onClick,
+  loading = false,
+  loadingText,
 }: CardProps) {
   const [coords, setCoords] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
@@ -89,7 +94,20 @@ const Card = memo(function Card({
       )}
 
       {/* Card Content */}
-      <div className="relative z-10 w-full h-full flex flex-col">{children}</div>
+      <div className={cn("relative z-10 w-full h-full flex flex-col transition-opacity duration-200", loading && "opacity-40 pointer-events-none")}>
+        {children}
+      </div>
+
+      {/* Contextual Card Loading Overlay */}
+      {loading && (
+        <div
+          className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-surface/70 dark:bg-surface/80 backdrop-blur-xs p-4 text-center animate-fade-in"
+          role="status"
+          aria-live="polite"
+        >
+          <Spinner size="md" label={loadingText} />
+        </div>
+      )}
     </div>
   );
 });

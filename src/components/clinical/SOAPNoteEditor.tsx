@@ -548,12 +548,12 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
   return (
     <div className="bg-surface rounded-2xl border border-border/80 p-5 sm:p-6 space-y-6 shadow-xs">
       {/* Top Banner & Action Controls */}
-      <div className="flex items-center justify-between border-b border-border/60 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
         <div>
           <h2 className="text-lg font-bold text-text">Clinical SOAP Consultation Note</h2>
           <p className="text-xs text-text-muted">Standardized medical documentation workspace</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {/* Quick Load Clinical Template Dropdown & Real AI Generator */}
           {!isSigned && (
             <>
@@ -562,7 +562,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                 variant="primary"
                 disabled={generatingAI}
                 onClick={handleGenerateAISOAP}
-                className="font-semibold rounded-xl shadow-xs"
+                className="font-semibold rounded-xl shadow-xs min-h-[38px]"
               >
                 <Sparkles className="w-3.5 h-3.5 mr-1.5" />
                 <span>{generatingAI ? "Generating AI SOAP..." : "AI Auto-Draft SOAP"}</span>
@@ -573,7 +573,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                   <Button
                     size="sm"
                     variant="outline"
-                    className="font-semibold rounded-xl shadow-xs text-xs gap-1.5 hover:bg-surface-hover"
+                    className="font-semibold rounded-xl shadow-xs text-xs gap-1.5 hover:bg-surface-hover min-h-[38px]"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-text-secondary" />
                     <span>Load Clinical Template...</span>
@@ -599,7 +599,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
             size="sm"
             variant="outline"
             onClick={handleOpenPrintModal}
-            className="rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs"
+            className="rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs min-h-[38px]"
           >
             <Printer className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
             Print Rx PDF
@@ -608,14 +608,14 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
             size="sm"
             variant="outline"
             onClick={handleFetchHistory}
-            className="rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs"
+            className="rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs min-h-[38px]"
           >
             <History className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
             Version History
           </Button>
 
           {!isSigned ? (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {lastAutoSavedAt && (
                 <span className="text-[11px] text-text-muted hidden md:inline-flex items-center gap-1 font-medium bg-surface-alt/60 px-2.5 py-1 rounded-lg border border-border/50">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -627,7 +627,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                 variant="primary"
                 onClick={handleSaveDraft}
                 disabled={loading || signing}
-                className="font-semibold rounded-xl shadow-xs"
+                className="font-semibold rounded-xl shadow-xs min-h-[38px]"
               >
                 <Save className="w-3.5 h-3.5 mr-1.5" />
                 {loading ? "Saving..." : "Save Draft SOAP"}
@@ -639,7 +639,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                   variant="success"
                   onClick={handleSignNote}
                   disabled={signing || loading}
-                  className="font-semibold rounded-xl shadow-xs"
+                  className="font-semibold rounded-xl shadow-xs min-h-[38px]"
                 >
                   <Lock className="w-3.5 h-3.5 mr-1.5" />
                   {signing ? "Signing..." : "Sign & Lock Note"}
@@ -657,7 +657,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                 size="sm"
                 variant="warning"
                 onClick={() => setAmendOpen(true)}
-                className="rounded-xl text-xs font-semibold shadow-xs"
+                className="rounded-xl text-xs font-semibold shadow-xs min-h-[38px]"
               >
                 <Edit3 className="w-3.5 h-3.5 mr-1.5" />
                 Amend Note
@@ -744,7 +744,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
             O — Objective (Vitals & Physical Exam)
           </h3>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             <div>
               <label className="text-[11px] font-semibold text-text-secondary">BP Systolic</label>
               <input type="number" placeholder="120" value={bpSystolic} onChange={(e) => setBpSystolic(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
@@ -761,7 +761,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
               <label className="text-[11px] font-semibold text-text-secondary">SpO₂ (%)</label>
               <input type="number" placeholder="98" value={spO2} onChange={(e) => setSpO2(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
             </div>
-            <div>
+            <div className="col-span-2 sm:col-span-1">
               <label className="text-[11px] font-semibold text-text-secondary">Temp (°F)</label>
               <input type="number" step="0.1" placeholder="98.6" value={temperatureF} onChange={(e) => setTemperatureF(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
             </div>
@@ -855,8 +855,8 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
               )}
             </div>
 
-            <div className="flex gap-2 relative">
-              <div className="flex-1 relative">
+            <div className="flex flex-wrap sm:flex-nowrap gap-2 relative">
+              <div className="flex-1 min-w-[200px] relative">
                 <input
                   type="text"
                   placeholder="Search Drug Name or Generic..."
@@ -864,7 +864,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                   onChange={(e) => setMedName(e.target.value)}
                   onFocus={() => { if (medicineResults.length > 0) setShowMedDropdown(true); }}
                   disabled={isSigned}
-                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text"
+                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text min-h-[38px]"
                 />
 
                 {/* Autocomplete Dropdown Overlay */}
@@ -898,9 +898,9 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                 )}
               </div>
 
-              <input type="text" placeholder="Dosage" value={medDosage} onChange={(e) => setMedDosage(e.target.value)} disabled={isSigned} className="w-24 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
-              <input type="text" placeholder="Duration" value={medDuration} onChange={(e) => setMedDuration(e.target.value)} disabled={isSigned} className="w-20 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
-              <Button size="xs" variant="primary" onClick={handleAddMedication} disabled={isSigned} className="rounded-xl font-bold">Add Rx</Button>
+              <input type="text" placeholder="Dosage" value={medDosage} onChange={(e) => setMedDosage(e.target.value)} disabled={isSigned} className="w-full sm:w-24 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text min-h-[38px]" />
+              <input type="text" placeholder="Duration" value={medDuration} onChange={(e) => setMedDuration(e.target.value)} disabled={isSigned} className="w-full sm:w-20 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text min-h-[38px]" />
+              <Button size="xs" variant="primary" onClick={handleAddMedication} disabled={isSigned} className="w-full sm:w-auto rounded-xl font-bold min-h-[38px]">Add Rx</Button>
             </div>
 
             {prescriptions.length > 0 && (
@@ -968,7 +968,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
             rows={3}
             required
           />
-          <Button type="submit" loading={submittingAmend} fullWidth variant="warning">
+          <Button type="submit" loading={submittingAmend} fullWidth variant="warning" className="min-h-[44px] rounded-xl font-bold">
             Create Amended Version
           </Button>
         </form>

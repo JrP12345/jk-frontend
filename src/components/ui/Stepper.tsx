@@ -53,7 +53,7 @@ function ProgressLine({ filled, isVertical }: { filled: boolean; isVertical?: bo
     );
   }
   return (
-    <div className="absolute top-4 left-[50%] w-full h-0.5 -mt-[1px] px-4">
+    <div className="absolute top-4 left-[50%] w-full h-0.5 -mt-[1px] px-2 sm:px-4">
       <div className="w-full h-full rounded-full relative bg-border">
         <div
           className="absolute left-0 top-0 h-full rounded-full bg-primary-600 transform-gpu transition-all duration-300 ease-smooth"
@@ -135,7 +135,7 @@ const Stepper = memo(function Stepper({ steps, currentStep, variant = "horizonta
             <StepCircle step={step} index={i} status={status} />
             <p
               className={cn(
-                "text-xs font-semibold text-center mt-2 max-w-[90px] sm:max-w-none leading-tight transition-colors duration-150",
+                "text-[10px] sm:text-xs font-semibold text-center mt-1.5 sm:mt-2 max-w-[72px] sm:max-w-none leading-tight transition-colors duration-150 line-clamp-1 sm:line-clamp-none",
                 status === "upcoming" ? "text-text-muted" : "text-text",
                 isClickable && "group-hover:text-primary-600"
               )}

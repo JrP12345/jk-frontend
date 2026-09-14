@@ -196,7 +196,7 @@ export default function ServiceCatalogPage() {
   const bedCount = services.filter((s) => s.category === "bed_charge").length;
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -216,14 +216,14 @@ export default function ServiceCatalogPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto shrink-0">
             {totalCount === 0 && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleSeedDefaults}
                 disabled={seeding}
-                className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
               >
                 Seed Default Rate Card
               </Button>
@@ -233,7 +233,7 @@ export default function ServiceCatalogPage() {
                 variant="primary"
                 size="sm"
                 onClick={handleOpenAddModal}
-                className="font-semibold rounded-xl shadow-xs"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Add Service Item
@@ -276,7 +276,7 @@ export default function ServiceCatalogPage() {
       {/* Filters & Search */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
             <div className="w-full sm:w-72">
               <Input
                 placeholder="Search by code, service name, HSN/SAC..."
@@ -313,6 +313,7 @@ export default function ServiceCatalogPage() {
         <CardContent className="p-0">
           <Table
             loading={loading}
+            mobileCardView
             columns={[
               {
                 key: "code",
@@ -381,7 +382,7 @@ export default function ServiceCatalogPage() {
                     <Dropdown
                       align="right"
                       trigger={
-                        <Button size="sm" variant="outline" className="h-8 w-8 p-0 flex items-center justify-center rounded-lg cursor-pointer shrink-0" title="Row Actions">
+                        <Button size="sm" variant="outline" className="h-9 w-9 p-0 flex items-center justify-center rounded-lg cursor-pointer shrink-0 min-h-[36px] min-w-[36px]" title="Row Actions">
                           <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                           </svg>
@@ -398,6 +399,69 @@ export default function ServiceCatalogPage() {
             ]}
             data={services}
             emptyMessage="No services found in rate catalog. Click 'Seed Default Rate Card' to populate standard healthcare fees."
+            renderMobileCard={(row: ServiceItem) => (
+              <div
+                key={row._id || row.id}
+                className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-xs font-bold text-primary-600 dark:text-primary-400 px-2 py-0.5 rounded-md bg-primary-500/10 border border-primary-500/20">
+                      {row.code}
+                    </span>
+                    <Badge variant={getCategoryBadgeVariant(row.category)} size="sm" className="capitalize text-[10px]">
+                      {row.category.replace("_", " ")}
+                    </Badge>
+                  </div>
+                  <Badge variant={row.isActive ? "success" : "danger"} size="sm" dot className="text-[10px]">
+                    {row.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-text text-sm">{row.name}</h3>
+                  {row.description && (
+                    <p className="text-xs text-text-muted mt-0.5 line-clamp-2">{row.description}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs py-2 px-3 rounded-xl bg-surface-alt/70 border border-border/50">
+                  <div>
+                    <span className="text-text-muted text-[10px] uppercase font-bold block">Department</span>
+                    <span className="font-semibold text-text truncate mt-0.5 block">{row.department}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-text-muted text-[10px] uppercase font-bold block">Base Price</span>
+                    <span className="font-bold text-sm text-text mt-0.5 block">₹{row.price.toLocaleString("en-IN")}</span>
+                  </div>
+                  <div className="col-span-2 pt-1 border-t border-border/40 flex items-center justify-between text-text-secondary text-[11px]">
+                    <span>SAC/HSN: <strong className="font-mono text-text">{row.hsnSacCode || "999312"}</strong></span>
+                    <span>GST: <strong className="font-mono text-text">{row.gstRate || 0}%</strong></span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/60">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenEditModal(row)}
+                    className="min-h-[38px] text-xs font-semibold rounded-xl flex-1 justify-center"
+                  >
+                    Edit Rates & Tax
+                  </Button>
+                  {row.isActive && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeactivate(row)}
+                      className="min-h-[38px] text-xs font-semibold text-danger hover:bg-danger/10 rounded-xl px-3"
+                    >
+                      Deactivate
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           />
         </CardContent>
       </Card>
@@ -410,7 +474,7 @@ export default function ServiceCatalogPage() {
         size="md"
       >
         <form onSubmit={handleFormSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Service Code *"
               placeholder="e.g. SRV-CONS-001"
@@ -428,7 +492,7 @@ export default function ServiceCatalogPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Department *"
               placeholder="e.g. General Medicine"
@@ -453,7 +517,7 @@ export default function ServiceCatalogPage() {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input
               label="Price (₹) *"
               type="number"
@@ -491,11 +555,11 @@ export default function ServiceCatalogPage() {
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           />
 
-          <div className="flex justify-between border-t border-border pt-4 mt-6">
-            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 border-t border-border pt-4 mt-6">
+            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
-            <Button type="submit" loading={submitting}>
+            <Button type="submit" loading={submitting} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               {editingService ? "Save Changes" : "Create Item"}
             </Button>
           </div>

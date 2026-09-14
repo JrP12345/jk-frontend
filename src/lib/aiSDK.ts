@@ -1,4 +1,4 @@
-import api from "./api";
+import api, { getApiUrl } from "./api";
 
 export interface AIQueryOptions {
   query: string;
@@ -55,7 +55,7 @@ export class ANANTAAISDK {
     this.activeStreams.set(correlationId, controller);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/ai/gateway/stream`, {
+      const response = await fetch(`${getApiUrl()}/ai/gateway/stream`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

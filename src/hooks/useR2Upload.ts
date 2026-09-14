@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { API_URL } from '../lib/api';
+import api from '../lib/api';
 
 export interface UploadResult {
   url: string;
@@ -33,40 +33,26 @@ export function useR2Upload(options?: UseR2UploadOptions) {
       setProgress(60);
       const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-
-      const response = await fetch(`${API_URL}/upload-base64`, {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify({
-          contentType: file.type || 'image/png',
-          originalFilename: file.name,
-          base64Data: base64,
-          base64,
-          fileName,
-          folder: 'healthos',
-        }),
+      const res = await api.post('/upload-base64', {
+        contentType: file.type || 'image/png',
+        originalFilename: file.name,
+        base64Data: base64,
+        base64,
+        fileName,
+        folder: 'healthos',
       });
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.message || 'Upload failed');
+      const data = res.data;
+      if (!data?.success) {
+        throw new Error(data?.message || data?.error || 'Upload failed');
       }
 
       setProgress(100);
-      const url = data.data.url || data.data.publicUrl || '';
+      const url = data.data?.url || data.data?.publicUrl || '';
       const result: UploadResult = {
         url,
         publicUrl: url,
-        key: data.data.key || fileName,
+        key: data.data?.key || data.data?.fileKey || fileName,
       };
 
       if (options?.onSuccess) {

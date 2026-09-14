@@ -253,24 +253,24 @@ export default function WaitingRoomTvQueueBoard() {
   }, [fetchQueueState, clinicId]);
 
   return (
-    <div className="min-h-screen bg-[#0b0c10] text-white p-6 sm:p-10 flex flex-col justify-between select-none animate-fade-in font-sans">
+    <div className="min-h-screen bg-[#0b0c10] text-white p-4 sm:p-8 lg:p-10 flex flex-col justify-between select-none animate-fade-in font-sans">
       {/* Top TV Banner */}
-      <div className="flex items-center justify-between border-b border-zinc-800 pb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-600 flex items-center justify-center font-black text-2xl shadow-xl border border-primary-400/20">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between border-b border-zinc-800 pb-6 gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-600 flex items-center justify-center font-black text-xl sm:text-2xl shadow-xl border border-primary-400/20 shrink-0">
             ⚡
           </div>
           <div>
-            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">{clinicName}</h1>
-            <p className="text-sm font-semibold text-zinc-400">Live Waiting Room Queue Display • Real-Time OPD Calls</p>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">{clinicName}</h1>
+            <p className="text-xs sm:text-sm font-semibold text-zinc-400">Live Waiting Room Queue Display • Real-Time OPD Calls</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
           {/* Multi-Lingual Voice Announcer Selector */}
-          <div className="flex items-center gap-1 bg-zinc-900/90 p-1.5 rounded-2xl border border-zinc-800 text-xs">
+          <div className="flex items-center gap-1 bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 text-xs">
             <span className="text-[11px] font-bold text-zinc-400 px-1.5 flex items-center gap-1">
-              <span>🔊</span> Voice:
+              <span>🔊</span> <span className="hidden xs:inline">Voice:</span>
             </span>
             {(["off", "en", "hi", "both"] as const).map((lang) => (
               <button
@@ -280,27 +280,27 @@ export default function WaitingRoomTvQueueBoard() {
                   setVoiceLanguage(lang);
                   if (!audioUnlocked) unlockAudio();
                 }}
-                className={`px-2.5 py-1 rounded-xl text-[11px] font-bold uppercase transition-all cursor-pointer ${
+                className={`px-2.5 py-1.5 min-h-[36px] rounded-xl text-[11px] font-bold uppercase transition-all cursor-pointer flex items-center justify-center ${
                   voiceLanguage === lang
                     ? "bg-primary-600 text-white shadow-xs"
                     : "text-zinc-400 hover:text-white hover:bg-zinc-800/80"
                 }`}
                 title={`Announce in ${lang.toUpperCase()}`}
               >
-                {lang === "both" ? "Dual (EN+HI)" : lang}
+                {lang === "both" ? "Dual" : lang}
               </button>
             ))}
           </div>
 
           {/* Multi-Cabin vs Single Stage View Selector */}
           {cabins.length > 1 && (
-            <div className="flex items-center gap-1 bg-zinc-900/90 p-1.5 rounded-2xl border border-zinc-800 text-xs">
+            <div className="flex items-center gap-1 bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 text-xs">
               <button
                 type="button"
                 onClick={() => setViewMode(viewMode === "multi" ? "single" : "multi")}
-                className="px-2.5 py-1 rounded-xl text-[11px] font-bold text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-3 py-1.5 min-h-[36px] rounded-xl text-[11px] font-bold text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-all cursor-pointer flex items-center gap-1.5"
               >
-                <span>{viewMode === "multi" ? "🖥️ Stage View" : "🔲 Multi-Cabin Grid"}</span>
+                <span>{viewMode === "multi" ? "🖥️ Stage View" : "🔲 Multi-Cabin"}</span>
               </button>
             </div>
           )}
@@ -308,16 +308,16 @@ export default function WaitingRoomTvQueueBoard() {
           {!audioUnlocked && (
             <button
               onClick={unlockAudio}
-              className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-xl text-xs font-bold border border-amber-500/30 flex items-center gap-2 cursor-pointer transition-all animate-pulse"
+              className="px-3.5 py-2 min-h-[40px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-xl text-xs font-bold border border-amber-500/30 flex items-center gap-2 cursor-pointer transition-all animate-pulse"
             >
-              <span>🔔</span> Enable TV Chime Audio
+              <span>🔔</span> Enable Audio
             </button>
           )}
-          <Badge variant="success" className="text-sm px-4 py-2 font-black tracking-wide flex items-center gap-2">
+          <Badge variant="success" className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 font-black tracking-wide flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-            LIVE QUEUE ACTIVE
+            LIVE QUEUE
           </Badge>
-          <span className="text-2xl font-black text-zinc-300 font-mono">
+          <span className="text-xl sm:text-2xl font-black text-zinc-300 font-mono">
             {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
         </div>
@@ -485,14 +485,14 @@ export default function WaitingRoomTvQueueBoard() {
             </div>
 
             {activeToken ? (
-              <div className="my-10 text-center space-y-4">
-                <div className="text-[130px] sm:text-[160px] font-black text-emerald-400 leading-none tracking-tighter drop-shadow-[0_0_50px_rgba(52,211,153,0.35)] font-mono">
+              <div className="my-6 sm:my-10 text-center space-y-3 sm:space-y-4">
+                <div className="text-6xl xs:text-7xl sm:text-[120px] lg:text-[150px] font-black text-emerald-400 leading-none tracking-tighter drop-shadow-[0_0_50px_rgba(52,211,153,0.35)] font-mono">
                   #{activeToken.tokenNumber}
                 </div>
-                <h2 className="text-4xl sm:text-5xl font-black text-white tracking-wide">
+                <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-wide">
                   {activeToken.patientName || "Patient"}
                 </h2>
-                <p className="text-2xl font-medium text-zinc-400 pt-2">
+                <p className="text-base sm:text-2xl font-medium text-zinc-400 pt-1 sm:pt-2">
                   Attending Doctor: <span className="text-primary-400 font-extrabold">Dr. {activeToken.doctorName || "On Duty"}</span>
                 </p>
               </div>
@@ -586,9 +586,9 @@ export default function WaitingRoomTvQueueBoard() {
       )}
 
       {/* Footer ticker */}
-      <div className="bg-zinc-900/90 px-6 py-3.5 rounded-2xl border border-zinc-800 text-xs text-zinc-400 flex justify-between items-center">
+      <div className="bg-zinc-900/90 px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl border border-zinc-800 text-xs text-zinc-400 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <span>If you require emergency medical attention or wheelchair assistance, please notify the reception desk immediately.</span>
-        <span className="font-black text-primary-400 tracking-wide">ANANT HealthOS Live Display</span>
+        <span className="font-black text-primary-400 tracking-wide shrink-0">ANANT HealthOS Live Display</span>
       </div>
     </div>
   );

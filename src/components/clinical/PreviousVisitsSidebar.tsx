@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { Button, Spinner, Badge } from "@/components/ui";
+import { Button, Spinner, Badge, Skeleton } from "@/components/ui";
 
 interface PreviousVisitsSidebarProps {
   patientId: string;
@@ -47,8 +47,16 @@ export function PreviousVisitsSidebar({ patientId, onCopyForward }: PreviousVisi
       </div>
 
       {loading ? (
-        <div className="py-6 text-center">
-          <Spinner size="sm" label="Loading previous visits..." />
+        <div className="space-y-3 animate-fade-in" aria-busy="true">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="p-3 rounded-xl border border-border/80 bg-surface-alt/40 space-y-2">
+              <div className="flex items-center justify-between">
+                <Skeleton width="70px" height="0.75rem" rounded="sm" />
+                <Skeleton width="50px" height="1rem" rounded="full" />
+              </div>
+              <Skeleton width="90%" height="0.875rem" rounded="md" />
+            </div>
+          ))}
         </div>
       ) : history.length === 0 ? (
         <div className="text-xs text-text-muted text-center py-4">

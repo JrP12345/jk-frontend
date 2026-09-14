@@ -55,6 +55,9 @@ import {
   Sparkles,
   Phone,
   Building2,
+  Mail,
+  Lock,
+  CalendarOff,
 } from "lucide-react";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -174,6 +177,7 @@ export default function AppointmentsPage() {
   const [doctorBookingMode, setDoctorBookingMode] = useState<"time_slot" | "sequential_queue">("sequential_queue");
   const [nextTokenNum, setNextTokenNum] = useState<number | null>(null);
   const [tokensTodayCount, setTokensTodayCount] = useState<number>(0);
+  const [doctorHolidayInfo, setDoctorHolidayInfo] = useState<{ isHoliday: boolean; reason: string | null } | null>(null);
 
   useEffect(() => {
     if (!bookingDoctorId || !selectedSlotDate) return;
@@ -189,12 +193,19 @@ export default function AppointmentsPage() {
         setNextTokenNum(data?.nextToken || null);
         setTokensTodayCount(data?.tokensToday || 0);
 
+        if (data?.isHoliday) {
+          setDoctorHolidayInfo({ isHoliday: true, reason: data.holidayReason || "Doctor Holiday / Leave" });
+        } else {
+          setDoctorHolidayInfo(null);
+        }
+
         if (mode === "sequential_queue") {
           setBookingTime(`${selectedSlotDate}T00:00:00`);
         }
       } catch {
         setAvailableSlots([]);
         setDoctorBookingMode("sequential_queue");
+        setDoctorHolidayInfo(null);
       } finally {
         setFetchingSlots(false);
       }
@@ -576,6 +587,15 @@ export default function AppointmentsPage() {
       }
     }
 
+    if (doctorHolidayInfo?.isHoliday && !forceBooking) {
+      toast({
+        title: "Doctor on Holiday / Leave",
+        description: `Doctor is unavailable on this date (${doctorHolidayInfo.reason || "Doctor Away"}). Check "Emergency Walk-in / Capacity Override" below if this is an exceptional override.`,
+        variant: "error",
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const bookingData: any = {
@@ -767,14 +787,117 @@ export default function AppointmentsPage() {
   };
 
   const formatDateTime = (isoStr: string) => {
+    if (!isoStr) return "—";
     const d = new Date(isoStr);
-    return d.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
   };
+
+  const getAppointmentDropdownItems = (row: Appointment) => [
+    {
+      label: "View Booking Slip",
+      icon: <Ticket className="w-4 h-4 text-text-muted" />,
+      onClick: () => handleViewSlip(row),
+    },
+    {
+      label: "View Rx / EHR Summary",
+      icon: <FileText className="w-4 h-4 text-text-muted" />,
+      onClick: () => handleOpenRecordModal(row),
+    },
+    ...(row.status !== "completed" && row.status !== "cancelled"
+      ? [
+          {
+            label: "Reschedule Appointment",
+            icon: <CalendarClock className="w-4 h-4 text-text-muted" />,
+            onClick: () => handleOpenRescheduleModal(row),
+          },
+        ]
+      : []),
+    ...(user?.role === "doctor" &&
+    (row.status === "confirmed" || row.status === "checked-in" || row.status === "in-consultation")
+      ? [
+          {
+            label: "Open Encounter Workspace",
+            icon: <Stethoscope className="w-4 h-4 text-primary-500" />,
+            onClick: () => router.push(`/dashboard/consultations/${row.id}`),
+          },
+        ]
+      : []),
+    ...(row.status === "pending"
+      ? [
+          {
+            label: "Mark Confirmed",
+            icon: <CheckCircle2 className="w-4 h-4 text-primary-500" />,
+            onClick: () => {
+              setUpdatingStatusId(row.id);
+              setConfirmStatus("confirmed");
+            },
+          },
+        ]
+      : []),
+    ...(row.status === "confirmed"
+      ? [
+          {
+            label: "Mark Checked-In",
+            icon: <CheckCircle2 className="w-4 h-4 text-info-500" />,
+            onClick: () => {
+              setUpdatingStatusId(row.id);
+              setConfirmStatus("checked-in");
+            },
+          },
+        ]
+      : []),
+    ...(row.status === "checked-in"
+      ? [
+          {
+            label: "Start Consultation",
+            icon: <Stethoscope className="w-4 h-4 text-emerald-500" />,
+            onClick: () => {
+              setUpdatingStatusId(row.id);
+              setConfirmStatus("in-consultation");
+            },
+          },
+        ]
+      : []),
+    ...(row.status === "in-consultation"
+      ? [
+          {
+            label: "Mark Completed",
+            icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
+            onClick: () => {
+              setUpdatingStatusId(row.id);
+              setConfirmStatus("completed");
+            },
+          },
+        ]
+      : []),
+    ...(row.status !== "completed" && row.status !== "cancelled"
+      ? [
+          { divider: true, label: "" },
+          {
+            label: "Cancel Appointment",
+            icon: <XCircle className="w-4 h-4 text-danger" />,
+            variant: "danger" as const,
+            onClick: () => {
+              setUpdatingStatusId(row.id);
+              setConfirmStatus("cancelled");
+            },
+          },
+        ]
+      : []),
+  ];
 
   if (!user) return null;
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-16">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -784,37 +907,49 @@ export default function AppointmentsPage() {
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">Appointments</h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Roster Desk
+                {user.role === "patient" ? "My Visits" : "Schedule & Visits"}
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Manage clinical appointments, queue tokens, slot reservations, and patient encounter workflows.
+              {user.role === "patient"
+                ? "View your upcoming consultations, digital queue slips, and clinical visit history."
+                : "Manage clinical appointments, queue tokens, slot reservations, and patient encounter workflows."}
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={fetchAppointments}
               disabled={isRefreshing}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
             >
               <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
               Refresh
             </Button>
 
-            {canManageAppointments && user.role !== "doctor" && (
+            {user.role === "patient" ? (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => router.push("/browse")}
+                className="font-semibold rounded-xl shadow-xs min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Book Consultation
+              </Button>
+            ) : canManageAppointments && user.role !== "doctor" ? (
               <Button
                 variant="primary"
                 size="sm"
                 onClick={openBookModal}
-                className="font-semibold rounded-xl shadow-xs"
+                className="font-semibold rounded-xl shadow-xs min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
-                Book Appointment
+                New Appointment
               </Button>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
@@ -844,25 +979,25 @@ export default function AppointmentsPage() {
          ────────────────────────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface p-3 sm:p-4 rounded-2xl border border-border/80 shadow-xs">
         <span className="text-xs font-bold text-text-muted uppercase tracking-wider">Schedule View Mode</span>
-        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit">
+        <div className="grid grid-cols-2 sm:flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 w-full sm:w-fit">
           <button
             type="button"
             onClick={() => setViewLayout("table")}
             className={cn(
-              "px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
+              "px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 min-h-[40px] sm:min-h-[34px]",
               viewLayout === "table"
                 ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
             )}
           >
             <LayoutList className={cn("h-3.5 w-3.5", viewLayout === "table" ? "text-primary-500" : "text-text-muted")} />
-            <span>Table List</span>
+            <span>List View</span>
           </button>
           <button
             type="button"
             onClick={() => setViewLayout("calendar")}
             className={cn(
-              "px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
+              "px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 min-h-[40px] sm:min-h-[34px]",
               viewLayout === "calendar"
                 ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -890,6 +1025,7 @@ export default function AppointmentsPage() {
               exportFilename="appointments_list"
               searchPlaceholder="Search by patient, doctor, or token..."
               loading={loading}
+              mobileCardView
               toolbarFilters={
                 user.role !== "patient" && (
                   <>
@@ -907,6 +1043,7 @@ export default function AppointmentsPage() {
                       <div className="w-full sm:w-40">
                         <Select
                           size="sm"
+                          icon={<Stethoscope className="w-3.5 h-3.5 text-text-muted" />}
                           placeholder="All Doctors"
                           value={filterDoctor}
                           onChange={(e) => setFilterDoctor(e.target.value)}
@@ -923,6 +1060,7 @@ export default function AppointmentsPage() {
                     <div className="w-full sm:w-36">
                       <Select
                         size="sm"
+                        icon={<CheckCircle2 className="w-3.5 h-3.5 text-text-muted" />}
                         placeholder="All Statuses"
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
@@ -941,6 +1079,117 @@ export default function AppointmentsPage() {
                   </>
                 )
               }
+              renderMobileCard={(row: Appointment) => (
+                <div
+                  key={row.id}
+                  className="p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+                >
+                  {/* Top Bar: Token Badge + Type Badge + Status Pill */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleViewSlip(row)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary-500/10 border border-primary-500/20 text-primary-600 dark:text-primary-400 font-mono font-bold text-xs hover:bg-primary-500/15 transition-colors cursor-pointer"
+                        title="View Booking Slip"
+                      >
+                        <Ticket className="w-3.5 h-3.5 shrink-0" />
+                        #{row.tokenNumber}
+                      </button>
+                      <span className="uppercase font-semibold text-[10px] tracking-wider px-2 py-0.5 rounded-md bg-surface-alt border border-border/60 text-text-secondary">
+                        {row.appointmentType}
+                      </span>
+                    </div>
+
+                    <Badge
+                      variant={getStatusBadgeVariant(row.status)}
+                      size="sm"
+                      dot
+                      className="capitalize font-semibold text-[11px]"
+                    >
+                      {row.status.replace("-", " ")}
+                    </Badge>
+                  </div>
+
+                  {/* Doctor & Patient Information */}
+                  <div className="space-y-1 pt-0.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 text-sm font-bold text-text truncate">
+                          <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                          <span className="truncate">Dr. {(row.doctorId?.name || "Unassigned").replace(/^dr\.?\s+/i, "")}</span>
+                        </div>
+                        <p className="text-[11px] text-text-muted pl-5 truncate">
+                          {row.doctorId?.specialization || "General Medicine"}
+                        </p>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <div className="flex items-center justify-end gap-1 text-xs font-semibold text-text">
+                          <User className="w-3 h-3 text-text-muted shrink-0" />
+                          <span>{row.patientId?.userId?.name || "Self"}</span>
+                        </div>
+                        {row.patientId?.userId?.phone && row.patientId?.userId?.phone !== "-" && (
+                          <p className="text-[10px] text-text-muted font-mono">{row.patientId?.userId?.phone}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Date, Time & Clinic Location */}
+                    <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 pt-2 border-t border-border/50 text-xs text-text-secondary">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                        <span className="font-medium text-text">{formatDateTime(row.appointmentTime)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                        <span className="truncate">{row.clinicId?.name || "Clinic"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions Footer */}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => handleViewSlip(row)}
+                      className="font-semibold rounded-xl text-xs flex-1 min-h-[38px] justify-center"
+                    >
+                      <Ticket className="w-3.5 h-3.5 mr-1" />
+                      View Slip
+                    </Button>
+
+                    {user?.role === "doctor" &&
+                    (row.status === "confirmed" || row.status === "checked-in" || row.status === "in-consultation") && (
+                      <Button
+                        size="xs"
+                        variant="primary"
+                        onClick={() => router.push(`/dashboard/consultations/${row.id}`)}
+                        className="font-semibold rounded-xl text-xs flex-1 min-h-[38px] justify-center"
+                      >
+                        <Stethoscope className="w-3.5 h-3.5 mr-1" />
+                        Consult
+                      </Button>
+                    )}
+
+                    <Dropdown
+                      align="right"
+                      trigger={
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          className="h-[38px] w-[38px] min-h-[38px] min-w-[38px] p-0 flex items-center justify-center rounded-xl text-text-secondary hover:text-text cursor-pointer shrink-0"
+                          aria-label="Appointment options"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      }
+                      items={getAppointmentDropdownItems(row)}
+                    />
+                  </div>
+                </div>
+              )}
               columns={[
                 {
                   key: "tokenNumber",
@@ -1062,110 +1311,23 @@ export default function AppointmentsPage() {
                           <Button
                             size="xs"
                             variant="outline"
-                            className="h-7 w-7 p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text"
+                            className="h-8 w-8 min-h-[36px] min-w-[36px] sm:min-h-0 sm:min-w-0 p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text cursor-pointer"
+                            aria-label="Appointment options"
                           >
-                            <MoreHorizontal className="h-3.5 w-3.5" />
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         }
-                        items={[
-                          {
-                            label: "View Booking Slip",
-                            icon: <Ticket className="w-4 h-4 text-text-muted" />,
-                            onClick: () => handleViewSlip(row),
-                          },
-                          {
-                            label: "View Rx / EHR Summary",
-                            icon: <FileText className="w-4 h-4 text-text-muted" />,
-                            onClick: () => handleOpenRecordModal(row),
-                          },
-                          ...(row.status !== "completed" && row.status !== "cancelled"
-                            ? [
-                                {
-                                  label: "Reschedule Appointment",
-                                  icon: <CalendarClock className="w-4 h-4 text-text-muted" />,
-                                  onClick: () => handleOpenRescheduleModal(row),
-                                },
-                              ]
-                            : []),
-                          ...(user.role === "doctor" &&
-                          (row.status === "confirmed" || row.status === "checked-in" || row.status === "in-consultation")
-                            ? [
-                                {
-                                  label: "Open Encounter Workspace",
-                                  icon: <Stethoscope className="w-4 h-4 text-primary-500" />,
-                                  onClick: () => router.push(`/dashboard/consultations/${row.id}`),
-                                },
-                              ]
-                            : []),
-                          ...(row.status === "pending"
-                            ? [
-                                {
-                                  label: "Mark Confirmed",
-                                  icon: <CheckCircle2 className="w-4 h-4 text-primary-500" />,
-                                  onClick: () => {
-                                    setUpdatingStatusId(row.id);
-                                    setConfirmStatus("confirmed");
-                                  },
-                                },
-                              ]
-                            : []),
-                          ...(row.status === "confirmed"
-                            ? [
-                                {
-                                  label: "Mark Checked-In",
-                                  icon: <CheckCircle2 className="w-4 h-4 text-info-500" />,
-                                  onClick: () => {
-                                    setUpdatingStatusId(row.id);
-                                    setConfirmStatus("checked-in");
-                                  },
-                                },
-                              ]
-                            : []),
-                          ...(row.status === "checked-in"
-                            ? [
-                                {
-                                  label: "Start Consultation",
-                                  icon: <Stethoscope className="w-4 h-4 text-emerald-500" />,
-                                  onClick: () => {
-                                    setUpdatingStatusId(row.id);
-                                    setConfirmStatus("in-consultation");
-                                  },
-                                },
-                              ]
-                            : []),
-                          ...(row.status === "in-consultation"
-                            ? [
-                                {
-                                  label: "Mark Completed",
-                                  icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
-                                  onClick: () => {
-                                    setUpdatingStatusId(row.id);
-                                    setConfirmStatus("completed");
-                                  },
-                                },
-                              ]
-                            : []),
-                          ...(row.status !== "completed" && row.status !== "cancelled"
-                            ? [
-                                { divider: true, label: "" },
-                                {
-                                  label: "Cancel Appointment",
-                                  icon: <XCircle className="w-4 h-4 text-danger" />,
-                                  variant: "danger" as any,
-                                  onClick: () => {
-                                    setUpdatingStatusId(row.id);
-                                    setConfirmStatus("cancelled");
-                                  },
-                                },
-                              ]
-                            : []),
-                        ]}
+                        items={getAppointmentDropdownItems(row)}
                       />
                     </div>
                   ),
                 },
               ]}
-              emptyMessage="No clinical appointments found for active filters."
+              emptyMessage={
+                user.role === "patient"
+                  ? "No visits found. Click 'Book Consultation' to schedule a doctor visit."
+                  : "No clinical appointments found for active filters."
+              }
             />
           </CardContent>
         </Card>
@@ -1198,18 +1360,16 @@ export default function AppointmentsPage() {
           {bookingStep === 1 && (
             <div className="space-y-4 animate-fade-in">
               <h3 className="text-xs font-bold text-text uppercase tracking-wider">Choose or Search Patient</h3>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                  <Input
-                    placeholder="Search by patient name, email, or mobile..."
-                    value={patientSearch}
-                    onChange={(e) => setPatientSearch(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handlePatientSearch()}
-                    className="pl-9"
-                  />
-                </div>
-                <Button onClick={handlePatientSearch} loading={searchLoading} className="font-semibold rounded-xl">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  icon={<Search className="w-4 h-4 text-text-muted" />}
+                  placeholder="Search by patient name, email, or mobile..."
+                  value={patientSearch}
+                  onChange={(e) => setPatientSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handlePatientSearch()}
+                  fullWidth
+                />
+                <Button onClick={handlePatientSearch} loading={searchLoading} className="font-semibold rounded-xl min-h-[44px] w-full sm:w-auto justify-center shrink-0">
                   Search
                 </Button>
               </div>
@@ -1219,7 +1379,7 @@ export default function AppointmentsPage() {
                   {searchResults.map((pt) => (
                     <div
                       key={pt.id}
-                      className="p-3 hover:bg-surface-hover flex justify-between items-center transition-colors gap-2"
+                      className="p-3 hover:bg-surface-hover flex flex-col sm:flex-row justify-between sm:items-center transition-colors gap-2"
                     >
                       <div>
                         <p className="font-bold text-text text-xs sm:text-sm">{pt.userId?.name}</p>
@@ -1227,7 +1387,7 @@ export default function AppointmentsPage() {
                           {pt.userId?.phone} &bull; {pt.userId?.email}
                         </p>
                       </div>
-                      <Button size="xs" variant="primary" onClick={() => handleSelectPatient(pt)} className="rounded-lg font-semibold">
+                      <Button size="xs" variant="primary" onClick={() => handleSelectPatient(pt)} className="rounded-lg font-semibold min-h-[38px] sm:min-h-[32px] px-3.5 w-full sm:w-auto justify-center">
                         Select
                       </Button>
                     </div>
@@ -1235,10 +1395,10 @@ export default function AppointmentsPage() {
                 </div>
               )}
 
-              <div className="text-center py-6 border border-dashed border-border/80 rounded-2xl bg-surface-alt/50 space-y-2">
+              <div className="text-center py-6 border border-dashed border-border/80 rounded-2xl bg-surface-alt/50 space-y-2 px-4">
                 <UserPlus className="w-8 h-8 mx-auto text-text-muted" />
                 <p className="text-xs text-text-muted">Cannot find existing record? Register a new patient profile.</p>
-                <Button variant="outline" size="sm" onClick={handleCreateNewPatient} className="rounded-xl font-semibold">
+                <Button variant="outline" size="sm" onClick={handleCreateNewPatient} className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto">
                   Register New Patient
                 </Button>
               </div>
@@ -1253,6 +1413,7 @@ export default function AppointmentsPage() {
                   <h3 className="text-xs font-bold uppercase tracking-wider text-text">Patient Registration</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <Input
+                      icon={<User className="w-4 h-4 text-text-muted" />}
                       label="Full Name *"
                       placeholder="e.g. Rahul Sharma"
                       value={newPatientForm.name}
@@ -1286,14 +1447,17 @@ export default function AppointmentsPage() {
                       required
                     />
                     <Input
+                      icon={<Phone className="w-4 h-4 text-text-muted" />}
+                      prefix="+91"
                       label="Mobile Phone Number"
-                      placeholder="+91 98765 43210"
+                      placeholder="98765 43210"
                       value={newPatientForm.phone}
                       onChange={(e) => handleNewPatientChange("phone", e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <Input
+                      icon={<Mail className="w-4 h-4 text-text-muted" />}
                       label="Email Address"
                       type="email"
                       placeholder="rahul@example.com"
@@ -1301,6 +1465,7 @@ export default function AppointmentsPage() {
                       onChange={(e) => handleNewPatientChange("email", e.target.value)}
                     />
                     <Input
+                      icon={<MapPin className="w-4 h-4 text-text-muted" />}
                       label="Address"
                       placeholder="City, District"
                       value={newPatientForm.address}
@@ -1335,6 +1500,7 @@ export default function AppointmentsPage() {
                 <h3 className="text-xs font-bold uppercase tracking-wider text-text">Facility & Practitioner</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <Select
+                    icon={<Building2 className="w-4 h-4 text-text-muted" />}
                     label="Choose Clinic Location *"
                     value={bookingClinicId}
                     onChange={(e) => setBookingClinicId(e.target.value)}
@@ -1342,6 +1508,7 @@ export default function AppointmentsPage() {
                     required
                   />
                   <Select
+                    icon={<Stethoscope className="w-4 h-4 text-text-muted" />}
                     label="Choose Doctor *"
                     value={bookingDoctorId}
                     onChange={(e) => setBookingDoctorId(e.target.value)}
@@ -1358,8 +1525,8 @@ export default function AppointmentsPage() {
                 </div>
               </div>
 
-              <div className="flex justify-between border-t border-border/60 pt-3.5 mt-4">
-                <Button variant="outline" type="button" size="sm" onClick={() => setBookingStep(1)}>
+              <div className="flex flex-col-reverse sm:flex-row justify-between gap-2.5 border-t border-border/60 pt-3.5 mt-4">
+                <Button variant="outline" type="button" size="sm" onClick={() => setBookingStep(1)} className="min-h-[44px] w-full sm:w-auto justify-center">
                   <ArrowLeft className="w-3.5 h-3.5 mr-1" />
                   Back
                 </Button>
@@ -1369,7 +1536,7 @@ export default function AppointmentsPage() {
                   variant="primary"
                   onClick={handleStep2Next}
                   disabled={!bookingClinicId || !bookingDoctorId}
-                  className="font-semibold rounded-xl shadow-xs"
+                  className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
                 >
                   Configure Schedule
                   <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
@@ -1393,6 +1560,7 @@ export default function AppointmentsPage() {
                 />
 
                 <Select
+                  icon={<Ticket className="w-4 h-4 text-text-muted" />}
                   label="Appointment Type"
                   value={bookingType}
                   onChange={(e) => setBookingType(e.target.value as any)}
@@ -1423,6 +1591,18 @@ export default function AppointmentsPage() {
                 </div>
               ) : (
                 <div className="space-y-2 border-t border-border/60 pt-3">
+                  {doctorHolidayInfo?.isHoliday && (
+                    <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300 animate-fade-in">
+                      <CalendarOff className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <p className="font-bold">Doctor is on Holiday / Leave on this date</p>
+                        <p className="text-[11px] leading-relaxed opacity-90">
+                          The practitioner has declared unavailability: <strong>{doctorHolidayInfo.reason}</strong>. Normal appointments cannot be scheduled on this day unless Emergency Override is checked below.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-text">Available Time Slots for {selectedSlotDate}</span>
                     {fetchingSlots && <span className="text-text-muted text-[11px]">Calculating...</span>}
@@ -1437,7 +1617,7 @@ export default function AppointmentsPage() {
                       No 15-min open slots for this date. You may specify a custom time below or choose another date.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-36 overflow-y-auto p-1">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-40 overflow-y-auto p-1">
                       {availableSlots
                         .filter((s) => s.available)
                         .map((slot) => {
@@ -1453,12 +1633,12 @@ export default function AppointmentsPage() {
                               disabled={!!isHeldByOther || lockingSlot}
                               onClick={() => handleSlotClick(slot)}
                               className={cn(
-                                "px-2 py-1.5 text-xs font-bold rounded-xl border transition-all relative select-none cursor-pointer",
+                                "px-2 py-2 text-xs font-bold rounded-xl border transition-all relative select-none cursor-pointer min-h-[40px] flex items-center justify-center",
                                 isSelected
-                                  ? "bg-primary-500 text-white border-primary-500 shadow-xs"
-                                  : isHeldByOther
-                                  ? "bg-amber-500/10 text-amber-500 border-amber-300 cursor-not-allowed opacity-60"
-                                  : "bg-surface hover:bg-surface-hover text-text border-border"
+                                    ? "bg-primary-500 text-white border-primary-500 shadow-xs"
+                                    : isHeldByOther
+                                    ? "bg-amber-500/10 text-amber-500 border-amber-300 cursor-not-allowed opacity-60"
+                                    : "bg-surface hover:bg-surface-hover text-text border-border"
                               )}
                             >
                               {slot.time}
@@ -1515,8 +1695,8 @@ export default function AppointmentsPage() {
                 </p>
               </div>
 
-              <div className="flex justify-between border-t border-border/60 pt-3.5 mt-4">
-                <Button variant="outline" type="button" size="sm" onClick={() => setBookingStep(2)}>
+              <div className="flex flex-col-reverse sm:flex-row justify-between gap-2.5 border-t border-border/60 pt-3.5 mt-4">
+                <Button variant="outline" type="button" size="sm" onClick={() => setBookingStep(2)} className="min-h-[44px] w-full sm:w-auto justify-center">
                   <ArrowLeft className="w-3.5 h-3.5 mr-1" />
                   Back
                 </Button>
@@ -1525,7 +1705,7 @@ export default function AppointmentsPage() {
                   size="sm"
                   variant="primary"
                   loading={submitting}
-                  className="font-semibold rounded-xl shadow-xs"
+                  className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
                 >
                   Confirm & Schedule
                 </Button>
@@ -1609,11 +1789,11 @@ export default function AppointmentsPage() {
               </div>
             </div>
 
-            <div className="flex gap-2 pt-2 border-t border-border/60">
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-border/60">
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full font-semibold rounded-xl"
+                className="w-full font-semibold rounded-xl min-h-[44px] justify-center"
                 onClick={() => handlePrintSlip(createdTicket)}
               >
                 <Printer className="w-3.5 h-3.5 mr-1.5" />
@@ -1622,7 +1802,7 @@ export default function AppointmentsPage() {
               <Button
                 variant="primary"
                 size="sm"
-                className="w-full font-semibold rounded-xl shadow-xs"
+                className="w-full font-semibold rounded-xl shadow-xs min-h-[44px] justify-center"
                 onClick={() => setTicketModalOpen(false)}
               >
                 Done
@@ -1651,19 +1831,20 @@ export default function AppointmentsPage() {
               <button
                 key={star}
                 type="button"
+                aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
                 onClick={() => setRatingValue(star)}
-                className="focus:outline-none text-2xl cursor-pointer transition-transform hover:scale-110"
+                className="focus:outline-none text-3xl cursor-pointer transition-transform hover:scale-110 min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl"
               >
                 <span className={star <= ratingValue ? "text-amber-400" : "text-border"}>★</span>
               </button>
             ))}
           </div>
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
-            <Button variant="outline" size="sm" type="button" onClick={() => setReviewModalOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
+            <Button variant="outline" size="sm" type="button" onClick={() => setReviewModalOpen(false)} className="min-h-[44px] w-full sm:w-auto justify-center">
               Cancel
             </Button>
-            <Button type="submit" size="sm" variant="primary" loading={reviewSubmitting} className="font-semibold rounded-xl shadow-xs">
+            <Button type="submit" size="sm" variant="primary" loading={reviewSubmitting} className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center">
               Submit Review
             </Button>
           </div>
@@ -1704,7 +1885,7 @@ export default function AppointmentsPage() {
               </div>
 
               {/* Consultation Summary Metas */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-surface border border-border/60 p-3.5 rounded-xl">
+              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-surface border border-border/60 p-3.5 rounded-xl">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-muted block">Patient</span>
                   <span className="font-bold text-text">{activeRecord.patientId?.userId?.name || "Patient"}</span>
@@ -1747,9 +1928,11 @@ export default function AppointmentsPage() {
                 <p className="text-xs text-text font-bold pt-0.5">{activeRecord.diagnosis || "No diagnosis recorded."}</p>
               </div>
 
-              {/* Prescriptions */}
-              <div className="space-y-2">
-                <div className="text-xl font-serif font-black italic text-primary-600 dark:text-primary-400">Rx</div>
+              {/* Prescriptions Table */}
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-text-muted block border-b border-border/60 pb-1">
+                  Prescribed Medications
+                </span>
                 {activeRecord.prescriptions && activeRecord.prescriptions.length > 0 ? (
                   <div className="border border-border/60 rounded-xl overflow-hidden bg-surface">
                     <table className="w-full text-xs text-left border-collapse">
@@ -1777,10 +1960,11 @@ export default function AppointmentsPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2.5 pt-2 border-t border-border/60">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2 border-t border-border/60">
               <Button
                 variant="outline"
                 size="sm"
+                className="min-h-[44px] w-full sm:w-auto justify-center"
                 onClick={() => {
                   setRecordModalOpen(false);
                   setActiveRecord(null);
@@ -1791,7 +1975,7 @@ export default function AppointmentsPage() {
               <Button
                 variant="primary"
                 size="sm"
-                className="font-semibold rounded-xl shadow-xs"
+                className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
                 onClick={() => {
                   if (!activeRecord) return;
 
@@ -1968,7 +2152,7 @@ export default function AppointmentsPage() {
             <p className="text-text-muted">Doctor: Dr. {rescheduleTargetAppt?.doctorId?.name}</p>
             <p className="text-text-muted">
               Current Time:{" "}
-              {rescheduleTargetAppt?.appointmentTime ? new Date(rescheduleTargetAppt.appointmentTime).toLocaleString() : ""}
+              {rescheduleTargetAppt?.appointmentTime ? formatDateTime(rescheduleTargetAppt.appointmentTime) : ""}
             </p>
           </div>
 
@@ -1988,11 +2172,11 @@ export default function AppointmentsPage() {
             rows={2}
           />
 
-          <div className="flex justify-between border-t border-border/60 pt-3.5">
-            <Button variant="outline" type="button" size="sm" onClick={() => setRescheduleTargetAppt(null)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-between gap-2.5 border-t border-border/60 pt-3.5">
+            <Button variant="outline" type="button" size="sm" onClick={() => setRescheduleTargetAppt(null)} className="min-h-[44px] w-full sm:w-auto justify-center">
               Cancel
             </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submittingReschedule} className="font-semibold rounded-xl shadow-xs">
+            <Button type="submit" size="sm" variant="primary" loading={submittingReschedule} className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center">
               Confirm Reschedule
             </Button>
           </div>

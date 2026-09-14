@@ -60,10 +60,12 @@ function VerifyEmailContent() {
   }, [token]);
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-4 relative overflow-hidden bg-background">
+    <div className="min-h-screen flex flex-col justify-center items-center pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] px-4 relative bg-background">
       {/* Background ambient lighting */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-4 right-4 z-50">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+      </div>
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50">
         <ModeSwitcher />
       </div>
 
@@ -124,7 +126,7 @@ function VerifyEmailContent() {
           <CardFooter className="flex flex-col gap-2 pt-2">
             {status === "success" && (
               <Button
-                className="w-full flex items-center justify-center gap-2 font-medium"
+                className="w-full flex items-center justify-center gap-2 font-medium min-h-[44px]"
                 size="lg"
                 onClick={() => router.push("/login")}
               >
@@ -136,7 +138,7 @@ function VerifyEmailContent() {
             {status === "error" && (
               <>
                 <Button
-                  className="w-full"
+                  className="w-full min-h-[44px]"
                   size="lg"
                   onClick={() => router.push("/login")}
                 >
@@ -144,7 +146,7 @@ function VerifyEmailContent() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full flex items-center justify-center gap-2"
+                  className="w-full flex items-center justify-center gap-2 min-h-[44px]"
                   onClick={() => router.push("/")}
                 >
                   <Home className="w-4 h-4" />
@@ -155,7 +157,7 @@ function VerifyEmailContent() {
 
             {status === "no_token" && (
               <Button
-                className="w-full"
+                className="w-full min-h-[44px]"
                 size="lg"
                 onClick={() => router.push("/login")}
               >
@@ -177,8 +179,15 @@ export default function VerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <Spinner size="xl" />
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background" aria-busy="true" aria-label="Verifying email">
+          <div className="w-full max-w-md bg-card/95 border border-border/60 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 text-center animate-fade-in">
+            <div className="mx-auto w-14 h-14 rounded-full bg-surface-alt animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-6 w-40 bg-surface-alt rounded-lg mx-auto animate-pulse" />
+              <div className="h-4 w-60 bg-surface-alt rounded mx-auto animate-pulse" />
+            </div>
+            <div className="h-11 w-full bg-surface-alt rounded-xl animate-pulse" />
+          </div>
         </div>
       }
     >

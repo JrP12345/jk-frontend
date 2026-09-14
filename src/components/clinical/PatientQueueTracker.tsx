@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { Card, CardContent, Badge, Button, Spinner } from "@/components/ui";
+import { Card, CardContent, Badge, Button, Spinner, Skeleton } from "@/components/ui";
 
 interface PatientQueueTrackerProps {
   appointmentId: string;
@@ -57,8 +57,23 @@ export function PatientQueueTracker({ appointmentId, clinicId, doctorId }: Patie
 
   if (loading && !queueInfo) {
     return (
-      <Card className="p-4 text-center">
-        <Spinner size="sm" label="Fetching live queue position..." />
+      <Card className="border-l-4 border-l-primary-500/40 bg-surface border border-border/80 shadow-xs rounded-2xl overflow-hidden p-4 animate-fade-in">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Skeleton className="w-14 h-14 rounded-2xl shrink-0" />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-36 rounded" />
+                <Skeleton className="h-4 w-16 rounded-full" />
+              </div>
+              <Skeleton className="h-3 w-48 rounded" />
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-8 w-24 rounded-lg" />
+            <Skeleton className="h-8 w-24 rounded-lg" />
+          </div>
+        </div>
       </Card>
     );
   }

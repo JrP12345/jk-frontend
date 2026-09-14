@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useRef, memo } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "./utils";
+import { lockScroll, unlockScroll } from "@/lib/scrollLock";
+import Spinner from "./Spinner";
 
 export type DrawerPosition = "left" | "right" | "top" | "bottom";
 
@@ -15,6 +17,8 @@ export interface DrawerProps {
   children: React.ReactNode;
   width?: string;
   className?: string;
+  loading?: boolean;
+  loadingText?: string;
 }
 
 const positionStyles: Record<DrawerPosition, string> = {
@@ -33,6 +37,8 @@ export const Drawer = memo(function Drawer({
   children,
   width = "w-screen max-w-md",
   className = "",
+  loading = false,
+  loadingText,
 }: DrawerProps) {
   const [mounted, setMounted] = useState(false);
   const [render, setRender] = useState(isOpen);
@@ -60,8 +66,7 @@ export const Drawer = memo(function Drawer({
 
   useEffect(() => {
     if (!isOpen) return;
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    lockScroll();
     previousFocusRef.current = document.activeElement as HTMLElement;
 
     setTimeout(() => {
@@ -76,7 +81,7 @@ export const Drawer = memo(function Drawer({
     }, 50);
 
     return () => {
-      document.body.style.overflow = originalOverflow;
+      unlockScroll();
       previousFocusRef.current?.focus();
     };
   }, [isOpen]);
@@ -162,27 +167,27 @@ export const Drawer = memo(function Drawer({
             position === "right" && "border-l",
             position === "left" && "border-r",
             position === "top" && "border-b",
-            position === "bottom" && "border-t rounded-t-2xl",
+            position === "bottom" && "border-t rounded-t-3xl pb-[max(1rem,env(safe-area-inset-bottom))] max-h-[85vh]",
             className
           )}
         >
           {position === "bottom" && (
-            <div className="w-full flex items-center justify-center pt-2 pb-1 bg-surface-alt/70">
-              <div className="w-10 h-1 rounded-full bg-text-muted/30 hover:bg-text-muted/50 transition-colors" />
+            <div className="w-full flex items-center justify-center pt-2.5 pb-1 bg-surface-alt/70 shrink-0">
+              <div className="w-12 h-1.5 rounded-full bg-border" />
             </div>
           )}
 
           {/* Header */}
           {(title || subtitle) && (
             <div className="bg-surface-alt/70 border-b border-border/80 p-4 sm:p-5 flex items-center justify-between shrink-0">
-              <div>
+              <div className="min-w-0 pr-3">
                 {title && (
-                  <h3 id="drawer-title" className="text-sm sm:text-base font-semibold text-text leading-tight tracking-tight">
+                  <h3 id="drawer-title" className="text-sm sm:text-base font-semibold text-text leading-tight tracking-tight truncate">
                     {title}
                   </h3>
                 )}
                 {subtitle && (
-                  <p id="drawer-subtitle" className="text-xs text-text-secondary mt-0.5 leading-relaxed">
+                  <p id="drawer-subtitle" className="text-xs text-text-secondary mt-0.5 leading-relaxed truncate">
                     {subtitle}
                   </p>
                 )}
@@ -191,7 +196,7 @@ export const Drawer = memo(function Drawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-8 h-8 rounded-lg bg-surface hover:bg-surface-hover border border-border flex items-center justify-center text-text-muted hover:text-text text-sm transition-all duration-150 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                className="w-10 h-10 sm:w-8 sm:h-8 rounded-xl bg-surface hover:bg-surface-hover border border-border flex items-center justify-center text-text-muted hover:text-text text-sm transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 shrink-0 min-h-[40px] sm:min-h-0 min-w-[40px] sm:min-w-0"
                 aria-label="Close drawer"
               >
                 ✕
@@ -200,7 +205,20 @@ export const Drawer = memo(function Drawer({
           )}
 
           {/* Drawer Body */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-surface">{children}</div>
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-surface touch-scroll relative">
+            {loading && (
+              <div
+                className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-surface/85 backdrop-blur-xs p-6 text-center animate-fade-in"
+                role="status"
+                aria-live="polite"
+              >
+                <Spinner size="md" label={loadingText || "Loading..."} />
+              </div>
+            )}
+            <div className={cn("w-full transition-opacity duration-200", loading && "opacity-30 pointer-events-none")}>
+              {children}
+            </div>
+          </div>
         </div>
       </div>
     </div>,

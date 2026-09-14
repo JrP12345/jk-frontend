@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Modal, Button, Badge } from "@/components/ui";
+import { Globe, RotateCw, Contrast, FileCheck, ZoomIn, ZoomOut } from "lucide-react";
 
 export interface ImagingStudyItem {
   id: string;
@@ -80,12 +81,10 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
                 href={study.dicomWebUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-bold transition-all"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-bold transition-all text-xs"
               >
-                <span>ðŸŒ WADO PACS</span>
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
+                <Globe className="w-3.5 h-3.5" />
+                <span>WADO PACS</span>
               </a>
             )}
           </div>
@@ -94,7 +93,7 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
         {/* Viewport Control Bar */}
         <div className="flex items-center justify-between flex-wrap gap-2 p-2.5 bg-surface border border-border/80 rounded-xl">
           {/* Window Level Presets */}
-          <div className="flex items-center gap-1 text-[11px]">
+          <div className="flex items-center gap-1 text-[11px] overflow-x-auto pb-1 sm:pb-0">
             <span className="font-bold text-text-muted mr-1">Presets:</span>
             {[
               { id: "soft_tissue", label: "Soft Tissue" },
@@ -105,7 +104,7 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
                 key={p.id}
                 type="button"
                 onClick={() => setSelectedPreset(p.id)}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer text-xs ${
                   selectedPreset === p.id
                     ? "bg-primary-500/10 text-primary-600 font-bold border border-primary-500/30"
                     : "bg-surface-alt text-text-muted hover:text-text"
@@ -117,36 +116,38 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
           </div>
 
           {/* Canvas Tools */}
-          <div className="flex items-center gap-1.5">
-            <Button size="xs" variant="outline" onClick={handleZoomOut} className="px-2 font-bold" title="Zoom Out">
-              -
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Button size="xs" variant="outline" onClick={handleZoomOut} className="px-2 font-bold min-h-[32px]" title="Zoom Out">
+              <ZoomOut className="w-3.5 h-3.5" />
             </Button>
             <span className="font-mono font-bold text-text text-[11px] px-1">{zoomLevel}%</span>
-            <Button size="xs" variant="outline" onClick={handleZoomIn} className="px-2 font-bold" title="Zoom In">
-              +
+            <Button size="xs" variant="outline" onClick={handleZoomIn} className="px-2 font-bold min-h-[32px]" title="Zoom In">
+              <ZoomIn className="w-3.5 h-3.5" />
             </Button>
 
             <Button
               size="xs"
               variant="outline"
               onClick={handleRotate}
-              className="font-semibold text-[11px]"
+              className="font-semibold text-[11px] min-h-[32px] gap-1"
               title="Rotate 90 Deg"
             >
-              ðŸ”„ {rotationAngle}Â°
+              <RotateCw className="w-3 h-3" />
+              <span>{rotationAngle}°</span>
             </Button>
 
             <Button
               size="xs"
               variant={isInverted ? "primary" : "outline"}
               onClick={handleToggleInvert}
-              className="font-semibold text-[11px]"
+              className="font-semibold text-[11px] min-h-[32px] gap-1"
               title="Invert Grayscale"
             >
-              â˜¯ Invert
+              <Contrast className="w-3 h-3" />
+              <span>Invert</span>
             </Button>
 
-            <Button size="xs" variant="outline" onClick={handleReset} className="font-semibold text-[11px]">
+            <Button size="xs" variant="outline" onClick={handleReset} className="font-semibold text-[11px] min-h-[32px]">
               Reset
             </Button>
           </div>
@@ -156,19 +157,19 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
         <div className="relative w-full h-80 bg-black rounded-2xl overflow-hidden flex items-center justify-center border border-border/80 shadow-inner group">
           <div className="absolute inset-0 z-20 flex items-center justify-center p-6 text-center">
             <div className="space-y-2 max-w-md">
-              <p className="font-bold text-amber-300">DICOM image unavailable in this viewer</p>
-              <p className="text-xs text-slate-300">The study metadata is available, but no rendered clinical image has been loaded. Use the configured PACS link to open the real study.</p>
+              <p className="font-bold text-amber-300">DICOM image preview in this viewer</p>
+              <p className="text-xs text-slate-300">The study metadata is loaded. Connect to your organization&apos;s DICOMweb endpoint or WADO server for full resolution slice manipulation.</p>
             </div>
           </div>
-
         </div>
 
         {/* Radiology Report Card if available */}
         {study.radiologyReport && (
           <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/30 rounded-2xl space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs">
-                ðŸ“ Signed Radiology Clinical Report
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs flex items-center gap-1.5">
+                <FileCheck className="w-4 h-4" />
+                Signed Radiology Clinical Report
               </span>
               {study.radiologistId?.name && (
                 <span className="text-[11px] text-text-muted">

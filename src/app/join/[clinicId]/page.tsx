@@ -13,6 +13,7 @@ import {
   Badge,
   Spinner,
   useToast,
+  ModeSwitcher,
   cn,
 } from "@/components/ui";
 import {
@@ -243,20 +244,20 @@ export default function JoinClinicQueuePage() {
   // 1. Loading State
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-4">
         <div className="flex flex-col items-center gap-4 text-center max-w-sm">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-600/10 flex items-center justify-center animate-pulse">
-            <Building2 className="w-8 h-8 text-indigo-600" />
+          <div className="w-16 h-16 rounded-2xl bg-primary-500/10 flex items-center justify-center animate-pulse">
+            <Building2 className="w-8 h-8 text-primary-600 dark:text-primary-400" />
           </div>
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-text">
               Connecting to Clinic Queue...
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-sm text-text-muted">
               Retrieving live doctor availability and wait times.
             </p>
           </div>
-          <Spinner className="w-6 h-6 text-indigo-600" />
+          <Spinner className="w-6 h-6 text-primary-600" />
         </div>
       </div>
     );
@@ -345,30 +346,29 @@ export default function JoinClinicQueuePage() {
 
   // 4. Main Mobile Walk-In Self-Registration Flow
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-12">
+    <div className="min-h-screen bg-surface-alt pb-12 font-sans text-text">
       {/* Sticky Top Facility Banner */}
-      <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800 shadow-sm px-4 py-3">
+      <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-border shadow-xs px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="max-w-md mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow">
+            <div className="w-9 h-9 rounded-xl bg-primary-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
               <Building2 className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+              <h1 className="text-sm font-bold text-text truncate">
                 {clinic.name}
               </h1>
               {formattedAddress && (
-                <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                <div className="flex items-center gap-1 text-[11px] text-text-muted truncate">
                   <MapPin className="w-3 h-3 shrink-0" />
                   <span className="truncate">{formattedAddress}</span>
                 </div>
               )}
             </div>
           </div>
-          <Badge variant="outline" className="text-[11px] border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 shrink-0 font-semibold px-2 py-0.5">
-            <Sparkles className="w-3 h-3 mr-1" />
-            Instant Token
-          </Badge>
+          <div className="flex items-center gap-2 shrink-0">
+            <ModeSwitcher />
+          </div>
         </div>
       </header>
 
@@ -456,7 +456,7 @@ export default function JoinClinicQueuePage() {
 
               {/* Gender Radio Quick Selector */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-semibold text-text mb-1.5">
                   Gender
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -466,10 +466,10 @@ export default function JoinClinicQueuePage() {
                       key={g}
                       onClick={() => setGender(g)}
                       className={cn(
-                        "py-2 text-xs font-semibold rounded-lg capitalize border transition text-center",
+                        "py-2.5 px-3 text-xs font-semibold rounded-xl capitalize border transition text-center min-h-[44px] flex items-center justify-center cursor-pointer",
                         gender === g
-                          ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                          : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100"
+                          ? "bg-primary-600 text-white border-primary-600 shadow-xs"
+                          : "bg-surface text-text border-border hover:bg-surface-hover"
                       )}
                     >
                       {g}
@@ -603,20 +603,14 @@ export default function JoinClinicQueuePage() {
           <div className="pt-2 space-y-3">
             <Button
               type="submit"
+              size="lg"
               disabled={submitting || clinic.doctors.length === 0}
+              loading={submitting}
+              loadingText="Assigning Your Token..."
+              iconRight={<Sparkles className="w-5 h-5" />}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-6 text-base rounded-xl shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center gap-2"
             >
-              {submitting ? (
-                <>
-                  <Spinner className="w-5 h-5 text-white" />
-                  <span>Assigning Your Token...</span>
-                </>
-              ) : (
-                <>
-                  <span>Join Queue & Get Token</span>
-                  <Sparkles className="w-5 h-5" />
-                </>
-              )}
+              Join Queue & Get Token
             </Button>
 
             <div className="flex items-center justify-center gap-2 text-center text-xs text-slate-500 dark:text-slate-400">

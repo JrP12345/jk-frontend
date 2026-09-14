@@ -112,7 +112,7 @@ export function PharmacyAlertsCenter({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 w-full sm:w-auto">
           <Select
             size="sm"
             value={daysThreshold.toString()}
@@ -122,10 +122,10 @@ export function PharmacyAlertsCenter({
               { value: "60", label: "60 Days Threshold" },
               { value: "90", label: "90 Days Threshold" },
             ]}
-            className="w-44 text-xs font-semibold"
+            className="flex-1 sm:w-44 text-xs font-semibold"
           />
 
-          <Button size="xs" variant="primary" onClick={fetchExpiringBatches} className="rounded-xl font-bold">
+          <Button size="xs" variant="primary" onClick={fetchExpiringBatches} className="flex-1 sm:flex-initial rounded-xl font-bold min-h-[38px]">
             Refresh Alerts
           </Button>
         </div>
@@ -228,8 +228,7 @@ export function PharmacyAlertsCenter({
         </CardContent>
       </Card>
 
-      {/* SECTION 2: BATCH EXPIRATION WATCHLIST */}
-      <Card className="rounded-2xl border border-border bg-surface shadow-xs">
+      <Card loading={loading} loadingText="Analyzing batch expiration dates..." className="rounded-2xl border border-border bg-surface shadow-xs">
         <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-base font-bold text-text flex items-center gap-2">
@@ -241,12 +240,8 @@ export function PharmacyAlertsCenter({
             </CardDescription>
           </div>
         </CardHeader>
-        <CardContent className="pt-0">
-          {loading ? (
-            <div className="py-8 text-center">
-              <Spinner size="sm" label="Analyzing batch expiration dates..." />
-            </div>
-          ) : expiringBatches.length === 0 ? (
+        <CardContent className="pt-0 min-h-[120px]">
+          {!loading && expiringBatches.length === 0 ? (
             <p className="text-center py-8 text-xs text-text-muted">
               ✓ No active medicine batches are expiring within the next {daysThreshold} days.
             </p>
@@ -286,7 +281,7 @@ export function PharmacyAlertsCenter({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-between sm:justify-end">
                       <div className="text-right mr-2 hidden sm:block">
                         <span className="font-mono font-bold text-primary-600 block">₹{batch.sellingPrice}/unit</span>
                         <span className="text-[10px] text-text-muted">Cost: ₹{batch.purchaseCost}</span>
@@ -301,7 +296,7 @@ export function PharmacyAlertsCenter({
                             )
                           )
                         }
-                        className="rounded-xl font-bold"
+                        className="w-full sm:w-auto rounded-xl font-bold min-h-[36px]"
                       >
                         + Receive Fresh Batch
                       </Button>

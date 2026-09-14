@@ -19,7 +19,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "group relative inline-flex items-center justify-center font-medium select-none cursor-pointer rounded-xl transform-gpu transition-all duration-150 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:pointer-events-none disabled:transform-none active:scale-[0.98] hover:translate-y-[-1px] touch-manipulation min-h-[36px] sm:min-h-0";
+  "group relative inline-flex items-center justify-center font-medium select-none cursor-pointer rounded-xl transform-gpu transition-all duration-150 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:pointer-events-none disabled:transform-none active:scale-[0.98] hover:translate-y-[-1px] touch-manipulation min-h-[38px] sm:min-h-0";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
@@ -39,10 +39,10 @@ const variants: Record<ButtonVariant, string> = {
 };
 
 const sizes: Record<ButtonSize, string> = {
-  xs: "h-7 px-2.5 text-xs gap-1.5 rounded-lg font-medium tracking-tight min-h-[32px] sm:min-h-[28px]",
-  sm: "h-8 px-3 text-xs sm:text-sm gap-1.5 rounded-xl font-medium tracking-tight min-h-[36px] sm:min-h-[32px]",
-  md: "h-9 px-4 text-sm gap-2 rounded-xl font-medium tracking-tight min-h-[40px] sm:min-h-[36px]",
-  lg: "h-11 px-5 text-base gap-2.5 rounded-xl font-medium tracking-tight min-h-[44px]",
+  xs: "px-2.5 text-xs gap-1.5 rounded-lg font-medium tracking-tight min-h-[36px] sm:min-h-[28px] sm:h-7",
+  sm: "px-3.5 text-xs sm:text-sm gap-1.5 rounded-xl font-medium tracking-tight min-h-[40px] sm:min-h-[32px] sm:h-8",
+  md: "px-4 text-sm gap-2 rounded-xl font-medium tracking-tight min-h-[44px] sm:min-h-[36px] sm:h-9",
+  lg: "px-5 text-base gap-2.5 rounded-xl font-medium tracking-tight min-h-[48px] sm:min-h-[44px] h-11",
 };
 
 const iconSizes: Record<ButtonSize, string> = {
@@ -72,23 +72,38 @@ const Button = memo(
       ref
     ) => {
       const isBasicallyDisabled = disabled || loading;
+      const spinnerSize = size === "xs" ? "xs" : size === "sm" ? "sm" : size === "lg" ? "md" : "sm";
 
       return (
         <button
           ref={ref}
           type={type}
           disabled={isBasicallyDisabled}
-          aria-busy={loading || undefined}
-          aria-disabled={isBasicallyDisabled || undefined}
-          className={cn(base, variants[variant], sizes[size], fullWidth && "w-full", className)}
+          aria-busy={loading ? "true" : undefined}
+          aria-disabled={isBasicallyDisabled ? "true" : undefined}
+          className={cn(
+            base,
+            variants[variant],
+            sizes[size],
+            fullWidth && "w-full",
+            loading && "cursor-wait select-none",
+            className
+          )}
           {...rest}
         >
           {loading ? (
-            <Spinner
-              size={size === "xs" ? "xs" : size === "sm" ? "sm" : size === "lg" ? "md" : "sm"}
-              color="text-current"
-              className="shrink-0"
-            />
+            <span
+              className={cn(
+                "shrink-0 inline-flex items-center justify-center animate-fade-in",
+                icon ? iconSizes[size] : ""
+              )}
+            >
+              <Spinner
+                size={spinnerSize}
+                color="text-current"
+                className="shrink-0"
+              />
+            </span>
           ) : icon ? (
             <span className={cn("shrink-0 inline-flex items-center justify-center transition-transform duration-150 group-hover:scale-105", iconSizes[size])}>{icon}</span>
           ) : null}

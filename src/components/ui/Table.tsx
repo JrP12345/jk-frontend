@@ -18,6 +18,7 @@ export interface Column<T> {
   align?: "left" | "center" | "right";
   render?: (row: T, index: number) => ReactNode;
   accessor?: ((row: T, index: number) => ReactNode) | string;
+  mobileVisible?: boolean;
 }
 
 export type TableVariant = "default" | "striped" | "bordered" | "flat";
@@ -58,6 +59,8 @@ export interface TableProps<T> {
   rowsPerPageOptions?: number[];
   defaultRowsPerPage?: number;
   onRowClick?: (row: T) => void;
+  mobileCardView?: boolean;
+  renderMobileCard?: (row: T, index: number) => ReactNode;
 }
 
 const densityPadding: Record<TableDensity, string> = {
@@ -94,6 +97,8 @@ export default function Table<T extends Record<string, any>>({
   rowsPerPageOptions = [10, 25, 50, 100],
   defaultRowsPerPage = 10,
   onRowClick,
+  mobileCardView = true,
+  renderMobileCard,
 }: TableProps<T>) {
   // State
   const [density, setDensity] = useState<TableDensity>(initialDensity);
@@ -346,13 +351,14 @@ export default function Table<T extends Record<string, any>>({
                   value={searchQuery}
                   onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                   placeholder={searchPlaceholder}
-                  className="w-full bg-surface border border-border/80 rounded-xl pl-10 pr-9 py-2 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 transition-all shadow-2xs"
+                  className="w-full bg-surface border border-border/80 rounded-xl pl-10 pr-9 py-2 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 transition-all shadow-2xs min-h-[40px] sm:min-h-0"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text text-xs cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text text-xs cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center"
+                    aria-label="Clear search"
                   >
                     ✕
                   </button>
@@ -371,6 +377,7 @@ export default function Table<T extends Record<string, any>>({
                     (showFilterRow || activeFiltersCount > 0) && "border-primary-500 text-primary-500 bg-primary-500/10"
                   )}
                   title="Toggle Header Filters"
+                  aria-label="Toggle column filters"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
@@ -386,6 +393,7 @@ export default function Table<T extends Record<string, any>>({
                       type="button"
                       className="p-2 rounded-xl border border-border/80 bg-surface text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer shadow-2xs"
                       title="Column Visibility"
+                      aria-label="Column visibility"
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -411,6 +419,7 @@ export default function Table<T extends Record<string, any>>({
                   onClick={exportToCSV}
                   className="p-2 rounded-xl border border-border/80 bg-surface text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer shadow-2xs"
                   title="Export to CSV"
+                  aria-label="Export table data to CSV"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -425,6 +434,7 @@ export default function Table<T extends Record<string, any>>({
                   onClick={onAddClick}
                   className="p-2 rounded-xl bg-primary-600 hover:bg-primary-500 text-white font-bold text-xs shadow-xs transition-all active:scale-95 flex items-center justify-center shrink-0 cursor-pointer"
                   title={actionLabel || "Add New Entry"}
+                  aria-label={actionLabel || "Add new entry"}
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -442,8 +452,84 @@ export default function Table<T extends Record<string, any>>({
           )}
         </div>
 
-        {/* 2. TABLE GRID AREA */}
-        <div className="w-full overflow-x-auto min-h-[220px]">
+        {/* Subtle Non-Blocking Loading Shimmer Line */}
+        {loading && (
+          <div className="h-0.5 w-full bg-surface-alt overflow-hidden shrink-0" role="progressbar" aria-label="Loading table data">
+            <div className="h-full w-full bg-primary-500 skeleton-shimmer animate-pulse" />
+          </div>
+        )}
+
+        {/* 2. TABLE GRID AREA — Desktop table, Mobile card view */}
+        {mobileCardView && (
+          <div className={cn("sm:hidden p-3 space-y-2.5 transition-opacity duration-200", loading && currentData.length > 0 && "opacity-60 pointer-events-none")}>
+            {loading && currentData.length === 0 ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="p-3.5 rounded-xl border border-border/60 bg-surface-alt/30 space-y-2.5">
+                  <div className="h-4 w-3/4 rounded-lg skeleton-shimmer" />
+                  <div className="h-3 w-1/2 rounded-lg skeleton-shimmer" />
+                  <div className="h-3 w-2/3 rounded-lg skeleton-shimmer" />
+                </div>
+              ))
+            ) : currentData.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center text-text-muted">
+                <div className="w-10 h-10 rounded-xl bg-surface-alt flex items-center justify-center text-text-muted border border-border/60 mb-2">
+                  <svg className="w-5 h-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                </div>
+                <span className="font-semibold text-text text-sm">{emptyMessage}</span>
+              </div>
+            ) : (
+              currentData.map((row, i) => {
+                if (renderMobileCard) {
+                  return (
+                    <div key={String(row[keyField] ?? i)}>
+                      {renderMobileCard(row, i)}
+                    </div>
+                  );
+                }
+                const val = row[keyField];
+                const mobileColumns = visibleColumns.filter((col) => col.mobileVisible !== false);
+                return (
+                  <div
+                    key={String(val ?? i)}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    className={cn(
+                      "p-3.5 rounded-xl border border-border/60 bg-surface space-y-2 transition-all duration-150",
+                      onRowClick && "cursor-pointer active:scale-[0.99] hover:border-primary-500/30 hover:shadow-sm"
+                    )}
+                  >
+                    {mobileColumns.map((col, colIdx) => {
+                      const cellContent = col.render
+                        ? col.render(row, i)
+                        : typeof col.accessor === "function"
+                        ? col.accessor(row, i)
+                        : typeof col.accessor === "string"
+                        ? (row[col.accessor] ?? "—")
+                        : col.key
+                        ? (row[col.key] ?? "—")
+                        : "—";
+                      const isActionCol = (col.key || col.header || "").toLowerCase().includes("action");
+                      if (isActionCol) {
+                        return (
+                          <div key={colIdx} className="flex flex-wrap items-center justify-end gap-2 pt-2 mt-1 border-t border-border/50 w-full [&>button]:min-h-[38px] [&>button]:text-xs [&>a]:min-h-[38px] [&>div]:w-full sm:[&>div]:w-auto">
+                            {cellContent}
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={colIdx} className="flex items-start justify-between gap-2">
+                          <span className="text-[11px] font-medium text-text-muted shrink-0">{col.header}</span>
+                          <span className="text-xs font-medium text-text text-right min-w-0">{cellContent}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        <div className={cn("w-full overflow-x-auto min-h-[220px] touch-scroll scroll-smooth", mobileCardView && "hidden sm:block")}>
           <table className="w-full text-sm border-collapse text-left min-w-[650px] sm:min-w-full">
             <thead>
               <tr className={cn(
@@ -481,7 +567,8 @@ export default function Table<T extends Record<string, any>>({
                           <button
                             type="button"
                             onClick={() => handleSort(colKey)}
-                            className="p-0.5 rounded-md hover:bg-surface-hover transition-colors text-text-muted hover:text-text cursor-pointer"
+                            className="p-0.5 rounded-md hover:bg-surface-hover transition-colors text-text-muted hover:text-text cursor-pointer min-h-[28px] min-w-[28px] flex items-center justify-center"
+                            aria-label={`Sort by ${col.header}`}
                           >
                             <span className="text-[10px]">
                               {sortKey === colKey ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
@@ -522,8 +609,14 @@ export default function Table<T extends Record<string, any>>({
               )}
             </thead>
 
-            <tbody className={cn("divide-y divide-border/60", variant === "striped" && "[&>tr:nth-child(even)]:bg-surface-alt/30")}>
-              {loading ? (
+            <tbody
+              className={cn(
+                "divide-y divide-border/60 transition-opacity duration-200",
+                loading && currentData.length > 0 && "opacity-55 pointer-events-none",
+                variant === "striped" && "[&>tr:nth-child(even)]:bg-surface-alt/30"
+              )}
+            >
+              {loading && currentData.length === 0 ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/40">
                     {selectable && (
@@ -621,7 +714,7 @@ export default function Table<T extends Record<string, any>>({
         </div>
 
         {/* 3. FOOTER PAGINATION BAR (ALIGNED & RESPONSIVE) */}
-        {pagination && !loading && (
+        {pagination && (currentData.length > 0 || !loading) && (
           <div className="px-4 py-3 border-t border-border/80 bg-surface-alt/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-muted">
             <div className="flex items-center justify-between w-full sm:w-auto gap-4 font-medium">
               <span className="shrink-0">
@@ -645,47 +738,57 @@ export default function Table<T extends Record<string, any>>({
               </div>
             </div>
 
-            <div className="flex items-center justify-center sm:justify-end gap-3 w-full sm:w-auto shrink-0">
-              <div className="flex items-center gap-1">
+            <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto shrink-0">
+              <div className="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-start">
                 <button
                   type="button"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="px-2.5 py-1 rounded-lg border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-2xs cursor-pointer"
+                  className="h-8 min-w-[34px] px-2.5 rounded-lg border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-2xs cursor-pointer flex items-center justify-center font-bold min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-[34px]"
+                  aria-label="Previous page"
                 >
                   ‹
                 </button>
 
-                {paginationRange.map((item, idx) => {
-                  if (typeof item === "string") {
+                {/* Compact mobile page text */}
+                <span className="text-xs font-semibold text-text sm:hidden px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                {/* Desktop Numeric page buttons */}
+                <div className="hidden sm:flex items-center gap-1">
+                  {paginationRange.map((item, idx) => {
+                    if (typeof item === "string") {
+                      return (
+                        <span key={`${item}-${idx}`} className="h-7 w-6 flex items-center justify-center text-xs text-text-muted select-none">
+                          …
+                        </span>
+                      );
+                    }
+                    const pNum = item;
+                    const isActive = currentPage === pNum;
                     return (
-                      <span key={`${item}-${idx}`} className="h-7 w-6 flex items-center justify-center text-xs text-text-muted select-none">
-                        …
-                      </span>
+                      <button
+                        key={pNum}
+                        type="button"
+                        onClick={() => setCurrentPage(pNum)}
+                        className={cn(
+                          "h-7 min-w-[28px] px-1.5 rounded-lg flex items-center justify-center font-bold text-xs transition-all cursor-pointer shadow-2xs",
+                          isActive ? "bg-primary-600 text-white shadow-xs border border-primary-500" : "border border-border/80 bg-surface text-text-muted hover:text-text hover:bg-surface-hover"
+                        )}
+                      >
+                        {pNum}
+                      </button>
                     );
-                  }
-                  const pNum = item;
-                  const isActive = currentPage === pNum;
-                  return (
-                    <button
-                      key={pNum}
-                      type="button"
-                      onClick={() => setCurrentPage(pNum)}
-                      className={cn(
-                        "h-7 min-w-[28px] px-1.5 rounded-lg flex items-center justify-center font-bold text-xs transition-all cursor-pointer shadow-2xs",
-                        isActive ? "bg-primary-600 text-white shadow-xs border border-primary-500" : "border border-border/80 bg-surface text-text-muted hover:text-text hover:bg-surface-hover"
-                      )}
-                    >
-                      {pNum}
-                    </button>
-                  );
-                })}
+                  })}
+                </div>
 
                 <button
                   type="button"
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="px-2.5 py-1 rounded-lg border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-2xs cursor-pointer"
+                  className="h-8 min-w-[34px] px-2.5 rounded-lg border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-2xs cursor-pointer flex items-center justify-center font-bold min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-[34px]"
+                  aria-label="Next page"
                 >
                   ›
                 </button>
@@ -701,9 +804,9 @@ export default function Table<T extends Record<string, any>>({
         )}
       </div>
 
-      {/* Floating Bulk Actions Bar */}
+      {/* Floating Bulk Actions Bar — Elevated on mobile to clear MobileBottomNav */}
       {selectable && selected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-surface/95 border border-primary-500/40 text-text px-5 py-3 rounded-2xl shadow-xl shadow-slate-900/10 dark:shadow-black/70 ring-1 ring-black/5 dark:ring-white/10 backdrop-blur-xl flex items-center gap-4 animate-fade-up">
+        <div className="fixed bottom-22 md:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-surface/95 border border-primary-500/40 text-text px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl shadow-xl shadow-slate-900/10 dark:shadow-black/70 ring-1 ring-black/5 dark:ring-white/10 backdrop-blur-xl flex items-center gap-3 sm:gap-4 max-w-[calc(100vw-1.5rem)] animate-fade-up overflow-x-auto no-scrollbar pb-safe">
           <span className="text-xs font-bold text-primary-500">
             {selected.size} item{selected.size > 1 ? "s" : ""} selected
           </span>

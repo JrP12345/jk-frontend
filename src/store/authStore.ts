@@ -11,6 +11,12 @@ export interface User {
   role: Role;
   organization_id?: string;
   permissions?: string[];
+  impersonatedBy?: {
+    id: string;
+    email: string;
+    name: string;
+    originalRole: string;
+  } | null;
 }
 
 interface AuthState {
@@ -23,6 +29,8 @@ interface AuthState {
   login: (user: User) => void;
   logout: () => Promise<void>;
   switchOrg: (organizationId?: string) => Promise<void>;
+  impersonate: (params: { userId?: string; organizationId?: string; role?: string }) => Promise<void>;
+  stopImpersonation: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -34,6 +42,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const res = await api.get("/auth/me");
       const user = res.data.data.user;
+      if (user && (!user.impersonatedBy || !user.impersonatedBy.id)) {
+        user.impersonatedBy = null;
+      }
       if (typeof window !== "undefined") {
         document.cookie = "ananta_session=1; path=/; max-age=604800; SameSite=Lax";
         if (user && (user.role === "patient" || user.role === "family_member")) {
@@ -51,6 +62,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   login: (user: User) => {
+    if (user && (!user.impersonatedBy || !user.impersonatedBy.id)) {
+      user.impersonatedBy = null;
+    }
     if (typeof window !== "undefined") {
       document.cookie = "ananta_session=1; path=/; max-age=604800; SameSite=Lax";
       if (user && (user.role === "patient" || user.role === "family_member")) {
@@ -78,15 +92,78 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await api.post("/auth/switch-org", { organizationId });
       const res = await api.get("/auth/me");
+      const user = res.data.data.user;
+      if (user && (!user.impersonatedBy || !user.impersonatedBy.id)) {
+        user.impersonatedBy = null;
+      }
       if (typeof window !== "undefined") {
         localStorage.removeItem("ananta_active_clinic_id");
         if (organizationId) localStorage.setItem("ananta_active_org_id", organizationId);
         else localStorage.removeItem("ananta_active_org_id");
       }
       useClinicStore.getState().setActiveClinic(null);
-      set({ user: res.data.data.user, isAuthenticated: true });
+      set({ user, isAuthenticated: true });
     } catch (err) {
       console.error("Failed to switch organization context:", err);
+      throw err;
+    }
+  },
+
+  impersonate: async (params: { userId?: string; organizationId?: string; role?: string }) => {
+    try {
+      const res = await api.post("/auth/impersonate", params);
+      const targetUser = res.data.data.user;
+      if (targetUser && (!targetUser.impersonatedBy || !targetUser.impersonatedBy.id)) {
+        targetUser.impersonatedBy = null;
+      }
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("ananta_active_clinic_id");
+        if (targetUser.organization_id) {
+          localStorage.setItem("ananta_active_org_id", targetUser.organization_id);
+        }
+      }
+      useClinicStore.getState().setActiveClinic(null);
+      set({ user: targetUser, isAuthenticated: true });
+    } catch (err) {
+      console.error("Failed to impersonate user:", err);
+      throw err;
+    }
+  },
+
+  stopImpersonation: async () => {
+    try {
+      const res = await api.post("/auth/stop-impersonation");
+      const rootUser = res.data.data.user;
+      if (rootUser && (!rootUser.impersonatedBy || !rootUser.impersonatedBy.id)) {
+        rootUser.impersonatedBy = null;
+      }
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("ananta_active_clinic_id");
+        localStorage.removeItem("ananta_active_org_id");
+      }
+      useClinicStore.getState().setActiveClinic(null);
+      set({ user: rootUser, isAuthenticated: true });
+    } catch (err: any) {
+      // If 400 (session not active or out of sync), gracefully resync user via /auth/me
+      if (err.response?.status === 400) {
+        try {
+          const checkRes = await api.get("/auth/me");
+          const refreshedUser = checkRes.data.data.user;
+          if (refreshedUser && (!refreshedUser.impersonatedBy || !refreshedUser.impersonatedBy.id)) {
+            refreshedUser.impersonatedBy = null;
+          }
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("ananta_active_clinic_id");
+            localStorage.removeItem("ananta_active_org_id");
+          }
+          useClinicStore.getState().setActiveClinic(null);
+          set({ user: refreshedUser, isAuthenticated: true });
+          return;
+        } catch {
+          // ignore
+        }
+      }
+      console.error("Failed to stop impersonation:", err);
       throw err;
     }
   },

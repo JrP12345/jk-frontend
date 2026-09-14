@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Card, CardHeader, CardTitle, CardContent, Badge, useToast, cn } from "@/components/ui";
+import Link from "next/link";
+import { Button, Input, Card, CardHeader, CardTitle, CardContent, Badge, useToast, ModeSwitcher, cn } from "@/components/ui";
 import api from "@/lib/api";
 import { Printer, Phone, Hash, CheckCircle2, AlertCircle, ArrowRight, RotateCw, Stethoscope, Clock } from "lucide-react";
 
@@ -168,8 +169,19 @@ export default function PublicSelfCheckInKiosk() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-4 sm:p-6 animate-fade-in font-sans">
-      <div className="w-full max-w-lg space-y-6">
+    <div className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-3 sm:p-6 py-8 sm:py-12 animate-fade-in font-sans">
+      <div className="w-full max-w-lg space-y-5 sm:space-y-6">
+        {/* Top bar with back link & theme switch */}
+        <div className="flex items-center justify-between">
+          <Link
+            href="/browse"
+            className="text-xs font-semibold text-text-secondary hover:text-text flex items-center gap-1.5 bg-surface/80 backdrop-blur-md px-3.5 py-2 sm:py-1.5 rounded-full border border-border/70 transition-all hover:border-border min-h-[44px] sm:min-h-0"
+          >
+            ← Browse Clinics
+          </Link>
+          <ModeSwitcher />
+        </div>
+
         {/* Kiosk Branding Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-500/10 border border-primary-500/20 text-xs font-bold text-primary-600 dark:text-primary-400">
@@ -190,7 +202,7 @@ export default function PublicSelfCheckInKiosk() {
                   type="button"
                   onClick={() => setMode("token")}
                   className={cn(
-                    "flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer",
+                    "flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]",
                     mode === "token"
                       ? "bg-surface text-text shadow-xs border border-border/80"
                       : "text-text-muted hover:text-text"
@@ -204,7 +216,7 @@ export default function PublicSelfCheckInKiosk() {
                   type="button"
                   onClick={() => setMode("phone")}
                   className={cn(
-                    "flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer",
+                    "flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]",
                     mode === "phone"
                       ? "bg-surface text-text shadow-xs border border-border/80"
                       : "text-text-muted hover:text-text"

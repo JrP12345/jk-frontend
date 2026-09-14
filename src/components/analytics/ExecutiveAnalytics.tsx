@@ -15,6 +15,8 @@ import {
   ChartContainer,
   AreaChart,
   DonutChart,
+  Skeleton,
+  SkeletonStats,
 } from "@/components/ui";
 
 export function ExecutiveAnalytics() {
@@ -114,15 +116,11 @@ export function ExecutiveAnalytics() {
     fetchAnalytics();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="py-16 text-center animate-fade-in flex flex-col items-center justify-center gap-3">
-        <Spinner size="lg" label="Aggregating enterprise health system analytics..." />
-      </div>
-    );
+  if (loading && !metrics) {
+    return <ExecutiveAnalyticsSkeleton />;
   }
 
-  if (error) {
+  if (error && !metrics) {
     return (
       <Card className="py-12 text-center border-dashed border-border/80">
         <CardContent className="space-y-3">
@@ -146,7 +144,7 @@ export function ExecutiveAnalytics() {
           <Badge variant="primary" className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full">
             Enterprise Tier
           </Badge>
-          <Button variant="outline" size="xs" onClick={fetchAnalytics}>
+          <Button variant="outline" size="xs" onClick={fetchAnalytics} loading={loading}>
             Refresh
           </Button>
         </div>
@@ -260,6 +258,73 @@ export function ExecutiveAnalytics() {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export function ExecutiveAnalyticsSkeleton() {
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header Skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
+        <div className="space-y-1.5">
+          <Skeleton className="h-6 w-52 rounded" />
+          <Skeleton className="h-3.5 w-80 rounded" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-6 w-28 rounded-full" />
+          <Skeleton className="h-7 w-16 rounded" />
+        </div>
+      </div>
+
+      {/* Top 4 KPI Cards Skeleton */}
+      <SkeletonStats count={4} />
+
+      {/* Charts Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <Card className="lg:col-span-2 p-5 space-y-4">
+          <div className="space-y-1.5">
+            <Skeleton className="h-5 w-48 rounded" />
+            <Skeleton className="h-3.5 w-64 rounded" />
+          </div>
+          <Skeleton className="h-[210px] w-full rounded-lg" />
+        </Card>
+        <Card className="lg:col-span-1 p-5 space-y-4">
+          <div className="space-y-1.5">
+            <Skeleton className="h-5 w-40 rounded" />
+            <Skeleton className="h-3.5 w-48 rounded" />
+          </div>
+          <div className="h-[210px] flex items-center justify-center">
+            <Skeleton className="w-36 h-36 rounded-full" />
+          </div>
+        </Card>
+      </div>
+
+      {/* Departments Skeleton */}
+      <Card>
+        <CardHeader className="space-y-1.5">
+          <Skeleton className="h-5 w-56 rounded" />
+          <Skeleton className="h-3.5 w-72 rounded" />
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="p-4 bg-surface rounded-xl border border-border space-y-3">
+                <div className="flex justify-between items-center">
+                  <Skeleton className="h-4 w-28 rounded" />
+                  <Skeleton className="h-4 w-12 rounded" />
+                </div>
+                <Skeleton className="h-3 w-full rounded" />
+                <Skeleton className="h-3 w-4/5 rounded" />
+                <div className="pt-2 border-t border-border/50 flex justify-between">
+                  <Skeleton className="h-3 w-20 rounded" />
+                  <Skeleton className="h-3 w-24 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 0.0.0.0",
     "clean": "rmdir /s /q .next 2>nul || rm -rf .next",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run --pool=forks"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",

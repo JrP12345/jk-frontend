@@ -628,39 +628,14 @@ select:-webkit-autofill {
 .theme-transitioning main,
 .theme-transitioning section,
 .theme-transitioning footer,
-.theme-transitioning article,
-.theme-transitioning div,
-.theme-transitioning p,
-.theme-transitioning span,
-.theme-transitioning h1,
-.theme-transitioning h2,
-.theme-transitioning h3,
-.theme-transitioning h4,
-.theme-transitioning h5,
-.theme-transitioning h6,
-.theme-transitioning input,
-.theme-transitioning textarea,
-.theme-transitioning select,
-.theme-transitioning button,
-.theme-transitioning table,
-.theme-transitioning thead,
-.theme-transitioning tbody,
-.theme-transitioning tr,
-.theme-transitioning th,
-.theme-transitioning td,
-.theme-transitioning .glass-card {
-  transition: background-color 280ms cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 280ms cubic-bezier(0.4, 0, 0.2, 1),
-              color 200ms cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 280ms cubic-bezier(0.4, 0, 0.2, 1) !important;
-  transition-delay: 0ms !important;
-}
-
-/* Explicitly exempt SVGs, paths, icons, canvas from theme transition lag */
-.theme-transitioning svg,
-.theme-transitioning svg *,
-.theme-transitioning canvas {
-  transition: none !important;
+.theme-transitioning .glass-card,
+.theme-transitioning [class*="bg-surface"],
+.theme-transitioning [class*="bg-background"],
+.theme-transitioning [class*="border-border"] {
+  transition: background-color 220ms ease,
+              border-color 220ms ease,
+              color 220ms ease,
+              box-shadow 220ms ease !important;
 }
 
 /* ────────────────────────────────────────────────
@@ -696,13 +671,6 @@ select:-webkit-autofill {
   box-shadow: none !important;
 }
 
-/* ── Smooth Theme Transitions Engine (Scoped to Theme Transitions) ──────────── */
-.theme-transitioning *,
-.theme-transitioning *::before,
-.theme-transitioning *::after {
-  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease !important;
-}
-
 /* Disable transitions during initial page load to prevent flash */
 html.no-transitions *,
 html.no-transitions *::before,
@@ -713,7 +681,7 @@ html.no-transitions *::after {
 /* ── Native View Transitions 60fps GPU Engine ── */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 0.25s;
+  animation-duration: 0.22s;
   animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   mix-blend-mode: normal;
 }
@@ -737,12 +705,13 @@ html.no-transitions *::after {
 }
 
 /* ── Base ─────────────────────────────────────── */
-* { scroll-behavior: smooth; }
-
 html {
+  scroll-behavior: smooth;
   background-color: var(--s-background);
   color: var(--s-text-primary);
   color-scheme: light dark;
+  scrollbar-gutter: stable;
+  overflow-x: clip;
 }
 
 html.dark {
@@ -757,6 +726,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  overflow-x: clip;
 }
 
 /* ── Premium Modern 60 FPS GPU-Accelerated Keyframe Engine ── */
@@ -778,11 +748,9 @@ body {
 @keyframes page-enter {
   0% {
     opacity: 0;
-    transform: translate3d(0, 8px, 0);
   }
   100% {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -888,7 +856,7 @@ body {
 .animate-fade-in          { animation: fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-fade-out         { animation: fade-out 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-fade-up          { animation: fade-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.animate-page-enter       { animation: page-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-page-enter       { animation: page-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 /* ── Interactive Smoothness Tokens ── */
 .hover-lift {
@@ -998,6 +966,41 @@ body {
   will-change: transform;
 }
 
+/* ── Celestial Theme Switcher Animations ── */
+@keyframes celestial-ray-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes celestial-twinkle {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.animate-celestial-spin {
+  animation: celestial-ray-spin 14s linear infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.animate-celestial-twinkle-1 {
+  animation: celestial-twinkle 2s ease-in-out infinite;
+}
+
+.animate-celestial-twinkle-2 {
+  animation: celestial-twinkle 2.6s ease-in-out infinite 0.5s;
+}
+
+.animate-celestial-twinkle-3 {
+  animation: celestial-twinkle 1.8s ease-in-out infinite 1s;
+}
+
 
 /* ── Reduced Motion Accessibility ───────────────────────── */
 @media (prefers-reduced-motion: reduce) {
@@ -1028,6 +1031,44 @@ body {
 .animate-dropdown-out     { animation: dropdown-out 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-popover-in       { animation: popover-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-popover-out      { animation: popover-out 0.14s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* ── Mobile Bottom Sheet & Responsive Modal Animation Engine ── */
+@keyframes sheet-in-bottom {
+  0% {
+    transform: translate3d(0, 100%, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes sheet-out-bottom {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 100%, 0);
+  }
+}
+
+.animate-sheet-in {
+  animation: sheet-in-bottom 0.32s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  will-change: transform;
+}
+
+.animate-sheet-out {
+  animation: sheet-out-bottom 0.22s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  will-change: transform;
+}
+
+@media (min-width: 640px) {
+  .animate-sheet-in {
+    animation: dialog-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .animate-sheet-out {
+    animation: dialog-out 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
 
 @keyframes shake {
   0%, 100% { transform: none; }
@@ -1142,3 +1183,89 @@ body {
     padding: 8px 12px !important;
   }
 }
+
+/* ────────────────────────────────────────────────
+   Mobile-First Touch & Usability Enhancements
+   ──────────────────────────────────────────────── */
+html {
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overscroll-behavior-y: auto;
+}
+
+button, a, input, select, textarea {
+  touch-action: manipulation;
+}
+
+/* Momentum scrolling on iOS */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Safe Area Inset Helpers */
+.pt-safe {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+.bottom-safe {
+  bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+/* Touch Target Minimum Helper for mobile */
+@media (max-width: 640px) {
+  .touch-min-target,
+  .touch-target-44 {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Tablet Breakpoint Helper Utilities (641px - 1024px) */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .tablet-col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+  .tablet-grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tablet-gap-comfortable {
+    gap: 1.25rem;
+  }
+}
+
+/* Horizontal Scroll-Snap Utilities for Touch Navigation */
+.scroll-snap-x {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll-snap-start {
+  scroll-snap-align: start;
+}
+.scroll-snap-center {
+  scroll-snap-align: center;
+}
+
+/* Table Mobile Card View Touch Utilities */
+.table-card-row {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.table-card-row:active {
+  transform: scale(0.99);
+}
+

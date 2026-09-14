@@ -1,9 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import React from "react";
 import { useClinicStore } from "../store/clinicStore";
+import { useAuthStore } from "../store/authStore";
 import { DashboardStatCards } from "../components/dashboard/DashboardStatCards";
 import { DashboardFollowUpAlerts } from "../components/dashboard/DashboardFollowUpAlerts";
+import { ToastProvider } from "../components/ui";
+import ClinicsPage from "../app/(dashboard)/dashboard/clinics/page";
 import api from "../lib/api";
 
 // Mock next/navigation
@@ -80,9 +84,9 @@ describe("Dashboard Modular Components", () => {
       />
     );
 
-    expect(screen.getByText("Today's Collections")).toBeInTheDocument();
+    expect(screen.getByText("Collections")).toBeInTheDocument();
     expect(screen.getByText("₹25,000")).toBeInTheDocument();
-    expect(screen.getByText("Outstanding Balances")).toBeInTheDocument();
+    expect(screen.getByText("Outstanding")).toBeInTheDocument();
     expect(screen.getByText("₹5,000")).toBeInTheDocument();
     expect(screen.getByText("Active Clinics")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
@@ -106,11 +110,11 @@ describe("Dashboard Modular Components", () => {
       />
     );
 
-    expect(screen.getByText("Total Consultations")).toBeInTheDocument();
+    expect(screen.getByText("Total Visits")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
-    expect(screen.getByText("Pending Queue")).toBeInTheDocument();
+    expect(screen.getByText("Pending")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
-    expect(screen.getByText("Completed Visits")).toBeInTheDocument();
+    expect(screen.getByText("Completed")).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
   });
 
@@ -133,3 +137,88 @@ describe("Dashboard Modular Components", () => {
     expect(screen.getByText("Schedule Now")).toBeInTheDocument();
   });
 });
+
+describe("Clinics Page Active and Archived Branch Lifecycle", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    useAuthStore.setState({
+      user: {
+        id: "admin-1",
+        name: "Clinic Administrator",
+        email: "admin@ananta.com",
+        role: "admin",
+        organization_id: "org-1",
+        permissions: ["MANAGE_CLINICS", "VIEW_CLINICS"],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+    useClinicStore.setState({
+      clinics: [
+        { id: "clinic-1", name: "Ananta Indiranagar", city: "Bengaluru", isActive: true },
+      ],
+      activeClinicId: "clinic-1",
+      isLoaded: true,
+      isLoading: false,
+      error: null,
+    });
+  });
+
+  it("switches to archived branches and triggers reactivation", async () => {
+    vi.spyOn(api, "get").mockImplementation(async (url: string) => {
+      if (url.includes("status=inactive")) {
+        return {
+          data: {
+            success: true,
+            data: [
+              { id: "clinic-2", name: "Ananta Whitefield", city: "Bengaluru", isActive: false },
+            ],
+          },
+        } as any;
+      }
+      return {
+        data: {
+          success: true,
+          data: [
+            { id: "clinic-1", name: "Ananta Indiranagar", city: "Bengaluru", isActive: true },
+          ],
+        },
+      } as any;
+    });
+
+    const postSpy = vi.spyOn(api, "post").mockResolvedValue({
+      data: { success: true, message: "Clinic branch reactivated successfully" },
+    } as any);
+
+    render(
+      <ToastProvider>
+        <ClinicsPage />
+      </ToastProvider>
+    );
+
+    // Wait for initial load and archived count badge to appear
+    expect(await screen.findByText("1 Active Location")).toBeInTheDocument();
+    expect(await screen.findByText(/1 Archived/i)).toBeInTheDocument();
+    expect(screen.getByText("Ananta Indiranagar")).toBeInTheDocument();
+
+    // Click on Archived Branches tab
+    const archivedTab = screen.getByTestId("tab-archived-branches");
+    await act(async () => {
+      fireEvent.click(archivedTab);
+    });
+
+    // Archived branch row is displayed across responsive views (desktop table + mobile cards)
+    const branchNames = await screen.findAllByText("Ananta Whitefield");
+    expect(branchNames.length).toBeGreaterThan(0);
+
+    const reactivateBtns = await screen.findAllByText("Reactivate Branch");
+    expect(reactivateBtns.length).toBeGreaterThan(0);
+
+    // Click reactivate button
+    await act(async () => {
+      fireEvent.click(reactivateBtns[0]);
+    });
+    expect(postSpy).toHaveBeenCalledWith("/onboarding/clinics/clinic-2/reactivate");
+  });
+});
+

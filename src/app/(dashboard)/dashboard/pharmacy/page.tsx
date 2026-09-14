@@ -288,7 +288,10 @@ export default function PharmacyPage() {
       try {
         const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-        const wsHost = apiUrl.replace(/^https?:\/\//, "").replace(/\/api\/?$/, "");
+        let wsHost = apiUrl.replace(/^https?:\/\//, "").replace(/\/api\/?$/, "");
+        if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+          wsHost = wsHost.replace("localhost", window.location.hostname).replace("127.0.0.1", window.location.hostname);
+        }
         ws = new WebSocket(`${wsProto}//${wsHost}/api/queue/ws?clinicId=${selectedClinicId}`);
 
         ws.onmessage = (event) => {
@@ -459,7 +462,7 @@ export default function PharmacyPage() {
   const canManageMedicines = hasAnyPermission(user, "MANAGE_MEDICINES");
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -479,13 +482,13 @@ export default function PharmacyPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={fetchData}
               disabled={isRefreshing}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
             >
               <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
               Refresh
@@ -507,7 +510,7 @@ export default function PharmacyPage() {
                   setMedErrors({});
                   setIsMedModalOpen(true);
                 }}
-                className="font-semibold rounded-xl shadow-xs"
+                className="flex-1 sm:flex-initial min-h-[40px] font-semibold rounded-xl shadow-xs"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Add Medicine
@@ -544,12 +547,12 @@ export default function PharmacyPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           3. SEGMENTED TABS NAVIGATION BAR
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full touch-pan-x">
         <button
           type="button"
           onClick={() => setActiveTab("inventory")}
           className={cn(
-            "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+            "px-3.5 py-2 min-h-[38px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
             activeTab === "inventory"
               ? "bg-surface text-text shadow-xs font-bold border border-border/60"
               : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -566,7 +569,7 @@ export default function PharmacyPage() {
           type="button"
           onClick={() => setActiveTab("alerts")}
           className={cn(
-            "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+            "px-3.5 py-2 min-h-[38px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
             activeTab === "alerts"
               ? "bg-surface text-text shadow-xs font-bold border border-border/60"
               : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -585,7 +588,7 @@ export default function PharmacyPage() {
           type="button"
           onClick={() => setActiveTab("dispensing")}
           className={cn(
-            "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+            "px-3.5 py-2 min-h-[38px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
             activeTab === "dispensing"
               ? "bg-surface text-text shadow-xs font-bold border border-border/60"
               : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -664,6 +667,7 @@ export default function PharmacyPage() {
             <CardContent className="p-0">
               <Table
                 loading={loading}
+                mobileCardView
                 columns={[
                   { header: "Brand Name", key: "name" },
                   { header: "Generic Name", key: "generic" },
@@ -674,7 +678,7 @@ export default function PharmacyPage() {
                   { header: "Actions", key: "actions", align: "right" },
                 ]}
                 data={medicines.map((med) => {
-                  const isExpired = new Date(med.expiryDate) < new Date();
+                  const isExpired = new Date(med.expiryDate).getTime() < Date.now();
                   return {
                     id: med.id,
                     name: (
@@ -714,9 +718,10 @@ export default function PharmacyPage() {
                             <Button
                               size="xs"
                               variant="outline"
-                              className="h-7 w-7 p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text"
+                              className="h-8 w-8 min-h-[36px] min-w-[36px] p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text cursor-pointer"
+                              aria-label="Actions menu"
                             >
-                              <MoreHorizontal className="h-3.5 w-3.5" />
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           }
                           items={[
@@ -754,6 +759,107 @@ export default function PharmacyPage() {
                     ),
                   };
                 })}
+                renderMobileCard={(row: any) => {
+                  const med = medicines.find((m) => m.id === row.id);
+                  if (!med) return null;
+                  const isExpired = new Date(med.expiryDate).getTime() < Date.now();
+                  const isLow = med.stockQuantity < 10;
+                  return (
+                    <div
+                      key={med.id}
+                      className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-bold text-text text-sm truncate">{med.name}</p>
+                          <p className="text-xs text-text-muted italic truncate">{med.genericName}</p>
+                        </div>
+                        <Badge variant="outline" size="sm" className="font-mono text-[10px] font-bold uppercase shrink-0">
+                          {med.batchNumber}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs py-2 px-3 rounded-xl bg-surface-alt/70 border border-border/50">
+                        <div>
+                          <span className="text-text-muted text-[10px] uppercase font-bold block">Stock</span>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className={cn("font-bold text-sm", isLow ? "text-rose-500" : "text-text")}>
+                              {med.stockQuantity}
+                            </span>
+                            {isLow && (
+                              <Badge variant="danger" size="sm" className="text-[9px] uppercase font-bold px-1.5 py-0">
+                                Low
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-text-muted text-[10px] uppercase font-bold block">Retail Price</span>
+                          <span className="font-bold text-sm text-text mt-0.5 block">
+                            ₹{med.price?.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs pt-1 border-t border-border/50">
+                        <span className={cn("text-[11px] flex items-center gap-1", isExpired ? "text-rose-500 font-bold" : "text-text-muted")}>
+                          <Clock className="w-3 h-3 shrink-0" />
+                          Exp: {new Date(med.expiryDate).toLocaleDateString()} {isExpired && "(Expired)"}
+                        </span>
+
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            onClick={() => openAddBatchModal(med)}
+                            className="font-semibold text-xs rounded-xl min-h-[36px] px-3"
+                          >
+                            <Plus className="w-3.5 h-3.5 mr-1" />
+                            Add Batch
+                          </Button>
+                          <Dropdown
+                            align="right"
+                            trigger={
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                className="h-[36px] w-[36px] min-h-[36px] min-w-[36px] p-0 rounded-xl text-text-secondary hover:text-text flex items-center justify-center cursor-pointer"
+                                aria-label="Medicine actions"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            }
+                            items={[
+                              {
+                                label: "Edit Medicine",
+                                icon: <Edit3 className="w-4 h-4 text-text-muted" />,
+                                onClick: () => {
+                                  setEditingMedId(med.id);
+                                  setMedName(med.name);
+                                  setGenericName(med.genericName);
+                                  setStockQuantity(med.stockQuantity);
+                                  setRetailPrice(med.price);
+                                  setCostPrice(med.costPrice);
+                                  setExpiryDate(new Date(med.expiryDate).toISOString().split("T")[0]);
+                                  setBatchNumber(med.batchNumber);
+                                  setMedErrors({});
+                                  setIsMedModalOpen(true);
+                                },
+                              },
+                              { divider: true, label: "" },
+                              {
+                                label: "Delete Medicine",
+                                icon: <Trash2 className="w-4 h-4 text-danger" />,
+                                variant: "danger" as any,
+                                onClick: () => setDeletingMedId(med.id),
+                              },
+                            ]}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }}
                 emptyMessage="No medicines registered in this clinic catalog."
               />
             </CardContent>
@@ -793,6 +899,7 @@ export default function PharmacyPage() {
             <CardContent className="p-0">
               <Table
                 loading={loading}
+                mobileCardView
                 columns={[
                   { header: "Patient & Token", key: "patient" },
                   { header: "Attending Physician", key: "doctor" },
@@ -868,7 +975,7 @@ export default function PharmacyPage() {
                         variant="primary"
                         size="xs"
                         onClick={() => openDispenseModal(group)}
-                        className="font-semibold rounded-lg shadow-xs"
+                        className="font-semibold rounded-lg shadow-xs min-h-[36px] w-full sm:w-auto"
                       >
                         <Receipt className="w-3.5 h-3.5 mr-1" />
                         Dispense & Bill
@@ -876,6 +983,82 @@ export default function PharmacyPage() {
                     </div>
                   ),
                 }))}
+                renderMobileCard={(row: any) => {
+                  const group = pendingPrescriptionGroups.find((g) => g.encounterId === row.id);
+                  if (!group) return null;
+                  return (
+                    <div
+                      key={group.encounterId}
+                      className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-bold text-text text-sm">{group.patientId.name}</h4>
+                            {group.tokenNumber && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 font-mono">
+                                #{group.tokenNumber}
+                              </span>
+                            )}
+                          </div>
+                          {group.patientId.phone && (
+                            <a
+                              href={`tel:${group.patientId.phone}`}
+                              className="text-xs text-text-muted hover:text-text flex items-center gap-1 mt-0.5"
+                            >
+                              <Phone className="w-3 h-3 text-text-muted shrink-0" />
+                              <span>{group.patientId.phone}</span>
+                            </a>
+                          )}
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span className="text-xs font-semibold text-text flex items-center gap-1 justify-end">
+                            <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                            Dr. {group.doctorId.name.replace(/^dr\.?\s+/i, "")}
+                          </span>
+                          {group.appointmentTime && (
+                            <span className="text-[11px] text-text-muted flex items-center gap-1 justify-end mt-0.5">
+                              <Clock className="w-3 h-3 text-text-muted shrink-0" />
+                              {new Date(group.appointmentTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-surface-alt/70 border border-border/50 space-y-1.5">
+                        <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider block">
+                          Prescribed Items ({group.prescriptions?.length || 0})
+                        </span>
+                        <div className="space-y-1">
+                          {group.prescriptions?.map((item) => (
+                            <div key={item.id} className="text-xs text-text flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <Pill className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                                <span className="font-bold truncate">{item.name}</span>
+                              </div>
+                              <span className="text-[11px] text-text-muted shrink-0">
+                                {item.dosage} ({item.duration})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="pt-1">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => openDispenseModal(group)}
+                          className="w-full font-bold text-xs rounded-xl min-h-[44px] justify-center shadow-xs"
+                        >
+                          <Receipt className="w-4 h-4 mr-1.5" />
+                          Dispense & Bill
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }}
                 emptyMessage="No active prescriptions awaiting dispensing at this clinic location."
               />
             </CardContent>
@@ -995,11 +1178,11 @@ export default function PharmacyPage() {
             error={medErrors.stockQuantity}
           />
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsMedModalOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsMedModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" disabled={submittingMed} className="font-semibold rounded-xl shadow-xs">
+            <Button type="submit" variant="primary" size="sm" disabled={submittingMed} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
               {submittingMed ? "Saving..." : "Save Medicine Stock"}
             </Button>
           </div>
@@ -1089,8 +1272,8 @@ export default function PharmacyPage() {
               </span>
             </div>
 
-            <div className="pt-3 border-t border-border/60 flex justify-end gap-2.5">
-              <Button variant="outline" size="sm" onClick={() => setIsDispenseOpen(false)}>
+            <div className="pt-3 border-t border-border/60 flex flex-col-reverse sm:flex-row justify-end gap-2.5">
+              <Button variant="outline" size="sm" onClick={() => setIsDispenseOpen(false)} className="w-full sm:w-auto min-h-[44px]">
                 Cancel
               </Button>
               <Button
@@ -1098,7 +1281,7 @@ export default function PharmacyPage() {
                 variant="primary"
                 disabled={submittingDispense || hasDispenseErrors}
                 onClick={handleDispenseSubmit}
-                className="font-semibold rounded-xl shadow-xs"
+                className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]"
               >
                 {submittingDispense ? "Dispensing..." : "Dispense & Bill Patient"}
               </Button>
@@ -1181,11 +1364,11 @@ export default function PharmacyPage() {
             />
           </div>
 
-          <div className="flex justify-between border-t border-border/60 pt-3.5">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsBatchModalOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-between gap-2.5 border-t border-border/60 pt-3.5">
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsBatchModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submittingBatch} className="font-semibold rounded-xl shadow-xs">
+            <Button type="submit" size="sm" variant="primary" loading={submittingBatch} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
               Add Batch Stock
             </Button>
           </div>

@@ -3,6 +3,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
+import { PrescriptionSealingBadge } from "./PrescriptionSealingBadge";
 
 export type DocumentType =
   | "prescription"
@@ -46,6 +47,12 @@ export interface UnifiedDocumentData {
   labResults?: Array<{ testName: string; result: string; unit?: string; referenceRange?: string; status: string }>;
   dischargeSummary?: { admissionDate: string; dischargeDate: string; summary: string; advice: string };
   certificateText?: string;
+  
+  // Medico-Legal NMC Cryptographic Sealing
+  isSealed?: boolean;
+  prescriptionHash?: string;
+  digitalSignature?: string;
+  sealedAt?: string;
   
   // Medico-legal & Referral payloads
   referralDetails?: {
@@ -360,6 +367,15 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
           {/* 1. Prescription (Rx) */}
           {isPrescription && (
             <div className="space-y-3">
+              {/* NMC Cryptographic Seal & Verification Status */}
+              <PrescriptionSealingBadge
+                isSealed={document.isSealed}
+                prescriptionHash={document.prescriptionHash}
+                digitalSignature={document.digitalSignature}
+                doctorRegistrationNumber={document.doctorRegistrationNumber}
+                sealedAt={document.sealedAt}
+              />
+
               {/* Pre-Consultation Vitals Summary */}
               {document.vitals && Object.keys(document.vitals).length > 0 && (
                 <div className="vitals-strip">

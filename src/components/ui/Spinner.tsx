@@ -280,16 +280,48 @@ export const PageSpinner = memo(function PageSpinner({
   );
 });
 
+export interface CardLoaderProps {
+  label?: string;
+  description?: string;
+  minHeight?: string | number;
+  className?: string;
+}
+
 export const CardLoader = memo(function CardLoader({
   label = "Loading data...",
+  description,
+  minHeight = "180px",
   className = "",
-}: {
-  label?: string;
-  className?: string;
-}) {
+}: CardLoaderProps) {
+  const minHStyle = typeof minHeight === "number" ? `${minHeight}px` : minHeight;
   return (
-    <div className={cn("w-full py-12 flex flex-col items-center justify-center text-center", className)}>
-      <Spinner size="lg" label={label} />
+    <div
+      style={{ minHeight: minHStyle }}
+      className={cn("w-full flex flex-col items-center justify-center text-center p-6 animate-fade-in", className)}
+      role="status"
+    >
+      <Spinner size="md" label={label} secondaryText={description} />
     </div>
+  );
+});
+
+export interface InlineLoaderProps {
+  label?: string;
+  size?: SpinnerSize;
+  className?: string;
+  color?: string;
+}
+
+export const InlineLoader = memo(function InlineLoader({
+  label,
+  size = "xs",
+  className = "",
+  color = "text-primary-600 dark:text-primary-400",
+}: InlineLoaderProps) {
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 align-middle text-xs font-medium text-text-muted select-none", className)} role="status">
+      <Spinner size={size} color={color} className="shrink-0" />
+      {label && <span>{label}</span>}
+    </span>
   );
 });

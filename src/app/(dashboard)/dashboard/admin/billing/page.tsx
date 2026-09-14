@@ -19,6 +19,9 @@ import {
   Spinner,
   useToast,
   cn,
+  Skeleton,
+  SkeletonStats,
+  SkeletonCardGrid,
 } from "@/components/ui";
 import { billingService, SaaSPlan } from "@/services/billing.service";
 import { API_URL } from "@/lib/api";
@@ -225,8 +228,30 @@ export default function AdminBillingPage() {
 
   if (loading) {
     return (
-      <div className="py-20 text-center">
-        <Spinner size="lg" label="Loading platform SaaS administration console..." />
+      <div className="space-y-6 w-full pb-32 sm:pb-12 animate-fade-in">
+        <Card className="p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-7 w-72 rounded" />
+                <Skeleton className="h-6 w-28 rounded-full" />
+              </div>
+              <Skeleton className="h-4 w-96 rounded" />
+            </div>
+            <div className="flex gap-2.5">
+              <Skeleton className="h-9 w-24 rounded-xl" />
+              <Skeleton className="h-9 w-36 rounded-xl" />
+            </div>
+          </div>
+        </Card>
+        <SkeletonStats count={4} />
+        <Card className="p-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <Skeleton className="h-6 w-48 rounded" />
+            <Skeleton className="h-9 w-32 rounded-lg" />
+          </div>
+          <SkeletonCardGrid count={3} columns={3} />
+        </Card>
       </div>
     );
   }
@@ -235,7 +260,7 @@ export default function AdminBillingPage() {
   const totalTrialingOrgs = subscriptions.filter((s) => s.status === "trialing").length;
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased pb-8 animate-fade-up">
+    <div className="space-y-6 w-full font-sans text-text antialiased pb-32 sm:pb-12 animate-fade-up">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -255,22 +280,22 @@ export default function AdminBillingPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={loadAdminData}
-              disabled={isRefreshing}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              loading={isRefreshing}
+              icon={<RotateCw className="h-3.5 w-3.5 text-text-secondary" />}
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
             >
-              <RotateCw className={`h-3.5 w-3.5 mr-1.5 text-text-secondary ${isRefreshing ? "animate-spin" : ""}`} />
               Refresh
             </Button>
 
             <Button
               variant="primary"
               size="sm"
-              className="font-semibold rounded-xl shadow-xs"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
               onClick={() => {
                 setEditingPlan({
                   name: "",
@@ -342,7 +367,7 @@ export default function AdminBillingPage() {
           3. SEGMENTED TAB NAVIGATION & SEARCH
          ────────────────────────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface p-3 rounded-2xl border border-border/80 shadow-xs">
-        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-pan-x w-fit max-w-full">
           <button
             type="button"
             onClick={() => setActiveTab("plans")}
@@ -517,6 +542,7 @@ export default function AdminBillingPage() {
           <Table
             data={filteredSubs}
             loading={loading}
+            mobileCardView
             emptyMessage="No organization subscriptions match the current search filter."
             columns={[
                   {
@@ -597,7 +623,7 @@ export default function AdminBillingPage() {
                                 });
                               }
                             }}
-                            className="font-semibold rounded-lg shadow-xs"
+                            className="font-semibold rounded-lg shadow-xs min-h-[32px] px-2.5"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
                             Activate Paid
@@ -607,7 +633,7 @@ export default function AdminBillingPage() {
                           variant="outline"
                           size="xs"
                           onClick={() => setExtendingSubId(row.id)}
-                          className="font-semibold rounded-lg"
+                          className="font-semibold rounded-lg min-h-[32px] px-2.5"
                         >
                           <CalendarPlus className="w-3.5 h-3.5 mr-1 text-text-muted" />
                           Extend Trial
@@ -639,7 +665,7 @@ export default function AdminBillingPage() {
                 variant="primary"
                 size="sm"
                 loading={savingRazorpay}
-                className="font-semibold rounded-xl shadow-xs shrink-0"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs shrink-0"
               >
                 <KeyRound className="w-3.5 h-3.5 mr-1.5" />
                 Save Gateway Keys
@@ -731,8 +757,8 @@ export default function AdminBillingPage() {
               value={extraDays}
               onChange={(e) => setExtraDays(Number(e.target.value))}
             />
-            <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
-              <Button variant="outline" size="sm" onClick={() => setExtendingSubId(null)}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
+              <Button variant="outline" size="sm" onClick={() => setExtendingSubId(null)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 Cancel
               </Button>
               <Button
@@ -740,7 +766,7 @@ export default function AdminBillingPage() {
                 size="sm"
                 loading={savingTrial}
                 onClick={handleExtendTrial}
-                className="font-semibold rounded-xl shadow-xs"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
               >
                 Confirm Extension
               </Button>
@@ -901,11 +927,11 @@ export default function AdminBillingPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
-              <Button type="button" variant="outline" size="sm" onClick={() => setPlanModalOpen(false)}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
+              <Button type="button" variant="outline" size="sm" onClick={() => setPlanModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" size="sm" loading={savingPlan} className="font-semibold rounded-xl shadow-xs">
+              <Button type="submit" variant="primary" size="sm" loading={savingPlan} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs">
                 Save Plan Configuration
               </Button>
             </div>

@@ -10,7 +10,7 @@ import { SOAPNoteEditor } from "./SOAPNoteEditor";
 import { NEWS2Calculator } from "./NEWS2Calculator";
 import { PatientTimeline } from "../ehr/PatientTimeline";
 import { DoctorCopilotCard } from "./DoctorCopilotCard";
-import { Tabs, Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, Select, Modal, useToast, Table, Spinner } from "@/components/ui";
+import { Tabs, Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, Select, Modal, useToast, Table, Spinner, Skeleton } from "@/components/ui";
 import api from "@/lib/api";
 import { OrdersService } from "@/services/orders.service";
 import { Receipt, Megaphone, Plus, Activity, FileText, Clock, Layers } from "lucide-react";
@@ -62,17 +62,25 @@ export function EncounterWorkspace({
   const [chargePreview, setChargePreview] = useState<any>(null);
   const [loadingCharges, setLoadingCharges] = useState(false);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const [customConsultFee, setCustomConsultFee] = useState<number | string>("");
 
-  const handleOpenChargePreview = async () => {
+  const handleOpenChargePreview = async (overrideFee?: number | React.MouseEvent) => {
     if (!encounterId) {
       toast({ title: "No Encounter", description: "Encounter context is missing", variant: "error" });
       return;
     }
     setIsChargeModalOpen(true);
     setLoadingCharges(true);
+    const numericFee = typeof overrideFee === "number" ? overrideFee : undefined;
     try {
-      const res = await api.get(`/encounters/${encounterId}/charges-preview`);
+      const url = numericFee !== undefined
+        ? `/encounters/${encounterId}/charges-preview?customConsultFee=${numericFee}`
+        : `/encounters/${encounterId}/charges-preview`;
+      const res = await api.get(url);
       setChargePreview(res.data?.data || null);
+      if (numericFee === undefined && res.data?.data?.consultationFee !== undefined) {
+        setCustomConsultFee(res.data.data.consultationFee);
+      }
     } catch (err: any) {
       toast({ title: "Preview Error", description: err.response?.data?.message || "Failed to load encounter charges", variant: "error" });
     } finally {
@@ -84,7 +92,10 @@ export function EncounterWorkspace({
     if (!encounterId) return;
     setGeneratingInvoice(true);
     try {
-      const res = await api.post(`/encounters/${encounterId}/auto-invoice`);
+      const feeVal = customConsultFee !== "" ? Number(customConsultFee) : undefined;
+      const res = await api.post(`/encounters/${encounterId}/auto-invoice`, {
+        customConsultFee: feeVal,
+      });
       const inv = res.data?.data;
       toast({ title: "Invoice Generated! 📄", description: `Created Invoice #${inv.invoiceNumber} for ₹${inv.totalAmount}`, variant: "success" });
       setIsChargeModalOpen(false);
@@ -194,8 +205,59 @@ export function EncounterWorkspace({
 
   if (contextLoading) {
     return (
-      <div className="py-20 text-center">
-        <Spinner size="lg" label="Initializing clinical encounter workspace..." />
+      <div className="min-h-screen bg-surface-alt flex flex-col animate-fade-in">
+        {/* Sticky Patient Context Banner Skeleton */}
+        <div className="bg-surface border-b border-border/80 px-4 py-3">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-10 h-10 rounded-full" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-5 w-44 rounded" />
+                <Skeleton className="h-3.5 w-64 rounded" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-9 w-36 rounded-xl" />
+              <Skeleton className="h-9 w-28 rounded-xl" />
+            </div>
+          </div>
+        </div>
+
+        {/* Main Workspace Container */}
+        <div className="p-4 max-w-7xl mx-auto w-full space-y-4 flex-1">
+          {/* Doctor Briefing Card Skeleton */}
+          <Card className="p-4 space-y-2">
+            <Skeleton className="h-5 w-48 rounded" />
+            <Skeleton className="h-4 w-full rounded" />
+          </Card>
+
+          {/* Tabs + Action row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex gap-2">
+              <Skeleton className="h-9 w-36 rounded-xl" />
+              <Skeleton className="h-9 w-36 rounded-xl" />
+              <Skeleton className="h-9 w-28 rounded-xl" />
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-9 w-36 rounded-xl" />
+              <Skeleton className="h-9 w-36 rounded-xl" />
+            </div>
+          </div>
+
+          {/* Main workspace layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card className="lg:col-span-2 p-6 space-y-4">
+              <Skeleton className="h-6 w-48 rounded" />
+              <Skeleton className="h-32 w-full rounded-xl" />
+              <Skeleton className="h-32 w-full rounded-xl" />
+            </Card>
+            <Card className="p-6 space-y-4">
+              <Skeleton className="h-6 w-36 rounded" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -225,12 +287,12 @@ export function EncounterWorkspace({
             ]}
           />
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={handleOpenChargePreview}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs"
+              className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs"
             >
               <Receipt className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
               Auto Charge Capture
@@ -240,7 +302,7 @@ export function EncounterWorkspace({
               size="sm"
               onClick={handleCallNextPatient}
               loading={callingNext}
-              className="font-semibold rounded-xl shadow-xs"
+              className="flex-1 sm:flex-initial min-h-[40px] font-semibold rounded-xl shadow-xs"
             >
               <Megaphone className="w-3.5 h-3.5 mr-1.5" />
               Call Next Patient
@@ -262,12 +324,12 @@ export function EncounterWorkspace({
         {/* Tab 2: Diagnostic Orders & Results */}
         {activeTab === "orders" && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center bg-surface p-4 rounded-xl border border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 rounded-xl border border-border">
               <div>
                 <h3 className="font-bold text-base text-text">Diagnostic Lab Orders</h3>
                 <p className="text-xs text-text-secondary">Place and track diagnostic orders for this encounter</p>
               </div>
-              <Button onClick={() => setIsOrderModalOpen(true)}>+ Place Diagnostic Order</Button>
+              <Button onClick={() => setIsOrderModalOpen(true)} className="w-full sm:w-auto min-h-[40px]">+ Place Diagnostic Order</Button>
             </div>
 
             {orders.length > 0 ? (
@@ -389,9 +451,9 @@ export function EncounterWorkspace({
               placeholder="e.g. Rule out acute infection"
             />
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setIsOrderModalOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={submittingOrder}>Place Order</Button>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setIsOrderModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">Cancel</Button>
+            <Button type="submit" loading={submittingOrder} className="w-full sm:w-auto min-h-[44px]">Place Order</Button>
           </div>
         </form>
       </Modal>
@@ -424,21 +486,24 @@ export function EncounterWorkspace({
               placeholder="e.g. 12.0 - 16.0"
             />
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setSelectedOrderForResult(null)}>Cancel</Button>
-            <Button type="submit" loading={submittingResult}>Save Result</Button>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setSelectedOrderForResult(null)} className="w-full sm:w-auto min-h-[44px]">Cancel</Button>
+            <Button type="submit" loading={submittingResult} className="w-full sm:w-auto min-h-[44px]">Save Result</Button>
           </div>
         </form>
       </Modal>
 
       {/* Modal 3: Auto Charge Capture & Invoice Preview */}
-      <Modal open={isChargeModalOpen} onClose={() => setIsChargeModalOpen(false)} title="Auto-Captured Encounter Charges & Invoice Preview" size="lg">
+      <Modal
+        open={isChargeModalOpen}
+        onClose={() => setIsChargeModalOpen(false)}
+        title="Auto-Captured Encounter Charges & Invoice Preview"
+        size="lg"
+        loading={loadingCharges}
+        loadingText="Compiling consultation fees, lab orders & prescriptions..."
+      >
         <div className="space-y-4">
-          {loadingCharges ? (
-            <div className="py-12 text-center">
-              <Spinner size="lg" label="Compiling consultation fees, lab orders & prescriptions..." />
-            </div>
-          ) : !chargePreview || !chargePreview.items || chargePreview.items.length === 0 ? (
+          {!chargePreview || !chargePreview.items || chargePreview.items.length === 0 ? (
             <div className="p-6 text-center text-text-muted">
               No billable items or orders found for this encounter session.
             </div>
@@ -451,6 +516,43 @@ export function EncounterWorkspace({
                 </div>
                 <Badge variant="primary">Auto-Compiled</Badge>
               </div>
+
+              {chargePreview.isFeeEditable && (
+                <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                      <span>🩺 Post-Consultation Physician Fee</span>
+                      <Badge variant="warning" size="sm" className="text-[10px]">
+                        {chargePreview.feeType === "post_consultation" ? "Variable Fee Mode" : "Adjustable"}
+                      </Badge>
+                    </p>
+                    <p className="text-[11px] text-text-muted mt-0.5">
+                      Specify the consultation charge for this encounter before generating the invoice.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-bold text-text">₹</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={customConsultFee}
+                      onChange={(e) => setCustomConsultFee(e.target.value)}
+                      onBlur={(e) => handleOpenChargePreview(Number(e.target.value) || 0)}
+                      className="w-28 px-3 py-1.5 bg-surface border border-border rounded-xl text-xs font-bold text-text focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 shadow-2xs"
+                      placeholder="Fee (₹)"
+                    />
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      type="button"
+                      onClick={() => handleOpenChargePreview(Number(customConsultFee) || 0)}
+                      className="text-xs font-semibold"
+                    >
+                      Update
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="border border-border rounded-xl overflow-hidden">
                 <Table
@@ -518,11 +620,11 @@ export function EncounterWorkspace({
                 </div>
               </div>
 
-              <div className="flex justify-between border-t border-border pt-4 mt-4">
-                <Button variant="outline" type="button" onClick={() => setIsChargeModalOpen(false)}>
+              <div className="flex flex-col-reverse sm:flex-row justify-between gap-2 border-t border-border pt-4 mt-4">
+                <Button variant="outline" type="button" onClick={() => setIsChargeModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
                   Close
                 </Button>
-                <Button type="button" onClick={handleGenerateInvoiceFromEncounter} loading={generatingInvoice}>
+                <Button type="button" onClick={handleGenerateInvoiceFromEncounter} loading={generatingInvoice} className="w-full sm:w-auto min-h-[44px]">
                   📄 Generate Official Invoice
                 </Button>
               </div>

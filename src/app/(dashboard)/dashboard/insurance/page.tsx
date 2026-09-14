@@ -19,6 +19,7 @@ import {
   Badge,
   StatCard,
   Spinner,
+  SkeletonCardGrid,
   cn,
 } from "@/components/ui";
 import { RotateCw, Plus, ShieldCheck, IndianRupee, Clock, AlertCircle, FileText, CheckCircle2, FileCheck } from "lucide-react";
@@ -435,7 +436,7 @@ export default function InsurancePage() {
   const underQueryCount = preAuths.filter((p) => p.status === "under_query").length;
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -455,13 +456,13 @@ export default function InsurancePage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={fetchData}
               disabled={loading}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors cursor-pointer"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors cursor-pointer"
             >
               <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
               Refresh Desk
@@ -472,7 +473,7 @@ export default function InsurancePage() {
                 variant="primary"
                 size="sm"
                 onClick={() => setIsSubmitModalOpen(true)}
-                className="font-semibold rounded-xl shadow-xs cursor-pointer"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Submit Pre-Auth Request
@@ -482,7 +483,7 @@ export default function InsurancePage() {
                 variant="primary"
                 size="sm"
                 onClick={() => setIsClaimModalOpen(true)}
-                className="font-semibold rounded-xl shadow-xs cursor-pointer"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Submit Insurance Claim
@@ -495,7 +496,7 @@ export default function InsurancePage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. SEGMENTED TABS SWITCHER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-pan-x w-fit max-w-full">
         <button
           type="button"
           onClick={() => {
@@ -602,7 +603,7 @@ export default function InsurancePage() {
       <div className="p-3.5 sm:p-4 bg-surface rounded-2xl border border-border/80 shadow-xs space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {activeTab === "preAuth" ? (
-            <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+            <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-pan-x w-fit max-w-full">
               <span className="text-[11px] font-bold text-text-muted px-2.5 shrink-0">TPA Partner:</span>
               {[
                 { key: "all", label: "All TPAs" },
@@ -643,7 +644,7 @@ export default function InsurancePage() {
         </div>
 
         {/* Status Filter Bar */}
-        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-pan-x w-fit max-w-full">
           <span className="text-[11px] font-bold text-text-muted px-2.5 shrink-0">Status:</span>
           {(activeTab === "preAuth"
             ? [
@@ -684,9 +685,7 @@ export default function InsurancePage() {
          ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "preAuth" && (
         loading ? (
-          <div className="py-12 text-center">
-            <Spinner size="md" label="Loading Pre-Authorization Claims..." />
-          </div>
+          <SkeletonCardGrid count={6} columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3" />
         ) : filteredPreAuths.length === 0 ? (
           <Card className="py-12 text-center text-xs text-text-muted rounded-2xl border-border">
             <CardContent>No insurance pre-authorization claims found matching current filters.</CardContent>
@@ -738,9 +737,19 @@ export default function InsurancePage() {
 
                   {/* Patient & Clinical Details */}
                   <div className="p-2.5 bg-surface-alt/70 rounded-xl border border-border/60 space-y-1 text-[11px]">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="text-text-muted">Patient Name:</span>
-                      <span className="font-bold text-text">{patientName} {patientPhone && `(${patientPhone})`}</span>
+                      <div className="text-right">
+                        <span className="font-bold text-text block">{patientName}</span>
+                        {patientPhone && (
+                          <a
+                            href={`tel:${patientPhone}`}
+                            className="text-text-muted hover:text-primary-600 transition-colors text-[10px] font-mono"
+                          >
+                            📞 {patientPhone}
+                          </a>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-text-muted">Doctor:</span>
@@ -802,7 +811,7 @@ export default function InsurancePage() {
                           setDenialReason(item.denialReason || "");
                           setIsUpdateModalOpen(true);
                         }}
-                        className="font-bold text-[11px] rounded-lg cursor-pointer"
+                        className="font-bold text-[11px] rounded-lg cursor-pointer w-full sm:w-auto min-h-[38px] sm:min-h-[32px] px-3.5"
                       >
                         ⚡ Update TPA Claim Status
                       </Button>
@@ -820,9 +829,7 @@ export default function InsurancePage() {
          ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "claims" && (
         loading ? (
-          <div className="py-12 text-center">
-            <Spinner size="md" label="Loading Insurance Claims..." />
-          </div>
+          <SkeletonCardGrid count={6} columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3" />
         ) : filteredClaims.length === 0 ? (
           <Card className="py-12 text-center text-xs text-text-muted rounded-2xl border-border">
             <CardContent>No insurance claims found matching current filters.</CardContent>
@@ -871,9 +878,19 @@ export default function InsurancePage() {
                   </div>
 
                   <div className="p-2.5 bg-surface-alt/70 rounded-xl border border-border/60 space-y-1 text-[11px]">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="text-text-muted">Patient:</span>
-                      <span className="font-bold text-text">{patientName} {patientPhone && `(${patientPhone})`}</span>
+                      <div className="text-right">
+                        <span className="font-bold text-text block">{patientName}</span>
+                        {patientPhone && (
+                          <a
+                            href={`tel:${patientPhone}`}
+                            className="text-text-muted hover:text-primary-600 transition-colors text-[10px] font-mono"
+                          >
+                            📞 {patientPhone}
+                          </a>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-text-muted">Linked Invoice:</span>
@@ -932,7 +949,7 @@ export default function InsurancePage() {
                           setAdjRejectionReason(claim.rejectionReason || "");
                           setIsAdjudicateModalOpen(true);
                         }}
-                        className="font-bold text-[11px] rounded-lg cursor-pointer"
+                        className="font-bold text-[11px] rounded-lg cursor-pointer w-full sm:w-auto min-h-[38px] sm:min-h-[32px] px-3.5"
                       >
                         ⚖️ Adjudicate Claim
                       </Button>
@@ -1031,11 +1048,11 @@ export default function InsurancePage() {
             required
           />
 
-          <div className="pt-3 border-t border-border flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsSubmitModalOpen(false)}>
+          <div className="pt-4 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsSubmitModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" loading={submittingRequest}>
+            <Button type="submit" variant="primary" size="sm" loading={submittingRequest} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Submit TPA Cashless Claim
             </Button>
           </div>
@@ -1117,11 +1134,11 @@ export default function InsurancePage() {
               />
             )}
 
-            <div className="pt-3 border-t border-border flex justify-end gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsUpdateModalOpen(false)}>
+            <div className="pt-4 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsUpdateModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" size="sm" loading={submittingUpdate}>
+              <Button type="submit" variant="primary" size="sm" loading={submittingUpdate} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 Save TPA Claim Update
               </Button>
             </div>
@@ -1209,11 +1226,11 @@ export default function InsurancePage() {
             />
           </div>
 
-          <div className="pt-3 border-t border-border flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsClaimModalOpen(false)}>
+          <div className="pt-4 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsClaimModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" loading={submittingClaim}>
+            <Button type="submit" variant="primary" size="sm" loading={submittingClaim} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Submit Claim for Review
             </Button>
           </div>
@@ -1293,11 +1310,11 @@ export default function InsurancePage() {
               />
             )}
 
-            <div className="pt-3 border-t border-border flex justify-end gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsAdjudicateModalOpen(false)}>
+            <div className="pt-4 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsAdjudicateModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" size="sm" loading={submittingAdjudicate}>
+              <Button type="submit" variant="primary" size="sm" loading={submittingAdjudicate} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 Save Claim Adjudication
               </Button>
             </div>

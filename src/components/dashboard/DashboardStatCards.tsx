@@ -52,7 +52,7 @@ export function DashboardStatCards({
 }: DashboardStatCardsProps) {
   if (canViewOpsDashboard) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
         {loading ? (
           <>
             <SkeletonCard />
@@ -63,27 +63,27 @@ export function DashboardStatCards({
         ) : (
           <>
             <StatCard
-              label="Today's Collections"
+              label="Collections"
               value={`₹${adminStats.collections.toLocaleString("en-IN")}`}
-              description="Settled invoices today"
+              description="Today's settled"
               icon={<IndianRupee className="w-5 h-5" />}
             />
             <StatCard
-              label="Outstanding Balances"
+              label="Outstanding"
               value={`₹${adminStats.outstanding.toLocaleString("en-IN")}`}
-              description="Unpaid pending bills"
+              description="Pending balance"
               icon={<AlertCircle className="w-5 h-5" />}
             />
             <StatCard
               label="Active Clinics"
               value={adminStats.clinics.toString()}
-              description="Operational branches"
+              description="Open branches"
               icon={<Building2 className="w-5 h-5" />}
             />
             <StatCard
-              label="Active Doctors"
+              label="Doctors On-Duty"
               value={adminStats.doctors.toString()}
-              description="On-duty specialists"
+              description="Active clinicians"
               icon={<Stethoscope className="w-5 h-5" />}
             />
           </>
@@ -94,7 +94,7 @@ export function DashboardStatCards({
 
   if (role === "doctor") {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
         {loading ? (
           <>
             <SkeletonCard />
@@ -104,21 +104,21 @@ export function DashboardStatCards({
         ) : (
           <>
             <StatCard
-              label="Total Consultations"
+              label="Total Visits"
               value={doctorStats.total.toString()}
-              description="Scheduled visits recorded"
+              description="Today's roster"
               icon={<Calendar className="w-5 h-5" />}
             />
             <StatCard
-              label="Pending Queue"
+              label="Pending"
               value={doctorStats.pending.toString()}
-              description="Awaiting consultation"
+              description="In waiting line"
               icon={<Clock className="w-5 h-5" />}
             />
             <StatCard
-              label="Completed Visits"
+              label="Completed"
               value={doctorStats.completed.toString()}
-              description="Concluded consultations"
+              description="Finished visits"
               icon={<CheckCircle2 className="w-5 h-5" />}
             />
           </>
@@ -129,7 +129,7 @@ export function DashboardStatCards({
 
   if (role === "patient") {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
         {loading ? (
           <>
             <SkeletonCard />
@@ -138,15 +138,15 @@ export function DashboardStatCards({
         ) : (
           <>
             <StatCard
-              label="Scheduled Visits"
+              label="Booked Visits"
               value={patientStats.appointmentsCount.toString()}
-              description="Active upcoming bookings"
+              description="Upcoming bookings"
               icon={<Calendar className="w-5 h-5" />}
             />
             <StatCard
-              label="Unpaid Balance"
+              label="Due Balance"
               value={`₹${patientStats.unpaidBills.toLocaleString("en-IN")}`}
-              description="Pending invoices due"
+              description="Invoices pending"
               icon={<Receipt className="w-5 h-5" />}
             />
           </>

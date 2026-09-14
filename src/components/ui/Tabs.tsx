@@ -60,6 +60,9 @@ const Tabs = memo(function Tabs({
 
   useIsomorphicLayoutEffect(() => {
     updateSlider();
+    if (activeTabRef.current) {
+      activeTabRef.current.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+    }
     window.addEventListener("resize", updateSlider);
     return () => window.removeEventListener("resize", updateSlider);
   }, [active, variant, tabs]);
@@ -94,7 +97,7 @@ const Tabs = memo(function Tabs({
         role="tablist"
         onKeyDown={handleKeyDown}
         className={cn(
-          "relative flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth max-w-full select-none touch-manipulation",
+          "relative flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth max-w-full select-none touch-manipulation [scroll-snap-type:x_mandatory]",
           variant === "underline" ? "border-b border-border/80 pb-px" : "bg-surface-alt/70 border border-border/70 rounded-xl p-1 shadow-2xs"
         )}
       >
@@ -139,7 +142,7 @@ const Tabs = memo(function Tabs({
               disabled={tab.disabled}
               onClick={() => handleChange(tab.id)}
               className={cn(
-                "relative z-10 flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium cursor-pointer transform-gpu transition-all duration-200 ease-smooth disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] shrink-0 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg min-h-[36px] sm:min-h-0",
+                "relative z-10 flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium cursor-pointer transform-gpu transition-all duration-200 ease-smooth disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] shrink-0 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg min-h-[42px] sm:min-h-0 [scroll-snap-align:start]",
                 variant === "underline"
                   ? cn("-mb-px", isActive ? "text-primary-600 dark:text-primary-400 font-bold" : "text-text-secondary hover:text-text")
                   : cn(isActive ? "text-text font-bold" : "text-text-secondary hover:text-text")

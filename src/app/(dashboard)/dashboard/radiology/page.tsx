@@ -208,7 +208,7 @@ export default function RadiologyPage() {
   const ctMrCount = studies.filter((s) => s.modality === "CT" || s.modality === "MR").length;
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -228,13 +228,13 @@ export default function RadiologyPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={fetchData}
               disabled={loading}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
             >
               <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
               Refresh
@@ -244,7 +244,7 @@ export default function RadiologyPage() {
               variant="primary"
               size="sm"
               onClick={() => setIsOrderModalOpen(true)}
-              className="font-semibold rounded-xl shadow-xs cursor-pointer"
+              className="flex-1 sm:flex-initial min-h-[40px] font-semibold rounded-xl shadow-xs cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
               Order Imaging Study
@@ -287,7 +287,7 @@ export default function RadiologyPage() {
       <div className="p-3.5 sm:p-4 bg-surface rounded-2xl border border-border/80 shadow-xs space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Modality Selector Pills */}
-          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full touch-pan-x">
             <span className="text-[11px] font-bold text-text-muted px-2.5 shrink-0">Modality:</span>
             {[
               { key: "all", label: "All Modalities" },
@@ -302,7 +302,7 @@ export default function RadiologyPage() {
                 type="button"
                 onClick={() => setSelectedModality(m.key)}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
+                  "px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
                   selectedModality === m.key
                     ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                     : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -322,7 +322,7 @@ export default function RadiologyPage() {
         </div>
 
         {/* Status Filter Bar */}
-        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full touch-pan-x">
           <span className="text-[11px] font-bold text-text-muted px-2.5 shrink-0">Status:</span>
           {[
             { key: "all", label: "All Statuses" },
@@ -336,7 +336,7 @@ export default function RadiologyPage() {
               type="button"
               onClick={() => setSelectedStatus(s.key)}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
+                "px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
                 selectedStatus === s.key
                   ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                   : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -352,6 +352,7 @@ export default function RadiologyPage() {
       <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
         <Table
           loading={loading}
+          mobileCardView
           searchPlaceholder="Filter radiology studies..."
           columns={[
             { header: "Patient", key: "patient" },
@@ -416,13 +417,13 @@ export default function RadiologyPage() {
                 </Badge>
               ),
               actions: (
-                <div className="flex items-center justify-end gap-1.5">
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-end gap-1.5">
                   {/* DICOM Viewer Launcher */}
                   <Button
                     size="xs"
                     variant="outline"
                     onClick={() => setActiveViewerStudy(study)}
-                    className="font-bold text-[11px] rounded-lg"
+                    className="font-bold text-[11px] rounded-lg min-h-[36px]"
                     title="Launch DICOM Viewer"
                   >
                     🖼️ View DICOM
@@ -437,7 +438,7 @@ export default function RadiologyPage() {
                       setRadiologyReportText(study.radiologyReport || "");
                       setIsReportModalOpen(true);
                     }}
-                    className="font-bold text-[11px] text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                    className="font-bold text-[11px] text-emerald-600 hover:bg-emerald-50 rounded-lg min-h-[36px]"
                     title="Draft / Sign Radiology Report"
                   >
                     📝 Report
@@ -449,7 +450,7 @@ export default function RadiologyPage() {
                       size="xs"
                       variant="ghost"
                       onClick={() => handleUpdateStatus(study.id, "in_progress")}
-                      className="font-semibold text-[10px] rounded-lg"
+                      className="font-semibold text-[10px] rounded-lg min-h-[36px]"
                       title="Start Scan"
                     >
                       ▶ Start
@@ -459,6 +460,101 @@ export default function RadiologyPage() {
               ),
             };
           })}
+          renderMobileCard={(row: any) => {
+            const study = filteredStudies.find((s) => s.id === row.id);
+            if (!study) return null;
+            const patientName = study.patientId?.userId?.name || "Patient";
+            const patientPhone = study.patientId?.userId?.phone;
+
+            return (
+              <div
+                key={study.id}
+                className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-600 font-bold text-sm shrink-0">
+                      {study.modality}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-text text-sm truncate">{patientName}</p>
+                      {patientPhone && (
+                        <a
+                          href={`tel:${patientPhone}`}
+                          className="text-xs text-text-muted hover:text-primary-600 transition-colors flex items-center gap-1"
+                        >
+                          <span>📞</span> {patientPhone}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <Badge
+                    variant={
+                      study.status === "reported"
+                        ? "success"
+                        : study.status === "in_progress"
+                        ? "warning"
+                        : "neutral"
+                    }
+                    size="sm"
+                    className="capitalize font-bold shrink-0"
+                  >
+                    {study.status.replace("_", " ")}
+                  </Badge>
+                </div>
+
+                <div className="space-y-1 bg-surface-alt/70 p-2.5 rounded-xl border border-border/60 text-xs">
+                  <div className="font-semibold text-text line-clamp-2">{study.studyDescription}</div>
+                  <div className="flex items-center justify-between gap-2 text-[10px] text-text-muted pt-1 border-t border-border/40">
+                    <span className="font-mono truncate max-w-[170px]" title={study.studyInstanceUid}>
+                      UID: {study.studyInstanceUid}
+                    </span>
+                    <span className="shrink-0">
+                      {new Date(study.createdAt || Date.now()).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setActiveViewerStudy(study)}
+                    className="w-full font-bold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5 hover:border-primary-500 hover:text-primary-600"
+                  >
+                    <span>🖼️</span> View DICOM
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setActiveReportStudy(study);
+                      setRadiologyReportText(study.radiologyReport || "");
+                      setIsReportModalOpen(true);
+                    }}
+                    className="w-full font-bold text-xs min-h-[42px] rounded-xl text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/30 flex items-center justify-center gap-1.5"
+                  >
+                    <span>📝</span> Report
+                  </Button>
+                </div>
+
+                {study.status === "requested" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleUpdateStatus(study.id, "in_progress")}
+                    className="w-full font-semibold text-xs min-h-[38px] rounded-xl text-text-secondary hover:text-text border border-border/50"
+                  >
+                    ▶ Start Scan
+                  </Button>
+                )}
+              </div>
+            );
+          }}
         />
       </Card>
 
@@ -503,11 +599,11 @@ export default function RadiologyPage() {
             required
           />
 
-          <div className="pt-3 border-t border-border flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsOrderModalOpen(false)}>
+          <div className="pt-3 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsOrderModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" loading={submittingOrder}>
+            <Button type="submit" variant="primary" size="sm" loading={submittingOrder} className="w-full sm:w-auto min-h-[44px]">
               Register PACS Order
             </Button>
           </div>
@@ -541,11 +637,11 @@ export default function RadiologyPage() {
               required
             />
 
-            <div className="pt-3 border-t border-border flex justify-end gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsReportModalOpen(false)}>
+            <div className="pt-3 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsReportModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" size="sm" loading={submittingReport}>
+              <Button type="submit" variant="primary" size="sm" loading={submittingReport} className="w-full sm:w-auto min-h-[44px]">
                 Sign & Attach Radiology Report
               </Button>
             </div>

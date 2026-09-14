@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Card, CardHeader, CardTitle, CardContent, CardDescription,
-  Button, Input, useToast, Spinner, Toggle, StatCard, Badge, cn
+  Button, Input, useToast, Spinner, Toggle, StatCard, Badge, cn,
+  Skeleton, SkeletonCardGrid
 } from "@/components/ui";
 import { Boxes, CheckCircle2, PowerOff, ShieldCheck } from "lucide-react";
 import { useModuleStore, type ModuleInfo } from "@/store/moduleStore";
@@ -86,7 +87,7 @@ export default function ModulesSettingsPage() {
     );
     if (target.length === 0) return;
 
-    setBulkLoading(priority);
+    setBulkLoading(`${priority}-${enabled ? "enable" : "disable"}`);
     try {
       await bulkToggleModules(
         target.map((m) => ({ moduleKey: m.moduleKey, enabled }))
@@ -114,14 +115,38 @@ export default function ModulesSettingsPage() {
 
   if (isLoading && !isLoaded) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Spinner size="lg" label="Loading modules..." />
+      <div className="space-y-6 w-full animate-fade-in pb-32 sm:pb-12">
+        <Card className="p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-48 rounded" />
+              <Skeleton className="h-4 w-72 rounded" />
+            </div>
+            <Skeleton className="h-9 w-32 rounded-lg" />
+          </div>
+        </Card>
+        <div className="space-y-4">
+          <Card className="p-5 space-y-4">
+            <div className="flex justify-between items-center">
+              <Skeleton className="h-5 w-40 rounded" />
+              <Skeleton className="h-4 w-20 rounded" />
+            </div>
+            <SkeletonCardGrid count={4} columns={2} />
+          </Card>
+          <Card className="p-5 space-y-4">
+            <div className="flex justify-between items-center">
+              <Skeleton className="h-5 w-44 rounded" />
+              <Skeleton className="h-4 w-20 rounded" />
+            </div>
+            <SkeletonCardGrid count={4} columns={2} />
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -146,7 +171,7 @@ export default function ModulesSettingsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. KPI STATS CARDS GRID
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <StatCard
           label="Total Modules"
           value={totalModules.toString()}
@@ -207,7 +232,7 @@ export default function ModulesSettingsPage() {
                     <CardDescription className="text-xs">{config.description}</CardDescription>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-text-muted font-medium">
                     {enabledInGroup}/{group.length} active
                   </span>
@@ -216,16 +241,20 @@ export default function ModulesSettingsPage() {
                       <Button
                         size="sm"
                         variant={allEnabled ? "ghost" : "outline"}
-                        disabled={allEnabled || bulkLoading === priority}
+                        disabled={allEnabled || bulkLoading !== null}
+                        loading={bulkLoading === `${priority}-enable`}
                         onClick={() => handleBulkToggle(priority, true)}
+                        className="min-h-[36px]"
                       >
-                        {bulkLoading === priority ? <Spinner size="sm" /> : "Enable All"}
+                        Enable All
                       </Button>
                       <Button
                         size="sm"
                         variant={allDisabled ? "ghost" : "outline"}
-                        disabled={allDisabled || bulkLoading === priority}
+                        disabled={allDisabled || bulkLoading !== null}
+                        loading={bulkLoading === `${priority}-disable`}
                         onClick={() => handleBulkToggle(priority, false)}
+                        className="min-h-[36px]"
                       >
                         Disable All
                       </Button>

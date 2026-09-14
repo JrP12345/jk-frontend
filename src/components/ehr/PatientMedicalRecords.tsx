@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, Tabs } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, Tabs, Skeleton, SkeletonCardGrid } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "../clinical/UnifiedDocumentModal";
 
 interface PatientMedicalRecordsProps {
@@ -66,8 +66,17 @@ export function PatientMedicalRecords({ patientId }: PatientMedicalRecordsProps)
 
   if (loading) {
     return (
-      <div className="py-12 text-center">
-        <Spinner size="lg" label="Loading medical records..." />
+      <div className="space-y-6 animate-fade-in">
+        <div className="border-b border-border pb-3 space-y-2">
+          <Skeleton className="h-6 w-64 rounded" />
+          <Skeleton className="h-4 w-96 rounded" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-32 rounded-lg" />
+          <Skeleton className="h-9 w-32 rounded-lg" />
+          <Skeleton className="h-9 w-32 rounded-lg" />
+        </div>
+        <SkeletonCardGrid count={3} columns={1} />
       </div>
     );
   }

@@ -38,7 +38,7 @@ const Pagination = memo(function Pagination({
   })();
 
   const base =
-    "h-8 min-w-8 px-2 rounded-lg text-xs font-semibold cursor-pointer transform-gpu transition-all duration-150 ease-smooth inline-flex items-center justify-center select-none active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 min-h-[36px] min-w-[36px] sm:min-h-[32px] sm:min-w-[32px] touch-manipulation";
+    "h-8 min-w-8 px-2 rounded-lg text-xs font-semibold cursor-pointer transform-gpu transition-all duration-150 ease-smooth inline-flex items-center justify-center select-none active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] touch-manipulation";
 
   return (
     <nav aria-label="Pagination Navigation" className={cn("flex items-center gap-1", className)}>

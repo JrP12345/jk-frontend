@@ -21,6 +21,7 @@ import {
   Badge,
   StatCard,
   Spinner,
+  SkeletonCardGrid,
   cn,
 } from "@/components/ui";
 import {
@@ -220,7 +221,7 @@ export default function ConsultationsPage() {
   const completedCount = queueList.filter((a) => a.status === "completed").length;
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -240,13 +241,13 @@ export default function ConsultationsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={fetchData}
               disabled={isRefreshing}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
             >
               <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
               Refresh
@@ -257,7 +258,7 @@ export default function ConsultationsPage() {
                 variant="primary"
                 size="sm"
                 onClick={() => setIsWalkInModalOpen(true)}
-                className="font-semibold rounded-xl shadow-xs"
+                className="font-semibold rounded-xl shadow-xs min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Start Walk-in Consultation
@@ -303,7 +304,7 @@ export default function ConsultationsPage() {
       <Card className="p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Segmented Filter Pills */}
-          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-full sm:w-fit max-w-full touch-scroll scroll-snap-x">
             {[
               { key: "checked-in", label: "Waiting (Checked-in)", count: checkedInCount },
               { key: "in-consultation", label: "In Consultation", count: inConsultationCount },
@@ -316,7 +317,7 @@ export default function ConsultationsPage() {
                 type="button"
                 onClick={() => setStatusFilter(s.key)}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0",
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0 min-h-[36px] sm:min-h-[32px]",
                   statusFilter === s.key
                     ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                     : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -355,9 +356,7 @@ export default function ConsultationsPage() {
           4. DOCTOR OPD QUEUE CARDS GRID
          ────────────────────────────────────────────────────────────────────────── */}
       {loading ? (
-        <div className="py-16 text-center">
-          <Spinner size="lg" label="Loading Doctor Consultation Queue..." />
-        </div>
+        <SkeletonCardGrid count={6} columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3" />
       ) : filteredQueue.length === 0 ? (
         <Card className="py-16 text-center text-text-muted rounded-2xl border border-border/80 bg-surface shadow-xs">
           <CardContent className="space-y-3">
@@ -422,10 +421,13 @@ export default function ConsultationsPage() {
 
                   <h3 className="font-bold text-sm sm:text-base text-text pt-1">{patientName}</h3>
                   {patientPhone && (
-                    <p className="text-xs text-text-muted flex items-center gap-1">
+                    <a
+                      href={`tel:${patientPhone}`}
+                      className="text-xs text-text-muted hover:text-primary-600 transition-colors flex items-center gap-1 w-fit"
+                    >
                       <Phone className="w-3 h-3 text-text-muted shrink-0" />
                       {patientPhone}
-                    </p>
+                    </a>
                   )}
                 </div>
 
@@ -454,7 +456,7 @@ export default function ConsultationsPage() {
                     size="sm"
                     variant={isInConsultation ? "primary" : isCompleted ? "secondary" : "primary"}
                     onClick={() => router.push(`/dashboard/consultations/${item.id}`)}
-                    className="font-semibold text-xs rounded-xl w-full shadow-xs justify-between"
+                    className="font-semibold text-xs rounded-xl w-full shadow-xs justify-between min-h-[44px]"
                   >
                     <span>
                       {isInConsultation
@@ -518,8 +520,8 @@ export default function ConsultationsPage() {
             rows={3}
           />
 
-          <div className="pt-3 border-t border-border/60 flex justify-end gap-2.5">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsWalkInModalOpen(false)}>
+          <div className="pt-3 border-t border-border/60 flex flex-col-reverse sm:flex-row justify-end gap-2.5">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsWalkInModalOpen(false)} className="min-h-[44px] w-full sm:w-auto justify-center">
               Cancel
             </Button>
             <Button
@@ -527,7 +529,7 @@ export default function ConsultationsPage() {
               variant="primary"
               size="sm"
               loading={startingEncounter}
-              className="font-semibold rounded-xl shadow-xs"
+              className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
             >
               Start Clinical Encounter
               <ArrowRight className="w-3.5 h-3.5 ml-1.5" />

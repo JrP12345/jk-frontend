@@ -70,4 +70,15 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
     expect(hasRoutePermission("/dashboard/clinics", "patient", patientPermissions)).toBe(false);
     expect(hasRoutePermission("/dashboard/organizations", "patient", patientPermissions)).toBe(false);
   });
+
+  it("enforces that only root superadmin can access /dashboard/audit", () => {
+    // Root can access
+    expect(hasRoutePermission("/dashboard/audit", "root", [])).toBe(true);
+
+    // Admin, Doctor, Receptionist, Staff cannot access
+    expect(hasRoutePermission("/dashboard/audit", "admin", ["VIEW_AUDIT_LOGS", "MANAGE_ORGANIZATION"])).toBe(false);
+    expect(hasRoutePermission("/dashboard/audit", "doctor", ["VIEW_AUDIT_LOGS"])).toBe(false);
+    expect(hasRoutePermission("/dashboard/audit", "receptionist", [])).toBe(false);
+    expect(hasRoutePermission("/dashboard/audit", "patient", [])).toBe(false);
+  });
 });

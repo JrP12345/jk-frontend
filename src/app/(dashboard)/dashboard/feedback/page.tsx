@@ -210,7 +210,7 @@ export default function PatientExperienceFeedbackPage() {
   };
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -230,12 +230,12 @@ export default function PatientExperienceFeedbackPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto">
             <Button
               variant="primary"
               size="sm"
               onClick={() => setIsSurveyModalOpen(true)}
-              className="font-semibold rounded-xl shadow-xs"
+              className="font-semibold rounded-xl shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
               Submit Patient Survey
@@ -247,7 +247,7 @@ export default function PatientExperienceFeedbackPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. KPI STATS CARDS GRID
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <StatCard
           label="Net Promoter Score (NPS)"
           value={`${stats.netPromoterScore > 0 ? `+${stats.netPromoterScore}` : stats.netPromoterScore}`}
@@ -343,12 +343,12 @@ export default function PatientExperienceFeedbackPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-muted font-medium">Filter Sentiment:</span>
+          <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
+            <span className="text-xs text-text-muted font-medium shrink-0">Filter Sentiment:</span>
             <select
               value={filterRating}
               onChange={(e) => setFilterRating(e.target.value)}
-              className="text-xs py-1.5 px-3 rounded-xl border border-border/80 bg-surface text-text font-semibold cursor-pointer"
+              className="text-xs py-2 px-3 rounded-xl border border-border/80 bg-surface text-text font-semibold cursor-pointer min-h-[38px] sm:min-h-[32px] w-full sm:w-auto"
             >
               <option value="all">All Feedback (100%)</option>
               <option value="promoter">🟢 Promoters (9-10 NPS)</option>
@@ -490,7 +490,7 @@ export default function PatientExperienceFeedbackPage() {
             <h4 className="text-xs font-bold text-text uppercase tracking-wider">
               Care Quality Aspect Breakdown (1 - 5)
             </h4>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs text-text-muted mb-1">⏱ Wait Time</label>
                 <Input
@@ -540,16 +540,21 @@ export default function PatientExperienceFeedbackPage() {
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-3">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-border/60">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsSurveyModalOpen(false)}
-              className="text-xs rounded-xl"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] text-xs rounded-xl"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting} variant="primary" className="text-xs rounded-xl font-semibold">
+            <Button
+              type="submit"
+              disabled={submitting}
+              variant="primary"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] text-xs rounded-xl font-semibold"
+            >
               {submitting ? "Submitting..." : "Save Patient Feedback"}
             </Button>
           </div>

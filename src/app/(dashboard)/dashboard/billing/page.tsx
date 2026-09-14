@@ -8,8 +8,6 @@ import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import {
   Card,
-  CardHeader,
-  CardTitle,
   CardContent,
   Table,
   Button,
@@ -33,22 +31,20 @@ import {
   Plus,
   FileText,
   IndianRupee,
-  AlertCircle,
   Receipt,
   CreditCard,
   CheckCircle2,
   Printer,
   Search,
-  Building2,
-  Stethoscope,
-  Phone,
-  Trash2,
   MoreHorizontal,
   ArrowRight,
-  Clock,
-  Check,
   Banknote,
   AlertTriangle,
+  AlertCircle,
+  Phone,
+  Building2,
+  Stethoscope,
+  Trash2,
 } from "lucide-react";
 
 interface InvoiceItem {
@@ -176,6 +172,9 @@ export default function BillingPage() {
     totalAmount: number;
     existingInvoice?: any;
     isAlreadyPaid: boolean;
+    feeType?: string;
+    consultationFee?: number;
+    isFeeEditable?: boolean;
   } | null>(null);
   const [loadingCheckoutPreview, setLoadingCheckoutPreview] = useState(false);
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<"cash" | "upi" | "card">("cash");
@@ -183,13 +182,20 @@ export default function BillingPage() {
   const [checkoutNotes, setCheckoutNotes] = useState<string>("");
   const [checkoutRefNumber, setCheckoutRefNumber] = useState<string>("");
   const [submittingCheckout, setSubmittingCheckout] = useState(false);
+  const [checkoutCustomConsultFee, setCheckoutCustomConsultFee] = useState<number | string>("");
 
-  const fetchCheckoutPreview = async (apptId: string) => {
+  const fetchCheckoutPreview = async (apptId: string, customFee?: number) => {
     if (!apptId) return;
     setLoadingCheckoutPreview(true);
     try {
-      const res = await api.get(`/billing/checkout/preview/${apptId}`);
+      const url = customFee !== undefined
+        ? `/billing/checkout/preview/${apptId}?customConsultFee=${customFee}`
+        : `/billing/checkout/preview/${apptId}`;
+      const res = await api.get(url);
       setCheckoutPreview(res.data?.data);
+      if (customFee === undefined && res.data?.data?.consultationFee !== undefined) {
+        setCheckoutCustomConsultFee(res.data.data.consultationFee);
+      }
     } catch (err: any) {
       toast({
         title: "Checkout Preview Error",
@@ -249,6 +255,7 @@ export default function BillingPage() {
         amountPaid: netPayable,
         referenceNumber: checkoutRefNumber.trim() || undefined,
         notes: checkoutNotes.trim() || undefined,
+        customConsultationFee: checkoutCustomConsultFee !== "" ? Number(checkoutCustomConsultFee) : undefined,
       });
 
       const invoiceData = res.data?.data;
@@ -938,7 +945,7 @@ export default function BillingPage() {
   })();
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -958,62 +965,68 @@ export default function BillingPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push("/dashboard/billing/services")}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover"
-            >
-              <FileText className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
-              Rate Cards
-            </Button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0 w-full sm:w-auto">
+            {/* Secondary Utilities & Shift Management */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/dashboard/billing/services")}
+                className="rounded-xl text-xs font-semibold hover:bg-surface-hover min-h-[38px] sm:min-h-[36px] shrink-0"
+              >
+                <FileText className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
+                Rate Cards
+              </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchInvoices}
-              disabled={isRefreshing}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
-            >
-              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
-              Refresh
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchInvoices}
+                disabled={isRefreshing}
+                className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-[38px] sm:min-h-[36px] shrink-0"
+              >
+                <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
+                Refresh
+              </Button>
 
-            {canManageBilling && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleOpenCheckoutModal}
-                  className="font-semibold rounded-xl border-primary-500/40 text-primary-700 dark:text-primary-300 hover:bg-primary-500/10 transition-colors shadow-2xs"
-                  title="Consolidate Consultation + Lab Tests + Prescriptions into single 1-Click checkout"
-                >
-                  <Receipt className="h-3.5 w-3.5 mr-1 text-primary-500" />
-                  1-Click OPD Checkout
-                </Button>
-
+              {canManageBilling && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleOpenTillModal}
-                  className="font-semibold rounded-xl border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 transition-colors shadow-2xs"
+                  className="rounded-xl text-xs font-semibold border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 transition-colors shadow-2xs min-h-[38px] sm:min-h-[36px] shrink-0"
                   title="Reconcile Cash Drawer & Close Daily Shift (Z-Report)"
                 >
                   <Banknote className="h-3.5 w-3.5 mr-1 text-amber-600 dark:text-amber-400" />
                   Close Till / Z-Report
+                </Button>
+              )}
+            </div>
+
+            {/* Primary Billing CTAs */}
+            {canManageBilling && (
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenCheckoutModal}
+                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold rounded-xl border-primary-500/40 text-primary-700 dark:text-primary-300 hover:bg-primary-500/10 transition-colors shadow-2xs justify-center"
+                  title="Consolidate Consultation + Lab Tests + Prescriptions into single 1-Click checkout"
+                >
+                  <Receipt className="h-3.5 w-3.5 mr-1 text-primary-500" />
+                  1-Click OPD
                 </Button>
 
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={() => setIsCreateOpen(true)}
-                  className="font-semibold rounded-xl shadow-xs"
+                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs justify-center"
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />
                   Create Invoice
                 </Button>
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -1211,7 +1224,7 @@ export default function BillingPage() {
                         size="xs"
                         variant="primary"
                         onClick={() => openPartialPaymentModal(row)}
-                        className="shrink-0 font-semibold rounded-lg shadow-xs"
+                        className="shrink-0 font-semibold rounded-lg shadow-xs min-h-[36px]"
                       >
                         <CreditCard className="w-3.5 h-3.5 mr-1" />
                         Pay ₹
@@ -1225,7 +1238,7 @@ export default function BillingPage() {
                         size="xs"
                         variant="outline"
                         onClick={() => handleOpenPrintInvoice(row)}
-                        className="shrink-0 font-semibold rounded-lg"
+                        className="shrink-0 font-semibold rounded-lg min-h-[36px]"
                       >
                         <FileText className="w-3.5 h-3.5 mr-1" />
                         PDF
@@ -1237,10 +1250,10 @@ export default function BillingPage() {
                         <Button
                           size="xs"
                           variant="outline"
-                          className="h-7 w-7 p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text"
+                          className="h-8 w-8 min-h-[36px] min-w-[36px] p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text cursor-pointer"
                           title="Row Actions"
                         >
-                          <MoreHorizontal className="h-3.5 w-3.5" />
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       }
                       items={[
@@ -1281,8 +1294,119 @@ export default function BillingPage() {
                 ),
               },
             ]}
+            mobileCardView
             data={filteredInvoices}
             emptyMessage="No clinical invoices found for selected filter."
+            renderMobileCard={(row: Invoice) => {
+              const isPaid = row.status === "paid";
+              const dueAmount =
+                row.balanceDue !== undefined
+                  ? row.balanceDue
+                  : row.totalAmount - (row.amountPaid || 0);
+
+              return (
+                <div
+                  key={row.id}
+                  className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-mono font-bold text-xs text-primary-600 dark:text-primary-400 block">
+                        #{row.invoiceNumber}
+                      </span>
+                      <p className="font-bold text-text text-sm pt-0.5 truncate">
+                        {row.patientId?.userId?.name || "Patient Profile"}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        row.status === "paid"
+                          ? "success"
+                          : row.status === "partially_paid"
+                          ? "warning"
+                          : "danger"
+                      }
+                      size="sm"
+                      dot
+                      className="capitalize font-semibold text-[10px] shrink-0"
+                    >
+                      {row.status === "partially_paid" ? "Partially Paid" : row.status}
+                    </Badge>
+                  </div>
+
+                  <div className="p-2.5 bg-surface-alt/70 rounded-xl border border-border/60 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between gap-2 text-text-secondary">
+                      <span className="flex items-center gap-1 text-text-muted">
+                        <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                        <span>Doctor:</span>
+                      </span>
+                      <span className="font-semibold text-text truncate">
+                        Dr. {(row.doctorId?.name || "").replace(/^dr\.?\s+/i, "")}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 text-text-secondary">
+                      <span className="flex items-center gap-1 text-text-muted">
+                        <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                        <span>Clinic:</span>
+                      </span>
+                      <span className="truncate">{row.clinicId?.name || "Clinic"}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40 text-xs">
+                      <div>
+                        <span className="text-[10px] text-text-muted block">Total Billed</span>
+                        <span className="font-bold text-text text-sm">
+                          ₹{row.totalAmount.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      {!isPaid && (
+                        <div className="text-right">
+                          <span className="text-[10px] text-rose-500 font-bold block">Balance Due</span>
+                          <span className="font-bold text-rose-600 text-sm">
+                            ₹{dueAmount.toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    {!isPaid ? (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => openPartialPaymentModal(row)}
+                        className="w-full font-bold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
+                      >
+                        <CreditCard className="w-4 h-4" />
+                        <span>Pay ₹{dueAmount.toLocaleString("en-IN")}</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handlePrintReceipt(row)}
+                        className="w-full font-semibold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5"
+                      >
+                        <Printer className="w-4 h-4 text-emerald-600" />
+                        <span>Receipt</span>
+                      </Button>
+                    )}
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenPrintInvoice(row)}
+                      className="w-full font-semibold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5"
+                    >
+                      <FileText className="w-4 h-4 text-text-muted" />
+                      <span>Official PDF</span>
+                    </Button>
+                  </div>
+                </div>
+              );
+            }}
           />
         </CardContent>
       </Card>
@@ -1525,7 +1649,7 @@ export default function BillingPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2.5 border-t border-border/60 pt-3.5 mt-4">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 border-t border-border/60 pt-3.5 mt-4">
             <Button
               variant="outline"
               type="button"
@@ -1534,6 +1658,7 @@ export default function BillingPage() {
                 setIsCreateOpen(false);
                 resetCreateForm();
               }}
+              className="w-full sm:w-auto min-h-[44px]"
             >
               Cancel
             </Button>
@@ -1543,7 +1668,7 @@ export default function BillingPage() {
               variant="primary"
               loading={submittingInvoice}
               disabled={!selectedPatient || !selectedClinicId || !selectedDoctorId}
-              className="font-semibold rounded-xl shadow-xs"
+              className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]"
             >
               Generate Invoice
             </Button>
@@ -1592,7 +1717,7 @@ export default function BillingPage() {
             required
           />
 
-          <div className="flex justify-end gap-2.5 border-t border-border/60 pt-3.5">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 border-t border-border/60 pt-3.5">
             <Button
               variant="outline"
               size="sm"
@@ -1601,10 +1726,11 @@ export default function BillingPage() {
                 setIsCollectOpen(false);
                 setActiveInvoice(null);
               }}
+              className="w-full sm:w-auto min-h-[44px]"
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submittingPayment} className="font-semibold rounded-xl shadow-xs">
+            <Button type="submit" size="sm" variant="primary" loading={submittingPayment} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
               Record Settlement
             </Button>
           </div>
@@ -1701,7 +1827,7 @@ export default function BillingPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2.5 border-t border-border/60 pt-3">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 border-t border-border/60 pt-3">
               <Button
                 variant="outline"
                 size="sm"
@@ -1709,10 +1835,11 @@ export default function BillingPage() {
                   setReceiptOpen(false);
                   setReceiptInvoice(null);
                 }}
+                className="w-full sm:w-auto min-h-[44px]"
               >
                 Close
               </Button>
-              <Button size="sm" variant="primary" onClick={() => triggerBrowserPrint(receiptInvoice)} className="font-semibold rounded-xl shadow-xs">
+              <Button size="sm" variant="primary" onClick={() => triggerBrowserPrint(receiptInvoice)} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
                 <Printer className="w-3.5 h-3.5 mr-1.5" />
                 Print Receipt
               </Button>
@@ -1795,11 +1922,11 @@ export default function BillingPage() {
             onChange={(e) => setPartialNotes(e.target.value)}
           />
 
-          <div className="flex justify-between border-t border-border/60 pt-3.5">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsPartialModalOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-between gap-2.5 border-t border-border/60 pt-3.5">
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsPartialModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submittingPartial} className="font-semibold rounded-xl shadow-xs">
+            <Button type="submit" size="sm" variant="primary" loading={submittingPartial} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
               Record Installment
             </Button>
           </div>
@@ -2101,12 +2228,13 @@ export default function BillingPage() {
                   />
                 </div>
 
-                <div className="flex justify-between items-center border-t border-border/60 pt-3.5 mt-2">
+                <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-2.5 border-t border-border/60 pt-3.5 mt-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => setIsTillModalOpen(false)}
+                    className="w-full sm:w-auto min-h-[44px]"
                   >
                     Cancel
                   </Button>
@@ -2115,7 +2243,7 @@ export default function BillingPage() {
                     size="sm"
                     variant="primary"
                     loading={submittingTillClose}
-                    className="font-bold shadow-xs bg-amber-600 hover:bg-amber-700 text-white"
+                    className="w-full sm:w-auto min-h-[44px] font-bold shadow-xs bg-amber-600 hover:bg-amber-700 text-white"
                   >
                     <Banknote className="w-3.5 h-3.5 mr-1.5" />
                     Reconcile & Generate Z-Report
@@ -2183,6 +2311,36 @@ export default function BillingPage() {
                     {checkoutPreview.isAlreadyPaid ? "Already Settled" : "Pending Settlement"}
                   </Badge>
                 </div>
+
+                {checkoutPreview.isFeeEditable && (
+                  <div className="py-2.5 px-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between text-xs gap-3">
+                    <div>
+                      <span className="font-bold text-amber-700 dark:text-amber-400 block">🩺 Doctor Consultation Fee:</span>
+                      <span className="text-[10px] text-text-muted">
+                        {checkoutPreview.feeType === "post_consultation" ? "Post-consultation fee entry" : "Adjustable consultation charge"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="font-bold text-text">₹</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={checkoutCustomConsultFee}
+                        onChange={(e) => setCheckoutCustomConsultFee(e.target.value)}
+                        onBlur={(e) => fetchCheckoutPreview(selectedCheckoutApptId, Number(e.target.value) || 0)}
+                        className="w-24 px-2 py-1 bg-surface border border-border rounded-lg text-xs font-bold text-text focus:ring-1 focus:ring-primary-500"
+                        placeholder="Amount"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fetchCheckoutPreview(selectedCheckoutApptId, Number(checkoutCustomConsultFee) || 0)}
+                        className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-surface border border-border text-text hover:bg-surface-hover cursor-pointer"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="divide-y divide-border/60 max-h-48 overflow-y-auto">
                   {checkoutPreview.items.map((item, idx) => (
@@ -2290,13 +2448,13 @@ export default function BillingPage() {
             </div>
           ) : null}
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-border">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsCheckoutModalOpen(false)}
               disabled={submittingCheckout}
-              className="rounded-xl font-semibold"
+              className="w-full sm:w-auto rounded-xl font-semibold min-h-[44px]"
             >
               Cancel
             </Button>
@@ -2306,7 +2464,7 @@ export default function BillingPage() {
               type="submit"
               loading={submittingCheckout}
               disabled={!checkoutPreview || loadingCheckoutPreview}
-              className="font-bold rounded-xl bg-primary-600 hover:bg-primary-700 text-white shadow-xs"
+              className="w-full sm:w-auto font-bold rounded-xl bg-primary-600 hover:bg-primary-700 text-white shadow-xs min-h-[44px]"
             >
               <span>⚡</span> Settle & Issue Invoice
             </Button>

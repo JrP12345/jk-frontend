@@ -53,7 +53,7 @@ const Checkbox = memo(
           <label
             htmlFor={id}
             className={cn(
-              "group/chk inline-flex items-start gap-2.5 touch-manipulation min-h-[32px] sm:min-h-0",
+              "group/chk inline-flex items-start gap-2.5 touch-manipulation min-h-[40px] sm:min-h-0 py-1 sm:py-0",
               disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
             )}
           >

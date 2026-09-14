@@ -24,7 +24,7 @@ export function hasAnyPermission(
 }
 
 export function canViewAuditLogs(user: Pick<User, "role" | "permissions"> | null | undefined): boolean {
-  return hasAnyPermission(user, "VIEW_AUDIT_LOGS", "MANAGE_ORGANIZATION");
+  return isRootUser(user);
 }
 
 export function canViewAnalytics(user: Pick<User, "role" | "permissions"> | null | undefined): boolean {

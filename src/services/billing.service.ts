@@ -60,6 +60,37 @@ export interface UsageInfo {
   currentPeriodEnd: string;
 }
 
+export interface DowngradeViolation {
+  resource: "clinics" | "doctors" | "staff";
+  current: number;
+  allowed: number;
+  excess: number;
+  message: string;
+}
+
+export interface DowngradeValidationResult {
+  canDowngrade: boolean;
+  targetPlan: {
+    id: string;
+    name: string;
+    slug: string;
+    monthlyPrice: number;
+    limits: any;
+  };
+  currentUsage: {
+    clinics: number;
+    doctors: number;
+    staff: number;
+  };
+  activeClinics: Array<{
+    id: string;
+    name: string;
+    city: string;
+    address?: string;
+  }>;
+  violations: DowngradeViolation[];
+}
+
 export const billingService = {
   // Public Plans
   async getPlans(): Promise<SaaSPlan[]> {
@@ -85,6 +116,18 @@ export const billingService = {
   async getSaaSInvoices(organizationId?: string) {
     const url = organizationId ? `/billing/saas-invoices?organizationId=${organizationId}` : "/billing/saas-invoices";
     const res = await api.get(url);
+    return res.data.data;
+  },
+
+  // Downgrade Feasibility Validation
+  async validatePlanDowngrade(planId: string, organizationId?: string): Promise<DowngradeValidationResult> {
+    const res = await api.post("/billing/validate-downgrade", { planId, ...(organizationId ? { organizationId } : {}) });
+    return res.data.data;
+  },
+
+  // Direct Switch Plan (zero-cost / free plan transition)
+  async directSwitchPlan(planId: string, billingCycle: "monthly" | "annual" = "monthly", organizationId?: string) {
+    const res = await api.post("/billing/switch-plan", { planId, billingCycle, ...(organizationId ? { organizationId } : {}) });
     return res.data.data;
   },
 

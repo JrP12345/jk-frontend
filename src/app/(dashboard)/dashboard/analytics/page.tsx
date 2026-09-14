@@ -113,7 +113,7 @@ export default function AnalyticsPage() {
   const { overall, clinicsPerformance, doctorSpecializations, referralStats } = data;
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -133,13 +133,13 @@ export default function AnalyticsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={fetchAnalytics}
               disabled={loading}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
             >
               <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
               Refresh BI Feed
@@ -151,7 +151,7 @@ export default function AnalyticsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. KPI STATS CARDS GRID
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <StatCard
           label="Total Collections"
           value={`₹${overall.totalRevenue.toLocaleString("en-IN")}`}
@@ -188,6 +188,7 @@ export default function AnalyticsPage() {
             <CardContent className="p-0">
               <Table
                 loading={loading}
+                mobileCardView={true}
                 columns={[
                   { 
                     header: "Clinic Name", 
@@ -221,6 +222,37 @@ export default function AnalyticsPage() {
                   }
                 ]}
                 data={clinicsPerformance}
+                renderMobileCard={(row: ClinicPerformance) => (
+                  <div
+                    key={row.id}
+                    className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="font-bold text-text text-sm">{row.name}</h4>
+                        <Badge variant="neutral" size="sm" className="mt-1 text-[10px]">{row.city}</Badge>
+                      </div>
+                      <span className="text-xs text-text-secondary bg-surface-alt px-2.5 py-1 rounded-lg border border-border/50 font-semibold">
+                        {row.appointmentCount} Visits
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs py-2 px-3 rounded-xl bg-surface-alt/70 border border-border/50">
+                      <div>
+                        <span className="text-text-muted text-[10px] uppercase font-bold block">Collections</span>
+                        <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                          ₹{row.revenue.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-text-muted text-[10px] uppercase font-bold block">Outstanding</span>
+                        <span className="font-bold text-sm text-rose-500 mt-0.5 block">
+                          ₹{row.outstanding.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 emptyMessage="No comparative clinic metrics found."
               />
             </CardContent>

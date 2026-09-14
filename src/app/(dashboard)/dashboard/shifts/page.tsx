@@ -8,6 +8,7 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
+  Table,
   StatCard,
   Badge,
   Button,
@@ -235,7 +236,7 @@ export default function NursingShiftRosterPage() {
   };
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -255,12 +256,12 @@ export default function NursingShiftRosterPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={fetchShifts}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
             >
               <RefreshCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
@@ -270,7 +271,7 @@ export default function NursingShiftRosterPage() {
               variant="primary"
               size="sm"
               onClick={() => setIsAssignModalOpen(true)}
-              className="font-semibold rounded-xl shadow-xs"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
               Assign Shift Roster
@@ -311,7 +312,7 @@ export default function NursingShiftRosterPage() {
 
       {/* Filters Bar & Search */}
       <Card padding="sm">
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
           <div className="w-full md:w-80">
             <Input
               placeholder="Search staff name, ward, role..."
@@ -321,7 +322,7 @@ export default function NursingShiftRosterPage() {
             />
           </div>
 
-          <div className="flex flex-wrap gap-3 w-full md:w-auto">
+          <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
             <Select
               value={selectedWard}
               onChange={(e) => setSelectedWard(e.target.value)}
@@ -362,90 +363,169 @@ export default function NursingShiftRosterPage() {
       </Card>
 
       {/* Roster Table */}
-      <Card padding="none">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface-alt text-xs uppercase text-text-secondary border-b border-border">
-              <tr>
-                <th className="px-6 py-4">Staff Member & Role</th>
-                <th className="px-6 py-4">Ward Location & Assigned Patients</th>
-                <th className="px-6 py-4">Shift Type & Timings</th>
-                <th className="px-6 py-4">Duty Status & Handover</th>
-                <th className="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-text-muted">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-primary-500" />
-                    Loading nursing roster...
-                  </td>
-                </tr>
-              ) : filteredShifts.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-text-muted">
-                    No shifts found matching your criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredShifts.map((s) => (
-                  <tr key={s.id} className="hover:bg-surface-hover transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-text">{s.staffName}</div>
-                      <Badge variant="neutral" size="sm" className="mt-1">{s.staffRole}</Badge>
-                    </td>
+      <Card padding="none" className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+        <CardContent className="p-0">
+          <Table
+            loading={isLoading}
+            mobileCardView
+            data={filteredShifts}
+            emptyMessage="No shifts found matching your criteria."
+            renderMobileCard={(s: ShiftRosterItem) => (
+              <div
+                key={s.id}
+                className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="font-bold text-text text-sm">{s.staffName}</h4>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Badge variant="neutral" size="sm" className="text-[10px]">{s.staffRole}</Badge>
+                      <span className="text-xs text-text-muted">&bull; {s.ward}</span>
+                    </div>
+                  </div>
+                  {getStatusBadge(s.status)}
+                </div>
 
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-text">{s.ward}</div>
-                      <div className="text-xs text-text-muted mt-0.5">{s.assignedPatientsCount} Patients Assigned</div>
-                    </td>
+                <div className="grid grid-cols-2 gap-2 text-xs py-2 px-3 rounded-xl bg-surface-alt/70 border border-border/50">
+                  <div>
+                    <span className="text-text-muted text-[10px] uppercase font-bold block">Shift Type</span>
+                    <div className="mt-0.5">{getShiftTypeBadge(s.shiftType)}</div>
+                  </div>
+                  <div>
+                    <span className="text-text-muted text-[10px] uppercase font-bold block">Duty Hours</span>
+                    <span className="font-mono font-medium text-text mt-0.5 block">{s.startTime} - {s.endTime}</span>
+                  </div>
+                  <div className="col-span-2 pt-1 border-t border-border/40 flex items-center justify-between text-text-secondary">
+                    <span>Patients Assigned:</span>
+                    <span className="font-bold text-text">{s.assignedPatientsCount}</span>
+                  </div>
+                </div>
 
-                    <td className="px-6 py-4">
-                      <div>{getShiftTypeBadge(s.shiftType)}</div>
-                      <div className="text-xs text-text-secondary mt-1 font-mono">{s.startTime} - {s.endTime}</div>
-                    </td>
+                {s.handoverNotes && (
+                  <div className="p-2.5 rounded-xl bg-surface-alt/50 border border-border/40 text-xs text-text-muted">
+                    <span className="font-semibold text-text block mb-0.5">Handover Notes:</span>
+                    <p className="line-clamp-2">{s.handoverNotes}</p>
+                  </div>
+                )}
 
-                    <td className="px-6 py-4 space-y-1">
-                      <div>{getStatusBadge(s.status)}</div>
-                      {s.handoverNotes && (
-                        <div className="text-xs text-text-muted truncate max-w-xs" title={s.handoverNotes}>
-                          📝 {s.handoverNotes}
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setActiveShiftForHandover(s);
-                            setHandoverText(s.handoverNotes || "");
-                            setIsHandoverModalOpen(true);
-                          }}
-                        >
-                          Handover
-                        </Button>
-                        {s.status === "scheduled" && (
-                          <Button variant="primary" size="sm" onClick={() => handleStatusUpdate(s.id, "checked_in")}>
-                            Check In
-                          </Button>
-                        )}
-                        {s.status === "checked_in" && (
-                          <Button variant="secondary" size="sm" onClick={() => handleStatusUpdate(s.id, "checked_out")}>
-                            Check Out
-                          </Button>
-                        )}
+                <div className="flex items-center gap-2 pt-1">
+                  {s.status === "scheduled" && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="flex-1 min-h-[42px] font-bold text-xs rounded-xl shadow-xs justify-center"
+                      onClick={() => handleStatusUpdate(s.id, "checked_in")}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                      Check In
+                    </Button>
+                  )}
+                  {s.status === "checked_in" && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="flex-1 min-h-[42px] font-bold text-xs rounded-xl justify-center"
+                      onClick={() => handleStatusUpdate(s.id, "checked_out")}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                      Check Out
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 min-h-[42px] font-semibold text-xs rounded-xl justify-center"
+                    onClick={() => {
+                      setActiveShiftForHandover(s);
+                      setHandoverText(s.handoverNotes || "");
+                      setIsHandoverModalOpen(true);
+                    }}
+                  >
+                    <FileText className="w-3.5 h-3.5 mr-1 text-text-muted" />
+                    Handover
+                  </Button>
+                </div>
+              </div>
+            )}
+            columns={[
+              {
+                key: "staff",
+                header: "Staff Member & Role",
+                render: (s: ShiftRosterItem) => (
+                  <div>
+                    <div className="font-semibold text-text text-sm">{s.staffName}</div>
+                    <Badge variant="neutral" size="sm" className="mt-1">{s.staffRole}</Badge>
+                  </div>
+                ),
+              },
+              {
+                key: "ward",
+                header: "Ward Location & Assigned Patients",
+                render: (s: ShiftRosterItem) => (
+                  <div>
+                    <div className="font-medium text-text text-xs sm:text-sm">{s.ward}</div>
+                    <div className="text-xs text-text-muted mt-0.5">{s.assignedPatientsCount} Patients Assigned</div>
+                  </div>
+                ),
+              },
+              {
+                key: "timing",
+                header: "Shift Type & Timings",
+                render: (s: ShiftRosterItem) => (
+                  <div>
+                    <div>{getShiftTypeBadge(s.shiftType)}</div>
+                    <div className="text-xs text-text-secondary mt-1 font-mono">{s.startTime} - {s.endTime}</div>
+                  </div>
+                ),
+              },
+              {
+                key: "status",
+                header: "Duty Status & Handover",
+                render: (s: ShiftRosterItem) => (
+                  <div className="space-y-1">
+                    <div>{getStatusBadge(s.status)}</div>
+                    {s.handoverNotes && (
+                      <div className="text-xs text-text-muted truncate max-w-xs" title={s.handoverNotes}>
+                        📝 {s.handoverNotes}
                       </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                key: "actions",
+                header: "Actions",
+                align: "right",
+                render: (s: ShiftRosterItem) => (
+                  <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-h-[32px] px-2.5 text-xs font-semibold"
+                      onClick={() => {
+                        setActiveShiftForHandover(s);
+                        setHandoverText(s.handoverNotes || "");
+                        setIsHandoverModalOpen(true);
+                      }}
+                    >
+                      Handover
+                    </Button>
+                    {s.status === "scheduled" && (
+                      <Button variant="primary" size="sm" className="min-h-[32px] px-2.5 text-xs font-semibold" onClick={() => handleStatusUpdate(s.id, "checked_in")}>
+                        Check In
+                      </Button>
+                    )}
+                    {s.status === "checked_in" && (
+                      <Button variant="secondary" size="sm" className="min-h-[32px] px-2.5 text-xs font-semibold" onClick={() => handleStatusUpdate(s.id, "checked_out")}>
+                        Check Out
+                      </Button>
+                    )}
+                  </div>
+                ),
+              },
+            ]}
+          />
+        </CardContent>
       </Card>
 
       {/* Modal: Assign Shift */}
@@ -467,7 +547,7 @@ export default function NursingShiftRosterPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-text-secondary mb-1">Staff Role *</label>
               <Select
@@ -497,7 +577,7 @@ export default function NursingShiftRosterPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-text-secondary mb-1">Shift Type</label>
               <Select
@@ -522,11 +602,11 @@ export default function NursingShiftRosterPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3">
-            <Button variant="outline" type="button" onClick={() => setIsAssignModalOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
+            <Button variant="outline" type="button" onClick={() => setIsAssignModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
-            <Button variant="primary" type="submit">
+            <Button variant="primary" type="submit" className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs">
               Confirm Shift Schedule
             </Button>
           </div>
@@ -554,11 +634,11 @@ export default function NursingShiftRosterPage() {
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" type="button" onClick={() => setIsHandoverModalOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2 border-t border-border/60">
+            <Button variant="outline" type="button" onClick={() => setIsHandoverModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
-            <Button variant="primary" type="submit">
+            <Button variant="primary" type="submit" className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs">
               Save Clinical Handover
             </Button>
           </div>

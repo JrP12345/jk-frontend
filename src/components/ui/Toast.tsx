@@ -50,11 +50,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       const duration = options.duration || 4500;
 
       setToasts((prev) => {
+        // Prevent duplicate toast cards with identical description or title within a 3.5-second window
+        if (options.description || options.title) {
+          const duplicate = prev.find(
+            (t) =>
+              (options.description && t.description === options.description && now - t.timestamp < 3500) ||
+              (options.title && t.title === options.title && now - t.timestamp < 3500)
+          );
+          if (duplicate) {
+            return prev.map((t) =>
+              t.id === duplicate.id ? { ...t, ...options, duration, timestamp: now } : t
+            );
+          }
+        }
+
         if (options.id && prev.some((t) => t.id === options.id)) {
           return prev.map((t) => (t.id === options.id ? { ...t, ...options, duration, timestamp: now } : t));
         }
         const updated = [...prev, { ...options, id, variant, duration, timestamp: now } as Toast];
-        return updated.slice(-4);
+        return updated.slice(-3);
       });
     },
     []
@@ -79,7 +93,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] p-3 -m-3 flex flex-col items-center w-[92vw] sm:w-[420px] max-w-full pointer-events-none select-none"
+            className="fixed top-[max(1rem,env(safe-area-inset-top))] right-3 sm:right-6 z-[9999] p-3 -m-3 flex flex-col items-end w-[92vw] sm:w-[390px] max-w-full pointer-events-none select-none"
           >
             {/* Expanded Header Clear All Action */}
             {isHovered && isStacked && (

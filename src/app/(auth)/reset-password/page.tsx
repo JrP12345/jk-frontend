@@ -116,12 +116,14 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-surface-alt relative overflow-hidden font-sans text-text animate-page-enter">
+    <div className="min-h-screen flex flex-col items-center justify-center pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] px-4 bg-surface-alt relative font-sans text-text animate-page-enter">
       {/* Background glow */}
-      <div className="absolute top-[-15%] left-[-15%] w-[50%] h-[50%] bg-primary-500/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-[-15%] right-[-15%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-15%] left-[-15%] w-[50%] h-[50%] bg-primary-500/10 rounded-full blur-[140px]" />
+        <div className="absolute bottom-[-15%] right-[-15%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[140px]" />
+      </div>
 
-      <div className="absolute top-6 right-6 z-20">
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
         <ModeSwitcher />
       </div>
 
@@ -169,12 +171,12 @@ function ResetPasswordForm() {
               </CardContent>
 
               <CardFooter className="p-0 pt-2 flex flex-col gap-3">
-                <Button type="submit" fullWidth loading={loading} size="lg" className="rounded-xl font-bold">
+                <Button type="submit" fullWidth loading={loading} size="lg" className="rounded-xl font-bold min-h-[44px]">
                   Update Password
                 </Button>
                 <Link
                   href="/login"
-                  className="text-xs text-center font-semibold text-text-secondary hover:text-text transition-colors"
+                  className="text-xs text-center font-semibold text-text-secondary hover:text-text transition-colors min-h-[44px] flex items-center justify-center"
                 >
                   &larr; Back to Sign In
                 </Link>
@@ -195,7 +197,7 @@ function ResetPasswordForm() {
                 </p>
               </div>
 
-              <Button fullWidth onClick={() => router.push("/login")} size="lg" className="rounded-xl font-bold">
+              <Button fullWidth onClick={() => router.push("/login")} size="lg" className="rounded-xl font-bold min-h-[44px]">
                 Proceed to Sign In
               </Button>
             </div>

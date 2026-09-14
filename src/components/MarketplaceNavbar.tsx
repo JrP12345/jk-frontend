@@ -28,7 +28,7 @@ export default function MarketplaceNavbar() {
 
   return (
     <header className="fixed top-0 left-0 right-0 h-16 border-b border-border bg-surface/85 backdrop-blur-md z-50 transition-all duration-300">
-      <div className="max-w-6xl mx-auto px-6 h-full flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
         
         {/* Brand/Logo */}
         <Link href="/browse">
@@ -87,11 +87,11 @@ export default function MarketplaceNavbar() {
         </div>
 
         {/* Mobile menu toggle (hamburger) */}
-        <div className="flex items-center gap-3 md:hidden">
+        <div className="flex items-center gap-2 md:hidden">
           <ModeSwitcher />
           <button
             onClick={toggleMobileMenu}
-            className="p-2 text-text-secondary hover:text-text focus:outline-none rounded-lg hover:bg-surface-hover transition-colors"
+            className="p-2.5 text-text-secondary hover:text-text focus:outline-none rounded-xl hover:bg-surface-hover transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
             aria-label="Toggle Menu"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -105,9 +105,14 @@ export default function MarketplaceNavbar() {
         </div>
       </div>
 
-      {/* Mobile Drawer Dropdown */}
+      {/* Mobile Drawer Dropdown & Backdrop */}
       {isMobileMenuOpen && (
-        <div className="md:hidden absolute top-16 left-0 right-0 border-b border-border bg-surface shadow-lg z-40 overflow-hidden">
+        <>
+          <div
+            className="md:hidden fixed inset-0 top-16 bg-black/50 backdrop-blur-xs z-30"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="md:hidden absolute top-16 left-0 right-0 border-b border-border bg-surface/98 backdrop-blur-xl shadow-xl z-40 overflow-hidden animate-slide-down">
           <div className="p-5 space-y-4 flex flex-col">
             <Link 
               href="/browse"
@@ -119,12 +124,12 @@ export default function MarketplaceNavbar() {
 
             {isAuthenticated && user ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-3 bg-surface-alt p-3 rounded-lg border border-border/60">
+                <div className="flex items-center gap-3 bg-surface-alt p-3 rounded-xl border border-border/60">
                   <Avatar name={user.name} size="md" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-text truncate">{user.name}</p>
                     <p className="text-xs text-text-secondary truncate">{user.email}</p>
-                    <span className="inline-block bg-primary-50 text-primary-700 text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 border border-primary-200 capitalize">
+                    <span className="inline-block bg-primary-500/10 text-primary-600 dark:text-primary-400 text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 border border-primary-500/20 capitalize">
                       {user.role}
                     </span>
                   </div>
@@ -133,21 +138,21 @@ export default function MarketplaceNavbar() {
                 <div className="flex flex-col gap-2">
                   <Button
                     variant="outline"
-                    className="w-full justify-start text-sm"
+                    className="w-full justify-start text-sm min-h-[44px] flex items-center"
                     onClick={() => navigateTo("/dashboard")}
                   >
                     Go to Dashboard
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full justify-start text-sm"
+                    className="w-full justify-start text-sm min-h-[44px] flex items-center"
                     onClick={() => navigateTo("/dashboard/appointments")}
                   >
                     My Appointments
                   </Button>
                   <Button
                     variant="danger"
-                    className="w-full justify-start text-sm text-left font-semibold mt-2"
+                    className="w-full justify-start text-sm text-left font-semibold mt-2 min-h-[44px] flex items-center"
                     onClick={handleLogout}
                   >
                     Sign Out
@@ -158,7 +163,7 @@ export default function MarketplaceNavbar() {
               <div className="flex flex-col gap-3 pt-2">
                 <Button
                   variant="primary"
-                  className="w-full text-center shadow-sm"
+                  className="w-full text-center shadow-sm min-h-[44px] flex items-center justify-center"
                   onClick={() => navigateTo("/login")}
                 >
                   Sign In
@@ -167,6 +172,7 @@ export default function MarketplaceNavbar() {
             )}
           </div>
         </div>
+        </>
       )}
     </header>
   );

@@ -37,20 +37,20 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
   };
 
   return (
-    <div className="sticky top-0 z-20 bg-surface/95 backdrop-blur-md border-b border-border p-4 shadow-sm">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="sticky top-0 z-20 bg-surface/95 backdrop-blur-md border border-border/80 rounded-2xl p-3.5 sm:p-4 shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         {/* Patient Identity & MRN */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-full bg-primary-600 text-white font-bold flex items-center justify-center text-sm shadow-md shrink-0">
             {patient.name ? patient.name.charAt(0).toUpperCase() : "P"}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-bold text-base text-text">{patient.name}</h2>
-              {patient.mrn && <Badge variant="neutral">MRN: {patient.mrn}</Badge>}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="font-bold text-sm sm:text-base text-text truncate">{patient.name}</h2>
+              {patient.mrn && <Badge variant="neutral" size="sm">MRN: {patient.mrn}</Badge>}
               {getRiskBadge(patient.recentNews2Risk, patient.recentNews2Score)}
             </div>
-            <div className="text-xs text-text-secondary flex gap-3 mt-0.5">
+            <div className="text-xs text-text-secondary flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
               <span><b>Gender:</b> {patient.gender || "Unknown"}</span>
               <span><b>DOB:</b> {patient.dob || "N/A"}</span>
             </div>
@@ -59,7 +59,7 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
 
         {/* Clinical Allergies & Diagnoses Indicators */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="text-xs flex items-center gap-1.5 bg-surface-alt px-2.5 py-1 rounded-xl border border-border/80">
+          <div className="text-xs flex items-center gap-1.5 bg-surface-alt px-2.5 py-1 rounded-xl border border-border/80 flex-wrap">
             <span className="font-semibold text-text-secondary">Allergies:</span>
             {allergies.map((a, i) => (
               <Badge key={i} variant={a.includes("NKDA") ? "success" : "danger"} size="sm">
@@ -68,7 +68,7 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
             ))}
           </div>
 
-          <div className="text-xs flex items-center gap-1.5 bg-surface-alt px-2.5 py-1 rounded-xl border border-border/80">
+          <div className="text-xs flex items-center gap-1.5 bg-surface-alt px-2.5 py-1 rounded-xl border border-border/80 flex-wrap">
             <span className="font-semibold text-text-secondary">Diagnoses:</span>
             {conditions.slice(0, 2).map((c, i) => (
               <Badge key={i} variant="primary" size="sm">
@@ -82,7 +82,7 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
               size="xs"
               variant="primary"
               onClick={onOpenSearch}
-              className="rounded-xl font-bold text-xs shadow-xs"
+              className="rounded-xl font-bold text-xs shadow-xs min-h-[36px] w-full sm:w-auto justify-center"
             >
               <Search className="w-3.5 h-3.5 mr-1" />
               <span>Search (Cmd+K)</span>

@@ -18,6 +18,8 @@ import {
   Table,
   Column,
   Spinner,
+  Skeleton,
+  SkeletonCard,
   Tabs,
   Modal,
   Input,
@@ -154,8 +156,50 @@ export default function PatientDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-3">
-        <Spinner size="lg" label="Loading patient medical records..." />
+      <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading patient medical records">
+        {/* Back navigation placeholder */}
+        <div className="flex items-center gap-2">
+          <Skeleton width="120px" height="1.75rem" rounded="xl" />
+        </div>
+
+        {/* Patient Header Banner Skeleton */}
+        <div className="p-5 sm:p-6 bg-surface border border-border/80 rounded-2xl shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Skeleton width="3.5rem" height="3.5rem" rounded="2xl" />
+              <div className="space-y-2">
+                <Skeleton width="180px" height="1.5rem" rounded="md" />
+                <div className="flex gap-2">
+                  <Skeleton width="100px" height="1rem" rounded="md" />
+                  <Skeleton width="80px" height="1rem" rounded="md" />
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Skeleton width="90px" height="2.25rem" rounded="xl" />
+              <Skeleton width="110px" height="2.25rem" rounded="xl" />
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Pills Skeleton */}
+        <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+          <Skeleton width="90px" height="2rem" rounded="xl" />
+          <Skeleton width="110px" height="2rem" rounded="xl" />
+          <Skeleton width="120px" height="2rem" rounded="xl" />
+          <Skeleton width="80px" height="2rem" rounded="xl" />
+        </div>
+
+        {/* Content Area Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 space-y-6">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+          <div className="space-y-6">
+            <SkeletonCard />
+          </div>
+        </div>
       </div>
     );
   }
@@ -277,7 +321,7 @@ export default function PatientDetailPage() {
           size="xs"
           variant="outline"
           onClick={() => router.push(`/dashboard/consultations/${a.id || a._id}`)}
-          className="font-semibold rounded-lg"
+          className="font-semibold rounded-lg min-h-[36px]"
         >
           Encounter Workspace →
         </Button>
@@ -289,16 +333,16 @@ export default function PatientDetailPage() {
     <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-12">
       {/* Top Breadcrumb Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <Link href="/dashboard/patients" className="text-xs text-text-muted hover:text-primary-600 flex items-center gap-1 font-semibold transition-colors">
+        <Link href="/dashboard/patients" className="text-xs text-text-muted hover:text-primary-600 flex items-center gap-1 font-semibold transition-colors min-h-[36px]">
           ← Back to Patients Directory
         </Link>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 w-full sm:w-auto">
           {canManagePatients && (
             <Button
               size="xs"
               variant="outline"
               onClick={() => setEditModalOpen(true)}
-              className="rounded-xl font-semibold cursor-pointer"
+              className="flex-1 sm:flex-initial min-h-[40px] rounded-xl font-semibold cursor-pointer"
             >
               ✏️ Edit Demographics
             </Button>
@@ -307,7 +351,7 @@ export default function PatientDetailPage() {
             size="xs"
             variant="primary"
             onClick={() => router.push(`/dashboard/appointments?patientId=${patientId}`)}
-            className="rounded-xl font-bold cursor-pointer"
+            className="flex-1 sm:flex-initial min-h-[40px] rounded-xl font-bold cursor-pointer"
           >
             + Book Appointment
           </Button>
@@ -351,6 +395,7 @@ export default function PatientDetailPage() {
                     loading={loading}
                     searchable={false}
                     pagination={true}
+                    mobileCardView={true}
                     defaultRowsPerPage={10}
                     emptyMessage="No appointment records found for this patient."
                   />
@@ -372,7 +417,7 @@ export default function PatientDetailPage() {
             label: `Lab Diagnostic Orders (${labOrders.length})`,
             content: (
               <Card className="rounded-2xl border border-border bg-surface shadow-xs">
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
                   <div>
                     <CardTitle className="text-base font-bold">Laboratory Orders & Diagnostic Reports</CardTitle>
                     <CardDescription className="text-xs text-text-muted mt-0.5">
@@ -383,7 +428,7 @@ export default function PatientDetailPage() {
                     size="xs"
                     variant="primary"
                     onClick={() => router.push(`/dashboard/laboratory?patientId=${patientId}`)}
-                    className="rounded-xl font-bold shrink-0"
+                    className="w-full sm:w-auto min-h-[40px] rounded-xl font-bold shrink-0"
                   >
                     + Order Lab Test
                   </Button>
@@ -455,7 +500,7 @@ export default function PatientDetailPage() {
             label: `Billing & Invoices (${invoices.length})`,
             content: (
               <Card className="rounded-2xl border border-border bg-surface shadow-xs">
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
                   <div>
                     <CardTitle className="text-base font-bold">Billing Receipts & Financial Statements</CardTitle>
                     <CardDescription className="text-xs text-text-muted mt-0.5">
@@ -466,7 +511,7 @@ export default function PatientDetailPage() {
                     size="xs"
                     variant="primary"
                     onClick={() => router.push(`/dashboard/billing?patientId=${patientId}`)}
-                    className="rounded-xl font-bold shrink-0"
+                    className="w-full sm:w-auto min-h-[40px] rounded-xl font-bold shrink-0"
                   >
                     + Create Invoice
                   </Button>
@@ -537,7 +582,7 @@ export default function PatientDetailPage() {
         title="✏️ Edit Patient Demographics & Profile"
       >
         <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Full Name"
               value={editForm.name}
@@ -551,7 +596,7 @@ export default function PatientDetailPage() {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input
               label="Date of Birth"
               type="date"
@@ -592,7 +637,7 @@ export default function PatientDetailPage() {
             onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
           />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Allergies (comma-separated)"
               placeholder="e.g. Penicillin, Sulfa, Peanuts"
@@ -622,11 +667,11 @@ export default function PatientDetailPage() {
             onChange={(e) => setEditForm({ ...editForm, abdmHealthId: e.target.value })}
           />
 
-          <div className="pt-3 border-t border-border flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setEditModalOpen(false)}>
+          <div className="pt-3 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setEditModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="sm" loading={editLoading}>
+            <Button type="submit" variant="primary" size="sm" loading={editLoading} className="w-full sm:w-auto min-h-[44px]">
               Save Profile Changes
             </Button>
           </div>

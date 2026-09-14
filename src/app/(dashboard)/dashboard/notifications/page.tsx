@@ -19,6 +19,7 @@ import {
   Table,
   Pagination,
   Dropdown,
+  cn,
   type Column,
   type TableBulkAction,
 } from "@/components/ui";
@@ -357,7 +358,7 @@ export default function NotificationsInboxPage() {
                 type="button"
                 size="xs"
                 variant="outline"
-                className="h-7 px-2 text-xs font-semibold rounded-lg text-text-secondary hover:text-text"
+                className="h-8 px-2.5 text-xs font-semibold rounded-lg text-text-secondary hover:text-text min-h-[36px]"
               >
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
@@ -419,7 +420,7 @@ export default function NotificationsInboxPage() {
   ];
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -445,19 +446,15 @@ export default function NotificationsInboxPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap shrink-0 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={handleTestTrigger}
-              disabled={isTestLoading}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              loading={isTestLoading}
+              icon={<Sparkles className="h-3.5 w-3.5 text-text-secondary" />}
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
             >
-              {isTestLoading ? (
-                <Spinner size="xs" className="mr-1.5" />
-              ) : (
-                <Sparkles className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
-              )}
               Trigger Test Event
             </Button>
 
@@ -466,7 +463,7 @@ export default function NotificationsInboxPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => markAllAsRead()}
-                className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+                className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <CheckCheck className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
                 Mark All Read
@@ -478,7 +475,7 @@ export default function NotificationsInboxPage() {
                 variant="primary"
                 size="sm"
                 onClick={() => setIsSendModalOpen(true)}
-                className="rounded-xl text-xs font-semibold shadow-xs"
+                className="rounded-xl text-xs font-semibold shadow-xs flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <Send className="h-3.5 w-3.5 mr-1.5" />
                 Compose Alert
@@ -544,6 +541,115 @@ export default function NotificationsInboxPage() {
           selectable
           loading={isLoading}
           bulkActions={bulkActions}
+          mobileCardView={true}
+          renderMobileCard={(row: NotificationItem) => {
+            const isUnread = !row.readAt;
+            return (
+              <div
+                key={row.id}
+                className={cn(
+                  "p-4 rounded-2xl border shadow-xs space-y-2.5 relative overflow-hidden transition-all",
+                  isUnread
+                    ? "bg-primary-500/[0.03] dark:bg-primary-500/[0.06] border-primary-500/30"
+                    : "bg-surface border-border/80 hover:border-border"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {isUnread && (
+                      <span className="relative flex h-2 w-2 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-500" />
+                      </span>
+                    )}
+                    <Badge
+                      variant={getSeverityBadgeVariant(row.severity)}
+                      size="sm"
+                      className="uppercase font-bold text-[10px] tracking-wide inline-flex items-center gap-1"
+                    >
+                      {getCategoryIcon(row.category)}
+                      <span>{row.category}</span>
+                    </Badge>
+                    {row.pinned && (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.2 rounded-md">
+                        <Pin className="w-2.5 h-2.5 fill-current" />
+                        Pinned
+                      </span>
+                    )}
+                  </div>
+
+                  <span className="text-[11px] text-text-muted flex items-center gap-1 shrink-0 font-medium">
+                    <Clock className="w-3 h-3 text-text-muted" />
+                    {formatTimestamp(row.createdAt)}
+                  </span>
+                </div>
+
+                <div
+                  className="cursor-pointer space-y-1 pt-0.5"
+                  onClick={() => handleViewDetail(row)}
+                >
+                  <h4 className={cn("text-sm transition-colors", isUnread ? "font-bold text-text" : "font-medium text-text-secondary")}>
+                    {row.title}
+                  </h4>
+                  <p className="text-xs text-text-muted leading-relaxed line-clamp-2">{row.message}</p>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50">
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    onClick={() => handleViewDetail(row)}
+                    className="flex-1 font-semibold text-xs rounded-xl min-h-[36px] justify-center"
+                  >
+                    <Eye className="w-3.5 h-3.5 mr-1 text-text-muted" />
+                    View Alert
+                  </Button>
+
+                  {isUnread && (
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      onClick={() => markAsRead(row.id)}
+                      className="font-semibold text-xs rounded-xl min-h-[36px] px-3 text-primary-600 dark:text-primary-400 hover:bg-primary-500/10"
+                    >
+                      <Check className="w-3.5 h-3.5 mr-1" />
+                      Mark Read
+                    </Button>
+                  )}
+
+                  <Dropdown
+                    align="right"
+                    width="w-44"
+                    trigger={
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="outline"
+                        className="h-[36px] w-[36px] min-h-[36px] min-w-[36px] p-0 flex items-center justify-center rounded-xl text-text-secondary hover:text-text cursor-pointer shrink-0"
+                        aria-label="More notification options"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    }
+                    items={[
+                      {
+                        label: row.pinned ? "Unpin Alert" : "Pin Alert",
+                        icon: row.pinned ? <PinOff className="w-4 h-4 text-text-muted" /> : <Pin className="w-4 h-4 text-amber-500" />,
+                        onClick: () => togglePinNotification(row.id),
+                      },
+                      { divider: true, label: "" },
+                      {
+                        label: "Delete Alert",
+                        icon: <Trash2 className="w-4 h-4 text-danger" />,
+                        danger: true,
+                        onClick: () => setDeletingIds([row.id]),
+                      },
+                    ]}
+                  />
+                </div>
+              </div>
+            );
+          }}
           emptyMessage="Your inbox is clear. Important clinical and system alerts will appear here."
         />
 
@@ -765,13 +871,13 @@ export default function NotificationsInboxPage() {
             />
           </div>
 
-          <div className="pt-3 border-t border-border/60 flex items-center justify-end gap-2.5">
+          <div className="pt-3 border-t border-border/60 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2.5">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setIsSendModalOpen(false)}
-              className="rounded-xl font-semibold"
+              className="rounded-xl font-semibold w-full sm:w-auto min-h-[44px] sm:min-h-[36px]"
             >
               Cancel
             </Button>
@@ -779,14 +885,10 @@ export default function NotificationsInboxPage() {
               type="submit"
               variant="primary"
               size="sm"
-              disabled={isSending}
-              className="font-semibold rounded-xl shadow-xs"
+              loading={isSending}
+              icon={<Send className="w-3.5 h-3.5" />}
+              className="font-semibold rounded-xl shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px]"
             >
-              {isSending ? (
-                <Spinner size="xs" className="mr-1.5" />
-              ) : (
-                <Send className="w-3.5 h-3.5 mr-1.5" />
-              )}
               Dispatch Notification
             </Button>
           </div>
@@ -859,7 +961,7 @@ export default function NotificationsInboxPage() {
                     setViewingNotification(null);
                     router.push(url);
                   }}
-                  className="font-semibold rounded-xl shadow-xs"
+                  className="font-semibold rounded-xl shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
                 >
                   Open Destination Link
                   <ArrowRight className="w-3.5 h-3.5 ml-1.5" />

@@ -202,23 +202,17 @@ export function NEWS2Calculator({ encounterId, patientId }: NEWS2CalculatorProps
         <CardHeader className="border-b border-border pb-3">
           <CardTitle className="text-base font-bold">NEWS2 Score History & Trajectory</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          {loadingHistory ? (
-            <div className="py-8 text-center"><Spinner size="md" label="Loading score history..." /></div>
-          ) : scoresHistory.length > 0 ? (
-            <Table
-              columns={[
-                { header: "Evaluated At", accessor: (row) => new Date(row.evaluatedAt || row.createdAt).toLocaleString() },
-                { header: "Total Score", accessor: (row) => <span className="font-bold">{row.totalScore}</span> },
-                { header: "Risk Category", accessor: (row) => <Badge variant={row.riskCategory === "High" ? "error" : row.riskCategory === "Medium" ? "warning" : "success"}>{row.riskCategory}</Badge> },
-                { header: "Algorithm", accessor: (row) => row.algorithmId || "NEWS2" },
-              ]}
-              data={scoresHistory}
-            />
-          ) : (
-            <div className="py-6 text-center text-xs text-text-muted">No historical NEWS2 evaluations recorded for this encounter yet.</div>
-          )}
-        </CardContent>
+          <Table
+            columns={[
+              { header: "Evaluated At", accessor: (row) => new Date(row.evaluatedAt || row.createdAt).toLocaleString() },
+              { header: "Total Score", accessor: (row) => <span className="font-bold">{row.totalScore}</span> },
+              { header: "Risk Category", accessor: (row) => <Badge variant={row.riskCategory === "High" ? "error" : row.riskCategory === "Medium" ? "warning" : "success"}>{row.riskCategory}</Badge> },
+              { header: "Algorithm", accessor: (row) => row.algorithmId || "NEWS2" },
+            ]}
+            data={scoresHistory}
+            loading={loadingHistory}
+            emptyMessage="No historical NEWS2 evaluations recorded for this encounter yet."
+          />
       </Card>
     </div>
   );

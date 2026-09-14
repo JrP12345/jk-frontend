@@ -74,7 +74,7 @@ const Textarea = memo(
             aria-invalid={error ? true : undefined}
             aria-describedby={describedBy}
             className={cn(
-              "w-full rounded-lg border bg-surface text-text px-3.5 py-2.5 text-sm min-h-[80px] resize-y font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted/70 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt shadow-2xs",
+              "w-full rounded-xl border bg-surface text-text px-3.5 py-2.5 text-base sm:text-sm min-h-[88px] resize-y font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted/70 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt shadow-2xs",
               error
                 ? "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:border-danger-500"
                 : "border-border hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500",

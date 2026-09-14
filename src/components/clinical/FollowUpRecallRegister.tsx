@@ -14,6 +14,7 @@ import {
   Spinner,
   StatCard,
   cn,
+  SkeletonCardGrid,
 } from "@/components/ui";
 import {
   CalendarClock,
@@ -293,24 +294,20 @@ export function FollowUpRecallRegister({
             />
           </div>
           <Button
-            size="xs"
+            size="sm"
             variant="outline"
             onClick={fetchFollowUps}
             loading={loading}
+            icon={<RotateCw className="w-3.5 h-3.5" />}
             className="rounded-xl h-8 font-semibold cursor-pointer"
             title="Refresh Recall Register"
-          >
-            <RotateCw className="w-3.5 h-3.5" />
-          </Button>
+          />
         </div>
       </div>
 
       {/* Patient Recall Cards / Table */}
-      {loading ? (
-        <div className="py-16 text-center text-text-muted">
-          <Spinner className="w-7 h-7 mx-auto mb-2 text-primary-600" />
-          <p className="text-xs font-semibold">Loading patient follow-up register...</p>
-        </div>
+      {loading && items.length === 0 ? (
+        <SkeletonCardGrid count={4} columns={1} />
       ) : items.length === 0 ? (
         <Card className="py-14 text-center rounded-2xl border border-border/80 bg-surface">
           <CardContent className="space-y-2">

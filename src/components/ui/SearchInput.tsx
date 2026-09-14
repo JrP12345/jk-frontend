@@ -83,8 +83,8 @@ const SearchInput = memo(
             value={internal}
             onChange={(e) => handleChange(e.target.value)}
             className={cn(
-              "w-full rounded-lg border border-border bg-surface text-text font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-primary-500 disabled:opacity-50 shadow-2xs",
-              isSm ? "h-8 text-sm pl-8 pr-8 min-h-[34px] sm:min-h-[32px]" : "h-9 text-sm pl-9 pr-9 min-h-[38px] sm:min-h-[36px]",
+              "w-full rounded-xl border border-border bg-surface text-text font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:border-primary-500 disabled:opacity-50 shadow-2xs",
+              isSm ? "text-base sm:text-sm pl-8 pr-8 min-h-[38px] sm:min-h-[32px] sm:h-8" : "text-base sm:text-sm pl-9 pr-9 min-h-[42px] sm:min-h-[36px] sm:h-9",
               shortcut && !internal && !loading ? (isSm ? "pr-14" : "pr-16") : ""
             )}
             {...rest}
@@ -97,7 +97,7 @@ const SearchInput = memo(
           )}
 
           {(internal || loading) && (
-            <span className={cn("absolute top-1/2 -translate-y-1/2 flex items-center justify-center", isSm ? "right-2" : "right-2.5")}>
+            <span className={cn("absolute top-1/2 -translate-y-1/2 flex items-center justify-center", isSm ? "right-1.5" : "right-2")}>
               {loading ? (
                 <svg className="h-4 w-4 animate-spin text-primary-500 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-20" />
@@ -107,7 +107,7 @@ const SearchInput = memo(
                 <button
                   type="button"
                   onClick={handleClear}
-                  className="p-1 rounded-md cursor-pointer text-text-muted hover:text-text hover:bg-surface-hover active:scale-95 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  className="p-1.5 sm:p-1 min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg cursor-pointer text-text-muted hover:text-text hover:bg-surface-hover active:scale-95 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                   aria-label="Clear search"
                 >
                   <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2}>

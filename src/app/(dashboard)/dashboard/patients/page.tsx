@@ -370,10 +370,10 @@ export default function PatientsDirectoryPage() {
                 <Button
                   variant="outline"
                   size="xs"
-                  className="h-7 w-7 p-0 rounded-lg text-text-secondary hover:text-text cursor-pointer"
+                  className="h-8 w-8 min-h-[36px] min-w-[36px] p-0 rounded-lg text-text-secondary hover:text-text cursor-pointer"
                   aria-label="Actions menu"
                 >
-                  <MoreHorizontal className="h-3.5 w-3.5" />
+                  <MoreHorizontal className="h-4 w-4" />
                 </Button>
               }
               items={[
@@ -401,7 +401,7 @@ export default function PatientsDirectoryPage() {
   ];
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -421,13 +421,13 @@ export default function PatientsDirectoryPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={fetchPatients}
               disabled={isRefreshing}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
             >
               <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
               Refresh
@@ -440,7 +440,7 @@ export default function PatientsDirectoryPage() {
                 resetRegisterForm();
                 setIsRegisterOpen(true);
               }}
-              className="font-semibold rounded-xl shadow-xs cursor-pointer"
+              className="flex-1 sm:flex-initial min-h-[40px] font-semibold rounded-xl shadow-xs cursor-pointer"
             >
               <UserPlus className="h-3.5 w-3.5 mr-1" />
               Register Patient
@@ -502,7 +502,7 @@ export default function PatientsDirectoryPage() {
               variant="primary"
               size="sm"
               disabled={loading}
-              className="font-semibold rounded-xl shrink-0 shadow-xs"
+              className="font-semibold rounded-xl shrink-0 shadow-xs min-h-[40px] px-4"
             >
               Search
             </Button>
@@ -549,6 +549,141 @@ export default function PatientsDirectoryPage() {
             loading={loading}
             searchable={false}
             pagination={false}
+            mobileCardView={true}
+            renderMobileCard={(p: PatientRecord) => {
+              const pid = p.id || p._id;
+              const name = p.userId?.name || "Patient Profile";
+              const phone = p.userId?.phone;
+              const email = p.userId?.email;
+              const age = p.dob ? calculateAge(p.dob) : null;
+              const allergies = p.allergies || [];
+              const conditions = p.conditions || [];
+
+              return (
+                <div
+                  key={pid}
+                  className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+                >
+                  {/* Top Row: Avatar + Name + MRN/Gender */}
+                  <div className="flex items-start justify-between gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold flex items-center justify-center text-sm shrink-0 border border-primary-500/20">
+                        {name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <Link
+                          href={`/dashboard/patients/${pid}`}
+                          className="font-bold text-text text-sm hover:text-primary-500 transition-colors block truncate"
+                        >
+                          {name}
+                        </Link>
+                        <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5">
+                          {p.gender && <span className="capitalize">{p.gender}</span>}
+                          {age && <span>&bull; {age}</span>}
+                          {p.bloodGroup && (
+                            <span className="font-bold text-rose-600 dark:text-rose-400 text-[10px] bg-rose-500/10 px-1.5 py-0.2 rounded-md font-mono">
+                              {p.bloodGroup}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {p.mrn && (
+                      <Badge variant="outline" size="sm" className="font-mono text-[10px] shrink-0 font-bold uppercase">
+                        {p.mrn}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Contact Info (Clickable on Mobile) */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-text-secondary pt-1 border-t border-border/50">
+                    {phone && phone !== "-" && (
+                      <a
+                        href={`tel:${phone}`}
+                        className="flex items-center gap-1.5 text-text hover:text-primary-500 transition-colors font-mono min-h-[32px]"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-text-muted" />
+                        <span>{phone}</span>
+                      </a>
+                    )}
+                    {email && email !== "-" && (
+                      <a
+                        href={`mailto:${email}`}
+                        className="flex items-center gap-1.5 text-text-muted hover:text-text transition-colors truncate max-w-[200px] min-h-[32px]"
+                      >
+                        <Mail className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                        <span className="truncate">{email}</span>
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Medical Tags (Allergies & Conditions) */}
+                  {(allergies.length > 0 || conditions.length > 0) && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {allergies.map((allergy, idx) => (
+                        <span
+                          key={`al-${idx}`}
+                          className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                        >
+                          Allergy: {allergy}
+                        </span>
+                      ))}
+                      {conditions.map((condition, idx) => (
+                        <span
+                          key={`cd-${idx}`}
+                          className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-alt text-text-secondary border border-border/60"
+                        >
+                          {condition}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Actions Footer */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-border/60">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => router.push(`/dashboard/patients/${pid}`)}
+                      className="flex-1 font-semibold text-xs rounded-xl min-h-[40px] justify-center"
+                    >
+                      <User className="w-3.5 h-3.5 mr-1" />
+                      View Profile
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => router.push(`/dashboard/appointments?patientId=${pid}`)}
+                      className="flex-1 font-semibold text-xs rounded-xl min-h-[40px] justify-center shadow-xs"
+                    >
+                      <CalendarPlus className="w-3.5 h-3.5 mr-1" />
+                      Book Visit
+                    </Button>
+                    <Dropdown
+                      align="right"
+                      trigger={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-[40px] w-[40px] min-h-[40px] min-w-[40px] p-0 rounded-xl text-text-secondary hover:text-text cursor-pointer shrink-0 flex items-center justify-center"
+                          aria-label="More options"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      }
+                      items={[
+                        {
+                          label: "Medical EHR Timeline",
+                          icon: <Activity className="w-4 h-4 text-emerald-500" />,
+                          onClick: () => router.push(`/dashboard/patients/${pid}/timeline`),
+                        },
+                      ]}
+                    />
+                  </div>
+                </div>
+              );
+            }}
             onRowClick={(p) => router.push(`/dashboard/patients/${p.id || p._id}`)}
             emptyMessage="No patient profiles found matching your search criteria."
           />
@@ -570,7 +705,7 @@ export default function PatientsDirectoryPage() {
               size="sm"
               disabled={page <= 1 || loading}
               onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-              className="rounded-xl text-xs font-semibold"
+              className="min-h-[40px] rounded-xl text-xs font-semibold"
             >
               <ArrowLeft className="w-3.5 h-3.5 mr-1" />
               Previous
@@ -580,7 +715,7 @@ export default function PatientsDirectoryPage() {
               size="sm"
               disabled={page >= totalPages || loading}
               onClick={() => setPage((prev) => prev + 1)}
-              className="rounded-xl text-xs font-semibold"
+              className="min-h-[40px] rounded-xl text-xs font-semibold"
             >
               Next
               <ArrowRight className="w-3.5 h-3.5 ml-1" />
@@ -611,12 +746,13 @@ export default function PatientsDirectoryPage() {
               <p className="text-text-secondary leading-relaxed">
                 One or more patient profiles match the provided details (Name, Phone, or Email). Please verify if this patient is already enrolled.
               </p>
-              <div className="flex justify-end gap-2 pt-1">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-1">
                 <Button
                   type="button"
                   size="xs"
                   variant="outline"
                   onClick={() => resetRegisterForm()}
+                  className="w-full sm:w-auto min-h-[38px]"
                 >
                   Edit Information
                 </Button>
@@ -626,7 +762,7 @@ export default function PatientsDirectoryPage() {
                   variant="primary"
                   onClick={(e) => handleRegisterSubmit(e, true)}
                   loading={registerLoading}
-                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold"
+                  className="w-full sm:w-auto min-h-[38px] bg-amber-600 hover:bg-amber-700 text-white font-bold"
                 >
                   Proceed Anyway (Create Walk-in)
                 </Button>
@@ -770,7 +906,7 @@ export default function PatientsDirectoryPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
             <Button
               variant="outline"
               size="sm"
@@ -779,6 +915,7 @@ export default function PatientsDirectoryPage() {
                 setIsRegisterOpen(false);
                 resetRegisterForm();
               }}
+              className="w-full sm:w-auto min-h-[44px]"
             >
               Cancel
             </Button>
@@ -787,7 +924,7 @@ export default function PatientsDirectoryPage() {
               size="sm"
               variant="primary"
               loading={registerLoading}
-              className="font-semibold rounded-xl shadow-xs"
+              className="w-full sm:w-auto min-h-[44px] font-semibold rounded-xl shadow-xs"
             >
               Enroll Patient Profile
             </Button>

@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import {
   Card,
-  CardHeader,
-  CardTitle,
   CardContent,
   Table,
   Button,
@@ -33,17 +31,16 @@ import {
   Plus,
   Building2,
   MapPin,
-  Activity,
   Phone,
   Mail,
-  Clock,
   QrCode,
   MoreHorizontal,
   Edit3,
   Trash2,
-  Printer,
   ShieldCheck,
-  CheckCircle2,
+  Archive,
+  RotateCcw,
+  Clock,
 } from "lucide-react";
 import ClinicQrPosterModal from "@/components/dashboard/ClinicQrPosterModal";
 
@@ -78,6 +75,10 @@ export default function ClinicsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [qrClinic, setQrClinic] = useState<Clinic | null>(null);
+  const [archivedClinics, setArchivedClinics] = useState<Clinic[]>([]);
+  const [loadingArchived, setLoadingArchived] = useState(false);
+  const [activeTab, setActiveTab] = useState<"active" | "archived">("active");
+  const [reactivatingId, setReactivatingId] = useState<string | null>(null);
   const { toast } = useToast();
   const { uploadFile } = useR2Upload();
 
@@ -101,8 +102,12 @@ export default function ClinicsPage() {
     let error = "";
     if (field === "name" && !value.trim()) {
       error = "Clinic Name is required";
-    } else if (field === "city" && !value.trim()) {
-      error = "City is required";
+    } else if (field === "city") {
+      if (!value.trim()) {
+        error = "City is required";
+      } else if (/^[0-9+\s-]{6,}$/.test(value.trim())) {
+        error = "City appears to be a phone number. Please enter a valid city name.";
+      }
     } else if (field === "email" && value.trim() && !EMAIL_REGEX.test(value)) {
       error = "Please enter a valid email address";
     }
@@ -127,15 +132,53 @@ export default function ClinicsPage() {
     }
   };
 
+  const fetchArchivedClinics = async () => {
+    try {
+      setLoadingArchived(true);
+      const res = await api.get("/onboarding/clinics?status=inactive");
+      const rawList = res.data.data || [];
+      const list = rawList.map((c: any) => ({
+        ...c,
+        id: c.id || c._id,
+      }));
+      setArchivedClinics(list);
+    } catch {
+      // Fallback cleanly
+    } finally {
+      setLoadingArchived(false);
+    }
+  };
+
   const reloadClinics = async () => {
     try {
       setIsRefreshing(true);
-      await fetchClinics(true);
+      await Promise.all([fetchClinics(true), fetchArchivedClinics()]);
     } catch {
       toast({ title: "Error", description: "Failed to load clinics list", variant: "error" });
     } finally {
       setLoading(false);
       setIsRefreshing(false);
+    }
+  };
+
+  const handleReactivate = async (clinic: Clinic) => {
+    setReactivatingId(clinic.id);
+    try {
+      await api.post(`/onboarding/clinics/${clinic.id}/reactivate`);
+      toast({
+        title: "Branch Reactivated",
+        description: `${clinic.name} is now active and ready for appointments.`,
+        variant: "success",
+      });
+      await reloadClinics();
+    } catch (err: any) {
+      toast({
+        title: "Reactivation Failed",
+        description: err.response?.data?.message || "Failed to reactivate branch. Check your subscription plan limits.",
+        variant: "error",
+      });
+    } finally {
+      setReactivatingId(null);
     }
   };
 
@@ -203,7 +246,7 @@ export default function ClinicsPage() {
         toast({ title: "Success", description: "Clinic added successfully!", variant: "success" });
       }
       setIsModalOpen(false);
-      await fetchClinics(true);
+      await reloadClinics();
     } catch (err: any) {
       toast({
         title: "Error",
@@ -219,8 +262,8 @@ export default function ClinicsPage() {
     if (!deletingId) return;
     try {
       await api.delete(`/onboarding/clinics/${deletingId}`);
-      toast({ title: "Success", description: "Clinic deactivated successfully!", variant: "success" });
-      await fetchClinics(true);
+      toast({ title: "Success", description: "Clinic branch deactivated and archived safely.", variant: "success" });
+      await reloadClinics();
     } catch (err: any) {
       toast({
         title: "Error",
@@ -257,33 +300,38 @@ export default function ClinicsPage() {
   );
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
-          1. TOP EXECUTIVE HEADER BANNER
+          1. TOP HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Clinics Management
+                Locations
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Facility Operations
+                {clinics.length === 1 ? "1 Active Location" : `${clinics.length} Active Locations`}
               </Badge>
+              {archivedClinics.length > 0 && (
+                <Badge variant="neutral" size="sm" className="font-semibold">
+                  {archivedClinics.length} Archived
+                </Badge>
+              )}
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Configure physical clinic locations, operating schedules, medical facilities, and reception QR portals.
+              Manage your practice locations, operating schedules, and reception QR portals.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full sm:w-auto shrink-0">
             <Button
               variant="outline"
               size="sm"
               onClick={reloadClinics}
               disabled={isRefreshing}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors justify-center"
             >
               <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
               Refresh
@@ -294,10 +342,10 @@ export default function ClinicsPage() {
                 variant="primary"
                 size="sm"
                 onClick={openModal}
-                className="font-semibold rounded-xl shadow-xs"
+                className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs justify-center"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
-                Add Clinic
+                Add Location
               </Button>
             )}
           </div>
@@ -305,195 +353,488 @@ export default function ClinicsPage() {
       </div>
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          2. FACILITY KPI STATS CARDS
+          2. STATS (only show for multi-location)
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard
-          label="Total Active Clinics"
-          value={clinics.length.toString()}
-          description="Registered healthcare facilities"
-          icon={<Building2 className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard
-          label="Cities Covered"
-          value={uniqueCities.length.toString()}
-          description="Distinct geographic territories"
-          icon={<MapPin className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard
-          label="Specialty Services"
-          value={totalFacilities.length.toString()}
-          description="Active clinical departments & labs"
-          icon={<Activity className="w-5 h-5 text-text-secondary" />}
-        />
+      {clinics.length > 1 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <StatCard
+            label="Total Locations"
+            value={clinics.length.toString()}
+            description="Active practice locations"
+            icon={<Building2 className="w-5 h-5 text-text-secondary" />}
+          />
+          <StatCard
+            label="Cities Covered"
+            value={uniqueCities.length.toString()}
+            description="Distinct geographic areas"
+            icon={<MapPin className="w-5 h-5 text-text-secondary" />}
+          />
+        </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          3. TAB SWITCHER: Active Locations vs. Archived Locations
+         ────────────────────────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-4 border-b border-border/60 pb-3">
+        <div className="inline-flex p-1 rounded-xl bg-surface-hover/80 border border-border/60 overflow-x-auto [scrollbar-width:none] w-full sm:w-auto">
+          <button
+            type="button"
+            data-testid="tab-active-branches"
+            onClick={() => setActiveTab("active")}
+            className={cn(
+              "flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer min-h-[44px] sm:min-h-[36px]",
+              activeTab === "active"
+                ? "bg-surface text-primary shadow-xs font-bold"
+                : "text-text-muted hover:text-text"
+            )}
+          >
+            <Building2 className="w-3.5 h-3.5 shrink-0" />
+            <span>Active Branches ({clinics.length})</span>
+          </button>
+          <button
+            type="button"
+            data-testid="tab-archived-branches"
+            onClick={() => setActiveTab("archived")}
+            className={cn(
+              "flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer min-h-[44px] sm:min-h-[36px]",
+              activeTab === "archived"
+                ? "bg-surface text-primary shadow-xs font-bold"
+                : "text-text-muted hover:text-text"
+            )}
+          >
+            <Archive className="w-3.5 h-3.5 shrink-0" />
+            <span>Archived Branches ({archivedClinics.length})</span>
+          </button>
+        </div>
       </div>
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          3. CLINICS ROSTER TABLE
+          4. CONTENT: ACTIVE TAB vs ARCHIVED TAB
          ────────────────────────────────────────────────────────────────────────── */}
-      <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-        <CardContent className="p-0">
-          <Table
-            searchable
-            searchPlaceholder="Search clinics by name, city, or address..."
-            loading={loading || clinicsLoading}
-            columns={[
-              {
-                key: "name",
-                header: "Facility Name",
-                sortable: true,
-                render: (row: Clinic) => (
-                  <div className="space-y-0.5 min-w-[150px]">
-                    <div className="flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-primary-500 shrink-0" />
-                      <span className="font-bold text-text text-xs sm:text-sm">{row.name}</span>
+      {activeTab === "active" ? (
+        (loading || clinicsLoading) ? (
+          <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+            <CardContent className="p-0"><SkeletonTable /></CardContent>
+          </Card>
+        ) : clinics.length === 1 ? (
+        /* ── Smart Single-Location Card View ── */
+        <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+          <CardContent className="p-5 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+              <div className="space-y-4 flex-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-primary-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-text text-base sm:text-lg">{clinics[0].name}</h3>
+                    <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                      <MapPin className="w-3 h-3" />
+                      <span>{clinics[0].city}{clinics[0].address ? ` — ${clinics[0].address}` : ""}</span>
                     </div>
-                    {row.address && (
-                      <p className="text-xs text-text-muted truncate max-w-[200px]" title={row.address}>
-                        {row.address}
-                      </p>
-                    )}
                   </div>
-                ),
-              },
-              {
-                key: "city",
-                header: "City / Region",
-                sortable: true,
-                render: (row: Clinic) => (
-                  <div className="flex items-center gap-1 text-xs text-text-secondary">
-                    <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                    <span>{row.city}</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="flex items-center gap-2 text-xs text-text-secondary">
+                    <Phone className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                    <span>{(clinics[0] as Clinic).phone || "No phone set"}</span>
                   </div>
-                ),
-              },
-              {
-                key: "phone",
-                header: "Phone",
-                render: (row: Clinic) => (
-                  <div className="flex items-center gap-1 text-xs text-text-secondary">
-                    <Phone className="w-3 h-3 text-text-muted shrink-0" />
-                    <span className="whitespace-nowrap">{row.phone || "—"}</span>
+                  <div className="flex items-center gap-2 text-xs text-text-secondary">
+                    <Mail className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                    <span>{(clinics[0] as Clinic).email || "No email set"}</span>
                   </div>
-                ),
-              },
-              {
-                key: "email",
-                header: "Email",
-                render: (row: Clinic) => (
-                  <div className="flex items-center gap-1 text-xs text-text-secondary">
-                    <Mail className="w-3 h-3 text-text-muted shrink-0" />
-                    <span className="truncate max-w-[140px]" title={row.email}>
-                      {row.email || "—"}
-                    </span>
-                  </div>
-                ),
-              },
-              {
-                key: "timings",
-                header: "Operating Hours",
-                render: (row: Clinic) => (
-                  <div className="flex items-center gap-1 text-xs text-text-secondary">
+                  <div className="flex items-center gap-2 text-xs text-text-secondary">
                     <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                    <span>{formatTimings(row.timings)}</span>
+                    <span>{formatTimings((clinics[0] as Clinic).timings)}</span>
                   </div>
-                ),
-              },
-              {
-                key: "facilities",
-                header: "Facilities",
-                render: (row: Clinic) => (
-                  <div className="flex flex-wrap gap-1 max-w-[200px]">
-                    {row.facilities && row.facilities.length > 0 ? (
-                      row.facilities.map((fac, idx) => (
-                        <Badge key={idx} variant="primary" size="sm" className="text-[9px] font-semibold">
-                          {fac}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-text-muted text-xs">—</span>
-                    )}
+                </div>
+
+                {(clinics[0] as Clinic).facilities && ((clinics[0] as Clinic).facilities as string[]).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {((clinics[0] as Clinic).facilities as string[]).map((fac, idx) => (
+                      <Badge key={idx} variant="primary" size="sm" className="text-[10px] font-semibold">{fac}</Badge>
+                    ))}
                   </div>
-                ),
-              },
-              {
-                key: "upiVpa",
-                header: "UPI Settlement VPA",
-                render: (row: Clinic) => (
-                  <div className="space-y-0.5">
-                    {row.upiVpa ? (
-                      <Badge variant="success" size="sm" className="font-mono text-[10px] font-semibold flex items-center gap-1 w-fit">
-                        <span>⚡</span>
-                        <span>{row.upiVpa}</span>
-                      </Badge>
-                    ) : (
-                      <span className="text-text-muted text-xs italic">Default Gateway VPA</span>
-                    )}
-                    {row.merchantName && (
-                      <p className="text-[10px] text-text-muted truncate max-w-[150px]">{row.merchantName}</p>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                key: "actions",
-                header: "Actions",
-                align: "right",
-                width: "110px",
-                render: (row: Clinic) => (
-                  <div className="flex items-center justify-end gap-1.5">
+                )}
+              </div>
+
+              <div className="flex flex-wrap sm:flex-col items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-border/60">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl text-xs font-semibold min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-initial justify-center"
+                  onClick={() => setQrClinic(clinics[0] as Clinic)}
+                >
+                  <QrCode className="w-3.5 h-3.5 mr-1 text-primary-500" />
+                  QR Poster
+                </Button>
+                {canManageClinics && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl text-xs font-semibold min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-initial justify-center"
+                    onClick={() => openEditModal(clinics[0] as Clinic)}
+                  >
+                    <Edit3 className="w-3.5 h-3.5 mr-1 text-text-muted" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {canManageClinics && (
+              <div className="mt-5 pt-4 border-t border-border/60">
+                <button
+                  type="button"
+                  onClick={openModal}
+                  className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add another location
+                </button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        /* ── Multi-Location Table View ── */
+        <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+          <CardContent className="p-0">
+            <Table
+              searchable
+              searchPlaceholder="Search locations by name, city, or address..."
+              loading={false}
+              mobileCardView
+              columns={[
+                {
+                  key: "name",
+                  header: "Location Name",
+                  sortable: true,
+                  render: (row: Clinic) => (
+                    <div className="flex items-center gap-3 min-w-[180px]">
+                      <div className="w-10 h-10 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                        {row.image_url ? (
+                          <img src={row.image_url} alt={row.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Building2 className="w-5 h-5 text-primary-500" />
+                        )}
+                      </div>
+                      <div className="space-y-0.5 min-w-0">
+                        <span className="font-bold text-text text-xs sm:text-sm block truncate">{row.name}</span>
+                        {row.address && (
+                          <p className="text-xs text-text-muted truncate max-w-[200px]" title={row.address}>
+                            {row.address}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  key: "city",
+                  header: "City",
+                  sortable: true,
+                  render: (row: Clinic) => (
+                    <div className="flex items-center gap-1 text-xs text-text-secondary">
+                      <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                      <span>{row.city}</span>
+                    </div>
+                  ),
+                },
+                {
+                  key: "phone",
+                  header: "Phone",
+                  render: (row: Clinic) => (
+                    <div className="flex items-center gap-1 text-xs text-text-secondary">
+                      <Phone className="w-3 h-3 text-text-muted shrink-0" />
+                      <span className="whitespace-nowrap">{row.phone || "—"}</span>
+                    </div>
+                  ),
+                },
+                {
+                  key: "timings",
+                  header: "Hours",
+                  render: (row: Clinic) => (
+                    <div className="flex items-center gap-1 text-xs text-text-secondary">
+                      <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                      <span>{formatTimings(row.timings)}</span>
+                    </div>
+                  ),
+                },
+                {
+                  key: "actions",
+                  header: "Actions",
+                  align: "right",
+                  width: "110px",
+                  render: (row: Clinic) => (
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="rounded-lg font-semibold text-xs min-h-[36px] px-2.5"
+                        onClick={() => setQrClinic(row)}
+                      >
+                        <QrCode className="w-3.5 h-3.5 mr-1 text-primary-500" />
+                        QR
+                      </Button>
+                      {canManageClinics && (
+                        <Dropdown
+                          align="right"
+                          trigger={
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              className="h-9 w-9 p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text min-h-[36px] min-w-[36px]"
+                              title="Row Actions"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          }
+                          items={[
+                            {
+                              label: "Reception QR Code",
+                              icon: <QrCode className="w-4 h-4 text-primary-500" />,
+                              onClick: () => setQrClinic(row),
+                            },
+                            {
+                              label: "Edit Location",
+                              icon: <Edit3 className="w-4 h-4 text-text-muted" />,
+                              onClick: () => openEditModal(row),
+                            },
+                            { divider: true, label: "" },
+                            {
+                              label: "Deactivate Location",
+                              icon: <Trash2 className="w-4 h-4 text-danger" />,
+                              variant: "danger" as any,
+                              onClick: () => setDeletingId(row.id),
+                            },
+                          ]}
+                        />
+                      )}
+                    </div>
+                  ),
+                },
+              ]}
+              data={clinics as Clinic[]}
+              emptyMessage="No locations configured yet. Click 'Add Location' to register your first branch."
+              renderMobileCard={(row: Clinic) => (
+                <div
+                  key={row.id}
+                  className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-surface-alt border border-border flex items-center justify-center text-primary-600 font-bold text-sm shrink-0 overflow-hidden shadow-2xs">
+                        {row.image_url ? (
+                          <img src={row.image_url} alt={row.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Building2 className="w-5 h-5 text-primary-500" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-text text-sm truncate">{row.name}</p>
+                        <p className="text-xs text-text-muted flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-text-muted shrink-0" />
+                          <span className="truncate">{row.city}</span>
+                        </p>
+                      </div>
+                    </div>
                     <Button
                       size="xs"
                       variant="outline"
-                      className="rounded-lg font-semibold text-xs"
+                      className="rounded-xl font-semibold text-xs min-h-[36px] px-2.5 shrink-0"
                       onClick={() => setQrClinic(row)}
                     >
                       <QrCode className="w-3.5 h-3.5 mr-1 text-primary-500" />
                       QR
                     </Button>
-                    {canManageClinics && (
-                      <Dropdown
-                        align="right"
-                        trigger={
+                  </div>
+
+                  <div className="p-2.5 bg-surface-alt/70 rounded-xl border border-border/60 space-y-1.5 text-xs">
+                    {row.address && (
+                      <p className="text-text text-xs leading-snug line-clamp-2">
+                        {row.address}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40 text-[11px]">
+                      <span className="text-text-muted flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-text-muted" />
+                        <span>{formatTimings(row.timings)}</span>
+                      </span>
+                      {row.phone && (
+                        <a
+                          href={`tel:${row.phone}`}
+                          className="text-text-muted hover:text-primary-600 transition-colors flex items-center gap-1 font-mono"
+                        >
+                          <Phone className="w-3 h-3 text-text-muted" />
+                          <span>{row.phone}</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {canManageClinics && (
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openEditModal(row)}
+                        className="w-full font-semibold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-text-muted" />
+                        <span>Edit Location</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDeletingId(row.id)}
+                        className="w-full font-semibold text-xs min-h-[42px] rounded-xl text-rose-500 hover:bg-rose-500/10 border-rose-500/30 flex items-center justify-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Deactivate</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            />
+          </CardContent>
+        </Card>
+      )) : (
+        /* ── Archived Locations View ── */
+        loadingArchived ? (
+          <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+            <CardContent className="p-0"><SkeletonTable /></CardContent>
+          </Card>
+        ) : archivedClinics.length === 0 ? (
+          <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs p-8 text-center">
+            <Archive className="w-10 h-10 text-text-muted mx-auto mb-3 opacity-50" />
+            <h3 className="font-bold text-text text-base mb-1">No Archived Branches</h3>
+            <p className="text-xs text-text-muted max-w-md mx-auto leading-relaxed">
+              All registered clinic branches are currently operational. When a branch is deactivated (for example, during a plan downgrade), it will be securely archived here with all historical records preserved.
+            </p>
+          </Card>
+        ) : (
+          <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+            <CardContent className="p-0">
+              <Table
+                searchable
+                searchPlaceholder="Search archived locations..."
+                loading={false}
+                mobileCardView
+                columns={[
+                  {
+                    key: "name",
+                    header: "Location Name",
+                    sortable: true,
+                    render: (row: Clinic) => (
+                      <div className="space-y-0.5 min-w-[150px]">
+                        <div className="flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                          <span className="font-bold text-text text-xs sm:text-sm">{row.name}</span>
+                          <Badge variant="neutral" size="sm" className="text-[10px]">Archived</Badge>
+                        </div>
+                        {row.address && (
+                          <p className="text-xs text-text-muted truncate max-w-[200px]" title={row.address}>
+                            {row.address}
+                          </p>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: "city",
+                    header: "City",
+                    sortable: true,
+                    render: (row: Clinic) => (
+                      <div className="flex items-center gap-1 text-xs text-text-secondary">
+                        <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                        <span>{row.city}</span>
+                      </div>
+                    ),
+                  },
+                  {
+                    key: "phone",
+                    header: "Phone",
+                    render: (row: Clinic) => (
+                      <div className="flex items-center gap-1 text-xs text-text-secondary">
+                        <Phone className="w-3 h-3 text-text-muted shrink-0" />
+                        <span className="whitespace-nowrap">{row.phone || "—"}</span>
+                      </div>
+                    ),
+                  },
+                  {
+                    key: "actions",
+                    header: "Actions",
+                    align: "right",
+                    width: "180px",
+                    render: (row: Clinic) => (
+                      <div className="flex items-center justify-end gap-2">
+                        {canManageClinics && (
                           <Button
-                            size="xs"
-                            variant="outline"
-                            className="h-7 w-7 p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text"
-                            title="Row Actions"
+                            size="sm"
+                            variant="primary"
+                            className="rounded-xl text-xs font-semibold min-h-[36px] shadow-xs"
+                            loading={reactivatingId === row.id}
+                            icon={<RotateCcw className="w-3.5 h-3.5" />}
+                            onClick={() => handleReactivate(row)}
                           >
-                            <MoreHorizontal className="h-3.5 w-3.5" />
+                            Reactivate Branch
                           </Button>
-                        }
-                        items={[
-                          {
-                            label: "Reception QR Code",
-                            icon: <QrCode className="w-4 h-4 text-primary-500" />,
-                            onClick: () => setQrClinic(row),
-                          },
-                          {
-                            label: "Edit Configuration",
-                            icon: <Edit3 className="w-4 h-4 text-text-muted" />,
-                            onClick: () => openEditModal(row),
-                          },
-                          { divider: true, label: "" },
-                          {
-                            label: "Deactivate Clinic",
-                            icon: <Trash2 className="w-4 h-4 text-danger" />,
-                            variant: "danger" as any,
-                            onClick: () => setDeletingId(row.id),
-                          },
-                        ]}
-                      />
+                        )}
+                      </div>
+                    ),
+                  },
+                ]}
+                data={archivedClinics}
+                emptyMessage="No archived branches found."
+                renderMobileCard={(row: Clinic) => (
+                  <div
+                    key={row.id}
+                    className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-surface-alt border border-border flex items-center justify-center text-text-muted font-bold text-sm shrink-0">
+                          <Building2 className="w-5 h-5 text-text-muted" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-text text-sm truncate">{row.name}</p>
+                          <p className="text-xs text-text-muted flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-text-muted shrink-0" />
+                            <span className="truncate">{row.city}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="neutral" size="sm" className="text-[10px]">Archived</Badge>
+                    </div>
+
+                    {row.address && (
+                      <p className="text-xs text-text-muted p-2.5 rounded-xl bg-surface-alt/70 border border-border/50 line-clamp-2">
+                        {row.address}
+                      </p>
+                    )}
+
+                    {canManageClinics && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        className="w-full font-semibold text-xs min-h-[44px] rounded-xl shadow-xs justify-center"
+                        loading={reactivatingId === row.id}
+                        icon={<RotateCcw className="w-3.5 h-3.5" />}
+                        onClick={() => handleReactivate(row)}
+                      >
+                        Reactivate Branch
+                      </Button>
                     )}
                   </div>
-                ),
-              },
-            ]}
-            data={clinics as Clinic[]}
-            emptyMessage="No clinics configured yet. Click 'Add Clinic' to register your first branch."
-          />
-        </CardContent>
-      </Card>
+                )}
+              />
+            </CardContent>
+          </Card>
+        )
+      )}
 
       {/* ──────────────────────────────────────────────────────────────────────────
           4. ADD / EDIT CLINIC MODAL
@@ -501,8 +842,8 @@ export default function ClinicsPage() {
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={`${editingId ? "Update Clinic Configuration" : "Add New Clinic Location"}`}
-        description="Configure facility details, operating hours, available medical services, and address."
+        title={`${editingId ? "Edit Location" : "Add New Location"}`}
+        description="Configure location details, operating hours, facilities, and contact information."
         size="2xl"
       >
         <form onSubmit={handleSave} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
@@ -652,11 +993,11 @@ export default function ClinicsPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/60">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsModalOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submitting} className="font-semibold rounded-xl shadow-xs">
+            <Button type="submit" size="sm" variant="primary" loading={submitting} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs">
               {editingId ? "Update Clinic Configuration" : "Save Clinic Location"}
             </Button>
           </div>
@@ -671,7 +1012,7 @@ export default function ClinicsPage() {
         onClose={() => setDeletingId(null)}
         onConfirm={handleDelete}
         title="Deactivate Clinic Location?"
-        description="Are you sure you want to deactivate this clinic location? Staff linked to this clinic will remain registered, but their location link will need to be updated."
+        description="Are you sure you want to deactivate this clinic location? All patient encounters, appointments, and medical records will remain safely preserved. You can reactivate this branch anytime from the Archived Branches tab as permitted by your subscription plan."
         variant="danger"
         confirmLabel="Deactivate"
       />

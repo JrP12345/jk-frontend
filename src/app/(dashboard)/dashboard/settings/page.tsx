@@ -14,10 +14,12 @@ import {
   useToast,
   Spinner,
   ImageUpload,
+  MultiImageUpload,
   ScheduleEditor,
   Toggle,
   Select,
   Badge,
+  SkeletonForm,
   cn,
 } from "@/components/ui";
 import { useR2Upload } from "@/hooks/useR2Upload";
@@ -96,7 +98,10 @@ function OrganizationTab({ selectedOrgId }: { selectedOrgId?: string }) {
   const validateField = (field: string, value: string) => {
     let error = "";
     if (field === "name" && !value.trim()) error = "Organization Name is required";
-    else if (field === "city" && !value.trim()) error = "City is required";
+    else if (field === "city") {
+      if (!value.trim()) error = "City is required";
+      else if (/^[0-9+\s-]{6,}$/.test(value.trim())) error = "City appears to be a phone number. Please enter a valid city name.";
+    }
     else if (field === "email" && value.trim() && !EMAIL_REGEX.test(value)) error = "Valid email required";
     else if (field === "phone" && value.trim() && !PHONE_REGEX.test(value)) error = "Valid phone required";
     setErrors((prev) => {
@@ -111,6 +116,7 @@ function OrganizationTab({ selectedOrgId }: { selectedOrgId?: string }) {
     const newErrors: Record<string, string> = {};
     if (!formData.name?.trim()) newErrors.name = "Organization Name is required";
     if (!formData.city?.trim()) newErrors.city = "City is required";
+    else if (/^[0-9+\s-]{6,}$/.test(formData.city.trim())) newErrors.city = "City appears to be a phone number. Please enter a valid city name.";
     if (formData.email?.trim() && !EMAIL_REGEX.test(formData.email)) newErrors.email = "Valid email required";
     if (formData.phone?.trim() && !PHONE_REGEX.test(formData.phone)) newErrors.phone = "Valid phone required";
     setErrors(newErrors);
@@ -149,15 +155,35 @@ function OrganizationTab({ selectedOrgId }: { selectedOrgId?: string }) {
       if (selectedOrgId) {
         finalData.organizationId = selectedOrgId;
       }
+      if (finalData.logo_url instanceof File) {
+        toast({ title: "Uploading...", description: "Uploading organization logo", variant: "default" });
+        const { publicUrl } = await uploadFile(finalData.logo_url);
+        finalData.logo_url = publicUrl;
+      }
       if (finalData.image_url instanceof File) {
-        toast({ title: "Uploading...", description: "Uploading logo to Cloudflare R2", variant: "default" });
+        toast({ title: "Uploading...", description: "Uploading cover photo", variant: "default" });
         const { publicUrl } = await uploadFile(finalData.image_url);
         finalData.image_url = publicUrl;
+      }
+      if (Array.isArray(finalData.images)) {
+        const uploadedImages: string[] = [];
+        for (const item of finalData.images) {
+          if (item instanceof File) {
+            const { publicUrl } = await uploadFile(item);
+            uploadedImages.push(publicUrl);
+          } else if (typeof item === "string" && item) {
+            uploadedImages.push(item);
+          }
+        }
+        finalData.images = uploadedImages;
       }
       const url = selectedOrgId
         ? `/onboarding/organization/me?organizationId=${selectedOrgId}`
         : "/onboarding/organization/me";
-      await api.put(url, finalData);
+      const res = await api.put(url, finalData);
+      if (res.data?.data) {
+        setFormData(res.data.data);
+      }
       toast({ title: "Saved", description: "Organization settings updated successfully!", variant: "success" });
       fetchSettings();
     } catch (err: any) {
@@ -167,12 +193,7 @@ function OrganizationTab({ selectedOrgId }: { selectedOrgId?: string }) {
     }
   };
 
-  if (loading)
-    return (
-      <Card className="p-12 border border-border/80 shadow-xs flex justify-center rounded-2xl">
-        <Spinner size="md" label="Loading facility profile & schedule..." />
-      </Card>
-    );
+  if (loading) return <SkeletonForm fields={5} />;
   if (!formData) return null;
 
   return (
@@ -183,14 +204,15 @@ function OrganizationTab({ selectedOrgId }: { selectedOrgId?: string }) {
             <div>
               <CardTitle className="text-base font-bold text-text">Facility Profile & Operating Schedule</CardTitle>
               <CardDescription className="text-xs text-text-muted mt-0.5">
-                Facility information displayed on public booking cards and diagnostic certificates.
+                Facility branding, logo, campus showcase photos, and operating schedule.
               </CardDescription>
             </div>
             <Button
+              type="submit"
               variant="primary"
               size="sm"
               loading={saving}
-              className="font-semibold rounded-xl gap-1.5 cursor-pointer shrink-0 shadow-xs"
+              className="font-semibold rounded-xl gap-1.5 cursor-pointer shrink-0 shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
             >
               <Save className="w-3.5 h-3.5" />
               Save Organization
@@ -198,11 +220,34 @@ function OrganizationTab({ selectedOrgId }: { selectedOrgId?: string }) {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pt-5">
+          {/* Organization Logo & Cover Photo Dual Upload */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-surface-alt p-4 border border-border/80 rounded-2xl">
+              <ImageUpload
+                label="Organization Brand Logo"
+                helperText="Square or circular brand logo (PNG, JPG, SVG)"
+                value={formData.logo_url || null}
+                onChange={(val) => setFormData({ ...formData, logo_url: val })}
+              />
+            </div>
+            <div className="bg-surface-alt p-4 border border-border/80 rounded-2xl">
+              <ImageUpload
+                label="Cover / Hero Photo"
+                helperText="Wide header photo displayed on public clinic cards"
+                value={formData.image_url || null}
+                onChange={(val) => setFormData({ ...formData, image_url: val })}
+              />
+            </div>
+          </div>
+
+          {/* Multi-Image Facility Gallery Showcase */}
           <div className="bg-surface-alt p-4 border border-border/80 rounded-2xl">
-            <ImageUpload
-              label="Organization Logo / Display Image"
-              value={formData.image_url || null}
-              onChange={(val) => setFormData({ ...formData, image_url: val })}
+            <MultiImageUpload
+              label="Campus & Facility Photo Gallery"
+              helperText="Upload photos of reception, doctor consultation rooms, OT, and diagnostics"
+              values={formData.images || []}
+              onChange={(vals) => setFormData({ ...formData, images: vals })}
+              maxImages={8}
             />
           </div>
 
@@ -275,6 +320,19 @@ function OrganizationTab({ selectedOrgId }: { selectedOrgId?: string }) {
               value={formData.timings || ""}
               onChange={(val) => setFormData({ ...formData, timings: val })}
             />
+          </div>
+
+          <div className="pt-4 border-t border-border/60 flex items-center justify-end">
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              loading={saving}
+              className="font-semibold rounded-xl gap-2 cursor-pointer shadow-xs w-full sm:w-auto min-h-[44px]"
+            >
+              <Save className="w-4 h-4" />
+              Save All Changes
+            </Button>
           </div>
         </CardContent>
       </form>
@@ -390,12 +448,7 @@ function NotificationsTab({ selectedOrgId }: { selectedOrgId?: string }) {
     }
   };
 
-  if (prefLoading || (isRoot && smtpLoading))
-    return (
-      <Card className="p-12 border border-border/80 shadow-xs flex justify-center rounded-2xl">
-        <Spinner size="md" label="Loading notification preferences & SMTP configuration..." />
-      </Card>
-    );
+  if (prefLoading || (isRoot && smtpLoading)) return <SkeletonForm fields={4} />;
 
   const smtpConfigured = !!(smtpData?.host && smtpData?.user && smtpData?.passIsSet);
 
@@ -403,7 +456,7 @@ function NotificationsTab({ selectedOrgId }: { selectedOrgId?: string }) {
     <div className="space-y-5 animate-fade-in">
       {/* Delivery Channels */}
       <Card className="p-5 border border-border/80 shadow-xs rounded-2xl space-y-4 bg-surface">
-        <div className="flex items-center justify-between pb-3 border-b border-border/60">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
           <div>
             <h3 className="text-sm font-bold text-text">Delivery Channels</h3>
             <p className="text-xs text-text-muted mt-0.5">Communication channels enabled for user alerts.</p>
@@ -413,7 +466,7 @@ function NotificationsTab({ selectedOrgId }: { selectedOrgId?: string }) {
             size="sm"
             onClick={() => updatePrefMutation.mutate()}
             loading={updatePrefMutation.isPending}
-            className="font-semibold rounded-xl gap-1.5 cursor-pointer shrink-0 shadow-xs"
+            className="font-semibold rounded-xl gap-1.5 cursor-pointer shrink-0 shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
           >
             <Save className="w-3.5 h-3.5" />
             Save Preferences
@@ -476,7 +529,7 @@ function NotificationsTab({ selectedOrgId }: { selectedOrgId?: string }) {
 
       {/* Email Gateway (SMTP) */}
       <Card className="p-5 border border-border/80 shadow-xs rounded-2xl space-y-4 bg-surface">
-        <div className="flex items-center justify-between pb-3 border-b border-border/60">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-sm font-bold text-text">Outbound Email Gateway (SMTP)</h3>
@@ -506,7 +559,7 @@ function NotificationsTab({ selectedOrgId }: { selectedOrgId?: string }) {
               size="sm"
               onClick={() => updateSmtpMutation.mutate()}
               loading={updateSmtpMutation.isPending}
-              className="font-semibold rounded-xl gap-1.5 cursor-pointer shrink-0 shadow-xs"
+              className="font-semibold rounded-xl gap-1.5 cursor-pointer shrink-0 shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
             >
               <Save className="w-3.5 h-3.5" />
               Save Gateway
@@ -583,7 +636,7 @@ function NotificationsTab({ selectedOrgId }: { selectedOrgId?: string }) {
 
             <div className="border-t border-border/60 pt-4 space-y-2">
               <p className="text-xs font-bold text-text">Dispatch Test Email</p>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <div className="flex-1">
                   <Input
                     placeholder="recipient@email.com (blank = your account email)"
@@ -596,7 +649,7 @@ function NotificationsTab({ selectedOrgId }: { selectedOrgId?: string }) {
                   size="sm"
                   onClick={handleSendTestEmail}
                   loading={testingEmail}
-                  className="rounded-xl cursor-pointer shrink-0 font-semibold gap-1.5 shadow-xs"
+                  className="rounded-xl cursor-pointer shrink-0 font-semibold gap-1.5 shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
                 >
                   <Send className="w-3.5 h-3.5" />
                   Send Test
@@ -663,12 +716,7 @@ function AISettingsTab({ selectedOrgId }: { selectedOrgId?: string }) {
       }),
   });
 
-  if (isLoading)
-    return (
-      <Card className="p-12 border border-border/80 shadow-xs flex justify-center rounded-2xl">
-        <Spinner size="md" label="Loading AI governance & copilot configuration..." />
-      </Card>
-    );
+  if (isLoading) return <SkeletonForm fields={4} />;
 
   const FLAG_CONFIG = [
     {
@@ -723,7 +771,7 @@ function AISettingsTab({ selectedOrgId }: { selectedOrgId?: string }) {
                 size="sm"
                 onClick={() => updateMutation.mutate()}
                 loading={updateMutation.isPending}
-                className="font-semibold rounded-xl gap-1.5 cursor-pointer shrink-0 shadow-xs"
+                className="font-semibold rounded-xl gap-1.5 cursor-pointer shrink-0 shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <Save className="w-3.5 h-3.5" />
                 Save AI Config
@@ -798,7 +846,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (isRoot) {
       api
-        .get("/onboarding/organizations")
+        .get("/organizations")
         .then((res) => {
           const orgList = res.data.data?.organizations || res.data.data || [];
           setOrganizations(orgList);
@@ -806,23 +854,12 @@ export default function SettingsPage() {
             setSelectedOrgId((prev) => prev || orgList[0].id || orgList[0]._id);
           }
         })
-        .catch(() => {
-          api
-            .get("/organizations")
-            .then((res) => {
-              const orgList = res.data.data || [];
-              setOrganizations(orgList);
-              if (orgList.length > 0) {
-                setSelectedOrgId((prev) => prev || orgList[0].id || orgList[0]._id);
-              }
-            })
-            .catch(() => {});
-        });
+        .catch(() => {});
     }
   }, [isRoot]);
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-8">
+    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -830,9 +867,11 @@ export default function SettingsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">Platform Settings</h1>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+                {isRoot ? "Platform Settings" : "Organization Settings"}
+              </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                System Governance
+                {isRoot ? "System Governance" : "Organization Management"}
               </Badge>
               {isRoot && (
                 <Badge variant="secondary" size="sm" className="font-semibold text-[10px] bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
@@ -841,7 +880,9 @@ export default function SettingsPage() {
               )}
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Manage organization details, notification preferences, email gateway, commercial billing, and AI configuration.
+              {isRoot
+                ? "Manage organization details, notification preferences, email gateway, commercial billing, and AI configuration."
+                : "Manage your clinic organization profile, notification channels, clinical modules, and subscriptions."}
             </p>
           </div>
 
@@ -865,15 +906,15 @@ export default function SettingsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. SEGMENTED TAB NAVIGATION BAR
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
-        {TABS.map((tab) => {
+      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-pan-x scrollbar-none w-full md:w-fit max-w-full">
+        {TABS.filter((tab) => !tab.rootOnly || isRoot).map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+                "px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 min-h-[38px] sm:min-h-[32px]",
                 isActive
                   ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                   : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"

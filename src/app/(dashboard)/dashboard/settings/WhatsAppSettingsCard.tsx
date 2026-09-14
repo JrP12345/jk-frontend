@@ -15,6 +15,7 @@ import {
   useToast,
   Spinner,
   cn,
+  SkeletonForm,
 } from "@/components/ui";
 import Modal from "@/components/ui/Modal";
 import {
@@ -140,9 +141,9 @@ export default function WhatsAppSettingsCard({ selectedOrgId }: WhatsAppSettings
 
   if (isLoading) {
     return (
-      <Card className="p-8 border border-border/80 shadow-xs flex justify-center rounded-2xl">
-        <Spinner size="md" label="Loading WhatsApp gateway & credit status..." />
-      </Card>
+      <div className="space-y-4">
+        <SkeletonForm rows={4} />
+      </div>
     );
   }
 
@@ -185,12 +186,12 @@ export default function WhatsAppSettingsCard({ selectedOrgId }: WhatsAppSettings
               </CardDescription>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0 w-full sm:w-auto">
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => setIsTopUpModalOpen(true)}
-                className="font-semibold rounded-xl gap-1.5 cursor-pointer shadow-xs text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                className="font-semibold rounded-xl gap-1.5 cursor-pointer shadow-xs text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <Zap className="w-3.5 h-3.5 fill-current" />
                 Top-Up Credits
@@ -200,7 +201,7 @@ export default function WhatsAppSettingsCard({ selectedOrgId }: WhatsAppSettings
                 size="sm"
                 onClick={() => saveMutation.mutate()}
                 loading={saveMutation.isPending}
-                className="font-semibold rounded-xl gap-1.5 cursor-pointer shadow-xs"
+                className="font-semibold rounded-xl gap-1.5 cursor-pointer shadow-xs flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <Save className="w-3.5 h-3.5" />
                 Save Settings
@@ -598,16 +599,16 @@ export default function WhatsAppSettingsCard({ selectedOrgId }: WhatsAppSettings
         description="Prepaid credits are consumed after your monthly plan allowance and never expire. Invoices are generated instantly with full GST breakdown."
         size="lg"
         footer={
-          <div className="flex items-center justify-between w-full">
-            <div className="text-xs text-text-muted">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
+            <div className="text-xs text-text-muted text-center sm:text-left">
               Instant activation • No hidden setup fees
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => setIsTopUpModalOpen(false)}
-                className="rounded-xl font-semibold cursor-pointer"
+                className="rounded-xl font-semibold cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 Cancel
               </Button>
@@ -616,7 +617,7 @@ export default function WhatsAppSettingsCard({ selectedOrgId }: WhatsAppSettings
                 size="sm"
                 loading={topUpMutation.isPending}
                 onClick={() => topUpMutation.mutate(selectedPack)}
-                className="rounded-xl font-semibold gap-1.5 cursor-pointer shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="rounded-xl font-semibold gap-1.5 cursor-pointer shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <Zap className="w-3.5 h-3.5 fill-current" />
                 Confirm & Top-Up

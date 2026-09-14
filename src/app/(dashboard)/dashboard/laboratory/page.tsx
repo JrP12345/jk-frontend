@@ -10,7 +10,7 @@ import {
   ChartContainer, DonutChart, cn
 } from "@/components/ui";
 import { useR2Upload } from "@/hooks/useR2Upload";
-import { Activity, Layers, RotateCw, Plus, FlaskConical, Clock, CheckCircle2 } from "lucide-react";
+import { Activity, Layers, RotateCw, Plus, FlaskConical, Clock, CheckCircle2, Phone } from "lucide-react";
 
 const LAB_DEPARTMENTS = ["Biochemistry", "Hematology", "Radiology", "Microbiology", "Immunology", "Pathology", "Urinalysis", "Cardiology"];
 
@@ -426,7 +426,7 @@ export default function LaboratoryPage() {
   const completedOrders = labOrders.filter(o => o.status === "result-uploaded").length;
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-8">
+    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -446,7 +446,7 @@ export default function LaboratoryPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0 w-full sm:w-auto">
             {user && user.role !== "patient" && (
               <>
                 <Button
@@ -454,7 +454,7 @@ export default function LaboratoryPage() {
                   size="sm"
                   onClick={fetchData}
                   disabled={loading}
-                  className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+                  className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
                 >
                   <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
                   Refresh
@@ -475,7 +475,7 @@ export default function LaboratoryPage() {
                       setErrors({});
                       setIsTestModalOpen(true);
                     }}
-                    className="font-semibold rounded-xl shadow-xs cursor-pointer"
+                    className="flex-1 sm:flex-initial min-h-[40px] font-semibold rounded-xl shadow-xs cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5 mr-1" />
                     Add Test to Catalog
@@ -485,7 +485,7 @@ export default function LaboratoryPage() {
                     variant="primary"
                     size="sm"
                     onClick={() => { setSelectedPatient(null); setPatientSearch(""); setSelectedTestId(""); setSelectedDoctorId(""); setIsOrderOpen(true); }}
-                    className="font-semibold rounded-xl shadow-xs cursor-pointer"
+                    className="flex-1 sm:flex-initial min-h-[40px] font-semibold rounded-xl shadow-xs cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5 mr-1" />
                     Place Lab Order
@@ -531,12 +531,12 @@ export default function LaboratoryPage() {
 
       {/* Tabs Menu (Staff Only) */}
       {user && user.role !== "patient" && (
-        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full touch-pan-x">
           <button
             type="button"
             onClick={() => setActiveTab("worklist")}
             className={cn(
-              "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+              "px-3.5 py-2 min-h-[38px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
               activeTab === "worklist"
                 ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -552,7 +552,7 @@ export default function LaboratoryPage() {
             type="button"
             onClick={() => setActiveTab("catalog")}
             className={cn(
-              "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+              "px-3.5 py-2 min-h-[38px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
               activeTab === "catalog"
                 ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -609,6 +609,7 @@ export default function LaboratoryPage() {
           <Card className="overflow-hidden">
             <Table
               loading={loading}
+              mobileCardView
                   columns={[
                     { header: "Patient Details", key: "patient" },
                     { header: "Diagnostic Test", key: "test" },
@@ -651,25 +652,124 @@ export default function LaboratoryPage() {
                       <span className="text-xs text-text-muted">Awaiting fulfillment</span>
                     ),
                     action: (
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                         {order.status === "ordered" && (
-                          <Button variant="outline" size="sm" onClick={() => handleCollectSample(order.id)}>
+                          <Button variant="outline" size="sm" onClick={() => handleCollectSample(order.id)} className="w-full sm:w-auto min-h-[36px]">
                             Collect {order.testId?.sampleType}
                           </Button>
                         )}
                         {(order.status === "sample-collected" || order.status === "processing") && (
-                          <Button variant="primary" size="sm" onClick={() => { setActiveOrder(order); setResultValue(""); setResultNotes(""); setAttachmentUrl(""); setUploadedFile(null); setIsResultOpen(true); }}>
+                          <Button variant="primary" size="sm" onClick={() => { setActiveOrder(order); setResultValue(""); setResultNotes(""); setAttachmentUrl(""); setUploadedFile(null); setIsResultOpen(true); }} className="w-full sm:w-auto min-h-[36px]">
                             Upload Results
                           </Button>
                         )}
                         {order.status === "result-uploaded" && (
-                          <Button variant="ghost" size="sm" onClick={() => handlePrintReport(order)}>
+                          <Button variant="ghost" size="sm" onClick={() => handlePrintReport(order)} className="w-full sm:w-auto min-h-[36px]">
                             Print Report
                           </Button>
                         )}
                       </div>
                     )
                   }))}
+                  renderMobileCard={(row: any) => {
+                    const order = labOrders.find((o) => o.id === row.id);
+                    if (!order) return null;
+                    return (
+                      <div
+                        key={order.id}
+                        className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-text text-sm">{order.patientId?.userId?.name || "Patient"}</h4>
+                            {order.patientId?.userId?.phone && (
+                              <a
+                                href={`tel:${order.patientId?.userId?.phone}`}
+                                className="text-xs text-text-muted hover:text-text flex items-center gap-1 mt-0.5"
+                              >
+                                <Phone className="w-3 h-3 text-text-muted" />
+                                <span>{order.patientId?.userId?.phone}</span>
+                              </a>
+                            )}
+                          </div>
+                          <Badge
+                            variant={
+                              order.status === "ordered" ? "warning" :
+                              order.status === "sample-collected" ? "primary" :
+                              order.status === "processing" ? "info" : "success"
+                            }
+                            size="sm"
+                            dot
+                            className="capitalize text-[10px] font-bold shrink-0"
+                          >
+                            {order.status.replace("-", " ")}
+                          </Badge>
+                        </div>
+
+                        <div className="p-2.5 rounded-xl bg-surface-alt/70 border border-border/50 space-y-1.5 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-text">{order.testId?.name}</span>
+                            <span className="font-mono text-[10px] font-bold text-primary-600 dark:text-primary-400 bg-primary-500/10 px-1.5 py-0.2 rounded-md">
+                              {order.testId?.code}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-text-muted text-[11px]">
+                            <span>{order.testId?.department}</span>
+                            <span>{new Date(order.orderDate).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                          </div>
+                          {order.status === "result-uploaded" && order.resultValue && (
+                            <div className="pt-1.5 border-t border-border/50">
+                              <span className="text-[10px] font-bold uppercase text-text-muted block">Outcome:</span>
+                              <span className="font-bold text-text text-sm">{order.resultValue}</span>
+                              {order.resultNotes && (
+                                <p className="text-[11px] text-text-muted italic truncate">{order.resultNotes}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-1">
+                          {order.status === "ordered" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCollectSample(order.id)}
+                              className="w-full font-bold text-xs rounded-xl min-h-[42px] justify-center"
+                            >
+                              Collect {order.testId?.sampleType || "Specimen"}
+                            </Button>
+                          )}
+                          {(order.status === "sample-collected" || order.status === "processing") && (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => {
+                                setActiveOrder(order);
+                                setResultValue("");
+                                setResultNotes("");
+                                setAttachmentUrl("");
+                                setUploadedFile(null);
+                                setIsResultOpen(true);
+                              }}
+                              className="w-full font-bold text-xs rounded-xl min-h-[42px] justify-center shadow-xs"
+                            >
+                              Upload Results
+                            </Button>
+                          )}
+                          {order.status === "result-uploaded" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePrintReport(order)}
+                              className="w-full font-semibold text-xs rounded-xl min-h-[42px] justify-center"
+                            >
+                              Print Verified Report
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }}
                   emptyMessage="No laboratory diagnostic orders registered yet."
                 />
               </Card>
@@ -682,6 +782,7 @@ export default function LaboratoryPage() {
               <Card className="overflow-hidden">
                 <Table
                   loading={loading}
+                  mobileCardView
                   columns={[
                     { header: "Test Code", key: "code" },
                     { header: "Test Name", key: "name" },
@@ -704,7 +805,7 @@ export default function LaboratoryPage() {
                         <Dropdown
                           align="right"
                           trigger={
-                            <Button size="sm" variant="outline" className="h-8 w-8 p-0 flex items-center justify-center rounded-lg cursor-pointer shrink-0" title="Row Actions">
+                            <Button size="sm" variant="outline" className="h-8 w-8 min-h-[36px] min-w-[36px] p-0 flex items-center justify-center rounded-lg cursor-pointer shrink-0" title="Row Actions">
                               <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                               </svg>
@@ -728,6 +829,72 @@ export default function LaboratoryPage() {
                       </div>
                     )
                   }))}
+                  renderMobileCard={(row: any) => {
+                    const test = labTests.find((t) => t.id === row.id);
+                    if (!test) return null;
+                    return (
+                      <div
+                        key={test.id}
+                        className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-text text-sm">{test.name}</h4>
+                            <p className="text-xs text-text-muted">{test.department}</p>
+                          </div>
+                          <Badge variant="outline" size="sm" className="font-mono text-[10px] font-bold uppercase shrink-0">
+                            {test.code}
+                          </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs py-2 px-3 rounded-xl bg-surface-alt/70 border border-border/50">
+                          <div>
+                            <span className="text-text-muted text-[10px] uppercase font-bold block">Specimen</span>
+                            <span className="font-semibold text-text mt-0.5 block">{test.sampleType || "Blood"}</span>
+                          </div>
+                          <div>
+                            <span className="text-text-muted text-[10px] uppercase font-bold block">Price</span>
+                            <span className="font-bold text-sm text-text mt-0.5 block">₹{test.price}</span>
+                          </div>
+                          {test.normalRange && (
+                            <div className="col-span-2 pt-1 border-t border-border/40">
+                              <span className="text-text-muted text-[10px] uppercase font-bold block">Normal Range</span>
+                              <span className="font-mono text-xs text-text mt-0.5 block">{test.normalRange}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingTestId(test.id);
+                              setTestName(test.name);
+                              setTestCode(test.code);
+                              setTestDepartment(test.department);
+                              setTestSampleType(test.sampleType);
+                              setTestPrice(test.price);
+                              setTestNormalRange(test.normalRange);
+                              setErrors({});
+                              setIsTestModalOpen(true);
+                            }}
+                            className="flex-1 font-semibold text-xs rounded-xl min-h-[40px] justify-center"
+                          >
+                            Edit Test
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => setDeletingTestId(test.id)}
+                            className="font-semibold text-xs rounded-xl min-h-[40px] px-3.5"
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  }}
                   emptyMessage="No diagnostic tests registered in this clinic catalog."
                 />
               </Card>
@@ -742,6 +909,7 @@ export default function LaboratoryPage() {
               <Card className="overflow-hidden">
                 <Table
                   loading={loading}
+                  mobileCardView
                   columns={[
                     { header: "Test Name", key: "name" },
                     { header: "Code / Lab Room", key: "code" },
@@ -783,6 +951,62 @@ export default function LaboratoryPage() {
                       <span className="text-xs text-text-muted">Awaiting results</span>
                     )
                   }))}
+                  renderMobileCard={(row: any) => {
+                    const order = labOrders.find((o) => o.id === row.id);
+                    if (!order) return null;
+                    return (
+                      <div
+                        key={order.id}
+                        className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h4 className="font-bold text-text text-sm">{order.testId?.name}</h4>
+                            <p className="text-xs text-text-muted font-mono">{order.testId?.code} &bull; {order.testId?.department}</p>
+                          </div>
+                          <Badge
+                            variant={
+                              order.status === "ordered" ? "warning" :
+                              order.status === "sample-collected" ? "primary" : "success"
+                            }
+                            size="sm"
+                            dot
+                            className="capitalize text-[10px] font-bold shrink-0"
+                          >
+                            {order.status.replace("-", " ")}
+                          </Badge>
+                        </div>
+
+                        <div className="p-2.5 rounded-xl bg-surface-alt/70 border border-border/50 text-xs space-y-1">
+                          <div className="flex items-center justify-between text-text-muted">
+                            <span>Requested on:</span>
+                            <span className="font-medium text-text">
+                              {new Date(order.orderDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                            </span>
+                          </div>
+                          {order.status === "result-uploaded" ? (
+                            <div className="pt-1 border-t border-border/50 flex items-center justify-between">
+                              <span className="font-bold text-text-muted">Result:</span>
+                              <span className="font-bold text-primary-600 dark:text-primary-400 text-sm">{order.resultValue}</span>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-text-muted italic pt-0.5">Report under processing in laboratory.</p>
+                          )}
+                        </div>
+
+                        {order.status === "result-uploaded" && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => handlePrintReport(order)}
+                            className="w-full font-bold text-xs rounded-xl min-h-[42px] justify-center shadow-xs"
+                          >
+                            View & Print Diagnostic Report
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  }}
                   emptyMessage="You have no diagnostic laboratory orders registered."
                 />
               </Card>
@@ -860,11 +1084,11 @@ export default function LaboratoryPage() {
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button type="button" variant="ghost" onClick={() => setIsOrderOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-border">
+            <Button type="button" variant="ghost" onClick={() => setIsOrderOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" disabled={submittingOrder}>
+            <Button type="submit" disabled={submittingOrder} className="w-full sm:w-auto min-h-[44px]">
               {submittingOrder ? "Placing Order..." : "Confirm & Bill Test"}
             </Button>
           </div>
@@ -973,11 +1197,11 @@ export default function LaboratoryPage() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button type="button" variant="ghost" onClick={() => setIsTestModalOpen(false)}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-border">
+            <Button type="button" variant="ghost" onClick={() => setIsTestModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" disabled={submittingTest}>
+            <Button type="submit" disabled={submittingTest} className="w-full sm:w-auto min-h-[44px]">
               {submittingTest ? "Saving..." : "Save Test Configuration"}
             </Button>
           </div>
@@ -1053,11 +1277,11 @@ export default function LaboratoryPage() {
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
-              <Button type="button" variant="ghost" onClick={() => setIsResultOpen(false)}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-border">
+              <Button type="button" variant="ghost" onClick={() => setIsResultOpen(false)} className="w-full sm:w-auto min-h-[44px]">
                 Cancel
               </Button>
-              <Button type="submit" disabled={submittingResult}>
+              <Button type="submit" disabled={submittingResult} className="w-full sm:w-auto min-h-[44px]">
                 {submittingResult ? "Saving..." : "Submit Findings"}
               </Button>
             </div>
@@ -1153,11 +1377,11 @@ export default function LaboratoryPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setIsPrintOpen(false)}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
+              <Button variant="ghost" onClick={() => setIsPrintOpen(false)} className="w-full sm:w-auto min-h-[44px]">
                 Close
               </Button>
-              <Button variant="primary" onClick={executePrint}>
+              <Button variant="primary" onClick={executePrint} className="w-full sm:w-auto min-h-[44px]">
                 Print Report Slip
               </Button>
             </div>

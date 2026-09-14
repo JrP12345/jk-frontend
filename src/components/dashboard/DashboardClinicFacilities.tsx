@@ -37,15 +37,15 @@ export function DashboardClinicFacilities({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-        {clinics.map((cl) => (
+        {clinics.map((cl, idx) => (
           <Card
-            key={cl.id}
+            key={cl.id ? `${cl.id}-${idx}` : `clinic-${idx}`}
             onClick={() => router.push("/dashboard/clinics")}
-            className="group cursor-pointer hover:shadow-md hover:border-primary-500/40 transition-all duration-200 p-4 rounded-2xl border border-border/80 bg-surface flex flex-col justify-between"
+            className="group cursor-pointer hover:shadow-md hover:border-primary-500/40 transition-all duration-200 p-4 rounded-2xl border border-border/80 bg-surface flex flex-col justify-between active:scale-[0.99] touch-manipulation relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/20 before:to-transparent"
           >
             <div className="flex items-start justify-between gap-3 mb-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center shrink-0 text-primary-600 dark:text-primary-400 group-hover:bg-primary-500/15 transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center shrink-0 text-primary-600 dark:text-primary-400 group-hover:bg-primary-500/15 group-hover:scale-105 transition-all duration-200">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -55,7 +55,7 @@ export function DashboardClinicFacilities({
                   <p className="text-xs text-text-muted truncate">{cl.city || "Main Facility"}</p>
                 </div>
               </div>
-              <ArrowUpRight className="w-4 h-4 text-text-muted group-hover:text-primary-600 transition-colors shrink-0" />
+              <ArrowUpRight className="w-4 h-4 text-text-muted group-hover:text-primary-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-200 shrink-0" />
             </div>
 
             <div className="flex items-center justify-between text-xs text-text-secondary pt-2.5 border-t border-border/60">

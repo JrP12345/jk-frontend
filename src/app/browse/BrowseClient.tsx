@@ -1,17 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import {
   Button,
+  Input,
   Select,
   Badge,
   Card,
-  SkeletonCard,
   EmptyState,
 } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
+import {
+  Search,
+  MapPin,
+  Clock,
+  X,
+  ChevronRight,
+  ShieldCheck,
+  Building2,
+  Users,
+  CreditCard,
+  Camera,
+} from "lucide-react";
 
 interface DoctorSummary {
   id: string;
@@ -20,7 +32,7 @@ interface DoctorSummary {
   fees: number;
 }
 
-interface Clinic {
+export interface Clinic {
   id: string;
   name: string;
   city: string;
@@ -29,6 +41,9 @@ interface Clinic {
   email: string;
   description: string;
   image_url: string;
+  logo_url?: string;
+  images?: string[];
+  organizationName?: string;
   timings: string;
   facilities?: string[];
   doctorCount?: number;
@@ -37,35 +52,81 @@ interface Clinic {
   doctorsSummary?: DoctorSummary[];
 }
 
-const SPECIALTY_OPTIONS = [
-  { value: "", label: "🩺 All Specialties" },
-  { value: "General Medicine", label: "🩺 General Medicine" },
-  { value: "Pediatrics", label: "👶 Pediatrics" },
-  { value: "Cardiology", label: "❤️ Cardiology" },
-  { value: "Dentistry", label: "🦷 Dentistry" },
-  { value: "Orthopedics", label: "🦴 Orthopedics" },
-  { value: "Dermatology", label: "✨ Dermatology" },
-  { value: "ENT", label: "👂 ENT / Ear-Nose-Throat" },
+const QUICK_SPECIALTIES = [
+  { value: "", label: "All Care" },
+  { value: "General Medicine", label: "General Medicine" },
+  { value: "Pediatrics", label: "Pediatrics" },
+  { value: "Cardiology", label: "Cardiology" },
+  { value: "Dentistry", label: "Dentistry" },
+  { value: "Orthopedics", label: "Orthopedics" },
+  { value: "Dermatology", label: "Dermatology" },
+  { value: "ENT", label: "ENT" },
 ];
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Sort: Featured" },
-  { value: "fee_low", label: "Sort: Fee (Lowest First)" },
-  { value: "name", label: "Sort: Name (A-Z)" },
-  { value: "city", label: "Sort: By City" },
+  { value: "fee_low", label: "Fee (Low to High)" },
+  { value: "name", label: "Name (A–Z)" },
+  { value: "city", label: "City" },
 ];
 
-export default function BrowseClient() {
+function format12HourTime(timeStr: string): string {
+  if (!timeStr) return "";
+  const clean = timeStr.trim();
+  const match = clean.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return timeStr;
+  const h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  if (isNaN(h)) return timeStr;
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
+}
+
+function formatTimings(timingsStr: string | null | undefined): string {
+  if (!timingsStr) return "Mon–Sat: 9:00 AM – 6:00 PM";
+  try {
+    const trimmed = timingsStr.trim();
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+      const parts = trimmed.split(/[-–—to]/i).map((s) => s.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        return `${format12HourTime(parts[0])} – ${format12HourTime(parts[1])}`;
+      }
+      return trimmed;
+    }
+    const data = JSON.parse(trimmed);
+    const days = Object.keys(data);
+    for (const day of days) {
+      if (data[day] && data[day].length > 0) {
+        const firstSlot = data[day][0];
+        return `${format12HourTime(firstSlot.start)} – ${format12HourTime(firstSlot.end)}`;
+      }
+    }
+    return "Mon–Sat: 9:00 AM – 6:00 PM";
+  } catch {
+    return timingsStr || "Mon–Sat: 9:00 AM – 6:00 PM";
+  }
+}
+
+export default function BrowseClient({
+  initialClinics = [],
+}: {
+  initialClinics?: Clinic[];
+} = {}) {
   const router = useRouter();
-  const [clinics, setClinics] = useState<Clinic[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [clinics, setClinics] = useState<Clinic[]>(initialClinics);
+  const [loading, setLoading] = useState(initialClinics.length === 0);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
   const [sortBy, setSortBy] = useState("featured");
-  const [allCities, setAllCities] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [allCities, setAllCities] = useState<string[]>(() => {
+    if (initialClinics.length > 0) {
+      return Array.from(new Set(initialClinics.map((c) => c.city).filter(Boolean))).sort();
+    }
+    return [];
+  });
 
   // 300ms Search Debounce
   useEffect(() => {
@@ -74,23 +135,6 @@ export default function BrowseClient() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-
-  const formatTimings = (timingsStr: string | null | undefined): string => {
-    if (!timingsStr) return "Mon–Sat: 9:00 AM – 6:00 PM";
-    try {
-      const data = JSON.parse(timingsStr);
-      const days = Object.keys(data);
-      for (const day of days) {
-        if (data[day] && data[day].length > 0) {
-          const firstSlot = data[day][0];
-          return `${firstSlot.start} – ${firstSlot.end}`;
-        }
-      }
-      return "Mon–Sat: 9:00 AM – 6:00 PM";
-    } catch {
-      return timingsStr;
-    }
-  };
 
   const fetchClinics = async () => {
     try {
@@ -126,7 +170,15 @@ export default function BrowseClient() {
     }
   };
 
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      if (initialClinics.length > 0) {
+        return;
+      }
+    }
     fetchClinics();
   }, [debouncedSearch, selectedCity, selectedSpecialty, sortBy]);
 
@@ -140,119 +192,139 @@ export default function BrowseClient() {
     }
   };
 
+  const resetAllFilters = () => {
+    setSearchQuery("");
+    setSelectedCity("");
+    setSelectedSpecialty("");
+  };
+
+  const hasActiveFilters = Boolean(debouncedSearch || selectedCity || selectedSpecialty);
+
   return (
-    <div className="min-h-screen bg-surface-alt font-sans text-text antialiased selection:bg-primary-500/20 selection:text-primary-600 animate-page-enter">
+    <div className="min-h-screen bg-surface-alt font-sans text-text antialiased selection:bg-primary-500/20 selection:text-primary-600">
       <MarketplaceNavbar />
 
-      {/* Hero Header Section */}
-      <section className="relative pt-20 pb-6 overflow-hidden bg-gradient-to-b from-surface via-surface/90 to-surface-alt border-b border-border/40">
+      {/* Hero Header Section - Clean Modern Healthcare Design */}
+      <section className="relative pt-20 sm:pt-24 pb-4 sm:pb-8 overflow-hidden bg-gradient-to-b from-surface via-surface/95 to-surface-alt border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
-          <h1 className="text-2xl sm:text-4xl font-black text-text tracking-tight mb-2 leading-tight">
-            Find Your Perfect <span className="text-primary-600">Medical Care</span>
+          {/* Trust Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface border border-border text-text-secondary text-[11px] sm:text-xs font-semibold mb-2.5 sm:mb-3 shadow-2xs">
+            <ShieldCheck className="w-3.5 h-3.5 text-primary-600 shrink-0" strokeWidth={1.75} />
+            <span>Verified Clinics & Doctor Consultations</span>
+          </div>
+
+          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-text tracking-tight mb-1.5 sm:mb-2 leading-tight">
+            Find and book <span className="text-primary-600">verified medical care</span>
           </h1>
-          <p className="text-text-secondary text-xs sm:text-sm max-w-md mx-auto mb-5">
-            Search top clinics, verified doctors, and medical specialties in your area.
+          <p className="text-text-secondary text-xs sm:text-sm max-w-lg mx-auto mb-4 sm:mb-6 leading-relaxed hidden xs:block">
+            Search verified clinics, view consulting doctors, and schedule your appointment with transparent fees.
           </p>
 
-          {/* Unified Multi-Filter Search Bar */}
+          {/* Unified Streamlined Search Console: Search + City Selector */}
           <div className="max-w-3xl mx-auto">
-            <div className="flex flex-col md:flex-row items-center gap-2 bg-surface rounded-2xl md:rounded-full border border-border/80 shadow-md p-2 focus-within:ring-2 focus-within:ring-primary-500/30 focus-within:border-primary-500 transition-all">
-              {/* Search Query Input */}
-              <div className="flex items-center gap-2 px-3 py-1.5 w-full flex-1">
-                <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
-                </svg>
-                <input
-                  type="text"
+            <div className="bg-surface rounded-2xl md:rounded-full border border-border shadow-xs p-1.5 focus-within:ring-2 focus-within:ring-primary-500/30 focus-within:border-primary-500 transition-all flex flex-col md:flex-row items-stretch md:items-center gap-1.5 sm:gap-2">
+              {/* Keyword Search Input with Inside Icon */}
+              <div className="flex-1 min-w-0">
+                <Input
+                  variant="flush"
+                  size="sm"
+                  icon={<Search className="w-4 h-4 text-text-muted" strokeWidth={1.75} />}
                   placeholder="Search doctor, clinic name, or specialty..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-transparent border-0 text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none"
+                  onClear={() => setSearchQuery("")}
+                  className="text-sm font-normal py-2"
+                  containerClassName="w-full"
+                  aria-label="Search by doctor, clinic name, or specialty"
                 />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="text-text-muted hover:text-text p-1 rounded-full cursor-pointer text-xs shrink-0"
-                    aria-label="Clear search"
-                  >
-                    ✕
-                  </button>
-                )}
               </div>
 
-              {/* Location Select Dropdown */}
-              <div className="w-full md:w-auto shrink-0 border-t md:border-t-0 md:border-l border-border/60 pt-2 md:pt-0 md:pl-2">
+              {/* Location Select Dropdown with Inside Icon */}
+              <div className="w-full md:w-56 shrink-0 border-t md:border-t-0 md:border-l border-border/70 pt-1.5 md:pt-0 md:pl-2">
                 <Select
+                  icon={<MapPin className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />}
                   value={selectedCity}
                   onChange={(e) => setSelectedCity(e.target.value)}
                   options={[
-                    { value: "", label: "📍 All Locations" },
-                    ...allCities.map((c) => ({ value: c, label: `📍 ${c}` })),
+                    { value: "", label: "All Cities" },
+                    ...allCities.map((c) => ({ value: c, label: c })),
                   ]}
                   size="sm"
-                  className="text-xs border-0 bg-transparent shadow-none w-full"
-                />
-              </div>
-
-              {/* Specialty Select Dropdown */}
-              <div className="w-full md:w-auto shrink-0 border-t md:border-t-0 md:border-l border-border/60 pt-2 md:pt-0 md:pl-2">
-                <Select
-                  value={selectedSpecialty}
-                  onChange={(e) => setSelectedSpecialty(e.target.value)}
-                  options={SPECIALTY_OPTIONS}
-                  size="sm"
-                  className="text-xs border-0 bg-transparent shadow-none w-full"
+                  variant="flush"
+                  className="text-xs w-full min-h-[38px] sm:min-h-0"
+                  aria-label="Filter by location"
                 />
               </div>
             </div>
 
-            {/* Active Filter Tags */}
-            {(debouncedSearch || selectedCity || selectedSpecialty) && (
-              <div className="flex flex-wrap items-center justify-center gap-2 mt-3 pt-1">
+            {/* Specialty 1-Tap Quick Filter Pills Carousel */}
+            <div className="mt-3 sm:mt-4 pt-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-snap-x py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+              <span className="text-[11px] font-semibold text-text-muted shrink-0 mr-1 hidden sm:inline-block">
+                Care:
+              </span>
+              {QUICK_SPECIALTIES.map((qs) => {
+                const isActive = selectedSpecialty === qs.value;
+                return (
+                  <button
+                    key={qs.value}
+                    type="button"
+                    onClick={() => setSelectedSpecialty(isActive && qs.value !== "" ? "" : qs.value)}
+                    aria-pressed={isActive}
+                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer min-h-[36px] flex items-center justify-center ${
+                      isActive
+                        ? "bg-primary-600 text-white font-bold shadow-xs ring-1 ring-primary-500/20"
+                        : "bg-surface hover:bg-surface-hover text-text-secondary hover:text-text border border-border"
+                    }`}
+                  >
+                    <span>{qs.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Active Filter Badges */}
+            {hasActiveFilters && (
+              <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-2.5 sm:mt-3 pt-1">
                 <span className="text-[11px] font-semibold text-text-muted">Active:</span>
                 {debouncedSearch && (
                   <Badge variant="neutral" className="flex items-center gap-1.5 py-0.5 px-2.5 text-xs bg-surface border border-border">
-                    <span>Search: "{debouncedSearch}"</span>
+                    <span className="truncate max-w-[140px]">"{debouncedSearch}"</span>
                     <button
                       onClick={() => setSearchQuery("")}
-                      className="hover:text-danger-500 font-bold ml-1 cursor-pointer"
-                      title="Remove search filter"
+                      className="hover:text-danger-500 ml-1 cursor-pointer p-0.5 rounded-full"
+                      aria-label="Remove search filter"
                     >
-                      ✕
+                      <X className="w-3 h-3" strokeWidth={1.75} />
                     </button>
                   </Badge>
                 )}
                 {selectedCity && (
                   <Badge variant="neutral" className="flex items-center gap-1.5 py-0.5 px-2.5 text-xs bg-surface border border-border">
-                    <span>📍 {selectedCity}</span>
+                    <span>{selectedCity}</span>
                     <button
                       onClick={() => setSelectedCity("")}
-                      className="hover:text-danger-500 font-bold ml-1 cursor-pointer"
-                      title="Remove city filter"
+                      className="hover:text-danger-500 ml-1 cursor-pointer p-0.5 rounded-full"
+                      aria-label="Remove city filter"
                     >
-                      ✕
+                      <X className="w-3 h-3" strokeWidth={1.75} />
                     </button>
                   </Badge>
                 )}
                 {selectedSpecialty && (
                   <Badge variant="neutral" className="flex items-center gap-1.5 py-0.5 px-2.5 text-xs bg-surface border border-border">
-                    <span>🩺 {selectedSpecialty}</span>
+                    <span>{selectedSpecialty}</span>
                     <button
                       onClick={() => setSelectedSpecialty("")}
-                      className="hover:text-danger-500 font-bold ml-1 cursor-pointer"
-                      title="Remove specialty filter"
+                      className="hover:text-danger-500 ml-1 cursor-pointer p-0.5 rounded-full"
+                      aria-label="Remove specialty filter"
                     >
-                      ✕
+                      <X className="w-3 h-3" strokeWidth={1.75} />
                     </button>
                   </Badge>
                 )}
                 <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedCity("");
-                    setSelectedSpecialty("");
-                  }}
-                  className="text-[11px] font-bold text-primary-600 hover:underline cursor-pointer ml-1"
+                  onClick={resetAllFilters}
+                  className="text-[11px] font-bold text-primary-600 hover:text-primary-700 underline cursor-pointer ml-1 py-1"
                 >
                   Reset all
                 </button>
@@ -262,84 +334,79 @@ export default function BrowseClient() {
         </div>
       </section>
 
-      {/* Main Section */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-16">
-        {/* Results Info & View Controls Bar */}
-        <div className="flex items-center justify-between gap-3 mb-6 pb-3 border-b border-border/40">
-          <span className="text-xs font-semibold text-text-secondary">
-            {loading ? "Searching clinics..." : `${clinics.length} ${clinics.length === 1 ? "clinic" : "clinics"} found`}
-          </span>
-
-          <div className="flex items-center gap-3 shrink-0">
-            {/* View Mode Switcher */}
-            <div className="flex items-center bg-surface rounded-lg p-0.5 border border-border">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`p-1.5 rounded-md text-xs transition-colors ${
-                  viewMode === "grid" ? "bg-surface-alt text-primary-600 font-bold shadow-xs" : "text-text-muted hover:text-text"
-                }`}
-                title="Grid View"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-1.5 rounded-md text-xs transition-colors ${
-                  viewMode === "list" ? "bg-surface-alt text-primary-600 font-bold shadow-xs" : "text-text-muted hover:text-text"
-                }`}
-                title="List View"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Sort Dropdown */}
+      {/* Main Listing Section */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-20">
+        {/* Minimalist Compact Results & Sort Bar */}
+        <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6 text-xs">
+          <p className="font-semibold text-text-secondary">
+            {loading ? (
+              "Finding clinics..."
+            ) : (
+              <span>
+                <strong className="text-text font-bold">{clinics.length}</strong> {clinics.length === 1 ? "clinic" : "clinics"} available
+                {hasActiveFilters && <span className="text-text-muted font-normal ml-1">(filtered)</span>}
+              </span>
+            )}
+          </p>
+          <div className="w-40 xs:w-48 shrink-0">
             <Select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               options={SORT_OPTIONS}
               size="sm"
-              className="text-xs rounded-full"
+              className="text-xs rounded-xl"
+              aria-label="Sort clinics by"
             />
           </div>
         </div>
 
-        {/* Clinics Listing Grid / List */}
+        {/* Clinics Listing Cards */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          /* Geometry-matched Skeletons */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
-              <SkeletonCard key={i} />
+              <Card key={i} className="p-4 sm:p-5 rounded-2xl border border-border bg-surface flex flex-col justify-between h-[360px] animate-pulse">
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-surface-alt shrink-0" />
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="h-4 bg-surface-alt rounded-md w-3/4" />
+                      <div className="h-3 bg-surface-alt rounded-md w-1/2" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="h-6 bg-surface-alt rounded-lg w-24" />
+                    <div className="h-6 bg-surface-alt rounded-lg w-20" />
+                  </div>
+                  <div className="h-14 bg-surface-alt rounded-xl w-full" />
+                </div>
+                <div className="pt-3 border-t border-border/40 space-y-2">
+                  <div className="h-3 bg-surface-alt rounded-md w-2/3" />
+                  <div className="h-10 bg-surface-alt rounded-xl w-full" />
+                </div>
+              </Card>
             ))}
           </div>
         ) : clinics.length === 0 ? (
-          <Card className="p-8 text-center border-dashed">
+          <Card className="p-8 sm:p-12 text-center border-dashed rounded-3xl bg-surface">
             <EmptyState
-              icon="🏥"
-              title="No Clinics Found"
-              description="No healthcare facilities or doctors match your current criteria."
+              title="No Healthcare Facilities Found"
+              description="No clinics match your current search criteria. Try choosing another city or clearing your filters."
               action={
                 <Button
-                  variant="outline"
+                  variant="primary"
                   size="sm"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedCity("");
-                    setSelectedSpecialty("");
-                  }}
-                  className="rounded-full"
+                  onClick={resetAllFilters}
+                  className="rounded-xl font-bold px-5 min-h-[44px] flex items-center justify-center"
                 >
-                  Clear all filters
+                  Reset all filters
                 </Button>
               }
             />
           </Card>
-        ) : viewMode === "grid" ? (
-          /* Modern Online Healthcare Clinic Card Grid Layout */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        ) : (
+          /* Modern Healthcare Clinic Card Grid */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {clinics.map((clinic) => {
               const hasSingleDoctor = clinic.doctorCount === 1 && clinic.doctorsSummary && clinic.doctorsSummary.length === 1;
               const singleDoctor = hasSingleDoctor ? clinic.doctorsSummary![0] : null;
@@ -348,70 +415,130 @@ export default function BrowseClient() {
                 <Card
                   key={clinic.id}
                   onClick={() => router.push(`/browse/${clinic.id}`)}
-                  className="group cursor-pointer hover:shadow-xl hover:border-primary-500/40 hover:-translate-y-1 transition-all duration-300 p-5 rounded-2xl border border-border bg-surface flex flex-col justify-between"
+                  className="group cursor-pointer hover:shadow-lg hover:border-primary-500/40 hover:-translate-y-0.5 transition-all duration-200 p-4 sm:p-5 rounded-2xl border border-border bg-surface flex flex-col justify-between"
                 >
                   <div>
-                    {/* Card Header: Avatar & Badges */}
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-600/15 via-primary-500/10 to-blue-600/15 border border-primary-500/20 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform duration-300">
-                          {clinic.image_url ? (
-                            <img src={clinic.image_url} alt={clinic.name} className="w-full h-full object-cover rounded-2xl" />
+                    {/* Card Header: Avatar, Name & Verified Badge */}
+                    <div className="flex items-start justify-between gap-2.5 mb-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-12 h-12 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs group-hover:border-primary-500/30 transition-colors overflow-hidden">
+                          {clinic.logo_url || clinic.image_url ? (
+                            <img src={clinic.logo_url || clinic.image_url} alt={clinic.name} className="w-full h-full object-cover rounded-xl" />
                           ) : (
-                            <span className="text-xl">🏥</span>
+                            <Building2 className="w-5 h-5 text-text-muted group-hover:text-primary-600 transition-colors" strokeWidth={1.75} />
                           )}
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <h3 className="text-base font-bold text-text group-hover:text-primary-600 transition-colors line-clamp-1">
+                            <h3
+                              className="text-sm sm:text-base font-bold text-text group-hover:text-primary-600 transition-colors truncate"
+                              title={clinic.name}
+                            >
                               {clinic.name}
                             </h3>
-                            <span className="text-primary-600 text-xs shrink-0" title="Verified Facility">
-                              ✓
-                            </span>
                           </div>
-                          <p className="text-xs text-text-muted flex items-center gap-1 mt-0.5">
-                            <span>📍 {clinic.city}</span>
+                          {clinic.organizationName && clinic.organizationName !== clinic.name && (
+                            <p className="text-[10px] text-text-muted font-medium truncate">
+                              Part of {clinic.organizationName}
+                            </p>
+                          )}
+                          <p className="text-xs text-text-muted flex items-center gap-1.5 mt-0.5 truncate">
+                            <span className="truncate">{clinic.city}</span>
                             <span>•</span>
-                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Open Today</span>
+                            <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1 shrink-0">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                              <span>Open today</span>
+                            </span>
                           </p>
                         </div>
+                      </div>
+
+                      {/* Verified & Photo Gallery Badges */}
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-text-secondary bg-surface-alt border border-border px-2 py-0.5 rounded-md"
+                          title="Verified Healthcare Facility"
+                        >
+                          <ShieldCheck className="w-3 h-3 text-primary-600" strokeWidth={1.75} />
+                          <span className="hidden xs:inline">Verified</span>
+                        </span>
+                        {clinic.images && clinic.images.length > 0 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-text-muted bg-surface-alt/70 border border-border/60 px-1.5 py-0.5 rounded">
+                            <Camera className="w-2.5 h-2.5 text-primary-500" />
+                            <span>{clinic.images.length} photos</span>
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     {/* Doctor Count & Fee Highlights Pill Row */}
-                    <div className="flex flex-wrap items-center gap-2 mb-3">
-                      <span className="text-[11px] font-bold bg-primary-500/10 text-primary-700 dark:text-primary-400 px-2.5 py-1 rounded-lg border border-primary-500/20 flex items-center gap-1">
-                        👨‍⚕️ {clinic.doctorCount ? `${clinic.doctorCount} ${clinic.doctorCount === 1 ? "Doctor" : "Doctors"}` : "Specialists Available"}
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3">
+                      <span className="text-[11px] font-semibold bg-surface-alt text-text px-2.5 py-1 rounded-lg border border-border flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
+                        <span>{clinic.doctorCount ? `${clinic.doctorCount} ${clinic.doctorCount === 1 ? "Doctor" : "Doctors"}` : "Doctors Available"}</span>
                       </span>
 
                       {clinic.minFee !== undefined && clinic.minFee !== null && (
-                        <span className="text-[11px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-                          Fee: ₹{clinic.minFee}
+                        <span className="text-[11px] font-semibold bg-surface-alt text-text px-2.5 py-1 rounded-lg border border-border flex items-center gap-1">
+                          <CreditCard className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
+                          <span>From ₹{clinic.minFee}</span>
                         </span>
                       )}
                     </div>
 
-                    {/* Single Doctor Highlight or Clinic Description */}
+                    {/* Single Doctor Highlight or Multi-Doctor Preview */}
                     {hasSingleDoctor && singleDoctor ? (
-                      <div className="bg-surface-alt p-2.5 rounded-xl border border-border/60 text-xs mb-3 space-y-0.5">
-                        <span className="text-[10px] uppercase font-bold text-text-muted block tracking-wider">Practicing Specialist</span>
-                        <p className="font-bold text-text truncate">Dr. {singleDoctor.name}</p>
-                        <p className="text-[11px] text-primary-600 font-medium truncate">{singleDoctor.specialization}</p>
+                      <div className="bg-surface-alt p-2.5 sm:p-3 rounded-xl border border-border text-xs mb-3 space-y-0.5 sm:space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Practicing Specialist</span>
+                          <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">₹{singleDoctor.fees}</span>
+                        </div>
+                        <p className="font-bold text-text truncate">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
+                        <p className="text-[11px] text-text-secondary truncate">{singleDoctor.specialization}</p>
+                      </div>
+                    ) : clinic.doctorsSummary && clinic.doctorsSummary.length > 1 ? (
+                      <div className="bg-surface-alt p-2.5 sm:p-3 rounded-xl border border-border text-xs mb-3 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">
+                            {clinic.doctorsSummary.length} Consulting Doctors
+                          </span>
+                          {clinic.minFee !== undefined && clinic.minFee !== null && (
+                            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                              From ₹{clinic.minFee}
+                            </span>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          {clinic.doctorsSummary.slice(0, 2).map((doc) => (
+                            <div key={doc.id} className="flex items-center justify-between gap-1 text-[11px]">
+                              <span className="font-semibold text-text truncate">
+                                Dr. {doc.name.replace(/^Dr\.?\s*/i, "")}
+                              </span>
+                              <span className="text-text-muted text-[10px] shrink-0 font-medium">
+                                {doc.specialization}
+                              </span>
+                            </div>
+                          ))}
+                          {clinic.doctorsSummary.length > 2 && (
+                            <p className="text-[10px] text-primary-600 font-semibold pt-0.5">
+                              +{clinic.doctorsSummary.length - 2} more doctors available
+                            </p>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <p className="text-xs text-text-muted line-clamp-2 leading-relaxed mb-3">
-                        {clinic.description || "Verified healthcare facility providing general medicine and specialized practitioner consultations."}
+                        {clinic.description || "Verified healthcare facility providing doctor consultations and specialized healthcare services."}
                       </p>
                     )}
 
                     {/* Facilities / Specialty Tags */}
                     {clinic.facilities && clinic.facilities.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-4">
+                      <div className="hidden xs:flex flex-wrap gap-1.5 mb-3">
                         {clinic.facilities.slice(0, 3).map((fac, idx) => (
                           <span
                             key={idx}
-                            className="text-[10px] font-bold uppercase tracking-wider bg-surface-alt text-text-secondary px-2 py-0.5 rounded-md border border-border"
+                            className="text-[10px] font-medium bg-surface text-text-muted px-2 py-0.5 rounded-md border border-border"
                           >
                             {fac}
                           </span>
@@ -426,21 +553,17 @@ export default function BrowseClient() {
                   </div>
 
                   <div>
-                    {/* Address & Timings Footer */}
-                    <div className="space-y-1.5 text-xs text-text-secondary border-t border-border/50 pt-3 mb-4">
+                    {/* Address & Timings Footer in 12-Hour AM/PM format */}
+                    <div className="space-y-1 text-xs text-text-secondary border-t border-border/60 pt-2.5 mb-3">
                       {clinic.address && clinic.address.trim() !== "." && (
-                        <div className="flex items-center gap-2 truncate">
-                          <svg className="w-3.5 h-3.5 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
+                        <div className="flex items-center gap-1.5 truncate">
+                          <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
                           <span className="truncate">{clinic.address}</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-2 text-text-muted">
-                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>{formatTimings(clinic.timings)}</span>
+                      <div className="flex items-center gap-1.5 text-text-muted">
+                        <Clock className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
+                        <span className="truncate">{formatTimings(clinic.timings)}</span>
                       </div>
                     </div>
 
@@ -449,84 +572,17 @@ export default function BrowseClient() {
                       <Button
                         variant="primary"
                         size="sm"
-                        className="w-full font-bold rounded-xl shadow-xs"
+                        className="w-full font-bold rounded-xl shadow-xs min-h-[44px] flex items-center justify-center gap-1.5 group/btn cursor-pointer"
                         onClick={(e) => handleBookingAction(e, clinic)}
                       >
-                        {hasSingleDoctor && singleDoctor
-                          ? `Book with Dr. ${singleDoctor.name.replace(/^Dr\.?\s*/i, "")}`
-                          : `View Doctors & Book ${clinic.doctorCount ? `(${clinic.doctorCount})` : ""}`}
+                        <span>
+                          {hasSingleDoctor && singleDoctor
+                            ? `Book with Dr. ${singleDoctor.name.replace(/^Dr\.?\s*/i, "")}`
+                            : `View Doctors & Book ${clinic.doctorCount ? `(${clinic.doctorCount})` : ""}`}
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" strokeWidth={2} />
                       </Button>
                     </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        ) : (
-          /* List View */
-          <div className="space-y-4 max-w-4xl mx-auto">
-            {clinics.map((clinic) => {
-              const hasSingleDoctor = clinic.doctorCount === 1 && clinic.doctorsSummary && clinic.doctorsSummary.length === 1;
-              const singleDoctor = hasSingleDoctor ? clinic.doctorsSummary![0] : null;
-
-              return (
-                <Card
-                  key={clinic.id}
-                  onClick={() => router.push(`/browse/${clinic.id}`)}
-                  className="group cursor-pointer hover:shadow-lg hover:border-primary-500/40 transition-all duration-200 p-5 rounded-2xl border border-border bg-surface flex flex-col sm:flex-row gap-4 items-center justify-between"
-                >
-                  <div className="flex items-center gap-4 min-w-0 flex-1">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-600/15 via-primary-500/10 to-blue-600/15 border border-primary-500/20 flex items-center justify-center shrink-0 shadow-2xs">
-                      {clinic.image_url ? (
-                        <img src={clinic.image_url} alt={clinic.name} className="w-full h-full object-cover rounded-2xl" />
-                      ) : (
-                        <span className="text-2xl">🏥</span>
-                      )}
-                    </div>
-
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-base font-bold text-text group-hover:text-primary-600 transition-colors truncate">
-                          {clinic.name}
-                        </h3>
-                        <span className="text-primary-600 text-xs shrink-0">✓</span>
-                      </div>
-
-                      <p className="text-xs text-text-muted line-clamp-1">
-                        {hasSingleDoctor && singleDoctor
-                          ? `Dr. ${singleDoctor.name} • ${singleDoctor.specialization}`
-                          : clinic.description || "Verified Healthcare facility providing specialized patient care."}
-                      </p>
-
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary pt-0.5">
-                        <span>📍 {clinic.city}</span>
-                        <span>•</span>
-                        <span className="text-primary-600 font-semibold">
-                          👨‍⚕️ {clinic.doctorCount ? `${clinic.doctorCount} Doctors` : "Doctors Available"}
-                        </span>
-                        {clinic.minFee !== undefined && clinic.minFee !== null && (
-                          <>
-                            <span>•</span>
-                            <span className="text-emerald-600 font-bold">From ₹{clinic.minFee}</span>
-                          </>
-                        )}
-                        <span>•</span>
-                        <span className="text-text-muted">🕒 {formatTimings(clinic.timings)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="shrink-0 w-full sm:w-auto">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="w-full sm:w-auto rounded-xl font-bold px-5"
-                      onClick={(e) => handleBookingAction(e, clinic)}
-                    >
-                      {hasSingleDoctor && singleDoctor
-                        ? `Book with Dr. ${singleDoctor.name.replace(/^Dr\.?\s*/i, "")}`
-                        : "View Doctors & Book"}
-                    </Button>
                   </div>
                 </Card>
               );

@@ -30,7 +30,10 @@ export function getWebSocketUrl(path: string): string {
     // If NEXT_PUBLIC_API_URL is an absolute URL (e.g. http://localhost:5000/api)
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
     if (/^https?:\/\//i.test(apiUrl)) {
-      const host = apiUrl.replace(/^https?:\/\//i, "").replace(/\/api\/?$/i, "").replace(/\/+$/, "");
+      let host = apiUrl.replace(/^https?:\/\//i, "").replace(/\/api\/?$/i, "").replace(/\/+$/, "");
+      if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        host = host.replace("localhost", window.location.hostname).replace("127.0.0.1", window.location.hostname);
+      }
       return `${wsProto}//${host}${normalizedPath}`;
     }
     // Localhost or same-host fallback

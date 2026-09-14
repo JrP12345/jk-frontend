@@ -53,10 +53,10 @@ export default function PricingPage() {
           </p>
 
           {/* Monthly / Annual Toggle */}
-          <div className="inline-flex items-center p-1.5 rounded-2xl bg-slate-900 border border-slate-800 backdrop-blur-md">
+          <div className="inline-flex max-w-full items-center p-1 sm:p-1.5 rounded-2xl bg-slate-900 border border-slate-800 backdrop-blur-md">
             <button
               onClick={() => setBillingCycle("monthly")}
-              className={`px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+              className={`px-3.5 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 min-h-[44px] flex items-center justify-center ${
                 billingCycle === "monthly"
                   ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20"
                   : "text-slate-400 hover:text-white"
@@ -66,14 +66,14 @@ export default function PricingPage() {
             </button>
             <button
               onClick={() => setBillingCycle("annual")}
-              className={`relative px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+              className={`relative px-3.5 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 min-h-[44px] flex items-center justify-center ${
                 billingCycle === "annual"
                   ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20"
                   : "text-slate-400 hover:text-white"
               }`}
             >
               Annual Billing
-              <span className="ml-2 inline-block text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 font-bold uppercase">
+              <span className="ml-1.5 sm:ml-2 inline-block text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 sm:px-2 py-0.5 rounded-full border border-emerald-500/30 font-bold uppercase">
                 Save 17%
               </span>
             </button>
@@ -84,8 +84,25 @@ export default function PricingPage() {
       {/* Plan Cards Grid */}
       <section className="max-w-7xl mx-auto px-4 pb-24 w-full">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Spinner size="lg" color="text-cyan-400" label="Loading pricing tiers..." />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch animate-fade-in" aria-busy="true" aria-label="Loading pricing tiers">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="rounded-3xl p-6 sm:p-8 bg-slate-900/50 border border-slate-800 space-y-6">
+                <div className="space-y-2">
+                  <div className="h-6 w-28 bg-slate-800 rounded-lg animate-pulse" />
+                  <div className="h-4 w-44 bg-slate-800/60 rounded animate-pulse" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-10 w-32 bg-slate-800 rounded-lg animate-pulse" />
+                  <div className="h-3 w-20 bg-slate-800/50 rounded animate-pulse" />
+                </div>
+                <div className="space-y-3 pt-4 border-t border-slate-800/80">
+                  {Array.from({ length: 4 }).map((_, j) => (
+                    <div key={j} className="h-4 bg-slate-800/40 rounded animate-pulse" style={{ width: `${60 + (j * 10)}%` }} />
+                  ))}
+                </div>
+                <div className="h-12 w-full bg-slate-800 rounded-xl animate-pulse" />
+              </div>
+            ))}
           </div>
         ) : error ? (
           <div className="py-20 text-center text-slate-400">{error}</div>
@@ -98,14 +115,14 @@ export default function PricingPage() {
               return (
                 <div
                   key={plan.id || plan.slug}
-                  className={`relative rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 ${
+                  className={`relative rounded-3xl p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 ${
                     plan.isPopular
-                      ? "bg-slate-900/90 border-2 border-cyan-500 shadow-2xl shadow-cyan-500/10 scale-105"
+                      ? "bg-slate-900/90 border-2 border-cyan-500 shadow-2xl shadow-cyan-500/10 md:scale-105"
                       : "bg-slate-900/50 border border-slate-800 hover:border-slate-700"
                   }`}
                 >
                   {plan.isPopular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold uppercase px-4 py-1 rounded-full shadow-md">
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-[11px] sm:text-xs font-bold uppercase px-3 sm:px-4 py-1 rounded-full shadow-md whitespace-nowrap">
                       Most Popular
                     </div>
                   )}
@@ -168,7 +185,7 @@ export default function PricingPage() {
 
                   <Link
                     href={isEnterprise ? "/contact" : `/onboarding?mode=new_org&plan=${encodeURIComponent(plan.id || "standard")}`}
-                    className={`w-full py-3.5 rounded-xl font-semibold text-center transition-all duration-200 flex items-center justify-center gap-2 ${
+                    className={`w-full py-3.5 rounded-xl font-semibold text-center transition-all duration-200 flex items-center justify-center gap-2 min-h-[44px] ${
                       plan.isPopular
                         ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:opacity-90 shadow-lg shadow-cyan-500/25"
                         : "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700"
@@ -188,8 +205,8 @@ export default function PricingPage() {
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-white mb-12">Detailed Feature Matrix</h2>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
+          <div className="overflow-x-auto touch-scroll">
+            <table className="w-full text-left text-sm text-slate-300 min-w-[560px] sm:min-w-full">
               <thead className="bg-slate-950/80 text-white uppercase text-xs font-semibold">
                 <tr>
                   <th className="py-4 px-6 rounded-l-xl">Feature</th>

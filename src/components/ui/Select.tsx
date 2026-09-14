@@ -11,12 +11,14 @@ export interface SelectOption {
 }
 
 export type SelectSize = "sm" | "md" | "lg";
+export type SelectVariant = "default" | "filled" | "flush" | "pill";
 
 export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "size" | "onChange"> {
   label?: string;
   error?: string;
   hint?: string;
   size?: SelectSize;
+  variant?: SelectVariant;
   options: SelectOption[];
   placeholder?: string;
   icon?: ReactNode;
@@ -28,9 +30,16 @@ export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
 }
 
 const triggerSizes: Record<SelectSize, string> = {
-  sm: "h-8 text-sm px-3 gap-2 min-h-[34px] sm:min-h-[32px]",
-  md: "h-9 text-sm px-3.5 gap-2 min-h-[38px] sm:min-h-[36px]",
-  lg: "h-11 text-base px-4 gap-2.5 min-h-[44px]",
+  sm: "text-base sm:text-sm px-3 gap-2 min-h-[38px] sm:min-h-[32px] sm:h-8",
+  md: "text-base sm:text-sm px-3.5 gap-2 min-h-[42px] sm:min-h-[36px] sm:h-9",
+  lg: "text-base px-4 gap-2.5 min-h-[46px] sm:min-h-[44px] h-11",
+};
+
+const variantStyles: Record<SelectVariant, string> = {
+  default: "rounded-xl border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500 shadow-2xs",
+  filled: "rounded-xl border border-transparent bg-surface-alt hover:bg-surface-hover focus-visible:bg-surface focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500 shadow-2xs",
+  flush: "rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:border-0",
+  pill: "rounded-full border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500 shadow-2xs",
 };
 
 const iconSizes: Record<SelectSize, string> = {
@@ -47,6 +56,7 @@ const Select = memo(
         error,
         hint,
         size = "md",
+        variant = "default",
         options = [],
         placeholder = "Select an option...",
         icon,
@@ -297,13 +307,13 @@ const Select = memo(
               onClick={handleToggle}
               onKeyDown={handleKeyDown}
               className={cn(
-                "flex items-center justify-between w-full rounded-lg border bg-surface font-normal text-text text-left transform-gpu transition-all duration-200 ease-smooth focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt cursor-pointer hover:border-border-focus shadow-2xs",
+                "flex items-center justify-between w-full font-normal text-text text-left transform-gpu transition-all duration-200 ease-smooth focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt cursor-pointer",
                 triggerSizes[size],
-                icon && (size === "sm" ? "pl-8.5" : size === "lg" ? "pl-11" : "pl-10"),
-                error
-                  ? "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:border-danger-500"
-                  : "border-border focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500",
-                isOpen && "border-primary-500 ring-2 ring-primary-500"
+                variantStyles[variant],
+                icon && (size === "sm" ? "pl-9" : size === "lg" ? "pl-11" : "pl-10"),
+                error && variant !== "flush" && "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:border-danger-500",
+                isOpen && variant !== "flush" && "border-primary-500 ring-2 ring-primary-500",
+                className
               )}
             >
               <span className={cn("truncate flex-1 min-w-0 text-left", !activeOption && "text-text-muted/70")}>
@@ -373,7 +383,7 @@ const Select = memo(
                         setFocusedIndex(-1);
                       }}
                       onKeyDown={handleKeyDown}
-                      className="w-full text-xs font-normal bg-transparent focus:outline-none placeholder:text-text-muted/70 border-none p-0 text-text"
+                      className="w-full text-base sm:text-xs font-normal bg-transparent focus:outline-none placeholder:text-text-muted/70 border-none p-0 text-text"
                     />
                   </div>
                 )}
@@ -404,7 +414,7 @@ const Select = memo(
                           disabled={o.disabled}
                           onClick={() => handleSelectOption(o)}
                           className={cn(
-                            "flex items-center justify-between w-full text-left px-3 py-2 text-xs font-medium rounded-xl transition-all duration-150 cursor-pointer select-none",
+                            "flex items-center justify-between w-full text-left px-3.5 py-2.5 sm:py-2 text-sm sm:text-xs font-medium rounded-xl transition-all duration-150 cursor-pointer select-none min-h-[44px] sm:min-h-0",
                             isSelected
                               ? "bg-primary-500/10 text-primary-500 font-semibold"
                               : "text-text-secondary hover:bg-surface-hover hover:text-text",

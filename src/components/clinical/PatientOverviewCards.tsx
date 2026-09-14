@@ -122,7 +122,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
             )}
           </CardHeader>
           <CardContent className="space-y-3 text-xs">
-            <div className="grid grid-cols-2 gap-3 p-3 bg-surface-alt rounded-xl border border-border/60">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-surface-alt rounded-xl border border-border/60">
               <div>
                 <span className="text-text-muted font-medium block">Full Name</span>
                 <span className="font-bold text-text text-sm">{patient.name}</span>

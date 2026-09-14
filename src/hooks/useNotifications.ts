@@ -6,6 +6,7 @@ import { notificationService, type NotificationItem } from "@/services/notificat
 import { useToast } from "@/components/ui/Toast";
 import { useAuthStore } from "@/store/authStore";
 import { getWebSocketUrl } from "@/utils/websocket";
+import { getApiUrl } from "@/lib/api";
 
 export function useNotifications() {
   const { user } = useAuthStore();
@@ -25,7 +26,7 @@ export function useNotifications() {
   useEffect(() => {
     if (!user || typeof window === "undefined") return;
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+    const apiUrl = getApiUrl();
     let ws: WebSocket | null = null;
     let eventSource: EventSource | null = null;
     let fallbackToSse = false;
@@ -68,7 +69,8 @@ export function useNotifications() {
           titleLower.includes("account login") ||
           titleLower.includes("login successful") ||
           titleLower.includes("organization onboarding") ||
-          titleLower.includes("organization created");
+          titleLower.includes("organization created") ||
+          titleLower.includes("impersonation");
 
         if (!isDuplicateAuditToast) {
           toast({

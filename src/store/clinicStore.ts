@@ -54,7 +54,16 @@ export const useClinicStore = create<ClinicState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const res = await api.get("/onboarding/clinics");
-      const list = (res.data.data || []).map((c: Record<string, unknown>) => normalizeClinic(c));
+      const rawList = res.data.data || [];
+      const seenIds = new Set<string>();
+      const list: ClinicInfo[] = [];
+      for (const c of rawList) {
+        const normalized = normalizeClinic(c);
+        if (normalized.id && !seenIds.has(normalized.id)) {
+          seenIds.add(normalized.id);
+          list.push(normalized);
+        }
+      }
       set({ clinics: list, isLoaded: true, isLoading: false });
       return list;
     } catch (err: unknown) {
