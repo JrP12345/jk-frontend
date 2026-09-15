@@ -19,6 +19,7 @@ import {
   SkeletonTable,
   Dropdown,
   Badge,
+  Avatar,
   StatCard,
   cn,
 } from "@/components/ui";
@@ -515,7 +516,7 @@ export default function StaffPage() {
         if (modalType === "doctor" && finalData.clinicId && res.data?.data?.id) {
           try {
             const docFeeType = finalData.feeType || "fixed";
-            const docFees = docFeeType === "post_consultation" || docFeeType === "free" ? 0 : (Number(finalData.fees) || 500);
+            const docFees = docFeeType === "free" ? 0 : (Number(finalData.fees) || (docFeeType === "post_consultation" ? 0 : 500));
             await api.post("/onboarding/doctors/assignments", {
               doctorId: res.data.data.id,
               clinicId: finalData.clinicId,
@@ -642,7 +643,7 @@ export default function StaffPage() {
         ? newAssignment.workingHours
         : DEFAULT_WORKING_HOURS;
     setSavingAssignment(true);
-    const asgFees = asgFeeType === "post_consultation" || asgFeeType === "free" ? 0 : Number(newAssignment.fees || 0);
+    const asgFees = asgFeeType === "free" ? 0 : Number(newAssignment.fees || 0);
     try {
       if (editingAssignmentId) {
         await api.put(`/onboarding/doctors/assignments/${editingAssignmentId}`, {
@@ -888,8 +889,18 @@ export default function StaffPage() {
                           header: "Staff Member",
                           sortable: true,
                           render: (row) => (
-                            <div className="space-y-0.5 min-w-[140px]">
-                              <span className="font-bold text-text text-xs sm:text-sm">{row.name}</span>
+                            <div className="flex items-center gap-2.5 min-w-[150px]">
+                              <Avatar
+                                src={row.image_url}
+                                name={row.name}
+                                size="sm"
+                              />
+                              <div className="space-y-0.5 min-w-0">
+                                <span className="font-bold text-text text-xs sm:text-sm truncate block">{row.name}</span>
+                                {row.specialization && (
+                                  <span className="text-[10px] text-text-muted truncate block">{row.specialization}</span>
+                                )}
+                              </div>
                             </div>
                           ),
                         },
@@ -1172,8 +1183,18 @@ export default function StaffPage() {
         title={editingId ? `Update ${modalType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}` : "Add Team Member"}
         description={editingId ? "Update credentials and details for this team member." : "Add a doctor, receptionist, nurse, or other staff member to your practice."}
         size="xl"
+        footer={
+          <>
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
+              Cancel
+            </Button>
+            <Button form="staff-form" type="submit" size="sm" variant="primary" loading={submitting} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs">
+              {editingId ? "Update Profile" : "Add Team Member"}
+            </Button>
+          </>
+        }
       >
-        <form onSubmit={handleSave} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1" noValidate>
+        <form id="staff-form" onSubmit={handleSave} className="space-y-4 pt-1 pr-1" noValidate>
           {!editingId && (
             <Select
               label="Role & Designation *"
@@ -1193,6 +1214,23 @@ export default function StaffPage() {
               options={allRoleOptions}
             />
           )}
+
+          {/* Staff Profile Photo Upload */}
+          <div className="flex items-center gap-4 p-3 bg-surface-alt/40 rounded-xl border border-border/60">
+            <div className="shrink-0 w-20 h-20">
+              <ImageUpload
+                value={formData.image_url || ""}
+                onChange={(url) => setFormData((prev: any) => ({ ...prev, image_url: url }))}
+                label="Photo"
+              />
+            </div>
+            <div className="space-y-1 min-w-0">
+              <p className="text-xs font-semibold text-text">Profile Picture</p>
+              <p className="text-[11px] text-text-muted leading-relaxed">
+                Upload a professional staff photo. Displayed on patient portals, appointments, and staff directories.
+              </p>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
@@ -1293,7 +1331,7 @@ export default function StaffPage() {
                       onChange={(e) => {
                         const ft = e.target.value;
                         handleFieldChange("feeType", ft);
-                        if (ft !== "fixed") handleFieldChange("fees", 0);
+                        if (ft === "free") handleFieldChange("fees", 0);
                       }}
                       options={[
                         { value: "fixed", label: "Fixed Fee Upfront (₹)" },
@@ -1305,15 +1343,15 @@ export default function StaffPage() {
                   </div>
                   <div>
                     <Input
-                      label="Consultation Fee (₹)"
+                      label={formData.feeType === "post_consultation" ? "Min. Visit Charge (₹) — optional" : "Consultation Fee (₹)"}
                       type="number"
-                      value={formData.fees ?? 500}
+                      value={formData.fees ?? (formData.feeType === "free" ? 0 : 500)}
                       onChange={(e) => handleFieldChange("fees", e.target.value)}
-                      placeholder="e.g. 500"
-                      disabled={formData.feeType === "post_consultation" || formData.feeType === "free"}
+                      placeholder={formData.feeType === "post_consultation" ? "e.g. 200 (or 0 for no minimum)" : "e.g. 500"}
+                      disabled={formData.feeType === "free"}
                     />
                     <p className="text-[11px] text-text-muted mt-1">
-                      {formData.feeType === "post_consultation" ? "Decided after consultation" : formData.feeType === "free" ? "No fee charged" : "Standard OPD consultation charge"}
+                      {formData.feeType === "post_consultation" ? "Base visit fee charged at clinic + consultation decided after visit" : formData.feeType === "free" ? "No fee charged" : "Standard OPD consultation charge"}
                     </p>
                   </div>
                 </div>
@@ -1354,14 +1392,6 @@ export default function StaffPage() {
             </div>
           )}
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60 mt-4">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submitting} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs">
-              {editingId ? "Update Profile" : "Add Team Member"}
-            </Button>
-          </div>
         </form>
       </Modal>
 
@@ -1628,7 +1658,7 @@ export default function StaffPage() {
                     setNewAssignment({
                       ...newAssignment,
                       feeType: ft,
-                      fees: ft === "fixed" ? (newAssignment.fees || 500) : 0,
+                      fees: ft === "free" ? 0 : (newAssignment.fees || (ft === "fixed" ? 500 : 0)),
                     } as any);
                   }}
                   options={[
@@ -1638,21 +1668,22 @@ export default function StaffPage() {
                   ]}
                   required
                 />
-                {((newAssignment as any).feeType || "fixed") === "fixed" ? (
-                  <Input
-                    label="Consultation Fee (₹) *"
-                    type="number"
-                    value={newAssignment.fees}
-                    onChange={(e) => setNewAssignment({ ...newAssignment, fees: Number(e.target.value) })}
-                    required
-                  />
-                ) : (
+                {((newAssignment as any).feeType || "fixed") === "free" ? (
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-text block">Consultation Fee</label>
                     <div className="p-2.5 bg-surface-alt border border-border/80 rounded-xl text-xs font-medium text-text-muted truncate">
-                      {((newAssignment as any).feeType) === "free" ? "₹0 (Free)" : "Decided post-visit"}
+                      ₹0 (Free)
                     </div>
                   </div>
+                ) : (
+                  <Input
+                    label={((newAssignment as any).feeType || "fixed") === "post_consultation" ? "Min. Visit Charge (₹)" : "Consultation Fee (₹) *"}
+                    type="number"
+                    value={newAssignment.fees}
+                    onChange={(e) => setNewAssignment({ ...newAssignment, fees: Number(e.target.value) })}
+                    placeholder={((newAssignment as any).feeType || "fixed") === "post_consultation" ? "e.g. 200 (or 0)" : "e.g. 500"}
+                    required={((newAssignment as any).feeType || "fixed") === "fixed"}
+                  />
                 )}
                 <Input
                   label={
@@ -1741,7 +1772,7 @@ export default function StaffPage() {
                 setAdminDoctorData({
                   ...adminDoctorData,
                   feeType: ft,
-                  fees: ft === "fixed" ? (adminDoctorData.fees || 500) : 0,
+                  fees: ft === "free" ? 0 : (adminDoctorData.fees || (ft === "fixed" ? 500 : 0)),
                 });
               }}
               options={[
@@ -1752,12 +1783,13 @@ export default function StaffPage() {
               required
             />
             <Input
-              label="Consultation Fee (₹) *"
+              label={adminDoctorData.feeType === "post_consultation" ? "Min. Visit Charge (₹)" : "Consultation Fee (₹) *"}
               type="number"
               value={adminDoctorData.fees}
               onChange={(e) => setAdminDoctorData({ ...adminDoctorData, fees: Number(e.target.value) })}
-              disabled={adminDoctorData.feeType === "post_consultation" || adminDoctorData.feeType === "free"}
-              required
+              placeholder={adminDoctorData.feeType === "post_consultation" ? "e.g. 200 (or 0)" : "e.g. 500"}
+              disabled={adminDoctorData.feeType === "free"}
+              required={adminDoctorData.feeType === "fixed"}
             />
             <Input
               label="Medical Registration / License No."

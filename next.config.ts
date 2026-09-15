@@ -23,7 +23,12 @@ const nextConfig: NextConfig = {
         },
       ];
     }
-    return [];
+    return [
+      {
+        source: "/api/:path*",
+        destination: "http://localhost:5000/api/:path*",
+      },
+    ];
   },
   async headers() {
     return [

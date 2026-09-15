@@ -2995,8 +2995,32 @@ export default function QueuePage() {
         title="Complete Clinical Consultation"
         description={`Document medical diagnosis, prescriptions, and follow-up plan for ${apptToComplete?.patientId?.userId?.name || "Patient"} (Token #${apptToComplete?.tokenNumber}).`}
         size="lg"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              type="button"
+              size="sm"
+              onClick={() => setCompleteModalOpen(false)}
+              disabled={completingSubmitting}
+              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
+            >
+              Cancel
+            </Button>
+            <Button
+              form="complete-consultation-form"
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={completingSubmitting}
+              className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
+            >
+              Conclude Visit & Save Record
+            </Button>
+          </>
+        }
       >
-        <form onSubmit={handleCompleteConsultation} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
+        <form id="complete-consultation-form" onSubmit={handleCompleteConsultation} className="space-y-4 pt-1 pr-1">
           {/* Patient Quick Context & Longitudinal EHR Timeline Launcher */}
           {apptToComplete && (
             <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-primary-500/10 border border-primary-500/20">
@@ -3421,27 +3445,6 @@ export default function QueuePage() {
             </div>
           )}
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 border-t border-border/60 pt-3">
-            <Button
-              variant="outline"
-              type="button"
-              size="sm"
-              onClick={() => setCompleteModalOpen(false)}
-              disabled={completingSubmitting}
-              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              loading={completingSubmitting}
-              className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
-            >
-              Conclude Visit & Save Record
-            </Button>
-          </div>
         </form>
       </Modal>
 

@@ -178,6 +178,13 @@ interface TrackerData {
 export default function PublicLiveQueueTracker() {
   const params = useParams();
   const appointmentId = params?.appointmentId as string;
+  const getTrackerHeaders = useCallback(() => {
+    if (typeof window === "undefined") return {};
+    const token =
+      new URLSearchParams(window.location.search).get("t") ||
+      window.sessionStorage.getItem(`tracker-capability:${appointmentId}`);
+    return token ? { "x-tracker-token": token } : {};
+  }, [appointmentId]);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -195,7 +202,6 @@ export default function PublicLiveQueueTracker() {
   // Payment Modal State
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | "online">("upi");
-  const [isPaying, setIsPaying] = useState(false);
   const [trackerQrDataUrl, setTrackerQrDataUrl] = useState<string>("");
   const [copiedUpi, setCopiedUpi] = useState(false);
 
@@ -208,6 +214,16 @@ export default function PublicLiveQueueTracker() {
   )}&am=${trackerDueAmt.toFixed(2)}&tr=${encodeURIComponent(trackerInvoiceNum)}&tn=${encodeURIComponent(
     `Token #${data?.tokenNumber || "OPD"} ${data?.patientName || "Patient"} Visit Settlement`
   )}&cu=INR`;
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !appointmentId) return;
+    const token = new URLSearchParams(window.location.search).get("t");
+    if (!token) return;
+
+    window.sessionStorage.setItem(`tracker-capability:${appointmentId}`, token);
+    const cleanUrl = `${window.location.pathname}${window.location.hash}`;
+    window.history.replaceState(window.history.state, "", cleanUrl);
+  }, [appointmentId]);
 
   useEffect(() => {
     if (isPayModalOpen && paymentMethod === "upi" && trackerDueAmt > 0) {
@@ -239,7 +255,7 @@ export default function PublicLiveQueueTracker() {
     if (!appointmentId) return;
     setNotifyingReturn(true);
     try {
-      const res = await api.post(`/public/track/${appointmentId}/return`);
+      const res = await api.post(`/public/track/${appointmentId}/return`, {}, { headers: getTrackerHeaders() });
       if (res.data?.success) {
         setReturnSuccess(true);
         toast({
@@ -308,7 +324,7 @@ export default function PublicLiveQueueTracker() {
     if (!appointmentId) return;
     try {
       if (!isBackground) setRefreshing(true);
-      const res = await api.get(`/public/track/${appointmentId}`);
+      const res = await api.get(`/public/track/${appointmentId}`, { headers: getTrackerHeaders() });
       if (res.data?.data) {
         setData(res.data.data);
         setError(null);
@@ -322,7 +338,7 @@ export default function PublicLiveQueueTracker() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [appointmentId]);
+  }, [appointmentId, getTrackerHeaders]);
 
   useEffect(() => {
     fetchTrackerData(false);
@@ -458,7 +474,7 @@ export default function PublicLiveQueueTracker() {
     if (!appointmentId || checkingIn) return;
     setCheckingIn(true);
     try {
-      const res = await api.post(`/public/track/${appointmentId}/check-in`);
+      const res = await api.post(`/public/track/${appointmentId}/check-in`, {}, { headers: getTrackerHeaders() });
       toast({
         title: "Check-In Confirmed ✓",
         description: res.data?.message || `You are now checked in! Token #${res.data?.data?.tokenNumber}`,
@@ -476,37 +492,12 @@ export default function PublicLiveQueueTracker() {
     }
   };
 
-  const handleProcessPayment = async () => {
-    if (!appointmentId || isPaying) return;
-    setIsPaying(true);
-    try {
-      const res = await api.post(`/public/track/${appointmentId}/pay`, {
-        paymentMethod,
-      });
-
-      toast({
-        title: "Payment Received! ✓",
-        description: res.data?.message || "Your consultation bill has been settled successfully.",
-        variant: "success",
-      });
-
-      setIsPayModalOpen(false);
-      // Immediately refresh data
-      await fetchTrackerData(false);
-    } catch (err: any) {
-      toast({
-        title: "Payment Failed",
-        description: err.response?.data?.message || "Payment could not be processed. Please retry or pay at reception.",
-        variant: "error",
-      });
-    } finally {
-      setIsPaying(false);
-    }
-  };
-
   const getPrintPrescriptionUrl = () => {
     const base = getApiUrl().replace(/\/+$/, "");
-    return `${base}/public/track/${appointmentId}/prescription/print?autoPrint=1`;
+    const token = typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("t") || window.sessionStorage.getItem(`tracker-capability:${appointmentId}`);
+    return `${base}/public/track/${appointmentId}/prescription/print?autoPrint=1${token ? `&trackerToken=${encodeURIComponent(token)}` : ""}`;
   };
 
   const handleDownloadPrescription = () => {
@@ -1669,10 +1660,16 @@ export default function PublicLiveQueueTracker() {
               variant="primary"
               size="md"
               className="flex-1 rounded-xl font-bold shadow-md min-h-[44px] flex items-center justify-center"
-              onClick={handleProcessPayment}
-              loading={isPaying}
+              onClick={() => {
+                setIsPayModalOpen(false);
+                toast({
+                  title: "Payment verification required",
+                  description: "Please complete payment at the clinic or through the verified checkout. Reception will update your invoice after verification.",
+                  variant: "info",
+                });
+              }}
             >
-              Confirm & Pay ₹{data.billing?.balanceDue.toFixed(2)}
+              I&apos;ve Paid — Verify at Reception
             </Button>
           </div>
         </div>

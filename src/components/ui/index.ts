@@ -30,8 +30,8 @@ export { default as ProgressBar } from "./ProgressBar";
 export { default as RouteProgress } from "./RouteProgress";
 export { ToastProvider, useToast } from "./Toast";
 
-export { default as Modal } from "./Modal";
-export { Drawer } from "./Drawer";
+export { default as Modal, ModalHeader, ModalBody, ModalFooter } from "./Modal";
+export { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from "./Drawer";
 export { default as ConfirmDialog } from "./ConfirmDialog";
 export { default as Dropdown } from "./Dropdown";
 export { default as Tooltip } from "./Tooltip";
@@ -47,4 +47,6 @@ export { default as PageTransition } from "./PageTransition";
 
 export * from "./charts";
 export { default as MultiImageUpload } from "./MultiImageUpload";
+export { PWAInstallBanner } from "./PWAInstallBanner";
+export { LanguageSwitcher } from "./LanguageSwitcher";
 

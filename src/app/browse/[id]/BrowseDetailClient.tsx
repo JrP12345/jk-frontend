@@ -47,7 +47,9 @@ import {
   Camera,
   X,
   ChevronLeft,
+  MessageSquare,
 } from "lucide-react";
+import { formatCurrency } from "@/lib/currency";
 
 interface Doctor {
   id: string;
@@ -75,7 +77,7 @@ interface Doctor {
   upcomingHolidays?: Array<{ date: string; reason: string; status?: string }>;
 }
 
-interface ClinicDetail {
+export interface ClinicDetail {
   id: string;
   name: string;
   city: string;
@@ -85,6 +87,7 @@ interface ClinicDetail {
   description: string;
   image_url: string;
   logo_url?: string;
+  currency?: string;
   images?: string[];
   organization?: {
     id: string;
@@ -92,6 +95,12 @@ interface ClinicDetail {
     logo_url?: string;
     image_url?: string;
     images?: string[];
+    description?: string;
+    currency?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    city?: string;
   } | null;
   timings: string;
   facilities?: string[];
@@ -227,7 +236,13 @@ function parseDoctorWorkingSchedule(timingsStr: string | null | undefined, dayNa
   }
 }
 
-export default function BrowseDetailClient({ id }: { id: string }) {
+export default function BrowseDetailClient({
+  id,
+  initialClinic = null,
+}: {
+  id: string;
+  initialClinic?: ClinicDetail | null;
+}) {
   const renderTimings = (timingsStr: string | null | undefined, compact = false) => {
     if (!timingsStr) return <span className="text-xs text-text-secondary">Mon–Sat: 9:00 AM – 5:00 PM</span>;
     try {
@@ -327,8 +342,8 @@ export default function BrowseDetailClient({ id }: { id: string }) {
     }
   };
 
-  const [clinic, setClinic] = useState<ClinicDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [clinic, setClinic] = useState<ClinicDetail | null>(initialClinic);
+  const [loading, setLoading] = useState(!initialClinic);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const { user, isAuthenticated, login } = useAuthStore();
   const router = useRouter();
@@ -380,14 +395,16 @@ export default function BrowseDetailClient({ id }: { id: string }) {
         const res = await api.get(`/public/clinics/${id}`);
         setClinic(res.data.data);
       } catch {
-        toast({ title: "Error", description: "Failed to load clinic details", variant: "error", duration: 3000 });
-        router.push("/browse");
+        if (!initialClinic) {
+          toast({ title: "Error", description: "Failed to load clinic details", variant: "error", duration: 3000 });
+          router.push("/browse");
+        }
       } finally {
         setLoading(false);
       }
     };
     fetchClinic();
-  }, [id, router, toast]);
+  }, [id, router, toast, initialClinic]);
 
   // Handle deep-link / auto-open booking (from single-doctor browse card or follow-up)
   useEffect(() => {
@@ -794,7 +811,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
           const orderData = orderRes.data?.data;
           toast({
             title: "Online Payment Order Created",
-            description: `Order #${orderData?.razorpayOrderId || "Created"}. Fee: ₹${selectedDoctor.fees}`,
+            description: `Order #${orderData?.razorpayOrderId || "Created"}. Fee: ${formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")}`,
             variant: "success",
           });
         } catch {
@@ -810,6 +827,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
 
       setCreatedTicket({
         appointmentId: appt._id || appt.id,
+        trackerToken: appt.trackerToken,
         tokenNumber: token,
         patientName: isGuest ? guestForm.name : user?.name || "Patient",
         patientPhone: isGuest ? guestForm.phone : (user as any)?.phone || "",
@@ -820,7 +838,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
         specialization: selectedDoctor?.specialization,
         clinicName: clinic?.name,
         clinicAddress: clinic?.address && clinic.address.trim() !== "." ? clinic.address : clinic?.city,
-        fees: isPostConsultation ? "Decided post-consultation" : isFree ? "Free (₹0)" : selectedDoctor?.fees,
+        fees: isPostConsultation ? "Decided post-consultation" : isFree ? "Free" : selectedDoctor?.fees,
         paymentMode: isPostConsultation ? "pay_at_clinic" : isFree ? "free" : paymentMode,
       });
 
@@ -890,13 +908,13 @@ export default function BrowseDetailClient({ id }: { id: string }) {
             </div>
             <div class="details-row">
               <span class="label">Consultation Fee:</span>
-              <span class="value">${typeof createdTicket.fees === "string" ? createdTicket.fees : `₹${createdTicket.fees || 0}`} (${createdTicket.paymentMode === "online" ? "Online Paid" : createdTicket.paymentMode === "free" ? "Complimentary" : "Pay at Reception"})</span>
+              <span class="value">${typeof createdTicket.fees === "string" ? createdTicket.fees : formatCurrency(createdTicket.fees, clinic?.currency || "INR")} (${createdTicket.paymentMode === "online" ? "Online Paid" : createdTicket.paymentMode === "free" ? "Complimentary" : "Pay at Reception"})</span>
             </div>
             <div class="footer">
               ${createdTicket.appointmentId ? `
               <p style="margin: 0 0 4px 0; font-weight: 700; color: #0f172a;">Live Appointment Tracker:</p>
               <p style="margin: 0 0 8px 0; word-break: break-all; font-family: monospace; font-size: 11px; color: #2563eb;">
-                ${window.location.origin}/track/${createdTicket.appointmentId}
+                ${window.location.origin}/track/${createdTicket.appointmentId}${createdTicket.trackerToken ? `?t=${encodeURIComponent(createdTicket.trackerToken)}` : ""}
               </p>` : ""}
               Please arrive 10 minutes prior to your consultation time. Present this token at reception.
             </div>
@@ -1085,13 +1103,26 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                   <ExternalLink className="w-3 h-3 text-text-muted" strokeWidth={1.75} />
                 </a>
                 {clinic.phone && (
-                  <a
-                    href={`tel:${clinic.phone.replace(/\s+/g, "")}`}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px]"
-                  >
-                    <Phone className="w-3.5 h-3.5" strokeWidth={1.75} />
-                    <span>Call Clinic</span>
-                  </a>
+                  <>
+                    <a
+                      href={`https://wa.me/${clinic.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello, I would like to inquire about appointments and doctors at ${clinic.name}.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px] transition-colors"
+                      title="Chat on WhatsApp"
+                      aria-label="Chat on WhatsApp"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600" strokeWidth={1.75} />
+                      <span className="hidden sm:inline">WhatsApp</span>
+                    </a>
+                    <a
+                      href={`tel:${clinic.phone.replace(/\s+/g, "")}`}
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px]"
+                    >
+                      <Phone className="w-3.5 h-3.5" strokeWidth={1.75} />
+                      <span>Call Clinic</span>
+                    </a>
+                  </>
                 )}
               </div>
             </div>
@@ -1185,11 +1216,15 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                       <div>
                         <span className="text-[10px] text-text-muted block font-medium uppercase tracking-wider">Consultation Fee</span>
                         {doc.feeType === "post_consultation" ? (
-                          <span className="font-semibold text-amber-600 dark:text-amber-400">Post-Consultation</span>
+                          <span className="font-semibold text-amber-600 dark:text-amber-400">
+                            {doc.fees && doc.fees > 0 ? `From ${formatCurrency(doc.fees, clinic.currency || "INR")}` : "Post-Consultation"}
+                          </span>
                         ) : doc.feeType === "free" ? (
-                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">Free / ₹0</span>
+                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">Free</span>
                         ) : (
-                          <span className="font-semibold text-emerald-700 dark:text-emerald-400">₹{doc.fees}</span>
+                          <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                            {formatCurrency(doc.fees, clinic.currency || "INR")}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -1292,6 +1327,57 @@ export default function BrowseDetailClient({ id }: { id: string }) {
             </CardContent>
           </Card>
 
+          {/* About Parent Organization & Clinical Governance Card */}
+          {clinic.organization && (
+            <Card className="rounded-2xl border border-border bg-surface overflow-hidden shadow-xs">
+              <CardHeader className="pb-3 border-b border-border/40">
+                <CardTitle className="text-sm font-bold flex items-center gap-2 text-text">
+                  <Building2 className="w-4 h-4 text-primary-600" strokeWidth={1.75} />
+                  <span>About {clinic.organization.name}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-3.5 space-y-3">
+                {clinic.organization.logo_url && (
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={clinic.organization.logo_url}
+                      alt={clinic.organization.name}
+                      className="w-10 h-10 rounded-xl object-contain border border-border p-1 bg-surface-alt shadow-2xs"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-text truncate">{clinic.organization.name}</p>
+                      <p className="text-[10px] text-text-muted">Parent Healthcare System</p>
+                    </div>
+                  </div>
+                )}
+                {clinic.organization.description && (
+                  <p className="text-xs text-text-secondary leading-relaxed line-clamp-3">
+                    {clinic.organization.description}
+                  </p>
+                )}
+                {/* Clinical Standards Badges */}
+                <div className="pt-2 border-t border-border/40 grid grid-cols-2 gap-1.5 text-[10px] text-text-secondary font-medium">
+                  <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-surface-alt">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Verified Clinic</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-surface-alt">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                    <span>Digital Records</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-surface-alt">
+                    <CreditCard className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                    <span>Cashless Support</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-surface-alt">
+                    <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span>Live Queue Tokens</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Facility Photo Gallery Showcase */}
           {clinic.images && clinic.images.length > 0 && (
             <Card className="rounded-2xl border border-border bg-surface overflow-hidden shadow-xs">
@@ -1344,7 +1430,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
         <div className="fixed bottom-0 left-0 right-0 pt-3 pl-16 pr-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface/95 backdrop-blur-md border-t border-border z-40 lg:hidden shadow-lg flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-text truncate">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
-            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">₹{singleDoctor.fees} Consultation Fee</p>
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">{formatCurrency(singleDoctor.fees, clinic.currency || "INR")} Consultation Fee</p>
           </div>
           <Button
             variant="primary"
@@ -1403,7 +1489,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                 </div>
                 <div className="text-right shrink-0">
                   <span className="text-xs sm:text-sm font-black text-emerald-700 dark:text-emerald-400 bg-surface px-2 py-0.5 rounded-lg border border-border">
-                    ₹{selectedDoctor?.fees || 0}
+                    {formatCurrency(selectedDoctor?.fees || 0, clinic?.currency || "INR")}
                   </span>
                 </div>
               </div>
@@ -1718,10 +1804,12 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                   <p className="text-[11px] text-primary-600 truncate">
                     Dr. {selectedDoctor?.name.replace(/^Dr\.?\s*/i, "")} •{" "}
                     {selectedDoctor?.feeType === "post_consultation"
-                      ? "Fee decided post-consultation"
+                      ? (selectedDoctor?.fees && selectedDoctor.fees > 0
+                        ? `From ${formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} (decided post-visit)`
+                        : "Fee decided after consultation")
                       : selectedDoctor?.feeType === "free"
                       ? "Free consultation"
-                      : `₹${selectedDoctor?.fees || 0} consultation fee`}
+                      : `${formatCurrency(selectedDoctor?.fees || 0, clinic?.currency || "INR")} consultation fee`}
                   </p>
                 </div>
                 <button
@@ -1808,10 +1896,12 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                 <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-1">
                   <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-xs">
                     <Building2 className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-                    <span>Post-Consultation Billing</span>
+                    <span>Post-Consultation Billing{selectedDoctor?.fees && selectedDoctor.fees > 0 ? ` • Min. ${formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} visit charge` : ""}</span>
                   </div>
                   <p className="text-[11px] text-text-secondary leading-relaxed">
-                    No upfront payment is required today. Dr. {selectedDoctor?.name.replace(/^Dr\.?\s*/i, "")} will determine the consultation fee after your visit, which will be billed at the clinic reception.
+                    {selectedDoctor?.fees && selectedDoctor.fees > 0
+                      ? `A minimum visit charge of ${formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} applies. Dr. ${selectedDoctor?.name.replace(/^Dr\.?\s*/i, "")} will determine the final consultation fee after your visit, which will be billed at the clinic reception.`
+                      : `No upfront payment is required today. Dr. ${selectedDoctor?.name.replace(/^Dr\.?\s*/i, "")} will determine the consultation fee after your visit, which will be billed at the clinic reception.`}
                   </p>
                 </div>
               ) : selectedDoctor?.feeType === "free" ? (
@@ -1820,7 +1910,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                     <span>✨ Complimentary Consultation</span>
                   </div>
                   <p className="text-[11px] text-text-secondary leading-relaxed">
-                    This consultation is free of charge (₹0). No payment is required.
+                    This consultation is free of charge. No payment is required.
                   </p>
                 </div>
               ) : selectedDoctor?.fees && selectedDoctor.fees > 0 ? (
@@ -1830,7 +1920,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                       Payment Preference
                     </label>
                     <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                      Total: ₹{selectedDoctor.fees}
+                      {formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")}
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1847,7 +1937,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                         <Building2 className="w-4 h-4 text-text-muted shrink-0" strokeWidth={1.75} />
                         <span className="text-xs font-bold">Pay at Clinic Reception</span>
                       </div>
-                      <span className="text-[10px] text-text-muted block mt-1 pl-6">Pay ₹{selectedDoctor.fees} at the desk upon arrival</span>
+                      <span className="text-[10px] text-text-muted block mt-1 pl-6">Pay {formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} at the desk upon arrival</span>
                     </button>
 
                     <button
@@ -1863,7 +1953,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                         <CreditCard className="w-4 h-4 text-text-muted shrink-0" strokeWidth={1.75} />
                         <span className="text-xs font-bold">Pay Online Now</span>
                       </div>
-                      <span className="text-[10px] text-text-muted block mt-1 pl-6">Pay ₹{selectedDoctor.fees} via UPI / Card</span>
+                      <span className="text-[10px] text-text-muted block mt-1 pl-6">Pay {formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} via UPI / Card</span>
                     </button>
                   </div>
                 </div>
@@ -1945,7 +2035,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                   <div className="flex justify-between">
                     <span>Fee:</span>
                     <strong className="text-emerald-700 dark:text-emerald-400">
-                      {typeof createdTicket.fees === "string" ? createdTicket.fees : `₹${createdTicket.fees}`} ({createdTicket.paymentMode === "online" ? "Online Paid" : createdTicket.paymentMode === "free" ? "Free" : "Pay at Reception"})
+                      {typeof createdTicket.fees === "string" ? createdTicket.fees : formatCurrency(createdTicket.fees, clinic?.currency || "INR")} ({createdTicket.paymentMode === "online" ? "Online Paid" : createdTicket.paymentMode === "free" ? "Free" : "Pay at Reception"})
                     </strong>
                   </div>
                 )}
@@ -1979,7 +2069,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                 Track live waiting time, see when your turn is coming, or self check-in upon arrival directly from your phone.
               </p>
               <div className="flex gap-2 pt-1">
-                <Link href={`/track/${createdTicket.appointmentId}`} target="_blank" className="w-full">
+                <Link href={`/track/${createdTicket.appointmentId}${createdTicket.trackerToken ? `?t=${encodeURIComponent(createdTicket.trackerToken)}` : ""}`} target="_blank" className="w-full">
                   <Button size="sm" className="w-full text-xs font-bold rounded-xl shadow-xs min-h-[44px] flex items-center justify-center gap-1">
                     <span>Open Live Tracker</span>
                     <ExternalLink className="w-3 h-3" strokeWidth={1.75} />
@@ -1990,7 +2080,7 @@ export default function BrowseDetailClient({ id }: { id: string }) {
                   size="sm"
                   className="shrink-0 text-xs rounded-xl min-h-[44px] flex items-center justify-center gap-1 px-3"
                   onClick={() => {
-                    const trackingUrl = `${window.location.origin}/track/${createdTicket.appointmentId}`;
+                    const trackingUrl = `${window.location.origin}/track/${createdTicket.appointmentId}${createdTicket.trackerToken ? `?t=${encodeURIComponent(createdTicket.trackerToken)}` : ""}`;
                     navigator.clipboard.writeText(trackingUrl);
                     toast({ title: "Link Copied", description: "Mobile tracking URL copied to clipboard", variant: "success" });
                   }}

@@ -1020,8 +1020,23 @@ export default function TeleconsultationPage() {
       )}
 
       {/* LAUNCH VIRTUAL SESSION MODAL */}
-      <Modal isOpen={isLaunchModalOpen} onClose={() => setIsLaunchModalOpen(false)} title="📹 Provision Teleconsultation Room" size="md">
-        <form onSubmit={handleLaunchSessionSubmit} className="space-y-4 text-xs">
+      <Modal
+        isOpen={isLaunchModalOpen}
+        onClose={() => setIsLaunchModalOpen(false)}
+        title="📹 Provision Teleconsultation Room"
+        size="md"
+        footer={
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 w-full">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsLaunchModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
+              Cancel
+            </Button>
+            <Button type="submit" form="launch-session-form" variant="primary" size="sm" loading={launchingSession} className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
+              Provision Room
+            </Button>
+          </div>
+        }
+      >
+        <form id="launch-session-form" onSubmit={handleLaunchSessionSubmit} className="space-y-4 text-xs">
           <Select
             label="Select Confirmed Appointment *"
             value={selectedApptId}
@@ -1038,15 +1053,6 @@ export default function TeleconsultationPage() {
 
           <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl text-[11px] text-purple-900 dark:text-purple-200">
             💡 Provisioning will generate a secure WebRTC room ID (`TELE-XXXXX`) and provide a join link for both physician and patient portals.
-          </div>
-
-          <div className="pt-3 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsLaunchModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" size="sm" loading={launchingSession} className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
-              Provision Room
-            </Button>
           </div>
         </form>
       </Modal>

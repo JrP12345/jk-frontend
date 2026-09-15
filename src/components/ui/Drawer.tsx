@@ -13,10 +13,15 @@ export interface DrawerProps {
   onClose: () => void;
   title?: string;
   subtitle?: string;
+  header?: React.ReactNode;
   position?: DrawerPosition;
   children: React.ReactNode;
+  footer?: React.ReactNode;
   width?: string;
   className?: string;
+  bodyClassName?: string;
+  headerClassName?: string;
+  footerClassName?: string;
   loading?: boolean;
   loadingText?: string;
 }
@@ -33,10 +38,15 @@ export const Drawer = memo(function Drawer({
   onClose,
   title,
   subtitle,
+  header,
   position = "right",
   children,
+  footer,
   width = "w-screen max-w-md",
   className = "",
+  bodyClassName = "",
+  headerClassName = "",
+  footerClassName = "",
   loading = false,
   loadingText,
 }: DrawerProps) {
@@ -178,20 +188,27 @@ export const Drawer = memo(function Drawer({
           )}
 
           {/* Header */}
-          {(title || subtitle) && (
-            <div className="bg-surface-alt/70 border-b border-border/80 p-4 sm:p-5 flex items-center justify-between shrink-0">
-              <div className="min-w-0 pr-3">
-                {title && (
-                  <h3 id="drawer-title" className="text-sm sm:text-base font-semibold text-text leading-tight tracking-tight truncate">
-                    {title}
-                  </h3>
-                )}
-                {subtitle && (
-                  <p id="drawer-subtitle" className="text-xs text-text-secondary mt-0.5 leading-relaxed truncate">
-                    {subtitle}
-                  </p>
-                )}
-              </div>
+          {(header || title || subtitle) && (
+            <div className={cn(
+              "bg-surface-alt/70 border-b border-border/80 p-4 sm:p-5 flex items-center justify-between shrink-0",
+              headerClassName
+            )}>
+              {header ? (
+                header
+              ) : (
+                <div className="min-w-0 pr-3">
+                  {title && (
+                    <h3 id="drawer-title" className="text-sm sm:text-base font-semibold text-text leading-tight tracking-tight truncate">
+                      {title}
+                    </h3>
+                  )}
+                  {subtitle && (
+                    <p id="drawer-subtitle" className="text-xs text-text-secondary mt-0.5 leading-relaxed truncate">
+                      {subtitle}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <button
                 type="button"
@@ -205,7 +222,7 @@ export const Drawer = memo(function Drawer({
           )}
 
           {/* Drawer Body */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-surface touch-scroll relative">
+          <div className={cn("flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 bg-surface touch-scroll relative", bodyClassName)}>
             {loading && (
               <div
                 className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-surface/85 backdrop-blur-xs p-6 text-center animate-fade-in"
@@ -219,11 +236,63 @@ export const Drawer = memo(function Drawer({
               {children}
             </div>
           </div>
+
+          {/* Sticky Footer */}
+          {footer && (
+            <div className={cn(
+              "p-4 sm:p-5 border-t border-border/80 bg-surface-alt/80 backdrop-blur-md flex items-center justify-end gap-2.5 shrink-0 z-10",
+              footerClassName
+            )}>
+              {footer}
+            </div>
+          )}
         </div>
       </div>
     </div>,
     document.body
   );
 });
+
+export function DrawerHeader({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("p-4 sm:p-5 border-b border-border/80 shrink-0 bg-surface-alt/70", className)}>
+      {children}
+    </div>
+  );
+}
+
+export function DrawerBody({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 bg-surface", className)}>
+      {children}
+    </div>
+  );
+}
+
+export function DrawerFooter({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("p-4 sm:p-5 border-t border-border/80 bg-surface-alt/80 backdrop-blur-md flex items-center justify-end gap-2.5 shrink-0 z-10", className)}>
+      {children}
+    </div>
+  );
+}
 
 

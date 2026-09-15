@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
-import { Button, Avatar, Dropdown, ModeSwitcher, AnantaLogo } from "@/components/ui";
+import { Button, Avatar, Dropdown, ModeSwitcher, AnantaLogo, LanguageSwitcher } from "@/components/ui";
 
 export default function MarketplaceNavbar() {
   const { user, logout, isAuthenticated, isLoading } = useAuthStore();
@@ -36,7 +36,8 @@ export default function MarketplaceNavbar() {
         </Link>
 
         {/* Desktop Navigation Items */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-3">
+          <LanguageSwitcher />
           <ModeSwitcher />
           
           <div className="w-px h-6 bg-border mx-1" />
@@ -87,7 +88,8 @@ export default function MarketplaceNavbar() {
         </div>
 
         {/* Mobile menu toggle (hamburger) */}
-        <div className="flex items-center gap-2 md:hidden">
+        <div className="flex items-center gap-1.5 md:hidden">
+          <LanguageSwitcher variant="minimal" />
           <ModeSwitcher />
           <button
             onClick={toggleMobileMenu}

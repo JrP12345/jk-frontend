@@ -10,6 +10,7 @@ export interface User {
   email: string;
   role: Role;
   organization_id?: string;
+  image_url?: string;
   permissions?: string[];
   impersonatedBy?: {
     id: string;

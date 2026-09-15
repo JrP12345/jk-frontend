@@ -75,6 +75,7 @@ const TABS: { id: Tab; label: string; rootOnly?: boolean; icon: React.ReactNode 
   {
     id: "modules",
     label: "Module Manager",
+    rootOnly: true,
     icon: <LayoutGrid className="w-4 h-4" />,
   },
   {

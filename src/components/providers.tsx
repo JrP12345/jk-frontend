@@ -3,8 +3,9 @@
 import { useEffect, useState, Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ThemeProvider, ToastProvider, RouteProgress } from "@/components/ui";
+import { ThemeProvider, ToastProvider, RouteProgress, PWAInstallBanner } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
+import { useI18nStore } from "@/lib/i18n";
 import { forceResetScrollLock } from "@/lib/scrollLock";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -24,6 +25,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     checkAuth();
+    useI18nStore.getState().initLanguage();
   }, [checkAuth]);
 
   // Route transition recovery: ensure scroll is never stuck across SPA navigations
@@ -43,7 +45,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <Suspense fallback={null}>
           <RouteProgress />
         </Suspense>
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          {children}
+          <PWAInstallBanner />
+        </ToastProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

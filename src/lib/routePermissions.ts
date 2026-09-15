@@ -46,7 +46,8 @@ export function hasRoutePermission(
     "/dashboard/admin/billing",
     "/dashboard/admin/users",
     "/dashboard/admin/monitor",
-    "/dashboard/audit"
+    "/dashboard/audit",
+    "/dashboard/settings/modules",
   ];
   if (ROOT_ONLY_ROUTES.some(r => route === r || route.startsWith(r + "/"))) {
     return userRole === "root";

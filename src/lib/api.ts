@@ -1,13 +1,28 @@
 import axios from "axios";
 
 export const getApiUrl = () => {
-  // When accessed from a non-localhost hostname (e.g. mobile over LAN at 10.x.x.x:3000),
-  // use a relative "/api" path so requests go through the Next.js rewrite proxy on port 3000.
-  // This keeps everything same-origin, ensuring httpOnly cookies work correctly for auth.
-  if (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-    return "/api";
+  // 1. Explicitly configured API base URL has top priority (e.g. in production)
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && envUrl.trim() !== "") {
+    return envUrl.trim();
   }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+  // 2. Browser runtime:
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    // Private LAN / mobile hotspot IPs in development (e.g. 10.x.x.x, 192.168.x.x, 172.16-31.x.x)
+    if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(hostname)) {
+      return "/api";
+    }
+    // If running in browser on a remote hostname without NEXT_PUBLIC_API_URL configured,
+    // fallback to relative "/api" so requests route through the Next.js rewrite proxy.
+    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+      return "/api";
+    }
+  }
+
+  // 3. Default local development backend
+  return "http://localhost:5000/api";
 };
 
 // Direct backend communication using NEXT_PUBLIC_API_URL or same-origin proxy via /api
@@ -25,6 +40,7 @@ const api = axios.create({
 // Request interceptor to automatically attach active clinic and organization context
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
+    config.baseURL = getApiUrl();
     const activeClinicId = localStorage.getItem("ananta_active_clinic_id");
     if (activeClinicId && activeClinicId !== "[object Object]" && activeClinicId !== "undefined" && !config.headers["x-clinic-id"]) {
       config.headers["x-clinic-id"] = activeClinicId;

@@ -1075,8 +1075,18 @@ export default function PharmacyPage() {
         title={editingMedId ? "Update Inventory Formulation" : "Register Medicine Stock"}
         description="Configure pharmaceutical item details, batch numbers, pricing, and expiry date."
         size="md"
+        footer={
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 w-full">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsMedModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
+              Cancel
+            </Button>
+            <Button type="submit" form="med-stock-form" variant="primary" size="sm" disabled={submittingMed} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
+              {submittingMed ? "Saving..." : "Save Medicine Stock"}
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={handleMedSubmit} className="space-y-4 pt-1">
+        <form id="med-stock-form" onSubmit={handleMedSubmit} className="space-y-4 pt-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
               label="Brand Name *"
@@ -1178,14 +1188,6 @@ export default function PharmacyPage() {
             error={medErrors.stockQuantity}
           />
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsMedModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" size="sm" disabled={submittingMed} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
-              {submittingMed ? "Saving..." : "Save Medicine Stock"}
-            </Button>
-          </div>
         </form>
       </Modal>
 
@@ -1198,9 +1200,41 @@ export default function PharmacyPage() {
         title="Dispensing Fulfillment Desk"
         description="Fulfill prescribed items against clinic inventory stock and create billing charges."
         size="lg"
+        footer={
+          activePrescriptionGroup ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-muted">Estimated Subtotal:</span>
+                <span className="text-base font-bold text-primary-600 dark:text-primary-400 font-mono">
+                  ₹
+                  {dispenseItems
+                    .reduce((sum, item) => {
+                      const med = medicines.find((m) => m.id === item.medicineId);
+                      return sum + (med ? med.price * item.quantity : 0);
+                    }, 0)
+                    .toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5">
+                <Button variant="outline" size="sm" onClick={() => setIsDispenseOpen(false)} className="w-full sm:w-auto min-h-[44px]">
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={submittingDispense || hasDispenseErrors}
+                  onClick={handleDispenseSubmit}
+                  className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]"
+                >
+                  {submittingDispense ? "Dispensing..." : "Dispense & Bill Patient"}
+                </Button>
+              </div>
+            </div>
+          ) : undefined
+        }
       >
         {activePrescriptionGroup && (
-          <div className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
+          <div className="space-y-4 pt-1">
             <div className="p-3.5 bg-surface-alt rounded-2xl border border-border/80">
               <div className="text-[10px] uppercase font-bold tracking-wider text-text-muted">Patient Recipient:</div>
               <div className="text-sm font-bold text-text mt-0.5">{activePrescriptionGroup.patientId.name}</div>
@@ -1257,35 +1291,6 @@ export default function PharmacyPage() {
                 </div>
               ))}
             </div>
-
-            {/* Total Price Estimate */}
-            <div className="border-t border-border/60 pt-3.5 flex justify-between items-center text-sm font-bold text-text">
-              <span>Estimated Billing Subtotal:</span>
-              <span className="text-primary-600 dark:text-primary-400 font-mono text-base">
-                ₹
-                {dispenseItems
-                  .reduce((sum, item) => {
-                    const med = medicines.find((m) => m.id === item.medicineId);
-                    return sum + (med ? med.price * item.quantity : 0);
-                  }, 0)
-                  .toLocaleString("en-IN")}
-              </span>
-            </div>
-
-            <div className="pt-3 border-t border-border/60 flex flex-col-reverse sm:flex-row justify-end gap-2.5">
-              <Button variant="outline" size="sm" onClick={() => setIsDispenseOpen(false)} className="w-full sm:w-auto min-h-[44px]">
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                variant="primary"
-                disabled={submittingDispense || hasDispenseErrors}
-                onClick={handleDispenseSubmit}
-                className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]"
-              >
-                {submittingDispense ? "Dispensing..." : "Dispense & Bill Patient"}
-              </Button>
-            </div>
           </div>
         )}
       </Modal>
@@ -1311,8 +1316,18 @@ export default function PharmacyPage() {
         onClose={() => setIsBatchModalOpen(false)}
         title={`Add Batch Stock: ${batchTargetMed?.name || ""}`}
         size="md"
+        footer={
+          <div className="flex flex-col-reverse sm:flex-row justify-between gap-2.5 w-full">
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsBatchModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
+              Cancel
+            </Button>
+            <Button type="submit" form="add-batch-form" size="sm" variant="primary" loading={submittingBatch} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
+              Add Batch Stock
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={handleAddBatchSubmit} className="space-y-4 pt-1">
+        <form id="add-batch-form" onSubmit={handleAddBatchSubmit} className="space-y-4 pt-1">
           <div className="p-3.5 bg-surface-alt rounded-2xl border border-border/80 text-xs space-y-0.5">
             <p className="font-bold text-text">{batchTargetMed?.name}</p>
             <p className="text-text-muted italic">{batchTargetMed?.genericName}</p>
@@ -1362,15 +1377,6 @@ export default function PharmacyPage() {
               onChange={(e) => setNewBatchPrice(Number(e.target.value))}
               required
             />
-          </div>
-
-          <div className="flex flex-col-reverse sm:flex-row justify-between gap-2.5 border-t border-border/60 pt-3.5">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsBatchModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submittingBatch} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
-              Add Batch Stock
-            </Button>
           </div>
         </form>
       </Modal>

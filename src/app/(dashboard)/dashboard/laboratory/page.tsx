@@ -1018,8 +1018,18 @@ export default function LaboratoryPage() {
         open={isOrderOpen}
         onClose={() => setIsOrderOpen(false)}
         title="Order Diagnostic Lab Test"
+        footer={
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 w-full">
+            <Button type="button" variant="ghost" onClick={() => setIsOrderOpen(false)} className="w-full sm:w-auto min-h-[44px]">
+              Cancel
+            </Button>
+            <Button type="submit" form="order-lab-form" disabled={submittingOrder} className="w-full sm:w-auto min-h-[44px]">
+              {submittingOrder ? "Placing Order..." : "Confirm & Bill Test"}
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={handleOrderSubmit} className="space-y-4">
+        <form id="order-lab-form" onSubmit={handleOrderSubmit} className="space-y-4">
           {/* Patient Lookup */}
           <div className="relative">
             <label className="text-xs font-semibold text-text mb-1 block">Patient Profile *</label>
@@ -1083,15 +1093,6 @@ export default function LaboratoryPage() {
               required
             />
           </div>
-
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-border">
-            <Button type="button" variant="ghost" onClick={() => setIsOrderOpen(false)} className="w-full sm:w-auto min-h-[44px]">
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submittingOrder} className="w-full sm:w-auto min-h-[44px]">
-              {submittingOrder ? "Placing Order..." : "Confirm & Bill Test"}
-            </Button>
-          </div>
         </form>
       </Modal>
 
@@ -1100,8 +1101,18 @@ export default function LaboratoryPage() {
         open={isTestModalOpen}
         onClose={() => setIsTestModalOpen(false)}
         title={editingTestId ? "Modify Lab Test Catalog Entry" : "Register Diagnostic Examination"}
+        footer={
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 w-full">
+            <Button type="button" variant="ghost" onClick={() => setIsTestModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
+              Cancel
+            </Button>
+            <Button type="submit" form="lab-test-form" disabled={submittingTest} className="w-full sm:w-auto min-h-[44px]">
+              {submittingTest ? "Saving..." : "Save Test Configuration"}
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={handleTestSubmit} className="space-y-4">
+        <form id="lab-test-form" onSubmit={handleTestSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="text-xs font-semibold text-text mb-1 block">Test Name *</label>
@@ -1196,15 +1207,6 @@ export default function LaboratoryPage() {
               />
             </div>
           </div>
-
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-border">
-            <Button type="button" variant="ghost" onClick={() => setIsTestModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submittingTest} className="w-full sm:w-auto min-h-[44px]">
-              {submittingTest ? "Saving..." : "Save Test Configuration"}
-            </Button>
-          </div>
         </form>
       </Modal>
 
@@ -1213,9 +1215,21 @@ export default function LaboratoryPage() {
         open={isResultOpen}
         onClose={() => setIsResultOpen(false)}
         title="Report Laboratory Test Findings"
+        footer={
+          activeOrder ? (
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 w-full">
+              <Button type="button" variant="ghost" onClick={() => setIsResultOpen(false)} className="w-full sm:w-auto min-h-[44px]">
+                Cancel
+              </Button>
+              <Button type="submit" form="lab-result-form" disabled={submittingResult} className="w-full sm:w-auto min-h-[44px]">
+                {submittingResult ? "Saving..." : "Submit Findings"}
+              </Button>
+            </div>
+          ) : undefined
+        }
       >
         {activeOrder && (
-          <form onSubmit={handleResultSubmit} className="space-y-4">
+          <form id="lab-result-form" onSubmit={handleResultSubmit} className="space-y-4">
             <div className="p-3 bg-surface-hover rounded-xl border border-border">
               <span className="text-xs text-text-muted block">Ordered Test:</span>
               <span className="text-sm font-bold text-text">{activeOrder.testId?.name} ({activeOrder.testId?.code})</span>
@@ -1275,15 +1289,6 @@ export default function LaboratoryPage() {
                 allowedTypes={["image/", "application/pdf"]}
                 helperText="PNG, JPG, WEBP, or PDF (max. 5MB)"
               />
-            </div>
-
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-border">
-              <Button type="button" variant="ghost" onClick={() => setIsResultOpen(false)} className="w-full sm:w-auto min-h-[44px]">
-                Cancel
-              </Button>
-              <Button type="submit" disabled={submittingResult} className="w-full sm:w-auto min-h-[44px]">
-                {submittingResult ? "Saving..." : "Submit Findings"}
-              </Button>
             </div>
           </form>
         )}

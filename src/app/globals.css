@@ -1269,3 +1269,51 @@ button, a, input, select, textarea {
   transform: scale(0.99);
 }
 
+/* ────────────────────────────────────────────────
+   Vuesax-Inspired Modern Enterprise UI Utilities
+   ──────────────────────────────────────────────── */
+
+/* Tactile interactive micro-press */
+.vs-interactive {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.vs-interactive:active {
+  transform: scale(0.975);
+}
+
+/* Vuesax soft colored card surface */
+.vs-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.vs-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(var(--p-500), 0.08);
+  border-color: color-mix(in srgb, var(--p-500) 30%, var(--border));
+}
+
+/* Vuesax colored glow elevation */
+.vs-glow-primary {
+  box-shadow: 0 8px 25px -5px color-mix(in srgb, var(--p-500) 25%, transparent);
+}
+.vs-glow-primary:hover {
+  box-shadow: 0 12px 32px -4px color-mix(in srgb, var(--p-500) 35%, transparent);
+}
+
+/* Vuesax Pill Badge */
+.vs-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  transition: all 0.15s ease;
+}
+
+

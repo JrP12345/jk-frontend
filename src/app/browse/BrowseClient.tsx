@@ -24,6 +24,7 @@ import {
   CreditCard,
   Camera,
 } from "lucide-react";
+import { formatCurrency } from "@/lib/currency";
 
 interface DoctorSummary {
   id: string;
@@ -44,6 +45,7 @@ export interface Clinic {
   logo_url?: string;
   images?: string[];
   organizationName?: string;
+  currency?: string;
   timings: string;
   facilities?: string[];
   doctorCount?: number;
@@ -481,7 +483,7 @@ export default function BrowseClient({
                       {clinic.minFee !== undefined && clinic.minFee !== null && (
                         <span className="text-[11px] font-semibold bg-surface-alt text-text px-2.5 py-1 rounded-lg border border-border flex items-center gap-1">
                           <CreditCard className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
-                          <span>From ₹{clinic.minFee}</span>
+                          <span>From {formatCurrency(clinic.minFee, clinic.currency || "INR")}</span>
                         </span>
                       )}
                     </div>
@@ -491,7 +493,9 @@ export default function BrowseClient({
                       <div className="bg-surface-alt p-2.5 sm:p-3 rounded-xl border border-border text-xs mb-3 space-y-0.5 sm:space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Practicing Specialist</span>
-                          <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">₹{singleDoctor.fees}</span>
+                          <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                            {formatCurrency(singleDoctor.fees, clinic.currency || "INR")}
+                          </span>
                         </div>
                         <p className="font-bold text-text truncate">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
                         <p className="text-[11px] text-text-secondary truncate">{singleDoctor.specialization}</p>
@@ -504,7 +508,7 @@ export default function BrowseClient({
                           </span>
                           {clinic.minFee !== undefined && clinic.minFee !== null && (
                             <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                              From ₹{clinic.minFee}
+                              From {formatCurrency(clinic.minFee, clinic.currency || "INR")}
                             </span>
                           )}
                         </div>

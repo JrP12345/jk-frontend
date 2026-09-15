@@ -14,6 +14,7 @@ import {
   AnantIcon,
   Select,
   Badge,
+  LanguageSwitcher,
   cn,
 } from "@/components/ui";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
@@ -413,6 +414,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             )}
             <NotificationBell />
+            <LanguageSwitcher variant="minimal" />
             <div className="hidden md:block">
               <PaletteSwitcher />
             </div>
@@ -428,7 +430,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Dropdown
                 trigger={
                   <button className="flex items-center gap-2 hover:bg-surface-hover p-1 pr-1.5 sm:pr-2 rounded-full transition-colors shrink-0 cursor-pointer">
-                    <Avatar name={user.name} size="sm" status="online" />
+                    <Avatar src={user.image_url} name={user.name} size="sm" status="online" />
                     <div className="text-left hidden sm:block">
                       <p className="text-xs font-semibold text-text leading-tight truncate max-w-[120px]">{user.name}</p>
                       <p className="text-[10px] text-text-muted capitalize leading-tight">{user.role}</p>

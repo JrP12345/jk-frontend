@@ -4,11 +4,11 @@ import type { NextRequest } from "next/server";
 export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // We check for the presence of authentic httpOnly auth tokens (refresh_token or access_token).
-  // Client-writable cookies (e.g. ananta_session) are NOT trusted for edge route protection.
+  // Check for the presence of auth tokens (refresh_token, access_token) or session cookie (ananta_session)
   const hasAuthToken =
     request.cookies.has("refresh_token") ||
-    request.cookies.has("access_token");
+    request.cookies.has("access_token") ||
+    request.cookies.has("ananta_session");
 
   // ── Protect dashboard routes ────────────────────────────────────
   if (pathname.startsWith("/dashboard")) {

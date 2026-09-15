@@ -559,8 +559,22 @@ export default function RadiologyPage() {
       </Card>
 
       {/* ORDER IMAGING STUDY MODAL */}
-      <Modal isOpen={isOrderModalOpen} onClose={() => setIsOrderModalOpen(false)} title="🖼️ Order PACS DICOM Imaging Study">
-        <form onSubmit={handleOrderSubmit} className="space-y-4 text-xs">
+      <Modal
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+        title="🖼️ Order PACS DICOM Imaging Study"
+        footer={
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 w-full">
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsOrderModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
+              Cancel
+            </Button>
+            <Button type="submit" form="order-imaging-form" variant="primary" size="sm" loading={submittingOrder} className="w-full sm:w-auto min-h-[44px]">
+              Register PACS Order
+            </Button>
+          </div>
+        }
+      >
+        <form id="order-imaging-form" onSubmit={handleOrderSubmit} className="space-y-4 text-xs">
           <Select
             label="Target Patient *"
             value={patientId}
@@ -598,15 +612,6 @@ export default function RadiologyPage() {
             rows={3}
             required
           />
-
-          <div className="pt-3 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsOrderModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" size="sm" loading={submittingOrder} className="w-full sm:w-auto min-h-[44px]">
-              Register PACS Order
-            </Button>
-          </div>
         </form>
       </Modal>
 
@@ -617,8 +622,18 @@ export default function RadiologyPage() {
           onClose={() => setIsReportModalOpen(false)}
           title={`📝 Sign Radiology Clinical Report — ${activeReportStudy.modality}`}
           size="lg"
+          footer={
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 w-full">
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsReportModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
+                Cancel
+              </Button>
+              <Button type="submit" form="sign-radiology-form" variant="primary" size="sm" loading={submittingReport} className="w-full sm:w-auto min-h-[44px]">
+                Sign & Attach Radiology Report
+              </Button>
+            </div>
+          }
         >
-          <form onSubmit={handleReportSubmit} className="space-y-4 text-xs">
+          <form id="sign-radiology-form" onSubmit={handleReportSubmit} className="space-y-4 text-xs">
             <div className="p-3 bg-surface-alt rounded-xl border border-border space-y-1">
               <span className="font-bold text-text block font-mono">
                 UID: {activeReportStudy.studyInstanceUid}
@@ -636,15 +651,6 @@ export default function RadiologyPage() {
               rows={8}
               required
             />
-
-            <div className="pt-3 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsReportModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" size="sm" loading={submittingReport} className="w-full sm:w-auto min-h-[44px]">
-                Sign & Attach Radiology Report
-              </Button>
-            </div>
           </form>
         </Modal>
       )}
