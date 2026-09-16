@@ -77,8 +77,7 @@ api.interceptors.response.use(
     const isNoSession =
       originalRequest?.url === "/auth/me" &&
       typeof document !== "undefined" &&
-      !document.cookie.includes("ananta_session") &&
-      !document.cookie.includes("refresh_token");
+      !document.cookie.includes("ananta_session");
 
     if (
       error.response?.status === 401 &&

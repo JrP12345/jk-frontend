@@ -14,7 +14,6 @@ import {
   AnantIcon,
   Select,
   Badge,
-  LanguageSwitcher,
   cn,
 } from "@/components/ui";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
@@ -307,7 +306,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           loading={isLoading || !user}
           brand={
             sidebarCollapsed ? (
-              <AnantIcon className="h-7 w-7 text-primary-600 dark:text-primary-400" />
+              <AnantIcon className="h-8 w-8" />
             ) : (
               <div className="flex items-center justify-between w-full">
                 <AnantLogo size="md" />
@@ -414,7 +413,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             )}
             <NotificationBell />
-            <LanguageSwitcher variant="minimal" />
             <div className="hidden md:block">
               <PaletteSwitcher />
             </div>

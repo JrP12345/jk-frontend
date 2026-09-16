@@ -7,9 +7,9 @@ export const metadata: Metadata = {
   description: "ANANTA Integrated Digital Health Operating System",
   manifest: "/manifest.json",
   icons: {
-    icon: "/logo-w.png",
-    shortcut: "/logo-w.png",
-    apple: "/logo-w.png",
+    icon: [{ url: "/app-icon-512.png", sizes: "512x512", type: "image/png" }],
+    shortcut: [{ url: "/app-icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/app-icon-180.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,

@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 import { Button, Avatar, Dropdown, ModeSwitcher, AnantaLogo, LanguageSwitcher } from "@/components/ui";
+import { useTranslation } from "@/lib/i18n";
 
 export default function MarketplaceNavbar() {
   const { user, logout, isAuthenticated, isLoading } = useAuthStore();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { t } = useTranslation();
 
   const handleLogout = async () => {
     setIsMobileMenuOpen(false);
@@ -52,7 +54,7 @@ export default function MarketplaceNavbar() {
                 onClick={() => router.push("/dashboard")}
                 className="text-text-secondary hover:text-text"
               >
-                Go to Dashboard
+                {t("nav.dashboard", "Go to Dashboard")}
               </Button>
               
               <Dropdown
@@ -65,10 +67,10 @@ export default function MarketplaceNavbar() {
                   </button>
                 }
                 items={[
-                  { label: "Overview", onClick: () => router.push("/dashboard") },
-                  { label: "My Appointments", onClick: () => router.push("/dashboard/appointments") },
+                  { label: t("nav.overview", "Overview"), onClick: () => router.push("/dashboard") },
+                  { label: t("nav.my_appointments", "My Appointments"), onClick: () => router.push("/dashboard/appointments") },
                   { divider: true, label: "" },
-                  { label: "Sign out", onClick: handleLogout, danger: true }
+                  { label: t("nav.sign_out", "Sign out"), onClick: handleLogout, danger: true }
                 ]}
                 align="right"
               />
@@ -81,7 +83,7 @@ export default function MarketplaceNavbar() {
                 onClick={() => router.push("/login")}
                 className="shadow-sm"
               >
-                Sign In
+                {t("nav.sign_in", "Sign In")}
               </Button>
             </div>
           )}
@@ -121,7 +123,7 @@ export default function MarketplaceNavbar() {
               onClick={() => setIsMobileMenuOpen(false)}
               className="text-sm font-medium text-text hover:text-primary-600 py-1 transition-colors border-b border-border/40 pb-2"
             >
-              Browse Clinics
+              {t("nav.browse", "Browse Clinics")}
             </Link>
 
             {isAuthenticated && user ? (
@@ -143,21 +145,21 @@ export default function MarketplaceNavbar() {
                     className="w-full justify-start text-sm min-h-[44px] flex items-center"
                     onClick={() => navigateTo("/dashboard")}
                   >
-                    Go to Dashboard
+                    {t("nav.dashboard", "Go to Dashboard")}
                   </Button>
                   <Button
                     variant="outline"
                     className="w-full justify-start text-sm min-h-[44px] flex items-center"
                     onClick={() => navigateTo("/dashboard/appointments")}
                   >
-                    My Appointments
+                    {t("nav.my_appointments", "My Appointments")}
                   </Button>
                   <Button
                     variant="danger"
                     className="w-full justify-start text-sm text-left font-semibold mt-2 min-h-[44px] flex items-center"
                     onClick={handleLogout}
                   >
-                    Sign Out
+                    {t("nav.sign_out", "Sign out")}
                   </Button>
                 </div>
               </div>
@@ -168,7 +170,7 @@ export default function MarketplaceNavbar() {
                   className="w-full text-center shadow-sm min-h-[44px] flex items-center justify-center"
                   onClick={() => navigateTo("/login")}
                 >
-                  Sign In
+                  {t("nav.sign_in", "Sign In")}
                 </Button>
               </div>
             )}

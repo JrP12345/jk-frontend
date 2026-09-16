@@ -1,39 +1,48 @@
 "use client";
 
-import React from "react";
 import { cn } from "./utils";
 
 export interface AnantaLogoProps {
   className?: string;
+  /** Use the square application mark in dense UI. */
   iconOnly?: boolean;
   size?: "sm" | "md" | "lg" | "xl";
 }
 
-const sizeMap = {
+const wordmarkSizeMap = {
   sm: "h-7 w-auto max-w-[130px]",
   md: "h-10 w-auto max-w-[170px]",
   lg: "h-14 w-auto max-w-[220px]",
   xl: "h-20 w-auto max-w-[280px]",
 };
 
+const iconSizeMap = {
+  sm: "h-7 w-7",
+  md: "h-10 w-10",
+  lg: "h-14 w-14",
+  xl: "h-20 w-20",
+};
+
 /**
- * Anant Icon Component — loads logo-d.png (light mode) and logo-w.png (dark mode)
- * Uses data-mode="dark" attribute on <html> (not Tailwind dark class)
+ * Square brand mark for compact controls such as a collapsed navigation rail.
+ * This uses the dedicated square asset so the wide wordmark is never squeezed.
  */
-export function AnantaIcon({ className = "h-12 w-auto" }: { className?: string }) {
+export function AnantaIcon({ className = "h-10 w-10" }: { className?: string }) {
   return (
-    <div className={cn("relative inline-flex items-center shrink-0 justify-center", className)}>
-      {/* Light Mode Logo (dark ink on white) */}
+    <div className={cn("relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[22%]", className)}>
       <img
-        src="/logo-d.png"
-        alt="Anant Logo"
-        className="h-full w-auto object-contain [html[data-mode=dark]_&]:hidden transform-gpu transition-transform duration-200 ease-smooth"
+        src="/app-icon-light-192.png"
+        alt="ANANTA"
+        width={192}
+        height={192}
+        className="block h-full w-full object-contain [html[data-mode=dark]_&]:hidden"
       />
-      {/* Dark Mode Logo (white ink on dark) */}
       <img
-        src="/logo-w.png"
-        alt="Anant Logo"
-        className="h-full w-auto object-contain hidden [html[data-mode=dark]_&]:block transform-gpu transition-transform duration-200 ease-smooth"
+        src="/app-icon-dark-192.png"
+        alt="ANANTA"
+        width={192}
+        height={192}
+        className="hidden h-full w-full object-contain [html[data-mode=dark]_&]:block"
       />
     </div>
   );
@@ -42,32 +51,38 @@ export function AnantaIcon({ className = "h-12 w-auto" }: { className?: string }
 export const AnantIcon = AnantaIcon;
 
 /**
- * Anant Official Brand Logo Component — auto-swaps light and dark assets from /public
- * Responds to data-mode="dark" on <html> element set by ThemeProvider
+ * Full ANANTA wordmark for headers and spacious authentication/marketing views.
+ * The appropriate asset is selected from the application's light/dark mode.
  */
 export default function AnantaLogo({
   className = "",
+  iconOnly = false,
   size = "md",
 }: AnantaLogoProps) {
-  const sizeClass = sizeMap[size];
+  if (iconOnly) {
+    return <AnantaIcon className={cn(iconSizeMap[size], className)} />;
+  }
+
+  const sizeClass = wordmarkSizeMap[size];
 
   return (
-    <div className={cn("inline-flex items-center select-none group cursor-pointer shrink-0 py-1", className)}>
-      {/* Light Mode Logo Asset — hidden in dark mode */}
+    <div className={cn("inline-flex shrink-0 select-none items-center py-1", className)}>
       <img
         src="/logo-d.png"
-        alt="Anant Healthcare"
-        className={cn(sizeClass, "object-contain [html[data-mode=dark]_&]:hidden transform-gpu transition-transform group-hover:scale-105 duration-200 ease-smooth")}
+        alt="ANANTA Healthcare"
+        width={1536}
+        height={1024}
+        className={cn(sizeClass, "block object-contain [html[data-mode=dark]_&]:hidden")}
       />
-      {/* Dark Mode Logo Asset — shown only in dark mode */}
       <img
         src="/logo-w.png"
-        alt="Anant Healthcare"
-        className={cn(sizeClass, "object-contain hidden [html[data-mode=dark]_&]:block transform-gpu transition-transform group-hover:scale-105 duration-200 ease-smooth")}
+        alt="ANANTA Healthcare"
+        width={1536}
+        height={1024}
+        className={cn(sizeClass, "hidden object-contain [html[data-mode=dark]_&]:block")}
       />
     </div>
   );
 }
 
 export const AnantLogo = AnantaLogo;
-

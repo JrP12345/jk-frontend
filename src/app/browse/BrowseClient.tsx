@@ -25,6 +25,13 @@ import {
   Camera,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
+import { useTranslation } from "@/lib/i18n";
+import {
+  detectUserLocation,
+  mapStateToLanguage,
+  findMatchingClinicCity,
+  DetectedLocation,
+} from "@/lib/geo/locationDetector";
 
 interface DoctorSummary {
   id: string;
@@ -55,21 +62,21 @@ export interface Clinic {
 }
 
 const QUICK_SPECIALTIES = [
-  { value: "", label: "All Care" },
-  { value: "General Medicine", label: "General Medicine" },
-  { value: "Pediatrics", label: "Pediatrics" },
-  { value: "Cardiology", label: "Cardiology" },
-  { value: "Dentistry", label: "Dentistry" },
-  { value: "Orthopedics", label: "Orthopedics" },
-  { value: "Dermatology", label: "Dermatology" },
-  { value: "ENT", label: "ENT" },
+  { value: "", key: "browse.all_care", fallback: "All Care" },
+  { value: "General Medicine", key: "specialty.general_medicine", fallback: "General Medicine" },
+  { value: "Pediatrics", key: "specialty.pediatrics", fallback: "Pediatrics" },
+  { value: "Cardiology", key: "specialty.cardiology", fallback: "Cardiology" },
+  { value: "Dentistry", key: "specialty.dentistry", fallback: "Dentistry" },
+  { value: "Orthopedics", key: "specialty.orthopedics", fallback: "Orthopedics" },
+  { value: "Dermatology", key: "specialty.dermatology", fallback: "Dermatology" },
+  { value: "ENT", key: "specialty.ent", fallback: "ENT" },
 ];
 
 const SORT_OPTIONS = [
-  { value: "featured", label: "Sort: Featured" },
-  { value: "fee_low", label: "Fee (Low to High)" },
-  { value: "name", label: "Name (A–Z)" },
-  { value: "city", label: "City" },
+  { value: "featured", key: "sort.featured", fallback: "Sort: Featured" },
+  { value: "fee_low", key: "sort.fee_low", fallback: "Fee (Low to High)" },
+  { value: "name", key: "sort.name", fallback: "Name (A–Z)" },
+  { value: "city", key: "sort.city", fallback: "City" },
 ];
 
 function format12HourTime(timeStr: string): string {
@@ -116,6 +123,7 @@ export default function BrowseClient({
   initialClinics?: Clinic[];
 } = {}) {
   const router = useRouter();
+  const { t, setLanguage } = useTranslation();
   const [clinics, setClinics] = useState<Clinic[]>(initialClinics);
   const [loading, setLoading] = useState(initialClinics.length === 0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -123,12 +131,62 @@ export default function BrowseClient({
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
   const [sortBy, setSortBy] = useState("featured");
+  const [detectedLocation, setDetectedLocation] = useState<DetectedLocation | null>(null);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [allCities, setAllCities] = useState<string[]>(() => {
     if (initialClinics.length > 0) {
       return Array.from(new Set(initialClinics.map((c) => c.city).filter(Boolean))).sort();
     }
     return [];
   });
+
+  // Auto location & language detection on initial load
+  useEffect(() => {
+    let isMounted = true;
+    const initLocation = async () => {
+      try {
+        setIsDetectingLocation(true);
+        const loc = await detectUserLocation();
+        if (!isMounted) return;
+
+        if (loc && (loc.city || loc.state)) {
+          setDetectedLocation(loc);
+
+          // Auto switch language based on detected state/city (unless user chose manually)
+          try {
+            const hasManualLang = localStorage.getItem("ananta_lang_manual");
+            if (!hasManualLang) {
+              const lang = mapStateToLanguage(loc.state, loc.city);
+              setLanguage(lang);
+            }
+          } catch {}
+        }
+      } catch (err) {
+        console.error("Auto location error:", err);
+      } finally {
+        if (isMounted) setIsDetectingLocation(false);
+      }
+    };
+
+    initLocation();
+    return () => {
+      isMounted = false;
+    };
+  }, [setLanguage]);
+
+  // Auto-select city if user hasn't explicitly chosen one and a matching clinic city exists
+  useEffect(() => {
+    if (!detectedLocation?.city || allCities.length === 0) return;
+    try {
+      const userChoice = sessionStorage.getItem("ananta_user_city_choice");
+      if (userChoice) return;
+
+      const matched = findMatchingClinicCity(detectedLocation.city, allCities);
+      if (matched && !selectedCity) {
+        setSelectedCity(matched);
+      }
+    } catch {}
+  }, [detectedLocation, allCities, selectedCity]);
 
   // 300ms Search Debounce
   useEffect(() => {
@@ -194,13 +252,35 @@ export default function BrowseClient({
     }
   };
 
+  const handleCitySelect = (city: string) => {
+    try {
+      sessionStorage.setItem("ananta_user_city_choice", "true");
+    } catch {}
+    setSelectedCity(city);
+  };
+
+  const handleShowAllCities = () => {
+    try {
+      sessionStorage.setItem("ananta_user_city_choice", "true");
+    } catch {}
+    setSelectedCity("");
+  };
+
   const resetAllFilters = () => {
+    try {
+      sessionStorage.setItem("ananta_user_city_choice", "true");
+    } catch {}
     setSearchQuery("");
     setSelectedCity("");
     setSelectedSpecialty("");
   };
 
   const hasActiveFilters = Boolean(debouncedSearch || selectedCity || selectedSpecialty);
+
+  const localizedSortOptions = SORT_OPTIONS.map((opt) => ({
+    value: opt.value,
+    label: t(opt.key, opt.fallback),
+  }));
 
   return (
     <div className="min-h-screen bg-surface-alt font-sans text-text antialiased selection:bg-primary-500/20 selection:text-primary-600">
@@ -209,17 +289,15 @@ export default function BrowseClient({
       {/* Hero Header Section - Clean Modern Healthcare Design */}
       <section className="relative pt-20 sm:pt-24 pb-4 sm:pb-8 overflow-hidden bg-gradient-to-b from-surface via-surface/95 to-surface-alt border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
-          {/* Trust Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface border border-border text-text-secondary text-[11px] sm:text-xs font-semibold mb-2.5 sm:mb-3 shadow-2xs">
-            <ShieldCheck className="w-3.5 h-3.5 text-primary-600 shrink-0" strokeWidth={1.75} />
-            <span>Verified Clinics & Doctor Consultations</span>
-          </div>
-
           <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-text tracking-tight mb-1.5 sm:mb-2 leading-tight">
-            Find and book <span className="text-primary-600">verified medical care</span>
+            {t("browse.hero_title_1", "Find and book")}{" "}
+            <span className="text-primary-600">{t("browse.hero_title_highlight", "verified medical care")}</span>
           </h1>
           <p className="text-text-secondary text-xs sm:text-sm max-w-lg mx-auto mb-4 sm:mb-6 leading-relaxed hidden xs:block">
-            Search verified clinics, view consulting doctors, and schedule your appointment with transparent fees.
+            {t(
+              "browse.hero_subtitle",
+              "Search verified clinics, view consulting doctors, and schedule your appointment with transparent fees."
+            )}
           </p>
 
           {/* Unified Streamlined Search Console: Search + City Selector */}
@@ -231,7 +309,7 @@ export default function BrowseClient({
                   variant="flush"
                   size="sm"
                   icon={<Search className="w-4 h-4 text-text-muted" strokeWidth={1.75} />}
-                  placeholder="Search doctor, clinic name, or specialty..."
+                  placeholder={t("browse.search_placeholder", "Search doctor, clinic name, or specialty...")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onClear={() => setSearchQuery("")}
@@ -246,9 +324,9 @@ export default function BrowseClient({
                 <Select
                   icon={<MapPin className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />}
                   value={selectedCity}
-                  onChange={(e) => setSelectedCity(e.target.value)}
+                  onChange={(e) => handleCitySelect(e.target.value)}
                   options={[
-                    { value: "", label: "All Cities" },
+                    { value: "", label: t("browse.all_cities", "All Cities") },
                     ...allCities.map((c) => ({ value: c, label: c })),
                   ]}
                   size="sm"
@@ -262,7 +340,7 @@ export default function BrowseClient({
             {/* Specialty 1-Tap Quick Filter Pills Carousel */}
             <div className="mt-3 sm:mt-4 pt-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-snap-x py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
               <span className="text-[11px] font-semibold text-text-muted shrink-0 mr-1 hidden sm:inline-block">
-                Care:
+                {t("browse.care_label", "Care:")}
               </span>
               {QUICK_SPECIALTIES.map((qs) => {
                 const isActive = selectedSpecialty === qs.value;
@@ -278,7 +356,7 @@ export default function BrowseClient({
                         : "bg-surface hover:bg-surface-hover text-text-secondary hover:text-text border border-border"
                     }`}
                   >
-                    <span>{qs.label}</span>
+                    <span>{t(qs.key, qs.fallback)}</span>
                   </button>
                 );
               })}
@@ -287,7 +365,9 @@ export default function BrowseClient({
             {/* Active Filter Badges */}
             {hasActiveFilters && (
               <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-2.5 sm:mt-3 pt-1">
-                <span className="text-[11px] font-semibold text-text-muted">Active:</span>
+                <span className="text-[11px] font-semibold text-text-muted">
+                  {t("browse.active_filters", "Active:")}
+                </span>
                 {debouncedSearch && (
                   <Badge variant="neutral" className="flex items-center gap-1.5 py-0.5 px-2.5 text-xs bg-surface border border-border">
                     <span className="truncate max-w-[140px]">"{debouncedSearch}"</span>
@@ -304,7 +384,7 @@ export default function BrowseClient({
                   <Badge variant="neutral" className="flex items-center gap-1.5 py-0.5 px-2.5 text-xs bg-surface border border-border">
                     <span>{selectedCity}</span>
                     <button
-                      onClick={() => setSelectedCity("")}
+                      onClick={() => handleCitySelect("")}
                       className="hover:text-danger-500 ml-1 cursor-pointer p-0.5 rounded-full"
                       aria-label="Remove city filter"
                     >
@@ -314,7 +394,12 @@ export default function BrowseClient({
                 )}
                 {selectedSpecialty && (
                   <Badge variant="neutral" className="flex items-center gap-1.5 py-0.5 px-2.5 text-xs bg-surface border border-border">
-                    <span>{selectedSpecialty}</span>
+                    <span>
+                      {(() => {
+                        const item = QUICK_SPECIALTIES.find((qs) => qs.value === selectedSpecialty);
+                        return item ? t(item.key, item.fallback) : selectedSpecialty;
+                      })()}
+                    </span>
                     <button
                       onClick={() => setSelectedSpecialty("")}
                       className="hover:text-danger-500 ml-1 cursor-pointer p-0.5 rounded-full"
@@ -328,7 +413,7 @@ export default function BrowseClient({
                   onClick={resetAllFilters}
                   className="text-[11px] font-bold text-primary-600 hover:text-primary-700 underline cursor-pointer ml-1 py-1"
                 >
-                  Reset all
+                  {t("browse.reset_all", "Reset all")}
                 </button>
               </div>
             )}
@@ -339,22 +424,54 @@ export default function BrowseClient({
       {/* Main Listing Section */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-20">
         {/* Minimalist Compact Results & Sort Bar */}
-        <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6 text-xs">
-          <p className="font-semibold text-text-secondary">
-            {loading ? (
-              "Finding clinics..."
-            ) : (
-              <span>
-                <strong className="text-text font-bold">{clinics.length}</strong> {clinics.length === 1 ? "clinic" : "clinics"} available
-                {hasActiveFilters && <span className="text-text-muted font-normal ml-1">(filtered)</span>}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-semibold text-text-secondary">
+              {loading ? (
+                t("browse.finding_clinics", "Finding clinics...")
+              ) : (
+                <span>
+                  <strong className="text-text font-bold">{clinics.length}</strong>{" "}
+                  {clinics.length === 1
+                    ? t("browse.clinic_single", "clinic available")
+                    : t("browse.clinics_multiple", "clinics available")}
+                  {hasActiveFilters && (
+                    <span className="text-text-muted font-normal ml-1">
+                      {t("browse.filtered", "(filtered)")}
+                    </span>
+                  )}
+                </span>
+              )}
+            </p>
+
+            {/* Location Indicator Pill */}
+            {detectedLocation && (detectedLocation.city || detectedLocation.state) && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-500/10 text-primary-700 dark:text-primary-400 border border-primary-500/20 text-[11px] font-medium">
+                <MapPin className="w-3 h-3 text-primary-600 shrink-0" />
+                <span>
+                  {t("browse.near_location", "Near")}{" "}
+                  <strong className="font-bold">
+                    {[detectedLocation.city, detectedLocation.state].filter(Boolean).join(", ")}
+                  </strong>
+                </span>
+                {selectedCity ? (
+                  <button
+                    type="button"
+                    onClick={handleShowAllCities}
+                    className="ml-1 text-[11px] font-bold text-primary-600 hover:text-primary-800 underline cursor-pointer"
+                  >
+                    {t("browse.view_all_cities", "Show all cities")}
+                  </button>
+                ) : null}
               </span>
             )}
-          </p>
+          </div>
+
           <div className="w-40 xs:w-48 shrink-0">
             <Select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              options={SORT_OPTIONS}
+              options={localizedSortOptions}
               size="sm"
               className="text-xs rounded-xl"
               aria-label="Sort clinics by"
@@ -392,8 +509,11 @@ export default function BrowseClient({
         ) : clinics.length === 0 ? (
           <Card className="p-8 sm:p-12 text-center border-dashed rounded-3xl bg-surface">
             <EmptyState
-              title="No Healthcare Facilities Found"
-              description="No clinics match your current search criteria. Try choosing another city or clearing your filters."
+              title={t("browse.empty_title", "No Healthcare Facilities Found")}
+              description={t(
+                "browse.empty_desc",
+                "No clinics match your current search criteria. Try choosing another city or clearing your filters."
+              )}
               action={
                 <Button
                   variant="primary"
@@ -401,7 +521,7 @@ export default function BrowseClient({
                   onClick={resetAllFilters}
                   className="rounded-xl font-bold px-5 min-h-[44px] flex items-center justify-center"
                 >
-                  Reset all filters
+                  {t("browse.reset_all_filters", "Reset all filters")}
                 </Button>
               }
             />
@@ -441,7 +561,7 @@ export default function BrowseClient({
                           </div>
                           {clinic.organizationName && clinic.organizationName !== clinic.name && (
                             <p className="text-[10px] text-text-muted font-medium truncate">
-                              Part of {clinic.organizationName}
+                              {t("browse.part_of", "Part of")} {clinic.organizationName}
                             </p>
                           )}
                           <p className="text-xs text-text-muted flex items-center gap-1.5 mt-0.5 truncate">
@@ -449,7 +569,7 @@ export default function BrowseClient({
                             <span>•</span>
                             <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1 shrink-0">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                              <span>Open today</span>
+                              <span>{t("status.open_today", "Open today")}</span>
                             </span>
                           </p>
                         </div>
@@ -462,12 +582,12 @@ export default function BrowseClient({
                           title="Verified Healthcare Facility"
                         >
                           <ShieldCheck className="w-3 h-3 text-primary-600" strokeWidth={1.75} />
-                          <span className="hidden xs:inline">Verified</span>
+                          <span className="hidden xs:inline">{t("browse.verified", "Verified")}</span>
                         </span>
                         {clinic.images && clinic.images.length > 0 && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-medium text-text-muted bg-surface-alt/70 border border-border/60 px-1.5 py-0.5 rounded">
                             <Camera className="w-2.5 h-2.5 text-primary-500" />
-                            <span>{clinic.images.length} photos</span>
+                            <span>{clinic.images.length} {t("browse.photos", "photos")}</span>
                           </span>
                         )}
                       </div>
@@ -477,13 +597,23 @@ export default function BrowseClient({
                     <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3">
                       <span className="text-[11px] font-semibold bg-surface-alt text-text px-2.5 py-1 rounded-lg border border-border flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
-                        <span>{clinic.doctorCount ? `${clinic.doctorCount} ${clinic.doctorCount === 1 ? "Doctor" : "Doctors"}` : "Doctors Available"}</span>
+                        <span>
+                          {clinic.doctorCount
+                            ? `${clinic.doctorCount} ${
+                                clinic.doctorCount === 1
+                                  ? t("browse.doctor_single", "Doctor")
+                                  : t("browse.doctors_multiple", "Doctors")
+                              }`
+                            : t("browse.doctors_available", "Doctors Available")}
+                        </span>
                       </span>
 
                       {clinic.minFee !== undefined && clinic.minFee !== null && (
                         <span className="text-[11px] font-semibold bg-surface-alt text-text px-2.5 py-1 rounded-lg border border-border flex items-center gap-1">
                           <CreditCard className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
-                          <span>From {formatCurrency(clinic.minFee, clinic.currency || "INR")}</span>
+                          <span>
+                            {t("browse.from_fee", "From")} {formatCurrency(clinic.minFee, clinic.currency || "INR")}
+                          </span>
                         </span>
                       )}
                     </div>
@@ -492,7 +622,9 @@ export default function BrowseClient({
                     {hasSingleDoctor && singleDoctor ? (
                       <div className="bg-surface-alt p-2.5 sm:p-3 rounded-xl border border-border text-xs mb-3 space-y-0.5 sm:space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">Practicing Specialist</span>
+                          <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">
+                            {t("browse.practicing_specialist", "Practicing Specialist")}
+                          </span>
                           <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
                             {formatCurrency(singleDoctor.fees, clinic.currency || "INR")}
                           </span>
@@ -504,11 +636,11 @@ export default function BrowseClient({
                       <div className="bg-surface-alt p-2.5 sm:p-3 rounded-xl border border-border text-xs mb-3 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">
-                            {clinic.doctorsSummary.length} Consulting Doctors
+                            {clinic.doctorsSummary.length} {t("browse.consulting_doctors", "Consulting Doctors")}
                           </span>
                           {clinic.minFee !== undefined && clinic.minFee !== null && (
                             <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                              From {formatCurrency(clinic.minFee, clinic.currency || "INR")}
+                              {t("browse.from_fee", "From")} {formatCurrency(clinic.minFee, clinic.currency || "INR")}
                             </span>
                           )}
                         </div>
@@ -525,14 +657,18 @@ export default function BrowseClient({
                           ))}
                           {clinic.doctorsSummary.length > 2 && (
                             <p className="text-[10px] text-primary-600 font-semibold pt-0.5">
-                              +{clinic.doctorsSummary.length - 2} more doctors available
+                              +{clinic.doctorsSummary.length - 2} {t("browse.more_doctors", "more doctors available")}
                             </p>
                           )}
                         </div>
                       </div>
                     ) : (
                       <p className="text-xs text-text-muted line-clamp-2 leading-relaxed mb-3">
-                        {clinic.description || "Verified healthcare facility providing doctor consultations and specialized healthcare services."}
+                        {clinic.description ||
+                          t(
+                            "browse.default_desc",
+                            "Verified healthcare facility providing doctor consultations and specialized healthcare services."
+                          )}
                       </p>
                     )}
 
@@ -581,8 +717,10 @@ export default function BrowseClient({
                       >
                         <span>
                           {hasSingleDoctor && singleDoctor
-                            ? `Book with Dr. ${singleDoctor.name.replace(/^Dr\.?\s*/i, "")}`
-                            : `View Doctors & Book ${clinic.doctorCount ? `(${clinic.doctorCount})` : ""}`}
+                            ? `${t("browse.book_with", "Book with")} Dr. ${singleDoctor.name.replace(/^Dr\.?\s*/i, "")}`
+                            : `${t("browse.view_doctors_book", "View Doctors & Book")} ${
+                                clinic.doctorCount ? `(${clinic.doctorCount})` : ""
+                              }`}
                         </span>
                         <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" strokeWidth={2} />
                       </Button>

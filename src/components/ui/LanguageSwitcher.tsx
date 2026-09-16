@@ -11,7 +11,7 @@ interface LanguageSwitcherProps {
 }
 
 export function LanguageSwitcher({ className = "", variant = "pill" }: LanguageSwitcherProps) {
-  const { language, setLanguage, supportedLanguages } = useTranslation();
+  const { language, setLanguage, supportedLanguages, t } = useTranslation();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -35,6 +35,9 @@ export function LanguageSwitcher({ className = "", variant = "pill" }: LanguageS
   }, []);
 
   const handleSelect = (code: LanguageCode) => {
+    try {
+      localStorage.setItem("ananta_lang_manual", "true");
+    } catch {}
     setLanguage(code);
     setIsOpen(false);
   };
@@ -79,7 +82,7 @@ export function LanguageSwitcher({ className = "", variant = "pill" }: LanguageS
       {isOpen && (
         <div className="absolute right-0 mt-1.5 w-44 rounded-2xl bg-surface/98 backdrop-blur-2xl border border-border/80 shadow-xl ring-1 ring-border/50 py-1.5 z-50 animate-scale-in origin-top-right focus:outline-none">
           <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-text-muted tracking-wider border-b border-border/40 mb-1">
-            Select Language
+            {t("common.select_language", "Select Language")}
           </div>
           {supportedLanguages.map((lang) => {
             const isSelected = lang.code === language;

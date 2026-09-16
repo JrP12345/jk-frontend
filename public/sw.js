@@ -1,11 +1,13 @@
 // ANANTA Progressive Web App (PWA) Service Worker
-const CACHE_NAME = 'ananta-cache-v1';
+const CACHE_NAME = 'ananta-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/browse',
   '/manifest.json',
-  '/logo-w.png',
-  '/logo-d.png',
+  '/app-icon-192.png',
+  '/app-icon-512.png',
+  '/app-icon-light-192.png',
+  '/app-icon-dark-192.png',
 ];
 
 self.addEventListener('install', (event) => {

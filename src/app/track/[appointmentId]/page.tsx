@@ -16,6 +16,7 @@ import {
   Modal,
   useToast,
   cn,
+  AnantaIcon,
 } from "@/components/ui";
 import {
   Clock,
@@ -615,9 +616,7 @@ export default function PublicLiveQueueTracker() {
       <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-border/70 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary-600 flex items-center justify-center text-white font-black text-sm shadow-xs">
-              ⚡
-            </div>
+            <AnantaIcon className="h-8 w-8 shadow-xs" />
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-text">ANANTA</span>
               <span className="text-[10px] text-text-muted block -mt-0.5">Live Patient Tracker</span>
