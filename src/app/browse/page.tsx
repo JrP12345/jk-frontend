@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Find and book appointments with top doctors across our network of hospitals and clinics.",
 };
 
+export const dynamic = "force-dynamic";
+
 async function getInitialClinics(): Promise<Clinic[]> {
   try {
     const backendUrl =
@@ -14,7 +16,8 @@ async function getInitialClinics(): Promise<Clinic[]> {
       process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ||
       "http://localhost:5000";
     const res = await fetch(`${backendUrl}/api/public/clinics`, {
-      next: { revalidate: 60 },
+      cache: "no-store",
+      signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) return [];
     const json = await res.json();
