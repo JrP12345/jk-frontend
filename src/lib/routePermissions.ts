@@ -40,6 +40,8 @@ export function hasRoutePermission(
   userRole: string,
   userPermissions: string[] = []
 ): boolean {
+  if (userRole === "guest") return false;
+
   // Platform Root Super-Admin exclusive routes
   const ROOT_ONLY_ROUTES = [
     "/dashboard/organizations",

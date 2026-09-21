@@ -42,10 +42,18 @@ function AISparkIcon({ className = "w-5 h-5" }: { className?: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Formatted Markdown Text Renderer
 // ─────────────────────────────────────────────────────────────────────────────
-function parseInlineMarkdown(text: string): string {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, "<strong class='font-semibold text-text'>$1</strong>")
-    .replace(/`(.*?)`/g, "<code class='bg-surface px-1.5 py-0.5 rounded font-mono text-[11px] text-text border border-border/50'>$1</code>");
+function renderInlineMarkdown(text: string): React.ReactNode[] {
+  // AI output is untrusted. Return React nodes rather than constructing HTML so
+  // that React escapes all text, including model output that looks like markup.
+  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={index} className="font-semibold text-text">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return <code key={index} className="bg-surface px-1.5 py-0.5 rounded font-mono text-[11px] text-text border border-border/50">{part.slice(1, -1)}</code>;
+    }
+    return <React.Fragment key={index}>{part}</React.Fragment>;
+  });
 }
 
 function FormattedMarkdown({ content }: { content: string }) {
@@ -77,7 +85,7 @@ function FormattedMarkdown({ content }: { content: string }) {
           return (
             <div key={idx} className="flex items-start gap-2 pl-1 my-0.5">
               <span className="text-primary font-bold text-[10px] mt-0.5 shrink-0">•</span>
-              <span dangerouslySetInnerHTML={{ __html: parseInlineMarkdown(itemText) }} />
+              <span>{renderInlineMarkdown(itemText)}</span>
             </div>
           );
         }
@@ -85,7 +93,7 @@ function FormattedMarkdown({ content }: { content: string }) {
         if (!trimmed) return <div key={idx} className="h-0.5" />;
 
         return (
-          <p key={idx} dangerouslySetInnerHTML={{ __html: parseInlineMarkdown(line) }} />
+          <p key={idx}>{renderInlineMarkdown(line)}</p>
         );
       })}
     </div>

@@ -260,8 +260,8 @@ export default function DashboardOverview() {
         setAppointments(docAppts);
       } else if (user.role === "patient") {
         const [apptsRes, invsRes] = await Promise.all([
-          api.get("/appointments/patient/me"),
-          api.get("/invoices/patient/me"),
+          api.get("/appointments/patient/me").catch(() => api.get("/patient-portal/appointments").catch(() => ({ data: { data: [] } }))),
+          api.get("/invoices/patient/me").catch(() => api.get("/invoices").catch(() => ({ data: { data: [] } }))),
         ]);
         const apptList = apptsRes.data.data || [];
         const invList = invsRes.data.data || [];

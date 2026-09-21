@@ -103,7 +103,7 @@ export default function UpiPaymentModal({
   };
 
   const handleRecordPayment = async (
-    method: "upi" | "cash" | "card" | "net-banking"
+    method: "upi" | "cash" | "card"
   ) => {
     if (!invoiceId && !appointmentId) {
       toast({
@@ -120,7 +120,6 @@ export default function UpiPaymentModal({
         await api.post(`/appointment-payments/collect-counter`, {
           appointmentId,
           paymentMethod: method,
-          amount,
         });
       } else if (invoiceId) {
         await api.post(`/invoices/${invoiceId}/payments`, {

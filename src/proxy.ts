@@ -1,6 +1,46 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+function nextWithContentSecurityPolicy(request: NextRequest) {
+  // Next reads the nonce from the forwarded request CSP and adds it to its own
+  // framework scripts. Keep the nonce request-scoped; a static nonce is not a
+  // security control.
+  const nonce = btoa(crypto.randomUUID());
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const connectSources = isDevelopment ? "'self' http: https: ws: wss:" : "'self' https: wss:";
+  const scriptDirective = isDevelopment
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval' https://checkout.razorpay.com https://*.razorpay.com`
+    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://checkout.razorpay.com https://*.razorpay.com`;
+  const styleDirective = isDevelopment
+    ? "style-src 'self' 'unsafe-inline'"
+    : `style-src 'self' 'nonce-${nonce}'`;
+
+  const csp = [
+    "default-src 'self'",
+    scriptDirective,
+    styleDirective,
+    "img-src 'self' blob: data: https: https://*.razorpay.com",
+    "font-src 'self' data:",
+    `connect-src ${connectSources}`,
+    "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com",
+    "frame-ancestors 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join("; ");
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", csp);
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+  response.headers.set("Content-Security-Policy", csp);
+  response.headers.set("x-nonce", nonce);
+  return response;
+}
+
 export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
@@ -18,24 +58,17 @@ export function proxy(request: NextRequest) {
   }
 
   // ── Protect /onboarding ─────────────────────────────────────────
-  // Allows new organizations to self-onboard in both production and development.
-  // If already logged in AND not explicitly creating a new org, redirect to dashboard.
+  // Provisioning is a platform-admin workflow. Authorization is enforced by
+  // the backend; this guard avoids presenting the form to anonymous visitors.
   if (pathname === "/onboarding") {
     const isNewOrgMode = searchParams.get("mode") === "new_org";
 
-    if (hasAuthToken && !isNewOrgMode) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+    if (!hasAuthToken) {
+      return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    // If an ONBOARDING_SECRET is configured, require it unless creating a new tenant org
-    const expectedKey = process.env.ONBOARDING_SECRET;
-    if (expectedKey && !isNewOrgMode) {
-      const providedKey = searchParams.get("key") || "";
-      if (providedKey !== expectedKey) {
-        const loginUrl = new URL("/login", request.url);
-        loginUrl.searchParams.set("error", "unauthorized");
-        return NextResponse.redirect(loginUrl);
-      }
+    if (!isNewOrgMode) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
 
@@ -49,7 +82,7 @@ export function proxy(request: NextRequest) {
       searchParams.has("logout") ||
       searchParams.has("logged_out")
     ) {
-      const response = NextResponse.next();
+      const response = nextWithContentSecurityPolicy(request);
       response.cookies.delete("refresh_token");
       response.cookies.delete("access_token");
       response.cookies.delete("ananta_session");
@@ -69,11 +102,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/browse", request.url));
   }
 
-  return NextResponse.next();
+  return nextWithContentSecurityPolicy(request);
 }
 
 export const config = {
-  matcher: ["/", "/dashboard/:path*", "/login", "/onboarding"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
 
 export default proxy;

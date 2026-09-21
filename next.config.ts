@@ -51,10 +51,6 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(self), microphone=(self), display-capture=(self), geolocation=()",
           },
-          {
-            key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://checkout.razorpay.com https://*.razorpay.com; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com; frame-ancestors 'self' https:; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https: https://*.razorpay.com; font-src 'self' data:; connect-src 'self' http: https: ws: wss: https://lumberjack.razorpay.com https://*.razorpay.com;",
-          },
         ],
       },
     ];

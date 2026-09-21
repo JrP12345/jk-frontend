@@ -11,6 +11,7 @@ export default function PublicSelfCheckInKiosk() {
 
   const [mode, setMode] = useState<"token" | "phone">("token");
   const [inputToken, setInputToken] = useState("");
+  const [inputAppointmentId, setInputAppointmentId] = useState("");
   const [inputPhone, setInputPhone] = useState("");
   const [inputClinicId, setInputClinicId] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -18,8 +19,8 @@ export default function PublicSelfCheckInKiosk() {
 
   const handleCheckInByToken = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputToken.trim()) {
-      toast({ title: "Validation Error", description: "Please enter your queue token number", variant: "error" });
+    if (!inputToken.trim() || !inputAppointmentId.trim() || !inputClinicId.trim()) {
+      toast({ title: "Validation Error", description: "Appointment ID, clinic ID, and queue token are required", variant: "error" });
       return;
     }
 
@@ -28,8 +29,9 @@ export default function PublicSelfCheckInKiosk() {
 
     try {
       const res = await api.post("/check-in/qr", {
+        appointmentId: inputAppointmentId.trim(),
         tokenNumber: Number(inputToken),
-        clinicId: inputClinicId.trim() || undefined,
+        clinicId: inputClinicId.trim(),
       });
 
       const data = res.data?.data;
@@ -78,10 +80,19 @@ export default function PublicSelfCheckInKiosk() {
         return;
       }
 
+      const appointmentClinicId =
+        typeof todayAppt.clinicId === "string"
+          ? todayAppt.clinicId
+          : todayAppt.clinicId?.id || todayAppt.clinicId?._id;
+      if (!appointmentClinicId) {
+        throw new Error("The appointment is missing its clinic reference");
+      }
+
       // Check-in via appointment id
       const checkInRes = await api.post("/check-in/qr", {
         appointmentId: todayAppt.id,
         tokenNumber: todayAppt.tokenNumber,
+        clinicId: appointmentClinicId,
       });
 
       const data = checkInRes.data?.data || {
@@ -185,11 +196,11 @@ export default function PublicSelfCheckInKiosk() {
         {/* Kiosk Branding Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-500/10 border border-primary-500/20 text-xs font-bold text-primary-600 dark:text-primary-400">
-            🏥 Clinic Reception Kiosk • Touch Self Check-In
+            🏥 Staff Reception Kiosk • Authenticated Check-In
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-text tracking-tight">ANANT Health Desk</h1>
           <p className="text-xs sm:text-sm text-text-muted max-w-md mx-auto leading-relaxed">
-            Arrived for your consultation? Check in below to notify the doctor and activate your turn in the waiting queue.
+            Reception staff can check in a confirmed appointment below. Patients should use the private tracker link sent with their booking.
           </p>
         </div>
 
@@ -209,7 +220,7 @@ export default function PublicSelfCheckInKiosk() {
                   )}
                 >
                   <Hash className="w-4 h-4 text-primary-500" />
-                  <span>By Token Number</span>
+                  <span>By Appointment</span>
                 </button>
 
                 <button
@@ -231,19 +242,35 @@ export default function PublicSelfCheckInKiosk() {
                 {mode === "token" ? (
                   <form onSubmit={handleCheckInByToken} className="space-y-6">
                     <div className="text-center space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-text-muted">
-                        Enter Appointment Token #
-                      </label>
+                      <label className="text-xs font-bold uppercase tracking-wider text-text-muted">Appointment ID</label>
+                      <Input
+                        type="text"
+                        placeholder="Appointment reference"
+                        className="text-center font-mono text-sm h-12 rounded-xl border border-primary-500/40 focus:border-primary-500"
+                        value={inputAppointmentId}
+                        onChange={(e) => setInputAppointmentId(e.target.value)}
+                        autoFocus
+                        required
+                      />
+                      <label className="text-xs font-bold uppercase tracking-wider text-text-muted">Clinic ID</label>
+                      <Input
+                        type="text"
+                        placeholder="Clinic reference"
+                        className="text-center font-mono text-sm h-12 rounded-xl border border-primary-500/40 focus:border-primary-500"
+                        value={inputClinicId}
+                        onChange={(e) => setInputClinicId(e.target.value)}
+                        required
+                      />
+                      <label className="text-xs font-bold uppercase tracking-wider text-text-muted">Queue Token #</label>
                       <Input
                         type="number"
                         placeholder="e.g. 1, 2, 14..."
                         className="text-center text-4xl sm:text-5xl font-black tracking-widest h-20 rounded-2xl border-2 border-primary-500/40 focus:border-primary-500 shadow-inner"
                         value={inputToken}
                         onChange={(e) => setInputToken(e.target.value)}
-                        autoFocus
                         required
                       />
-                      <p className="text-[11px] text-text-muted">Found on your appointment booking SMS or slip</p>
+                      <p className="text-[11px] text-text-muted">Confirm the appointment, clinic, and token against the patient booking.</p>
                     </div>
 
                     <Button
@@ -252,7 +279,7 @@ export default function PublicSelfCheckInKiosk() {
                       className="w-full h-14 text-base sm:text-lg font-bold rounded-2xl shadow-lg cursor-pointer"
                       loading={submitting}
                     >
-                      <span>Complete Self Check-In</span>
+                      <span>Complete Check-In</span>
                       <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
                   </form>
@@ -334,6 +361,8 @@ export default function PublicSelfCheckInKiosk() {
                   onClick={() => {
                     setCheckInResult(null);
                     setInputToken("");
+                    setInputAppointmentId("");
+                    setInputClinicId("");
                     setInputPhone("");
                   }}
                 >

@@ -108,6 +108,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (!isLoading && user && !hasRoutePermission(pathname, user.role, user.permissions)) {
+      if ((user.role as string) === "guest") {
+        router.replace("/login");
+        return;
+      }
       // If user is in an impersonation session and currently on a root-only admin route,
       // smoothly redirect to tenant dashboard without firing a false-positive "Access Denied" toast
       if (isImpersonating && (pathname === "/dashboard/organizations" || pathname.startsWith("/dashboard/admin/"))) {

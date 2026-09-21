@@ -12,6 +12,7 @@ export default function MarketplaceNavbar() {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { t } = useTranslation();
+  const isRealUser = isAuthenticated && !!user && (user.role as string) !== "guest";
 
   const handleLogout = async () => {
     setIsMobileMenuOpen(false);
@@ -46,7 +47,7 @@ export default function MarketplaceNavbar() {
 
           {isLoading ? (
             <div className="w-24 h-9 rounded-xl bg-surface-alt/60 animate-pulse border border-border/40" />
-          ) : isAuthenticated && user ? (
+          ) : isRealUser && user ? (
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
@@ -126,7 +127,7 @@ export default function MarketplaceNavbar() {
               {t("nav.browse", "Browse Clinics")}
             </Link>
 
-            {isAuthenticated && user ? (
+            {isRealUser && user ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-3 bg-surface-alt p-3 rounded-xl border border-border/60">
                   <Avatar name={user.name} size="md" />

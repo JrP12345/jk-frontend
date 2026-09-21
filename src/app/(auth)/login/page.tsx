@@ -43,7 +43,9 @@ const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export default function LoginPage() {
   const [authTab, setAuthTab] = useState<"mobile" | "email">("mobile");
+  const [patientOtpMode, setPatientOtpMode] = useState<"mobile" | "email">("mobile");
   const [phone, setPhone] = useState("");
+  const [patientEmail, setPatientEmail] = useState("");
   const [phoneOtp, setPhoneOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
@@ -120,24 +122,37 @@ export default function LoginPage() {
   }, [resendTimer]);
 
 
-  const handleRequestPhoneOtp = async (e: React.FormEvent) => {
+  const handleRequestPatientOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone || phone.length < 10) {
-      toast({ title: "Validation Error", description: "Please enter a valid mobile phone number", variant: "error" });
-      triggerShake();
-      return;
+    if (patientOtpMode === "mobile") {
+      if (!phone || phone.length < 10) {
+        toast({ title: "Validation Error", description: "Please enter a valid 10-digit mobile phone number", variant: "error" });
+        triggerShake();
+        return;
+      }
+    } else {
+      if (!patientEmail || !EMAIL_REGEX.test(patientEmail)) {
+        toast({ title: "Validation Error", description: "Please enter a valid email address", variant: "error" });
+        triggerShake();
+        return;
+      }
     }
 
     setOtpLoading(true);
     try {
-      const res = await api.post("/auth/otp/request", { phone, purpose: "authentication" });
+      const payload = patientOtpMode === "mobile"
+        ? { phone, purpose: "authentication" }
+        : { email: patientEmail.trim().toLowerCase(), purpose: "authentication" };
+
+      const res = await api.post("/auth/otp/request", payload);
       setOtpSent(true);
       setResendTimer(30);
+      const destination = patientOtpMode === "mobile" ? `+91 ${phone}` : patientEmail;
       toast({
-        title: "OTP Dispatched! 📱",
+        title: patientOtpMode === "mobile" ? "OTP Dispatched! 📱" : "OTP Dispatched! ✉️",
         description: res.data?.data?.devOtp
           ? `[DEV MODE] Your OTP code is: ${res.data.data.devOtp}`
-          : `Verification OTP has been sent to ${phone}`,
+          : `Verification OTP has been sent to ${destination}`,
         variant: "success",
         duration: 8000,
       });
@@ -153,7 +168,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleVerifyPhoneOtp = async (e: React.FormEvent) => {
+  const handleVerifyPatientOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phoneOtp || phoneOtp.length < 6) {
       toast({ title: "Validation Error", description: "Enter 6-digit OTP code", variant: "error" });
@@ -163,7 +178,11 @@ export default function LoginPage() {
 
     setOtpLoading(true);
     try {
-      const res = await api.post("/auth/otp/verify", { phone, otp: phoneOtp, purpose: "authentication" });
+      const payload = patientOtpMode === "mobile"
+        ? { phone, otp: phoneOtp, purpose: "authentication" }
+        : { email: patientEmail.trim().toLowerCase(), otp: phoneOtp, purpose: "authentication" };
+
+      const res = await api.post("/auth/otp/verify", payload);
       login(res.data.data.user);
       toast({
         title: "Welcome!",
@@ -182,6 +201,7 @@ export default function LoginPage() {
       setOtpLoading(false);
     }
   };
+
 
   const validateEmail = (val: string, isReset = false) => {
     const errorStateSetter = isReset ? setResetEmailError : setEmailError;
@@ -369,12 +389,12 @@ export default function LoginPage() {
                     )}
                   >
                     <Smartphone className="w-4 h-4 shrink-0" strokeWidth={authTab === "mobile" ? 2.25 : 1.75} />
-                    <span>Mobile OTP</span>
+                    <span>Patient Sign In</span>
                     <span className={cn(
                       "text-[10px] px-1.5 py-0.5 rounded-md font-semibold hidden sm:inline-block",
                       authTab === "mobile" ? "bg-primary-500/10 text-primary-600 dark:text-primary-400" : "bg-surface-alt text-text-muted"
                     )}>
-                      Patient
+                      OTP
                     </span>
                   </button>
                   <button
@@ -408,21 +428,66 @@ export default function LoginPage() {
               </CardHeader>
 
               {authTab === "mobile" ? (
-                /* Mobile OTP Form */
+                /* Patient OTP Form */
                 !otpSent ? (
-                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleRequestPhoneOtp} className="space-y-4 animate-fade-in">
-                    <Input
-                      label="Mobile Phone Number *"
-                      type="tel"
-                      inputMode="tel"
-                      placeholder="9876543210"
-                      icon={<Smartphone className="w-4 h-4 text-text-muted" strokeWidth={2} />}
-                      prefix="+91"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                      autoComplete="tel"
-                      required
-                    />
+                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleRequestPatientOtp} className="space-y-4 animate-fade-in">
+                    {/* Patient Mode Selector: Mobile OTP vs Email OTP */}
+                    <div className="flex p-1 bg-surface-alt/80 rounded-xl border border-border/60 gap-1 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => { setPatientOtpMode("mobile"); setPhoneOtp(""); }}
+                        className={cn(
+                          "flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                          patientOtpMode === "mobile"
+                            ? "bg-surface text-primary-600 dark:text-primary-400 shadow-2xs font-bold border border-border/40"
+                            : "text-text-muted hover:text-text"
+                        )}
+                      >
+                        <Smartphone className="w-3.5 h-3.5" />
+                        <span>Mobile Phone</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setPatientOtpMode("email"); setPhoneOtp(""); }}
+                        className={cn(
+                          "flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer",
+                          patientOtpMode === "email"
+                            ? "bg-surface text-primary-600 dark:text-primary-400 shadow-2xs font-bold border border-border/40"
+                            : "text-text-muted hover:text-text"
+                        )}
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>Email Address</span>
+                      </button>
+                    </div>
+
+                    {patientOtpMode === "mobile" ? (
+                      <Input
+                        label="Mobile Phone Number *"
+                        type="tel"
+                        inputMode="tel"
+                        placeholder="9876543210"
+                        icon={<Smartphone className="w-4 h-4 text-text-muted" strokeWidth={2} />}
+                        prefix="+91"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        autoComplete="tel"
+                        required
+                      />
+                    ) : (
+                      <Input
+                        label="Patient Email Address *"
+                        type="email"
+                        inputMode="email"
+                        placeholder="patient@example.com"
+                        icon={<Mail className="w-4 h-4 text-text-muted" strokeWidth={2} />}
+                        value={patientEmail}
+                        onChange={(e) => setPatientEmail(e.target.value.trim())}
+                        autoComplete="email"
+                        required
+                      />
+                    )}
+
                     <Button
                       type="submit"
                       fullWidth
@@ -435,22 +500,24 @@ export default function LoginPage() {
                     </Button>
                   </form>
                 ) : (
-                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleVerifyPhoneOtp} className="space-y-4 animate-fade-in">
-                    {/* Active Mobile Chip */}
+                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleVerifyPatientOtp} className="space-y-4 animate-fade-in">
+                    {/* Active Destination Chip */}
                     <div className="flex items-center justify-between p-3 bg-primary-500/8 dark:bg-primary-500/10 rounded-2xl border border-primary-500/20 text-xs">
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                        <div className="flex flex-col">
+                        <div className="flex flex-col min-w-0">
                           <span className="text-[11px] text-text-muted font-medium">OTP dispatched to</span>
-                          <span className="font-bold text-text text-xs tracking-wide">+91 {phone}</span>
+                          <span className="font-bold text-text text-xs tracking-wide truncate">
+                            {patientOtpMode === "mobile" ? `+91 ${phone}` : patientEmail}
+                          </span>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => { setOtpSent(false); setPhoneOtp(""); }}
-                        className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer px-2.5 py-1 rounded-lg hover:bg-primary-500/10 transition-colors"
+                        className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer px-2.5 py-1 rounded-lg hover:bg-primary-500/10 transition-colors shrink-0"
                       >
-                        Change Number
+                        Change {patientOtpMode === "mobile" ? "Number" : "Email"}
                       </button>
                     </div>
 
@@ -479,7 +546,7 @@ export default function LoginPage() {
                       ) : (
                         <button
                           type="button"
-                          onClick={handleRequestPhoneOtp}
+                          onClick={handleRequestPatientOtp}
                           disabled={otpLoading}
                           className="text-primary-600 dark:text-primary-400 font-bold hover:underline cursor-pointer flex items-center gap-1 text-xs"
                         >
@@ -502,6 +569,7 @@ export default function LoginPage() {
                   </form>
                 )
               ) : (
+
                 /* Email Password Form */
                 <form id="panel-email" role="tabpanel" aria-labelledby="tab-email" onSubmit={handleLogin} noValidate className="space-y-4 animate-fade-in">
                   <CardContent className="p-0 space-y-4">

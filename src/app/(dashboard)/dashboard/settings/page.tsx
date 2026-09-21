@@ -88,7 +88,15 @@ const TABS: { id: Tab; label: string; rootOnly?: boolean; icon: React.ReactNode 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab 1: Organization Details
 // ─────────────────────────────────────────────────────────────────────────────
-function OrganizationTab({ selectedOrgId }: { selectedOrgId?: string }) {
+function OrganizationTab({
+  selectedOrgId,
+  isRoot,
+  orgsLoading = false,
+}: {
+  selectedOrgId?: string;
+  isRoot?: boolean;
+  orgsLoading?: boolean;
+}) {
   const [formData, setFormData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -115,16 +123,19 @@ function OrganizationTab({ selectedOrgId }: { selectedOrgId?: string }) {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.name?.trim()) newErrors.name = "Organization Name is required";
-    if (!formData.city?.trim()) newErrors.city = "City is required";
-    else if (/^[0-9+\s-]{6,}$/.test(formData.city.trim())) newErrors.city = "City appears to be a phone number. Please enter a valid city name.";
-    if (formData.email?.trim() && !EMAIL_REGEX.test(formData.email)) newErrors.email = "Valid email required";
-    if (formData.phone?.trim() && !PHONE_REGEX.test(formData.phone)) newErrors.phone = "Valid phone required";
+    if (!formData?.name?.trim()) newErrors.name = "Organization Name is required";
+    if (!formData?.city?.trim()) newErrors.city = "City is required";
+    else if (/^[0-9+\s-]{6,}$/.test(formData?.city?.trim() || "")) newErrors.city = "City appears to be a phone number. Please enter a valid city name.";
+    if (formData?.email?.trim() && !EMAIL_REGEX.test(formData.email)) newErrors.email = "Valid email required";
+    if (formData?.phone?.trim() && !PHONE_REGEX.test(formData.phone)) newErrors.phone = "Valid phone required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const fetchSettings = async () => {
+    if (isRoot && !selectedOrgId) {
+      return;
+    }
     try {
       setLoading(true);
       const url = selectedOrgId
@@ -141,11 +152,18 @@ function OrganizationTab({ selectedOrgId }: { selectedOrgId?: string }) {
   };
 
   useEffect(() => {
+    if (isRoot && !selectedOrgId) {
+      return;
+    }
     fetchSettings();
-  }, [selectedOrgId]);
+  }, [selectedOrgId, isRoot]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isRoot && !selectedOrgId) {
+      toast({ title: "Validation Error", description: "Please select an organization first.", variant: "warning" });
+      return;
+    }
     if (!validateForm()) {
       toast({ title: "Validation Error", description: "Please fix form validation errors.", variant: "warning" });
       return;
@@ -194,7 +212,7 @@ function OrganizationTab({ selectedOrgId }: { selectedOrgId?: string }) {
     }
   };
 
-  if (loading) return <SkeletonForm fields={5} />;
+  if (loading || (isRoot && (!selectedOrgId || orgsLoading))) return <SkeletonForm fields={5} />;
   if (!formData) return null;
 
   return (
@@ -344,21 +362,30 @@ function OrganizationTab({ selectedOrgId }: { selectedOrgId?: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab 2: Notifications & Email Gateway
 // ─────────────────────────────────────────────────────────────────────────────
-function NotificationsTab({ selectedOrgId }: { selectedOrgId?: string }) {
+function NotificationsTab({
+  selectedOrgId,
+  isRoot: propIsRoot,
+  orgsLoading = false,
+}: {
+  selectedOrgId?: string;
+  isRoot?: boolean;
+  orgsLoading?: boolean;
+}) {
   const { user } = useAuthStore();
-  const isRoot = user?.role === "root";
+  const isRoot = propIsRoot ?? user?.role === "root";
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: pref, isLoading: prefLoading } = useQuery({
     queryKey: ["notification-preferences", selectedOrgId],
     queryFn: () => notificationService.getPreferences(),
+    enabled: !isRoot || !!selectedOrgId,
   });
 
   const { data: smtpData, isLoading: smtpLoading } = useQuery({
     queryKey: ["smtp-config", selectedOrgId],
     queryFn: () => notificationService.getSmtpConfig(selectedOrgId),
-    enabled: isRoot,
+    enabled: !!isRoot && !!selectedOrgId,
   });
 
   const [channels, setChannels] = useState({ email: true, inApp: true });
@@ -449,7 +476,7 @@ function NotificationsTab({ selectedOrgId }: { selectedOrgId?: string }) {
     }
   };
 
-  if (prefLoading || (isRoot && smtpLoading)) return <SkeletonForm fields={4} />;
+  if (prefLoading || (isRoot && (smtpLoading || !selectedOrgId || orgsLoading))) return <SkeletonForm fields={4} />;
 
   const smtpConfigured = !!(smtpData?.host && smtpData?.user && smtpData?.passIsSet);
 
@@ -492,7 +519,7 @@ function NotificationsTab({ selectedOrgId }: { selectedOrgId?: string }) {
       </Card>
 
       {/* Meta WhatsApp Business Gateway & Notification Credits */}
-      <WhatsAppSettingsCard selectedOrgId={selectedOrgId} />
+      <WhatsAppSettingsCard selectedOrgId={selectedOrgId} isRoot={isRoot} orgsLoading={orgsLoading} />
 
       {/* Event Categories */}
       <Card className="p-5 border border-border/80 shadow-xs rounded-2xl space-y-4 bg-surface">
@@ -677,15 +704,24 @@ function NotificationsTab({ selectedOrgId }: { selectedOrgId?: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab 3: AI Configuration
 // ─────────────────────────────────────────────────────────────────────────────
-function AISettingsTab({ selectedOrgId }: { selectedOrgId?: string }) {
+function AISettingsTab({
+  selectedOrgId,
+  isRoot: propIsRoot,
+  orgsLoading = false,
+}: {
+  selectedOrgId?: string;
+  isRoot?: boolean;
+  orgsLoading?: boolean;
+}) {
   const { user } = useAuthStore();
-  const isRoot = user?.role === "root";
+  const isRoot = propIsRoot ?? user?.role === "root";
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: config, isLoading } = useQuery({
     queryKey: ["ai-admin-config", selectedOrgId],
     queryFn: () => aiAdminService.getConfig(selectedOrgId),
+    enabled: !isRoot || !!selectedOrgId,
   });
 
   const [flags, setFlags] = useState({
@@ -717,7 +753,7 @@ function AISettingsTab({ selectedOrgId }: { selectedOrgId?: string }) {
       }),
   });
 
-  if (isLoading) return <SkeletonForm fields={4} />;
+  if (isLoading || (isRoot && (!selectedOrgId || orgsLoading))) return <SkeletonForm fields={4} />;
 
   const FLAG_CONFIG = [
     {
@@ -843,9 +879,11 @@ export default function SettingsPage() {
   const isRoot = user?.role === "root";
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
+  const [orgsLoading, setOrgsLoading] = useState<boolean>(isRoot);
 
   useEffect(() => {
     if (isRoot) {
+      setOrgsLoading(true);
       api
         .get("/organizations")
         .then((res) => {
@@ -855,7 +893,8 @@ export default function SettingsPage() {
             setSelectedOrgId((prev) => prev || orgList[0].id || orgList[0]._id);
           }
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setOrgsLoading(false));
     }
   }, [isRoot]);
 
@@ -943,11 +982,35 @@ export default function SettingsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           3. TAB CONTENT VIEWS
          ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "organization" && <OrganizationTab selectedOrgId={selectedOrgId} />}
-      {activeTab === "notifications" && <NotificationsTab selectedOrgId={selectedOrgId} />}
-      {activeTab === "ai" && <AISettingsTab selectedOrgId={selectedOrgId} />}
+      {activeTab === "organization" && (
+        <OrganizationTab
+          selectedOrgId={selectedOrgId}
+          isRoot={isRoot}
+          orgsLoading={orgsLoading}
+        />
+      )}
+      {activeTab === "notifications" && (
+        <NotificationsTab
+          selectedOrgId={selectedOrgId}
+          isRoot={isRoot}
+          orgsLoading={orgsLoading}
+        />
+      )}
+      {activeTab === "ai" && (
+        <AISettingsTab
+          selectedOrgId={selectedOrgId}
+          isRoot={isRoot}
+          orgsLoading={orgsLoading}
+        />
+      )}
       {activeTab === "modules" && <ModulesSettingsPage />}
-      {activeTab === "billing" && <BillingSettingsPage selectedOrgId={selectedOrgId} />}
+      {activeTab === "billing" && (
+        <BillingSettingsPage
+          selectedOrgId={selectedOrgId}
+          isRoot={isRoot}
+          orgsLoading={orgsLoading}
+        />
+      )}
     </div>
   );
 }

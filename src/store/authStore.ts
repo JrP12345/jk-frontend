@@ -43,6 +43,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const res = await api.get("/auth/me");
       const user = res.data.data.user;
+      if (user && (user.role as string) === "guest") {
+        if (typeof window !== "undefined") {
+          document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        }
+        set({ user: null, isAuthenticated: false, isLoading: false });
+        return;
+      }
       if (user && (!user.impersonatedBy || !user.impersonatedBy.id)) {
         user.impersonatedBy = null;
       }
@@ -63,6 +70,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   login: (user: User) => {
+    if ((user?.role as string) === "guest") {
+      set({ user: null, isAuthenticated: false, isLoading: false });
+      return;
+    }
     if (user && (!user.impersonatedBy || !user.impersonatedBy.id)) {
       user.impersonatedBy = null;
     }
@@ -179,26 +190,32 @@ if (typeof window !== "undefined") {
     }
   });
 
-  // Listen for the custom "auth-expired" event from the axios interceptor
-  window.addEventListener("auth-expired", async () => {
+  // Listen for the custom "auth-expired" event from the axios interceptor.
+  // This handler must redirect with `expired=1` immediately. Waiting for an
+  // API logout first leaves the stale HttpOnly cookies in place long enough for
+  // proxy middleware to bounce `/login` back to `/dashboard`.
+  let handlingExpiredSession = false;
+  window.addEventListener("auth-expired", () => {
+    if (handlingExpiredSession) return;
+    handlingExpiredSession = true;
+
     if (typeof window !== "undefined") {
       document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     }
 
-    // Clear state
+    // Clear state so no component remains in its authentication loading state.
     useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
-    
-    // We MUST tell the backend to clear the HttpOnly cookies, otherwise middleware.ts 
-    // will see the stale refresh_token and redirect back to /dashboard, causing an infinite loop.
-    try {
-      await api.post("/auth/logout");
-    } catch {
-      // Ignore errors if already logged out on backend
-    }
-    
-    // Only force redirect if we are inside the dashboard
+
+    // Best-effort server-side cleanup. `/auth/logout` is excluded from refresh
+    // handling, so it cannot join a failed refresh cycle.
+    void api.post("/auth/logout").catch(() => {
+      // The login proxy below also clears same-site auth cookies.
+    });
+
+    // The proxy recognizes `expired=1`, clears stale cookies, and deliberately
+    // allows this navigation through instead of redirecting back to the dashboard.
     if (window.location.pathname.startsWith("/dashboard")) {
-      window.location.href = "/login?expired=1";
+      window.location.replace("/login?expired=1");
     }
   });
 }

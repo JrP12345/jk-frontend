@@ -56,7 +56,6 @@ An enterprise healthcare platform frontend built with **Next.js 16 (App Router)*
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
-ONBOARDING_SECRET=your_secret_key_here
 ```
 
 ---

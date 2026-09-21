@@ -23,6 +23,7 @@ import {
   type WhatsAppSettingsData,
   type WhatsAppPack,
 } from "@/services/whatsappSettings.service";
+import { useAuthStore } from "@/store/authStore";
 import {
   MessageSquare,
   Zap,
@@ -40,9 +41,17 @@ import {
 
 interface WhatsAppSettingsCardProps {
   selectedOrgId?: string;
+  isRoot?: boolean;
+  orgsLoading?: boolean;
 }
 
-export default function WhatsAppSettingsCard({ selectedOrgId }: WhatsAppSettingsCardProps) {
+export default function WhatsAppSettingsCard({
+  selectedOrgId,
+  isRoot: propIsRoot,
+  orgsLoading = false,
+}: WhatsAppSettingsCardProps) {
+  const { user } = useAuthStore();
+  const isRoot = propIsRoot ?? user?.role === "root";
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -67,6 +76,7 @@ export default function WhatsAppSettingsCard({ selectedOrgId }: WhatsAppSettings
   const { data: config, isLoading, refetch } = useQuery({
     queryKey: ["whatsapp-settings", selectedOrgId],
     queryFn: () => whatsappSettingsService.getConfig(selectedOrgId),
+    enabled: !isRoot || !!selectedOrgId,
   });
 
   useEffect(() => {
@@ -139,7 +149,7 @@ export default function WhatsAppSettingsCard({ selectedOrgId }: WhatsAppSettings
     },
   });
 
-  if (isLoading) {
+  if (isLoading || (isRoot && (!selectedOrgId || orgsLoading))) {
     return (
       <div className="space-y-4">
         <SkeletonForm rows={4} />

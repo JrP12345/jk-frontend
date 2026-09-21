@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { useTranslation } from "@/lib/i18n";
+import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
 import {
   detectUserLocation,
   mapStateToLanguage,
@@ -289,11 +290,11 @@ export default function BrowseClient({
       {/* Hero Header Section - Clean Modern Healthcare Design */}
       <section className="relative pt-20 sm:pt-24 pb-4 sm:pb-8 overflow-hidden bg-gradient-to-b from-surface via-surface/95 to-surface-alt border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
-          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-text tracking-tight mb-1.5 sm:mb-2 leading-tight">
+          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-text tracking-tight mb-1.5 sm:mb-2 leading-tight" suppressHydrationWarning>
             {t("browse.hero_title_1", "Find and book")}{" "}
-            <span className="text-primary-600">{t("browse.hero_title_highlight", "verified medical care")}</span>
+            <span className="text-primary-600" suppressHydrationWarning>{t("browse.hero_title_highlight", "verified medical care")}</span>
           </h1>
-          <p className="text-text-secondary text-xs sm:text-sm max-w-lg mx-auto mb-4 sm:mb-6 leading-relaxed hidden xs:block">
+          <p className="text-text-secondary text-xs sm:text-sm max-w-lg mx-auto mb-4 sm:mb-6 leading-relaxed hidden xs:block" suppressHydrationWarning>
             {t(
               "browse.hero_subtitle",
               "Search verified clinics, view consulting doctors, and schedule your appointment with transparent fees."
@@ -567,10 +568,7 @@ export default function BrowseClient({
                           <p className="text-xs text-text-muted flex items-center gap-1.5 mt-0.5 truncate">
                             <span className="truncate">{clinic.city}</span>
                             <span>•</span>
-                            <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1 shrink-0">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                              <span>{t("status.open_today", "Open today")}</span>
-                            </span>
+                            <ClinicStatusBadge timings={clinic.timings} compact />
                           </p>
                         </div>
                       </div>

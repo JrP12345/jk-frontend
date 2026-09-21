@@ -2,22 +2,21 @@
 
 import { create } from "zustand";
 
-export type LanguageCode = "en" | "hi" | "gu" | "mr";
+import {
+  type LanguageCode,
+  type LanguageOption,
+  SUPPORTED_LANGUAGES,
+  DEFAULT_LANGUAGE,
+  isSupportedLanguage,
+} from "./languages";
 
-export interface LanguageOption {
-  code: LanguageCode;
-  label: string;
-  nativeLabel: string;
-  flag: string;
-  dir: "ltr" | "rtl";
-}
-
-export const SUPPORTED_LANGUAGES: LanguageOption[] = [
-  { code: "en", label: "English", nativeLabel: "English", flag: "🇮🇳", dir: "ltr" },
-  { code: "hi", label: "Hindi", nativeLabel: "हिन्दी", flag: "🇮🇳", dir: "ltr" },
-  { code: "gu", label: "Gujarati", nativeLabel: "ગુજરાતી", flag: "🇮🇳", dir: "ltr" },
-  { code: "mr", label: "Marathi", nativeLabel: "मराठी", flag: "🇮🇳", dir: "ltr" },
-];
+export {
+  type LanguageCode,
+  type LanguageOption,
+  SUPPORTED_LANGUAGES,
+  DEFAULT_LANGUAGE,
+  isSupportedLanguage,
+};
 
 export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
   en: {
@@ -54,7 +53,21 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     // Status & Badges
     "status.open_today": "Open today",
+    "status.open_now": "Open now",
+    "status.closing_soon": "Closing soon",
+    "status.on_break": "On break",
     "status.closed": "Closed",
+    "status.closed_today": "Closed today",
+    "status.open_24_7": "Open 24/7",
+    "status.consultation_hours": "Consultation hours",
+    "status.closes_at": "Closes at {time}",
+    "status.opens_today_at": "Opens today at {time}",
+    "status.opens_tomorrow_at": "Opens tomorrow at {time}",
+    "status.opens_day_at": "Opens {day} at {time}",
+    "status.reopens_at": "Reopens today at {time}",
+    "status.emergency_24_7": "Emergency & OPD open 24 hours",
+    "status.shift_ended_today": "Shift ended for today",
+    "action.book_for_tomorrow": "Book for Tomorrow",
     "status.available": "Available",
     "status.unavailable": "Unavailable",
     "status.free": "Free Consultation",
@@ -200,6 +213,12 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     "booking.reason_label": "Reason for Visit / Symptoms (Optional)",
     "booking.reason_placeholder": "e.g. Fever, routine follow-up, pediatric checkup",
     "booking.confirm_appointment": "Confirm Appointment",
+    "booking.progress_init": "Initializing your booking...",
+    "booking.progress_session": "Securing guest booking session...",
+    "booking.progress_reserving": "Reserving consultation token & slot...",
+    "booking.progress_finalizing": "Generating your confirmed token slip...",
+    "booking.processing": "Securing your appointment, please wait...",
+    "booking.confirming": "Confirming...",
 
     // Confirmation Ticket
     "ticket.title": "Appointment Confirmed",
@@ -262,7 +281,21 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     // Status & Badges
     "status.open_today": "आज खुला है",
+    "status.open_now": "अभी खुला है",
+    "status.closing_soon": "जल्द बंद होगा",
+    "status.on_break": "ब्रेक पर",
     "status.closed": "बंद है",
+    "status.closed_today": "आज बंद है",
+    "status.open_24_7": "24/7 खुला है",
+    "status.consultation_hours": "परामर्श समय",
+    "status.closes_at": "{time} पर बंद होगा",
+    "status.opens_today_at": "आज {time} पर खुलेगा",
+    "status.opens_tomorrow_at": "कल {time} पर खुलेगा",
+    "status.opens_day_at": "{day} {time} पर खुलेगा",
+    "status.reopens_at": "आज {time} पर दोबारा खुलेगा",
+    "status.emergency_24_7": "आपातकालीन और ओपीडी 24 घंटे उपलब्ध",
+    "status.shift_ended_today": "आज की शिफ्ट समाप्त",
+    "action.book_for_tomorrow": "कल के लिए बुक करें",
     "status.available": "उपलब्ध",
     "status.unavailable": "अनुपलब्ध",
     "status.free": "मुफ्त परामर्श",
@@ -409,6 +442,12 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     "booking.reason_label": "आने का कारण / लक्षण (वैकल्पिक)",
     "booking.reason_placeholder": "जैसे: बुखार, नियमित जांच, बाल रोग जांच",
     "booking.confirm_appointment": "अपॉइंटमेंट कन्फर्म करें",
+    "booking.progress_init": "बुकिंग शुरू की जा रही है...",
+    "booking.progress_session": "सुरक्षित सत्र तैयार किया जा रहा है...",
+    "booking.progress_reserving": "टोकन और स्लॉट आरक्षित किया जा रहा है...",
+    "booking.progress_finalizing": "पुष्टि पर्ची तैयार की जा रही है...",
+    "booking.processing": "आपकी अपॉइंटमेंट सुरक्षित की जा रही है, कृपया प्रतीक्षा करें...",
+    "booking.confirming": "कन्फर्म हो रहा है...",
 
     // Confirmation Ticket
     "ticket.title": "अपॉइंटमेंट कन्फर्म हो गया",
@@ -471,7 +510,21 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     // Status & Badges
     "status.open_today": "આજે ખુલ્લું છે",
+    "status.open_now": "અત્યારે ખુલ્લું છે",
+    "status.closing_soon": "ટૂંક સમયમાં બંધ થશે",
+    "status.on_break": "વિરામ પર",
     "status.closed": "બંધ છે",
+    "status.closed_today": "આજે બંધ છે",
+    "status.open_24_7": "24/7 ખુલ્લું છે",
+    "status.consultation_hours": "કન્સલ્ટેશન કલાકો",
+    "status.closes_at": "{time} વાગ્યે બંધ થશે",
+    "status.opens_today_at": "આજે {time} વાગ્યે ખુલશે",
+    "status.opens_tomorrow_at": "આવતીકાલે {time} વાગ્યે ખુલશે",
+    "status.opens_day_at": "{day} {time} વાગ્યે ખુલશે",
+    "status.reopens_at": "આજે {time} વાગ્યે ફરી ખુલશે",
+    "status.emergency_24_7": "ઇમરજન્સી અને ઓપીડી 24 કલાક ખુલ્લું",
+    "status.shift_ended_today": "આજની શિફ્ટ પૂર્ણ",
+    "action.book_for_tomorrow": "આવતીકાલ માટે બુક કરો",
     "status.available": "ઉપલબ્ધ",
     "status.unavailable": "અનુપલબ્ધ",
     "status.free": "મફત પરામર્શ",
@@ -618,6 +671,12 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     "booking.reason_label": "મુલાકાતનું કારણ / લક્ષણો (વૈકલ્પિક)",
     "booking.reason_placeholder": "દા.ત. તાવ, નિયમિત તપાસ, બાળરોગ તપાસ",
     "booking.confirm_appointment": "એપોઇન્ટમેન્ટ કન્ફર્મ કરો",
+    "booking.progress_init": "બુકિંગ શરૂ થઈ રહ્યું છે...",
+    "booking.progress_session": "સુરક્ષિત સત્ર તૈયાર થઈ રહ્યું છે...",
+    "booking.progress_reserving": "ટોકન અને સ્લોટ અનામત થઈ રહ્યો છે...",
+    "booking.progress_finalizing": "કન્ફર્મેશન સ્લિપ જનરેટ થઈ રહી છે...",
+    "booking.processing": "તમારી એપોઇન્ટમેન્ટ સુરક્ષિત થઈ રહી છે, કૃપા કરીને રાહ જુઓ...",
+    "booking.confirming": "કન્ફર્મ થઈ રહ્યું છે...",
 
     // Confirmation Ticket
     "ticket.title": "એપોઇન્ટમેન્ટ કન્ફર્મ થઈ ગઈ",
@@ -680,7 +739,21 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
 
     // Status & Badges
     "status.open_today": "आज उघडे आहे",
+    "status.open_now": "आता उघडे आहे",
+    "status.closing_soon": "लवकरच बंद होईल",
+    "status.on_break": "ब्रेकवर",
     "status.closed": "बंद आहे",
+    "status.closed_today": "आज बंद आहे",
+    "status.open_24_7": "24/7 उघडे आहे",
+    "status.consultation_hours": "सल्लामसलत वेळ",
+    "status.closes_at": "{time} वाजता बंद होईल",
+    "status.opens_today_at": "आज {time} वाजता उघडेल",
+    "status.opens_tomorrow_at": "उद्या {time} वाजता उघडेल",
+    "status.opens_day_at": "{day} {time} वाजता उघडेल",
+    "status.reopens_at": "आज {time} वाजता पुन्हा उघडेल",
+    "status.emergency_24_7": "आपत्कालीन आणि ओपीडी 24 तास सुरू",
+    "status.shift_ended_today": "आजची शिफ्ट समाप्त",
+    "action.book_for_tomorrow": "उद्यासाठी बुक करा",
     "status.available": "उपलब्ध",
     "status.unavailable": "अनुपलब्ध",
     "status.free": "मोफत सल्ला",
@@ -827,6 +900,12 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     "booking.reason_label": "भेटीचे कारण / लक्षणे (पर्यायी)",
     "booking.reason_placeholder": "उदा. ताप, नियमित तपासणी, बालरोग तपासणी",
     "booking.confirm_appointment": "अपॉइंटमेंट निश्चित करा",
+    "booking.progress_init": "बुकिंग सुरू होत आहे...",
+    "booking.progress_session": "सुरक्षित सत्र तयार केले जात आहे...",
+    "booking.progress_reserving": "टोकन आणि स्लॉट राखीव केला जात आहे...",
+    "booking.progress_finalizing": "पुष्टी पावती तयार केली जात आहे...",
+    "booking.processing": "तुमची अपॉइंटमेंट सुरक्षित केली जात आहे, कृपया प्रतीक्षा करा...",
+    "booking.confirming": "निश्चित होत आहे...",
 
     // Confirmation Ticket
     "ticket.title": "अपॉइंटमेंट निश्चित झाली",
@@ -860,6 +939,7 @@ interface I18nState {
   language: LanguageCode;
   isHydrated: boolean;
   initLanguage: () => void;
+  setInitialLanguage: (lang: LanguageCode) => void;
   setLanguage: (lang: LanguageCode) => void;
   t: (key: string, defaultText?: string) => string;
 }
@@ -868,14 +948,32 @@ export const useI18nStore = create<I18nState>((set, get) => ({
   language: "en",
   isHydrated: false,
 
+  setInitialLanguage: (language: LanguageCode) => {
+    if (SUPPORTED_LANGUAGES.some((l) => l.code === language)) {
+      set({ language });
+    }
+  },
+
   initLanguage: () => {
     if (typeof window !== "undefined") {
       try {
-        const saved = localStorage.getItem("ananta_lang") as LanguageCode;
-        if (saved && SUPPORTED_LANGUAGES.some((l) => l.code === saved)) {
+        const cookieMatch = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("ananta_lang="));
+        const cookieLang = cookieMatch ? (cookieMatch.split("=")[1] as LanguageCode) : null;
+        const localLang = localStorage.getItem("ananta_lang") as LanguageCode;
+        const saved = (cookieLang && SUPPORTED_LANGUAGES.some((l) => l.code === cookieLang))
+          ? cookieLang
+          : (localLang && SUPPORTED_LANGUAGES.some((l) => l.code === localLang))
+          ? localLang
+          : null;
+
+        if (saved) {
           const option = SUPPORTED_LANGUAGES.find((l) => l.code === saved);
           document.documentElement.lang = saved;
           document.documentElement.dir = option?.dir || "ltr";
+          document.cookie = `ananta_lang=${saved}; path=/; max-age=31536000; SameSite=Lax`;
+          localStorage.setItem("ananta_lang", saved);
           set({ language: saved, isHydrated: true });
           return;
         }
@@ -888,6 +986,7 @@ export const useI18nStore = create<I18nState>((set, get) => ({
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem("ananta_lang", language);
+        document.cookie = `ananta_lang=${language}; path=/; max-age=31536000; SameSite=Lax`;
       } catch {}
       const option = SUPPORTED_LANGUAGES.find((l) => l.code === language);
       document.documentElement.lang = language;

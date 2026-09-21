@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { canViewAuditLogs } from "@/lib/permissions";
 import {
   Card, CardHeader, CardTitle, CardDescription, CardContent,
-  Table, Badge, Button, useToast, Spinner, Alert, SkeletonTable,
+  Table, Badge, Button, Select, Input, useToast, Alert, SkeletonTable,
   ChartContainer, BarChart, cn
 } from "@/components/ui";
-import { RotateCw } from "lucide-react";
+import { RotateCw, Filter, X, Building2, Stethoscope, Tag, Calendar } from "lucide-react";
 
 interface AuditLogEntry {
   id: string;
@@ -22,31 +22,135 @@ interface AuditLogEntry {
   action: "APPOINTMENT_CREATE" | "STATUS_CHANGE" | "VIP_OVERRIDE" | "PATIENT_UPDATE" | string;
   targetId: string;
   targetModel: string;
+  category?: string;
   details?: any;
   createdAt: string;
 }
+
+interface FilterState {
+  organizationId: string;
+  clinicId: string;
+  doctorId: string;
+  category: string;
+  action: string;
+  startDate: string;
+  endDate: string;
+}
+
+const EMPTY_FILTERS: FilterState = {
+  organizationId: "",
+  clinicId: "",
+  doctorId: "",
+  category: "",
+  action: "",
+  startDate: "",
+  endDate: "",
+};
+
+const CATEGORIES = [
+  { value: "AUTH", label: "Authentication" },
+  { value: "CLINICAL_READ", label: "Clinical Read" },
+  { value: "CLINICAL_WRITE", label: "Clinical Write" },
+  { value: "BILLING", label: "Billing" },
+  { value: "ADMIN", label: "Administration" },
+  { value: "COMPLIANCE_DPDP", label: "DPDP Compliance" },
+];
 
 export default function AuditLogsPage() {
   const { user } = useAuthStore();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const fetchLogs = async () => {
+  // Filter state
+  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Dropdown data
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [clinics, setClinics] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [orgsLoading, setOrgsLoading] = useState(false);
+
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+
+  // Load organization list for root
+  useEffect(() => {
+    if (!canViewAuditLogs(user)) return;
+    setOrgsLoading(true);
+    api
+      .get("/organizations")
+      .then((res) => {
+        const orgList = res.data.data?.organizations || res.data.data || [];
+        setOrganizations(orgList);
+      })
+      .catch(() => {})
+      .finally(() => setOrgsLoading(false));
+  }, [user]);
+
+  // Load clinics when org changes
+  useEffect(() => {
+    if (!canViewAuditLogs(user)) return;
+    const orgParam = filters.organizationId
+      ? `?organizationId=${filters.organizationId}`
+      : "";
+    api
+      .get(`/onboarding/clinics${orgParam}`)
+      .then((res) => {
+        const clinicList = res.data.data || [];
+        setClinics(clinicList);
+      })
+      .catch(() => setClinics([]));
+  }, [user, filters.organizationId]);
+
+  // Load doctors/staff when org changes
+  useEffect(() => {
+    if (!canViewAuditLogs(user)) return;
+    const orgParam = filters.organizationId
+      ? `?organizationId=${filters.organizationId}`
+      : "";
+    api
+      .get(`/onboarding/staff${orgParam}`)
+      .then((res) => {
+        const staffList = res.data.data || [];
+        // Filter to doctors only for the dropdown
+        const doctorList = staffList.filter(
+          (s: any) => s.role === "doctor" || s.role === "admin"
+        );
+        setDoctors(doctorList);
+      })
+      .catch(() => setDoctors([]));
+  }, [user, filters.organizationId]);
+
+  const fetchLogs = useCallback(async (activeFilters: FilterState = filters) => {
     try {
       setLoading(true);
-      const res = await api.get("/audit-logs");
+      const params = new URLSearchParams();
+      if (activeFilters.organizationId) params.set("organizationId", activeFilters.organizationId);
+      if (activeFilters.clinicId) params.set("clinicId", activeFilters.clinicId);
+      if (activeFilters.doctorId) params.set("doctorId", activeFilters.doctorId);
+      if (activeFilters.category) params.set("category", activeFilters.category);
+      if (activeFilters.action) params.set("action", activeFilters.action);
+      if (activeFilters.startDate) params.set("startDate", activeFilters.startDate);
+      if (activeFilters.endDate) params.set("endDate", activeFilters.endDate);
+      params.set("limit", "100");
+
+      const qs = params.toString();
+      const res = await api.get(`/audit-logs${qs ? `?${qs}` : ""}`);
       setLogs(res.data.data || []);
     } catch (err) {
       console.error("Failed to load audit logs", err);
+      toast?.({ title: "Error", description: "Failed to load audit logs", variant: "error" });
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, toast]);
 
   useEffect(() => {
     if (canViewAuditLogs(user)) {
       fetchLogs();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   if (!canViewAuditLogs(user)) {
@@ -59,12 +163,43 @@ export default function AuditLogsPage() {
     );
   }
 
+  const updateFilter = (key: keyof FilterState, value: string) => {
+    const updated = { ...filters, [key]: value };
+    // Reset dependent filters
+    if (key === "organizationId") {
+      updated.clinicId = "";
+      updated.doctorId = "";
+    }
+    setFilters(updated);
+  };
+
+  const applyFilters = () => {
+    fetchLogs(filters);
+  };
+
+  const clearFilters = () => {
+    setFilters(EMPTY_FILTERS);
+    fetchLogs(EMPTY_FILTERS);
+  };
+
   const getActionBadgeVariant = (action: string): "default" | "primary" | "success" | "warning" | "danger" | "outline" => {
     switch (action) {
       case "APPOINTMENT_CREATE": return "success";
       case "STATUS_CHANGE": return "primary";
       case "VIP_OVERRIDE": return "danger";
       case "PATIENT_UPDATE": return "warning";
+      default: return "default";
+    }
+  };
+
+  const getCategoryBadgeVariant = (category: string): "default" | "primary" | "success" | "warning" | "danger" | "outline" => {
+    switch (category) {
+      case "AUTH": return "warning";
+      case "CLINICAL_READ": return "primary";
+      case "CLINICAL_WRITE": return "success";
+      case "BILLING": return "outline";
+      case "ADMIN": return "danger";
+      case "COMPLIANCE_DPDP": return "warning";
       default: return "default";
     }
   };
@@ -138,9 +273,23 @@ export default function AuditLogsPage() {
 
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto">
             <Button
+              variant={showFilters ? "primary" : "outline"}
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="rounded-xl text-xs font-semibold transition-colors w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+            >
+              <Filter className="h-3.5 w-3.5 mr-1.5" />
+              Filters
+              {activeFilterCount > 0 && (
+                <Badge variant="danger" size="sm" className="ml-1.5 text-[9px] px-1.5 py-0 min-w-[18px]">
+                  {activeFilterCount}
+                </Badge>
+              )}
+            </Button>
+            <Button
               variant="outline"
               size="sm"
-              onClick={fetchLogs}
+              onClick={() => fetchLogs()}
               disabled={loading}
               className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
             >
@@ -150,6 +299,141 @@ export default function AuditLogsPage() {
           </div>
         </div>
       </div>
+
+      {/* ──────────────────────────────────────────────────────────────────────────
+          2. FILTER BAR (COLLAPSIBLE)
+         ────────────────────────────────────────────────────────────────────────── */}
+      {showFilters && (
+        <Card className="animate-fade-in">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm">Filter Audit Logs</CardTitle>
+                <CardDescription className="text-xs">Narrow down events by organization, clinic, doctor, or category.</CardDescription>
+              </div>
+              {activeFilterCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-text-muted hover:text-danger-600">
+                  <X className="h-3 w-3 mr-1" />
+                  Clear All
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {/* Organization */}
+              <Select
+                size="sm"
+                label="Organization"
+                icon={<Building2 className="h-3.5 w-3.5" />}
+                placeholder="All Organizations"
+                value={filters.organizationId}
+                onChange={(e) => updateFilter("organizationId", e.target.value)}
+                options={[
+                  { value: "", label: "All Organizations" },
+                  ...organizations.map((org) => ({
+                    value: org.id || org._id,
+                    label: org.name + (org.city ? ` (${org.city})` : ""),
+                  })),
+                ]}
+              />
+
+              {/* Clinic */}
+              <Select
+                size="sm"
+                label="Clinic"
+                icon={<Building2 className="h-3.5 w-3.5" />}
+                placeholder="All Clinics"
+                value={filters.clinicId}
+                onChange={(e) => updateFilter("clinicId", e.target.value)}
+                options={[
+                  { value: "", label: "All Clinics" },
+                  ...clinics.map((c: any) => ({
+                    value: c.id || c._id,
+                    label: c.name || c.clinicName || "Unnamed Clinic",
+                  })),
+                ]}
+              />
+
+              {/* Doctor */}
+              <Select
+                size="sm"
+                label="Doctor / Staff"
+                icon={<Stethoscope className="h-3.5 w-3.5" />}
+                placeholder="All Staff"
+                value={filters.doctorId}
+                onChange={(e) => updateFilter("doctorId", e.target.value)}
+                options={[
+                  { value: "", label: "All Staff" },
+                  ...doctors.map((d: any) => ({
+                    value: d.id || d._id || d.userId,
+                    label: d.name || d.email || "Unknown",
+                  })),
+                ]}
+              />
+
+              {/* Category */}
+              <Select
+                size="sm"
+                label="Category"
+                icon={<Tag className="h-3.5 w-3.5" />}
+                placeholder="All Categories"
+                value={filters.category}
+                onChange={(e) => updateFilter("category", e.target.value)}
+                options={[
+                  { value: "", label: "All Categories" },
+                  ...CATEGORIES,
+                ]}
+              />
+
+              {/* Date Range */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-text-secondary flex items-center gap-1.5">
+                  <Calendar className="h-3 w-3" />
+                  Start Date
+                </label>
+                <Input
+                  type="date"
+                  size="sm"
+                  value={filters.startDate}
+                  onChange={(e) => updateFilter("startDate", e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-text-secondary flex items-center gap-1.5">
+                  <Calendar className="h-3 w-3" />
+                  End Date
+                </label>
+                <Input
+                  type="date"
+                  size="sm"
+                  value={filters.endDate}
+                  onChange={(e) => updateFilter("endDate", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Apply Button */}
+            <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/60">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={applyFilters}
+                disabled={loading}
+                className="rounded-xl text-xs font-semibold px-6"
+              >
+                <Filter className="h-3.5 w-3.5 mr-1.5" />
+                Apply Filters
+              </Button>
+              {activeFilterCount > 0 && (
+                <span className="text-[11px] text-text-muted">
+                  {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* PURPOSEFUL AUDIT EVENT DISTRIBUTION */}
       {logs.length > 0 && (
@@ -183,7 +467,14 @@ export default function AuditLogsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Activity Log</CardTitle>
-          <CardDescription>Review system modifications, clinical status updates, and administrative events.</CardDescription>
+          <CardDescription>
+            Review system modifications, clinical status updates, and administrative events.
+            {activeFilterCount > 0 && (
+              <span className="ml-2 text-primary-600 dark:text-primary-400 font-medium">
+                ({activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} applied)
+              </span>
+            )}
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <Table
@@ -206,9 +497,20 @@ export default function AuditLogsPage() {
                   width: "150px",
                   render: (row) => (
                     <Badge variant={getActionBadgeVariant(row.action)} className="text-[10px] tracking-wide font-bold">
-                      {row.action.replace("_", " ")}
+                      {row.action.replace(/_/g, " ")}
                     </Badge>
                   )
+                },
+                {
+                  key: "category",
+                  header: "Category",
+                  sortable: true,
+                  width: "120px",
+                  render: (row) => row.category ? (
+                    <Badge variant={getCategoryBadgeVariant(row.category)} className="text-[10px] tracking-wide font-semibold">
+                      {row.category.replace(/_/g, " ")}
+                    </Badge>
+                  ) : <span className="text-text-muted text-xs">—</span>
                 },
                 {
                   key: "actor",
@@ -239,16 +541,23 @@ export default function AuditLogsPage() {
                 }
               ]}
               data={logs}
-              emptyMessage="No security logs generated yet."
+              emptyMessage={activeFilterCount > 0 ? "No audit logs match the selected filters." : "No security logs generated yet."}
               renderMobileCard={(row: AuditLogEntry) => (
                 <div
                   key={row.id}
                   className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <Badge variant={getActionBadgeVariant(row.action)} className="text-[10px] tracking-wide font-bold">
-                      {row.action.replace(/_/g, " ")}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant={getActionBadgeVariant(row.action)} className="text-[10px] tracking-wide font-bold">
+                        {row.action.replace(/_/g, " ")}
+                      </Badge>
+                      {row.category && (
+                        <Badge variant={getCategoryBadgeVariant(row.category)} className="text-[9px] tracking-wide font-semibold">
+                          {row.category.replace(/_/g, " ")}
+                        </Badge>
+                      )}
+                    </div>
                     <span className="text-[11px] font-mono text-text-muted shrink-0">
                       {formatDateTime(row.createdAt)}
                     </span>

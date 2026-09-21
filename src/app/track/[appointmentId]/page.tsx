@@ -475,7 +475,20 @@ export default function PublicLiveQueueTracker() {
     if (!appointmentId || checkingIn) return;
     setCheckingIn(true);
     try {
-      const res = await api.post(`/public/track/${appointmentId}/check-in`, {}, { headers: getTrackerHeaders() });
+      const capabilityRes = await api.post(
+        `/public/track/${appointmentId}/check-in-capability`,
+        {},
+        { headers: getTrackerHeaders() },
+      );
+      const checkInToken = capabilityRes.data?.data?.checkInToken;
+      if (!checkInToken) {
+        throw new Error("Unable to issue a self check-in capability");
+      }
+      const res = await api.post(
+        `/public/track/${appointmentId}/check-in`,
+        { checkInToken },
+        { headers: getTrackerHeaders() },
+      );
       toast({
         title: "Check-In Confirmed ✓",
         description: res.data?.message || `You are now checked in! Token #${res.data?.data?.tokenNumber}`,

@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { useTranslation } from "@/lib/i18n";
+import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
 import { mapStateToLanguage } from "@/lib/geo/locationDetector";
 
 interface Doctor {
@@ -247,23 +248,72 @@ export default function BrowseDetailClient({
 }) {
   const { t, setLanguage } = useTranslation();
   const renderTimings = (timingsStr: string | null | undefined, compact = false) => {
-    if (!timingsStr) return <span className="text-xs text-text-secondary">Mon–Sat: 9:00 AM – 5:00 PM</span>;
+    const todayDayIndex = new Date().getDay();
+    const dayNamesShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const todayShort = dayNamesShort[todayDayIndex];
+    const isTodayInLabel = (label: string) => {
+      if (label.includes(todayShort)) return true;
+      if (label.includes("Mon – Sat") && todayDayIndex >= 1 && todayDayIndex <= 6) return true;
+      if (label.includes("Mon–Sat") && todayDayIndex >= 1 && todayDayIndex <= 6) return true;
+      if (label.toLowerCase().includes("daily")) return true;
+      return false;
+    };
+
+    if (!timingsStr) {
+      return (
+        <div className="space-y-2">
+          {!compact && <ClinicStatusBadge timings={timingsStr} pill />}
+          <div className="flex justify-between items-center text-xs bg-surface-alt p-2 rounded-xl border border-border">
+            <span className="font-semibold text-text-secondary flex items-center gap-1.5">
+              <span>Mon – Sat</span>
+              {todayDayIndex >= 1 && todayDayIndex <= 6 && (
+                <span className="text-[9px] uppercase tracking-wider bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 font-bold px-1.5 py-0.5 rounded">
+                  Today
+                </span>
+              )}
+            </span>
+            <span className="text-text bg-surface py-0.5 px-2.5 rounded-lg text-[11px] font-semibold border border-border">
+              9:00 AM – 5:00 PM
+            </span>
+          </div>
+        </div>
+      );
+    }
+
     try {
       const trimmed = timingsStr.trim();
       if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+        const isToday = isTodayInLabel("Mon – Sat");
         return (
-          <div className="flex justify-between items-center text-xs bg-surface-alt p-2.5 rounded-xl border border-border">
-            <span className="font-semibold text-text-secondary">Mon – Sat</span>
-            <span className="text-text bg-surface py-0.5 px-2.5 rounded-lg text-[11px] font-semibold border border-border">
-              {timingsStr}
-            </span>
+          <div className="space-y-2">
+            {!compact && <ClinicStatusBadge timings={timingsStr} pill />}
+            <div className={`flex justify-between items-center text-xs p-2.5 rounded-xl border ${isToday ? "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800" : "bg-surface-alt border-border"}`}>
+              <span className="font-semibold text-text-secondary flex items-center gap-1.5">
+                <span>Mon – Sat</span>
+                {isToday && (
+                  <span className="text-[9px] uppercase tracking-wider bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 font-bold px-1.5 py-0.5 rounded">
+                    Today
+                  </span>
+                )}
+              </span>
+              <span className="text-text bg-surface py-0.5 px-2.5 rounded-lg text-[11px] font-semibold border border-border">
+                {timingsStr}
+              </span>
+            </div>
           </div>
         );
       }
 
       const data = JSON.parse(timingsStr);
       const days = Object.keys(data);
-      if (days.length === 0) return <span className="text-xs text-text-secondary">{timingsStr}</span>;
+      if (days.length === 0) {
+        return (
+          <div className="space-y-2">
+            {!compact && <ClinicStatusBadge timings={timingsStr} pill />}
+            <span className="text-xs text-text-secondary">{timingsStr}</span>
+          </div>
+        );
+      }
 
       const grouped: Record<string, string[]> = {};
       for (const day of days) {
@@ -295,21 +345,45 @@ export default function BrowseDetailClient({
 
       return (
         <div className={`flex flex-col gap-1.5 ${compact ? "mt-2" : "mt-1"}`}>
-          {groups.map((g, idx) => (
-            <div
-              key={idx}
-              className="flex justify-between items-center text-xs bg-surface-alt p-2 rounded-xl border border-border"
-            >
-              <span className="font-semibold text-text-secondary">{g.daysLabel}</span>
-              <span className="text-text bg-surface py-0.5 px-2 rounded-lg text-[11px] font-semibold border border-border">
-                {g.slotsStr}
-              </span>
+          {!compact && (
+            <div className="mb-1">
+              <ClinicStatusBadge timings={timingsStr} pill />
             </div>
-          ))}
+          )}
+          {groups.map((g, idx) => {
+            const isToday = isTodayInLabel(g.daysLabel);
+            return (
+              <div
+                key={idx}
+                className={`flex justify-between items-center text-xs p-2 rounded-xl border ${
+                  isToday
+                    ? "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800 shadow-2xs"
+                    : "bg-surface-alt border-border"
+                }`}
+              >
+                <span className="font-semibold text-text-secondary flex items-center gap-1.5">
+                  <span>{g.daysLabel}</span>
+                  {isToday && (
+                    <span className="text-[9px] uppercase tracking-wider bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 font-bold px-1.5 py-0.5 rounded">
+                      Today
+                    </span>
+                  )}
+                </span>
+                <span className="text-text bg-surface py-0.5 px-2 rounded-lg text-[11px] font-semibold border border-border">
+                  {g.slotsStr}
+                </span>
+              </div>
+            );
+          })}
         </div>
       );
     } catch {
-      return <span className="text-xs text-text-secondary">{timingsStr}</span>;
+      return (
+        <div className="space-y-2">
+          {!compact && <ClinicStatusBadge timings={timingsStr} pill />}
+          <span className="text-xs text-text-secondary">{timingsStr}</span>
+        </div>
+      );
     }
   };
 
@@ -358,12 +432,14 @@ export default function BrowseDetailClient({
   const [bookingStep, setBookingStep] = useState<1 | 2>(1);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingProgressMessage, setBookingProgressMessage] = useState<string>("");
+  const hasAutoOpenedBookingRef = useRef(false);
 
   // Time & Notes inputs
   const [bookingNotes, setBookingNotes] = useState("");
   const [followUpForAppointmentId, setFollowUpForAppointmentId] = useState<string | null>(null);
 
-  // Guest Registration State (No OTP required!)
+  // Public booking state for visitors without an active patient session.
   const [isGuest, setIsGuest] = useState(false);
   const [guestForm, setGuestForm] = useState({ name: "", phone: "", email: "" });
 
@@ -433,6 +509,9 @@ export default function BrowseDetailClient({
     const openBooking = searchParams.get("openBooking");
 
     if (doctorId && (followUp === "true" || openBooking === "true")) {
+      if (hasAutoOpenedBookingRef.current) return;
+      hasAutoOpenedBookingRef.current = true;
+
       const doc = clinic.doctors.find((d) => d.id === doctorId);
       if (doc) {
         handleOpenBooking(doc);
@@ -444,7 +523,7 @@ export default function BrowseDetailClient({
         }
       }
     }
-  }, [clinic, searchParams, isAuthenticated, user]);
+  }, [clinic, searchParams]);
 
   // Generate next 7 upcoming working days
   const upcomingDays = useMemo(() => {
@@ -617,7 +696,7 @@ export default function BrowseDetailClient({
     setSelectedDoctor(doc);
     setBookingStep(1);
     setIsBookingOpen(true);
-    setIsGuest(!isAuthenticated || user?.role !== "patient");
+    setIsGuest(!isAuthenticated);
     resetBookingForm();
 
     const timingsStr = doc.workingHours || doc.timings;
@@ -769,6 +848,7 @@ export default function BrowseDetailClient({
     }
 
     setBookingLoading(true);
+    setBookingProgressMessage(t("booking.progress_init", "Initializing your booking..."));
     const timeToUse =
       selectedTime ||
       doctorSlotInfo?.dayStartTime ||
@@ -777,11 +857,13 @@ export default function BrowseDetailClient({
     const mergedBookingTime = `${selectedDate}T${timeToUse}`;
 
     try {
-      // Seamless guest authentication without OTP
+      // Public booking is deliberately OTP-free. The resulting session is
+      // limited to creating this appointment and cannot access patient records.
       if (isGuest) {
         if (!guestForm.name || !guestForm.phone) {
           toast({ title: "Validation Error", description: "Patient name and 10-digit mobile phone number are required.", variant: "error" });
           setBookingLoading(false);
+          setBookingProgressMessage("");
           return;
         }
 
@@ -789,18 +871,19 @@ export default function BrowseDetailClient({
         if (phoneDigits.length < 10) {
           toast({ title: "Validation Error", description: "Please enter a valid 10-digit mobile number.", variant: "error" });
           setBookingLoading(false);
+          setBookingProgressMessage("");
           return;
         }
 
-        const regRes = await api.post("/auth/guest-login", {
+        setBookingProgressMessage(t("booking.progress_session", "Securing guest booking session..."));
+        const bookingSessionRes = await api.post("/public/booking-session", {
           phone: guestForm.phone,
           name: guestForm.name,
           email: guestForm.email || undefined,
         });
-
-        login(regRes.data.data.user);
       }
 
+      setBookingProgressMessage(t("booking.progress_reserving", "Reserving consultation token & slot..."));
       const res = await api.post("/appointments", {
         clinicId: id,
         doctorId: selectedDoctor!.id,
@@ -815,32 +898,7 @@ export default function BrowseDetailClient({
       const isPostConsultation = selectedDoctor?.feeType === "post_consultation";
       const isFree = selectedDoctor?.feeType === "free";
 
-      if (isPostConsultation) {
-        // Post-consultation billing: fee decided at clinic post-consultation
-        try {
-          await api.post("/appointment-payments/pay-at-clinic", { appointmentId: appt._id || appt.id });
-        } catch {
-          // fallback
-        }
-      } else if (!isFree && selectedDoctor?.fees && selectedDoctor.fees > 0 && paymentMode === "online") {
-        try {
-          const orderRes = await api.post("/appointment-payments/create-order", { appointmentId: appt._id || appt.id });
-          const orderData = orderRes.data?.data;
-          toast({
-            title: "Online Payment Order Created",
-            description: `Order #${orderData?.razorpayOrderId || "Created"}. Fee: ${formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")}`,
-            variant: "success",
-          });
-        } catch {
-          // Pay online order fallback
-        }
-      } else if (!isFree && selectedDoctor?.fees && selectedDoctor.fees > 0) {
-        try {
-          await api.post("/appointment-payments/pay-at-clinic", { appointmentId: appt._id || appt.id });
-        } catch {
-          // Pay at clinic fallback
-        }
-      }
+      setBookingProgressMessage(t("booking.progress_finalizing", "Generating your confirmed token slip..."));
 
       setCreatedTicket({
         appointmentId: appt._id || appt.id,
@@ -859,9 +917,38 @@ export default function BrowseDetailClient({
         paymentMode: isPostConsultation ? "pay_at_clinic" : isFree ? "free" : paymentMode,
       });
 
+      // Clear query params so deep-link cannot re-trigger
+      if (typeof window !== "undefined" && window.history) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("openBooking");
+        url.searchParams.delete("doctorId");
+        url.searchParams.delete("followUp");
+        url.searchParams.delete("prevAppointmentId");
+        window.history.replaceState(null, "", url.pathname + (url.search ? url.search : ""));
+      }
+
+      // Immediately close booking modal and open ticket modal!
       setIsBookingOpen(false);
       resetBookingForm();
       setTicketModalOpen(true);
+
+      // Settle background payment preference without delaying user confirmation
+      if (isPostConsultation || (!isFree && selectedDoctor?.fees && selectedDoctor.fees > 0 && paymentMode !== "online")) {
+        api.post("/appointment-payments/pay-at-clinic", { appointmentId: appt._id || appt.id }).catch(() => {});
+      } else if (!isFree && selectedDoctor?.fees && selectedDoctor.fees > 0 && paymentMode === "online") {
+        api.post("/appointment-payments/create-order", { appointmentId: appt._id || appt.id })
+          .then((orderRes) => {
+            const orderData = orderRes.data?.data;
+            if (orderData) {
+              toast({
+                title: "Online Payment Order Created",
+                description: `Order #${orderData?.razorpayOrderId || "Created"}. Fee: ${formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")}`,
+                variant: "success",
+              });
+            }
+          })
+          .catch(() => {});
+      }
     } catch (err: any) {
       toast({
         title: "Booking Failed",
@@ -871,6 +958,7 @@ export default function BrowseDetailClient({
       });
     } finally {
       setBookingLoading(false);
+      setBookingProgressMessage("");
     }
   };
 
@@ -1068,10 +1156,7 @@ export default function BrowseDetailClient({
                 <div className="space-y-0.5 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h1 className="text-xl sm:text-3xl font-extrabold text-text tracking-tight truncate">{clinic.name}</h1>
-                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-surface-alt border border-border px-2.5 py-0.5 rounded-full">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                      <span>{t("status.open_today", "Open today")}</span>
-                    </span>
+                    <ClinicStatusBadge timings={clinic.timings} pill />
                   </div>
                   {clinic.organization?.name && clinic.organization.name !== clinic.name && (
                     <p className="text-xs text-text-muted font-medium">
@@ -1987,9 +2072,17 @@ export default function BrowseDetailClient({
                 />
               </div>
 
+              {/* Active Booking Loading Feedback */}
+              {bookingLoading && (
+                <div className="p-3 bg-primary-50 dark:bg-primary-950/40 border border-primary-200 dark:border-primary-800 rounded-xl flex items-center gap-2.5 text-xs text-primary-700 dark:text-primary-300 animate-pulse">
+                  <div className="w-4 h-4 rounded-full border-2 border-primary-600 border-t-transparent animate-spin shrink-0" />
+                  <span className="font-semibold">{bookingProgressMessage || t("booking.processing", "Securing your appointment, please wait...")}</span>
+                </div>
+              )}
+
               {/* Step 2 Actions Footer */}
               <div className="sticky bottom-0 -mx-4 -mb-3 sm:-mx-5 sm:-mb-5 px-4 sm:px-5 py-2.5 bg-surface/95 backdrop-blur-md border-t border-border/50 flex items-center justify-between gap-2 z-10">
-                <Button variant="outline" size="sm" type="button" onClick={() => setBookingStep(1)} className="min-h-[42px] px-3.5 flex items-center justify-center gap-1 text-xs">
+                <Button variant="outline" size="sm" type="button" disabled={bookingLoading} onClick={() => setBookingStep(1)} className="min-h-[42px] px-3.5 flex items-center justify-center gap-1 text-xs">
                   <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.75} />
                   <span>{t("action.back", "Back")}</span>
                 </Button>
@@ -1998,10 +2091,11 @@ export default function BrowseDetailClient({
                   size="sm"
                   type="submit"
                   loading={bookingLoading}
+                  disabled={bookingLoading}
                   className="font-bold px-4 py-2 rounded-xl shadow-xs min-h-[42px] flex-1 sm:flex-initial flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <span>{t("booking.confirm_appointment", "Confirm Appointment")}</span>
-                  <CheckCircle2 className="w-4 h-4" strokeWidth={2} />
+                  <span>{bookingLoading ? (bookingProgressMessage || t("booking.confirming", "Confirming...")) : t("booking.confirm_appointment", "Confirm Appointment")}</span>
+                  {!bookingLoading && <CheckCircle2 className="w-4 h-4" strokeWidth={2} />}
                 </Button>
               </div>
             </div>

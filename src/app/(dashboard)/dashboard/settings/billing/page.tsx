@@ -27,7 +27,17 @@ import { AlertTriangle, Building2, Users, ExternalLink, CheckCircle2, ArrowRight
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { useAuthStore } from "@/store/authStore";
 
-export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?: string }) {
+interface BillingSettingsPageProps {
+  selectedOrgId?: string;
+  isRoot?: boolean;
+  orgsLoading?: boolean;
+}
+
+export default function BillingSettingsPage({
+  selectedOrgId,
+  isRoot: propIsRoot,
+  orgsLoading = false,
+}: BillingSettingsPageProps) {
   const { user } = useAuthStore();
   const { toast } = useToast();
   const [plans, setPlans] = useState<SaaSPlan[]>([]);
@@ -55,13 +65,19 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
   });
   const [savingBilling, setSavingBilling] = useState(false);
 
-  const isRootAdmin = user?.role === "root";
+  const isRootAdmin = propIsRoot ?? user?.role === "root";
 
   useEffect(() => {
+    if (isRootAdmin && !selectedOrgId) {
+      return;
+    }
     loadBillingData();
-  }, [selectedOrgId]);
+  }, [selectedOrgId, isRootAdmin]);
 
   async function loadBillingData() {
+    if (isRootAdmin && !selectedOrgId) {
+      return;
+    }
     setLoading(true);
     try {
       const [plansData, subData, usageData, invoicesData] = await Promise.all([
@@ -272,7 +288,7 @@ export default function BillingSettingsPage({ selectedOrgId }: { selectedOrgId?:
     }, 600);
   };
 
-  if (loading) {
+  if (loading || (isRootAdmin && (!selectedOrgId || orgsLoading))) {
     return (
       <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading commercial subscription and plan limits">
         {/* Current Plan Overview Skeleton */}

@@ -37,93 +37,57 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to automatically attach active clinic and organization context
+// Active clinic/organization is a client display preference, never server-side
+// authorization context. Tenant scope is derived from the authenticated session.
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     config.baseURL = getApiUrl();
-    const activeClinicId = localStorage.getItem("ananta_active_clinic_id");
-    if (activeClinicId && activeClinicId !== "[object Object]" && activeClinicId !== "undefined" && !config.headers["x-clinic-id"]) {
-      config.headers["x-clinic-id"] = activeClinicId;
-    }
-    const activeOrgId = localStorage.getItem("ananta_active_org_id");
-    if (activeOrgId && activeOrgId !== "[object Object]" && activeOrgId !== "undefined" && !config.headers["x-organization-id"]) {
-      config.headers["x-organization-id"] = activeOrgId;
-    }
   }
   return config;
 });
 
-// Response interceptor for transparent token refresh & 403 handling
-let isRefreshing = false;
-let failedQueue: { resolve: (value?: unknown) => void; reject: (reason?: any) => void }[] = [];
-
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-  failedQueue = [];
-};
+// Response interceptor for transparent token refresh & 403 handling.
+// Keep one promise for the whole browser session rather than a manually managed
+// queue. A rejected refresh therefore releases every waiting request immediately;
+// it cannot leave a request (and its UI loading state) waiting on a stale queue.
+let refreshPromise: Promise<void> | null = null;
 
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
-
-    // If 401 Unauthorized, try to refresh token
-    const isNoSession =
-      originalRequest?.url === "/auth/me" &&
-      typeof document !== "undefined" &&
-      !document.cookie.includes("ananta_session");
+    const originalRequest = error.config as (typeof error.config & { _retry?: boolean });
+    const requestPath = originalRequest?.url?.split("?")[0];
 
     if (
       error.response?.status === 401 &&
-      !isNoSession &&
       !originalRequest._retry &&
-      originalRequest.url !== "/auth/refresh" &&
-      originalRequest.url !== "/auth/login" &&
-      originalRequest.url !== "/auth/login/verify-2fa"
+      requestPath !== "/auth/refresh" &&
+      requestPath !== "/auth/refresh-token" &&
+      requestPath !== "/auth/logout" &&
+      requestPath !== "/auth/login" &&
+      requestPath !== "/auth/login/verify-2fa"
     ) {
-      if (isRefreshing) {
-        return new Promise(function (resolve, reject) {
-          const timeoutId = setTimeout(() => {
-            reject(new Error("Token refresh request timed out"));
-          }, 10000);
-          failedQueue.push({
-            resolve: (val) => {
-              clearTimeout(timeoutId);
-              resolve(val);
-            },
-            reject: (err) => {
-              clearTimeout(timeoutId);
-              reject(err);
-            },
+      originalRequest._retry = true;
+      const startsRefresh = refreshPromise === null;
+
+      if (!refreshPromise) {
+        refreshPromise = api.post("/auth/refresh")
+          .then(() => undefined)
+          .finally(() => {
+            refreshPromise = null;
           });
-        }).then(() => {
-          return api(originalRequest);
-        }).catch((err) => {
-          return Promise.reject(err);
-        });
       }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
-
       try {
-        await api.post("/auth/refresh");
-        processQueue(null);
+        await refreshPromise;
         return api(originalRequest);
       } catch (err) {
-        processQueue(err, null);
-        if (typeof window !== "undefined") {
+        // Only the request that started the refresh announces expiry. This avoids
+        // several simultaneous 401s triggering competing redirects.
+        if (startsRefresh && typeof window !== "undefined") {
           window.dispatchEvent(new Event("auth-expired"));
         }
         return Promise.reject(err);
-      } finally {
-        isRefreshing = false;
       }
     }
 

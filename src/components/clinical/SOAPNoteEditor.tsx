@@ -65,7 +65,8 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
   const [activePatientId, setActivePatientId] = useState<string>(patientId || "");
   const [activeClinicId, setActiveClinicId] = useState<string>(clinicId || "");
 
-  // Local Storage Autosave Draft Recovery State
+  // Draft recovery is intentionally memory-only; browser persistence of SOAP
+  // notes, medications, symptoms, and vitals is prohibited.
   const [recoveredDraft, setRecoveredDraft] = useState<any | null>(null);
   const [lastAutoSavedAt, setLastAutoSavedAt] = useState<string | null>(null);
   const draftStorageKey = `soap_draft_${appointmentId || initialEncounterId || patientId}`;
@@ -288,59 +289,20 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
     setPrintModalOpen(true);
   };
 
-  // Check LocalStorage for Unsaved Draft on Mount
+  // Remove legacy browser-stored SOAP drafts on first use.
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(draftStorageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.chiefComplaint) {
-          setRecoveredDraft(parsed);
-        }
-      }
+      localStorage.removeItem(draftStorageKey);
     } catch {
-      // Ignore storage read errors
+      // Storage may be disabled by the browser.
     }
+    setRecoveredDraft(null);
   }, [draftStorageKey]);
 
-  // Periodic LocalStorage Autosave (every 5 seconds if draft is active & unsigned)
+  // Keep drafts only in React memory until explicitly saved to the server.
   useEffect(() => {
-    if (isSigned || !chiefComplaint.trim()) return;
-
-    const timer = setInterval(() => {
-      try {
-        const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        const draftObj = {
-          chiefComplaint,
-          historyOfPresentIllness,
-          symptomsText,
-          bpSystolic,
-          bpDiastolic,
-          pulseRate,
-          spO2,
-          temperatureF,
-          physicalExamination,
-          primaryDiagnosis,
-          icdCode,
-          severity,
-          treatmentPlan,
-          prescriptions,
-          savedAt: new Date().toISOString(),
-        };
-        localStorage.setItem(draftStorageKey, JSON.stringify(draftObj));
-        setLastAutoSavedAt(nowStr);
-      } catch {
-        // Ignore storage write errors
-      }
-    }, 5000);
-
-    return () => clearInterval(timer);
-  }, [
-    isSigned, chiefComplaint, historyOfPresentIllness, symptomsText,
-    bpSystolic, bpDiastolic, pulseRate, spO2, temperatureF,
-    physicalExamination, primaryDiagnosis, icdCode, severity,
-    treatmentPlan, prescriptions, draftStorageKey
-  ]);
+    setLastAutoSavedAt(null);
+  }, [isSigned, chiefComplaint]);
 
   const handleApplyRecoveredDraft = () => {
     if (!recoveredDraft) return;
@@ -359,7 +321,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
     setTreatmentPlan(recoveredDraft.treatmentPlan || "");
     setPrescriptions(recoveredDraft.prescriptions || []);
     setRecoveredDraft(null);
-    setMessage({ type: "success", text: "Recovered unsaved draft from local storage" });
+    setMessage({ type: "success", text: "Recovered unsaved draft" });
   };
 
   const handleDiscardRecoveredDraft = () => {
@@ -466,7 +428,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
         setCurrentNoteId(savedNote.id || savedNote._id);
       }
 
-      // Clear local storage draft after successful server save
+      // Clear any legacy browser draft after successful server save.
       try { localStorage.removeItem(draftStorageKey); } catch {}
 
       setMessage({ type: "success", text: "Draft SOAP note saved successfully" });

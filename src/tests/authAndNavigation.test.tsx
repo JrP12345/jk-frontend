@@ -81,4 +81,84 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
     expect(hasRoutePermission("/dashboard/audit", "receptionist", [])).toBe(false);
     expect(hasRoutePermission("/dashboard/audit", "patient", [])).toBe(false);
   });
+
+  it("clears the auth loading state when refresh expiry is reported", () => {
+    vi.spyOn(api, "post").mockResolvedValueOnce({ data: { success: true } } as any);
+    useAuthStore.setState({
+      user: null,
+      isAuthenticated: false,
+      isLoading: true,
+    });
+
+    window.dispatchEvent(new Event("auth-expired"));
+
+    expect(useAuthStore.getState()).toMatchObject({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+    });
+    expect(api.post).toHaveBeenCalledWith("/auth/logout");
+  });
+
+  it("strictly denies guest role from all dashboard routes", () => {
+    expect(hasRoutePermission("/dashboard", "guest", ["CREATE_APPOINTMENTS"])).toBe(false);
+    expect(hasRoutePermission("/dashboard/patient-portal", "guest", ["CREATE_APPOINTMENTS"])).toBe(false);
+    expect(hasRoutePermission("/dashboard/appointments", "guest", ["CREATE_APPOINTMENTS"])).toBe(false);
+    expect(hasRoutePermission("/dashboard/settings", "guest", ["CREATE_APPOINTMENTS"])).toBe(false);
+  });
+
+  it("never authenticates guest session in authStore", async () => {
+    // 1. checkAuth rejecting guest
+    vi.spyOn(api, "get").mockResolvedValueOnce({
+      data: {
+        success: true,
+        data: {
+          user: {
+            id: "guest-123",
+            name: "Guest Visitor",
+            email: "guest@example.com",
+            role: "guest",
+            permissions: ["CREATE_APPOINTMENTS"],
+          },
+        },
+      },
+    } as any);
+
+    await useAuthStore.getState().checkAuth();
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(useAuthStore.getState().user).toBeNull();
+
+    // 2. login rejecting guest
+    useAuthStore.getState().login({
+      id: "guest-456",
+      name: "Guest Two",
+      email: "guest2@example.com",
+      role: "guest" as any,
+      permissions: ["CREATE_APPOINTMENTS"],
+    } as any);
+
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(useAuthStore.getState().user).toBeNull();
+  });
+
+  it("authenticates patient via email OTP session payload", () => {
+    const patientUser = {
+      id: "patient-email-999",
+      name: "Radha Sharma",
+      email: "radha@example.com",
+      role: "patient",
+      authMethod: "email_otp",
+      permissions: ["VIEW_APPOINTMENTS", "VIEW_EHR"],
+    };
+
+    useAuthStore.getState().login(patientUser as any);
+
+    const state = useAuthStore.getState();
+    expect(state.isAuthenticated).toBe(true);
+    expect(state.user?.email).toBe("radha@example.com");
+    expect(state.user?.role).toBe("patient");
+    expect(hasRoutePermission("/dashboard/patient-portal", state.user!.role, state.user!.permissions)).toBe(true);
+  });
 });
+
+
