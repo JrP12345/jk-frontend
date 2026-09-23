@@ -199,6 +199,8 @@ export default function PublicLiveQueueTracker() {
   // Audio / Vibration Sensory Feedback Controls
   const [soundEnabled, setSoundEnabled] = useState(true);
   const prevStatusRef = useRef<string | null>(null);
+  const lastEtagRef = useRef<string | null>(null);
+  const consecutiveFailuresRef = useRef<number>(0);
 
   // Payment Modal State
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
@@ -325,13 +327,35 @@ export default function PublicLiveQueueTracker() {
     if (!appointmentId) return;
     try {
       if (!isBackground) setRefreshing(true);
-      const res = await api.get(`/public/track/${appointmentId}`, { headers: getTrackerHeaders() });
+      const headers: Record<string, string> = {
+        ...(getTrackerHeaders() as Record<string, string>),
+      };
+      if (lastEtagRef.current) {
+        headers["If-None-Match"] = lastEtagRef.current;
+      }
+
+      const res = await api.get(`/public/track/${appointmentId}`, {
+        headers,
+        validateStatus: (status) => (status >= 200 && status < 300) || status === 304,
+      });
+
+      if (res.status === 304) {
+        // Step 5.2: State unchanged; preserve local view and reset failure count
+        consecutiveFailuresRef.current = 0;
+        setLastUpdated(new Date());
+        return;
+      }
+
       if (res.data?.data) {
+        const etag = (res.headers?.etag || res.headers?.["etag"]) as string | undefined;
+        if (etag) lastEtagRef.current = etag;
         setData(res.data.data);
         setError(null);
         setLastUpdated(new Date());
+        consecutiveFailuresRef.current = 0;
       }
     } catch (err: any) {
+      consecutiveFailuresRef.current = Math.min(5, consecutiveFailuresRef.current + 1);
       if (!isBackground) {
         setError(err.response?.data?.message || "Unable to load live queue tracking. Link may be invalid or expired.");
       }
@@ -341,13 +365,46 @@ export default function PublicLiveQueueTracker() {
     }
   }, [appointmentId, getTrackerHeaders]);
 
+  // Step 5.2: WebSocket as primary delivery; slow jittered reconciliation poll; pause in hidden tabs; back off on errors
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    let cancelled = false;
+
+    const scheduleNextPoll = () => {
+      if (cancelled) return;
+      // Base reconciliation interval: 15s (WebSocket is primary)
+      const baseInterval = 15000;
+      // 0 - 5s random jitter to avoid thundering herd across mobile clients
+      const jitter = Math.floor(Math.random() * 5000);
+      // Exponential backoff multiplier based on consecutive failures (capped at 4x)
+      const backoffMultiplier = Math.min(4, Math.pow(1.5, consecutiveFailuresRef.current));
+      const delay = Math.round((baseInterval + jitter) * backoffMultiplier);
+
+      timeoutId = setTimeout(async () => {
+        if (!cancelled && typeof document !== "undefined" && document.visibilityState === "visible") {
+          await fetchTrackerData(true);
+        }
+        scheduleNextPoll();
+      }, delay);
+    };
+
+    // Initial load
     fetchTrackerData(false);
-    // Live poll every 5 seconds as fallback
-    const interval = setInterval(() => {
-      fetchTrackerData(true);
-    }, 5000);
-    return () => clearInterval(interval);
+    scheduleNextPoll();
+
+    // Pause polling when tab is hidden, resume immediately when returning to tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchTrackerData(true);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [fetchTrackerData]);
 
   // Real-time WebSocket connection to clinic updates
@@ -363,6 +420,10 @@ export default function PublicLiveQueueTracker() {
           wsHost = wsHost.replace("localhost", window.location.hostname).replace("127.0.0.1", window.location.hostname);
         }
         ws = new WebSocket(`${wsProto}//${wsHost}/api/queue/ws?clinicId=${clinicId}`);
+
+        ws.onopen = () => {
+          consecutiveFailuresRef.current = 0;
+        };
 
         ws.onmessage = (event) => {
           try {
@@ -383,8 +444,14 @@ export default function PublicLiveQueueTracker() {
           }
         };
 
+        ws.onclose = () => {
+          // Back off on disconnects
+          consecutiveFailuresRef.current = Math.min(4, consecutiveFailuresRef.current + 1);
+        };
+
         ws.onerror = (err) => {
           console.warn("Tracker WS warning:", err);
+          consecutiveFailuresRef.current = Math.min(4, consecutiveFailuresRef.current + 1);
         };
       } catch (wsErr) {
         console.warn("Could not initiate Tracker WS:", wsErr);
