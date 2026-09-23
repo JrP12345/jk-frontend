@@ -27,10 +27,35 @@ import {
   Select,
   useToast,
 } from "@/components/ui";
+import dynamic from "next/dynamic";
 import { PatientHeader } from "@/components/clinical/PatientHeader";
 import { PatientOverviewCards } from "@/components/clinical/PatientOverviewCards";
-import { PatientTimeline } from "@/components/ehr/PatientTimeline";
-import { PatientMedicalRecords } from "@/components/ehr/PatientMedicalRecords";
+
+const PatientTimeline = dynamic(
+  () => import("@/components/ehr/PatientTimeline").then((mod) => mod.PatientTimeline),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-8 text-center text-text-muted space-y-2">
+        <Spinner size="md" className="mx-auto" />
+        <p className="text-xs">Loading EHR medical timeline...</p>
+      </div>
+    ),
+  }
+);
+
+const PatientMedicalRecords = dynamic(
+  () => import("@/components/ehr/PatientMedicalRecords").then((mod) => mod.PatientMedicalRecords),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-8 text-center text-text-muted space-y-2">
+        <Spinner size="md" className="mx-auto" />
+        <p className="text-xs">Loading health documents & records...</p>
+      </div>
+    ),
+  }
+);
 
 export default function PatientDetailPage() {
   const params = useParams();

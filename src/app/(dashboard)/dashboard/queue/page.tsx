@@ -28,14 +28,50 @@ import {
   BarChart,
   cn,
 } from "@/components/ui";
-import { UnifiedDocumentModal, UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
-import ThermalTokenSlipModal, { ThermalTokenSlipData } from "@/components/clinical/ThermalTokenSlipModal";
-import ClinicQrPosterModal from "@/components/dashboard/ClinicQrPosterModal";
-import { NurseVitalsModal } from "@/components/clinical/NurseVitalsModal";
-import DisruptionTriageModal from "@/components/dashboard/DisruptionTriageModal";
-import UpiPaymentModal from "@/components/billing/UpiPaymentModal";
-import { AbdmRegistrationModal } from "@/components/clinical/AbdmRegistrationModal";
-import { ClinicalDocumentGeneratorModal } from "@/components/clinical/ClinicalDocumentGeneratorModal";
+import dynamic from "next/dynamic";
+import type { UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
+import type { ThermalTokenSlipData } from "@/components/clinical/ThermalTokenSlipModal";
+
+const UnifiedDocumentModal = dynamic(
+  () => import("@/components/clinical/UnifiedDocumentModal").then((mod) => mod.UnifiedDocumentModal),
+  { ssr: false }
+);
+
+const ThermalTokenSlipModal = dynamic(
+  () => import("@/components/clinical/ThermalTokenSlipModal"),
+  { ssr: false }
+);
+
+const ClinicQrPosterModal = dynamic(
+  () => import("@/components/dashboard/ClinicQrPosterModal"),
+  { ssr: false }
+);
+
+const NurseVitalsModal = dynamic(
+  () => import("@/components/clinical/NurseVitalsModal").then((mod) => mod.NurseVitalsModal),
+  { ssr: false }
+);
+
+const DisruptionTriageModal = dynamic(
+  () => import("@/components/dashboard/DisruptionTriageModal"),
+  { ssr: false }
+);
+
+const UpiPaymentModal = dynamic(
+  () => import("@/components/billing/UpiPaymentModal"),
+  { ssr: false }
+);
+
+const AbdmRegistrationModal = dynamic(
+  () => import("@/components/clinical/AbdmRegistrationModal").then((mod) => mod.AbdmRegistrationModal),
+  { ssr: false }
+);
+
+const ClinicalDocumentGeneratorModal = dynamic(
+  () => import("@/components/clinical/ClinicalDocumentGeneratorModal").then((mod) => mod.ClinicalDocumentGeneratorModal),
+  { ssr: false }
+);
+
 import { playChimeSound, CHIME_OPTIONS, ChimeType, announcePatientToken, VoiceAnnounceLanguage } from "@/utils/audioChimes";
 import {
   Megaphone,

@@ -27,9 +27,7 @@ import {
   Checkbox,
   cn,
 } from "@/components/ui";
-import { PatientQueueTracker } from "@/components/clinical/PatientQueueTracker";
-import { PatientMedicalRecords } from "@/components/ehr/PatientMedicalRecords";
-import { AppointmentCalendarView } from "@/components/clinical/AppointmentCalendarView";
+import dynamic from "next/dynamic";
 import {
   RotateCw,
   Plus,
@@ -59,6 +57,45 @@ import {
   Lock,
   CalendarOff,
 } from "lucide-react";
+
+const AppointmentCalendarView = dynamic(
+  () => import("@/components/clinical/AppointmentCalendarView").then((mod) => mod.AppointmentCalendarView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-12 text-center text-text-muted space-y-3 bg-surface rounded-2xl border border-border">
+        <Spinner size="lg" className="mx-auto" />
+        <p className="text-xs font-semibold">Loading interactive schedule calendar...</p>
+      </div>
+    ),
+  }
+);
+
+const PatientMedicalRecords = dynamic(
+  () => import("@/components/ehr/PatientMedicalRecords").then((mod) => mod.PatientMedicalRecords),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-8 text-center text-text-muted space-y-2">
+        <Spinner size="md" className="mx-auto" />
+        <p className="text-xs">Loading health records...</p>
+      </div>
+    ),
+  }
+);
+
+const PatientQueueTracker = dynamic(
+  () => import("@/components/clinical/PatientQueueTracker").then((mod) => mod.PatientQueueTracker),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-6 text-center text-text-muted space-y-2 bg-surface rounded-2xl border border-border">
+        <Spinner size="sm" className="mx-auto" />
+        <p className="text-xs">Connecting to live queue status...</p>
+      </div>
+    ),
+  }
+);
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const BOOKING_STEPS = [
