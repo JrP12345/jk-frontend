@@ -86,16 +86,30 @@ self.addEventListener('fetch', (event) => {
 
   // HTML page navigations: Network-first with cache fallback
   if (request.mode === 'navigate') {
+    // Exclude tracker and authenticated clinical pages from service worker caching (Finding: Step 2.8)
+    const isSensitivePage =
+      url.pathname.startsWith('/track') ||
+      url.pathname.startsWith('/dashboard') ||
+      url.pathname.startsWith('/portal') ||
+      url.pathname.startsWith('/patient-portal') ||
+      url.pathname.startsWith('/settings') ||
+      url.pathname.startsWith('/admin') ||
+      url.pathname.startsWith('/reset-password') ||
+      url.pathname.startsWith('/verify-email');
+
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (response.status === 200) {
+          if (response.status === 200 && !isSensitivePage) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }
           return response;
         })
         .catch(async () => {
+          if (isSensitivePage) {
+            return new Response('You are offline. Sensitive clinical records are not cached for security.', { status: 503 });
+          }
           const cached = await caches.match(request);
           if (cached) return cached;
           const rootFallback = await caches.match('/');
@@ -103,5 +117,16 @@ self.addEventListener('fetch', (event) => {
         })
     );
     return;
+  }
+});
+
+// Clear sensitive caches during logout or when instructed by client
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'CLEAR_USER_CACHE') {
+    caches.keys().then((names) => {
+      return Promise.all(names.map((name) => caches.delete(name)));
+    }).then(() => {
+      console.log('[PWA SW] Sensitive caches purged on user logout');
+    });
   }
 });

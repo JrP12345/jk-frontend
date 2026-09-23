@@ -95,6 +95,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     } finally {
       if (typeof window !== "undefined") {
         document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        // Clear sensitive client caches during logout (Finding: Step 2.8)
+        if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({ action: "CLEAR_USER_CACHE" });
+        }
+        if ("caches" in window) {
+          caches.keys().then((names) => names.forEach((name) => caches.delete(name)));
+        }
+        sessionStorage.clear();
       }
       set({ user: null, isAuthenticated: false });
     }
