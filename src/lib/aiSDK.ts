@@ -34,6 +34,15 @@ export class ANANTAAISDK {
   private activeStreams: Map<string, AbortController> = new Map();
 
   /**
+   * Helper to retrieve CSRF token from document.cookie if set.
+   */
+  private getCsrfToken(): string | null {
+    if (typeof document === "undefined") return null;
+    const match = document.cookie.match(/(?:^|;\s*)(?:_csrf|ananta_csrf|csrf_token)=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+
+  /**
    * Synchronous query execution through the Enterprise AI Gateway.
    */
   async query(options: AIQueryOptions): Promise<AISDKResponse> {
@@ -43,6 +52,8 @@ export class ANANTAAISDK {
 
   /**
    * Token-by-token real-time Server-Sent Events (SSE) streaming.
+   * Uses cookie credentials (credentials: "include"), transparent 401 refresh/retry,
+   * CSRF protection, and AbortController lifecycle management.
    */
   async stream(
     options: AIQueryOptions,
@@ -54,19 +65,56 @@ export class ANANTAAISDK {
     const correlationId = `corr_sdk_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     this.activeStreams.set(correlationId, controller);
 
-    try {
-      const response = await fetch(`${getApiUrl()}/ai/gateway/stream`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${typeof window !== "undefined" ? localStorage.getItem("token") || "" : ""}`
-        },
-        body: JSON.stringify(options),
-        signal: controller.signal
-      });
+    const makeStreamRequest = async (isRetry = false): Promise<void> => {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+      };
+
+      const csrf = this.getCsrfToken();
+      if (csrf) {
+        headers["x-csrf-token"] = csrf;
+      }
+
+      let response: Response;
+      try {
+        response = await fetch(`${getApiUrl()}/ai/gateway/stream`, {
+          method: "POST",
+          headers,
+          credentials: "include", // Send HttpOnly session cookies (Finding: Step 3.1)
+          body: JSON.stringify(options),
+          signal: controller.signal,
+        });
+      } catch (fetchErr: any) {
+        if (fetchErr.name === "AbortError") {
+          console.log(`[ANANTA AI SDK] Stream ${correlationId} aborted.`);
+          return;
+        }
+        throw fetchErr;
+      }
+
+      // Transparent token refresh on 401 Unauthorized
+      if (response.status === 401 && !isRetry) {
+        console.warn(`[ANANTA AI SDK] 401 received on stream. Attempting session refresh...`);
+        try {
+          await api.post("/auth/refresh");
+          return await makeStreamRequest(true);
+        } catch (refreshErr) {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("auth-expired"));
+          }
+          throw new Error("Session expired. Please log in again.");
+        }
+      }
 
       if (!response.ok) {
-        throw new Error(`Stream request failed with status ${response.status}`);
+        const errorText = await response.text().catch(() => "");
+        let errorMsg = `Stream request failed with status ${response.status}`;
+        try {
+          const parsed = JSON.parse(errorText);
+          if (parsed.message) errorMsg = parsed.message;
+        } catch {}
+        throw new Error(errorMsg);
       }
 
       const reader = response.body?.getReader();
@@ -100,6 +148,10 @@ export class ANANTAAISDK {
           }
         }
       }
+    };
+
+    try {
+      await makeStreamRequest();
     } catch (err: any) {
       if (err.name === "AbortError") {
         console.log(`[ANANTA AI SDK] Stream ${correlationId} cancelled by user.`);
@@ -121,6 +173,18 @@ export class ANANTAAISDK {
       this.activeStreams.get(correlationId)?.abort();
       this.activeStreams.delete(correlationId);
     }
+  }
+
+  /**
+   * Cancels all active in-flight streams (e.g. on user logout, route navigation, or unmount).
+   */
+  cancelAllStreams(): void {
+    this.activeStreams.forEach((controller) => {
+      try {
+        controller.abort();
+      } catch {}
+    });
+    this.activeStreams.clear();
   }
 
   /**

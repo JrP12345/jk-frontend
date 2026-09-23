@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import api from "@/lib/api";
 import { useClinicStore } from "./clinicStore";
+import { aiSDK } from "@/lib/aiSDK";
 
 export type Role = "root" | "admin" | "doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier" | "patient" | "family_member";
 
@@ -93,6 +94,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (err) {
       // ignore
     } finally {
+      aiSDK.cancelAllStreams();
       if (typeof window !== "undefined") {
         document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         // Clear sensitive client caches during logout (Finding: Step 2.8)
