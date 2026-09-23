@@ -292,7 +292,7 @@ export default function PharmacyPage() {
         if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
           wsHost = wsHost.replace("localhost", window.location.hostname).replace("127.0.0.1", window.location.hostname);
         }
-        ws = new WebSocket(`${wsProto}//${wsHost}/api/queue/ws?clinicId=${selectedClinicId}`);
+        ws = new WebSocket(`${wsProto}//${wsHost}/api/clinical/ws?clinicId=${selectedClinicId}`);
 
         ws.onmessage = (event) => {
           try {

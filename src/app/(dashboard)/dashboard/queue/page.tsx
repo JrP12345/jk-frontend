@@ -1042,7 +1042,7 @@ export default function QueuePage() {
         if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
           wsHost = wsHost.replace("localhost", window.location.hostname).replace("127.0.0.1", window.location.hostname);
         }
-        ws = new WebSocket(`${wsProto}//${wsHost}/api/queue/ws?clinicId=${selectedClinic}`);
+        ws = new WebSocket(`${wsProto}//${wsHost}/api/clinical/ws?clinicId=${selectedClinic}`);
 
         ws.onmessage = (event) => {
           try {
