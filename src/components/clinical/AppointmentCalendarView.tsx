@@ -139,10 +139,11 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
               <p className="text-xs text-text-muted italic py-8 col-span-full text-center">No appointments scheduled for this day.</p>
             ) : (
               (appointmentsByDate[getLocalDateKey(currentDate)] || []).map((appt) => (
-                <div
+                <button
+                  type="button"
                   key={appt.id}
                   onClick={() => { setSelectedAppt(appt); if (onSelectAppointment) onSelectAppointment(appt); }}
-                  className="p-3 bg-surface rounded-xl border border-border hover:border-primary-500 cursor-pointer transition-all space-y-1.5 shadow-2xs"
+                  className="w-full text-left p-3 bg-surface rounded-xl border border-border hover:border-primary-500 cursor-pointer transition-all space-y-1.5 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                 >
                   <div className="flex justify-between items-center font-bold text-text text-xs">
                     <span>Token #{appt.tokenNumber}</span>
@@ -157,7 +158,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
                     </Badge>
                     <span className="text-text-muted font-medium">Dr. {appt.doctorId?.name}</span>
                   </div>
-                </div>
+                </button>
               ))
             )}
           </div>
@@ -191,10 +192,11 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
                     <span className="text-[10px] text-text-muted italic block pt-2 text-center">No appointments</span>
                   ) : (
                     dayAppts.map((appt) => (
-                      <div
+                      <button
+                        type="button"
                         key={appt.id}
                         onClick={() => { setSelectedAppt(appt); if (onSelectAppointment) onSelectAppointment(appt); }}
-                        className="p-1.5 bg-surface rounded-lg border border-border/80 text-[11px] shadow-2xs hover:border-primary-500 cursor-pointer transition-all space-y-1"
+                        className="w-full text-left p-1.5 bg-surface rounded-lg border border-border/80 text-[11px] shadow-2xs hover:border-primary-500 cursor-pointer transition-all space-y-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500"
                       >
                         <div className="flex justify-between items-center font-bold text-text">
                           <span>#{appt.tokenNumber}</span>
@@ -209,7 +211,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
                           </Badge>
                           <span className="text-[9px] text-text-muted truncate max-w-[60px]">Dr. {appt.doctorId?.name}</span>
                         </div>
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>
@@ -254,13 +256,14 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
 
                 <div className="space-y-1">
                   {dayAppts.slice(0, 2).map((appt) => (
-                    <div
+                    <button
+                      type="button"
                       key={appt.id}
                       onClick={() => { setSelectedAppt(appt); if (onSelectAppointment) onSelectAppointment(appt); }}
-                      className="text-[10px] p-1 bg-surface rounded border border-border/60 truncate font-semibold cursor-pointer hover:border-primary-500"
+                      className="w-full text-left text-[10px] p-1 bg-surface rounded border border-border/60 truncate font-semibold cursor-pointer hover:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500"
                     >
                       #{appt.tokenNumber} {appt.patientId?.userId?.name || "Patient"}
-                    </div>
+                    </button>
                   ))}
                   {dayAppts.length > 2 && (
                     <span className="text-[9px] text-text-muted font-bold block text-center">+ {dayAppts.length - 2} more</span>

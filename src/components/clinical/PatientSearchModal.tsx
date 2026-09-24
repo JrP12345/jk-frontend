@@ -148,10 +148,11 @@ export function PatientSearchModal({ isOpen, onClose, patientId }: PatientSearch
         <div className="max-h-96 overflow-y-auto space-y-2 pt-2">
           {results.length > 0 ? (
             results.map((item, idx) => (
-              <div
+              <button
+                type="button"
                 key={item.id}
                 onClick={() => handleSelectResult(item)}
-                className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                   selectedIndex === idx
                     ? "bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-sm"
                     : "bg-surface border-border hover:bg-surface-hover"
@@ -167,7 +168,7 @@ export function PatientSearchModal({ isOpen, onClose, patientId }: PatientSearch
                   </span>
                 </div>
                 <p className="text-xs text-text-secondary line-clamp-2">{item.snippet}</p>
-              </div>
+              </button>
             ))
           ) : query ? (
             !loading && <EmptyState title="No clinical records found" description={`No search results matching "${query}"`} />

@@ -169,6 +169,8 @@ export default function UpiPaymentModal({
       onClose={onClose}
       title="Counter-Top Dynamic BharatPe/NPCI UPI Settlement"
       size="lg"
+      loading={submitting}
+      loadingText="Recording and settling payment..."
     >
       <div className="space-y-6">
         {paidSuccess ? (

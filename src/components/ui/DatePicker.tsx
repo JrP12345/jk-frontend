@@ -531,10 +531,14 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             type="button"
             disabled={disabled}
             onClick={handleToggle}
+            aria-expanded={isOpen}
+            aria-haspopup="dialog"
+            aria-controls={`datepicker-portal-${id}`}
             className={cn(
               "w-full inline-flex items-center text-left font-normal transition-all duration-200 select-none cursor-pointer focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt",
               triggerSizes[size],
-              activeVariantClass
+              activeVariantClass,
+              isClearable && hasValue && !disabled && "pr-8"
             )}
           >
             <span className="shrink-0 text-text-muted [&>svg]:h-4 [&>svg]:w-4">
@@ -548,19 +552,21 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             <span className={cn("truncate flex-1 min-w-0 text-left font-medium", !displayString && "text-text-muted font-normal")}>
               {displayString || placeholder || defaultPlaceholder}
             </span>
-
-            {isClearable && hasValue && !disabled && (
-              <span
-                onClick={handleClear}
-                className="shrink-0 text-text-muted hover:text-text p-0.5 rounded hover:bg-surface-hover cursor-pointer transition-colors ml-auto"
-                title="Clear date"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </span>
-            )}
           </button>
+
+          {isClearable && hasValue && !disabled && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text p-1 rounded hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 cursor-pointer transition-colors"
+              aria-label="Clear date"
+              title="Clear date"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Portal Calendar Popover Panel */}

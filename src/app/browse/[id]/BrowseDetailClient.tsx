@@ -427,6 +427,21 @@ export default function BrowseDetailClient({
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
+  useEffect(() => {
+    if (lightboxIndex === null || !clinic?.images?.length) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setLightboxIndex(null);
+      } else if (e.key === "ArrowLeft") {
+        setLightboxIndex((prev) => (prev !== null ? (prev - 1 + clinic.images!.length) % clinic.images!.length : null));
+      } else if (e.key === "ArrowRight") {
+        setLightboxIndex((prev) => (prev !== null ? (prev + 1) % clinic.images!.length : null));
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxIndex, clinic?.images]);
+
   // Booking Modal State (2-Step Flow)
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingStep, setBookingStep] = useState<1 | 2>(1);
@@ -1555,6 +1570,8 @@ export default function BrowseDetailClient({
             : t("booking.patient_details", "Patient Details")
         }
         size="lg"
+        loading={bookingLoading}
+        loadingText={bookingProgressMessage || "Confirming appointment booking..."}
       >
         {/* Step Progress Bar */}
         <div className="flex items-center justify-between gap-3 mb-3">
@@ -2244,6 +2261,9 @@ export default function BrowseDetailClient({
       {/* Photo Gallery Lightbox Modal */}
       {lightboxIndex !== null && clinic.images && clinic.images.length > 0 && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo gallery"
           className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4 backdrop-blur-md animate-fade-in"
           onClick={() => setLightboxIndex(null)}
         >

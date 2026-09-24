@@ -186,10 +186,11 @@ export function FollowUpRecallRegister({
     <div className="space-y-4">
       {/* Metric Cards Banner */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <div
+        <button
+          type="button"
           onClick={() => setTimeframe("all")}
           className={cn(
-            "p-3.5 rounded-2xl border transition-all cursor-pointer",
+            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
             timeframe === "all"
               ? "bg-primary-500/15 border-primary-500/40 shadow-xs"
               : "bg-surface border-border/80 hover:bg-surface-hover"
@@ -201,12 +202,13 @@ export function FollowUpRecallRegister({
           </div>
           <div className="text-2xl font-black text-text">{metrics.totalCount}</div>
           <p className="text-[10px] text-text-muted">Total recorded review plans</p>
-        </div>
+        </button>
 
-        <div
+        <button
+          type="button"
           onClick={() => setTimeframe("today")}
           className={cn(
-            "p-3.5 rounded-2xl border transition-all cursor-pointer",
+            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500",
             timeframe === "today"
               ? "bg-amber-500/20 border-amber-500/50 shadow-xs"
               : "bg-surface border-border/80 hover:bg-surface-hover"
@@ -218,12 +220,13 @@ export function FollowUpRecallRegister({
           </div>
           <div className="text-2xl font-black text-amber-800 dark:text-amber-200">{metrics.dueTodayCount}</div>
           <p className="text-[10px] text-text-muted">Scheduled for consultation today</p>
-        </div>
+        </button>
 
-        <div
+        <button
+          type="button"
           onClick={() => setTimeframe("upcoming")}
           className={cn(
-            "p-3.5 rounded-2xl border transition-all cursor-pointer",
+            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
             timeframe === "upcoming"
               ? "bg-emerald-500/20 border-emerald-500/50 shadow-xs"
               : "bg-surface border-border/80 hover:bg-surface-hover"
@@ -235,12 +238,13 @@ export function FollowUpRecallRegister({
           </div>
           <div className="text-2xl font-black text-emerald-800 dark:text-emerald-200">{metrics.upcomingCount}</div>
           <p className="text-[10px] text-text-muted">Next 7 days scheduled reviews</p>
-        </div>
+        </button>
 
-        <div
+        <button
+          type="button"
           onClick={() => setTimeframe("overdue")}
           className={cn(
-            "p-3.5 rounded-2xl border transition-all cursor-pointer",
+            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500",
             timeframe === "overdue"
               ? "bg-rose-500/20 border-rose-500/50 shadow-xs"
               : "bg-surface border-border/80 hover:bg-surface-hover"
@@ -252,7 +256,7 @@ export function FollowUpRecallRegister({
           </div>
           <div className="text-2xl font-black text-rose-800 dark:text-rose-200">{metrics.overdueCount}</div>
           <p className="text-[10px] text-text-muted">Past scheduled date - needs recall</p>
-        </div>
+        </button>
       </div>
 
       {/* Filter and Search Bar */}

@@ -13,6 +13,9 @@ export interface DrawerProps {
   onClose: () => void;
   title?: string;
   subtitle?: string;
+  ariaLabel?: string;
+  ariaLabelledBy?: string;
+  ariaDescribedBy?: string;
   header?: React.ReactNode;
   position?: DrawerPosition;
   children: React.ReactNode;
@@ -38,6 +41,9 @@ export const Drawer = memo(function Drawer({
   onClose,
   title,
   subtitle,
+  ariaLabel,
+  ariaLabelledBy,
+  ariaDescribedBy,
   header,
   position = "right",
   children,
@@ -79,9 +85,9 @@ export const Drawer = memo(function Drawer({
     lockScroll();
     previousFocusRef.current = document.activeElement as HTMLElement;
 
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       const focusable = drawerRef.current?.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
       );
       if (focusable && focusable.length > 0) {
         focusable[0].focus();
@@ -91,6 +97,7 @@ export const Drawer = memo(function Drawer({
     }, 50);
 
     return () => {
+      clearTimeout(timer);
       unlockScroll();
       previousFocusRef.current?.focus();
     };
@@ -101,6 +108,7 @@ export const Drawer = memo(function Drawer({
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (loading) return; // Prevent dismissing drawer while critical action is in-flight
         onClose();
         return;
       }
@@ -108,7 +116,7 @@ export const Drawer = memo(function Drawer({
         if (!drawerRef.current) return;
         const focusable = Array.from(
           drawerRef.current.querySelectorAll<HTMLElement>(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
           )
         ).filter((el) => {
           const style = window.getComputedStyle(el);
@@ -139,7 +147,7 @@ export const Drawer = memo(function Drawer({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, loading]);
 
   if (!render || !mounted) return null;
 
@@ -158,7 +166,7 @@ export const Drawer = memo(function Drawer({
           "fixed inset-0 bg-black/60 backdrop-blur-md cursor-pointer transition-all duration-200",
           isExiting ? "animate-backdrop-out" : "animate-backdrop-in"
         )}
-        onClick={onClose}
+        onClick={loading ? undefined : onClose}
         aria-hidden="true"
       />
 
@@ -168,8 +176,9 @@ export const Drawer = memo(function Drawer({
           role="dialog"
           aria-modal="true"
           tabIndex={-1}
-          aria-labelledby={title ? "drawer-title" : undefined}
-          aria-describedby={subtitle ? "drawer-subtitle" : undefined}
+          aria-labelledby={ariaLabelledBy || (title ? "drawer-title" : undefined)}
+          aria-describedby={ariaDescribedBy || (subtitle ? "drawer-subtitle" : undefined)}
+          aria-label={ariaLabel || (!title && !ariaLabelledBy ? "Drawer" : undefined)}
           className={cn(
             "bg-surface/98 backdrop-blur-2xl border-border/80 shadow-2xl ring-1 ring-border/50 flex flex-col overflow-hidden transform-gpu focus:outline-none",
             getAnimationClass(),
@@ -213,7 +222,8 @@ export const Drawer = memo(function Drawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-10 h-10 sm:w-8 sm:h-8 rounded-xl bg-surface hover:bg-surface-hover border border-border flex items-center justify-center text-text-muted hover:text-text text-sm transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 shrink-0 min-h-[40px] sm:min-h-0 min-w-[40px] sm:min-w-0"
+                disabled={loading}
+                className="w-10 h-10 sm:w-8 sm:h-8 rounded-xl bg-surface hover:bg-surface-hover border border-border flex items-center justify-center text-text-muted hover:text-text text-sm transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 shrink-0 min-h-[40px] sm:min-h-0 min-w-[40px] sm:min-w-0 disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label="Close drawer"
               >
                 ✕

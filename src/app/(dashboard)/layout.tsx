@@ -179,6 +179,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [isLoading, user, router]);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileMenuOpen]);
+
   const handleLogout = async () => {
     await logout();
     router.push("/login?logout=1");
@@ -293,6 +304,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[45] md:hidden transition-opacity duration-300"
           onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
         />
       )}
 

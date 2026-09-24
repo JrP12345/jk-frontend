@@ -196,9 +196,11 @@ export default function MultiImageUpload({
         )}
 
         {values.length === 0 && (
-          <div
+          <button
+            type="button"
+            disabled={disabled}
             onClick={() => fileInputRef.current?.click()}
-            className="col-span-full py-8 flex flex-col items-center justify-center text-center cursor-pointer hover:opacity-80 transition-opacity"
+            className="col-span-full py-8 flex flex-col items-center justify-center text-center rounded-xl cursor-pointer hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="w-12 h-12 rounded-2xl bg-primary-500/10 text-primary-500 flex items-center justify-center mb-2">
               <ImageIcon className="w-6 h-6" />
@@ -207,7 +209,7 @@ export default function MultiImageUpload({
             <p className="text-xs text-text-muted mt-1 max-w-xs">
               Upload photos of your hospital/clinic reception, consultation rooms, operation theaters, and labs.
             </p>
-          </div>
+          </button>
         )}
       </div>
 

@@ -523,13 +523,16 @@ export default function JoinClinicQueuePage() {
                     const isSelected = selectedDoctorId === doc.doctorId;
 
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={doc.doctorId}
+                        disabled={isUnavailable}
+                        aria-pressed={isSelected}
                         onClick={() => {
                           if (!isUnavailable) setSelectedDoctorId(doc.doctorId);
                         }}
                         className={cn(
-                          "relative rounded-xl border p-3.5 transition-all text-left",
+                          "w-full relative rounded-xl border p-3.5 transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
                           isUnavailable
                             ? "bg-slate-100/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60 cursor-not-allowed"
                             : isSelected
@@ -591,7 +594,7 @@ export default function JoinClinicQueuePage() {
                             <span>Avg. {doc.consultationDuration || 15}m / consult</span>
                           </div>
                         )}
-                      </div>
+                      </button>
                     );
                   })}
                 </div>

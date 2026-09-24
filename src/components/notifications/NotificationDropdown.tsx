@@ -257,39 +257,44 @@ function NotificationRow({
 }) {
   return (
     <div
-      onClick={onClick}
-      className={`p-3.5 flex items-start gap-3 hover:bg-surface-hover transition-colors cursor-pointer group relative overflow-hidden ${
+      className={`relative group overflow-hidden border-b border-border/40 last:border-b-0 ${
         item.pinned ? "bg-amber-500/5 dark:bg-amber-500/10 border-l-2 border-l-amber-500" : !item.readAt ? "bg-primary-500/5 dark:bg-primary-500/10" : ""
       }`}
     >
-      {!item.readAt && (
-        <span className="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-1.5 shadow-xs shadow-primary-500/50" />
-      )}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <Badge variant={getSeverityBadgeVariant(item.severity)} size="sm">
-              {item.category}
-            </Badge>
-            {item.pinned && (
-              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded">
-                📌 Pinned
-              </span>
-            )}
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full text-left p-3.5 flex items-start gap-3 hover:bg-surface-hover transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+      >
+        {!item.readAt && (
+          <span className="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-1.5 shadow-xs shadow-primary-500/50" />
+        )}
+        <div className="flex-1 min-w-0 pr-16">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <Badge variant={getSeverityBadgeVariant(item.severity)} size="sm">
+                {item.category}
+              </Badge>
+              {item.pinned && (
+                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded">
+                  📌 Pinned
+                </span>
+              )}
+            </div>
+            <span className="text-[11px] font-medium text-text-muted shrink-0 group-hover:opacity-0 transition-opacity">
+              {formatTime(item.createdAt)}
+            </span>
           </div>
-          <span className="text-[11px] font-medium text-text-muted shrink-0 group-hover:opacity-0 transition-opacity">
-            {formatTime(item.createdAt)}
-          </span>
+          <p className={`text-xs text-text mt-1.5 leading-snug ${!item.readAt ? "font-bold" : "font-medium"}`}>
+            {item.title}
+          </p>
+          <p className="text-[11px] text-text-muted mt-1 line-clamp-2 leading-relaxed">
+            {item.message}
+          </p>
         </div>
-        <p className={`text-xs text-text mt-1.5 leading-snug ${!item.readAt ? "font-bold" : "font-medium"}`}>
-          {item.title}
-        </p>
-        <p className="text-[11px] text-text-muted mt-1 line-clamp-2 leading-relaxed">
-          {item.message}
-        </p>
-      </div>
+      </button>
 
-      {/* Hover Action Bar (Overlays timestamp cleanly without shifting container width) */}
+      {/* Action Bar (Overlays timestamp cleanly without shifting container width) */}
       <div className="absolute top-3 right-3 hidden group-hover:flex items-center gap-1 bg-surface px-1.5 py-0.5 rounded-lg border border-border/60 shadow-sm z-10">
         <button
           type="button"
@@ -298,6 +303,7 @@ function NotificationRow({
             onTogglePin();
           }}
           title={item.pinned ? "Unpin notification" : "Pin notification"}
+          aria-label={item.pinned ? "Unpin notification" : "Pin notification"}
           className={`p-1 rounded cursor-pointer transition-colors text-xs ${
             item.pinned ? "text-amber-500 font-bold" : "text-text-muted hover:text-amber-500"
           }`}
@@ -311,6 +317,7 @@ function NotificationRow({
             onSnooze();
           }}
           title="Snooze for 1 hour"
+          aria-label="Snooze notification for 1 hour"
           className="p-1 text-text-muted hover:text-primary-500 rounded text-xs cursor-pointer transition-colors"
         >
           ⏰
@@ -323,6 +330,7 @@ function NotificationRow({
               onMarkRead();
             }}
             title="Mark as read"
+            aria-label="Mark notification as read"
             className="p-1 text-text-muted hover:text-primary-500 rounded cursor-pointer transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

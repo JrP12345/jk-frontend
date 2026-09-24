@@ -706,12 +706,13 @@ export default function PublicLiveQueueTracker() {
           <div className="flex items-center gap-2">
             {/* Audio chime toggle */}
             <button
+              type="button"
               onClick={() => {
                 setSoundEnabled(!soundEnabled);
                 if (!soundEnabled) playChimeSound();
               }}
               className={cn(
-                "p-2.5 rounded-xl border transition-colors cursor-pointer text-xs min-h-[40px] min-w-[40px] flex items-center justify-center",
+                "p-2.5 rounded-xl border transition-colors cursor-pointer text-xs min-h-[40px] min-w-[40px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
                 soundEnabled
                   ? "bg-primary-500/10 border-primary-500/30 text-primary-600 dark:text-primary-400"
                   : "bg-surface border-border/70 text-text-muted hover:text-text"
@@ -723,9 +724,10 @@ export default function PublicLiveQueueTracker() {
             </button>
 
             <button
+              type="button"
               onClick={() => fetchTrackerData(false)}
               disabled={refreshing}
-              className="p-2.5 rounded-xl bg-surface border border-border/70 hover:bg-surface-alt transition-colors text-text-muted hover:text-text cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center"
+              className="p-2.5 rounded-xl bg-surface border border-border/70 hover:bg-surface-alt transition-colors text-text-muted hover:text-text cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               title="Refresh Queue"
               aria-label="Refresh Queue Data"
             >

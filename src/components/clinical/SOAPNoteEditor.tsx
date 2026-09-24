@@ -836,14 +836,15 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                       <div className="p-2.5 text-center text-text-muted">Searching catalog...</div>
                     ) : (
                       medicineResults.map((m) => (
-                        <div
+                        <button
+                          type="button"
                           key={m.id || m._id}
                           onClick={() => {
                             setMedName(`${m.name} (${m.genericName})`);
                             setSelectedMedStock(m.stockQuantity);
                             setShowMedDropdown(false);
                           }}
-                          className="p-2.5 hover:bg-surface-hover cursor-pointer flex justify-between items-center transition-colors"
+                          className="w-full text-left p-2.5 hover:bg-surface-hover cursor-pointer flex justify-between items-center transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500"
                         >
                           <div>
                             <span className="font-bold text-text block">{m.name}</span>
@@ -853,7 +854,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                             <span className="text-xs font-bold text-primary-600 dark:text-primary-400">₹{m.price}</span>
                             <span className="text-[10px] text-text-muted block">Stock: {m.stockQuantity}</span>
                           </div>
-                        </div>
+                        </button>
                       ))
                     )}
                   </div>
@@ -920,7 +921,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
       </Modal>
 
       {/* Amend Note Modal */}
-      <Modal isOpen={amendOpen} onClose={() => setAmendOpen(false)} title="Amend Signed Clinical Note">
+      <Modal isOpen={amendOpen} onClose={() => setAmendOpen(false)} title="Amend Signed Clinical Note" loading={submittingAmend}>
         <form onSubmit={handleAmendSubmit} className="space-y-4">
           <Textarea
             label="Reason for Amendment *"

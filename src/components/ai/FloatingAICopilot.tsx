@@ -436,23 +436,30 @@ export function FloatingAICopilot() {
               {sessions.map((s) => (
                 <div
                   key={s.id}
-                  onClick={() => {
-                    loadSessionMessages(s.id);
-                    setShowSessionSelector(false);
-                  }}
-                  className={`flex items-center justify-between px-2.5 py-1 rounded-lg text-xs cursor-pointer transition-colors ${
+                  className={`flex items-center justify-between rounded-lg text-xs transition-colors overflow-hidden ${
                     s.id === activeSessionId
                       ? "bg-primary/10 text-primary font-medium"
                       : "hover:bg-surface-hover text-text-muted hover:text-text"
                   }`}
                 >
-                  <span className="truncate max-w-[240px]">{s.title}</span>
                   <button
+                    type="button"
+                    onClick={() => {
+                      loadSessionMessages(s.id);
+                      setShowSessionSelector(false);
+                    }}
+                    className="flex-1 text-left px-2.5 py-1 truncate max-w-[240px] cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  >
+                    {s.title}
+                  </button>
+                  <button
+                    type="button"
                     onClick={(e) => handleDeleteSession(s.id, e)}
                     title="Archive chat"
-                    className="text-text-muted hover:text-danger p-0.5 rounded transition-colors"
+                    aria-label={`Archive ${s.title}`}
+                    className="text-text-muted hover:text-danger p-1 mr-1 rounded transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger"
                   >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
@@ -23,6 +23,17 @@ export default function MarketplaceNavbar() {
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMobileMenuOpen]);
 
   const navigateTo = (path: string) => {
     setIsMobileMenuOpen(false);
@@ -95,8 +106,11 @@ export default function MarketplaceNavbar() {
           <LanguageSwitcher variant="minimal" />
           <ModeSwitcher />
           <button
+            type="button"
             onClick={toggleMobileMenu}
-            className="p-2.5 text-text-secondary hover:text-text focus:outline-none rounded-xl hover:bg-surface-hover transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-nav-drawer"
+            className="p-2.5 text-text-secondary hover:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-xl hover:bg-surface-hover transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
             aria-label="Toggle Menu"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -116,8 +130,9 @@ export default function MarketplaceNavbar() {
           <div
             className="md:hidden fixed inset-0 top-16 bg-black/50 backdrop-blur-xs z-30"
             onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
           />
-          <div className="md:hidden absolute top-16 left-0 right-0 border-b border-border bg-surface/98 backdrop-blur-xl shadow-xl z-40 overflow-hidden animate-slide-down">
+          <div id="mobile-nav-drawer" className="md:hidden absolute top-16 left-0 right-0 border-b border-border bg-surface/98 backdrop-blur-xl shadow-xl z-40 overflow-hidden animate-slide-down">
           <div className="p-5 space-y-4 flex flex-col">
             <Link 
               href="/browse"

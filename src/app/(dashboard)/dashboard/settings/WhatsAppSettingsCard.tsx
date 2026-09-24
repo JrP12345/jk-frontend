@@ -310,10 +310,12 @@ export default function WhatsAppSettingsCard({
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Shared Mode */}
-              <div
+              <button
+                type="button"
                 onClick={() => setMode("shared")}
+                aria-pressed={mode === "shared"}
                 className={cn(
-                  "p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1 relative",
+                  "p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1 relative text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
                   mode === "shared"
                     ? "border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500/30"
                     : "border-border/80 bg-surface hover:bg-surface-alt/50"
@@ -334,13 +336,15 @@ export default function WhatsAppSettingsCard({
                 <span className="inline-block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
                   Default Platform
                 </span>
-              </div>
+              </button>
 
               {/* Dedicated WABA Mode */}
-              <div
+              <button
+                type="button"
                 onClick={() => setMode("dedicated")}
+                aria-pressed={mode === "dedicated"}
                 className={cn(
-                  "p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1 relative",
+                  "p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1 relative text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
                   mode === "dedicated"
                     ? "border-primary-500 bg-primary-500/5 ring-1 ring-primary-500/30"
                     : "border-border/80 bg-surface hover:bg-surface-alt/50"
@@ -361,13 +365,15 @@ export default function WhatsAppSettingsCard({
                 <span className="inline-block text-[10px] font-semibold text-primary-600 dark:text-primary-400 mt-1">
                   Enterprise Custom
                 </span>
-              </div>
+              </button>
 
               {/* Disabled Mode */}
-              <div
+              <button
+                type="button"
                 onClick={() => setMode("disabled")}
+                aria-pressed={mode === "disabled"}
                 className={cn(
-                  "p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1 relative",
+                  "p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1 relative text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500",
                   mode === "disabled"
                     ? "border-amber-500 bg-amber-500/5 ring-1 ring-amber-500/30"
                     : "border-border/80 bg-surface hover:bg-surface-alt/50"
@@ -388,7 +394,7 @@ export default function WhatsAppSettingsCard({
                 <span className="inline-block text-[10px] font-semibold text-amber-600 dark:text-amber-400 mt-1">
                   No Outbound
                 </span>
-              </div>
+              </button>
             </div>
 
             {/* Dedicated Credentials Sub-Form */}
@@ -670,11 +676,13 @@ export default function WhatsAppSettingsCard({
             ].map((pack) => {
               const isSelected = selectedPack === pack.id;
               return (
-                <div
+                <button
+                  type="button"
                   key={pack.id}
                   onClick={() => setSelectedPack(pack.id)}
+                  aria-pressed={isSelected}
                   className={cn(
-                    "p-4 rounded-2xl border cursor-pointer transition-all relative flex flex-col justify-between space-y-3",
+                    "p-4 rounded-2xl border cursor-pointer transition-all relative flex flex-col justify-between space-y-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
                     isSelected
                       ? "border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/40 shadow-sm"
                       : "border-border/80 bg-surface-alt/40 hover:bg-surface-alt"
@@ -698,7 +706,7 @@ export default function WhatsAppSettingsCard({
                     </p>
                   </div>
 
-                  <div className="pt-2 border-t border-border/60">
+                  <div className="pt-2 border-t border-border/60 w-full">
                     <div className="flex items-center justify-between">
                       <span className="text-base font-bold text-text">{pack.price}</span>
                       <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
@@ -709,7 +717,7 @@ export default function WhatsAppSettingsCard({
                       {pack.volume}
                     </span>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

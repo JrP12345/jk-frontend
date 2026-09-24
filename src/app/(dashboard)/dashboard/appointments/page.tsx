@@ -1386,6 +1386,8 @@ export default function AppointmentsPage() {
         title="Schedule Clinical Appointment"
         description="Book a patient consultation, select practitioner time slot, and reserve queue token."
         size="lg"
+        loading={submitting}
+        loadingText="Reserving appointment slot & issuing token..."
       >
         <div className="space-y-5">
           {/* Stepper Progress */}

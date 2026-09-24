@@ -18,6 +18,9 @@ export interface ModalProps {
   onClose: () => void;
   title?: string;
   description?: string;
+  ariaLabel?: string;
+  ariaLabelledBy?: string;
+  ariaDescribedBy?: string;
   header?: ReactNode;
   size?: ModalSize;
   children: ReactNode;
@@ -47,6 +50,9 @@ export default function Modal({
   onClose,
   title,
   description,
+  ariaLabel,
+  ariaLabelledBy,
+  ariaDescribedBy,
   header,
   size = "md",
   children,
@@ -99,9 +105,9 @@ export default function Modal({
   useEffect(() => {
     if (open) {
       previousFocusRef.current = document.activeElement as HTMLElement;
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
         );
         if (focusable && focusable.length > 0) {
           focusable[0].focus();
@@ -109,16 +115,19 @@ export default function Modal({
           modalRef.current?.focus();
         }
       }, 50);
-    } else if (!open && previousFocusRef.current) {
-      previousFocusRef.current.focus();
+      return () => {
+        clearTimeout(timer);
+        previousFocusRef.current?.focus();
+      };
     }
   }, [open]);
 
-  // Keyboard navigation & escape listener
+  // Keyboard navigation & safe escape listener
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (loading) return; // Prevent dismissing modal while critical transaction is in-flight
         onClose();
         return;
       }
@@ -126,7 +135,7 @@ export default function Modal({
         if (!modalRef.current) return;
         const focusable = Array.from(
           modalRef.current.querySelectorAll<HTMLElement>(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
           )
         ).filter((el) => {
           const style = window.getComputedStyle(el);
@@ -156,7 +165,7 @@ export default function Modal({
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
+  }, [open, onClose, loading]);
 
   if (!render || !mounted) return null;
 
@@ -170,7 +179,7 @@ export default function Modal({
           "absolute inset-0 bg-black/60 backdrop-blur-md cursor-pointer transition-all duration-200",
           isExiting ? "animate-backdrop-out" : "animate-backdrop-in"
         )}
-        onClick={closeOnOverlay ? onClose : undefined}
+        onClick={closeOnOverlay && !loading ? onClose : undefined}
         aria-hidden="true"
       />
 
@@ -180,8 +189,9 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
-        aria-labelledby={title ? "modal-title" : undefined}
-        aria-describedby={description ? "modal-desc" : undefined}
+        aria-labelledby={ariaLabelledBy || (title ? "modal-title" : undefined)}
+        aria-describedby={ariaDescribedBy || (description ? "modal-desc" : undefined)}
+        aria-label={ariaLabel || (!title && !ariaLabelledBy ? "Dialog" : undefined)}
         className={cn(
           "relative w-full bg-surface/98 backdrop-blur-2xl rounded-t-3xl sm:rounded-2xl shadow-2xl border border-border/80 ring-1 ring-border/50 flex flex-col focus:outline-none overflow-hidden max-h-[92vh] sm:max-h-[90vh] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-0 transform-gpu before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/40 before:to-transparent",
           isExiting ? "animate-sheet-out" : "animate-sheet-in",
@@ -255,7 +265,8 @@ export default function Modal({
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-2 right-2 sm:top-3 sm:right-3 w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-xl cursor-pointer text-text-muted hover:text-text hover:bg-surface-hover active:scale-95 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 z-20"
+            disabled={loading}
+            className="absolute top-2 right-2 sm:top-3 sm:right-3 w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-xl cursor-pointer text-text-muted hover:text-text hover:bg-surface-hover active:scale-95 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 z-20 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label="Close modal"
           >
             <svg className="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2}>

@@ -35,7 +35,15 @@ const ConfirmDialog = memo(function ConfirmDialog({
   children,
 }: ConfirmDialogProps) {
   return (
-    <Modal open={open} onClose={onClose} size="sm">
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="sm"
+      loading={loading}
+      title={title}
+      ariaDescribedBy={description ? "confirm-dialog-desc" : undefined}
+      showCloseButton={!loading}
+    >
       <div className="space-y-3.5 select-none">
         {/* Header Icon + Title & Description in tight alignment */}
         <div className="flex items-start gap-3.5">
@@ -63,8 +71,8 @@ const ConfirmDialog = memo(function ConfirmDialog({
           </div>
 
           <div className="flex-1 min-w-0 pt-0.5">
-            <h3 className="text-sm sm:text-base font-semibold text-text tracking-tight">{title}</h3>
-            {description && <p className="text-xs text-text-secondary mt-1 leading-relaxed">{description}</p>}
+            <h3 id="modal-title" className="text-sm sm:text-base font-semibold text-text tracking-tight">{title}</h3>
+            {description && <p id="confirm-dialog-desc" className="text-xs text-text-secondary mt-1 leading-relaxed">{description}</p>}
             {children && <div className="mt-2 text-xs text-text">{children}</div>}
           </div>
         </div>

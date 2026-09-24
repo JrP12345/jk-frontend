@@ -481,11 +481,14 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
                               const isChecked = isProtectedAdminPerm || matrixPermissions.includes(perm.code);
 
                               return (
-                                <div
+                                <button
+                                  type="button"
+                                  role="checkbox"
+                                  aria-checked={isChecked}
                                   key={perm.code}
                                   onClick={() => handleToggleMatrixPermission(perm.code)}
                                   className={cn(
-                                    "p-3 rounded-xl border transition-all cursor-pointer select-none relative overflow-hidden",
+                                    "w-full text-left p-3 rounded-xl border transition-all cursor-pointer select-none relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
                                     isProtectedAdminPerm
                                       ? "bg-amber-500/10 border-amber-500/40 text-text shadow-2xs"
                                       : isChecked
@@ -520,7 +523,7 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
                                         )}
                                       </div>
                                   </div>
-                                </div>
+                                </button>
                               );
                             })}
                           </div>
@@ -795,7 +798,10 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
                       {catPerms.map((perm) => {
                         const isChecked = newRolePermissions.includes(perm.code);
                         return (
-                          <div
+                          <button
+                            type="button"
+                            role="checkbox"
+                            aria-checked={isChecked}
                             key={perm.code}
                             onClick={() => {
                               if (isChecked) {
@@ -804,7 +810,7 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
                                 setNewRolePermissions([...newRolePermissions, perm.code]);
                               }
                             }}
-                            className={`p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
+                            className={`w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                               isChecked
                                 ? "bg-primary-500/10 border-primary-500/40 text-text shadow-2xs font-semibold"
                                 : "bg-surface/60 border-border/60 text-text-muted hover:border-border"
@@ -821,7 +827,7 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
                                 <p className="font-mono text-[9px] text-text-muted">{perm.code}</p>
                               </div>
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
