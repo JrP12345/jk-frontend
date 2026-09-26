@@ -61,6 +61,7 @@ export function hasRoutePermission(
     const patientAllowed = [
       "/dashboard",
       "/dashboard/notifications",
+      "/dashboard/security",
       "/dashboard/appointments",
       "/dashboard/consultations",
       "/dashboard/teleconsultation",

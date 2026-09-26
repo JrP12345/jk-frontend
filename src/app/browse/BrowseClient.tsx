@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import {
@@ -120,13 +121,17 @@ function formatTimings(timingsStr: string | null | undefined): string {
 
 export default function BrowseClient({
   initialClinics = [],
+  initialLoaded = false,
 }: {
   initialClinics?: Clinic[];
+  initialLoaded?: boolean;
 } = {}) {
   const router = useRouter();
   const { t, setLanguage } = useTranslation();
   const [clinics, setClinics] = useState<Clinic[]>(initialClinics);
-  const [loading, setLoading] = useState(initialClinics.length === 0);
+  const [loading, setLoading] = useState(!initialLoaded && initialClinics.length === 0);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
@@ -197,14 +202,23 @@ export default function BrowseClient({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const fetchClinics = async () => {
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      if (initialLoaded || initialClinics.length > 0) return;
+    }
+    const controller = new AbortController();
+    const fetchClinics = async () => {
     try {
       setLoading(true);
+      setFetchError(null);
       const params = new URLSearchParams();
       if (debouncedSearch) params.append("search", debouncedSearch);
       if (selectedCity) params.append("city", selectedCity);
       if (selectedSpecialty) params.append("specialization", selectedSpecialty);
-      const res = await api.get(`/public/clinics${params.toString() ? `?${params}` : ""}`);
+      const res = await api.get(`/public/clinics${params.toString() ? `?${params}` : ""}`, { signal: controller.signal });
+      if (controller.signal.aborted) return;
       const data: Clinic[] = res.data.data || [];
 
       // Retain cumulative master list of cities
@@ -213,7 +227,18 @@ export default function BrowseClient({
         return Array.from(set).sort();
       });
 
-      const sorted = [...data].sort((a, b) => {
+      setClinics(data);
+    } catch (err) {
+      if (!controller.signal.aborted) setFetchError("We couldn't load clinics. Please try again.");
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+    };
+    void fetchClinics();
+    return () => controller.abort();
+  }, [debouncedSearch, selectedCity, selectedSpecialty, retryKey]);
+
+  const sortedClinics = useMemo(() => [...clinics].sort((a, b) => {
         if (sortBy === "name") return a.name.localeCompare(b.name);
         if (sortBy === "city") return a.city.localeCompare(b.city);
         if (sortBy === "fee_low") {
@@ -222,26 +247,7 @@ export default function BrowseClient({
           return feeA - feeB;
         }
         return 0;
-      });
-      setClinics(sorted);
-    } catch (err) {
-      console.error("Failed to fetch clinics", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isInitialMount = useRef(true);
-
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      if (initialClinics.length > 0) {
-        return;
-      }
-    }
-    fetchClinics();
-  }, [debouncedSearch, selectedCity, selectedSpecialty, sortBy]);
+      }), [clinics, sortBy]);
 
   const handleBookingAction = (e: React.MouseEvent, clinic: Clinic) => {
     e.stopPropagation();
@@ -353,7 +359,7 @@ export default function BrowseClient({
                     aria-pressed={isActive}
                     className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer min-h-[36px] flex items-center justify-center ${
                       isActive
-                        ? "bg-primary-600 text-white font-bold shadow-xs ring-1 ring-primary-500/20"
+                        ? "bg-primary-500/15 text-primary-600 dark:text-primary-400 font-bold ring-1 ring-primary-500/40"
                         : "bg-surface hover:bg-surface-hover text-text-secondary hover:text-text border border-border"
                     }`}
                   >
@@ -423,7 +429,8 @@ export default function BrowseClient({
       </section>
 
       {/* Main Listing Section */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-20">
+      <main aria-busy={loading} className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-20">
+        {fetchError && <Card className="p-4 mb-4 flex flex-wrap items-center justify-between gap-3"><p>{fetchError}</p><Button size="sm" onClick={() => setRetryKey((key) => key + 1)}>Try again</Button></Card>}
         {/* Minimalist Compact Results & Sort Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6 text-xs">
           <div className="flex flex-wrap items-center gap-2">
@@ -481,7 +488,7 @@ export default function BrowseClient({
         </div>
 
         {/* Clinics Listing Cards */}
-        {loading ? (
+        {loading && clinics.length === 0 ? (
           /* Geometry-matched Skeletons */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -530,7 +537,7 @@ export default function BrowseClient({
         ) : (
           /* Modern Healthcare Clinic Card Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {clinics.map((clinic) => {
+            {sortedClinics.map((clinic) => {
               const hasSingleDoctor = clinic.doctorCount === 1 && clinic.doctorsSummary && clinic.doctorsSummary.length === 1;
               const singleDoctor = hasSingleDoctor ? clinic.doctorsSummary![0] : null;
 
@@ -557,7 +564,7 @@ export default function BrowseClient({
                               className="text-sm sm:text-base font-bold text-text group-hover:text-primary-600 transition-colors truncate"
                               title={clinic.name}
                             >
-                              {clinic.name}
+                              <Link href={`/browse/${clinic.id}`} onClick={(event) => event.stopPropagation()} className="focus-visible:outline-none focus-visible:underline">{clinic.name}</Link>
                             </h3>
                           </div>
                           {clinic.organizationName && clinic.organizationName !== clinic.name && (

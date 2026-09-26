@@ -71,7 +71,7 @@ export function DashboardStatCards({
             <StatCard
               label="Outstanding"
               value={`₹${adminStats.outstanding.toLocaleString("en-IN")}`}
-              description="Pending balance"
+              description="Today's pending balance"
               icon={<AlertCircle className="w-5 h-5" />}
             />
             <StatCard

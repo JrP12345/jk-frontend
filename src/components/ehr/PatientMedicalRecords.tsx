@@ -2,14 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
+import PatientHistoryAccess from "./PatientHistoryAccess";
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, Tabs, Skeleton, SkeletonCardGrid } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "../clinical/UnifiedDocumentModal";
 
 interface PatientMedicalRecordsProps {
   patientId: string;
+  accessToken?: string | null;
 }
 
-export function PatientMedicalRecords({ patientId }: PatientMedicalRecordsProps) {
+export function PatientMedicalRecords({ patientId, accessToken }: PatientMedicalRecordsProps) {
+  const [localAccessToken, setRecordAccessToken] = useState<string | null>(null);
+  const recordAccessToken = accessToken === undefined ? localAccessToken : accessToken;
   const [notes, setNotes] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,26 +25,30 @@ export function PatientMedicalRecords({ patientId }: PatientMedicalRecordsProps)
   useEffect(() => {
     if (!patientId) return;
 
+    const controller = new AbortController();
+    setNotes([]); setInvoices([]); setRxModalOpen(false); setUnifiedDoc(null);
     const loadRecords = async () => {
       try {
         setLoading(true);
         const [notesRes, invRes] = await Promise.all([
-          api.get(`/patients/${patientId}/clinical-notes/history`).catch(() => ({ data: { data: [] } })),
-          api.get("/invoices").catch(() => ({ data: { data: [] } })),
+          api.get(`/patients/${patientId}/clinical-notes/history${recordAccessToken ? "?scope=all" : ""}`, { signal: controller.signal, headers: recordAccessToken ? { "X-Patient-Record-Access": recordAccessToken } : {} }).catch(() => ({ data: { data: [] } })),
+          api.get("/invoices", { signal: controller.signal }).catch(() => ({ data: { data: [] } })),
         ]);
 
+        if (controller.signal.aborted) return;
         setNotes(notesRes.data?.data?.notes || notesRes.data?.data || []);
         const allInvoices = invRes.data?.data || [];
         setInvoices(allInvoices.filter((i: any) => (i.patientId?.id || i.patientId?._id || i.patientId) === patientId));
       } catch (err) {
         console.error("Failed to load patient medical records:", err);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     loadRecords();
-  }, [patientId]);
+    return () => controller.abort();
+  }, [patientId, recordAccessToken]);
 
   const handleDownloadPrescription = (note: any) => {
     setUnifiedDoc({
@@ -66,7 +74,8 @@ export function PatientMedicalRecords({ patientId }: PatientMedicalRecordsProps)
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-6">
+        {accessToken === undefined && <PatientHistoryAccess patientId={patientId} token={recordAccessToken} onChange={setRecordAccessToken} />}
         <div className="border-b border-border pb-3 space-y-2">
           <Skeleton className="h-6 w-64 rounded" />
           <Skeleton className="h-4 w-96 rounded" />
@@ -83,9 +92,10 @@ export function PatientMedicalRecords({ patientId }: PatientMedicalRecordsProps)
 
   return (
     <div className="space-y-6">
+      {accessToken === undefined && <PatientHistoryAccess patientId={patientId} token={recordAccessToken} onChange={setRecordAccessToken} />}
       <div className="flex items-center justify-between border-b border-border pb-3">
         <div>
-          <h2 className="text-xl font-bold text-text">My Health Records & Documents</h2>
+          <h2 className="text-xl font-bold text-text">Health Records & Documents</h2>
           <p className="text-xs text-text-secondary">View signed consultation notes, Rx prescriptions, and payment receipts.</p>
         </div>
       </div>

@@ -232,7 +232,7 @@ export function EncounterWorkspace({
           </Card>
 
           {/* Tabs + Action row */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 min-w-0">
             <div className="flex gap-2">
               <Skeleton className="h-9 w-36 rounded-xl" />
               <Skeleton className="h-9 w-36 rounded-xl" />

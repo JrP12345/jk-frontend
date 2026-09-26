@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { todayRangeParams } from "@/lib/date";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import { hasAnyPermission } from "@/lib/permissions";
@@ -100,6 +101,7 @@ export default function ConsultationsPage() {
 
   const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
   const [queueList, setQueueList] = useState<OPDQueueAppointment[]>([]);
+  const [dailyCounts, setDailyCounts] = useState<{ appointments: number; byStatus: Record<string, number> } | null>(null);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
   const [doctors, setDoctors] = useState<DoctorUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,14 +128,16 @@ export default function ConsultationsPage() {
         const apptsRes = await api.get("/appointments");
         setQueueList(apptsRes.data?.data || apptsRes.data || []);
       } else {
-        const [apptsRes, patientsRes, staffRes] = await Promise.all([
-          api.get(selectedClinicId ? `/appointments?clinicId=${selectedClinicId}` : "/appointments"),
+        const [apptsRes, patientsRes, staffRes, summaryRes] = await Promise.all([
+          api.get(`/appointments?${todayRangeParams()}${selectedClinicId ? `&clinicId=${selectedClinicId}` : ""}`),
           api.get("/patients"),
           api.get(selectedClinicId ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff"),
+          api.get(`/analytics/daily-summary?${todayRangeParams()}${selectedClinicId ? `&clinicId=${selectedClinicId}` : ""}`),
         ]);
 
         const rawAppts = apptsRes.data?.data || apptsRes.data || [];
         setQueueList(rawAppts);
+        setDailyCounts(summaryRes.data?.data || null);
         setPatients(patientsRes.data?.data || []);
         setDoctors(staffRes.data?.data?.doctors || []);
       }
@@ -215,10 +219,10 @@ export default function ConsultationsPage() {
   });
 
   // KPI Calculations
-  const totalToday = queueList.length;
-  const checkedInCount = queueList.filter((a) => a.status === "checked-in").length;
-  const inConsultationCount = queueList.filter((a) => a.status === "in-consultation").length;
-  const completedCount = queueList.filter((a) => a.status === "completed").length;
+  const totalToday = dailyCounts?.appointments ?? queueList.length;
+  const checkedInCount = dailyCounts?.byStatus["checked-in"] ?? queueList.filter((a) => a.status === "checked-in").length;
+  const inConsultationCount = dailyCounts?.byStatus["in-consultation"] ?? queueList.filter((a) => a.status === "in-consultation").length;
+  const completedCount = dailyCounts?.byStatus.completed ?? queueList.filter((a) => a.status === "completed").length;
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">

@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo, useRef, startTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { vibrateFeedback } from "@/lib/haptics";
+import { localDateKey } from "@/lib/date";
 import { useAuthStore } from "@/store/authStore";
 import {
   Card,
@@ -421,6 +423,8 @@ export default function BrowseDetailClient({
 
   const [clinic, setClinic] = useState<ClinicDetail | null>(initialClinic);
   const [loading, setLoading] = useState(!initialClinic);
+  const [clinicError, setClinicError] = useState(false);
+  const [clinicRetry, setClinicRetry] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const { user, isAuthenticated, login } = useAuthStore();
   const router = useRouter();
@@ -484,21 +488,22 @@ export default function BrowseDetailClient({
   };
 
   useEffect(() => {
+    if (initialClinic?.id === id && clinicRetry === 0) { setClinic(initialClinic); setLoading(false); return; }
+    const controller = new AbortController();
+    setLoading(true); setClinicError(false);
     const fetchClinic = async () => {
       try {
-        const res = await api.get(`/public/clinics/${id}`);
-        setClinic(res.data.data);
+        const res = await api.get(`/public/clinics/${id}`, { signal: controller.signal });
+        if (!controller.signal.aborted) setClinic(res.data.data);
       } catch {
-        if (!initialClinic) {
-          toast({ title: "Error", description: "Failed to load clinic details", variant: "error", duration: 3000 });
-          router.push("/browse");
-        }
+        if (!controller.signal.aborted) setClinicError(true);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
-    fetchClinic();
-  }, [id, router, toast, initialClinic]);
+    void fetchClinic();
+    return () => controller.abort();
+  }, [id, initialClinic, clinicRetry]);
 
   // Auto-detect regional language from clinic location (unless user set an explicit manual preference)
   useEffect(() => {
@@ -639,7 +644,7 @@ export default function BrowseDetailClient({
     }
 
     const now = new Date();
-    const isToday = dateStr === now.toISOString().split("T")[0];
+    const isToday = dateStr === localDateKey(now);
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
     const duration = 15;
     const slots: Array<{ time: string; available: boolean }> = [];
@@ -717,7 +722,7 @@ export default function BrowseDetailClient({
     const timingsStr = doc.workingHours || doc.timings;
     const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
     const now = new Date();
-    let initialDate = now.toISOString().split("T")[0];
+    let initialDate = localDateKey(now);
 
     // Find the first valid upcoming day (skipping holidays)
     for (let i = 0; i <= 14; i++) {
@@ -791,7 +796,7 @@ export default function BrowseDetailClient({
 
     if (doctorSlotInfo?.slots && Array.isArray(doctorSlotInfo.slots) && doctorSlotInfo.slots.length > 0) {
       const now = new Date();
-      const isToday = selectedDate === now.toISOString().split("T")[0];
+      const isToday = selectedDate === localDateKey(now);
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
       return doctorSlotInfo.slots
@@ -846,7 +851,7 @@ export default function BrowseDetailClient({
 
   const handleBookAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = localDateKey();
     if (selectedDate === todayStr && selectedDoctor?.isOnlineBookingClosed) {
       toast({
         title: "Same-Day Online Booking Closed",
@@ -869,7 +874,7 @@ export default function BrowseDetailClient({
       doctorSlotInfo?.dayStartTime ||
       selectedDaySchedule?.intervals?.[0]?.start ||
       "09:00";
-    const mergedBookingTime = `${selectedDate}T${timeToUse}`;
+    const mergedBookingTime = new Date(`${selectedDate}T${timeToUse}`).toISOString();
 
     try {
       // Public booking is deliberately OTP-free. The resulting session is
@@ -946,6 +951,7 @@ export default function BrowseDetailClient({
       setIsBookingOpen(false);
       resetBookingForm();
       setTicketModalOpen(true);
+      vibrateFeedback("success");
 
       // Settle background payment preference without delaying user confirmation
       if (isPostConsultation || (!isFree && selectedDoctor?.fees && selectedDoctor.fees > 0 && paymentMode !== "online")) {
@@ -1045,6 +1051,10 @@ export default function BrowseDetailClient({
     `);
     printWindow.document.close();
   };
+
+  if (clinicError) {
+    return <div className="min-h-screen bg-surface-alt text-text"><MarketplaceNavbar /><main className="max-w-lg mx-auto px-4 pt-28"><Card><CardContent className="p-6 space-y-4"><h1 className="text-lg font-semibold">We couldn't load this clinic</h1><p className="text-sm text-text-muted">Check your connection and try again.</p><div className="flex flex-wrap gap-3"><Button onClick={() => setClinicRetry((value) => value + 1)}>Try again</Button><Link href="/browse" className="text-sm text-primary-600 py-2">Browse clinics</Link></div></CardContent></Card></main></div>;
+  }
 
   if (loading) {
     return (
@@ -1614,7 +1624,7 @@ export default function BrowseDetailClient({
               </div>
 
               {/* Online Booking Backlog Buffer Banner */}
-              {selectedDate === new Date().toISOString().slice(0, 10) && selectedDoctor?.isOnlineBookingClosed && (
+              {selectedDate === localDateKey() && selectedDoctor?.isOnlineBookingClosed && (
                 <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2">
                   <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" strokeWidth={1.75} />
                   <div className="space-y-0.5 text-[11px]">

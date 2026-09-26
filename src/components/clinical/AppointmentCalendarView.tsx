@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Badge, Button, Modal } from "@/components/ui";
 
 interface AppointmentItem {
@@ -32,6 +32,9 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("week");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedAppt, setSelectedAppt] = useState<AppointmentItem | null>(null);
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 639px)").matches) setViewMode("day");
+  }, []);
 
   const getLocalDateKey = (d: Date) => {
     const year = d.getFullYear();
@@ -71,7 +74,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
     const next = new Date(currentDate);
     if (viewMode === "day") next.setDate(next.getDate() - 1);
     else if (viewMode === "week") next.setDate(next.getDate() - 7);
-    else next.setMonth(next.getMonth() - 1);
+    else { next.setDate(1); next.setMonth(next.getMonth() - 1); }
     setCurrentDate(next);
   };
 
@@ -79,7 +82,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
     const next = new Date(currentDate);
     if (viewMode === "day") next.setDate(next.getDate() + 1);
     else if (viewMode === "week") next.setDate(next.getDate() + 7);
-    else next.setMonth(next.getMonth() + 1);
+    else { next.setDate(1); next.setMonth(next.getMonth() + 1); }
     setCurrentDate(next);
   };
 
@@ -95,10 +98,10 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
   };
 
   return (
-    <div className="space-y-4 bg-surface p-6 rounded-2xl border border-border">
+    <div className="space-y-4 bg-surface p-3 sm:p-6 rounded-2xl border border-border min-w-0">
       {/* Calendar Header & View Switcher */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-border pb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto">
           <Button variant="outline" size="sm" onClick={prevPeriod}>← Prev</Button>
           <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())}>Today</Button>
           <Button variant="outline" size="sm" onClick={nextPeriod}>Next →</Button>
@@ -109,15 +112,18 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
 
         <div className="flex items-center gap-1 bg-surface-alt p-1 rounded-xl border border-border">
           {(["day", "week", "month"] as const).map((mode) => (
-            <button
+            <Button
+              variant={viewMode === mode ? "primary" : "ghost"}
+              size="sm"
+              aria-pressed={viewMode === mode}
               key={mode}
               onClick={() => setViewMode(mode)}
-              className={`px-3 py-1 text-xs font-bold rounded-lg uppercase transition-all cursor-pointer ${
+              className={`min-h-11 px-3 text-xs font-bold rounded-lg uppercase transition-all cursor-pointer ${
                 viewMode === mode ? "bg-primary text-white shadow-xs" : "text-text-muted hover:text-text"
               }`}
             >
               {mode}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -125,7 +131,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
       {/* Day View */}
       {viewMode === "day" && (
         <div className="bg-surface-alt/40 p-4 rounded-xl border border-border space-y-3 min-h-[300px]">
-          <div className="flex justify-between items-center border-b border-border pb-2">
+          <div className="flex flex-wrap gap-2 justify-between items-center border-b border-border pb-2">
             <h3 className="font-bold text-text text-sm">
               {currentDate.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" })}
             </h3>
@@ -167,7 +173,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
 
       {/* Week Grid View */}
       {viewMode === "week" && (
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2">
           {weekDates.map((d) => {
             const dateStr = getLocalDateKey(d);
             const isToday = getLocalDateKey(new Date()) === dateStr;
@@ -223,12 +229,13 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
 
       {/* Month View Grid */}
       {viewMode === "month" && (
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayName) => (
             <div key={dayName} className="text-center font-bold text-xs text-text-muted py-1 border-b border-border">
               {dayName}
             </div>
           ))}
+          {Array.from({ length: (new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay() + 6) % 7 }).map((_, index) => <div key={`offset-${index}`} aria-hidden="true" />)}
           {Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate() }).map((_, idx) => {
             const dayNum = idx + 1;
             const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
@@ -239,17 +246,17 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
             return (
               <div
                 key={dateStr}
-                className={`min-h-[90px] p-2 rounded-xl border flex flex-col justify-between ${
+                className={`min-h-[70px] sm:min-h-[90px] p-1 sm:p-2 rounded-lg sm:rounded-xl border flex flex-col justify-between min-w-0 ${
                   isToday ? "bg-primary-500/10 border-primary-500/40" : "bg-surface-alt/30 border-border/60"
                 }`}
               >
-                <div className="flex justify-between items-center text-xs">
+                <div className="flex flex-wrap gap-1 justify-between items-center text-xs">
                   <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[11px] ${isToday ? "bg-primary text-white" : "text-text"}`}>
                     {dayNum}
                   </span>
                   {dayAppts.length > 0 && (
                     <span className="text-[10px] font-extrabold text-primary-600 bg-primary/10 px-1.5 py-0.2 rounded-full">
-                      {dayAppts.length} appt{dayAppts.length > 1 ? "s" : ""}
+                      {dayAppts.length}<span className="hidden sm:inline"> appt{dayAppts.length > 1 ? "s" : ""}</span>
                     </span>
                   )}
                 </div>

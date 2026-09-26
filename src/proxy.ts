@@ -45,10 +45,11 @@ export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
   // Check for the presence of auth tokens (refresh_token, access_token) or session cookie (ananta_session)
-  const hasAuthToken =
+  const isBookingGuest = request.cookies.get("ananta_session")?.value === "guest";
+  const hasAuthToken = !isBookingGuest && (
     request.cookies.has("refresh_token") ||
     request.cookies.has("access_token") ||
-    request.cookies.has("ananta_session");
+    request.cookies.has("ananta_session"));
 
   // ── Protect dashboard routes ────────────────────────────────────
   if (pathname.startsWith("/dashboard")) {

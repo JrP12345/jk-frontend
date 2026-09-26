@@ -457,6 +457,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     onClick: () => router.push(user.role === "patient" ? "/dashboard/patient-portal" : "/dashboard/settings"),
                     icon: <User className="w-4 h-4" />
                   },
+                  { label: "Account security", onClick: () => router.push("/dashboard/security"), icon: <Lock className="w-4 h-4" /> },
                   ...(user.role !== "patient" ? [
                     {
                       label: "Lock Workstation",

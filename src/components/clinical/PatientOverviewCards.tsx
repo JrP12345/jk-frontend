@@ -16,6 +16,7 @@ export interface PatientDemographics {
   allergies?: string[];
   conditions?: string[];
   medicalNotes?: string;
+  clinicalProfileRestricted?: boolean;
   emergencyContacts?: Array<{
     name: string;
     relationship: string;
@@ -86,7 +87,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
         />
         <StatCard
           label="Allergies Flagged"
-          value={(patient.allergies?.length || 0).toString()}
+          value={patient.clinicalProfileRestricted ? "Locked" : (patient.allergies?.length || 0).toString()}
           icon={
             <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -95,7 +96,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
         />
         <StatCard
           label="Active Conditions"
-          value={(patient.conditions?.length || 0).toString()}
+          value={patient.clinicalProfileRestricted ? "Locked" : (patient.conditions?.length || 0).toString()}
           icon={
             <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -193,9 +194,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
                     </Badge>
                   ))
                 ) : (
-                  <Badge variant="success" size="sm">
-                    ✓ No Known Drug Allergies (NKDA)
-                  </Badge>
+                  <Badge variant="neutral" size="sm">{patient.clinicalProfileRestricted ? "Patient approval needed" : "Allergies not recorded"}</Badge>
                 )}
               </div>
             </div>
@@ -213,7 +212,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
                     </Badge>
                   ))
                 ) : (
-                  <span className="text-text-muted italic">No active chronic conditions recorded.</span>
+                  <span className="text-text-muted italic">{patient.clinicalProfileRestricted ? "Patient approval needed" : "No conditions recorded."}</span>
                 )}
               </div>
             </div>
@@ -224,7 +223,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
                 Physician Notes & Special Precautions
               </span>
               <div className="bg-surface-alt p-3 rounded-xl border border-border/60 leading-relaxed text-text-secondary">
-                {patient.medicalNotes || "No special physician notes attached to this profile."}
+                {patient.clinicalProfileRestricted ? "Patient approval needed to view notes from another organization." : patient.medicalNotes || "No physician notes recorded."}
               </div>
             </div>
           </CardContent>

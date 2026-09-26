@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
+import TeamLoading from "./loading";
 import {
   Card,
   CardContent,
@@ -736,23 +737,7 @@ export default function StaffPage() {
     (c) => !assignments.some((a) => (a.clinicId?.id || a.clinicId) === c.id)
   );
 
-  if (loading) {
-    return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="h-7 w-48 bg-surface-alt rounded-lg animate-pulse" />
-            <div className="h-4 w-72 bg-surface-alt rounded animate-pulse" />
-          </div>
-          <div className="flex gap-2">
-            <div className="h-9 w-32 bg-surface-alt rounded-lg animate-pulse" />
-            <div className="h-9 w-28 bg-surface-alt rounded-lg animate-pulse" />
-          </div>
-        </div>
-        <SkeletonTable rows={6} cols={5} />
-      </div>
-    );
-  }
+  if (loading) return <TeamLoading />;
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">

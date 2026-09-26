@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
+import PatientHistoryAccess from "./PatientHistoryAccess";
 import { Modal, Badge, Button, cn } from "@/components/ui";
 import { Stethoscope, FlaskConical, Building2, CreditCard, FileText, Sparkles, Search, Clock } from "lucide-react";
 
@@ -41,10 +42,14 @@ export interface TimelineEvent {
 
 interface PatientTimelineProps {
   patientId: string;
+  accessToken?: string | null;
   events?: TimelineEvent[] | any[];
 }
 
-export function PatientTimeline({ patientId, events: initialEvents }: PatientTimelineProps) {
+export function PatientTimeline({ patientId, events: initialEvents, accessToken }: PatientTimelineProps) {
+  const [localAccessToken, setRecordAccessToken] = useState<string | null>(null);
+  const recordAccessToken = accessToken === undefined ? localAccessToken : accessToken;
+  const requestRef = useRef<AbortController | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>(initialEvents || []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +84,9 @@ export function PatientTimeline({ patientId, events: initialEvents }: PatientTim
   };
 
   const fetchTimeline = async (cursor?: string, append = false) => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
     setLoading(true);
     setError(null);
     try {
@@ -88,7 +96,9 @@ export function PatientTimeline({ patientId, events: initialEvents }: PatientTim
       if (searchQuery.trim()) queryParams.set("q", searchQuery.trim());
       if (cursor) queryParams.set("cursor", cursor);
 
-      const res = await api.get(`/patients/${patientId}/timeline?${queryParams.toString()}`);
+      if (recordAccessToken) queryParams.set("scope", "all");
+      const res = await api.get(`/patients/${patientId}/timeline?${queryParams.toString()}`, { signal: controller.signal, headers: recordAccessToken ? { "X-Patient-Record-Access": recordAccessToken } : {} });
+      if (controller.signal.aborted) return;
       const newEvents: TimelineEvent[] = res.data?.data?.events || [];
 
       if (append) {
@@ -100,15 +110,17 @@ export function PatientTimeline({ patientId, events: initialEvents }: PatientTim
       setNextCursor(res.data?.data?.nextCursor || null);
       setHasMore(res.data?.data?.hasMore || false);
     } catch (err: any) {
-      setError(err.message || "An unexpected error occurred");
+      if (!controller.signal.aborted) { setEvents([]); setError(err.response?.data?.message || err.message || "An unexpected error occurred"); }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   };
 
   useEffect(() => {
+    setEvents([]); setSelectedExplainerEvent(null);
     fetchTimeline();
-  }, [patientId, category, includeFinancial]);
+    return () => requestRef.current?.abort();
+  }, [patientId, category, includeFinancial, recordAccessToken]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,6 +159,7 @@ export function PatientTimeline({ patientId, events: initialEvents }: PatientTim
 
   return (
     <div className="space-y-6">
+      {accessToken === undefined && <PatientHistoryAccess patientId={patientId} token={recordAccessToken} onChange={setRecordAccessToken} />}
       {/* Search & Filter Header Toolbar */}
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between p-3.5 sm:p-4 bg-surface rounded-2xl border border-border/80 shadow-xs">
         {/* Category Tabs */}

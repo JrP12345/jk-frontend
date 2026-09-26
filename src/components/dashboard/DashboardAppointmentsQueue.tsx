@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { localDateKey } from "@/lib/date";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -41,6 +42,7 @@ export function DashboardAppointmentsQueue({
   canViewOpsDashboard,
   onUpdateStatus,
 }: DashboardAppointmentsQueueProps) {
+  if (user?.role !== "patient" && user?.role !== "family_member") appointments = appointments.filter((appointment) => localDateKey(appointment.appointmentTime) === localDateKey());
   const router = useRouter();
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { type ButtonHTMLAttributes, type ReactNode, forwardRef, memo } from "react";
+import { vibrateFeedback } from "@/lib/haptics";
 import { cn } from "./utils";
 import Spinner from "./Spinner";
 
@@ -67,6 +68,7 @@ const Button = memo(
         className = "",
         children,
         type = "button",
+        onClick,
         ...rest
       },
       ref
@@ -90,6 +92,7 @@ const Button = memo(
             className
           )}
           {...rest}
+          onClick={(event) => { vibrateFeedback("selection"); onClick?.(event); }}
         >
           {loading ? (
             <span

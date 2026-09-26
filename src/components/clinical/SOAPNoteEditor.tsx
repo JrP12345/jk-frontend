@@ -758,7 +758,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
               className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
             />
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
               <label className="text-xs font-semibold text-text-secondary">ICD-10 Code</label>
               <input
@@ -818,7 +818,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
             </div>
 
             <div className="flex flex-wrap sm:flex-nowrap gap-2 relative">
-              <div className="flex-1 min-w-[200px] relative">
+              <div className="flex-1 min-w-0 w-full sm:min-w-[200px] relative">
                 <input
                   type="text"
                   placeholder="Search Drug Name or Generic..."

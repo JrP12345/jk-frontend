@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
+import PasskeySignIn from "@/components/auth/PasskeySignIn";
 import {
   Card,
   CardHeader,
@@ -635,7 +636,8 @@ export default function LoginPage() {
                         </button>
                       </div>
                     </div>
-                  </CardContent>
+                  <div className="pt-4"><PasskeySignIn onTwoFactor={(token) => { setTwoFactorToken(token); setIsTwoFactorModalOpen(true); }} /></div>
+              </CardContent>
 
                   <CardFooter className="p-0 pt-2 flex flex-col gap-3">
                     <Button

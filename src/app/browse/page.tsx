@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-async function getInitialClinics(): Promise<Clinic[]> {
+async function getInitialClinics(): Promise<Clinic[] | null> {
   try {
     const backendUrl =
       process.env.BACKEND_INTERNAL_URL ||
@@ -19,15 +19,15 @@ async function getInitialClinics(): Promise<Clinic[]> {
       cache: "no-store",
       signal: AbortSignal.timeout(3000),
     });
-    if (!res.ok) return [];
+    if (!res.ok) return null;
     const json = await res.json();
     return json.data || [];
   } catch {
-    return [];
+    return null;
   }
 }
 
 export default async function BrowsePage() {
   const initialClinics = await getInitialClinics();
-  return <BrowseClient initialClinics={initialClinics} />;
+  return <BrowseClient initialClinics={initialClinics || []} initialLoaded={initialClinics !== null} />;
 }

@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import api from "@/lib/api";
+import { localDateKey, todayRangeParams } from "@/lib/date";
 import {
   Badge,
   Button,
@@ -81,6 +82,7 @@ export default function DashboardOverview() {
   const [doctorStats, setDoctorStats] = useState({ total: 0, completed: 0, pending: 0 });
   const [patientStats, setPatientStats] = useState({ appointmentsCount: 0, unpaidBills: 0 });
 
+  const [todayAppointments, setTodayAppointments] = useState<any[]>([]);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -214,10 +216,11 @@ export default function DashboardOverview() {
     try {
       setIsRefreshing(true);
       if (canViewOpsDashboard) {
-        const [staffRes, apptsRes, invoicesRes] = await Promise.allSettled([
+        const [staffRes, apptsRes, invoicesRes, dailyRes] = await Promise.allSettled([
           api.get("/onboarding/staff"),
           api.get("/appointments"),
           api.get("/invoices"),
+          api.get(`/analytics/daily-summary?${todayRangeParams()}`),
         ]);
         const clList = await fetchClinics();
         const staffData = staffRes.status === "fulfilled" ? staffRes.value.data.data || {} : {};
@@ -226,15 +229,16 @@ export default function DashboardOverview() {
         const apptList = apptsRes.status === "fulfilled" ? apptsRes.value.data.data || [] : [];
         const invList = invoicesRes.status === "fulfilled" ? invoicesRes.value.data.data || [] : [];
 
-        const todayStr = new Date().toISOString().split("T")[0];
+        const daily = dailyRes.status === "fulfilled" ? dailyRes.value.data.data : null;
+        const todayStr = localDateKey();
         const todaysPaid = invList.reduce((acc: number, curr: any) => {
           if (curr.status !== "paid") return acc;
-          const dateStr = (curr.paymentDate || curr.createdAt || "").split("T")[0];
+          const dateStr = localDateKey(curr.paymentDate || curr.createdAt || "");
           return dateStr === todayStr ? acc + curr.totalAmount : acc;
         }, 0);
 
         const unpaidBills = invList.reduce((acc: number, curr: any) => {
-          if (curr.status === "paid" || curr.status === "cancelled") return acc;
+          if (localDateKey(curr.createdAt || "") !== todayStr || curr.status === "paid" || curr.status === "cancelled") return acc;
           return acc + (curr.totalAmount - (curr.amountPaid || 0));
         }, 0);
 
@@ -242,22 +246,25 @@ export default function DashboardOverview() {
           clinics: clList?.length || 0,
           doctors: docList.length,
           receptionists: recList.length,
-          appointments: apptList.length,
-          collections: todaysPaid,
-          outstanding: unpaidBills,
+          appointments: daily?.appointments ?? apptList.filter((a: any) => localDateKey(a.appointmentTime) === todayStr).length,
+          collections: daily?.collections ?? todaysPaid,
+          outstanding: daily?.outstanding ?? unpaidBills,
         });
 
         setAppointments(apptList);
-        setInvoices(invList.filter((i: any) => i.status === "unpaid"));
+        setTodayAppointments(daily?.recentAppointments || apptList.filter((a: any) => localDateKey(a.appointmentTime) === todayStr));
+        setInvoices(invList.filter((i: any) => ["unpaid", "partially_paid"].includes(i.status) && localDateKey(i.createdAt || "") === todayStr));
       } else if (user.role === "doctor") {
-        const res = await api.get("/appointments");
+        const [res, dailyRes] = await Promise.all([api.get("/appointments"), api.get(`/analytics/daily-summary?${todayRangeParams()}`)]);
+        const daily = dailyRes.data.data;
         const docAppts = res.data.data || [];
         const completed = docAppts.filter((a: any) => a.status === "completed").length;
         const pending = docAppts.filter(
           (a: any) => a.status === "confirmed" || a.status === "pending" || a.status === "scheduled"
         ).length;
-        setDoctorStats({ total: docAppts.length, completed, pending });
+        setDoctorStats({ total: daily.appointments, completed: daily.completed, pending: daily.pending });
         setAppointments(docAppts);
+        setTodayAppointments(daily.recentAppointments || []);
       } else if (user.role === "patient") {
         const [apptsRes, invsRes] = await Promise.all([
           api.get("/appointments/patient/me").catch(() => api.get("/patient-portal/appointments").catch(() => ({ data: { data: [] } }))),
@@ -815,7 +822,7 @@ export default function DashboardOverview() {
       {/* 5. MAIN SECTION (APPOINTMENTS QUEUE + QUICK ACTIONS) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
         <DashboardAppointmentsQueue
-          appointments={appointments}
+          appointments={user?.role === "patient" || user?.role === "family_member" ? appointments : todayAppointments}
           loading={loading}
           user={user}
           canViewOpsDashboard={canViewOpsDashboard}

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import Modal from "@/components/ui/Modal";
-import { Button, Badge, cn } from "@/components/ui";
+import { Button, Badge, cn, useToast } from "@/components/ui";
 import {
   Printer,
   QrCode,
@@ -38,8 +38,11 @@ export default function ClinicQrPosterModal({
   onClose,
   clinic,
 }: ClinicQrPosterModalProps) {
+  const { toast } = useToast();
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [copied, setCopied] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const [qrError, setQrError] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
 
   const clinicId = clinic?.id || clinic?._id || "";
@@ -48,32 +51,69 @@ export default function ClinicQrPosterModal({
     : "";
 
   useEffect(() => {
+    let active = true;
+    setQrDataUrl("");
+    setQrError(false);
     if (joinUrl) {
       QRCode.toDataURL(joinUrl, {
         width: 600,
-        margin: 1.5,
+        margin: 4,
         color: {
           dark: "#0f172a",
           light: "#ffffff",
         },
         errorCorrectionLevel: "H",
       })
-        .then((url) => setQrDataUrl(url))
-        .catch((err) => console.error("QR Poster generation failed:", err));
+        .then((url) => { if (active) setQrDataUrl(url); })
+        .catch(() => { if (active) setQrError(true); });
     }
-  }, [joinUrl]);
+    return () => { active = false; };
+  }, [joinUrl, open]);
 
   if (!clinic) return null;
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (!posterRef.current || !qrDataUrl || printing) return;
+    setPrinting(true);
+    const frame = document.createElement("iframe");
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.cssText = "position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0";
+    frame.title = "Clinic QR poster print";
+    document.body.appendChild(frame);
+    try {
+      const doc = frame.contentDocument!;
+      doc.title = `${clinic.name} - Queue QR Poster`;
+      const style = doc.createElement("style");
+      style.nonce = document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce || "";
+      style.textContent = `@page { size: A4 portrait; margin: 15mm; }
+        * { box-sizing: border-box; } body { margin: 0; font-family: Arial, sans-serif; color: #111; background: white; text-align: center; }
+        #clinic-qr-poster-print { width: 180mm; margin: auto; padding: 8mm; break-inside: avoid; }
+        #clinic-qr-poster-print > div { margin-bottom: 7mm; }
+        h1 { font-size: 26pt; margin: 3mm 0; overflow-wrap: anywhere; } h2 { font-size: 17pt; margin: 3mm 0; }
+        p { font-size: 11pt; line-height: 1.5; margin: 2mm 0; } svg { display: none; }
+        img { display: block; width: 85mm; height: 85mm; margin: 5mm auto; }
+        .grid { display: flex; justify-content: space-around; gap: 6mm; } .grid > div { flex: 1; }
+        .absolute { display: none; }`;
+      doc.head.appendChild(style);
+      doc.body.appendChild(posterRef.current.cloneNode(true));
+      await Promise.all(Array.from(doc.images).map((img) => img.decode()));
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+      setTimeout(() => frame.remove(), 60_000);
+    } catch {
+      frame.remove();
+      toast({ title: "Could not print poster", description: "Please try again.", variant: "error" });
+    } finally {
+      setPrinting(false);
+    }
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     if (!joinUrl) return;
-    navigator.clipboard.writeText(joinUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(joinUrl);
+      setCopied(true); setTimeout(() => setCopied(false), 2000);
+    } catch { toast({ title: "Could not copy link", description: "Please allow clipboard access and try again.", variant: "error" }); }
   };
 
   return (
@@ -84,7 +124,7 @@ export default function ClinicQrPosterModal({
       description="Print and display this QR poster at your front desk, reception, or entrance. Patients scan it with their phone camera to self-register and get a live queue token."
       size="xl"
       footer={
-        <div className="flex items-center justify-between w-full">
+        <div className="flex flex-wrap items-center justify-between gap-3 w-full">
           <div className="flex items-center gap-2">
             <Button
               variant="secondary"
@@ -112,6 +152,8 @@ export default function ClinicQrPosterModal({
               variant="primary"
               size="sm"
               onClick={handlePrint}
+              loading={printing}
+              disabled={!qrDataUrl || qrError}
               className="rounded-xl font-bold gap-1.5 cursor-pointer shadow-xs bg-primary-600 hover:bg-primary-700 text-white text-xs"
             >
               <Printer className="w-4 h-4" />
@@ -126,7 +168,7 @@ export default function ClinicQrPosterModal({
         <div
           ref={posterRef}
           id="clinic-qr-poster-print"
-          className="bg-white text-zinc-900 rounded-3xl p-8 border-2 border-zinc-200 shadow-md max-w-lg mx-auto text-center relative overflow-hidden"
+          className="bg-white text-zinc-900 rounded-3xl p-4 sm:p-8 border-2 border-zinc-200 shadow-md max-w-lg mx-auto text-center relative overflow-hidden"
         >
           {/* Subtle decorative top gradient bar */}
           <div className="absolute inset-x-0 top-0 h-3 bg-gradient-to-r from-primary-600 via-teal-500 to-emerald-500" />
@@ -163,11 +205,11 @@ export default function ClinicQrPosterModal({
               <img
                 src={qrDataUrl}
                 alt={`QR code to join live queue at ${clinic.name}`}
-                className="w-56 h-56 sm:w-64 sm:h-64 object-contain mx-auto"
+                className="w-full max-w-64 aspect-square object-contain mx-auto"
               />
             ) : (
               <div className="w-56 h-56 flex items-center justify-center bg-zinc-100 rounded-2xl">
-                <span className="text-xs font-bold text-zinc-400">Generating Poster QR...</span>
+                <span role={qrError ? "alert" : "status"} className="text-xs font-bold text-zinc-500">{qrError ? "Could not generate QR. Close and reopen to retry." : "Generating Poster QR..."}</span>
               </div>
             )}
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-zinc-900 text-white text-[10px] font-black uppercase tracking-wider shadow-sm">
@@ -213,30 +255,6 @@ export default function ClinicQrPosterModal({
         </div>
       </div>
 
-      {/* Embedded Print Isolation Styles */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #clinic-qr-poster-print,
-          #clinic-qr-poster-print * {
-            visibility: visible;
-          }
-          #clinic-qr-poster-print {
-            position: fixed;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            width: 100%;
-            max-width: 650px;
-            box-shadow: none !important;
-            border: 2px solid #e4e4e7 !important;
-            padding: 36px 32px !important;
-            margin: 0 !important;
-          }
-        }
-      `}</style>
     </Modal>
   );
 }

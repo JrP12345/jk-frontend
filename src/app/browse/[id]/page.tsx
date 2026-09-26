@@ -70,7 +70,7 @@ function DetailLoadingFallback() {
   );
 }
 
-export default async function BrowseDetailPage({ params }: { params: { id: string } }) {
+export default async function BrowseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   // Pass the id from params to the client component
   const { id } = await params;
   const initialClinic = await getClinic(id);

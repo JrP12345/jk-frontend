@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
@@ -28,6 +28,7 @@ import {
   useToast,
 } from "@/components/ui";
 import dynamic from "next/dynamic";
+import PatientHistoryAccess from "@/components/ehr/PatientHistoryAccess";
 import { PatientHeader } from "@/components/clinical/PatientHeader";
 import { PatientOverviewCards } from "@/components/clinical/PatientOverviewCards";
 
@@ -67,6 +68,22 @@ export default function PatientDetailPage() {
   const canManagePatients = hasAnyPermission(user, "MANAGE_PATIENTS");
 
   const [patientData, setPatientData] = useState<any>(null);
+  const [recordAccessToken, setRecordAccessToken] = useState<string | null>(null);
+  const profileRequest = useRef(0);
+  const changeRecordAccess = useCallback((token: string | null) => {
+    setRecordAccessToken(token);
+    if (!token && user?.organization_id && !["patient", "family_member"].includes(user.role)) {
+      setPatientData((current: any) => {
+        if (!current || !current.organizationId || String(current.organizationId) === user.organization_id) return current;
+        const scoped = { ...current, clinicalProfileRestricted: true };
+        for (const field of ["allergies", "conditions", "medicalNotes", "insurancePolicies", "careContexts", "activeConsentGrants"]) delete scoped[field];
+        return scoped;
+      });
+      setEditModalOpen(false);
+      setEditForm((current) => ({ ...current, allergies: "", conditions: "", medicalNotes: "" }));
+      setAppointments((current) => current.filter((appointment) => String(appointment.organizationId) === user.organization_id));
+    }
+  }, [user?.id, user?.organization_id, user?.role]);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [labOrders, setLabOrders] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -90,9 +107,12 @@ export default function PatientDetailPage() {
   });
 
   const loadPatientDetails = async () => {
+    const requestId = ++profileRequest.current;
     try {
       setLoading(true);
-      const res = await PatientService.getPatientDetails(patientId);
+      const response = await api.get(`/patients/${patientId}${recordAccessToken ? "?scope=all" : ""}`, { headers: recordAccessToken ? { "X-Patient-Record-Access": recordAccessToken } : {} });
+      if (requestId !== profileRequest.current) return;
+      const res = response.data.data;
       const patient = res.patient || res;
       const appts = res.appointments || [];
 
@@ -100,8 +120,8 @@ export default function PatientDetailPage() {
       setAppointments(appts);
 
       // Populate edit form defaults
-      const userName = patient.userId?.name || "";
-      const userPhone = patient.userId?.phone || "";
+      const userName = patient.name || patient.userId?.name || "";
+      const userPhone = patient.phone || patient.userId?.phone || "";
       setEditForm({
         name: userName,
         phone: userPhone,
@@ -120,6 +140,7 @@ export default function PatientDetailPage() {
         api.get(`/lab-orders?patientId=${encodeURIComponent(patientId)}`).catch(() => ({ data: { data: [] } })),
         api.get(`/invoices?patientId=${encodeURIComponent(patientId)}`).catch(() => ({ data: { data: [] } })),
       ]).then(([labRes, invRes]) => {
+        if (requestId !== profileRequest.current) return;
         const labs = labRes.data?.data || [];
         const invs = invRes.data?.data || [];
         setLabOrders(labs.filter((l: any) => String(l.patientId?.id || l.patientId?._id || l.patientId) === String(patientId)));
@@ -127,21 +148,25 @@ export default function PatientDetailPage() {
       });
 
     } catch (err: any) {
+      if (requestId !== profileRequest.current) return;
       toast({
         title: "Failed to Load Patient Profile",
         description: err.response?.data?.message || err.message || "Patient record not found",
         variant: "error",
       });
     } finally {
-      setLoading(false);
+      if (requestId === profileRequest.current) setLoading(false);
     }
   };
+
+  useEffect(() => { setPatientData(null); setAppointments([]); setLabOrders([]); setInvoices([]); setRecordAccessToken(null); }, [patientId, user?.organization_id]);
 
   useEffect(() => {
     if (patientId) {
       loadPatientDetails();
     }
-  }, [patientId]);
+    return () => { profileRequest.current += 1; };
+  }, [patientId, recordAccessToken, user?.organization_id]);
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,7 +204,7 @@ export default function PatientDetailPage() {
     }
   };
 
-  if (loading) {
+  if (loading && !patientData) {
     return (
       <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading patient medical records">
         {/* Back navigation placeholder */}
@@ -256,9 +281,9 @@ export default function PatientDetailPage() {
     );
   }
 
-  const patientName = patientData.userId?.name || "Patient Record";
-  const patientEmail = patientData.userId?.email || "";
-  const patientPhone = patientData.userId?.phone || "";
+  const patientName = patientData.name || patientData.userId?.name || "Patient Record";
+  const patientEmail = patientData.email || patientData.userId?.email || "";
+  const patientPhone = patientData.phone || patientData.userId?.phone || "";
   const mrnCode = patientData.mrn || `MRN-${patientId.substring(0, 6).toUpperCase()}`;
 
   const headerData = {
@@ -267,6 +292,7 @@ export default function PatientDetailPage() {
     name: patientName,
     gender: patientData.gender,
     dob: patientData.dob ? new Date(patientData.dob).toLocaleDateString() : undefined,
+    clinicalProfileRestricted: patientData.clinicalProfileRestricted,
     allergies: patientData.allergies,
     conditions: patientData.conditions,
   };
@@ -385,6 +411,7 @@ export default function PatientDetailPage() {
 
       {/* Sticky Patient Banner */}
       <PatientHeader patient={headerData} />
+      <PatientHistoryAccess patientId={patientId} token={recordAccessToken} onChange={changeRecordAccess} />
 
       {/* Main Tabbed Interface */}
       <Tabs
@@ -433,7 +460,7 @@ export default function PatientDetailPage() {
             label: "EHR Medical Timeline",
             content: (
               <Card className="rounded-2xl border border-border bg-surface p-4 shadow-xs">
-                <PatientTimeline patientId={patientId} />
+                <PatientTimeline patientId={patientId} accessToken={recordAccessToken} />
               </Card>
             ),
           },
@@ -595,7 +622,7 @@ export default function PatientDetailPage() {
           {
             id: "documents",
             label: "Signed Health Documents",
-            content: <PatientMedicalRecords patientId={patientId} />,
+            content: <PatientMedicalRecords patientId={patientId} accessToken={recordAccessToken} />,
           },
         ]}
       />

@@ -12,6 +12,7 @@ export interface PatientHeaderData {
   age?: number;
   allergies?: string[];
   conditions?: string[];
+  clinicalProfileRestricted?: boolean;
   recentNews2Score?: number;
   recentNews2Risk?: string;
 }
@@ -22,8 +23,8 @@ interface PatientHeaderProps {
 }
 
 export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
-  const allergies = patient.allergies && patient.allergies.length > 0 ? patient.allergies : ["No Known Drug Allergies (NKDA)"];
-  const conditions = patient.conditions && patient.conditions.length > 0 ? patient.conditions : ["No Active Conditions"];
+  const allergies = patient.allergies && patient.allergies.length > 0 ? patient.allergies : [patient.clinicalProfileRestricted ? "Patient approval needed" : "Not recorded"];
+  const conditions = patient.conditions && patient.conditions.length > 0 ? patient.conditions : [patient.clinicalProfileRestricted ? "Patient approval needed" : "Not recorded"];
 
   const getRiskBadge = (risk?: string, score?: number) => {
     if (score === undefined && !risk) return null;
@@ -37,7 +38,7 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
   };
 
   return (
-    <div className="sticky top-0 z-20 bg-surface/95 backdrop-blur-md border border-border/80 rounded-2xl p-3.5 sm:p-4 shadow-xs">
+    <div className="relative sm:sticky sm:top-0 z-20 bg-surface/95 backdrop-blur-md border border-border/80 rounded-2xl p-3.5 sm:p-4 shadow-xs">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         {/* Patient Identity & MRN */}
         <div className="flex items-center gap-3 min-w-0">
@@ -62,7 +63,7 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
           <div className="text-xs flex items-center gap-1.5 bg-surface-alt px-2.5 py-1 rounded-xl border border-border/80 flex-wrap">
             <span className="font-semibold text-text-secondary">Allergies:</span>
             {allergies.map((a, i) => (
-              <Badge key={i} variant={a.includes("NKDA") ? "success" : "danger"} size="sm">
+              <Badge key={i} variant={a.includes("NKDA") ? "success" : a === "Not recorded" || patient.clinicalProfileRestricted ? "neutral" : "danger"} size="sm">
                 {a}
               </Badge>
             ))}

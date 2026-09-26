@@ -3,6 +3,7 @@
 import { type ReactNode, createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "./utils";
+import { vibrateFeedback } from "@/lib/haptics";
 
 /* ─────────────────────────────────────────────────────────────────────────────
    ANANT Healthcare OS — Production-Grade Top-Center 3D Stacked Toast Notification Engine
@@ -47,6 +48,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       const now = Date.now();
       const id = options.id || `toast-${now}-${Math.random().toString(36).substring(2, 7)}`;
       const variant = options.variant || "default";
+      if (variant === "success" || variant === "error") vibrateFeedback(variant);
       const duration = options.duration || 4500;
 
       setToasts((prev) => {

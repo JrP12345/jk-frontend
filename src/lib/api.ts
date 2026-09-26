@@ -60,11 +60,12 @@ api.interceptors.response.use(
 
     if (
       error.response?.status === 401 &&
-      !originalRequest._retry &&
+      originalRequest && !originalRequest._retry &&
       requestPath !== "/auth/refresh" &&
       requestPath !== "/auth/refresh-token" &&
       requestPath !== "/auth/logout" &&
       requestPath !== "/auth/login" &&
+      !requestPath?.startsWith("/auth/passkeys/login/") &&
       requestPath !== "/auth/login/verify-2fa"
     ) {
       originalRequest._retry = true;

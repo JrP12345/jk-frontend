@@ -46,7 +46,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = res.data.data.user;
       if (user && (user.role as string) === "guest") {
         if (typeof window !== "undefined") {
-          document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          document.cookie = "ananta_session=guest; path=/; max-age=604800; SameSite=Lax";
         }
         set({ user: null, isAuthenticated: false, isLoading: false });
         return;
@@ -63,7 +63,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
       set({ user, isAuthenticated: true, isLoading: false });
     } catch (error) {
-      if (typeof window !== "undefined") {
+      if (typeof window !== "undefined" && !document.cookie.split("; ").includes("ananta_session=guest")) {
         document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       }
       set({ user: null, isAuthenticated: false, isLoading: false });
