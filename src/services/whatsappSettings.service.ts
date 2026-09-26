@@ -42,7 +42,7 @@ export const whatsappSettingsService = {
     return res.data.data;
   },
 
-  async updateConfig(payload: Partial<WhatsAppSettingsData> & { accessToken?: string }, organizationId?: string): Promise<any> {
+  async updateConfig(payload: Partial<WhatsAppSettingsData> & { accessToken?: string; appSecret?: string }, organizationId?: string): Promise<any> {
     const res = await api.patch("/organization/whatsapp", {
       ...payload,
       ...(organizationId ? { organizationId } : {}),

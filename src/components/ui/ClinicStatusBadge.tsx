@@ -7,6 +7,9 @@ import {
 } from "@/lib/timing/clinicStatus";
 import { useTranslation } from "@/lib/i18n";
 
+import Badge, { type BadgeVariant } from "@/components/ui/Badge";
+import { cn } from "@/components/ui/utils";
+
 export interface ClinicStatusBadgeProps {
   timings?: string | null;
   compact?: boolean;
@@ -86,51 +89,64 @@ export function ClinicStatusBadge({
 
   const localizedSecondary = getLocalizedSecondary();
 
-  // Pill style for Facility Header
+  // Map operational status to standard UI Badge variant
+  const getBadgeVariant = (): BadgeVariant => {
+    if (status.status === "open_now" || status.status === "open_24_7") return "success";
+    if (status.status === "closing_soon" || status.status === "on_break") return "warning";
+    return "neutral";
+  };
+
+  // Pill style for Facility Header & Detail sections
   if (pill) {
     return (
-      <span
-        className={`inline-flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-full border shadow-2xs transition-colors ${status.badgeBgClass} ${className}`}
-        suppressHydrationWarning
+      <Badge
+        variant={getBadgeVariant()}
+        dot
+        pulse={status.isOpen}
+        className={cn("px-3 py-1 text-xs gap-1.5 font-semibold shadow-2xs", className)}
       >
-        <span className="relative flex h-2 w-2 shrink-0">
-          {status.isOpen && (
-            <span
-              className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status.dotColorClass}`}
-            />
-          )}
-          <span
-            className={`relative inline-flex rounded-full h-2 w-2 ${status.dotColorClass}`}
-          />
-        </span>
-        <span className={status.textColorClass}>{localizedPrimary}</span>
+        <span>{localizedPrimary}</span>
         {showSecondary && localizedSecondary && (
           <>
             <span className="text-text-muted/60 text-[10px]">•</span>
-            <span className="text-text-secondary text-[11px] font-normal">
+            <span className="text-text-muted font-normal text-[11px]">
               {localizedSecondary}
             </span>
           </>
         )}
-      </span>
+      </Badge>
     );
   }
 
   // Compact inline row for Search/Card listings
+  const dotColorClass =
+    status.status === "open_now" || status.status === "open_24_7"
+      ? "bg-success-500"
+      : status.status === "closing_soon" || status.status === "on_break"
+      ? "bg-warning-500"
+      : "bg-text-muted";
+
+  const textColorClass =
+    status.status === "open_now" || status.status === "open_24_7"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : status.status === "closing_soon" || status.status === "on_break"
+      ? "text-amber-600 dark:text-amber-400"
+      : "text-text-secondary";
+
   return (
     <span
-      className={`inline-flex items-center gap-1.5 text-xs font-semibold shrink-0 ${status.textColorClass} ${className}`}
+      className={cn("inline-flex items-center gap-1.5 text-xs font-semibold shrink-0", textColorClass, className)}
       suppressHydrationWarning
       title={localizedSecondary}
     >
       <span className="relative flex h-1.5 w-1.5 shrink-0">
         {status.isOpen && (
           <span
-            className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status.dotColorClass}`}
+            className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", dotColorClass)}
           />
         )}
         <span
-          className={`relative inline-flex rounded-full h-1.5 w-1.5 ${status.dotColorClass}`}
+          className={cn("relative inline-flex rounded-full h-1.5 w-1.5", dotColorClass)}
         />
       </span>
       <span>{localizedPrimary}</span>

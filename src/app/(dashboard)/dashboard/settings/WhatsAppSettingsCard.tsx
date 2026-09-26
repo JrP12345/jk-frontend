@@ -18,6 +18,7 @@ import {
   SkeletonForm,
 } from "@/components/ui";
 import Modal from "@/components/ui/Modal";
+import WhatsAppConnectionPanel from "./WhatsAppConnectionPanel";
 import {
   whatsappSettingsService,
   type WhatsAppSettingsData,
@@ -63,6 +64,8 @@ export default function WhatsAppSettingsCard({
   const [wabaId, setWabaId] = useState("");
   const [phoneNumberId, setPhoneNumberId] = useState("");
   const [accessToken, setAccessToken] = useState("");
+  const [appSecret, setAppSecret] = useState("");
+  useEffect(() => { setAccessToken(""); setAppSecret(""); }, [selectedOrgId]);
   const [lowBalanceThreshold, setLowBalanceThreshold] = useState(50);
   const [notifications, setNotifications] = useState({
     sendBookingConfirmation: true,
@@ -107,12 +110,15 @@ export default function WhatsAppSettingsCard({
           wabaId: mode === "dedicated" ? wabaId : undefined,
           phoneNumberId: mode === "dedicated" ? phoneNumberId : undefined,
           accessToken: mode === "dedicated" && accessToken ? accessToken : undefined,
+          appSecret: mode === "dedicated" && appSecret ? appSecret : undefined,
           notifications,
         },
         selectedOrgId
       ),
     onSuccess: () => {
+      setAccessToken(""); setAppSecret("");
       queryClient.invalidateQueries({ queryKey: ["whatsapp-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["whatsapp-health"] });
       toast({
         title: "WhatsApp Settings Saved",
         description: "Notification preferences and gateway routing updated.",
@@ -331,7 +337,7 @@ export default function WhatsAppSettingsCard({
                   )}
                 </div>
                 <p className="text-[11px] text-text-muted leading-relaxed">
-                  Recommended. Managed by ANANTA Cloud. Zero setup, instant verified delivery.
+                  Managed by ANANTA Cloud. Uses the shared sender configured by root.
                 </p>
                 <span className="inline-block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
                   Default Platform
@@ -430,10 +436,12 @@ export default function WhatsAppSettingsCard({
                   value={accessToken}
                   onChange={(e) => setAccessToken(e.target.value)}
                 />
+                <Input label="Meta App Secret" type="password" autoComplete="new-password" value={appSecret} onChange={e => setAppSecret(e.target.value)} placeholder="Leave blank to keep the saved secret" />
               </div>
             )}
           </div>
 
+          <WhatsAppConnectionPanel key={`${selectedOrgId}:${config?.mode || mode}`} organizationId={selectedOrgId} isRoot={isRoot} mode={config?.mode || mode} />
           {/* Lean 2-Message Notification Rules & Toggles */}
           <div className="space-y-3 pt-2 border-t border-border/60">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
