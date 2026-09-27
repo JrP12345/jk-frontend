@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "brand:assets": "node scripts/generate-brand-assets.mjs",
+    "check:payments": "node scripts/check-payment-boundary.mjs",
     "test": "vitest run --pool=forks --maxWorkers=2 --no-file-parallelism"
   },
   "dependencies": {

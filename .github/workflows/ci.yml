@@ -1,0 +1,53 @@
+name: CI — Ekavyu frontend
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  NODE_VERSION: "24"
+jobs:
+  frontend:
+    name: Frontend — Type Check, Build & Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Check payment boundary
+        run: npm run check:payments
+      - name: Security Vulnerability Audit (High/Critical Only)
+        run: npm audit --audit-level=high
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+      - name: Frontend lint
+        run: npm run lint
+      - name: Frontend tests
+        run: npm test -- --maxWorkers=2 --no-file-parallelism
+      - name: Next.js production build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5000/api
+          NODE_ENV: production
+      - name: Upload Next.js build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build-${{ github.sha }}
+          path: .next
+          retention-days: 7
+permissions:
+  contents: read
