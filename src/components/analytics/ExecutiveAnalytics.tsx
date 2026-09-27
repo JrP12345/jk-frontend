@@ -2,22 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardDescription,
-  StatCard,
-  Spinner,
-  Badge,
-  Button,
-  ChartContainer,
-  AreaChart,
-  DonutChart,
-  Skeleton,
-  SkeletonStats,
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, StatCard, Badge, Button, ChartContainer, AreaChart, DonutChart, Skeleton, SkeletonStats } from "@/components/ui";
 
 export function ExecutiveAnalytics() {
   const [metrics, setMetrics] = useState<any | null>(null);
@@ -78,13 +63,13 @@ export function ExecutiveAnalytics() {
       });
 
       const colors = [
-        "var(--s-chart-1, #3b82f6)",
-        "var(--s-chart-2, #10b981)",
-        "var(--s-chart-3, #f59e0b)",
-        "var(--s-chart-4, #8b5cf6)",
-        "var(--s-chart-5, #ec4899)",
-        "#06b6d4",
-        "#f97316",
+        "var(--s-chart-1)",
+        "var(--s-chart-2)",
+        "var(--s-chart-3)",
+        "var(--s-chart-4)",
+        "var(--s-chart-5)",
+        "var(--chart-6)",
+        "var(--chart-7)",
       ];
 
       const deptData = Object.entries(deptCounts).map(([name, val], idx) => ({
@@ -157,7 +142,7 @@ export function ExecutiveAnalytics() {
           value={metrics?.totalFootfall || 0}
           change={{ value: "Real-time", positive: true }}
           icon={
-            <svg className="w-5 h-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           }
@@ -167,7 +152,7 @@ export function ExecutiveAnalytics() {
           value={`${metrics?.conversionRate || 0}%`}
           change={{ value: "Checked-in to Completed", positive: true }}
           icon={
-            <svg className="w-5 h-5 text-success-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-5 h-5 text-success-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           }
@@ -177,7 +162,7 @@ export function ExecutiveAnalytics() {
           value={`₹${(metrics?.totalRevenue || 0).toLocaleString()}`}
           change={{ value: "Collections", positive: true }}
           icon={
-            <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-5 h-5 text-success-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           }
@@ -187,7 +172,7 @@ export function ExecutiveAnalytics() {
           value={`₹${metrics?.avgRevenuePerVisit || 0}`}
           change={{ value: "Per Encounter", positive: true }}
           icon={
-            <svg className="w-5 h-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
           }
@@ -205,7 +190,7 @@ export function ExecutiveAnalytics() {
           <AreaChart
             data={metrics?.trendData || []}
             series={[
-              { key: "visits", name: "Patient Encounters", color: "var(--s-chart-1, #3b82f6)" },
+              { key: "visits", name: "Patient Encounters", color: "var(--s-chart-1)" },
             ]}
             height={210}
             valueFormatter={(v) => `${v} visits`}

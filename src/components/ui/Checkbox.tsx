@@ -53,7 +53,7 @@ const Checkbox = memo(
           <label
             htmlFor={id}
             className={cn(
-              "group/chk inline-flex items-start gap-2.5 touch-manipulation min-h-[40px] sm:min-h-0 py-1 sm:py-0",
+              "group/chk inline-flex items-start gap-2.5 touch-manipulation min-h-[44px] md:min-h-0 py-1 md:py-0",
               disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
             )}
           >
@@ -74,10 +74,10 @@ const Checkbox = memo(
               {/* Custom Box */}
               <div
                 className={cn(
-                  "flex items-center justify-center h-4.5 w-4.5 rounded-md border border-border bg-surface text-white transform-gpu transition-all duration-200 ease-smooth active:scale-90 shadow-2xs",
-                  "peer-focus-visible:ring-4 peer-focus-visible:ring-primary-500/20 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface",
-                  "peer-checked:bg-primary-600 peer-checked:border-primary-600 peer-checked:shadow-xs peer-checked:shadow-primary-500/30 peer-checked:[&_svg]:scale-100",
-                  indeterminate && "bg-primary-600 border-primary-600 shadow-xs shadow-primary-500/30 [&_svg]:scale-100",
+                  "flex items-center justify-center h-4.5 w-4.5 rounded-md border border-border bg-surface text-text transform-gpu transition-all duration-200 ease-smooth active:scale-90 shadow-2xs",
+                  "peer-focus-visible:ring-4 peer-focus-visible:ring-focus-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface",
+                  "peer-checked:bg-primary-600 peer-checked:border-primary-600 peer-checked:shadow-xs peer-checked: peer-checked:[&_svg]:scale-100",
+                  indeterminate && "bg-primary-600 border-primary-600 shadow-xs  [&_svg]:scale-100",
                   error ? "border-danger-500/80" : "group-hover/chk:border-primary-500/60"
                 )}
               >
@@ -113,7 +113,7 @@ const Checkbox = memo(
 
             <div className="flex flex-col select-none">
               {label && (
-                <span className="text-sm font-medium text-text leading-tight transition-colors duration-150 group-hover/chk:text-primary-600">
+                <span className="text-sm font-medium text-text leading-tight transition-colors duration-150 group-hover/chk:text-accent">
                   {label}
                 </span>
               )}
@@ -126,7 +126,7 @@ const Checkbox = memo(
           </label>
 
           {error && (
-            <p id={errorId} className="text-xs font-medium text-danger-500 ml-7 animate-fade-in">
+            <p id={errorId} className="text-xs font-medium text-danger-text ml-7 animate-fade-in">
               {error}
             </p>
           )}

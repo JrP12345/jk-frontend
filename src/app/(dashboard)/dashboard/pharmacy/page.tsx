@@ -5,50 +5,10 @@ import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Table,
-  Button,
-  Modal,
-  Input,
-  DatePicker,
-  Select,
-  useToast,
-  Spinner,
-  Badge,
-  StatCard,
-  Dropdown,
-  ConfirmDialog,
-  ChartContainer,
-  DonutChart,
-  cn,
-} from "@/components/ui";
+import { Card, CardContent, Table, Button, Modal, Input, DatePicker, Select, useToast, Badge, StatCard, Dropdown, ConfirmDialog, ChartContainer, DonutChart, cn } from "@/components/ui";
 import { PharmacyAlertsCenter } from "@/components/pharmacy/PharmacyAlertsCenter";
 import { playChimeSound } from "@/utils/audioChimes";
-import {
-  RotateCw,
-  Plus,
-  Pill,
-  AlertTriangle,
-  Clock,
-  Package,
-  FileText,
-  MoreHorizontal,
-  Edit3,
-  Trash2,
-  Receipt,
-  Stethoscope,
-  Phone,
-  ArrowRight,
-  CheckCircle2,
-  Calendar,
-  AlertCircle,
-  Sparkles,
-  Search,
-} from "lucide-react";
+import { RotateCw, Plus, Pill, AlertTriangle, Clock, Package, MoreHorizontal, Edit3, Trash2, Receipt, Stethoscope, Phone, Search } from "lucide-react";
 
 interface MedicineType {
   id: string;
@@ -101,6 +61,7 @@ export default function PharmacyPage() {
   const [pendingPrescriptionGroups, setPendingPrescriptionGroups] = useState<PendingPrescriptionGroup[]>([]);
   const [dispenseSearch, setDispenseSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Add/Edit Medicine Modal State
@@ -262,6 +223,7 @@ export default function PharmacyPage() {
 
   const fetchData = async () => {
     try {
+      setLoadError(null);
       setIsRefreshing(true);
       const query = selectedClinicId ? `?clinicId=${selectedClinicId}` : "";
       const [medsRes, pendingRes] = await Promise.all([
@@ -273,6 +235,7 @@ export default function PharmacyPage() {
       setMedicines(medsRes.data.data || []);
       setPendingPrescriptionGroups(pendingRes.data.data || []);
     } catch {
+      setLoadError("Pharmacy records could not be loaded. Check your connection and try again.");
       toast({ title: "Error", description: "Failed to load pharmacy data", variant: "error" });
     } finally {
       setLoading(false);
@@ -466,7 +429,7 @@ export default function PharmacyPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -534,13 +497,13 @@ export default function PharmacyPage() {
           label="Low Stock Warnings"
           value={lowStockCount.toString()}
           description="Items with < 10 units remaining"
-          icon={<AlertTriangle className="w-5 h-5 text-amber-500" />}
+          icon={<AlertTriangle className="w-5 h-5 text-warning-text" />}
         />
         <StatCard
           label="Expired / Expiring Soon"
           value={expiredCount.toString()}
           description="Batches past validity date"
-          icon={<Clock className="w-5 h-5 text-rose-500" />}
+          icon={<Clock className="w-5 h-5 text-danger-text" />}
         />
       </div>
 
@@ -558,7 +521,7 @@ export default function PharmacyPage() {
               : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
           )}
         >
-          <Package className={cn("w-3.5 h-3.5", activeTab === "inventory" ? "text-primary-500" : "text-text-muted")} />
+          <Package className={cn("w-3.5 h-3.5", activeTab === "inventory" ? "text-accent" : "text-text-muted")} />
           <span>Inventory Stock Catalog</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
             {medicines.length}
@@ -575,10 +538,10 @@ export default function PharmacyPage() {
               : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
           )}
         >
-          <AlertTriangle className={cn("w-3.5 h-3.5", activeTab === "alerts" ? "text-amber-500" : "text-text-muted")} />
+          <AlertTriangle className={cn("w-3.5 h-3.5", activeTab === "alerts" ? "text-warning-text" : "text-text-muted")} />
           <span>Low Stock & Expiry Alerts</span>
           {(lowStockCount > 0 || expiredCount > 0) && (
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400">
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-warning/20 text-warning-text dark:text-warning-text">
               {lowStockCount + expiredCount}
             </span>
           )}
@@ -594,13 +557,13 @@ export default function PharmacyPage() {
               : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
           )}
         >
-          <Receipt className={cn("w-3.5 h-3.5", activeTab === "dispensing" ? "text-primary-500" : "text-text-muted")} />
+          <Receipt className={cn("w-3.5 h-3.5", activeTab === "dispensing" ? "text-accent" : "text-text-muted")} />
           <span>Dispensing Prescription Desk</span>
           <span
             className={cn(
               "text-[10px] px-2 py-0.5 rounded-full font-bold transition-all",
               pendingPrescriptionGroups.length > 0
-                ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 animate-pulse border border-amber-500/30 font-extrabold"
+                ? "bg-warning/20 text-warning-text dark:text-warning-text animate-pulse border border-warning/30 font-extrabold"
                 : "bg-surface-alt text-text-muted"
             )}
           >
@@ -651,10 +614,10 @@ export default function PharmacyPage() {
                   });
 
                   return [
-                    { name: "Optimal Stock", value: optimal, color: "var(--s-chart-2, #10b981)" },
-                    { name: "Low Stock (<10)", value: low, color: "var(--s-chart-3, #f59e0b)" },
-                    { name: "Out of Stock", value: outOfStock, color: "var(--s-chart-5, #f43f5e)" },
-                    { name: "Expired Batches", value: expired, color: "#dc2626" },
+                    { name: "Optimal Stock", value: optimal, color: "var(--s-chart-2)" },
+                    { name: "Low Stock (<10)", value: low, color: "var(--s-chart-3)" },
+                    { name: "Out of Stock", value: outOfStock, color: "var(--s-chart-5)" },
+                    { name: "Expired Batches", value: expired, color: "var(--danger)" },
                   ].filter((item) => item.value > 0);
                 })()}
                 height={200}
@@ -666,6 +629,8 @@ export default function PharmacyPage() {
           <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
             <CardContent className="p-0">
               <Table
+              error={loadError}
+              onRetry={fetchData}
                 loading={loading}
                 mobileCardView
                 columns={[
@@ -693,14 +658,14 @@ export default function PharmacyPage() {
                       </Badge>
                     ),
                     expiry: (
-                      <span className={cn("text-xs", isExpired ? "text-rose-500 font-bold" : "text-text-secondary")}>
+                      <span className={cn("text-xs", isExpired ? "text-danger-text font-bold" : "text-text-secondary")}>
                         {new Date(med.expiryDate).toLocaleDateString()} {isExpired && "(Expired)"}
                       </span>
                     ),
                     price: <span className="text-text font-bold text-xs">₹{med.price.toLocaleString("en-IN")}</span>,
                     stock: (
                       <div className="flex items-center gap-1.5">
-                        <span className={cn("font-bold text-xs", med.stockQuantity < 10 ? "text-rose-500" : "text-text")}>
+                        <span className={cn("font-bold text-xs", med.stockQuantity < 10 ? "text-danger-text" : "text-text")}>
                           {med.stockQuantity}
                         </span>
                         {med.stockQuantity < 10 && (
@@ -727,7 +692,7 @@ export default function PharmacyPage() {
                           items={[
                             {
                               label: "Add Batch Stock",
-                              icon: <Plus className="w-4 h-4 text-primary-500" />,
+                              icon: <Plus className="w-4 h-4 text-accent" />,
                               onClick: () => openAddBatchModal(med),
                             },
                             {
@@ -783,7 +748,7 @@ export default function PharmacyPage() {
                         <div>
                           <span className="text-text-muted text-[10px] uppercase font-bold block">Stock</span>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className={cn("font-bold text-sm", isLow ? "text-rose-500" : "text-text")}>
+                            <span className={cn("font-bold text-sm", isLow ? "text-danger-text" : "text-text")}>
                               {med.stockQuantity}
                             </span>
                             {isLow && (
@@ -802,7 +767,7 @@ export default function PharmacyPage() {
                       </div>
 
                       <div className="flex items-center justify-between text-xs pt-1 border-t border-border/50">
-                        <span className={cn("text-[11px] flex items-center gap-1", isExpired ? "text-rose-500 font-bold" : "text-text-muted")}>
+                        <span className={cn("text-[11px] flex items-center gap-1", isExpired ? "text-danger-text font-bold" : "text-text-muted")}>
                           <Clock className="w-3 h-3 shrink-0" />
                           Exp: {new Date(med.expiryDate).toLocaleDateString()} {isExpired && "(Expired)"}
                         </span>
@@ -881,7 +846,7 @@ export default function PharmacyPage() {
                 placeholder="Find prescription by Patient Name, Token # (e.g. #14), or Medicine..."
                 value={dispenseSearch}
                 onChange={(e) => setDispenseSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-surface-alt rounded-xl text-xs text-text border border-border/70 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+                className="w-full pl-9 pr-4 py-2 bg-surface-alt rounded-xl text-xs text-text border border-border/70 focus:outline-none focus:ring-2 focus:ring-focus-ring"
               />
             </div>
             {dispenseSearch && (
@@ -898,6 +863,8 @@ export default function PharmacyPage() {
           <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
             <CardContent className="p-0">
               <Table
+              error={loadError}
+              onRetry={fetchData}
                 loading={loading}
                 mobileCardView
                 columns={[
@@ -924,7 +891,7 @@ export default function PharmacyPage() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-bold text-text text-xs sm:text-sm">{group.patientId.name}</span>
                           {group.tokenNumber ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-500/10 text-accent dark:text-accent border border-primary-500/20">
                               Token #{group.tokenNumber}
                             </span>
                           ) : null}
@@ -937,7 +904,7 @@ export default function PharmacyPage() {
                     ),
                   doctor: (
                     <div className="flex items-center gap-1 text-xs font-semibold text-text">
-                      <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                      <Stethoscope className="w-3.5 h-3.5 text-accent shrink-0" />
                       <span>Dr. {group.doctorId.name.replace(/^dr\.?\s+/i, "")}</span>
                     </div>
                   ),
@@ -960,7 +927,7 @@ export default function PharmacyPage() {
                     <div className="space-y-1 py-1 max-w-sm">
                       {group.prescriptions?.map((item) => (
                         <div key={item.id} className="text-xs text-text flex items-center gap-1.5">
-                          <Pill className="w-3 h-3 text-primary-500 shrink-0" />
+                          <Pill className="w-3 h-3 text-accent shrink-0" />
                           <span className="font-bold">{item.name}</span>
                           <span className="text-text-muted">
                             &bull; {item.dosage} ({item.duration})
@@ -996,7 +963,7 @@ export default function PharmacyPage() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <h4 className="font-bold text-text text-sm">{group.patientId.name}</h4>
                             {group.tokenNumber && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 font-mono">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-500/10 text-accent dark:text-accent border border-primary-500/20 font-mono">
                                 #{group.tokenNumber}
                               </span>
                             )}
@@ -1014,7 +981,7 @@ export default function PharmacyPage() {
 
                         <div className="text-right shrink-0">
                           <span className="text-xs font-semibold text-text flex items-center gap-1 justify-end">
-                            <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                            <Stethoscope className="w-3.5 h-3.5 text-accent shrink-0" />
                             Dr. {group.doctorId.name.replace(/^dr\.?\s+/i, "")}
                           </span>
                           {group.appointmentTime && (
@@ -1034,7 +1001,7 @@ export default function PharmacyPage() {
                           {group.prescriptions?.map((item) => (
                             <div key={item.id} className="text-xs text-text flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5 min-w-0">
-                                <Pill className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                                <Pill className="w-3.5 h-3.5 text-accent shrink-0" />
                                 <span className="font-bold truncate">{item.name}</span>
                               </div>
                               <span className="text-[11px] text-text-muted shrink-0">
@@ -1205,7 +1172,7 @@ export default function PharmacyPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-text-muted">Estimated Subtotal:</span>
-                <span className="text-base font-bold text-primary-600 dark:text-primary-400 font-mono">
+                <span className="text-base font-bold text-accent dark:text-accent font-mono">
                   ₹
                   {dispenseItems
                     .reduce((sum, item) => {
@@ -1247,7 +1214,7 @@ export default function PharmacyPage() {
                 <div key={rx.id} className="p-3.5 border border-border/80 rounded-2xl space-y-2 bg-surface">
                   <div className="flex justify-between items-center text-xs">
                     <span className="font-bold text-text flex items-center gap-1">
-                      <Pill className="w-3.5 h-3.5 text-primary-500" />
+                      <Pill className="w-3.5 h-3.5 text-accent" />
                       Prescribed: {rx.name}
                     </span>
                     <span className="text-text-muted">

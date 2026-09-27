@@ -3,18 +3,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import Modal from "@/components/ui/Modal";
-import { Button, Badge, cn } from "@/components/ui";
-import {
-  Printer,
-  QrCode,
-  Smartphone,
-  CheckCircle2,
-  Clock,
-  Users,
-  Copy,
-  Receipt,
-  Scissors,
-} from "lucide-react";
+import { Button, cn } from "@/components/ui";
+import { Printer, Scissors } from "lucide-react";
 
 export interface ThermalTokenSlipData {
   appointmentId: string;
@@ -132,7 +122,7 @@ export default function ThermalTokenSlipModal({
               variant="primary"
               size="sm"
               onClick={handlePrint}
-              className="rounded-xl font-bold gap-1.5 cursor-pointer shadow-xs bg-zinc-900 hover:bg-zinc-800 text-white text-xs"
+              className="rounded-xl font-bold gap-1.5 cursor-pointer shadow-xs bg-surface hover:bg-surface-alt text-text text-xs"
             >
               <Printer className="w-3.5 h-3.5" />
               Print Slip ({paperWidth})
@@ -148,26 +138,26 @@ export default function ThermalTokenSlipModal({
           id="thermal-token-slip-print"
           data-width={paperWidth}
           className={cn(
-            "bg-white text-black p-4 rounded-xl border border-zinc-300 shadow-md font-mono text-center transition-all",
+            "bg-white text-black p-4 rounded-xl border border-border shadow-md font-mono text-center transition-all",
             paperWidth === "80mm" ? "w-[320px]" : "w-[240px]"
           )}
           style={{ fontFamily: "'Courier New', Courier, monospace" }}
         >
           {/* Header */}
           <div className="border-b border-dashed border-black pb-2 mb-2 space-y-0.5">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
               *** OPD QUEUE TOKEN ***
             </p>
             <h3 className="font-black text-sm sm:text-base leading-tight text-black uppercase">
               {tokenData.clinicName}
             </h3>
             {tokenData.clinicAddress && (
-              <p className="text-[10px] text-zinc-700 leading-tight">
+              <p className="text-[10px] text-text-secondary leading-tight">
                 {tokenData.clinicAddress}
               </p>
             )}
             {tokenData.clinicPhone && (
-              <p className="text-[10px] text-zinc-700">
+              <p className="text-[10px] text-text-secondary">
                 Ph: {tokenData.clinicPhone}
               </p>
             )}
@@ -190,7 +180,7 @@ export default function ThermalTokenSlipModal({
               </span>
             </div>
             {tokenData.doctorSpecialization && (
-              <div className="flex justify-between text-[10px] text-zinc-700">
+              <div className="flex justify-between text-[10px] text-text-secondary">
                 <span>Dept:</span>
                 <span>{tokenData.doctorSpecialization}</span>
               </div>
@@ -205,19 +195,19 @@ export default function ThermalTokenSlipModal({
 
           {/* Massive Token Number Display */}
           <div className="py-4 my-1 border-b-2 border-black space-y-1">
-            <p className="text-[11px] font-black uppercase tracking-widest text-zinc-700">
+            <p className="text-[11px] font-black uppercase tracking-widest text-text-secondary">
               YOUR TOKEN NUMBER
             </p>
             <div className="text-5xl sm:text-6xl font-black tracking-tighter text-black py-1">
               #{tokenData.tokenNumber}
             </div>
             {tokenData.patientsAhead !== undefined && (
-              <p className="text-[11px] font-bold text-zinc-800">
+              <p className="text-[11px] font-bold text-text">
                 Patients Ahead: {tokenData.patientsAhead}
               </p>
             )}
             {tokenData.estimatedCallTime && (
-              <p className="text-[11px] font-bold text-zinc-800">
+              <p className="text-[11px] font-bold text-text">
                 Est. Call: {new Date(tokenData.estimatedCallTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </p>
             )}
@@ -238,19 +228,19 @@ export default function ThermalTokenSlipModal({
                 )}
               />
             ) : (
-              <div className="w-24 h-24 bg-zinc-200 flex items-center justify-center text-[9px]">
+              <div className="w-24 h-24 bg-surface-alt flex items-center justify-center text-[9px]">
                 Loading QR...
               </div>
             )}
-            <p className="text-[9px] text-zinc-600 max-w-[220px] leading-tight pt-0.5">
+            <p className="text-[9px] text-text-secondary max-w-[220px] leading-tight pt-0.5">
               Live wait-time countdown & chime alert when your token is called
             </p>
           </div>
 
           {/* Footer Cut Line */}
-          <div className="pt-2 text-[9px] text-zinc-600 space-y-0.5">
+          <div className="pt-2 text-[9px] text-text-secondary space-y-0.5">
             <p>Please wait in the lounge until your token is announced.</p>
-            <div className="flex items-center justify-center gap-1 text-[8px] text-zinc-500 pt-1">
+            <div className="flex items-center justify-center gap-1 text-[8px] text-text-muted pt-1">
               <Scissors className="w-3 h-3" />
               <span>------------------------------</span>
             </div>

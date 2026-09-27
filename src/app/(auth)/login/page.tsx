@@ -6,39 +6,8 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
 import PasskeySignIn from "@/components/auth/PasskeySignIn";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-  Input,
-  Button,
-  Badge,
-  Modal,
-  useToast,
-  ModeSwitcher,
-  AnantaLogo,
-  Spinner,
-  cn,
-} from "@/components/ui";
-import {
-  AlertTriangle,
-  Smartphone,
-  Mail,
-  Lock,
-  KeyRound,
-  Eye,
-  EyeOff,
-  ArrowLeft,
-  ArrowRight,
-  ShieldCheck,
-  CheckCircle2,
-  Clock,
-  RotateCcw,
-  Sparkles,
-} from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, Modal, useToast, ModeSwitcher, EkavyuLogo, cn } from "@/components/ui";
+import { AlertTriangle, Smartphone, Mail, Lock, KeyRound, Eye, EyeOff, ArrowLeft, ArrowRight, ShieldCheck, CheckCircle2, Clock, RotateCcw, Sparkles } from "lucide-react";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -310,16 +279,14 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center p-4 py-10 bg-surface-alt relative font-sans text-text animate-page-enter">
       {/* Background ambient glow & subtle pattern */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-20%] left-[-15%] w-[60%] h-[60%] bg-primary-500/12 rounded-full blur-[160px]" />
-        <div className="absolute bottom-[-20%] right-[-15%] w-[60%] h-[60%] bg-blue-500/10 rounded-full blur-[160px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(var(--color-border)_1px,transparent_1px)] [background-size:24px_24px] opacity-30 dark:opacity-20" />
+        <div className="absolute inset-0 brand-wash" />
       </div>
 
       {/* Top Header Navigation */}
       <div className="absolute top-[max(1.25rem,env(safe-area-inset-top))] left-4 sm:left-8 z-20">
         <Link
           href="/browse"
-          className="text-xs font-semibold text-text-secondary hover:text-text flex items-center gap-2 bg-surface/80 hover:bg-surface backdrop-blur-md px-3.5 py-2 rounded-full border border-border/80 hover:border-primary-500/30 transition-all shadow-2xs hover:shadow-xs group min-h-[40px] sm:min-h-0"
+          className="text-xs font-semibold text-text-secondary hover:text-text flex items-center gap-2 bg-surface/80 hover:bg-surface  px-3.5 py-2 rounded-full border border-border/80 hover:border-primary-500/30 transition-all shadow-2xs hover:shadow-xs group min-h-[40px] sm:min-h-0"
         >
           <ArrowLeft className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.25} />
           <span>Browse Clinics</span>
@@ -334,20 +301,19 @@ export default function LoginPage() {
         {/* Brand Header */}
         <div className="text-center mb-6 flex flex-col items-center justify-center">
           <div className="relative mb-2">
-            <div className="absolute inset-0 bg-primary-500/20 blur-xl rounded-full scale-150 pointer-events-none" />
             <div className="relative">
-              <AnantaLogo size="xl" />
+              <EkavyuLogo size="xl" />
             </div>
           </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-[11px] font-bold text-primary-600 dark:text-primary-400 mt-2 shadow-2xs">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-[11px] font-bold text-accent dark:text-accent mt-2 shadow-2xs">
             <Sparkles className="w-3 h-3" strokeWidth={2} />
-            <span>ANANTA Healthcare OS</span>
+            <span>Care That Keeps Moving</span>
           </div>
         </div>
 
         {sessionExpired && (
-          <div className="mb-4 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5 shadow-2xs">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" strokeWidth={2} />
+          <div className="mb-4 p-3.5 rounded-2xl bg-warning/10 border border-warning/20 text-warning-text dark:text-warning-text text-xs flex items-center gap-2.5 shadow-2xs">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-warning-text" strokeWidth={2} />
             <span>Your session has expired for security. Please sign in again to continue.</span>
           </div>
         )}
@@ -355,14 +321,14 @@ export default function LoginPage() {
         {/* Auth Card Container */}
         <Card
           className={cn(
-            "shadow-2xl shadow-primary-950/10 dark:shadow-black/50 border border-border/80 backdrop-blur-xl bg-surface/95 dark:bg-surface/90 p-0 rounded-3xl overflow-hidden transition-transform duration-300 relative before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-gradient-to-r before:from-transparent before:via-primary-500 before:to-transparent ring-1 ring-border/40",
+            "shadow-lg   border border-border/80  bg-surface p-0 rounded-3xl overflow-hidden transition-transform duration-300 relative ring-1 ring-border/40",
             isShaking && "animate-shake"
           )}
         >
           {!isForgotPassword ? (
             <div className="p-6 sm:p-7 space-y-4">
               <CardHeader className="p-0 mb-3 text-center">
-                <CardTitle className="text-2xl font-black text-text tracking-tight">Welcome Back</CardTitle>
+                <CardTitle as="h1" className="text-2xl font-black text-text tracking-tight">Welcome Back</CardTitle>
                 <CardDescription className="text-xs text-text-muted mt-1 font-medium">
                   Access your patient portal or healthcare workspace
                 </CardDescription>
@@ -385,7 +351,7 @@ export default function LoginPage() {
                     className={cn(
                       "py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer min-h-[44px] sm:min-h-0 flex items-center justify-center gap-1.5",
                       authTab === "mobile"
-                        ? "bg-surface text-primary-600 dark:text-primary-400 shadow-xs border border-border/70"
+                        ? "bg-surface text-accent dark:text-accent shadow-xs border border-border/70"
                         : "text-text-muted hover:text-text hover:bg-surface/40"
                     )}
                   >
@@ -393,7 +359,7 @@ export default function LoginPage() {
                     <span>Patient Sign In</span>
                     <span className={cn(
                       "text-[10px] px-1.5 py-0.5 rounded-md font-semibold hidden sm:inline-block",
-                      authTab === "mobile" ? "bg-primary-500/10 text-primary-600 dark:text-primary-400" : "bg-surface-alt text-text-muted"
+                      authTab === "mobile" ? "bg-primary-500/10 text-accent dark:text-accent" : "bg-surface-alt text-text-muted"
                     )}>
                       OTP
                     </span>
@@ -412,7 +378,7 @@ export default function LoginPage() {
                     className={cn(
                       "py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer min-h-[44px] sm:min-h-0 flex items-center justify-center gap-1.5",
                       authTab === "email"
-                        ? "bg-surface text-primary-600 dark:text-primary-400 shadow-xs border border-border/70"
+                        ? "bg-surface text-accent dark:text-accent shadow-xs border border-border/70"
                         : "text-text-muted hover:text-text hover:bg-surface/40"
                     )}
                   >
@@ -420,7 +386,7 @@ export default function LoginPage() {
                     <span>Staff Email</span>
                     <span className={cn(
                       "text-[10px] px-1.5 py-0.5 rounded-md font-semibold hidden xs:inline-block",
-                      authTab === "email" ? "bg-primary-500/10 text-primary-600 dark:text-primary-400" : "bg-surface-alt text-text-muted"
+                      authTab === "email" ? "bg-primary-500/10 text-accent dark:text-accent" : "bg-surface-alt text-text-muted"
                     )}>
                       Clinic
                     </span>
@@ -440,7 +406,7 @@ export default function LoginPage() {
                         className={cn(
                           "flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer",
                           patientOtpMode === "mobile"
-                            ? "bg-surface text-primary-600 dark:text-primary-400 shadow-2xs font-bold border border-border/40"
+                            ? "bg-surface text-accent dark:text-accent shadow-2xs font-bold border border-border/40"
                             : "text-text-muted hover:text-text"
                         )}
                       >
@@ -453,7 +419,7 @@ export default function LoginPage() {
                         className={cn(
                           "flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer",
                           patientOtpMode === "email"
-                            ? "bg-surface text-primary-600 dark:text-primary-400 shadow-2xs font-bold border border-border/40"
+                            ? "bg-surface text-accent dark:text-accent shadow-2xs font-bold border border-border/40"
                             : "text-text-muted hover:text-text"
                         )}
                       >
@@ -494,7 +460,7 @@ export default function LoginPage() {
                       fullWidth
                       loading={otpLoading}
                       size="lg"
-                      className="rounded-xl font-bold min-h-[46px] shadow-md shadow-primary-500/20 hover:shadow-lg hover:shadow-primary-500/30 transition-all flex items-center justify-center gap-2 group"
+                      className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
                     >
                       <span>Send Verification OTP</span>
                       <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
@@ -505,7 +471,7 @@ export default function LoginPage() {
                     {/* Active Destination Chip */}
                     <div className="flex items-center justify-between p-3 bg-primary-500/8 dark:bg-primary-500/10 rounded-2xl border border-primary-500/20 text-xs">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                        <div className="w-2 h-2 rounded-full bg-success animate-pulse shrink-0" />
                         <div className="flex flex-col min-w-0">
                           <span className="text-[11px] text-text-muted font-medium">OTP dispatched to</span>
                           <span className="font-bold text-text text-xs tracking-wide truncate">
@@ -516,7 +482,7 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={() => { setOtpSent(false); setPhoneOtp(""); }}
-                        className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer px-2.5 py-1 rounded-lg hover:bg-primary-500/10 transition-colors shrink-0"
+                        className="text-xs font-semibold text-accent dark:text-accent hover:underline cursor-pointer px-2.5 py-1 rounded-lg hover:bg-primary-500/10 transition-colors shrink-0"
                       >
                         Change {patientOtpMode === "mobile" ? "Number" : "Email"}
                       </button>
@@ -541,7 +507,7 @@ export default function LoginPage() {
                         <span>Didn't receive code?</span>
                       </span>
                       {resendTimer > 0 ? (
-                        <span className="text-primary-600 dark:text-primary-400 font-semibold bg-primary-500/10 px-2.5 py-0.5 rounded-full text-[11px]">
+                        <span className="text-accent dark:text-accent font-semibold bg-primary-500/10 px-2.5 py-0.5 rounded-full text-[11px]">
                           Resend in {resendTimer}s
                         </span>
                       ) : (
@@ -549,7 +515,7 @@ export default function LoginPage() {
                           type="button"
                           onClick={handleRequestPatientOtp}
                           disabled={otpLoading}
-                          className="text-primary-600 dark:text-primary-400 font-bold hover:underline cursor-pointer flex items-center gap-1 text-xs"
+                          className="text-accent dark:text-accent font-bold hover:underline cursor-pointer flex items-center gap-1 text-xs"
                         >
                           <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
                           <span>Resend OTP</span>
@@ -562,7 +528,7 @@ export default function LoginPage() {
                       fullWidth
                       loading={otpLoading}
                       size="lg"
-                      className="rounded-xl font-bold min-h-[46px] shadow-md shadow-primary-500/20 hover:shadow-lg hover:shadow-primary-500/30 transition-all flex items-center justify-center gap-2 group"
+                      className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
                     >
                       <span>Verify & Sign In</span>
                       <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
@@ -577,7 +543,7 @@ export default function LoginPage() {
                     <Input
                       label="Staff Email Address *"
                       type="email"
-                      placeholder="doctor@anant.health"
+                      placeholder="doctor@example.com"
                       icon={<Mail className="w-4 h-4 text-text-muted" strokeWidth={2} />}
                       value={email}
                       onChange={(e) => {
@@ -630,7 +596,7 @@ export default function LoginPage() {
                             setResetEmail("");
                             setResetEmailError("");
                           }}
-                          className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer"
+                          className="text-xs font-semibold text-accent dark:text-accent hover:underline cursor-pointer"
                         >
                           Forgot Password?
                         </button>
@@ -645,7 +611,7 @@ export default function LoginPage() {
                       fullWidth
                       loading={loading}
                       size="lg"
-                      className="rounded-xl font-bold min-h-[46px] shadow-md shadow-primary-500/20 hover:shadow-lg hover:shadow-primary-500/30 transition-all flex items-center justify-center gap-2 group"
+                      className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
                     >
                       <span>Sign In to Dashboard</span>
                       <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
@@ -656,8 +622,8 @@ export default function LoginPage() {
 
               {/* Patient Registration Link */}
               <div className="mt-6 pt-4 border-t border-border/60 text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-xs text-text-secondary">
-                <span>New to ANANTA Health?</span>
-                <Link href="/register" className="font-bold text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1">
+                <span>New to Ekavyu Health?</span>
+                <Link href="/register" className="font-bold text-accent dark:text-accent hover:underline flex items-center gap-1">
                   <span>Create Patient Account</span>
                   <ArrowRight className="w-3 h-3 inline" strokeWidth={2} />
                 </Link>
@@ -667,7 +633,7 @@ export default function LoginPage() {
             /* Forgot Password Form */
             <form onSubmit={handleResetPassword} noValidate className="p-6 sm:p-7 space-y-4 animate-fade-in">
               <CardHeader className="p-0 mb-3">
-                <CardTitle className="text-xl font-bold tracking-tight">Recover Password</CardTitle>
+                <CardTitle as="h1" className="text-xl font-bold tracking-tight">Recover Password</CardTitle>
                 <CardDescription className="text-xs text-text-muted mt-1">
                   {!isResetSent
                     ? "Enter your email address and we will send password recovery instructions."
@@ -680,7 +646,7 @@ export default function LoginPage() {
                   <Input
                     label="Registered Email *"
                     type="email"
-                    placeholder="doctor@anant.health"
+                    placeholder="doctor@example.com"
                     icon={<Mail className="w-4 h-4 text-text-muted" strokeWidth={2} />}
                     value={resetEmail}
                     onChange={(e) => {
@@ -693,8 +659,8 @@ export default function LoginPage() {
                     autoComplete="email"
                   />
                 ) : (
-                  <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs leading-relaxed flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" strokeWidth={2} />
+                  <div className="p-4 rounded-2xl bg-success/10 border border-success/20 text-success-text dark:text-success-text text-xs leading-relaxed flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-success-text shrink-0 mt-0.5" strokeWidth={2} />
                     <div>
                       Instructions have been sent to <strong className="text-text">{resetEmail}</strong>. Please check your inbox.
                     </div>
@@ -709,7 +675,7 @@ export default function LoginPage() {
                     fullWidth
                     loading={resetLoading}
                     size="md"
-                    className="rounded-xl font-bold min-h-[44px] shadow-md shadow-primary-500/20 hover:shadow-lg hover:shadow-primary-500/30 transition-all flex items-center justify-center gap-2 group"
+                    className="rounded-xl font-bold min-h-[44px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
                   >
                     <span>Send Recovery Link</span>
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
@@ -731,12 +697,12 @@ export default function LoginPage() {
         {/* Security & Compliance Badges */}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-text-muted font-medium">
           <span className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" strokeWidth={2.25} />
+            <ShieldCheck className="w-3.5 h-3.5 text-success-text" strokeWidth={2.25} />
             <span>256-Bit SSL Encrypted</span>
           </span>
           <span className="w-1 h-1 rounded-full bg-border" />
           <span className="flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-primary-500" strokeWidth={2} />
+            <Sparkles className="w-3.5 h-3.5 text-accent" strokeWidth={2} />
             <span>ABDM & HIPAA Compliant</span>
           </span>
         </div>
@@ -807,7 +773,7 @@ export default function LoginPage() {
               loading={otpLoading}
               fullWidth
               size="lg"
-              className="rounded-xl font-bold min-h-[46px] shadow-md shadow-primary-500/20 hover:shadow-lg hover:shadow-primary-500/30 transition-all flex items-center justify-center gap-2 group"
+              className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
             >
               <span>Verify & Sign In</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />

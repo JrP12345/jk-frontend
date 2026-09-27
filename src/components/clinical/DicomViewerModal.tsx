@@ -57,7 +57,7 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
             <span className="font-bold text-text text-sm block">{study.studyDescription}</span>
             <div className="flex items-center gap-3 text-[11px] text-text-muted mt-0.5">
               <span>Patient: <b className="text-text">{patientName}</b></span>
-              <span>Modality: <b className="font-mono text-primary-600 font-bold">{study.modality}</b></span>
+              <span>Modality: <b className="font-mono text-accent font-bold">{study.modality}</b></span>
               <span>UID: <b className="font-mono text-text truncate max-w-[140px] inline-block align-bottom">{study.studyInstanceUid}</b></span>
             </div>
           </div>
@@ -81,7 +81,7 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
                 href={study.dicomWebUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-bold transition-all text-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-brand-mist font-bold transition-all text-xs"
               >
                 <Globe className="w-3.5 h-3.5" />
                 <span>WADO PACS</span>
@@ -106,7 +106,7 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
                 onClick={() => setSelectedPreset(p.id)}
                 className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer text-xs ${
                   selectedPreset === p.id
-                    ? "bg-primary-500/10 text-primary-600 font-bold border border-primary-500/30"
+                    ? "bg-primary-500/10 text-accent font-bold border border-primary-500/30"
                     : "bg-surface-alt text-text-muted hover:text-text"
                 }`}
               >
@@ -157,17 +157,17 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
         <div className="relative w-full h-80 bg-black rounded-2xl overflow-hidden flex items-center justify-center border border-border/80 shadow-inner group">
           <div className="absolute inset-0 z-20 flex items-center justify-center p-6 text-center">
             <div className="space-y-2 max-w-md">
-              <p className="font-bold text-amber-300">DICOM image preview in this viewer</p>
-              <p className="text-xs text-slate-300">The study metadata is loaded. Connect to your organization&apos;s DICOMweb endpoint or WADO server for full resolution slice manipulation.</p>
+              <p className="font-bold text-warning-text">DICOM image preview in this viewer</p>
+              <p className="text-xs text-text-secondary">The study metadata is loaded. Connect to your organization&apos;s DICOMweb endpoint or WADO server for full resolution slice manipulation.</p>
             </div>
           </div>
         </div>
 
         {/* Radiology Report Card if available */}
         {study.radiologyReport && (
-          <div className="p-3.5 bg-emerald-500/5 border border-emerald-500/30 rounded-2xl space-y-1.5">
+          <div className="p-3.5 bg-success/5 border border-success/30 rounded-2xl space-y-1.5">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs flex items-center gap-1.5">
+              <span className="font-bold text-success-text dark:text-success-text text-xs flex items-center gap-1.5">
                 <FileCheck className="w-4 h-4" />
                 Signed Radiology Clinical Report
               </span>
@@ -177,7 +177,7 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
                 </span>
               )}
             </div>
-            <p className="text-text text-xs leading-relaxed whitespace-pre-wrap font-sans pl-1 border-l-2 border-emerald-500">
+            <p className="text-text text-xs leading-relaxed whitespace-pre-wrap font-sans pl-1 border-l-2 border-success">
               {study.radiologyReport}
             </p>
           </div>

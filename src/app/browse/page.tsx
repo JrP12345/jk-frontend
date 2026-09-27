@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import BrowseClient, { Clinic } from "./BrowseClient";
 
 export const metadata: Metadata = {
-  title: "Browse Hospitals & Clinics | ANANTA Healthcare",
+  title: "Browse Hospitals & Clinics | Ekavyu Healthcare",
   description: "Find and book appointments with top doctors across our network of hospitals and clinics.",
 };
 

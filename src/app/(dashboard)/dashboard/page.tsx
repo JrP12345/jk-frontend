@@ -7,40 +7,10 @@ import { useClinicStore } from "@/store/clinicStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import api from "@/lib/api";
 import { localDateKey, todayRangeParams } from "@/lib/date";
-import {
-  Badge,
-  Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  StatCard,
-  Table,
-  Column,
-  useToast,
-  Spinner,
-} from "@/components/ui";
+import { Badge, Button, Card, StatCard, Table, Column, useToast } from "@/components/ui";
 import { useModuleStore } from "@/store/moduleStore";
-import {
-  RotateCw,
-  Building2,
-  Users,
-  Layers,
-  Shield,
-  KeyRound,
-  ArrowRight,
-  Plus,
-  CalendarPlus,
-} from "lucide-react";
-import {
-  DashboardStatCards,
-  DashboardAnalytics,
-  DashboardAppointmentsQueue,
-  DashboardQuickActions,
-  DashboardFollowUpAlerts,
-  DashboardClinicFacilities,
-} from "@/components/dashboard";
+import { RotateCw, Building2, Users, Layers, Shield, KeyRound, ArrowRight, Plus, CalendarPlus } from "lucide-react";
+import { DashboardStatCards, DashboardAnalytics, DashboardAppointmentsQueue, DashboardQuickActions, DashboardFollowUpAlerts, DashboardClinicFacilities } from "@/components/dashboard";
 
 export default function DashboardOverview() {
   const { user, switchOrg, impersonate } = useAuthStore();
@@ -326,7 +296,7 @@ export default function DashboardOverview() {
         header: "Tenant Organization",
         accessor: (org) => (
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-primary-600 font-bold flex items-center justify-center text-xs shrink-0 border border-primary-500/20">
+            <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-accent font-bold flex items-center justify-center text-xs shrink-0 border border-primary-500/20">
               {org.name.charAt(0).toUpperCase()}
             </div>
             <div>
@@ -408,7 +378,7 @@ export default function DashboardOverview() {
     return (
       <div className="space-y-6 font-sans text-text antialiased animate-fade-up">
         {/* 1. ROOT BANNER */}
-        <div className="relative overflow-hidden rounded-2xl border border-primary-500/20 bg-surface p-5 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-primary-600 before:via-primary-500 before:to-indigo-500">
+        <div className="relative overflow-hidden rounded-2xl border border-primary-500/20 bg-surface p-5 sm:p-6 shadow-xs ">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
             <div className="space-y-1">
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -453,27 +423,27 @@ export default function DashboardOverview() {
           <StatCard
             title="Tenant Organizations"
             value={summary.totalOrganizations}
-            icon={<Building2 className="w-5 h-5 text-primary-500" />}
+            icon={<Building2 className="w-5 h-5 text-accent" />}
             description="Registered medical institutions"
             onClick={() => router.push("/dashboard/organizations")}
           />
           <StatCard
             title="Clinic Branches"
             value={summary.totalBranches}
-            icon={<Layers className="w-5 h-5 text-emerald-500" />}
+            icon={<Layers className="w-5 h-5 text-success-text" />}
             description="Active multi-branch facilities"
           />
           <StatCard
             title="Registered Users"
             value={summary.totalMembers}
-            icon={<Users className="w-5 h-5 text-blue-500" />}
+            icon={<Users className="w-5 h-5 text-accent" />}
             description="Doctors, staff & admins"
             onClick={() => router.push("/dashboard/admin/users")}
           />
           <StatCard
             title="Security & Isolation"
             value="100%"
-            icon={<Shield className="w-5 h-5 text-purple-500" />}
+            icon={<Shield className="w-5 h-5 text-accent" />}
             description="Tenant data isolation active"
           />
         </div>
@@ -510,7 +480,7 @@ export default function DashboardOverview() {
                 >
                   <div className="flex items-start justify-between gap-2.5">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-primary-600 font-bold flex items-center justify-center text-sm shrink-0 border border-primary-500/20">
+                      <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-accent font-bold flex items-center justify-center text-sm shrink-0 border border-primary-500/20">
                         {org.name?.charAt(0).toUpperCase() || "T"}
                       </div>
                       <div className="min-w-0">
@@ -581,11 +551,11 @@ export default function DashboardOverview() {
             onClick={() => router.push("/dashboard/admin/users")}
           >
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-600 group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-accent group-hover:scale-105 transition-transform">
                 <KeyRound className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-text group-hover:text-primary-500 transition-colors">
+                <h3 className="text-sm font-bold text-text group-hover:text-accent transition-colors">
                   Users Directory & Impersonate
                 </h3>
                 <p className="text-xs text-text-muted mt-1 leading-relaxed">
@@ -600,11 +570,11 @@ export default function DashboardOverview() {
             onClick={() => router.push("/dashboard/plans")}
           >
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center text-success-text group-hover:scale-105 transition-transform">
                 <Layers className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-text group-hover:text-emerald-500 transition-colors">
+                <h3 className="text-sm font-bold text-text group-hover:text-success-text transition-colors">
                   SaaS Plans & Capacity Limits
                 </h3>
                 <p className="text-xs text-text-muted mt-1 leading-relaxed">
@@ -619,11 +589,11 @@ export default function DashboardOverview() {
             onClick={() => router.push("/dashboard/audit")}
           >
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600 group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-accent group-hover:scale-105 transition-transform">
                 <Shield className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-text group-hover:text-purple-500 transition-colors">
+                <h3 className="text-sm font-bold text-text group-hover:text-accent transition-colors">
                   System Audit Logs
                 </h3>
                 <p className="text-xs text-text-muted mt-1 leading-relaxed">
@@ -661,7 +631,7 @@ export default function DashboardOverview() {
   return (
     <div className="space-y-6 font-sans text-text antialiased animate-fade-up">
       {/* 1. HEADER BANNER */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -746,7 +716,7 @@ export default function DashboardOverview() {
 
               <div className="space-y-2.5">
                 <div className="flex items-center gap-3 text-xs">
-                  <span className="w-5 h-5 rounded-full bg-success-500/15 text-success-500 flex items-center justify-center text-[11px] font-bold shrink-0">
+                  <span className="w-5 h-5 rounded-full bg-success-500/15 text-success-text flex items-center justify-center text-[11px] font-bold shrink-0">
                     ✓
                   </span>
                   <span className="text-text-secondary line-through">Practice profile created</span>

@@ -87,7 +87,6 @@ export class ANANTAAISDK {
         });
       } catch (fetchErr: any) {
         if (fetchErr.name === "AbortError") {
-          console.log(`[ANANTA AI SDK] Stream ${correlationId} aborted.`);
           return;
         }
         throw fetchErr;
@@ -95,7 +94,7 @@ export class ANANTAAISDK {
 
       // Transparent token refresh on 401 Unauthorized
       if (response.status === 401 && !isRetry) {
-        console.warn(`[ANANTA AI SDK] 401 received on stream. Attempting session refresh...`);
+        console.warn(`[Ekavyu AI SDK] 401 received on stream. Attempting session refresh...`);
         try {
           await api.post("/auth/refresh");
           return await makeStreamRequest(true);
@@ -153,11 +152,7 @@ export class ANANTAAISDK {
     try {
       await makeStreamRequest();
     } catch (err: any) {
-      if (err.name === "AbortError") {
-        console.log(`[ANANTA AI SDK] Stream ${correlationId} cancelled by user.`);
-      } else {
-        onError(err);
-      }
+      if (err.name !== "AbortError") onError(err);
     } finally {
       this.activeStreams.delete(correlationId);
     }

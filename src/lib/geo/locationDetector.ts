@@ -1,7 +1,5 @@
 "use client";
 
-import { LanguageCode } from "@/lib/i18n";
-
 export interface DetectedLocation {
   city: string;
   state: string;
@@ -10,116 +8,6 @@ export interface DetectedLocation {
 }
 
 const CACHE_KEY = "ananta_detected_geo";
-
-export function mapStateToLanguage(state: string, city?: string): LanguageCode {
-  const s = (state || "").toLowerCase().trim();
-  const c = (city || "").toLowerCase().trim();
-
-  // 1. Gujarat & Major Gujarati Cities
-  if (
-    s.includes("gujarat") ||
-    [
-      "valsad",
-      "ahmedabad",
-      "surat",
-      "vadodara",
-      "rajkot",
-      "bhavnagar",
-      "jamnagar",
-      "gandhinagar",
-      "junagadh",
-      "anand",
-      "navsari",
-      "morbi",
-      "vapi",
-      "bharuch",
-      "mehsana",
-      "bhuj",
-      "porbandar",
-    ].includes(c)
-  ) {
-    return "gu";
-  }
-
-  // 2. Maharashtra & Major Marathi Cities
-  if (
-    s.includes("maharashtra") ||
-    [
-      "mumbai",
-      "pune",
-      "nagpur",
-      "nashik",
-      "thane",
-      "chhatrapati sambhajinagar",
-      "aurangabad",
-      "solapur",
-      "amravati",
-      "kolhapur",
-      "navi mumbai",
-      "jalgaon",
-      "akola",
-      "latur",
-      "dhule",
-      "ahmednagar",
-      "chandrapur",
-      "parbhani",
-    ].includes(c)
-  ) {
-    return "mr";
-  }
-
-  // 3. Hindi Belt States & Major Cities
-  const hindiStates = [
-    "delhi",
-    "uttar pradesh",
-    "madhya pradesh",
-    "rajasthan",
-    "bihar",
-    "haryana",
-    "himachal pradesh",
-    "uttarakhand",
-    "chandigarh",
-    "chhattisgarh",
-    "jharkhand",
-  ];
-
-  if (hindiStates.some((hs) => s.includes(hs))) {
-    return "hi";
-  }
-
-  const hindiCities = [
-    "delhi",
-    "new delhi",
-    "noida",
-    "gurgaon",
-    "gurugram",
-    "jaipur",
-    "lucknow",
-    "kanpur",
-    "indore",
-    "bhopal",
-    "patna",
-    "agra",
-    "varanasi",
-    "prayagraj",
-    "ghaziabad",
-    "faridabad",
-    "meerut",
-    "jodhpur",
-    "kota",
-    "gwalior",
-    "jabalpur",
-    "ranchi",
-    "raipur",
-    "dehradun",
-  ];
-
-  if (hindiCities.includes(c)) {
-    return "hi";
-  }
-
-  return "en";
-}
 
 export function findMatchingClinicCity(detectedCity: string, clinicCities: string[]): string | null {
   if (!detectedCity || !clinicCities || clinicCities.length === 0) return null;

@@ -2,12 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Allow mobile devices on LAN (hotspot/Wi-Fi) to access dev resources (HMR, hot reload)
-  // Add your laptop's current LAN IP here (run `ipconfig` to find it)
-  allowedDevOrigins: ["10.109.193.146"],
+  // Configure LAN origins through ALLOWED_DEV_ORIGINS.
+  output: "standalone",
+  allowedDevOrigins: process.env.ALLOWED_DEV_ORIGINS?.split(",").map(origin => origin.trim()).filter(Boolean) ?? [],
   experimental: {
     optimizePackageImports: ["lucide-react", "@tanstack/react-query", "zustand", "axios"],
   },
-  /* config options here */
   reactCompiler: false,
   async rewrites() {
     const backendUrl =

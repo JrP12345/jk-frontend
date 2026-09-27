@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { Button, Badge, Modal, Input, useToast, cn } from "@/components/ui";
-import { Sparkles, Star, Plus, Trash2, Check, Bookmark, Zap } from "lucide-react";
+import { Sparkles, Star, Trash2, Zap } from "lucide-react";
 
 export interface OpdPresetItem {
   id: string;
@@ -281,8 +281,8 @@ export function OpdClinicalPresetBar({
   return (
     <div className="p-2.5 rounded-2xl bg-primary-500/[0.04] border border-primary-500/20 space-y-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-primary-700 dark:text-primary-300">
-          <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
+        <div className="flex items-center gap-1.5 text-xs font-bold text-accent dark:text-accent">
+          <Zap className="w-3.5 h-3.5 text-warning-text fill-warning shrink-0" />
           <span>1-Click OPD Clinical Presets (Autofill 5-Sec Consultation)</span>
         </div>
 
@@ -292,10 +292,10 @@ export function OpdClinicalPresetBar({
             setNewPresetTitle(currentDiagnosis ? `${currentDiagnosis} Combo` : "");
             setSaveModalOpen(true);
           }}
-          className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-primary-600 hover:bg-primary-700 text-white shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
+          className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-primary-600 hover:bg-primary-700 text-brand-mist shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
           title="Save current prescription as a custom reusable preset"
         >
-          <Star className="w-3 h-3 text-amber-300 fill-amber-300" />
+          <Star className="w-3 h-3 text-warning-text fill-warning" />
           <span>Save Current as Custom Preset</span>
         </button>
       </div>
@@ -311,16 +311,16 @@ export function OpdClinicalPresetBar({
               className={cn(
                 "group shrink-0 rounded-xl border text-xs font-bold transition-all flex items-center shadow-2xs overflow-hidden",
                 isApplied
-                  ? "bg-amber-500/20 border-amber-500/50 text-amber-800 dark:text-amber-200 ring-2 ring-amber-500/20"
-                  : "bg-surface border-amber-500/30 hover:border-amber-500/60 text-text hover:bg-amber-500/5"
+                  ? "bg-warning/20 border-warning/50 text-warning-text dark:text-warning-text ring-2 ring-warning/20"
+                  : "bg-surface border-warning/30 hover:border-warning/60 text-text hover:bg-warning/5"
               )}
             >
               <button
                 type="button"
                 onClick={() => handleApplyPreset(preset)}
-                className="px-2.5 py-1.5 flex items-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                className="px-2.5 py-1.5 flex items-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning"
               >
-                <Star className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" aria-hidden="true" />
+                <Star className="w-3 h-3 text-warning-text fill-warning shrink-0" aria-hidden="true" />
                 <span>{preset.title}</span>
                 <Badge variant="warning" size="sm" className="text-[9px] px-1 py-0 font-mono">
                   MY PRESET
@@ -329,7 +329,7 @@ export function OpdClinicalPresetBar({
               <button
                 type="button"
                 onClick={(e) => handleDeleteCustomPreset(e, preset.id, preset.title)}
-                className="opacity-0 group-hover:opacity-100 p-1 mr-1 rounded text-text-muted hover:text-danger-600 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger-500 transition-opacity cursor-pointer"
+                className="opacity-0 group-hover:opacity-100 p-1 mr-1 rounded text-text-muted hover:text-danger-text focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger-500 transition-opacity cursor-pointer"
                 title={`Delete ${preset.title} preset`}
                 aria-label={`Delete ${preset.title} preset`}
               >
@@ -350,11 +350,11 @@ export function OpdClinicalPresetBar({
               className={cn(
                 "shrink-0 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs",
                 isApplied
-                  ? "bg-primary-600 border-primary-600 text-white shadow-xs"
+                  ? "bg-primary-600 border-primary-600 text-brand-mist shadow-xs"
                   : "bg-surface border-border/80 hover:border-primary-500/40 text-text hover:bg-primary-500/5"
               )}
             >
-              <Sparkles className={cn("w-3 h-3 shrink-0", isApplied ? "text-white" : "text-primary-600")} />
+              <Sparkles className={cn("w-3 h-3 shrink-0", isApplied ? "text-brand-mist" : "text-accent")} />
               <span>{preset.title}</span>
             </button>
           );
@@ -413,7 +413,7 @@ export function OpdClinicalPresetBar({
               variant="primary"
               size="sm"
               loading={savingPreset}
-              className="bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl shadow-xs"
+              className="bg-primary-600 hover:bg-primary-700 text-brand-mist font-bold rounded-xl shadow-xs"
             >
               Save Custom Preset
             </Button>

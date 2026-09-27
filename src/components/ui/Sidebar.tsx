@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { cn } from "./utils";
 import Tooltip from "./Tooltip";
@@ -28,13 +28,12 @@ export default function Sidebar({ brand, items, footer, collapsed = false, class
   return (
     <aside
       className={cn(
-        "flex flex-col bg-surface/95 dark:bg-surface/85 backdrop-blur-2xl border-r border-border/70 h-full transform-gpu transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none shadow-sm relative overflow-hidden",
+        "flex flex-col bg-surface dark:bg-surface  border-r border-border/70 h-full transform-gpu transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none shadow-sm relative overflow-hidden",
         collapsed ? "w-[72px]" : "w-64",
         className
       )}
     >
       {/* Top Ambient Glow Highlight */}
-      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-primary-500/30 to-transparent pointer-events-none" />
 
       {brand && (
         <div
@@ -52,14 +51,14 @@ export default function Sidebar({ brand, items, footer, collapsed = false, class
         <div className="flex-1 py-3 px-2.5 space-y-4 animate-pulse">
           <div className="space-y-1.5 px-2">
             {!collapsed && <div className="h-2.5 w-16 bg-border/60 rounded mb-2.5" />}
-            <div className={cn("h-9 bg-surface-alt/70 rounded-xl", collapsed && "w-10 mx-auto")} />
-            <div className={cn("h-9 bg-surface-alt/70 rounded-xl", collapsed && "w-10 mx-auto")} />
+            <div className={cn("h-9 bg-surface-alt rounded-xl", collapsed && "w-10 mx-auto")} />
+            <div className={cn("h-9 bg-surface-alt rounded-xl", collapsed && "w-10 mx-auto")} />
           </div>
           <div className="space-y-1.5 px-2 pt-2">
             {!collapsed && <div className="h-2.5 w-20 bg-border/60 rounded mb-2.5" />}
-            <div className={cn("h-9 bg-surface-alt/70 rounded-xl", collapsed && "w-10 mx-auto")} />
-            <div className={cn("h-9 bg-surface-alt/70 rounded-xl", collapsed && "w-10 mx-auto")} />
-            <div className={cn("h-9 bg-surface-alt/70 rounded-xl", collapsed && "w-10 mx-auto")} />
+            <div className={cn("h-9 bg-surface-alt rounded-xl", collapsed && "w-10 mx-auto")} />
+            <div className={cn("h-9 bg-surface-alt rounded-xl", collapsed && "w-10 mx-auto")} />
+            <div className={cn("h-9 bg-surface-alt rounded-xl", collapsed && "w-10 mx-auto")} />
           </div>
         </div>
       ) : (
@@ -69,18 +68,18 @@ export default function Sidebar({ brand, items, footer, collapsed = false, class
           {items.map((item, i) => {
             const showSection = item.section && (i === 0 || items[i - 1]?.section !== item.section);
             return (
-              <div key={i} className="flex flex-col">
+              <Fragment key={i}>
                 {showSection && !collapsed && (
-                  <li className="pt-3.5 pb-1 px-3 text-[11px] font-extrabold tracking-widest text-text-muted/70 uppercase flex items-center gap-2">
+                  <li className="pt-3.5 pb-1 px-3 text-[11px] font-extrabold tracking-widest text-text-muted uppercase flex items-center gap-2">
                     <span>{item.section}</span>
                     <span className="flex-1 h-px bg-border/40" />
                   </li>
                 )}
                 {showSection && collapsed && i > 0 && (
-                  <div className="my-1.5 mx-2 border-t border-border/40" />
+                  <li aria-hidden="true" className="my-1.5 mx-2 border-t border-border/40" />
                 )}
                 <SidebarItem item={item} collapsed={collapsed} />
-              </div>
+              </Fragment>
             );
           })}
         </ul>
@@ -101,25 +100,26 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
   const content = (
     <Link
       href={item.href}
+      aria-label={collapsed ? item.label : undefined}
       aria-current={item.active ? "page" : undefined}
       className={cn(
-        "group relative flex items-center gap-3 rounded-xl text-[13px] font-medium cursor-pointer transform-gpu transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 active:scale-[0.98] overflow-hidden",
+        "group relative flex items-center gap-3 rounded-xl text-[13px] font-medium cursor-pointer transform-gpu transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring active:scale-[0.98] overflow-hidden",
         collapsed ? "justify-center h-10 w-10 mx-auto p-0" : "px-3 py-3 sm:py-2.5",
         item.active
-          ? "bg-primary-500/10 dark:bg-primary-500/15 text-primary-600 dark:text-primary-400 font-semibold border border-primary-500/20 shadow-xs"
+          ? "bg-primary-500/10 dark:bg-primary-500/15 text-accent dark:text-accent font-semibold border border-primary-500/20 shadow-xs"
           : "text-text-secondary hover:text-text hover:bg-surface-hover/80 hover:translate-x-0.5 border border-transparent"
       )}
     >
       {/* Active Glowing Leading Indicator Bar */}
       {item.active && !collapsed && (
-        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full bg-gradient-to-b from-primary-400 to-primary-600 shadow-[0_0_8px_rgba(37,99,235,0.5)] animate-fade-in" />
+        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full bg-accent  animate-fade-in" />
       )}
 
       {item.icon && (
         <span
           className={cn(
             "shrink-0 transition-transform duration-200 group-hover:scale-105",
-            item.active ? "text-primary-600 dark:text-primary-400" : "text-text-muted group-hover:text-text-secondary"
+            item.active ? "text-accent dark:text-accent" : "text-text-muted group-hover:text-text-secondary"
           )}
         >
           {item.icon}
@@ -130,7 +130,7 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
         <>
           <span className="flex-1 truncate tracking-tight">{item.label}</span>
           {item.badge !== undefined && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-500/15 text-primary-600 dark:text-primary-400 border border-primary-500/20 leading-none">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary-500/15 text-accent dark:text-accent border border-primary-500/20 leading-none">
               {item.badge}
             </span>
           )}

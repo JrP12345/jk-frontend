@@ -2,18 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import {
-  LayoutDashboard,
-  Calendar,
-  Clock,
-  Users,
-  FileText,
-  Receipt,
-  Building2,
-  Menu,
-  Bell,
-  Settings,
-} from "lucide-react";
+import { LayoutDashboard, Calendar, Clock, Users, FileText, Receipt, Building2, Menu, Bell, Settings } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 
 interface MobileBottomNavProps {
@@ -21,6 +10,7 @@ interface MobileBottomNavProps {
   pathname: string;
   onOpenMenu: () => void;
   isMenuOpen: boolean;
+  availableItems?: Array<{ href: string; label: string }>;
 }
 
 interface NavTab {
@@ -35,6 +25,7 @@ export function MobileBottomNav({
   pathname,
   onOpenMenu,
   isMenuOpen,
+  availableItems,
 }: MobileBottomNavProps) {
   if (!user) return null;
 
@@ -62,8 +53,14 @@ export function MobileBottomNav({
           { label: "Records", href: "/dashboard/patient-portal", icon: FileText },
           { label: "Bills", href: "/dashboard/bills", icon: Receipt },
         ];
-      case "admin":
       case "root":
+        return [
+          { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+          { label: "Tenants", href: "/dashboard/organizations", icon: Building2 },
+          { label: "Users", href: "/dashboard/admin/users", icon: Users },
+          { label: "Billing", href: "/dashboard/admin/billing", icon: Receipt },
+        ];
+      case "admin":
         return [
           { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
           { label: "Schedule", href: "/dashboard/appointments", icon: Calendar },
@@ -80,17 +77,20 @@ export function MobileBottomNav({
     }
   };
 
+  const preferred = getTabsForRole().filter((tab) => !availableItems || availableItems.some((item) => item.href === tab.href));
+  const remaining: NavTab[] = (availableItems || []).filter((item) => !preferred.some((tab) => tab.href === item.href)).map((item) => ({ ...item, icon: FileText }));
   const tabs: NavTab[] = [
-    ...getTabsForRole(),
+    ...[...preferred, ...remaining].slice(0, 4),
     { label: "More", icon: Menu, isAction: true },
   ];
 
   return (
     <nav
       aria-label="Mobile Navigation Bar"
-      className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-xl border-t border-border/80 shadow-lg px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1"
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-surface/95  border-t border-border/80 shadow-lg px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1"
     >
-      <div className="grid grid-cols-5 items-center justify-items-center max-w-lg mx-auto">
+      <div style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        className="grid items-center justify-items-center max-w-lg mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
 
@@ -104,10 +104,12 @@ export function MobileBottomNav({
                 className={cn(
                   "flex flex-col items-center justify-center w-full py-1.5 px-1 rounded-xl transition-all duration-150 cursor-pointer min-h-[44px]",
                   isActive
-                    ? "text-primary-600 dark:text-primary-400 font-bold"
+                    ? "text-accent dark:text-accent font-bold"
                     : "text-text-muted hover:text-text hover:bg-surface-hover/50"
                 )}
                 aria-label="Open Full Navigation Menu"
+                aria-expanded={isMenuOpen}
+                aria-controls="dashboard-navigation"
               >
                 <div className={cn("relative flex items-center justify-center rounded-lg transition-all duration-150", isActive && "bg-primary-500/10 px-3 py-1")}>
                   <Icon className={cn("w-5 h-5 transition-transform duration-150", isActive && "scale-110")} />
@@ -131,10 +133,11 @@ export function MobileBottomNav({
             <Link
               key={tab.label}
               href={tab.href!}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex flex-col items-center justify-center w-full py-1.5 px-1 rounded-xl transition-all duration-150 cursor-pointer min-h-[44px]",
                 isActive
-                  ? "text-primary-600 dark:text-primary-400 font-bold"
+                  ? "text-accent dark:text-accent font-bold"
                   : "text-text-muted hover:text-text hover:bg-surface-hover/50"
               )}
             >

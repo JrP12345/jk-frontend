@@ -25,7 +25,7 @@ describe("StatCard Component Tests", () => {
       />
     );
     expect(screen.getByText("+12%")).toBeInTheDocument();
-    expect(screen.getByText("+12%")).toHaveClass("text-success-600");
+    expect(screen.getByText("+12%")).toHaveClass("text-success-text");
   });
 });
 
@@ -105,4 +105,3 @@ describe("Skeleton Primitives Tests", () => {
     expect(container.firstChild).toHaveAttribute("aria-hidden", "true");
   });
 });
-

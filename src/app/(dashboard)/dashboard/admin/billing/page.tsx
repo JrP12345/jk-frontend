@@ -1,55 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-  StatCard,
-  Button,
-  Input,
-  Select,
-  Badge,
-  Table,
-  Modal,
-  Toggle,
-  Spinner,
-  useToast,
-  cn,
-  Skeleton,
-  SkeletonStats,
-  SkeletonCardGrid,
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, StatCard, Button, Input, Badge, Table, Modal, Toggle, useToast, cn, Skeleton, SkeletonStats, SkeletonCardGrid } from "@/components/ui";
 import { billingService, SaaSPlan } from "@/services/billing.service";
 import { API_URL } from "@/lib/api";
-import {
-  RotateCw,
-  Plus,
-  Building2,
-  CreditCard,
-  Clock,
-  Layers,
-  ShieldCheck,
-  Zap,
-  Crown,
-  Search,
-  Edit3,
-  CheckCircle2,
-  CalendarPlus,
-  KeyRound,
-  Eye,
-  EyeOff,
-  Lock,
-  Stethoscope,
-  Users,
-  UserCheck,
-  Sparkles,
-  ArrowRight,
-  Shield,
-} from "lucide-react";
+import { RotateCw, Plus, Building2, CreditCard, Clock, Layers, Search, Edit3, CheckCircle2, CalendarPlus, KeyRound, Eye, EyeOff, Shield } from "lucide-react";
 
 export default function AdminBillingPage() {
   const { toast } = useToast();
@@ -264,7 +219,7 @@ export default function AdminBillingPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -378,7 +333,7 @@ export default function AdminBillingPage() {
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
             )}
           >
-            <Layers className={cn("w-3.5 h-3.5", activeTab === "plans" ? "text-primary-500" : "text-text-muted")} />
+            <Layers className={cn("w-3.5 h-3.5", activeTab === "plans" ? "text-accent" : "text-text-muted")} />
             <span>Commercial SaaS Plans</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
               {plans.length}
@@ -395,7 +350,7 @@ export default function AdminBillingPage() {
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
             )}
           >
-            <Building2 className={cn("w-3.5 h-3.5", activeTab === "subscriptions" ? "text-primary-500" : "text-text-muted")} />
+            <Building2 className={cn("w-3.5 h-3.5", activeTab === "subscriptions" ? "text-accent" : "text-text-muted")} />
             <span>Organization Subscriptions</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
               {subscriptions.length}
@@ -412,7 +367,7 @@ export default function AdminBillingPage() {
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
             )}
           >
-            <CreditCard className={cn("w-3.5 h-3.5", activeTab === "razorpay" ? "text-primary-500" : "text-text-muted")} />
+            <CreditCard className={cn("w-3.5 h-3.5", activeTab === "razorpay" ? "text-accent" : "text-text-muted")} />
             <span>Razorpay Platform Gateway</span>
           </button>
         </div>
@@ -425,7 +380,7 @@ export default function AdminBillingPage() {
               placeholder="Search by organization..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-1.5 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+              className="w-full pl-10 pr-4 py-1.5 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 transition-all"
             />
           </div>
         )}
@@ -560,7 +515,7 @@ export default function AdminBillingPage() {
                     header: "Active Plan",
                     accessor: (row: any) => (
                       <div className="space-y-0.5">
-                        <span className="font-semibold text-xs text-primary-600 dark:text-primary-400">
+                        <span className="font-semibold text-xs text-accent dark:text-accent">
                           {row.planId?.name || "Starter Tier"}
                         </span>
                         <span className="text-[10px] text-text-muted block capitalize">
@@ -725,7 +680,7 @@ export default function AdminBillingPage() {
               </div>
 
               <div className="p-3.5 bg-primary-500/[0.04] border border-primary-500/20 rounded-2xl text-xs text-text-muted leading-relaxed flex items-start gap-2.5">
-                <Shield className="w-4 h-4 text-primary-500 shrink-0 mt-0.5" />
+                <Shield className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                 <div>
                   <strong className="text-text font-semibold">Root Governance Notice:</strong> These credentials represent your SaaS platform payment merchant keys. All tenant customer subscriptions checkout through this primary platform gateway.
                 </div>

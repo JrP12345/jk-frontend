@@ -2,27 +2,8 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Button,
-} from "@/components/ui";
-import {
-  Building2,
-  Users,
-  MapPin,
-  ShieldCheck,
-  ListOrdered,
-  CalendarPlus,
-  FileText,
-  Receipt,
-  ChevronRight,
-  Layers,
-  FlaskConical,
-  CreditCard,
-} from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent, Button } from "@/components/ui";
+import { Building2, Users, MapPin, ShieldCheck, ListOrdered, CalendarPlus, FileText, Receipt, ChevronRight, Layers, FlaskConical, CreditCard } from "lucide-react";
 
 interface DashboardQuickActionsProps {
   user: any;
@@ -38,7 +19,7 @@ export function DashboardQuickActions({
   const router = useRouter();
 
   return (
-    <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden relative before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/25 before:to-transparent">
+    <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden relative ">
       <CardHeader className="pb-3 border-b border-border/60">
         <CardTitle className="text-sm sm:text-base font-bold text-text">
           {user?.role === "patient" ? "Billing & Quick Links" : "Quick Operations"}
@@ -49,7 +30,7 @@ export function DashboardQuickActions({
           <>
             {invoices.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-5 text-center text-text-muted">
-                <div className="w-10 h-10 rounded-2xl bg-surface-alt flex items-center justify-center mb-2 border border-border/70 text-emerald-500 shadow-2xs">
+                <div className="w-10 h-10 rounded-2xl bg-surface-alt flex items-center justify-center mb-2 border border-border/70 text-success-text shadow-2xs">
                   <Receipt className="w-5 h-5" />
                 </div>
                 <p className="font-semibold text-text text-xs">All Invoices Settled</p>
@@ -94,11 +75,11 @@ export function DashboardQuickActions({
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0 group-hover/btn:scale-105 transition-transform duration-200">
+                    <div className="w-8 h-8 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-accent dark:text-accent shrink-0 group-hover/btn:scale-105 transition-transform duration-200">
                       <CalendarPlus className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                      <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                         Book Doctor Consultation
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
@@ -106,7 +87,7 @@ export function DashboardQuickActions({
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                 </button>
 
                 <button
@@ -115,11 +96,11 @@ export function DashboardQuickActions({
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                      <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                         Patient Portal & Records
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
@@ -127,7 +108,7 @@ export function DashboardQuickActions({
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                 </button>
 
                 <button
@@ -136,11 +117,11 @@ export function DashboardQuickActions({
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                       <CreditCard className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                      <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                         My Bills & Invoices
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
@@ -148,7 +129,7 @@ export function DashboardQuickActions({
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                 </button>
 
                 <button
@@ -157,11 +138,11 @@ export function DashboardQuickActions({
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                       <FlaskConical className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                      <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                         Lab & Diagnostic Reports
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
@@ -169,7 +150,7 @@ export function DashboardQuickActions({
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                 </button>
               </div>
             </div>
@@ -186,11 +167,11 @@ export function DashboardQuickActions({
                       className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                        <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                           <Building2 className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                          <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                             Platform Organizations
                           </span>
                           <span className="text-[10px] text-text-muted block truncate">
@@ -198,7 +179,7 @@ export function DashboardQuickActions({
                           </span>
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                      <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                     </button>
 
                     <button
@@ -207,11 +188,11 @@ export function DashboardQuickActions({
                       className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                        <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                           <Layers className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                          <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                             SaaS Plans & Quotas
                           </span>
                           <span className="text-[10px] text-text-muted block truncate">
@@ -219,7 +200,7 @@ export function DashboardQuickActions({
                           </span>
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                      <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                     </button>
                   </>
                 )}
@@ -230,11 +211,11 @@ export function DashboardQuickActions({
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                       <Users className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                      <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                         Staff & Clinicians
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
@@ -242,7 +223,7 @@ export function DashboardQuickActions({
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                 </button>
 
                 <button
@@ -251,11 +232,11 @@ export function DashboardQuickActions({
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                       <MapPin className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                      <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                         Clinic Branches
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
@@ -263,7 +244,7 @@ export function DashboardQuickActions({
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                 </button>
 
                 <button
@@ -272,11 +253,11 @@ export function DashboardQuickActions({
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                       <Receipt className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                      <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                         Invoicing & Billing
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
@@ -284,7 +265,7 @@ export function DashboardQuickActions({
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                 </button>
 
                 {user?.role === "root" && (
@@ -294,11 +275,11 @@ export function DashboardQuickActions({
                     className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                      <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                         <ShieldCheck className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                        <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                           System Audit Logs
                         </span>
                         <span className="text-[10px] text-text-muted block truncate">
@@ -306,7 +287,7 @@ export function DashboardQuickActions({
                         </span>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                   </button>
                 )}
               </>
@@ -320,11 +301,11 @@ export function DashboardQuickActions({
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                       <ListOrdered className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                      <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                         Outpatient Queue Desk
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
@@ -332,7 +313,7 @@ export function DashboardQuickActions({
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                 </button>
 
                 <button
@@ -341,11 +322,11 @@ export function DashboardQuickActions({
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                       <CalendarPlus className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                      <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                         Schedule Appointment
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
@@ -353,7 +334,7 @@ export function DashboardQuickActions({
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                 </button>
 
                 <button
@@ -362,11 +343,11 @@ export function DashboardQuickActions({
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                       <Receipt className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                      <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                         Patient Invoicing
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
@@ -374,7 +355,7 @@ export function DashboardQuickActions({
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                 </button>
               </>
             )}
@@ -387,11 +368,11 @@ export function DashboardQuickActions({
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                       <ListOrdered className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                      <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                         Consultation Queue
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
@@ -399,7 +380,7 @@ export function DashboardQuickActions({
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                 </button>
 
                 <button
@@ -408,11 +389,11 @@ export function DashboardQuickActions({
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                      <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                         Patient Medical Records
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
@@ -420,7 +401,7 @@ export function DashboardQuickActions({
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                 </button>
 
                 <button
@@ -429,11 +410,11 @@ export function DashboardQuickActions({
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-primary-600 group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
+                    <div className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-text-secondary group-hover/btn:text-accent group-hover/btn:border-primary-500/30 transition-colors shrink-0 group-hover/btn:scale-105 duration-200">
                       <CalendarPlus className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span className="text-xs font-semibold text-text group-hover/btn:text-primary-600 transition-colors block truncate">
+                      <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
                         My Appointments
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
@@ -441,7 +422,7 @@ export function DashboardQuickActions({
                       </span>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-primary-600 group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-text-muted group-hover/btn:text-accent group-hover/btn:translate-x-1 transition-all duration-200 shrink-0" />
                 </button>
               </>
             )}

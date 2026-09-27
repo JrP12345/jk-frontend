@@ -19,16 +19,16 @@ export interface BadgeProps {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: "bg-surface-alt/90 backdrop-blur-xs text-text-secondary border border-border/80",
-  primary: "bg-primary-500/15 backdrop-blur-xs text-primary-600 dark:text-primary-400 border border-primary-500/30 shadow-2xs shadow-primary-500/10",
-  secondary: "bg-surface-alt/90 backdrop-blur-xs text-text-secondary border border-border/80",
-  success: "bg-emerald-500/15 backdrop-blur-xs text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-2xs shadow-emerald-500/10",
-  warning: "bg-amber-500/15 backdrop-blur-xs text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-2xs shadow-amber-500/10",
-  danger:  "bg-rose-500/15 backdrop-blur-xs text-rose-600 dark:text-rose-400 border border-rose-500/30 shadow-2xs shadow-rose-500/10",
-  outline: "bg-transparent text-text-secondary border border-border/80",
-  neutral: "bg-surface-alt/90 backdrop-blur-xs text-text-secondary border border-border/80",
-  error:   "bg-rose-500/15 backdrop-blur-xs text-rose-600 dark:text-rose-400 border border-rose-500/30 shadow-2xs shadow-rose-500/10",
-  info:    "bg-sky-500/15 backdrop-blur-xs text-sky-600 dark:text-sky-400 border border-sky-500/30 shadow-2xs shadow-sky-500/10",
+  default: "bg-badge-default-bg text-badge-default-text border border-current/20",
+  primary: "bg-badge-primary-bg text-badge-primary-text border border-current/20",
+  secondary: "bg-badge-default-bg text-badge-default-text border border-current/20",
+  success: "bg-badge-success-bg text-badge-success-text border border-current/20",
+  warning: "bg-badge-warning-bg text-badge-warning-text border border-current/20",
+  danger:  "bg-badge-danger-bg text-badge-danger-text border border-current/20",
+  outline: "bg-transparent text-text-secondary border border-border",
+  neutral: "bg-badge-default-bg text-badge-default-text border border-current/20",
+  error:   "bg-badge-danger-bg text-badge-danger-text border border-current/20",
+  info:    "bg-badge-info-bg text-badge-info-text border border-current/20",
 };
 
 const dotColors: Record<BadgeVariant, string> = {
@@ -89,7 +89,7 @@ const Badge = memo(function Badge({
         <button
           type="button"
           onClick={onRemove}
-          className="ml-0.5 -mr-0.5 h-3.5 w-3.5 rounded-full inline-flex items-center justify-center cursor-pointer hover:bg-black/10 dark:hover:bg-white/20 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500"
+          className="ml-0.5 -mr-0.5 h-3.5 w-3.5 rounded-full inline-flex items-center justify-center cursor-pointer hover:bg-black/10 dark:hover:bg-white/20 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
           aria-label="Remove badge"
         >
           <svg className="h-2.5 w-2.5 shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={2}>

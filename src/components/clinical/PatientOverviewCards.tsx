@@ -71,7 +71,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
           label="Total Consultations"
           value={(patient.totalAppointments || 0).toString()}
           icon={
-            <svg className="h-5 w-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           }
@@ -80,7 +80,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
           label="Active Admissions"
           value={(patient.activeAdmissions || 0).toString()}
           icon={
-            <svg className="h-5 w-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="h-5 w-5 text-warning-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
           }
@@ -89,7 +89,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
           label="Allergies Flagged"
           value={patient.clinicalProfileRestricted ? "Locked" : (patient.allergies?.length || 0).toString()}
           icon={
-            <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="h-5 w-5 text-danger-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           }
@@ -98,7 +98,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
           label="Active Conditions"
           value={patient.clinicalProfileRestricted ? "Locked" : (patient.conditions?.length || 0).toString()}
           icon={
-            <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           }
@@ -111,7 +111,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
         <Card className="rounded-2xl border border-border bg-surface shadow-xs">
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-base font-bold text-text flex items-center gap-2">
-              <svg className="h-5 w-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
               Demographics & Profile
@@ -174,7 +174,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
         <Card className="rounded-2xl border border-border bg-surface shadow-xs">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold text-text flex items-center gap-2">
-              <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-5 w-5 text-danger-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
               Clinical Alerts & Summary
@@ -247,14 +247,14 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
             <LineChart
               data={vitalsHistoryData}
               series={[
-                { key: "systolic", name: "Systolic (mmHg)", color: "var(--s-chart-5, #f43f5e)" },
-                { key: "diastolic", name: "Diastolic (mmHg)", color: "var(--s-chart-1, #3b82f6)" },
+                { key: "systolic", name: "Systolic (mmHg)", color: "var(--s-chart-5)" },
+                { key: "diastolic", name: "Diastolic (mmHg)", color: "var(--s-chart-1)" },
               ]}
               referenceBand={{
                 min: 80,
                 max: 120,
                 label: "Target BP Range",
-                color: "var(--s-chart-2, #10b981)",
+                color: "var(--s-chart-2)",
               }}
               height={210}
               valueFormatter={(v) => `${v} mmHg`}
@@ -265,13 +265,13 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
             <LineChart
               data={vitalsHistoryData}
               series={[
-                { key: "pulse", name: "Heart Rate (BPM)", color: "var(--s-chart-4, #8b5cf6)" },
+                { key: "pulse", name: "Heart Rate (BPM)", color: "var(--s-chart-4)" },
               ]}
               referenceBand={{
                 min: 60,
                 max: 100,
                 label: "Normal Resting HR",
-                color: "var(--s-chart-2, #10b981)",
+                color: "var(--s-chart-2)",
               }}
               height={210}
               valueFormatter={(v) => `${v} bpm`}
@@ -282,13 +282,13 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
             <LineChart
               data={vitalsHistoryData}
               series={[
-                { key: "glucose", name: "Blood Glucose (mg/dL)", color: "var(--s-chart-3, #f59e0b)" },
+                { key: "glucose", name: "Blood Glucose (mg/dL)", color: "var(--s-chart-3)" },
               ]}
               referenceBand={{
                 min: 70,
                 max: 140,
                 label: "Target Fasting/PP",
-                color: "var(--s-chart-2, #10b981)",
+                color: "var(--s-chart-2)",
               }}
               height={210}
               valueFormatter={(v) => `${v} mg/dL`}
@@ -299,13 +299,13 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
             <LineChart
               data={vitalsHistoryData}
               series={[
-                { key: "spo2", name: "Blood Oxygen (SpO2 %)", color: "var(--s-chart-2, #10b981)" },
+                { key: "spo2", name: "Blood Oxygen (SpO2 %)", color: "var(--s-chart-2)" },
               ]}
               referenceBand={{
                 min: 95,
                 max: 100,
                 label: "Optimal Oxygenation",
-                color: "var(--s-chart-2, #10b981)",
+                color: "var(--s-chart-2)",
               }}
               height={210}
               valueFormatter={(v) => `${v}%`}
@@ -317,7 +317,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
         <Card className="rounded-2xl border border-border bg-surface shadow-xs">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold text-text flex items-center gap-2">
-              <svg className="h-5 w-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-5 w-5 text-warning-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
               </svg>
               Emergency Contacts
@@ -332,7 +332,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
                       <p className="font-bold text-text">{contact.name}</p>
                       <p className="text-[11px] text-text-muted capitalize">{contact.relationship}</p>
                     </div>
-                    <span className="font-mono font-bold text-primary-600 bg-primary-500/10 px-2.5 py-1 rounded-lg">
+                    <span className="font-mono font-bold text-accent bg-primary-500/10 px-2.5 py-1 rounded-lg">
                       📞 {contact.phone}
                     </span>
                   </div>
@@ -348,7 +348,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
         <Card className="rounded-2xl border border-border bg-surface shadow-xs">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold text-text flex items-center gap-2">
-              <svg className="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-5 w-5 text-success-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Insurance Policies & Coverage
@@ -368,7 +368,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
                     </div>
                     {policy.coverageAmount !== undefined && (
                       <div className="text-right">
-                        <span className="font-black text-sm text-emerald-600 block">₹{policy.coverageAmount.toLocaleString()}</span>
+                        <span className="font-black text-sm text-success-text block">₹{policy.coverageAmount.toLocaleString()}</span>
                         <span className="text-[10px] text-text-muted">Coverage Limit</span>
                       </div>
                     )}

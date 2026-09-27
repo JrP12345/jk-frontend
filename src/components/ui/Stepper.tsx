@@ -22,9 +22,9 @@ function StepCircle({ step, index, status }: { step: Step; index: number; status
     <div
       className={cn(
         "h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold transform-gpu transition-all duration-200 ease-smooth relative z-10 select-none",
-        status === "completed" && "bg-primary-600 text-white shadow-xs",
+        status === "completed" && "bg-primary-600 text-brand-mist shadow-xs",
         status === "active" &&
-          "bg-primary-500/10 text-primary-600 dark:text-primary-400 ring-2 ring-primary-600 ring-offset-2 ring-offset-surface font-bold",
+          "bg-primary-500/10 text-accent dark:text-accent ring-2 ring-focus-ring ring-offset-2 ring-offset-surface font-bold",
         status === "upcoming" && "text-text-muted border border-border bg-surface"
       )}
     >
@@ -79,7 +79,7 @@ const Stepper = memo(function Stepper({ steps, currentStep, variant = "horizonta
               key={i}
               role={isClickable ? "button" : undefined}
               tabIndex={isClickable ? 0 : undefined}
-              className={cn("flex gap-3 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg p-1", isClickable && "cursor-pointer group")}
+              className={cn("flex gap-3 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-lg p-1", isClickable && "cursor-pointer group")}
               onClick={isClickable ? () => onStepClick(i) : undefined}
               onKeyDown={isClickable ? (e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -97,7 +97,7 @@ const Stepper = memo(function Stepper({ steps, currentStep, variant = "horizonta
                   className={cn(
                     "text-sm font-semibold transition-colors duration-150",
                     status === "upcoming" ? "text-text-muted" : "text-text",
-                    isClickable && "group-hover:text-primary-600"
+                    isClickable && "group-hover:text-accent"
                   )}
                   aria-current={status === "active" ? "step" : undefined}
                 >
@@ -123,7 +123,7 @@ const Stepper = memo(function Stepper({ steps, currentStep, variant = "horizonta
             key={i}
             role={isClickable ? "button" : undefined}
             tabIndex={isClickable ? 0 : undefined}
-            className={cn("flex flex-col items-center flex-1 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg p-1", isClickable && "cursor-pointer group")}
+            className={cn("flex flex-col items-center flex-1 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-lg p-1", isClickable && "cursor-pointer group")}
             onClick={isClickable ? () => onStepClick(i) : undefined}
             onKeyDown={isClickable ? (e) => {
               if (e.key === "Enter" || e.key === " ") {
@@ -137,7 +137,7 @@ const Stepper = memo(function Stepper({ steps, currentStep, variant = "horizonta
               className={cn(
                 "text-[10px] sm:text-xs font-semibold text-center mt-1.5 sm:mt-2 max-w-[72px] sm:max-w-none leading-tight transition-colors duration-150 line-clamp-1 sm:line-clamp-none",
                 status === "upcoming" ? "text-text-muted" : "text-text",
-                isClickable && "group-hover:text-primary-600"
+                isClickable && "group-hover:text-accent"
               )}
               aria-current={status === "active" ? "step" : undefined}
             >

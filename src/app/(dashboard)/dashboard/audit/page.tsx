@@ -4,11 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { canViewAuditLogs } from "@/lib/permissions";
-import {
-  Card, CardHeader, CardTitle, CardDescription, CardContent,
-  Table, Badge, Button, Select, Input, useToast, Alert, SkeletonTable,
-  ChartContainer, BarChart, cn
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, Badge, Button, Select, Input, useToast, Alert, ChartContainer, BarChart, cn } from "@/components/ui";
 import { RotateCw, Filter, X, Building2, Stethoscope, Tag, Calendar } from "lucide-react";
 
 interface AuditLogEntry {
@@ -235,7 +231,7 @@ export default function AuditLogsPage() {
       if (action === "APPOINTMENT_CREATE") {
         return (
           <span className="text-xs text-text-secondary">
-            Booked Token <strong className="text-primary-700">#{details.tokenNumber}</strong>. Status: <span className="capitalize">{details.status}</span>. Time: <span className="font-mono text-text">{new Date(details.appointmentTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>.
+            Booked Token <strong className="text-accent">#{details.tokenNumber}</strong>. Status: <span className="capitalize">{details.status}</span>. Time: <span className="font-mono text-text">{new Date(details.appointmentTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>.
           </span>
         );
       }
@@ -255,7 +251,7 @@ export default function AuditLogsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -312,7 +308,7 @@ export default function AuditLogsPage() {
                 <CardDescription className="text-xs">Narrow down events by organization, clinic, doctor, or category.</CardDescription>
               </div>
               {activeFilterCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-text-muted hover:text-danger-600">
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-text-muted hover:text-danger-text">
                   <X className="h-3 w-3 mr-1" />
                   Clear All
                 </Button>
@@ -456,7 +452,7 @@ export default function AuditLogsPage() {
               }));
             })()}
             series={[
-              { key: "count", name: "Events Logged", color: "var(--s-chart-1, #3b82f6)" },
+              { key: "count", name: "Events Logged", color: "var(--s-chart-1)" },
             ]}
             height={180}
             valueFormatter={(v) => `${v} events`}
@@ -470,7 +466,7 @@ export default function AuditLogsPage() {
           <CardDescription>
             Review system modifications, clinical status updates, and administrative events.
             {activeFilterCount > 0 && (
-              <span className="ml-2 text-primary-600 dark:text-primary-400 font-medium">
+              <span className="ml-2 text-accent dark:text-accent font-medium">
                 ({activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} applied)
               </span>
             )}

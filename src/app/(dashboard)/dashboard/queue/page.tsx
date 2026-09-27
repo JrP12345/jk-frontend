@@ -5,29 +5,7 @@ import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardDescription,
-  Button,
-  Select,
-  Input,
-  DatePicker,
-  useToast,
-  Spinner,
-  Badge,
-  StatCard,
-  Modal,
-  Textarea,
-  Checkbox,
-  Skeleton,
-  SkeletonCard,
-  ChartContainer,
-  BarChart,
-  cn,
-} from "@/components/ui";
+import { Alert, Card, CardContent, Button, Select, Input, DatePicker, useToast, Spinner, Badge, StatCard, Modal, Textarea, Checkbox, Skeleton, SkeletonCard, ChartContainer, BarChart, cn } from "@/components/ui";
 import dynamic from "next/dynamic";
 import type { UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
 import type { ThermalTokenSlipData } from "@/components/clinical/ThermalTokenSlipModal";
@@ -73,43 +51,7 @@ const ClinicalDocumentGeneratorModal = dynamic(
 );
 
 import { playChimeSound, CHIME_OPTIONS, ChimeType, announcePatientToken, VoiceAnnounceLanguage } from "@/utils/audioChimes";
-import {
-  Megaphone,
-  Volume2,
-  RotateCw,
-  Users,
-  UserCheck,
-  Stethoscope,
-  Ticket,
-  Clock,
-  ChevronUp,
-  ChevronDown,
-  CheckCircle2,
-  Activity,
-  Printer,
-  UserX,
-  XCircle,
-  Plus,
-  Trash2,
-  Calendar,
-  ArrowRight,
-  Sparkles,
-  Check,
-  Play,
-  CalendarClock,
-  Phone,
-  FileText,
-  AlertTriangle,
-  Zap,
-  QrCode,
-  Receipt,
-  PauseCircle,
-  Banknote,
-  FlaskConical,
-  History,
-  Send,
-  ShieldCheck,
-} from "lucide-react";
+import { Megaphone, Volume2, RotateCw, Users, UserCheck, Stethoscope, Ticket, Clock, ChevronUp, ChevronDown, CheckCircle2, Activity, Printer, UserX, XCircle, Plus, Trash2, Sparkles, Check, Play, CalendarClock, Phone, FileText, AlertTriangle, Zap, QrCode, PauseCircle, Banknote, FlaskConical, History, Send, ShieldCheck } from "lucide-react";
 import { PatientTimeline } from "@/components/ehr/PatientTimeline";
 import { InCabinInvestigationViewerModal } from "@/components/clinical/InCabinInvestigationViewerModal";
 import { DrugAllergyAlert } from "@/components/clinical/DrugAllergyAlert";
@@ -318,6 +260,7 @@ export default function QueuePage() {
 
   const [loadingFilters, setLoadingFilters] = useState(true);
   const [loadingQueue, setLoadingQueue] = useState(false);
+  const [queueError, setQueueError] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   // Token Slip Modal State
@@ -652,6 +595,7 @@ export default function QueuePage() {
       return;
     }
     try {
+      setQueueError(null);
       setLoadingQueue(true);
       const [resQueue, resStatus] = await Promise.all([
         api.get(`/queue?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`),
@@ -661,9 +605,10 @@ export default function QueuePage() {
       setQueueStatusData(resStatus.data?.data || null);
       await Promise.all([fetchActiveOverride(), fetchTriageAppointments(), fetchDelayStatus()]);
     } catch (err: any) {
+      setQueueError("The queue could not be loaded. Check your connection and try again.");
       toast({
         title: "Error Loading Queue",
-        description: err.response?.data?.message || "Failed to load active queue records.",
+        description: "The queue could not be loaded. Check your connection and try again.",
         variant: "error",
       });
     } finally {
@@ -1685,11 +1630,12 @@ export default function QueuePage() {
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+      {queueError && <Alert variant="error" title="Unable to load queue" action={<Button variant="outline" size="sm" onClick={fetchQueue} loading={loadingQueue}>Try again</Button>}>{queueError}</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
+        <div className="flex flex-col gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
@@ -1704,14 +1650,14 @@ export default function QueuePage() {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-2.5 shrink-0 w-full sm:w-auto">
+          <div className="flex flex-col md:flex-row md:items-center md:flex-wrap gap-2.5 min-w-0 w-full">
             {/* Primary Action Row for Mobile: Call Next & Walk-In */}
-            <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto order-1 sm:order-2">
+            <div className="grid grid-cols-2 md:flex items-center gap-2 w-full md:w-auto order-1 md:order-2">
               <Button
                 variant="primary"
                 size="sm"
                 onClick={openQuickWalkInModal}
-                className="font-bold rounded-xl shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none justify-center min-h-[42px] sm:min-h-[36px]"
+                className="font-bold rounded-xl shadow-xs bg-success hover:bg-success text-background border-none justify-center min-h-[42px] sm:min-h-[36px]"
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
                 <span>Walk-In (+)</span>
@@ -1730,7 +1676,7 @@ export default function QueuePage() {
             </div>
 
             {/* Secondary Tools Row: Chime & Operations */}
-            <div className="flex items-center gap-2 overflow-x-auto touch-pan-x scrollbar-none pb-1 sm:pb-0 w-full sm:w-auto order-2 sm:order-1">
+            <div className="flex flex-wrap items-center gap-2 min-w-0 w-full md:w-auto md:flex-1 order-2 md:order-1">
               {/* Chime selector pill */}
               <div className="flex items-center gap-1.5 bg-surface-alt p-1 rounded-xl border border-border/80 shrink-0">
                 <Select
@@ -1762,7 +1708,7 @@ export default function QueuePage() {
                 }}
                 className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
               >
-                <CalendarClock className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                <CalendarClock className="w-3.5 h-3.5 mr-1.5 text-accent" />
                 Availability
               </Button>
 
@@ -1777,7 +1723,7 @@ export default function QueuePage() {
                 className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
                 title="Print A4 QR poster for clinic waiting room entrance"
               >
-                <QrCode className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                <QrCode className="w-3.5 h-3.5 mr-1.5 text-accent" />
                 QR Poster
               </Button>
 
@@ -1785,10 +1731,10 @@ export default function QueuePage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setAbdmModalOpen(true)}
-                className="font-bold rounded-xl border-blue-500/40 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 dark:text-blue-400 whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
+                className="font-bold rounded-xl border-accent/40 text-accent hover:bg-accent-subtle dark:hover:bg-primary/30 dark:text-accent whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
                 title="Ayushman Bharat Digital Mission (ABHA) & 3-Second Counter Scan & Share"
               >
-                <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-blue-600 dark:text-blue-400" />
+                <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-accent dark:text-accent" />
                 ABHA
               </Button>
 
@@ -1802,7 +1748,7 @@ export default function QueuePage() {
                 className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
                 title="Generate Hospital Referral Letter, Medical Sick Leave, or Fitness Certificate"
               >
-                <FileText className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+                <FileText className="w-3.5 h-3.5 mr-1.5 text-success-text" />
                 Certificates
               </Button>
 
@@ -1862,16 +1808,16 @@ export default function QueuePage() {
                 {queueStatusData?.opdSession?.status === "active" ? (
                   <div className="flex items-center gap-2 flex-wrap">
                     {queueStatusData.opdSession.isOnBreak ? (
-                      <div className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      <div className="px-3 py-1.5 rounded-xl bg-warning/10 border border-warning/30 text-warning-text dark:text-warning-text text-xs font-bold flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-warning animate-pulse" />
                         ☕ On Break: {queueStatusData.opdSession.breakReason || "Intermission"}
                         <span className="font-normal text-[11px] opacity-85">
                           (~{queueStatusData.opdSession.breakExpectedMinutes || 15}m)
                         </span>
                       </div>
                     ) : (
-                      <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                      <div className="px-3 py-1.5 rounded-xl bg-success/10 border border-success/30 text-success-text dark:text-success-text text-xs font-bold flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-success animate-ping" />
                         OPD In Progress
                         {queueStatusData.opdSession.startedAt && (
                           <span className="font-normal text-[11px] opacity-85">
@@ -1888,7 +1834,7 @@ export default function QueuePage() {
                             variant="primary"
                             onClick={() => handleToggleDoctorBreak(false)}
                             loading={isTogglingBreak}
-                            className="font-bold text-xs rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                            className="font-bold text-xs rounded-xl bg-success hover:bg-success text-background shadow-xs"
                           >
                             <span>▶</span> Resume OPD
                           </Button>
@@ -1898,7 +1844,7 @@ export default function QueuePage() {
                             variant="outline"
                             onClick={() => setIsBreakModalOpen(true)}
                             loading={isTogglingBreak}
-                            className="font-bold text-xs rounded-xl border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                            className="font-bold text-xs rounded-xl border-warning/40 text-warning-text dark:text-warning-text hover:bg-warning/10"
                           >
                             <span>☕</span> Take Break
                           </Button>
@@ -1907,7 +1853,7 @@ export default function QueuePage() {
                           size="xs"
                           variant="outline"
                           onClick={handleOpenEndOpdModal}
-                          className="font-bold text-xs rounded-xl border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
+                          className="font-bold text-xs rounded-xl border-danger/30 text-danger-text dark:text-danger-text hover:bg-danger/10"
                         >
                           <span>🛑</span> End OPD & Reconcile
                         </Button>
@@ -1916,7 +1862,7 @@ export default function QueuePage() {
                   </div>
                 ) : queueStatusData?.opdSession?.status === "ended" ? (
                   <div className="flex items-center gap-2">
-                    <div className="px-3 py-1.5 rounded-xl bg-zinc-500/10 border border-zinc-500/30 text-zinc-400 text-xs font-bold flex items-center gap-1.5">
+                    <div className="px-3 py-1.5 rounded-xl bg-surface-hover/10 border border-border/30 text-text-muted text-xs font-bold flex items-center gap-1.5">
                       <span>🏁</span> OPD Ended for Today
                     </div>
                     {canManageQueue && (
@@ -1925,7 +1871,7 @@ export default function QueuePage() {
                         variant="outline"
                         onClick={handleStartOpdSession}
                         loading={isStartingOpd}
-                        className="font-bold text-xs rounded-xl text-primary-600 border-primary-500/30 hover:bg-primary-500/10"
+                        className="font-bold text-xs rounded-xl text-accent border-primary-500/30 hover:bg-primary-500/10"
                       >
                         Re-open Session
                       </Button>
@@ -1933,7 +1879,7 @@ export default function QueuePage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <div className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5">
+                    <div className="px-3 py-1.5 rounded-xl bg-warning/10 border border-warning/30 text-warning-text dark:text-warning-text text-xs font-bold flex items-center gap-1.5">
                       <span>⏳</span> OPD Not Started
                     </div>
                     {canManageQueue && (
@@ -1942,7 +1888,7 @@ export default function QueuePage() {
                         variant="primary"
                         onClick={handleStartOpdSession}
                         loading={isStartingOpd}
-                        className="font-bold text-xs rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                        className="font-bold text-xs rounded-xl bg-success hover:bg-success text-background shadow-xs"
                       >
                         <span>🟢</span> Start OPD Session
                       </Button>
@@ -1961,9 +1907,9 @@ export default function QueuePage() {
       {activeOverride && (
         <div className={cn(
           "p-3.5 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-sm font-medium",
-          activeOverride.status === "unavailable" ? "bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300" :
-          activeOverride.status === "delayed" ? "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300" :
-          "bg-primary/10 border-primary/30 text-primary"
+          activeOverride.status === "unavailable" ? "bg-danger/10 border-danger/30 text-danger-text dark:text-danger-text" :
+          activeOverride.status === "delayed" ? "bg-warning/10 border-warning/30 text-warning-text dark:text-warning-text" :
+          "bg-primary/10 border-primary/30 text-accent"
         )}>
           <div className="flex items-center gap-2.5">
             <CalendarClock className="w-5 h-5 shrink-0" />
@@ -1990,22 +1936,22 @@ export default function QueuePage() {
           URGENT DISRUPTION TRIAGE ALERT BANNER
          ────────────────────────────────────────────────────────────────────────── */}
       {triageAppointments.length > 0 && (
-        <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-rose-500/15 via-amber-500/10 to-rose-500/15 border-2 border-rose-500/40 shadow-sm animate-fade-in text-rose-950 dark:text-rose-100">
+        <div className="relative overflow-hidden p-4 sm:p-5 rounded-2xl bg-danger-subtle    border-2 border-danger/40 shadow-sm animate-fade-in text-danger-text dark:text-danger-text">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
             <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
+              <div className="w-10 h-10 rounded-xl bg-danger text-background flex items-center justify-center shrink-0 shadow-xs animate-pulse">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-extrabold text-sm sm:text-base tracking-tight text-rose-900 dark:text-rose-100">
+                  <h3 className="font-extrabold text-sm sm:text-base tracking-tight text-danger-text dark:text-danger-text">
                     Doctor Disruption Triage Active — {triageAppointments.length} Patient{triageAppointments.length === 1 ? "" : "s"} Stranded
                   </h3>
                   <Badge variant="danger" size="sm" dot pulse className="font-bold text-[10px]">
                     Urgent Action Required
                   </Badge>
                 </div>
-                <p className="text-xs text-rose-800/90 dark:text-rose-200/90 max-w-2xl leading-relaxed">
+                <p className="text-xs text-danger-text/90 dark:text-danger-text/90 max-w-2xl leading-relaxed">
                   A physician schedule disruption was processed today. {triageAppointments.filter((a) => a.status === "checked-in" || a.notes?.includes("checked-in")).length} waiting patient(s) need immediate transfer to an available colleague to avoid clinical abandonment.
                 </p>
               </div>
@@ -2016,7 +1962,7 @@ export default function QueuePage() {
                 variant="primary"
                 size="sm"
                 onClick={() => setTriageModalOpen(true)}
-                className="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-xs flex items-center gap-2 cursor-pointer"
+                className="bg-danger hover:bg-danger text-background font-bold rounded-xl shadow-xs flex items-center gap-2 cursor-pointer"
               >
                 <Stethoscope className="w-4 h-4" />
                 Open Triage Cockpit ({triageAppointments.length})
@@ -2029,7 +1975,7 @@ export default function QueuePage() {
       {queueStatusData?.isAdaptiveDuration && (
         <div className="p-2.5 px-3.5 rounded-xl bg-primary-500/[0.06] border border-primary-500/20 text-text-secondary flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
-            <Zap className="w-3.5 h-3.5 text-primary animate-pulse" />
+            <Zap className="w-3.5 h-3.5 text-accent animate-pulse" />
             <span className="font-medium text-text">
               Live Adaptive Wait Times Active: Calculated dynamically from today&apos;s completed consultations (~{queueStatusData.averageDuration || 15} mins/patient).
             </span>
@@ -2041,9 +1987,9 @@ export default function QueuePage() {
           QUEUE OVERRUN & DELAY CASCADE BANNER
          ────────────────────────────────────────────────────────────────────────── */}
       {delayStatus?.isDelayed && delayStatus.affectedCount > 0 && (
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-fade-in shadow-xs">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-warning/10 border border-warning/30 text-warning-text dark:text-warning-text flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-fade-in shadow-xs">
           <div className="flex items-start sm:items-center gap-2.5">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
+            <AlertTriangle className="w-5 h-5 text-warning-text shrink-0 mt-0.5 sm:mt-0" />
             <div>
               <p className="font-bold text-sm">
                 Queue Overrun Detected — Dr. {doctors.find((d) => (d.id || d._id) === selectedDoctor)?.name || user?.name || "Doctor"} is running ~{delayStatus.maxDelayMinutes} mins behind schedule
@@ -2058,7 +2004,7 @@ export default function QueuePage() {
             size="xs"
             onClick={handleTriggerDelayAlerts}
             loading={sendingDelayAlerts}
-            className="bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shrink-0 text-xs shadow-xs"
+            className="bg-warning hover:bg-warning text-background font-bold rounded-xl shrink-0 text-xs shadow-xs"
           >
             <Phone className="w-3.5 h-3.5 mr-1" />
             Send WhatsApp Delay Alerts ({delayStatus.affectedCount})
@@ -2125,8 +2071,8 @@ export default function QueuePage() {
               }
             )}
             series={[
-              { key: "waiting", name: "Waiting in Line", color: "var(--s-chart-3, #f59e0b)" },
-              { key: "consulted", name: "Completed / Active", color: "var(--s-chart-2, #10b981)" },
+              { key: "waiting", name: "Waiting in Line", color: "var(--s-chart-3)" },
+              { key: "consulted", name: "Completed / Active", color: "var(--s-chart-2)" },
             ]}
             layout="stacked"
             height={200}
@@ -2142,7 +2088,7 @@ export default function QueuePage() {
         <Card className="text-center py-16 rounded-2xl border border-border/80 bg-surface">
           <CardContent className="space-y-3">
             <div className="mx-auto w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center text-text-secondary">
-              <Stethoscope className="w-6 h-6 text-primary-500" />
+              <Stethoscope className="w-6 h-6 text-accent" />
             </div>
             <h3 className="text-base font-bold text-text">Select Clinic and Doctor</h3>
             <p className="text-xs text-text-muted max-w-sm mx-auto">
@@ -2186,8 +2132,8 @@ export default function QueuePage() {
                   className={cn(
                     "px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5",
                     queueViewTab === "standby"
-                      ? "bg-amber-500 text-white shadow-xs"
-                      : "text-amber-600 dark:text-amber-400 hover:text-amber-700"
+                      ? "bg-warning text-background shadow-xs"
+                      : "text-warning-text dark:text-warning-text hover:text-warning-text"
                   )}
                 >
                   <PauseCircle className="w-3.5 h-3.5" />
@@ -2199,8 +2145,8 @@ export default function QueuePage() {
                   className={cn(
                     "px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5",
                     queueViewTab === "recalls"
-                      ? "bg-emerald-600 text-white shadow-xs"
-                      : "text-emerald-700 dark:text-emerald-400 hover:text-emerald-800"
+                      ? "bg-success text-background shadow-xs"
+                      : "text-success-text dark:text-success-text hover:text-success-text"
                   )}
                 >
                   <CalendarClock className="w-3.5 h-3.5" />
@@ -2210,7 +2156,7 @@ export default function QueuePage() {
 
               {/* Doorway Voice Calling Bell Language Selector */}
               <div className="flex items-center gap-1.5 p-1 bg-surface-alt rounded-xl border border-border/70 text-xs">
-                <Volume2 className="w-3.5 h-3.5 text-primary-500 ml-1.5 shrink-0" />
+                <Volume2 className="w-3.5 h-3.5 text-accent ml-1.5 shrink-0" />
                 <span className="text-[11px] font-bold text-text-muted hidden sm:inline">Voice Announcer:</span>
                 {(["off", "en", "hi", "both"] as const).map((lang) => (
                   <button
@@ -2230,7 +2176,7 @@ export default function QueuePage() {
                     className={cn(
                       "px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer",
                       voiceLanguage === lang
-                        ? "bg-primary-600 text-white shadow-2xs"
+                        ? "bg-primary-600 text-brand-mist shadow-2xs"
                         : "text-text-muted hover:text-text hover:bg-surface"
                     )}
                     title={`Doorway Calling Bell: ${lang.toUpperCase()}`}
@@ -2247,7 +2193,7 @@ export default function QueuePage() {
                 {activeQueue.length === 0 ? (
                   <Card className="py-14 text-center text-text-muted rounded-2xl border border-border/80 bg-surface">
                     <CardContent className="space-y-2">
-                      <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-emerald-500">
+                      <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-success-text">
                         <CheckCircle2 className="w-6 h-6" />
                       </div>
                       <p className="font-semibold text-text text-sm">No Active Patients in Queue</p>
@@ -2271,11 +2217,11 @@ export default function QueuePage() {
                           className={cn(
                             "rounded-2xl border transition-all shadow-xs overflow-hidden",
                             isEmergency
-                              ? "border-red-500 bg-red-500/[0.04] dark:bg-red-500/[0.08] ring-1 ring-red-500/40"
+                              ? "border-danger bg-danger/[0.04] dark:bg-danger/[0.08] ring-1 ring-danger/40"
                               : hasCriticalVitals
-                              ? "border-red-500/80 bg-red-500/[0.03] dark:bg-red-500/[0.06] ring-1 ring-red-500/30"
+                              ? "border-danger/80 bg-danger/[0.03] dark:bg-danger/[0.06] ring-1 ring-danger/30"
                               : isInConsultation
-                              ? "border-emerald-500/40 bg-emerald-500/[0.03] dark:bg-emerald-500/[0.06]"
+                              ? "border-success/40 bg-success/[0.03] dark:bg-success/[0.06]"
                               : isCheckedIn
                               ? "border-primary-500/30 bg-surface"
                               : "border-border/80 bg-surface"
@@ -2288,11 +2234,11 @@ export default function QueuePage() {
                                 className={cn(
                                   "w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-mono font-bold shadow-xs shrink-0",
                                   isEmergency
-                                    ? "bg-red-600 text-white shadow-red-600/30 animate-pulse"
+                                    ? "bg-danger text-background shadow-danger/30 animate-pulse"
                                     : isInConsultation
-                                    ? "bg-emerald-500 text-white shadow-emerald-500/20"
+                                    ? "bg-success text-background shadow-success/20"
                                     : isCheckedIn
-                                    ? "bg-primary-500 text-white shadow-primary-500/20"
+                                    ? "bg-primary-500 text-brand-mist "
                                     : "bg-surface-alt border border-border text-text"
                                 )}
                               >
@@ -2324,11 +2270,11 @@ export default function QueuePage() {
 
                                   {/* Payment Status Badge */}
                                   {appt.paymentStatus === "paid" ? (
-                                    <Badge variant="success" size="sm" className="font-semibold text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                                    <Badge variant="success" size="sm" className="font-semibold text-[10px] bg-success/10 text-success-text dark:text-success-text border border-success/20">
                                       ✓ Paid ₹{appt.paymentAmount || 500}
                                     </Badge>
                                   ) : (
-                                    <Badge variant="warning" size="sm" className="font-semibold text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                                    <Badge variant="warning" size="sm" className="font-semibold text-[10px] bg-warning/10 text-warning-text dark:text-warning-text border border-warning/20">
                                       Unpaid ₹{appt.paymentAmount || 500}
                                     </Badge>
                                   )}
@@ -2355,7 +2301,7 @@ export default function QueuePage() {
                                 {appt.vitals && (
                                   <div className="flex items-center gap-1.5 flex-wrap text-xs pt-1">
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-alt border border-border/80 text-text font-medium text-[11px]">
-                                      <Stethoscope className="w-3 h-3 text-primary-500 shrink-0" />
+                                      <Stethoscope className="w-3 h-3 text-accent shrink-0" />
                                       <span>BP: <strong>{appt.vitals.bpSystolic}/{appt.vitals.bpDiastolic}</strong></span>
                                       <span>&bull;</span>
                                       <span>HR: <strong>{appt.vitals.pulse}</strong></span>
@@ -2392,7 +2338,7 @@ export default function QueuePage() {
                                           setSelectedVitalsAppt(appt);
                                           setVitalsModalOpen(true);
                                         }}
-                                        className="text-[10px] text-primary-600 dark:text-primary-400 hover:underline font-semibold cursor-pointer"
+                                        className="text-[10px] text-accent dark:text-accent hover:underline font-semibold cursor-pointer"
                                       >
                                         Edit Vitals
                                       </button>
@@ -2402,19 +2348,19 @@ export default function QueuePage() {
 
                                 {/* Critical Vitals Early Warning Score (MEWS Alert Banner) */}
                                 {criticalVitalsAlert && (
-                                  <div className="mt-2 p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
-                                    <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
-                                      <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
+                                  <div className="mt-2 p-2.5 rounded-xl bg-danger/10 border border-danger/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                                    <div className="flex items-center gap-2 text-danger-text dark:text-danger-text">
+                                      <AlertTriangle className="w-4 h-4 text-danger-text dark:text-danger-text shrink-0" />
                                       <div>
                                         <div className="flex items-center gap-1.5 flex-wrap">
-                                          <span className="font-bold uppercase tracking-wider text-[10px] text-red-600 dark:text-red-400">
+                                          <span className="font-bold uppercase tracking-wider text-[10px] text-danger-text dark:text-danger-text">
                                             Critical Vitals MEWS Alert
                                           </span>
                                           <Badge variant="danger" size="sm" className="font-mono text-[9px] px-1 py-0">
                                             HIGH TRIAGE RISK
                                           </Badge>
                                         </div>
-                                        <p className="text-[11px] text-red-800 dark:text-red-200 mt-0.5 font-medium">
+                                        <p className="text-[11px] text-danger-text dark:text-danger-text mt-0.5 font-medium">
                                           {criticalVitalsAlert.join(" • ")}
                                         </p>
                                       </div>
@@ -2428,7 +2374,7 @@ export default function QueuePage() {
                                           setEmergencyReason(`Critical Vitals MEWS Triage: ${criticalVitalsAlert.join(", ")}`);
                                           setStatModalOpen(true);
                                         }}
-                                        className="shrink-0 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                                        className="shrink-0 bg-danger hover:bg-danger text-background font-bold text-xs rounded-xl shadow-xs cursor-pointer"
                                       >
                                         <Zap className="w-3 h-3 mr-1 fill-white" />
                                         Escalate to STAT Next
@@ -2440,18 +2386,18 @@ export default function QueuePage() {
                                 {/* Investigation / Diagnostic Lab Results Strip */}
                                 {appt.investigationResults && appt.investigationResults.length > 0 && (
                                   <div className="flex items-center gap-1.5 flex-wrap text-xs pt-1">
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-700 dark:text-purple-300 font-medium text-[11px]">
-                                      <FlaskConical className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 border border-accent/30 text-accent dark:text-accent font-medium text-[11px]">
+                                      <FlaskConical className="w-3.5 h-3.5 text-accent dark:text-accent shrink-0" />
                                       <strong className="font-bold">Lab Findings:</strong>
                                       {appt.investigationResults.map((inv, i) => (
                                         <span key={i} className="inline-flex items-center gap-1">
                                           {i > 0 && <span className="opacity-40">&bull;</span>}
                                           <span className="font-medium">{inv.testName}:</span>
-                                          <strong className={inv.isAbnormal ? "text-red-600 dark:text-red-400 font-bold" : "text-emerald-600 dark:text-emerald-400 font-bold"}>
+                                          <strong className={inv.isAbnormal ? "text-danger-text dark:text-danger-text font-bold" : "text-success-text dark:text-success-text font-bold"}>
                                             {inv.value} {inv.unit || ""}
                                           </strong>
                                           {inv.isAbnormal && (
-                                            <span className="text-[9px] px-1 py-0 rounded bg-red-500/20 text-red-700 dark:text-red-300 font-bold">
+                                            <span className="text-[9px] px-1 py-0 rounded bg-danger/20 text-danger-text dark:text-danger-text font-bold">
                                               Abnormal
                                             </span>
                                           )}
@@ -2461,10 +2407,10 @@ export default function QueuePage() {
                                     <button
                                       type="button"
                                       onClick={() => openInvestigationViewer(appt)}
-                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-800 dark:text-purple-200 font-bold text-[11px] transition-all cursor-pointer shadow-2xs border border-purple-500/30"
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary/15 hover:bg-primary/25 text-accent dark:text-accent font-bold text-[11px] transition-all cursor-pointer shadow-2xs border border-accent/30"
                                       title="Open in-cabin viewer & compare past diagnostic trends"
                                     >
-                                      <Sparkles className="w-3 h-3 text-amber-500" />
+                                      <Sparkles className="w-3 h-3 text-warning-text" />
                                       <span>View Reports & Trends</span>
                                     </button>
                                   </div>
@@ -2489,7 +2435,7 @@ export default function QueuePage() {
                                     <button
                                       type="button"
                                       onClick={() => openParkModal(appt)}
-                                      className="px-2.5 py-1.5 text-xs font-semibold rounded-xl text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-colors cursor-pointer flex items-center gap-1.5 min-h-[36px]"
+                                      className="px-2.5 py-1.5 text-xs font-semibold rounded-xl text-warning-text dark:text-warning-text bg-warning/10 hover:bg-warning/20 border border-warning/20 transition-colors cursor-pointer flex items-center gap-1.5 min-h-[36px]"
                                       title="Patient stepped out: Hold in Standby"
                                     >
                                       <PauseCircle className="w-3.5 h-3.5" />
@@ -2500,7 +2446,7 @@ export default function QueuePage() {
                                   <button
                                     type="button"
                                     onClick={() => handleBumpBack(appt.id)}
-                                    className="px-2.5 py-1.5 text-xs font-semibold rounded-xl text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-colors cursor-pointer min-h-[36px]"
+                                    className="px-2.5 py-1.5 text-xs font-semibold rounded-xl text-warning-text dark:text-warning-text bg-warning/10 hover:bg-warning/20 border border-warning/20 transition-colors cursor-pointer min-h-[36px]"
                                     title="Late Arrival: Move 2 positions back in queue"
                                   >
                                     Bump (+2)
@@ -2509,7 +2455,7 @@ export default function QueuePage() {
                                   <button
                                     type="button"
                                     onClick={() => openResendTrackerModal(appt)}
-                                    className="px-2.5 py-1.5 text-xs font-semibold rounded-xl text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors cursor-pointer flex items-center gap-1.5 min-h-[36px]"
+                                    className="px-2.5 py-1.5 text-xs font-semibold rounded-xl text-success-text dark:text-success-text bg-success/10 hover:bg-success/20 border border-success/20 transition-colors cursor-pointer flex items-center gap-1.5 min-h-[36px]"
                                     title="Resend live queue tracking link via WhatsApp / SMS"
                                   >
                                     <Send className="w-3.5 h-3.5" />
@@ -2561,7 +2507,7 @@ export default function QueuePage() {
                                     className="font-semibold text-xs rounded-xl border-border/80 text-text-secondary hover:bg-surface-hover hover:text-text cursor-pointer"
                                     title="View Patient's Longitudinal Medical History & Clinical Timeline"
                                   >
-                                    <History className="w-3 h-3 mr-1 text-primary-600 dark:text-primary-400" />
+                                    <History className="w-3 h-3 mr-1 text-accent dark:text-accent" />
                                     EHR History
                                   </Button>
 
@@ -2573,12 +2519,12 @@ export default function QueuePage() {
                                     className={cn(
                                       "font-semibold text-xs rounded-xl cursor-pointer transition-all",
                                       appt.investigationResults && appt.investigationResults.length > 0
-                                        ? "border-purple-500/40 bg-purple-500/10 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 shadow-xs"
+                                        ? "border-accent/40 bg-primary/10 text-accent dark:text-accent hover:bg-primary/20 shadow-xs"
                                         : "border-border/80 text-text-secondary hover:bg-surface-hover hover:text-text"
                                     )}
                                     title="View Lab Reports, Attachments & 1-Click Trends"
                                   >
-                                    <FlaskConical className="w-3 h-3 mr-1 text-purple-600 dark:text-purple-400" />
+                                    <FlaskConical className="w-3 h-3 mr-1 text-accent dark:text-accent" />
                                     Lab Reports{appt.investigationResults && appt.investigationResults.length > 0 ? ` (${appt.investigationResults.length})` : ""}
                                   </Button>
 
@@ -2591,7 +2537,7 @@ export default function QueuePage() {
                                         setSelectedVitalsAppt(appt);
                                         setVitalsModalOpen(true);
                                       }}
-                                      className="font-semibold text-xs rounded-xl border-primary-500/30 text-primary-600 dark:text-primary-400 hover:bg-primary-500/10 cursor-pointer"
+                                      className="font-semibold text-xs rounded-xl border-primary-500/30 text-accent dark:text-accent hover:bg-primary-500/10 cursor-pointer"
                                       title="Record pre-consultation nursing vitals"
                                     >
                                       <Stethoscope className="w-3 h-3 mr-1" />
@@ -2609,7 +2555,7 @@ export default function QueuePage() {
                                         setEmergencyReason("");
                                         setStatModalOpen(true);
                                       }}
-                                      className="font-semibold text-xs rounded-xl border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                                      className="font-semibold text-xs rounded-xl border-danger/30 text-danger-text dark:text-danger-text hover:bg-danger/10 cursor-pointer"
                                       title="STAT Emergency Priority (Interrupts queue to Position 0)"
                                     >
                                       <AlertTriangle className="w-3 h-3 mr-1" />
@@ -2639,10 +2585,10 @@ export default function QueuePage() {
                                         setSelectedUpiAppt(appt);
                                         setIsUpiModalOpen(true);
                                       }}
-                                      className="font-bold text-xs rounded-xl border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer"
+                                      className="font-bold text-xs rounded-xl border-success/40 text-success-text dark:text-success-text hover:bg-success/10 cursor-pointer"
                                       title="Collect Consultation Fee via Counter-Top BharatPe UPI QR Code"
                                     >
-                                      <Banknote className="w-3.5 h-3.5 mr-1 text-emerald-600 dark:text-emerald-400" />
+                                      <Banknote className="w-3.5 h-3.5 mr-1 text-success-text dark:text-success-text" />
                                       Pay ₹{getAppointmentBilling(appt).totalAmount}
                                     </Button>
                                   )}
@@ -2666,17 +2612,17 @@ export default function QueuePage() {
                                             variant: "default",
                                           });
                                         }}
-                                        className="font-bold text-xs rounded-xl border border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 cursor-pointer"
+                                        className="font-bold text-xs rounded-xl border border-warning/30 text-warning-text dark:text-warning-text hover:bg-warning/10 cursor-pointer"
                                         title="Sound doorway calling bell chime and re-summon patient"
                                       >
-                                        <Volume2 className="w-3.5 h-3.5 mr-1 text-amber-500 animate-pulse" />
+                                        <Volume2 className="w-3.5 h-3.5 mr-1 text-warning-text animate-pulse" />
                                         Summon
                                       </Button>
                                       <Button
                                         variant="outline"
                                         size="xs"
                                         onClick={() => handleOpenInvestigationModal(appt)}
-                                        className="font-bold text-xs rounded-xl border-purple-500/30 text-purple-600 dark:text-purple-300 hover:bg-purple-500/10"
+                                        className="font-bold text-xs rounded-xl border-accent/30 text-accent dark:text-accent hover:bg-primary/10"
                                       >
                                         <span>🔬</span> Send for Lab
                                       </Button>
@@ -2685,7 +2631,7 @@ export default function QueuePage() {
                                         size="xs"
                                         onClick={() => openCompleteModal(appt)}
                                         loading={updatingStatus === appt.id}
-                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs"
+                                        className="bg-success hover:bg-success text-background font-bold text-xs rounded-xl shadow-xs"
                                       >
                                         <CheckCircle2 className="w-3 h-3 mr-1" />
                                         Conclude Visit
@@ -2706,7 +2652,7 @@ export default function QueuePage() {
                                         });
                                       }}
                                       loading={updatingStatus === appt.id}
-                                      className="font-bold text-xs rounded-xl shadow-xs bg-primary-600 hover:bg-primary-700 text-white"
+                                      className="font-bold text-xs rounded-xl shadow-xs bg-primary-600 hover:bg-primary-700 text-brand-mist"
                                     >
                                       <Stethoscope className="w-3 h-3 mr-1" />
                                       Call In
@@ -2730,7 +2676,7 @@ export default function QueuePage() {
                 {standbyQueue.length === 0 ? (
                   <Card className="py-14 text-center text-text-muted rounded-2xl border border-border/80 bg-surface">
                     <CardContent className="space-y-2">
-                      <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-amber-500">
+                      <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-warning-text">
                         <CheckCircle2 className="w-6 h-6" />
                       </div>
                       <p className="font-semibold text-text text-sm">No Patients in Standby</p>
@@ -2748,18 +2694,18 @@ export default function QueuePage() {
                       className={cn(
                         "rounded-2xl border transition-all shadow-xs overflow-hidden",
                         isReturned
-                          ? "border-emerald-500/50 bg-emerald-500/[0.04] ring-2 ring-emerald-500/20"
+                          ? "border-success/50 bg-success/[0.04] ring-2 ring-success/20"
                           : isReportReview
-                          ? "border-purple-500/40 bg-purple-500/[0.02]"
-                          : "border-amber-500/30 bg-amber-500/[0.02]"
+                          ? "border-accent/40 bg-primary/[0.02]"
+                          : "border-warning/30 bg-warning/[0.02]"
                       )}
                     >
                       <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-3.5 min-w-0">
                           <div
                             className={cn(
-                              "w-12 h-12 rounded-2xl text-white flex flex-col items-center justify-center font-mono font-bold shadow-xs shrink-0",
-                              isReturned ? "bg-emerald-600" : isReportReview ? "bg-purple-600" : "bg-amber-500"
+                              "w-12 h-12 rounded-2xl text-brand-mist flex flex-col items-center justify-center font-mono font-bold shadow-xs shrink-0",
+                              isReturned ? "bg-success" : isReportReview ? "bg-primary" : "bg-warning"
                             )}
                           >
                             <span className="text-[9px] font-sans uppercase font-bold tracking-wider opacity-80">
@@ -2774,7 +2720,7 @@ export default function QueuePage() {
                                 {appt.patientId?.userId?.name || "Patient Profile"}
                               </span>
                               {isReturned ? (
-                                <Badge variant="success" size="sm" pulse dot className="font-bold text-[10px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                                <Badge variant="success" size="sm" pulse dot className="font-bold text-[10px] bg-success/15 text-success-text dark:text-success-text border border-success/30">
                                   🟢 Returned & Ready in Waiting Room
                                 </Badge>
                               ) : (
@@ -2783,25 +2729,25 @@ export default function QueuePage() {
                                 </Badge>
                               )}
                               {isReportReview && (
-                                <Badge variant="neutral" size="sm" className="font-bold text-[10px] bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30">
+                                <Badge variant="neutral" size="sm" className="font-bold text-[10px] bg-primary/15 text-accent dark:text-accent border border-accent/30">
                                   🔬 In Lab: {appt.investigationNotes || "Diagnostic Tests"}
                                 </Badge>
                               )}
 
                               {appt.investigationResults && appt.investigationResults.length > 0 && (
                                 <div className="flex items-center gap-1.5 flex-wrap text-xs pt-1">
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-700 dark:text-purple-300 font-medium text-[11px]">
-                                    <FlaskConical className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/15 border border-accent/30 text-accent dark:text-accent font-medium text-[11px]">
+                                    <FlaskConical className="w-3.5 h-3.5 text-accent dark:text-accent shrink-0" />
                                     <strong className="font-bold">Reports Ready:</strong>
                                     {appt.investigationResults.map((inv, i) => (
                                       <span key={i} className="inline-flex items-center gap-1">
                                         {i > 0 && <span className="opacity-40">&bull;</span>}
                                         <span>{inv.testName}:</span>
-                                        <strong className={inv.isAbnormal ? "text-red-600 dark:text-red-400 font-bold" : "text-emerald-600 dark:text-emerald-400 font-bold"}>
+                                        <strong className={inv.isAbnormal ? "text-danger-text dark:text-danger-text font-bold" : "text-success-text dark:text-success-text font-bold"}>
                                           {inv.value} {inv.unit || ""}
                                         </strong>
                                         {inv.isAbnormal && (
-                                          <span className="text-[9px] px-1 py-0 rounded bg-red-500/20 text-red-700 dark:text-red-300 font-bold">
+                                          <span className="text-[9px] px-1 py-0 rounded bg-danger/20 text-danger-text dark:text-danger-text font-bold">
                                             ⚠️
                                           </span>
                                         )}
@@ -2811,10 +2757,10 @@ export default function QueuePage() {
                                   <button
                                     type="button"
                                     onClick={() => openInvestigationViewer(appt)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-800 dark:text-purple-200 font-bold text-[11px] transition-all cursor-pointer shadow-2xs border border-purple-500/30"
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary/20 hover:bg-primary/30 text-accent dark:text-accent font-bold text-[11px] transition-all cursor-pointer shadow-2xs border border-accent/30"
                                     title="Open in-cabin viewer & compare past trends"
                                   >
-                                    <Sparkles className="w-3 h-3 text-amber-500" />
+                                    <Sparkles className="w-3 h-3 text-warning-text" />
                                     <span>Compare Trends</span>
                                   </button>
                                 </div>
@@ -2840,7 +2786,7 @@ export default function QueuePage() {
                           <button
                             type="button"
                             onClick={() => openResendTrackerModal(appt)}
-                            className="px-2 py-1 text-[10px] font-semibold rounded-lg text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors cursor-pointer flex items-center gap-1"
+                            className="px-2 py-1 text-[10px] font-semibold rounded-lg text-success-text dark:text-success-text bg-success/10 hover:bg-success/20 border border-success/20 transition-colors cursor-pointer flex items-center gap-1"
                             title="Resend live queue tracking link via WhatsApp / SMS"
                           >
                             <Send className="w-3 h-3" />
@@ -2850,10 +2796,10 @@ export default function QueuePage() {
                             size="xs"
                             variant="outline"
                             onClick={() => openInvestigationViewer(appt)}
-                            className="font-bold text-xs rounded-xl border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-500/10 cursor-pointer shadow-xs"
+                            className="font-bold text-xs rounded-xl border-accent/30 text-accent dark:text-accent hover:bg-primary/10 cursor-pointer shadow-xs"
                             title="View lab investigation results and parameter comparisons"
                           >
-                            <FlaskConical className="w-3.5 h-3.5 mr-1 text-purple-600 dark:text-purple-400" />
+                            <FlaskConical className="w-3.5 h-3.5 mr-1 text-accent dark:text-accent" />
                             Lab Reports
                           </Button>
                           {isReportReview ? (
@@ -2862,7 +2808,7 @@ export default function QueuePage() {
                               variant="primary"
                               onClick={() => handleResumeForReportReview(appt.id, appt.tokenNumber)}
                               loading={updatingStatus === appt.id}
-                              className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs"
+                              className="bg-primary hover:bg-primary text-brand-mist font-bold text-xs rounded-xl shadow-xs"
                             >
                               <span>🔬</span> Resume for Report Review
                             </Button>
@@ -2872,7 +2818,7 @@ export default function QueuePage() {
                               variant="primary"
                               onClick={() => handleResumePatient(appt.id)}
                               loading={updatingStatus === appt.id}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs"
+                              className="bg-success hover:bg-success text-background font-bold text-xs rounded-xl shadow-xs"
                             >
                               <Play className="w-3 h-3 mr-1 fill-current" />
                               Resume (Next Up!)
@@ -2952,7 +2898,7 @@ export default function QueuePage() {
                               <button
                                 type="button"
                                 onClick={() => handlePrintAppointmentPrescription(appt)}
-                                className="px-2.5 py-1 text-[11px] font-bold rounded-xl border border-primary-500/30 text-primary-600 dark:text-primary-400 hover:bg-primary-500/10 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                className="px-2.5 py-1 text-[11px] font-bold rounded-xl border border-primary-500/30 text-accent dark:text-accent hover:bg-primary-500/10 transition-colors inline-flex items-center gap-1 cursor-pointer"
                                 title="Print Official Prescription (Rx)"
                               >
                                 <FileText className="w-3.5 h-3.5" />
@@ -2961,7 +2907,7 @@ export default function QueuePage() {
                               <button
                                 type="button"
                                 onClick={() => openResendRxModal(appt)}
-                                className="px-2.5 py-1 text-[11px] font-bold rounded-xl border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                className="px-2.5 py-1 text-[11px] font-bold rounded-xl border border-success/30 text-success-text dark:text-success-text hover:bg-success/10 transition-colors inline-flex items-center gap-1 cursor-pointer"
                                 title="Dispatch Digital e-Prescription via WhatsApp / SMS"
                               >
                                 <Send className="w-3.5 h-3.5" />
@@ -2979,7 +2925,7 @@ export default function QueuePage() {
                                   });
                                   setClinicalDocGenOpen(true);
                                 }}
-                                className="px-2 py-1 text-[11px] font-bold rounded-xl border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                className="px-2 py-1 text-[11px] font-bold rounded-xl border border-accent/30 text-accent dark:text-accent hover:bg-primary/10 transition-colors inline-flex items-center gap-1 cursor-pointer"
                                 title="Generate Medical Sick Leave, Referral Letter, or Fitness Certificate"
                               >
                                 <FileText className="w-3.5 h-3.5" />
@@ -2997,17 +2943,17 @@ export default function QueuePage() {
                             Slip
                           </button>
                           {appt.status === "completed" && (
-                            <div className="w-7 h-7 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                            <div className="w-7 h-7 rounded-xl bg-success/10 text-success-text dark:text-success-text border border-success/20 flex items-center justify-center shrink-0">
                               <Check className="w-4 h-4" />
                             </div>
                           )}
                           {appt.status === "cancelled" && (
-                            <div className="w-7 h-7 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
+                            <div className="w-7 h-7 rounded-xl bg-danger/10 text-danger-text dark:text-danger-text border border-danger/20 flex items-center justify-center shrink-0">
                               <XCircle className="w-4 h-4" />
                             </div>
                           )}
                           {appt.status === "no-show" && (
-                            <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0">
+                            <div className="w-7 h-7 rounded-xl bg-warning/10 text-warning-text dark:text-warning-text border border-warning/20 flex items-center justify-center shrink-0">
                               <UserX className="w-4 h-4" />
                             </div>
                           )}
@@ -3061,7 +3007,7 @@ export default function QueuePage() {
           {apptToComplete && (
             <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-primary-500/10 border border-primary-500/20">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-primary-600 text-white font-bold text-sm flex items-center justify-center shadow-xs">
+                <div className="w-9 h-9 rounded-xl bg-primary-600 text-brand-mist font-bold text-sm flex items-center justify-center shadow-xs">
                   {apptToComplete.patientId?.userId?.name?.[0]?.toUpperCase() || "P"}
                 </div>
                 <div>
@@ -3084,9 +3030,9 @@ export default function QueuePage() {
                   variant="outline"
                   size="xs"
                   onClick={() => openInvestigationViewer(apptToComplete)}
-                  className="font-bold text-xs rounded-xl bg-surface border-purple-500/40 text-purple-700 dark:text-purple-300 hover:bg-purple-500/15 cursor-pointer shadow-xs shrink-0"
+                  className="font-bold text-xs rounded-xl bg-surface border-accent/40 text-accent dark:text-accent hover:bg-primary/15 cursor-pointer shadow-xs shrink-0"
                 >
-                  <FlaskConical className="w-3.5 h-3.5 mr-1 text-purple-600" />
+                  <FlaskConical className="w-3.5 h-3.5 mr-1 text-accent" />
                   Lab Reports & Compare
                 </Button>
                 <Button
@@ -3099,9 +3045,9 @@ export default function QueuePage() {
                     setTimelinePatient({ id: pId, name: pName });
                     setTimelineModalOpen(true);
                   }}
-                  className="font-bold text-xs rounded-xl bg-surface border-primary-500/40 text-primary-700 dark:text-primary-300 hover:bg-primary-500/15 cursor-pointer shadow-xs shrink-0"
+                  className="font-bold text-xs rounded-xl bg-surface border-primary-500/40 text-accent dark:text-accent hover:bg-primary-500/15 cursor-pointer shadow-xs shrink-0"
                 >
-                  <History className="w-3.5 h-3.5 mr-1 text-primary-600" />
+                  <History className="w-3.5 h-3.5 mr-1 text-accent" />
                   View Longitudinal EHR History
                 </Button>
               </div>
@@ -3146,7 +3092,7 @@ export default function QueuePage() {
             <div className="p-3 rounded-2xl bg-surface-alt border border-border/80 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-                  <Activity className="w-3.5 h-3.5 text-primary-500" />
+                  <Activity className="w-3.5 h-3.5 text-accent" />
                   Pre-Consultation Vitals & Triage Data
                 </span>
                 {apptToComplete.vitals?.recordedByName && (
@@ -3158,8 +3104,8 @@ export default function QueuePage() {
 
               {/* Documented Allergies Alert */}
               {apptToComplete.vitals?.allergies && apptToComplete.vitals.allergies.length > 0 && (
-                <div className="p-2 rounded-xl bg-danger-500/10 border border-danger-500/20 flex items-center gap-2 text-danger-700 dark:text-danger-400 text-xs font-bold">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-danger-500" />
+                <div className="p-2 rounded-xl bg-danger-500/10 border border-danger-500/20 flex items-center gap-2 text-danger-text dark:text-danger-text text-xs font-bold">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-danger-text" />
                   <span>KNOWN DRUG / FOOD ALLERGIES: {apptToComplete.vitals.allergies.join(", ")}</span>
                 </div>
               )}
@@ -3211,9 +3157,9 @@ export default function QueuePage() {
                     <button
                       type="button"
                       onClick={() => openInvestigationViewer(apptToComplete)}
-                      className="text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      className="text-[11px] font-bold text-accent hover:text-accent dark:text-accent hover:underline flex items-center gap-1 cursor-pointer"
                     >
-                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <Sparkles className="w-3 h-3 text-warning-text" />
                       View Full Reports & 1-Click Comparison
                     </button>
                   </div>
@@ -3224,7 +3170,7 @@ export default function QueuePage() {
                         className={cn(
                           "px-2 py-0.5 rounded-lg text-xs font-semibold border",
                           inv.isAbnormal
-                            ? "bg-danger-500/10 border-danger-500/20 text-danger-700 dark:text-danger-400 font-bold"
+                            ? "bg-danger-500/10 border-danger-500/20 text-danger-text dark:text-danger-text font-bold"
                             : "bg-surface border-border/60 text-text"
                         )}
                       >
@@ -3282,7 +3228,7 @@ export default function QueuePage() {
               {/* Quick Add Common OPD Medicines */}
               <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-surface-alt border border-border/60">
                 <span className="text-[11px] font-bold text-text-muted flex items-center gap-1 shrink-0">
-                  <Sparkles className="w-3 h-3 text-amber-500" /> Quick Add:
+                  <Sparkles className="w-3 h-3 text-warning-text" /> Quick Add:
                 </span>
                 {COMMON_OPD_MEDICINES.map((med, mIdx) => (
                   <button
@@ -3295,7 +3241,7 @@ export default function QueuePage() {
                         setPrescriptions([...prescriptions, { name: med.name, dosage: med.dosage, duration: med.duration }]);
                       }
                     }}
-                    className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-surface hover:bg-primary-500/15 hover:text-primary-700 dark:hover:text-primary-300 border border-border/70 hover:border-primary-500/40 transition-all cursor-pointer shadow-2xs"
+                    className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-surface hover:bg-primary-500/15 hover:text-accent dark:hover:text-accent border border-border/70 hover:border-primary-500/40 transition-all cursor-pointer shadow-2xs"
                   >
                     + {med.name}
                   </button>
@@ -3372,7 +3318,7 @@ export default function QueuePage() {
                           className={cn(
                             "px-1.5 py-0.5 rounded-md border text-[9px] font-medium transition-colors cursor-pointer",
                             prescription.dosage === dose
-                              ? "bg-primary-500/20 border-primary-500/40 text-primary-700 dark:text-primary-300 font-bold"
+                              ? "bg-primary-500/20 border-primary-500/40 text-accent dark:text-accent font-bold"
                               : "bg-surface border-border/60 hover:bg-surface-hover text-text-secondary"
                           )}
                         >
@@ -3392,7 +3338,7 @@ export default function QueuePage() {
                           className={cn(
                             "px-1.5 py-0.5 rounded-md border text-[9px] font-medium transition-colors cursor-pointer",
                             prescription.duration === dur
-                              ? "bg-primary-500/20 border-primary-500/40 text-primary-700 dark:text-primary-300 font-bold"
+                              ? "bg-primary-500/20 border-primary-500/40 text-accent dark:text-accent font-bold"
                               : "bg-surface border-border/60 hover:bg-surface-hover text-text-secondary"
                           )}
                         >
@@ -3413,7 +3359,7 @@ export default function QueuePage() {
           />
 
           {/* Digital e-Prescription WhatsApp Dispatch Channel */}
-          <div className="p-3.5 bg-emerald-500/[0.04] rounded-2xl border border-emerald-500/20 space-y-2.5">
+          <div className="p-3.5 bg-success/[0.04] rounded-2xl border border-success/20 space-y-2.5">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <Checkbox
@@ -3456,7 +3402,7 @@ export default function QueuePage() {
           </div>
 
           {recommendFollowUp && (
-            <div className="space-y-3.5 animate-fade-in p-3.5 rounded-2xl bg-amber-500/[0.04] border border-amber-500/20">
+            <div className="space-y-3.5 animate-fade-in p-3.5 rounded-2xl bg-warning/[0.04] border border-warning/20">
               <Select
                 label="Recommended Timeframe *"
                 value={followUpTimeline}
@@ -3506,7 +3452,7 @@ export default function QueuePage() {
                   className={cn(
                     "py-2.5 px-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer min-h-[44px] flex items-center justify-center",
                     breakMinutes === mins
-                      ? "border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-300 ring-2 ring-amber-500/20"
+                      ? "border-warning bg-warning/15 text-warning-text dark:text-warning-text ring-2 ring-warning/20"
                       : "border-border hover:bg-surface-hover text-text-secondary"
                   )}
                 >
@@ -3530,7 +3476,7 @@ export default function QueuePage() {
             />
           </div>
 
-          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-2">
+          <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 text-[11px] text-warning-text dark:text-warning-text flex items-center gap-2">
             <span>ℹ️</span>
             <span>Patients in waiting lounge will be notified via TV chime and display banner.</span>
           </div>
@@ -3550,7 +3496,7 @@ export default function QueuePage() {
               size="sm"
               onClick={() => handleToggleDoctorBreak(true, breakReasonInput, breakMinutes)}
               loading={isTogglingBreak}
-              className="font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
+              className="font-bold rounded-xl bg-warning hover:bg-warning text-background shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
             >
               Start Break ({breakMinutes}m)
             </Button>
@@ -3637,9 +3583,9 @@ export default function QueuePage() {
         size="md"
       >
         <div className="space-y-4 pt-1">
-          <div className="p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl text-xs space-y-1 text-red-700 dark:text-red-300">
+          <div className="p-3.5 bg-danger/10 border border-danger/30 rounded-xl text-xs space-y-1 text-danger-text dark:text-danger-text">
             <p className="font-bold flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+              <AlertTriangle className="w-4 h-4 text-danger-text dark:text-danger-text" />
               STAT Emergency Line Interruption
             </p>
             <p>
@@ -3678,7 +3624,7 @@ export default function QueuePage() {
               size="sm"
               loading={Boolean(statEmergencyLoading)}
               onClick={handleTriggerStatEmergency}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
+              className="bg-danger hover:bg-danger text-background font-bold cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
             >
               🚨 Confirm STAT Priority
             </Button>
@@ -3705,8 +3651,8 @@ export default function QueuePage() {
           </p>
 
           {activeOverride && (
-            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs space-y-1">
-              <span className="font-semibold text-amber-700 dark:text-amber-300">
+            <div className="p-3 bg-warning/10 border border-warning/20 rounded-xl text-xs space-y-1">
+              <span className="font-semibold text-warning-text dark:text-warning-text">
                 Active Override for {selectedDate}:
               </span>
               <p className="text-text-secondary">
@@ -3780,7 +3726,7 @@ export default function QueuePage() {
                 size="sm"
                 onClick={handleRemoveOverride}
                 disabled={savingOverride}
-                className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 font-semibold"
+                className="text-xs text-danger-text hover:text-danger-text hover:bg-danger/10 font-semibold"
               >
                 Revert to Standard
               </Button>
@@ -3835,7 +3781,7 @@ export default function QueuePage() {
                 className={cn(
                   "p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer",
                   walkInPriority === "normal"
-                    ? "bg-primary-50 dark:bg-primary-950/40 border-primary-500 text-primary-700 dark:text-primary-300 shadow-xs"
+                    ? "bg-accent-subtle dark:bg-primary-950/40 border-primary-500 text-accent dark:text-accent shadow-xs"
                     : "bg-surface border-border/80 text-text-muted hover:border-border"
                 )}
               >
@@ -3849,16 +3795,16 @@ export default function QueuePage() {
                 className={cn(
                   "p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer",
                   walkInPriority === "emergency"
-                    ? "bg-rose-50 dark:bg-rose-950/40 border-rose-500 text-rose-700 dark:text-rose-300 shadow-xs"
+                    ? "bg-danger-subtle dark:bg-danger/40 border-danger text-danger-text dark:text-danger-text shadow-xs"
                     : "bg-surface border-border/80 text-text-muted hover:border-border"
                 )}
               >
-                <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                <AlertTriangle className="w-3.5 h-3.5 text-danger-text" />
                 Emergency Priority 🚨
               </button>
             </div>
             {walkInPriority === "emergency" && (
-              <p className="text-[11px] text-rose-600 dark:text-rose-400 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20 font-semibold leading-relaxed">
+              <p className="text-[11px] text-danger-text dark:text-danger-text bg-danger/10 p-2.5 rounded-xl border border-danger/20 font-semibold leading-relaxed">
                 🚨 Emergency Walk-In: Bypasses closing time queue cutoffs and flags appointment as Priority Triage for immediate doctor attention.
               </p>
             )}
@@ -3938,7 +3884,7 @@ export default function QueuePage() {
               loading={submittingWalkIn}
               className={cn(
                 "font-bold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center",
-                walkInPriority === "emergency" ? "bg-rose-600 hover:bg-rose-700 text-white border-none" : "bg-emerald-600 hover:bg-emerald-700 text-white border-none"
+                walkInPriority === "emergency" ? "bg-danger hover:bg-danger text-background border-none" : "bg-success hover:bg-success text-background border-none"
               )}
             >
               <Check className="w-3.5 h-3.5 mr-1.5" />
@@ -3969,8 +3915,8 @@ export default function QueuePage() {
         size="sm"
       >
         <div className="space-y-4 pt-1 font-sans text-xs">
-          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-xl bg-warning/10 border border-warning/25 text-warning-text dark:text-warning-text flex items-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-warning-text shrink-0 mt-0.5" />
             <div>
               <p className="font-bold text-sm">Consultation Active</p>
               <p className="mt-1 leading-relaxed">
@@ -3998,7 +3944,7 @@ export default function QueuePage() {
               size="sm"
               onClick={() => handleCallNext(true)}
               loading={callingNext}
-              className="rounded-xl font-bold bg-primary-600 hover:bg-primary-700 text-white min-h-[44px] w-full sm:w-auto justify-center"
+              className="rounded-xl font-bold bg-primary-600 hover:bg-primary-700 text-brand-mist min-h-[44px] w-full sm:w-auto justify-center"
             >
               Complete & Call Next
             </Button>
@@ -4014,8 +3960,8 @@ export default function QueuePage() {
         size="sm"
       >
         <div className="space-y-4 pt-1 font-sans text-xs">
-          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-900 dark:text-emerald-200 flex items-start gap-2.5">
-            <Send className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-xl bg-success/10 border border-success/25 text-success-text dark:text-success-text flex items-start gap-2.5">
+            <Send className="w-5 h-5 text-success-text shrink-0 mt-0.5" />
             <div>
               <p className="font-bold text-sm">Live Token Tracking Link</p>
               <p className="mt-0.5 leading-relaxed">
@@ -4046,7 +3992,7 @@ export default function QueuePage() {
                 className={cn(
                   "py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
                   resendChannel === "whatsapp"
-                    ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                    ? "bg-success text-background border-success shadow-xs"
                     : "bg-surface-alt hover:bg-surface border-border text-text-secondary"
                 )}
               >
@@ -4058,7 +4004,7 @@ export default function QueuePage() {
                 className={cn(
                   "py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
                   resendChannel === "sms"
-                    ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                    ? "bg-success text-background border-success shadow-xs"
                     : "bg-surface-alt hover:bg-surface border-border text-text-secondary"
                 )}
               >
@@ -4096,7 +4042,7 @@ export default function QueuePage() {
               onClick={handleResendTrackerSubmit}
               loading={resendingTracker}
               disabled={!resendPhone.trim()}
-              className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white min-h-[44px] w-full sm:w-auto justify-center"
+              className="rounded-xl font-bold bg-success hover:bg-success text-background min-h-[44px] w-full sm:w-auto justify-center"
             >
               <Send className="w-3.5 h-3.5 mr-1.5" />
               Send Live Tracker
@@ -4146,7 +4092,7 @@ export default function QueuePage() {
               size="sm"
               onClick={handleParkPatient}
               loading={submittingPark}
-              className="rounded-xl font-bold bg-amber-600 hover:bg-amber-700 text-white min-h-[44px] w-full sm:w-auto justify-center"
+              className="rounded-xl font-bold bg-warning hover:bg-warning text-background min-h-[44px] w-full sm:w-auto justify-center"
             >
               Hold in Standby
             </Button>
@@ -4179,7 +4125,7 @@ export default function QueuePage() {
                     className={cn(
                       "px-2.5 py-1 text-xs rounded-xl font-medium border transition-all cursor-pointer",
                       isSelected
-                        ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                        ? "bg-primary text-brand-mist border-accent shadow-xs"
                         : "bg-surface-alt hover:bg-surface border-border text-text-secondary"
                     )}
                   >
@@ -4197,7 +4143,7 @@ export default function QueuePage() {
               placeholder="e.g. STAT Fasting sample, urgent lipid panel, fever workup"
               value={investigationNotes}
               onChange={(e) => setInvestigationNotes(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-surface text-text focus:outline-hidden focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-surface text-text focus:outline-hidden focus:ring-2 focus:ring-focus-ring"
             />
           </div>
 
@@ -4210,7 +4156,7 @@ export default function QueuePage() {
               size="sm"
               onClick={handleSendToInvestigation}
               loading={isSubmittingInvestigation}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl min-h-[44px] w-full sm:w-auto justify-center"
+              className="bg-primary hover:bg-primary text-brand-mist font-bold rounded-xl min-h-[44px] w-full sm:w-auto justify-center"
             >
               <span>🔬</span> Send for Tests & Free Room
             </Button>
@@ -4236,19 +4182,19 @@ export default function QueuePage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3 rounded-xl bg-surface-alt border border-border text-center">
                   <p className="text-[10px] uppercase font-bold text-text-muted">Completed</p>
-                  <p className="text-xl font-black text-emerald-600">{endOpdSummary?.counts?.completed ?? 0}</p>
+                  <p className="text-xl font-black text-success-text">{endOpdSummary?.counts?.completed ?? 0}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-surface-alt border border-border text-center">
                   <p className="text-[10px] uppercase font-bold text-text-muted">In Consultation</p>
-                  <p className="text-xl font-black text-primary-600">{endOpdSummary?.counts?.inConsultation ?? 0}</p>
+                  <p className="text-xl font-black text-accent">{endOpdSummary?.counts?.inConsultation ?? 0}</p>
                 </div>
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center">
-                  <p className="text-[10px] uppercase font-bold text-amber-700 dark:text-amber-300">Unresumed Standby</p>
-                  <p className="text-xl font-black text-amber-600">{endOpdSummary?.counts?.standby ?? 0}</p>
+                <div className="p-3 rounded-xl bg-warning/10 border border-warning/30 text-center">
+                  <p className="text-[10px] uppercase font-bold text-warning-text dark:text-warning-text">Unresumed Standby</p>
+                  <p className="text-xl font-black text-warning-text">{endOpdSummary?.counts?.standby ?? 0}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-surface-alt border border-border text-center">
                   <p className="text-[10px] uppercase font-bold text-text-muted">Unserved Waiting</p>
-                  <p className="text-xl font-black text-rose-600">{endOpdSummary?.counts?.waiting ?? 0}</p>
+                  <p className="text-xl font-black text-danger-text">{endOpdSummary?.counts?.waiting ?? 0}</p>
                 </div>
               </div>
 
@@ -4329,7 +4275,7 @@ export default function QueuePage() {
                   size="sm"
                   onClick={handleExecuteEndOpdReconcile}
                   loading={isSubmittingEndOpd}
-                  className="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl min-h-[44px] w-full sm:w-auto justify-center"
+                  className="bg-danger hover:bg-danger text-background font-bold rounded-xl min-h-[44px] w-full sm:w-auto justify-center"
                 >
                   <span>🛑</span> Confirm & Close OPD Shift
                 </Button>
@@ -4458,11 +4404,11 @@ export default function QueuePage() {
         size="md"
       >
         <div className="space-y-4 pt-2">
-          <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-1">
-            <div className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+          <div className="p-3 rounded-2xl bg-success/10 border border-success/20 text-xs space-y-1">
+            <div className="font-bold text-success-text dark:text-success-text flex items-center gap-1.5">
               <span>📄</span> Official Digital Rx WhatsApp Delivery
             </div>
-            <p className="text-emerald-700/80 dark:text-emerald-400/80 text-[11px]">
+            <p className="text-success-text/80 dark:text-success-text/80 text-[11px]">
               Patient receives an instant interactive summary including medication dosages, instructions, dietary advice, follow-up timeline, and a tamper-evident digital prescription link.
             </p>
           </div>
@@ -4476,7 +4422,7 @@ export default function QueuePage() {
                 className={cn(
                   "py-2.5 px-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-2",
                   resendRxChannel === "whatsapp"
-                    ? "border-emerald-500 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500/20"
+                    ? "border-success bg-success/15 text-success-text dark:text-success-text ring-2 ring-success/20"
                     : "border-border hover:bg-surface-hover text-text-secondary"
                 )}
               >
@@ -4488,7 +4434,7 @@ export default function QueuePage() {
                 className={cn(
                   "py-2.5 px-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-2",
                   resendRxChannel === "sms"
-                    ? "border-primary-500 bg-primary-500/15 text-primary-700 dark:text-primary-300 ring-2 ring-primary-500/20"
+                    ? "border-primary-500 bg-primary-500/15 text-accent dark:text-accent ring-2 ring-focus-ring"
                     : "border-border hover:bg-surface-hover text-text-secondary"
                 )}
               >
@@ -4530,7 +4476,7 @@ export default function QueuePage() {
               size="sm"
               onClick={handleResendRxSubmit}
               loading={resendingRx}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
+              className="bg-success hover:bg-success text-background font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
             >
               <Send className="w-3.5 h-3.5" />
               Dispatch Digital Rx Now

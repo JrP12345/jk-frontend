@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState, useRef, useEffect, useLayoutEffect, memo } from "react";
+import { type ReactNode, useState, useRef, useEffect, useLayoutEffect, useId, memo } from "react";
 import { cn } from "./utils";
 
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -31,6 +31,7 @@ const Tabs = memo(function Tabs({
   onChange,
   className = "",
 }: TabsProps) {
+  const id = useId();
   const [internalActive, setInternalActive] = useState(defaultTab || tabs[0]?.id);
   const active = controlledActiveTab !== undefined ? controlledActiveTab : internalActive;
   const [sliderStyle, setSliderStyle] = useState<React.CSSProperties>({ left: 0, width: 0, opacity: 0 });
@@ -52,7 +53,7 @@ const Tabs = memo(function Tabs({
     const activeRect = activeTabRef.current.getBoundingClientRect();
     const containerRect = containerRef.current.getBoundingClientRect();
     setSliderStyle({
-      left: activeRect.left - containerRect.left,
+      left: activeRect.left - containerRect.left + containerRef.current.scrollLeft,
       width: activeRect.width,
       opacity: 1,
     });
@@ -61,7 +62,7 @@ const Tabs = memo(function Tabs({
   useIsomorphicLayoutEffect(() => {
     updateSlider();
     if (activeTabRef.current) {
-      activeTabRef.current.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+      activeTabRef.current.scrollIntoView({ behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", inline: "nearest", block: "nearest" });
     }
     window.addEventListener("resize", updateSlider);
     return () => window.removeEventListener("resize", updateSlider);
@@ -76,17 +77,17 @@ const Tabs = memo(function Tabs({
     if (e.key === "ArrowRight") {
       e.preventDefault();
       const nextTab = enabledTabs[(currentIndex + 1) % enabledTabs.length];
-      if (nextTab) handleChange(nextTab.id);
+      if (nextTab) { handleChange(nextTab.id); document.getElementById(`${id}-tab-${nextTab.id}`)?.focus(); }
     } else if (e.key === "ArrowLeft") {
       e.preventDefault();
       const prevTab = enabledTabs[(currentIndex - 1 + enabledTabs.length) % enabledTabs.length];
-      if (prevTab) handleChange(prevTab.id);
+      if (prevTab) { handleChange(prevTab.id); document.getElementById(`${id}-tab-${prevTab.id}`)?.focus(); }
     } else if (e.key === "Home") {
       e.preventDefault();
-      if (enabledTabs[0]) handleChange(enabledTabs[0].id);
+      if (enabledTabs[0]) { handleChange(enabledTabs[0].id); document.getElementById(`${id}-tab-${enabledTabs[0].id}`)?.focus(); }
     } else if (e.key === "End") {
       e.preventDefault();
-      if (enabledTabs[enabledTabs.length - 1]) handleChange(enabledTabs[enabledTabs.length - 1].id);
+      if (enabledTabs[enabledTabs.length - 1]) { const last = enabledTabs[enabledTabs.length - 1]; handleChange(last.id); document.getElementById(`${id}-tab-${last.id}`)?.focus(); }
     }
   };
 
@@ -98,13 +99,13 @@ const Tabs = memo(function Tabs({
         onKeyDown={handleKeyDown}
         className={cn(
           "relative flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth max-w-full select-none touch-manipulation [scroll-snap-type:x_mandatory]",
-          variant === "underline" ? "border-b border-border/80 pb-px" : "bg-surface-alt/70 border border-border/70 rounded-xl p-1 shadow-2xs"
+          variant === "underline" ? "border-b border-border/80 pb-px" : "bg-surface-alt border border-border/70 rounded-xl p-1 shadow-2xs"
         )}
       >
         {/* Underline Slider */}
         {variant === "underline" && (
           <div
-            className="absolute bottom-0 h-[3px] rounded-full bg-gradient-to-r from-primary-500 to-primary-600 shadow-xs shadow-primary-500/50 transform-gpu transition-all duration-300 ease-spring"
+            className="absolute bottom-0 h-[3px] rounded-full bg-accent shadow-xs  transform-gpu transition-all duration-300 ease-spring"
             style={{
               left: sliderStyle.left,
               width: sliderStyle.width,
@@ -133,18 +134,18 @@ const Tabs = memo(function Tabs({
             <button
               key={tab.id}
               ref={isActive ? activeTabRef : null}
-              id={`tab-${tab.id}`}
+              id={`${id}-tab-${tab.id}`}
               role="tab"
               type="button"
               aria-selected={isActive}
-              aria-controls={`tabpanel-${tab.id}`}
+              aria-controls={tab.content ? `${id}-tabpanel-${tab.id}` : undefined}
               tabIndex={isActive ? 0 : -1}
               disabled={tab.disabled}
               onClick={() => handleChange(tab.id)}
               className={cn(
-                "relative z-10 flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium cursor-pointer transform-gpu transition-all duration-200 ease-smooth disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] shrink-0 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg min-h-[42px] sm:min-h-0 [scroll-snap-align:start]",
+                "relative z-10 flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium cursor-pointer transform-gpu transition-all duration-200 ease-smooth disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] shrink-0 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-lg min-h-[44px] md:min-h-0 [scroll-snap-align:start]",
                 variant === "underline"
-                  ? cn("-mb-px", isActive ? "text-primary-600 dark:text-primary-400 font-bold" : "text-text-secondary hover:text-text")
+                  ? cn("-mb-px", isActive ? "text-accent dark:text-accent font-bold" : "text-text-secondary hover:text-text")
                   : cn(isActive ? "text-text font-bold" : "text-text-secondary hover:text-text")
               )}
             >
@@ -155,7 +156,7 @@ const Tabs = memo(function Tabs({
                   className={cn(
                     "ml-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-full leading-none transition-colors duration-200",
                     isActive
-                      ? "bg-primary-500/10 text-primary-600 dark:text-primary-400"
+                      ? "bg-primary-500/10 text-accent dark:text-accent"
                       : "bg-surface-alt text-text-muted"
                   )}
                 >
@@ -168,9 +169,9 @@ const Tabs = memo(function Tabs({
       </div>
       {activeTab?.content && (
         <div
-          id={`tabpanel-${activeTab.id}`}
+          id={`${id}-tabpanel-${activeTab.id}`}
           role="tabpanel"
-          aria-labelledby={`tab-${activeTab.id}`}
+          aria-labelledby={`${id}-tab-${activeTab.id}`}
           tabIndex={0}
           className="pt-4 animate-fade-in transform-gpu transition-all duration-250 ease-smooth focus-visible:outline-none"
         >

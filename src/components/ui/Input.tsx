@@ -24,17 +24,17 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
 }
 
 const sizes: Record<InputSize, string> = {
-  sm: "text-base sm:text-sm px-3 min-h-[38px] sm:min-h-[32px] sm:h-8",
-  md: "text-base sm:text-sm px-3.5 min-h-[42px] sm:min-h-[36px] sm:h-9",
-  lg: "text-base px-4 min-h-[46px] sm:min-h-[44px] h-11",
+  sm: "text-base md:text-sm px-3 min-h-[44px] md:min-h-[32px] md:h-8",
+  md: "text-base md:text-sm px-3.5 min-h-[44px] md:min-h-[36px] md:h-9",
+  lg: "text-base px-4 min-h-[46px] md:min-h-[44px] h-11",
 };
 
 const variantStyles: Record<InputVariant, string> = {
-  default: "rounded-xl border border-border bg-surface/90 backdrop-blur-sm hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/15 shadow-2xs",
-  filled: "rounded-xl border border-transparent bg-surface-alt hover:bg-surface-hover focus-visible:bg-surface focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/15 shadow-2xs",
+  default: "rounded-xl border border-border bg-surface  hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-focus-ring shadow-2xs",
+  filled: "rounded-xl border border-transparent bg-surface-alt hover:bg-surface-hover focus-visible:bg-surface focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-focus-ring shadow-2xs",
   flush: "rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:border-0 px-1 py-1 min-h-0",
-  pill: "rounded-full border border-border bg-surface/90 backdrop-blur-sm hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/15 shadow-2xs",
-  inset: "rounded-xl border border-border bg-surface/95 hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-primary-500/15 shadow-2xs",
+  pill: "rounded-full border border-border bg-surface  hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-focus-ring shadow-2xs",
+  inset: "rounded-xl border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-focus-ring shadow-2xs",
 };
 
 const iconPaddingLeft: Record<InputSize, string> = {
@@ -105,13 +105,14 @@ const Input = memo(
           )}
           <div className="group relative flex items-center w-full">
             <input
-              ref={ref}
+              data-touch-control
+            ref={ref}
               id={id}
               disabled={disabled}
               aria-invalid={error ? true : undefined}
               aria-describedby={describedBy}
               className={cn(
-                "w-full text-text font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted/70 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt",
+                "w-full text-text font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt",
                 sizes[size],
                 variantStyles[variant],
                 resolvedLeftIcon && !prefix && iconPaddingLeft[size],
@@ -126,7 +127,7 @@ const Input = memo(
             {resolvedLeftIcon && (
               <span
                 className={cn(
-                  "absolute left-3 top-1/2 -translate-y-1/2 text-text-muted group-hover:text-text-secondary group-focus-within:text-primary-600 dark:group-focus-within:text-primary-400 transition-colors duration-200 shrink-0 pointer-events-none flex items-center justify-center z-10",
+                  "absolute left-3 top-1/2 -translate-y-1/2 text-text-muted group-hover:text-text-secondary group-focus-within:text-accent dark:group-focus-within:text-accent transition-colors duration-200 shrink-0 pointer-events-none flex items-center justify-center z-10",
                   variant === "flush" && "left-2",
                   iconSizes[size]
                 )}
@@ -158,7 +159,7 @@ const Input = memo(
               <button
                 type="button"
                 onClick={onClear}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 sm:p-1 text-text-muted hover:text-text cursor-pointer transition-colors duration-150 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 min-h-[32px] min-w-[32px] flex items-center justify-center z-10"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 md:p-1 text-text-muted hover:text-text cursor-pointer transition-colors duration-150 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring min-h-[32px] min-w-[32px] flex items-center justify-center z-10"
                 aria-label="Clear input text"
               >
                 <svg className={cn("shrink-0", iconSizes[size])} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -168,7 +169,7 @@ const Input = memo(
             ) : resolvedRightIcon ? (
               <span
                 className={cn(
-                  "absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary-600 transition-colors duration-200 shrink-0 flex items-center justify-center pointer-events-none [&_button]:pointer-events-auto [&_button]:cursor-pointer [&_a]:pointer-events-auto z-10",
+                  "absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-accent transition-colors duration-200 shrink-0 flex items-center justify-center pointer-events-none [&_button]:pointer-events-auto [&_button]:cursor-pointer [&_a]:pointer-events-auto z-10",
                   iconSizes[size]
                 )}
               >
@@ -177,7 +178,7 @@ const Input = memo(
             ) : null}
           </div>
           {error && (
-            <p id={errorId} className="text-xs font-medium text-danger-500 animate-fade-in">
+            <p id={errorId} className="text-xs font-medium text-danger-text animate-fade-in">
               {error}
             </p>
           )}

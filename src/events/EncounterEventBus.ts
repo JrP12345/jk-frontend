@@ -34,8 +34,6 @@ export const EncounterEvents = {
   ENCOUNTER_CLOSED: "ENCOUNTER_CLOSED",
 } as const;
 
-export type EncounterEventType = typeof EncounterEvents[keyof typeof EncounterEvents];
-
 type ListenerCallback = (data?: any) => void;
 
 class EventBus {

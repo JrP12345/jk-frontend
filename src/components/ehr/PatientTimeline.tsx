@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
 import PatientHistoryAccess from "./PatientHistoryAccess";
 import { Modal, Badge, Button, cn } from "@/components/ui";
-import { Stethoscope, FlaskConical, Building2, CreditCard, FileText, Sparkles, Search, Clock } from "lucide-react";
+import { Stethoscope, FlaskConical, Building2, CreditCard, FileText, Sparkles, Search } from "lucide-react";
 
 export interface TimelineEvent {
   id: string;
@@ -130,28 +130,28 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
   const getCategoryBadgeClass = (color: string) => {
     switch (color) {
       case "emerald":
-        return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
+        return "bg-success/15 text-success-text dark:text-success-text border-success/30";
       case "blue":
-        return "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30";
+        return "bg-primary/15 text-accent dark:text-accent border-accent/30";
       case "indigo":
-        return "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30";
+        return "bg-primary/15 text-accent dark:text-accent border-accent/30";
       case "amber":
-        return "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30";
+        return "bg-warning/15 text-warning-text dark:text-warning-text border-warning/30";
       default:
-        return "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400 border-zinc-500/30";
+        return "bg-surface-hover/15 text-text-secondary dark:text-text-muted border-border/30";
     }
   };
 
   const getEventIconComponent = (icon: string) => {
     switch (icon) {
       case "stethoscope":
-        return <Stethoscope className="w-4 h-4 text-primary-500" />;
+        return <Stethoscope className="w-4 h-4 text-accent" />;
       case "flask":
-        return <FlaskConical className="w-4 h-4 text-blue-500" />;
+        return <FlaskConical className="w-4 h-4 text-accent" />;
       case "bed":
-        return <Building2 className="w-4 h-4 text-purple-500" />;
+        return <Building2 className="w-4 h-4 text-accent" />;
       case "credit-card":
-        return <CreditCard className="w-4 h-4 text-emerald-500" />;
+        return <CreditCard className="w-4 h-4 text-success-text" />;
       default:
         return <FileText className="w-4 h-4 text-text-secondary" />;
     }
@@ -195,16 +195,16 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
               placeholder="Search diagnoses, meds, labs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-surface-alt border border-border/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 text-text"
+              className="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-surface-alt border border-border/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 text-text"
             />
           </form>
 
-          <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 cursor-pointer select-none">
+          <label className="flex items-center gap-2 text-xs font-medium text-text-secondary dark:text-text-muted cursor-pointer select-none">
             <input
               type="checkbox"
               checked={includeFinancial}
               onChange={(e) => setIncludeFinancial(e.target.checked)}
-              className="rounded border-zinc-300 dark:border-zinc-700 text-primary-600 focus:ring-primary-500"
+              className="rounded border-border dark:border-border text-accent focus:ring-focus-ring"
             />
             Include Financials
           </label>
@@ -213,15 +213,15 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
 
       {/* Timeline Stream View */}
       {loading && events.length === 0 ? (
-        <div className="py-12 text-center text-sm text-zinc-500">Loading patient health records timeline...</div>
+        <div className="py-12 text-center text-sm text-text-muted">Loading patient health records timeline...</div>
       ) : error ? (
-        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-600 dark:text-red-400 text-sm">
+        <div className="p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger-text dark:text-danger-text text-sm">
           {error}
         </div>
       ) : events.length === 0 ? (
-        <div className="py-12 text-center text-sm text-zinc-500">No clinical timeline events found matching filters.</div>
+        <div className="py-12 text-center text-sm text-text-muted">No clinical timeline events found matching filters.</div>
       ) : (
-        <div className="relative pl-6 border-l-2 border-zinc-200 dark:border-[#1e1f26] space-y-6">
+        <div className="relative pl-6 border-l-2 border-border dark:border-border space-y-6">
           {events.map((event) => (
             <div key={event.id} className="relative group">
               {/* Timeline Marker Bullet */}
@@ -250,7 +250,7 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
                 {event.clinicalMetadata.diagnoses && event.clinicalMetadata.diagnoses.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {event.clinicalMetadata.diagnoses.map((d, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded text-[11px] font-medium">
+                      <span key={i} className="px-2 py-0.5 bg-primary-500/10 text-accent dark:text-accent rounded text-[11px] font-medium">
                         Diagnosis: {d}
                       </span>
                     ))}
@@ -272,14 +272,14 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
                     <button
                       type="button"
                       onClick={() => handleOpenExplainer(event)}
-                      className="px-2.5 py-1 bg-primary-500/10 hover:bg-primary-500/20 text-primary-600 dark:text-primary-400 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                      className="px-2.5 py-1 bg-primary-500/10 hover:bg-primary-500/20 text-accent dark:text-accent rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                     >
                       <Sparkles className="w-3 h-3" />
                       <span>AI Explainer</span>
                     </button>
                     <a
                       href={event.sourceRef.link}
-                      className="text-primary-600 dark:text-primary-400 hover:underline font-medium flex items-center gap-1"
+                      className="text-accent dark:text-accent hover:underline font-medium flex items-center gap-1"
                     >
                       View Details &rarr;
                     </a>
@@ -323,11 +323,11 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
             <div className="space-y-2">
               <div className="font-bold text-text">What This Means (AI Explanation):</div>
               {aiExplanationLoading ? (
-                <div className="p-4 text-center text-text-muted animate-pulse bg-primary-50/50 dark:bg-primary-950/20 rounded-xl border border-primary-500/20">
+                <div className="p-4 text-center text-text-muted animate-pulse bg-accent-subtle/50 dark:bg-primary-950/20 rounded-xl border border-primary-500/20">
                   ✨ Gemini AI is analyzing medical record context...
                 </div>
               ) : (
-                <p className="text-text-secondary leading-relaxed bg-primary-50 dark:bg-primary-950/30 p-3 rounded-xl border border-primary-200 dark:border-primary-900/40">
+                <p className="text-text-secondary leading-relaxed bg-accent-subtle dark:bg-primary-950/30 p-3 rounded-xl border border-primary-200 dark:border-primary-900/40">
                   {aiExplanationText}
                 </p>
               )}

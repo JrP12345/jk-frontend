@@ -4,49 +4,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api, { getApiUrl } from "@/lib/api";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Button,
-  Badge,
-  Spinner,
-  Skeleton,
-  Modal,
-  useToast,
-  cn,
-  AnantaIcon,
-} from "@/components/ui";
-import {
-  Clock,
-  Users,
-  CheckCircle2,
-  AlertCircle,
-  Stethoscope,
-  MapPin,
-  RotateCw,
-  ArrowLeft,
-  Calendar,
-  Sparkles,
-  ChevronRight,
-  ShieldCheck,
-  BellRing,
-  Phone,
-  Printer,
-  FileDown,
-  Receipt,
-  CreditCard,
-  Pill,
-  Volume2,
-  VolumeX,
-  FileCheck2,
-  Check,
-  QrCode,
-  Smartphone,
-  ExternalLink,
-  Copy,
-} from "lucide-react";
+import { Card, Button, Badge, Skeleton, Modal, useToast, cn, EkavyuIcon } from "@/components/ui";
+import { Clock, Users, CheckCircle2, AlertCircle, Stethoscope, MapPin, RotateCw, Calendar, Sparkles, ShieldCheck, BellRing, Phone, Printer, Receipt, CreditCard, Pill, Volume2, VolumeX, QrCode, Smartphone, Copy } from "lucide-react";
 import QRCode from "qrcode";
 
 interface PrescribedMedicine {
@@ -209,7 +168,7 @@ export default function PublicLiveQueueTracker() {
   const [copiedUpi, setCopiedUpi] = useState(false);
 
   const trackerVpa = data?.clinic?.upiVpa?.trim() || "ananta.health@icici";
-  const trackerMerchant = data?.clinic?.merchantName?.trim() || data?.clinic?.name || "Ananta Health Clinic";
+  const trackerMerchant = data?.clinic?.merchantName?.trim() || data?.clinic?.name || "Ekavyu Health Clinic";
   const trackerDueAmt = data?.billing?.balanceDue || 0;
   const trackerInvoiceNum = data?.billing?.invoiceNumber || "INV-OPD";
   const trackerUpiPayload = `upi://pay?pa=${encodeURIComponent(trackerVpa)}&pn=${encodeURIComponent(
@@ -233,7 +192,7 @@ export default function PublicLiveQueueTracker() {
       QRCode.toDataURL(trackerUpiPayload, {
         width: 220,
         margin: 2,
-        color: { dark: "#0f172a", light: "#ffffff" },
+        color: { dark: "#0E2A28", light: "#ffffff" },
       })
         .then((url) => setTrackerQrDataUrl(url))
         .catch((err) => console.error("Tracker QR generation error:", err));
@@ -637,7 +596,7 @@ export default function PublicLiveQueueTracker() {
     return (
       <div className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-4">
         <Card className="max-w-md w-full text-center p-6 border border-border/80 shadow-sm rounded-3xl">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-danger-500/10 text-danger-500 flex items-center justify-center mb-4">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-danger-500/10 text-danger-text flex items-center justify-center mb-4">
             <AlertCircle className="w-7 h-7" />
           </div>
           <h1 className="text-xl font-bold text-text mb-2">Tracking Unavailable</h1>
@@ -693,12 +652,12 @@ export default function PublicLiveQueueTracker() {
   return (
     <div className="min-h-screen bg-surface-alt text-text font-sans antialiased pb-16">
       {/* Top Floating App Bar */}
-      <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-border/70 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <header className="sticky top-0 z-40 bg-surface/90  border-b border-border/70 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <AnantaIcon className="h-8 w-8 shadow-xs" />
+            <EkavyuIcon className="h-8 w-8 shadow-xs" />
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-text">ANANTA</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-text">Ekavyu</span>
               <span className="text-[10px] text-text-muted block -mt-0.5">Live Patient Tracker</span>
             </div>
           </div>
@@ -712,9 +671,9 @@ export default function PublicLiveQueueTracker() {
                 if (!soundEnabled) playChimeSound();
               }}
               className={cn(
-                "p-2.5 rounded-xl border transition-colors cursor-pointer text-xs min-h-[40px] min-w-[40px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
+                "p-2.5 rounded-xl border transition-colors cursor-pointer text-xs min-h-[40px] min-w-[40px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
                 soundEnabled
-                  ? "bg-primary-500/10 border-primary-500/30 text-primary-600 dark:text-primary-400"
+                  ? "bg-primary-500/10 border-primary-500/30 text-accent dark:text-accent"
                   : "bg-surface border-border/70 text-text-muted hover:text-text"
               )}
               title={soundEnabled ? "Chime sound enabled" : "Chime muted"}
@@ -727,14 +686,14 @@ export default function PublicLiveQueueTracker() {
               type="button"
               onClick={() => fetchTrackerData(false)}
               disabled={refreshing}
-              className="p-2.5 rounded-xl bg-surface border border-border/70 hover:bg-surface-alt transition-colors text-text-muted hover:text-text cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              className="p-2.5 rounded-xl bg-surface border border-border/70 hover:bg-surface-alt transition-colors text-text-muted hover:text-text cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               title="Refresh Queue"
               aria-label="Refresh Queue Data"
             >
-              <RotateCw className={cn("w-4 h-4", refreshing && "animate-spin text-primary-500")} />
+              <RotateCw className={cn("w-4 h-4", refreshing && "animate-spin text-accent")} />
             </button>
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-success/10 border border-success/20 text-[10px] font-semibold text-success-text dark:text-success-text">
+              <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping" />
               Live
             </div>
           </div>
@@ -744,8 +703,8 @@ export default function PublicLiveQueueTracker() {
       <main className="max-w-lg mx-auto px-4 pt-4 space-y-4">
         {/* Doctor Availability Warning Banner if override active */}
         {doctorUnavailable && (
-          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-3 animate-fade-in shadow-xs">
-            <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-warning/10 border border-warning/30 text-warning-text dark:text-warning-text text-xs flex items-start gap-3 animate-fade-in shadow-xs">
+            <AlertCircle className="w-5 h-5 text-warning-text shrink-0 mt-0.5" />
             <div>
               <p className="font-bold">Doctor Availability Alert</p>
               <p className="mt-0.5 opacity-90">
@@ -758,9 +717,9 @@ export default function PublicLiveQueueTracker() {
 
         {/* Patient in Standby / Stepped Out Reassuring Hero Card */}
         {data.status === "standby" && (
-          <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-amber-600/10 border border-amber-500/30 text-amber-900 dark:text-amber-100 shadow-sm animate-fade-in space-y-3">
+          <div className="p-5 rounded-3xl bg-warning-subtle    border border-warning/30 text-warning-text dark:text-warning-text shadow-sm animate-fade-in space-y-3">
             <div className="flex items-start gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-11 h-11 rounded-2xl bg-warning text-background flex items-center justify-center shrink-0 shadow-xs">
                 <Clock className="w-6 h-6 animate-pulse" />
               </div>
               <div className="space-y-1">
@@ -770,12 +729,12 @@ export default function PublicLiveQueueTracker() {
                     Stepped Out
                   </Badge>
                 </div>
-                <p className="text-xs text-amber-800/90 dark:text-amber-200/90 leading-relaxed">
+                <p className="text-xs text-warning-text/90 dark:text-warning-text/90 leading-relaxed">
                   Reason: <span className="font-semibold">{data.parkedReason || "Stepped out for diagnostic test / personal need"}</span>.
                 </p>
-                <div className="pt-2 p-3 rounded-2xl bg-surface/80 border border-amber-500/20 text-xs text-text space-y-1">
+                <div className="pt-2 p-3 rounded-2xl bg-surface/80 border border-warning/20 text-xs text-text space-y-1">
                   <p className="font-semibold text-text flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <ShieldCheck className="w-4 h-4 text-success-text shrink-0" />
                     Your Token #{data.tokenNumber} is preserved safely!
                   </p>
                   <p className="text-[11px] text-text-muted">
@@ -785,9 +744,9 @@ export default function PublicLiveQueueTracker() {
 
                 {/* Live Diagnostic Investigation Status */}
                 {data.investigationResults && data.investigationResults.length > 0 && (
-                  <div className="p-3.5 rounded-2xl bg-surface/90 border border-purple-500/30 text-xs text-text space-y-2">
+                  <div className="p-3.5 rounded-2xl bg-surface/90 border border-accent/30 text-xs text-text space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold flex items-center gap-1.5 text-xs text-purple-700 dark:text-purple-300">
+                      <span className="font-bold flex items-center gap-1.5 text-xs text-accent dark:text-accent">
                         <span>🔬</span> Ordered Diagnostic Tests ({data.investigationResults.length})
                       </span>
                       <span className="text-[10px] text-text-muted font-medium">In-Clinic Lab</span>
@@ -801,10 +760,10 @@ export default function PublicLiveQueueTracker() {
                             <span className={cn(
                               "text-[10px] font-bold px-2 py-0.5 rounded-md",
                               isPending
-                                ? "bg-amber-500/15 text-amber-800 dark:text-amber-200 border border-amber-500/30"
+                                ? "bg-warning/15 text-warning-text dark:text-warning-text border border-warning/30"
                                 : r.isAbnormal
-                                ? "bg-rose-500/15 text-rose-800 dark:text-rose-200 border border-rose-500/30"
-                                : "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border border-emerald-500/30"
+                                ? "bg-danger/15 text-danger-text dark:text-danger-text border border-danger/30"
+                                : "bg-success/15 text-success-text dark:text-success-text border border-success/30"
                             )}>
                               {isPending ? "⏳ Analyzing in Lab" : `✅ ${r.value}`}
                             </span>
@@ -818,8 +777,8 @@ export default function PublicLiveQueueTracker() {
                 {/* Return to Waiting Room 1-Tap Action */}
                 <div className="pt-1">
                   {data.patientReturned || returnSuccess ? (
-                    <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 flex items-center gap-2.5 animate-fade-in">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <div className="p-3 rounded-2xl bg-success/15 border border-success/30 text-success-text dark:text-success-text flex items-center gap-2.5 animate-fade-in">
+                      <CheckCircle2 className="w-5 h-5 text-success-text shrink-0" />
                       <div className="text-xs">
                         <p className="font-bold">Reception Notified: Present in Waiting Room</p>
                         <p className="text-[11px] opacity-90">Please have a seat. Doctor will call Token #{data.tokenNumber} Next Up!</p>
@@ -831,12 +790,12 @@ export default function PublicLiveQueueTracker() {
                         type="button"
                         onClick={handleNotifyReturn}
                         disabled={notifyingReturn}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all text-xs cursor-pointer min-h-[44px]"
+                        className="w-full bg-success hover:bg-success active:bg-success disabled:opacity-50 text-background font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all text-xs cursor-pointer min-h-[44px]"
                       >
                         <span>🟢</span>
                         <span>{notifyingReturn ? "Notifying Reception..." : "I Have Returned to Waiting Room"}</span>
                       </button>
-                      <p className="text-[10px] text-center text-amber-800/80 dark:text-amber-200/70">
+                      <p className="text-[10px] text-center text-warning-text/80 dark:text-warning-text/70">
                         Tap when you return to notify the desk instantly without standing in the reception queue.
                       </p>
                     </div>
@@ -849,10 +808,10 @@ export default function PublicLiveQueueTracker() {
 
         {/* STAT Emergency Priority Banner */}
         {data.isEmergency && !isCompleted && (
-          <div className="p-4 rounded-2xl bg-red-500/15 border border-red-500/40 text-red-900 dark:text-red-200 text-xs flex items-start gap-3 animate-pulse shadow-xs">
+          <div className="p-4 rounded-2xl bg-danger/15 border border-danger/40 text-danger-text dark:text-danger-text text-xs flex items-start gap-3 animate-pulse shadow-xs">
             <span className="text-2xl">🚨</span>
             <div className="space-y-0.5">
-              <p className="font-black text-sm text-red-600 dark:text-red-400">STAT Emergency Priority Activated</p>
+              <p className="font-black text-sm text-danger-text dark:text-danger-text">STAT Emergency Priority Activated</p>
               <p className="opacity-95 leading-relaxed font-medium">
                 Your consultation is marked as STAT Emergency priority and placed at the front of the queue. Please remain seated immediately outside the doctor&apos;s consultation room.
               </p>
@@ -862,8 +821,8 @@ export default function PublicLiveQueueTracker() {
 
         {/* Queue Delay Alert Banner */}
         {Boolean(data.lastNotifiedDelayMinutes && data.lastNotifiedDelayMinutes >= 20 && !isInConsultation && !isCompleted && data.status !== "standby") && (
-          <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-900 dark:text-blue-200 text-xs flex items-start gap-3 animate-fade-in shadow-xs">
-            <Clock className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-primary/10 border border-accent/30 text-accent dark:text-accent text-xs flex items-start gap-3 animate-fade-in shadow-xs">
+            <Clock className="w-5 h-5 text-accent shrink-0 mt-0.5" />
             <div className="space-y-0.5">
               <p className="font-bold">Doctor Running Behind Schedule (~{data.lastNotifiedDelayMinutes} mins)</p>
               <p className="opacity-90 leading-relaxed">
@@ -876,9 +835,9 @@ export default function PublicLiveQueueTracker() {
 
         {/* Doctor Disruption Triage Urgent Banner with Actions */}
         {data.status === "disruption_triage" && (
-          <div className="p-5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-900 dark:text-rose-200 text-sm space-y-3 animate-fade-in shadow-xs">
+          <div className="p-5 rounded-2xl bg-danger/10 border border-danger/30 text-danger-text dark:text-danger-text text-sm space-y-3 animate-fade-in shadow-xs">
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-6 h-6 text-rose-500 shrink-0 mt-0.5" />
+              <AlertCircle className="w-6 h-6 text-danger-text shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold text-base">Schedule Disruption — Action Required</p>
                 <p className="mt-1 text-xs opacity-90 leading-relaxed">
@@ -886,7 +845,7 @@ export default function PublicLiveQueueTracker() {
                   Please select how you would like to proceed:
                 </p>
                 {data.disruptionResponseDeadline && (
-                  <p className="mt-2 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+                  <p className="mt-2 text-[11px] font-semibold text-danger-text dark:text-danger-text">
                     ⏱ Automatic refund will be processed if no action is taken by{" "}
                     {new Date(data.disruptionResponseDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.
                   </p>
@@ -897,7 +856,7 @@ export default function PublicLiveQueueTracker() {
               <Button
                 variant="primary"
                 size="sm"
-                className="w-full sm:w-auto bg-primary-600 hover:bg-primary-700 text-white font-semibold cursor-pointer"
+                className="w-full sm:w-auto bg-primary-600 hover:bg-primary-700 text-brand-mist font-semibold cursor-pointer"
                 onClick={() => {
                   setDisruptionActionType("reschedule");
                   setIsDisruptionModalOpen(true);
@@ -908,7 +867,7 @@ export default function PublicLiveQueueTracker() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full sm:w-auto border-rose-500/40 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                className="w-full sm:w-auto border-danger/40 text-danger-text dark:text-danger-text hover:bg-danger/10 cursor-pointer"
                 onClick={() => {
                   setDisruptionActionType("cancel");
                   setIsDisruptionModalOpen(true);
@@ -922,17 +881,17 @@ export default function PublicLiveQueueTracker() {
 
         {/* In-Consultation Live Banner: Call Patient In */}
         {isInConsultation && (
-          <div className="p-5 rounded-3xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg animate-bounce-subtle">
+          <div className="p-5 rounded-3xl bg-primary   text-brand-mist shadow-lg animate-bounce-subtle">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-                <BellRing className="w-6 h-6 text-white animate-pulse" />
+                <BellRing className="w-6 h-6 text-brand-mist animate-pulse" />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-emerald-100">Now Serving You</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-success-text">Now Serving You</p>
                 <h2 className="text-lg font-extrabold leading-tight">Please Enter Doctor's Room</h2>
               </div>
             </div>
-            <p className="text-xs text-white/90 mt-2.5 bg-black/10 p-2.5 rounded-xl border border-white/10">
+            <p className="text-xs text-brand-mist/90 mt-2.5 bg-black/10 p-2.5 rounded-xl border border-white/10">
               Dr. {data.doctor.name} is calling Token #{data.tokenNumber}. Please proceed directly to consultation room.
             </p>
           </div>
@@ -940,8 +899,8 @@ export default function PublicLiveQueueTracker() {
 
         {/* Cancellation Notice Banner */}
         {isCancelled && (
-          <div className="p-4 rounded-2xl bg-danger-500/10 border border-danger-500/30 text-danger-900 dark:text-danger-200 text-xs flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-danger-500 shrink-0" />
+          <div className="p-4 rounded-2xl bg-danger-500/10 border border-danger-500/30 text-danger-text dark:text-danger-text text-xs flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-danger-text shrink-0" />
             <div>
               <p className="font-bold">Appointment {data.status === "no-show" ? "Marked No-Show" : "Cancelled"}</p>
               <p className="mt-0.5 opacity-90">
@@ -970,9 +929,9 @@ export default function PublicLiveQueueTracker() {
                     className={cn(
                       "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all shadow-xs",
                       step.done
-                        ? "bg-primary-600 text-white"
+                        ? "bg-primary-600 text-brand-mist"
                         : "bg-surface border-2 border-border text-text-muted",
-                      isActive && "ring-4 ring-primary-500/20 scale-110"
+                      isActive && "ring-4 ring-focus-ring scale-110"
                     )}
                   >
                     {step.done ? "✓" : idx + 1}
@@ -981,7 +940,7 @@ export default function PublicLiveQueueTracker() {
                     className={cn(
                       "text-[10px] font-semibold mt-1.5 text-center whitespace-nowrap",
                       isActive
-                        ? "text-primary-600 dark:text-primary-400 font-bold"
+                        ? "text-accent dark:text-accent font-bold"
                         : step.done
                         ? "text-text"
                         : "text-text-muted"
@@ -1000,7 +959,7 @@ export default function PublicLiveQueueTracker() {
           <div className="bg-surface rounded-3xl border border-border/80 p-5 shadow-xs space-y-3 animate-fade-in">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-primary-600 flex items-center justify-center font-bold text-sm">
+                <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-accent flex items-center justify-center font-bold text-sm">
                   <Stethoscope className="w-4 h-4" />
                 </div>
                 <div>
@@ -1066,7 +1025,7 @@ export default function PublicLiveQueueTracker() {
 
             {data.vitals.allergies && data.vitals.allergies.length > 0 && (
               <div className="pt-1 text-xs">
-                <span className="font-bold text-red-600 dark:text-red-400">Allergies: </span>
+                <span className="font-bold text-danger-text dark:text-danger-text">Allergies: </span>
                 <span className="text-text-secondary">{data.vitals.allergies.join(", ")}</span>
               </div>
             )}
@@ -1079,14 +1038,14 @@ export default function PublicLiveQueueTracker() {
         {isCompleted ? (
           <div className="space-y-4 animate-fade-in">
             {/* Completed Hero Banner */}
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-primary-700 text-white shadow-md relative overflow-hidden">
+            <div className="p-5 rounded-3xl bg-primary    text-brand-mist shadow-md relative overflow-hidden">
               <div className="relative z-10 space-y-2">
                 <div className="flex items-center justify-between">
-                  <Badge className="bg-white/20 text-white text-[11px] font-bold border-white/20">
-                    <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-200" />
+                  <Badge className="bg-white/20 text-brand-mist text-[11px] font-bold border-white/20">
+                    <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-success-text" />
                     Consultation Completed
                   </Badge>
-                  <span className="text-[11px] font-semibold text-emerald-100">
+                  <span className="text-[11px] font-semibold text-success-text">
                     Token #{data.tokenNumber}
                   </span>
                 </div>
@@ -1094,7 +1053,7 @@ export default function PublicLiveQueueTracker() {
                 <h2 className="text-xl font-black tracking-tight mt-1">
                   Post-Consultation Summary
                 </h2>
-                <p className="text-xs text-white/90 leading-relaxed">
+                <p className="text-xs text-brand-mist/90 leading-relaxed">
                   Your visit with Dr. {data.doctor.name} has concluded. Your digital prescription, advice, and billing invoice are ready below.
                 </p>
               </div>
@@ -1107,7 +1066,7 @@ export default function PublicLiveQueueTracker() {
             <div className="bg-surface rounded-3xl border border-border/80 p-5 shadow-xs space-y-4">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-primary-600 flex items-center justify-center font-black text-sm">
+                  <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-accent flex items-center justify-center font-black text-sm">
                     Rx
                   </div>
                   <div>
@@ -1121,7 +1080,7 @@ export default function PublicLiveQueueTracker() {
                   variant="outline"
                   size="xs"
                   onClick={handleDownloadPrescription}
-                  className="rounded-xl border-primary-500/30 text-primary-600 hover:bg-primary-500/10 font-bold flex items-center gap-1.5"
+                  className="rounded-xl border-primary-500/30 text-accent hover:bg-primary-500/10 font-bold flex items-center gap-1.5"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Print / PDF</span>
@@ -1153,16 +1112,16 @@ export default function PublicLiveQueueTracker() {
                   className={cn(
                     "p-3.5 rounded-2xl border transition-all space-y-1.5",
                     data.pharmacyStatus === "dispensed"
-                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-100"
-                      : "bg-amber-500/10 border-amber-500/30 text-amber-950 dark:text-amber-100"
+                      ? "bg-success/10 border-success/30 text-success-text dark:text-success-text"
+                      : "bg-warning/10 border-warning/30 text-warning-text dark:text-warning-text"
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       {data.pharmacyStatus === "dispensed" ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-success-text dark:text-success-text shrink-0" />
                       ) : (
-                        <Pill className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 animate-pulse" />
+                        <Pill className="w-4 h-4 text-warning-text dark:text-warning-text shrink-0 animate-pulse" />
                       )}
                       <span className="font-bold text-xs sm:text-sm">
                         {data.pharmacyStatus === "dispensed"
@@ -1203,7 +1162,7 @@ export default function PublicLiveQueueTracker() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <Pill className="w-4 h-4 text-primary-500 shrink-0" />
+                            <Pill className="w-4 h-4 text-accent shrink-0" />
                             <span className="font-bold text-sm text-text">{rx.medicineName}</span>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
@@ -1211,13 +1170,13 @@ export default function PublicLiveQueueTracker() {
                               className={cn(
                                 "text-[10px] font-bold px-2 py-0.5 rounded-md",
                                 rx.status === "dispensed"
-                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                                  ? "bg-success/10 text-success-text dark:text-success-text border border-success/20"
+                                  : "bg-warning/10 text-warning-text dark:text-warning-text border border-warning/20"
                               )}
                             >
                               {rx.status === "dispensed" ? "✅ Dispensed" : "⏳ In Prep"}
                             </span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-primary-500/10 text-primary-600 dark:text-primary-400">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-primary-500/10 text-accent dark:text-accent">
                               {rx.duration}
                             </span>
                           </div>
@@ -1252,7 +1211,7 @@ export default function PublicLiveQueueTracker() {
               {/* Doctor's Advice & Treatment Plan */}
               {data.consultationSummary?.doctorAdvice && (
                 <div className="p-3.5 rounded-2xl bg-primary-500/5 border border-primary-500/20 space-y-1">
-                  <div className="flex items-center gap-1.5 text-primary-600 dark:text-primary-400 font-bold text-xs">
+                  <div className="flex items-center gap-1.5 text-accent dark:text-accent font-bold text-xs">
                     <Stethoscope className="w-3.5 h-3.5" />
                     Doctor's Advice & Plan
                   </div>
@@ -1264,9 +1223,9 @@ export default function PublicLiveQueueTracker() {
 
               {/* Follow-up recommendation & Confirmed Booking Card */}
               {data.consultationSummary?.followUp && (
-                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-1.5">
+                <div className="p-3.5 rounded-2xl bg-success/10 border border-success/20 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 font-bold text-xs">
+                    <div className="flex items-center gap-1.5 text-success-text dark:text-success-text font-bold text-xs">
                       <Calendar className="w-3.5 h-3.5" />
                       Follow-Up Scheduled
                     </div>
@@ -1276,10 +1235,10 @@ export default function PublicLiveQueueTracker() {
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-emerald-900 dark:text-emerald-200">
+                  <p className="text-xs text-success-text dark:text-success-text">
                     Target Date: <strong>{new Date(data.consultationSummary.followUp.date).toLocaleDateString()}</strong>
                     {data.followUpAppointment && (
-                      <span className="block text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 mt-1">
+                      <span className="block text-[11px] font-semibold text-success-text dark:text-success-text mt-1">
                         ✅ Your review consultation is scheduled in the doctor's calendar (Token #{data.followUpAppointment.tokenNumber}).
                       </span>
                     )}
@@ -1295,7 +1254,7 @@ export default function PublicLiveQueueTracker() {
               {/* Doctor signature note */}
               <div className="pt-2 border-t border-border/60 flex items-center justify-between text-[11px] text-text-muted">
                 <span>Attending: Dr. {data.doctor.name}</span>
-                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+                <span className="flex items-center gap-1 text-success-text dark:text-success-text font-semibold">
                   <ShieldCheck className="w-3.5 h-3.5" /> Signed & Valid
                 </span>
               </div>
@@ -1306,7 +1265,7 @@ export default function PublicLiveQueueTracker() {
               <div className="bg-surface rounded-3xl border border-border/80 p-5 shadow-xs space-y-4">
                 <div className="flex items-center justify-between border-b border-border/60 pb-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+                    <div className="w-8 h-8 rounded-xl bg-warning/10 text-warning-text flex items-center justify-center font-bold">
                       <Receipt className="w-4 h-4" />
                     </div>
                     <div>
@@ -1350,7 +1309,7 @@ export default function PublicLiveQueueTracker() {
                   </div>
                   <div className="flex justify-between text-text-muted">
                     <span>Amount Paid</span>
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    <span className="font-semibold text-success-text dark:text-success-text">
                       ₹{data.billing.amountPaid.toFixed(2)}
                     </span>
                   </div>
@@ -1359,8 +1318,8 @@ export default function PublicLiveQueueTracker() {
                     <span
                       className={
                         data.billing.balanceDue > 0
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-emerald-600 dark:text-emerald-400"
+                          ? "text-warning-text dark:text-warning-text"
+                          : "text-success-text dark:text-success-text"
                       }
                     >
                       ₹{data.billing.balanceDue.toFixed(2)}
@@ -1385,9 +1344,9 @@ export default function PublicLiveQueueTracker() {
                     </p>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-200">
+                  <div className="p-3 rounded-2xl bg-success/10 border border-success/20 flex items-center justify-between text-xs text-success-text dark:text-success-text">
                     <span className="flex items-center gap-1.5 font-bold">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <CheckCircle2 className="w-4 h-4 text-success-text" />
                       Payment Verified & Settled
                     </span>
                     <span className="text-[10px] opacity-80">
@@ -1415,7 +1374,7 @@ export default function PublicLiveQueueTracker() {
                   <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider block">
                     Your Queue Token
                   </span>
-                  <div className="text-5xl font-black text-primary-600 dark:text-primary-400 tracking-tight mt-1">
+                  <div className="text-5xl font-black text-accent dark:text-accent tracking-tight mt-1">
                     #{data.tokenNumber}
                   </div>
                 </div>
@@ -1458,7 +1417,7 @@ export default function PublicLiveQueueTracker() {
                 {/* Serving Now Box */}
                 <div className="bg-surface rounded-3xl border border-border/80 p-4 shadow-xs">
                   <div className="flex items-center gap-2 text-text-muted text-[11px] font-bold uppercase tracking-wider">
-                    <Users className="w-3.5 h-3.5 text-primary-500" />
+                    <Users className="w-3.5 h-3.5 text-accent" />
                     Serving Now
                   </div>
                   <div className="text-2xl font-black text-text mt-1.5">
@@ -1478,7 +1437,7 @@ export default function PublicLiveQueueTracker() {
                 {/* Patients Ahead Box */}
                 <div className="bg-surface rounded-3xl border border-border/80 p-4 shadow-xs">
                   <div className="flex items-center gap-2 text-text-muted text-[11px] font-bold uppercase tracking-wider">
-                    <Users className="w-3.5 h-3.5 text-amber-500" />
+                    <Users className="w-3.5 h-3.5 text-warning-text" />
                     Ahead of You
                   </div>
                   <div className="text-2xl font-black text-text mt-1.5">
@@ -1490,15 +1449,15 @@ export default function PublicLiveQueueTracker() {
                 </div>
 
                 {/* Estimated Wait Time Box */}
-                <div className="col-span-2 bg-gradient-to-br from-surface to-surface-alt rounded-3xl border border-border/80 p-5 shadow-xs">
+                <div className="col-span-2 bg-surface   rounded-3xl border border-border/80 p-5 shadow-xs">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-text-muted text-[11px] font-bold uppercase tracking-wider">
-                      <Clock className="w-3.5 h-3.5 text-primary-500" />
+                      <Clock className="w-3.5 h-3.5 text-accent" />
                       Estimated Wait Time
                     </div>
 
                     {data.isAdaptiveDuration && (
-                      <span className="px-2 py-0.5 rounded-md bg-primary-500/10 text-primary-600 dark:text-primary-400 text-[10px] font-bold flex items-center gap-1">
+                      <span className="px-2 py-0.5 rounded-md bg-primary-500/10 text-accent dark:text-accent text-[10px] font-bold flex items-center gap-1">
                         <Sparkles className="w-3 h-3" /> Adaptive
                       </span>
                     )}
@@ -1548,8 +1507,8 @@ export default function PublicLiveQueueTracker() {
 
             {/* CHECKED-IN CONFIRMATION STATE */}
             {data.status === "checked-in" && (
-              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 dark:text-emerald-200 text-xs flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+              <div className="p-4 rounded-2xl bg-success/10 border border-success/30 text-success-text dark:text-success-text text-xs flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-success-text shrink-0 mt-0.5" />
                 <div>
                   <p className="font-bold">You are Checked-In!</p>
                   <p className="mt-0.5 opacity-90 leading-relaxed">
@@ -1565,7 +1524,7 @@ export default function PublicLiveQueueTracker() {
         {/* CLINIC & DOCTOR DETAILS CARD */}
         <div className="bg-surface rounded-3xl border border-border/80 p-5 shadow-xs space-y-4 text-xs">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-primary-600/10 text-primary-600 flex items-center justify-center font-bold shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-primary-600/10 text-accent flex items-center justify-center font-bold shrink-0">
               <Stethoscope className="w-5 h-5" />
             </div>
             <div>
@@ -1595,7 +1554,7 @@ export default function PublicLiveQueueTracker() {
         {/* Footer Info */}
         <div className="text-center text-[10px] text-text-muted space-y-1 pt-2">
           <p>Last synced: {lastUpdated.toLocaleTimeString()}</p>
-          <p className="opacity-80">ANANTA Smart Healthcare Cloud • Zero-Login Mobile Patient Tracker</p>
+          <p className="opacity-80">Ekavyu Smart Healthcare Cloud • Zero-Login Mobile Patient Tracker</p>
         </div>
       </main>
 
@@ -1634,7 +1593,7 @@ export default function PublicLiveQueueTracker() {
                 className={cn(
                   "p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5",
                   paymentMethod === "upi"
-                    ? "bg-primary-500/10 border-primary-500 text-primary-600 dark:text-primary-400 font-bold shadow-xs"
+                    ? "bg-primary-500/10 border-primary-500 text-accent dark:text-accent font-bold shadow-xs"
                     : "bg-surface border-border/80 text-text-muted hover:border-border hover:text-text"
                 )}
               >
@@ -1648,7 +1607,7 @@ export default function PublicLiveQueueTracker() {
                 className={cn(
                   "p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5",
                   paymentMethod === "card"
-                    ? "bg-primary-500/10 border-primary-500 text-primary-600 dark:text-primary-400 font-bold shadow-xs"
+                    ? "bg-primary-500/10 border-primary-500 text-accent dark:text-accent font-bold shadow-xs"
                     : "bg-surface border-border/80 text-text-muted hover:border-border hover:text-text"
                 )}
               >
@@ -1662,7 +1621,7 @@ export default function PublicLiveQueueTracker() {
                 className={cn(
                   "p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5",
                   paymentMethod === "online"
-                    ? "bg-primary-500/10 border-primary-500 text-primary-600 dark:text-primary-400 font-bold shadow-xs"
+                    ? "bg-primary-500/10 border-primary-500 text-accent dark:text-accent font-bold shadow-xs"
                     : "bg-surface border-border/80 text-text-muted hover:border-border hover:text-text"
                 )}
               >
@@ -1679,7 +1638,7 @@ export default function PublicLiveQueueTracker() {
                 href={trackerUpiPayload}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3 px-4 text-xs font-bold text-center rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs inline-flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full py-3 px-4 text-xs font-bold text-center rounded-xl bg-primary hover:bg-primary text-brand-mist shadow-xs inline-flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <Smartphone className="w-4 h-4" />
                 <span>Pay via UPI App (GPay / PhonePe / Paytm / CRED)</span>
@@ -1691,7 +1650,7 @@ export default function PublicLiveQueueTracker() {
                   Or Scan Counter QR on your phone:
                 </div>
                 {trackerQrDataUrl ? (
-                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl inline-block border border-border/80 shadow-xs">
+                  <div className="p-2.5 bg-surface dark:bg-surface rounded-xl inline-block border border-border/80 shadow-xs">
                     <img
                       src={trackerQrDataUrl}
                       alt="UPI Payment QR Code"
@@ -1699,12 +1658,12 @@ export default function PublicLiveQueueTracker() {
                     />
                   </div>
                 ) : (
-                  <div className="w-44 h-44 flex items-center justify-center mx-auto bg-slate-100 dark:bg-slate-800 rounded-xl text-xs text-text-muted">
+                  <div className="w-44 h-44 flex items-center justify-center mx-auto bg-surface-alt dark:bg-surface-alt rounded-xl text-xs text-text-muted">
                     Loading QR...
                   </div>
                 )}
                 <div className="mt-1 text-[11px] font-mono text-text-muted">
-                  VPA: <strong className="text-primary-600">{trackerVpa}</strong>
+                  VPA: <strong className="text-accent">{trackerVpa}</strong>
                 </div>
               </div>
 
@@ -1718,7 +1677,7 @@ export default function PublicLiveQueueTracker() {
                     setTimeout(() => setCopiedUpi(false), 2500);
                   }
                 }}
-                className="text-xs text-primary-600 hover:underline inline-flex items-center gap-1 cursor-pointer pt-1"
+                className="text-xs text-accent hover:underline inline-flex items-center gap-1 cursor-pointer pt-1"
               >
                 <Copy className="w-3.5 h-3.5" />
                 <span>{copiedUpi ? "Copied UPI Link!" : "Copy UPI Payment Link"}</span>
@@ -1777,7 +1736,7 @@ export default function PublicLiveQueueTracker() {
                   value={rescheduleTargetDate}
                   min={new Date().toISOString().slice(0, 10)}
                   onChange={(e) => setRescheduleTargetDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-surface text-text text-sm focus:outline-hidden focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-surface text-text text-sm focus:outline-hidden focus:ring-2 focus:ring-focus-ring"
                 />
               </div>
             </>
@@ -1804,7 +1763,7 @@ export default function PublicLiveQueueTracker() {
               size="md"
               className={cn(
                 "flex-1 rounded-xl font-bold min-h-[44px] flex items-center justify-center",
-                disruptionActionType === "cancel" && "bg-rose-600 hover:bg-rose-700 text-white"
+                disruptionActionType === "cancel" && "bg-danger hover:bg-danger text-background"
               )}
               onClick={handleExecuteDisruptionAction}
               loading={isSubmittingDisruption}

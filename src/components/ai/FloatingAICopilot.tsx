@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
 
@@ -84,7 +85,7 @@ function FormattedMarkdown({ content }: { content: string }) {
           const itemText = trimmed.replace(/^[\*\-]\s+/, "");
           return (
             <div key={idx} className="flex items-start gap-2 pl-1 my-0.5">
-              <span className="text-primary font-bold text-[10px] mt-0.5 shrink-0">•</span>
+              <span className="text-accent font-bold text-[10px] mt-0.5 shrink-0">•</span>
               <span>{renderInlineMarkdown(itemText)}</span>
             </div>
           );
@@ -109,6 +110,8 @@ export function FloatingAICopilot() {
   const { user } = useAuthStore();
 
   const [isOpen, setIsOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useOverlayFocus(isOpen, dialogRef, () => setIsOpen(false));
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Session State
@@ -318,29 +321,26 @@ export function FloatingAICopilot() {
   return (
     <>
       {/* Floating Trigger Button (Bottom Right - with clearance for mobile bottom nav) */}
-      <div className="fixed bottom-20 md:bottom-20 lg:bottom-6 right-4 sm:right-6 z-45">
+      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-6 right-4 sm:right-6 z-45">
         <div className="relative group">
-          {/* Glowing Ambient Aura Ring */}
-          {!isOpen && (
-            <div className="absolute -inset-1 rounded-full bg-primary-500/60 opacity-75 blur-md animate-pulse group-hover:opacity-100 transition duration-500 pointer-events-none" />
-          )}
-
           <button
             onClick={() => setIsOpen(!isOpen)}
             className={`relative w-12 h-12 sm:w-13 sm:h-13 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 shadow-xl ${
               isOpen
                 ? "bg-surface-hover text-text border border-border/80 shadow-md rotate-90 scale-105"
-                : "bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:scale-108 active:scale-95"
+                : "bg-primary-600 hover:bg-primary-700 text-brand-mist shadow-lg hover:scale-108 active:scale-95"
             }`}
-            title={isOpen ? "Close AI Copilot" : "Open Anant AI Copilot"}
+            title={isOpen ? "Close AI Copilot" : "Open Ekavyu AI Copilot"}
             aria-label="Toggle AI Copilot"
+            aria-expanded={isOpen}
+            aria-controls={isOpen ? "ai-copilot-dialog" : undefined}
           >
             {isOpen ? (
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             ) : (
-              <AISparkIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white animate-pulse" />
+              <AISparkIcon className="w-5 h-5 sm:w-6 sm:h-6 text-brand-mist animate-pulse" />
             )}
           </button>
         </div>
@@ -349,10 +349,16 @@ export function FloatingAICopilot() {
       {/* Floating Popover Copilot Window — Mobile Bottom Sheet + Desktop Floating Window */}
       {isOpen && (
         <div
-          className={`fixed z-50 bg-surface/98 backdrop-blur-2xl border border-border/80 shadow-2xl shadow-black/25 flex flex-col transition-all duration-300 ease-spring animate-popover-in ${
+          ref={dialogRef}
+          id="ai-copilot-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Ekavyu AI Copilot"
+          tabIndex={-1}
+          className={`fixed z-50 bg-surface/98  border border-border/80 shadow-lg  flex flex-col transition-all duration-300 ease-spring animate-popover-in ${
             isExpanded
-              ? "inset-0 sm:inset-4 md:inset-6 md:left-auto md:w-[640px] md:h-[calc(100vh-3rem)] rounded-none sm:rounded-2xl"
-              : "inset-x-0 bottom-0 rounded-t-3xl sm:rounded-2xl sm:inset-auto sm:bottom-20 sm:right-6 sm:w-[420px] max-h-[85vh] sm:max-h-[82vh] h-[85vh] sm:h-[580px] pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:pb-0"
+              ? "inset-0 md:inset-6 md:left-auto md:w-[640px] md:h-[calc(100dvh-3rem)] rounded-none md:rounded-2xl"
+              : "inset-x-0 bottom-0 rounded-t-3xl sm:rounded-2xl md:inset-auto md:bottom-20 md:right-6 md:w-[420px] max-h-[85dvh] md:max-h-[82dvh] h-[85dvh] md:h-[580px] pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-0"
           }`}
         >
           {/* Mobile Sheet Drag Handle */}
@@ -363,13 +369,13 @@ export function FloatingAICopilot() {
           {/* Header Bar */}
           <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between shrink-0 bg-surface-alt/30 rounded-t-3xl sm:rounded-t-2xl">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-accent shrink-0">
                 <AISparkIcon className="w-4 h-4" />
               </div>
               <div className="truncate">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-xs font-bold text-text truncate">Anant AI Copilot</h3>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <h3 className="text-xs font-bold text-text truncate">Ekavyu AI Copilot</h3>
+                  <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
                 </div>
               </div>
             </div>
@@ -438,7 +444,7 @@ export function FloatingAICopilot() {
                   key={s.id}
                   className={`flex items-center justify-between rounded-lg text-xs transition-colors overflow-hidden ${
                     s.id === activeSessionId
-                      ? "bg-primary/10 text-primary font-medium"
+                      ? "bg-primary/10 text-accent font-medium"
                       : "hover:bg-surface-hover text-text-muted hover:text-text"
                   }`}
                 >
@@ -448,7 +454,7 @@ export function FloatingAICopilot() {
                       loadSessionMessages(s.id);
                       setShowSessionSelector(false);
                     }}
-                    className="flex-1 text-left px-2.5 py-1 truncate max-w-[240px] cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="flex-1 text-left px-2.5 py-1 truncate max-w-[240px] cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
                   >
                     {s.title}
                   </button>
@@ -484,7 +490,7 @@ export function FloatingAICopilot() {
                   <div
                     className={`max-w-[90%] rounded-xl p-3 text-xs leading-relaxed ${
                       msg.sender === "user"
-                        ? "bg-primary text-white rounded-br-xs font-medium"
+                        ? "bg-primary text-brand-mist rounded-br-xs font-medium"
                         : "bg-surface-alt/60 text-text rounded-bl-xs"
                     }`}
                   >
@@ -504,7 +510,7 @@ export function FloatingAICopilot() {
                         {isStaff && (
                           <button
                             onClick={() => insertIntoEHRChart(msg.text)}
-                            className="text-primary hover:underline transition-colors flex items-center gap-1 cursor-pointer font-medium"
+                            className="text-accent hover:underline transition-colors flex items-center gap-1 cursor-pointer font-medium"
                           >
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -533,7 +539,7 @@ export function FloatingAICopilot() {
                             className="w-full px-2.5 py-1.5 bg-surface hover:bg-surface-hover text-text font-medium rounded-lg text-[11px] transition-all flex items-center justify-between gap-2 cursor-pointer"
                           >
                             <span>{act.label}</span>
-                            <svg className="w-3 h-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <svg className="w-3 h-3 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                             </svg>
                           </button>
@@ -634,7 +640,7 @@ export function FloatingAICopilot() {
                 type="text"
                 value={inputQuery}
                 onChange={(e) => setInputQuery(e.target.value)}
-                placeholder={isVoiceActive ? "Listening..." : "Ask Anant AI..."}
+                placeholder={isVoiceActive ? "Listening..." : "Ask Ekavyu AI..."}
                 className="flex-1 bg-transparent text-base sm:text-xs text-text placeholder:text-text-muted focus:outline-none px-2 py-1.5"
               />
 
@@ -653,7 +659,7 @@ export function FloatingAICopilot() {
                 <button
                   type="submit"
                   disabled={!inputQuery.trim()}
-                  className="p-1.5 text-primary disabled:text-text-muted/40 hover:bg-primary/10 rounded-lg transition-colors cursor-pointer shrink-0"
+                  className="p-1.5 text-accent disabled:text-text-muted/40 hover:bg-primary/10 rounded-lg transition-colors cursor-pointer shrink-0"
                   title="Send message"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

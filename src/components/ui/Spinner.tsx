@@ -88,7 +88,7 @@ const sizeConfig: Record<
 const Spinner = memo(function Spinner({
   size = "md",
   variant = "ring",
-  color = "text-primary-600 dark:text-primary-400",
+  color = "text-accent dark:text-accent",
   label,
   secondaryText,
   className = "",
@@ -141,12 +141,12 @@ const Spinner = memo(function Spinner({
       return (
         <div className={cn("relative flex items-center justify-center shrink-0", cfg.container, color)} aria-hidden="true">
           <span className="absolute inset-0 rounded-full bg-current opacity-25 animate-ping" />
-          <span className="relative h-2 w-2 rounded-full bg-current shadow-[0_0_10px_currentColor] animate-pulse-beacon" />
+          <span className="relative h-2 w-2 rounded-full bg-current  animate-pulse-beacon" />
         </div>
       );
     }
 
-    // ── Signature Default Variant: Clean Anant Quantum Ring (Unique, Minimal & Fluid) ──
+    // ── Signature Default Variant: Clean Ekavyu Quantum Ring (Unique, Minimal & Fluid) ──
     const gradId = `spinner-grad-${uniqueId}`;
 
     return (
@@ -188,7 +188,7 @@ const Spinner = memo(function Spinner({
 
         {/* Subtle Central Luminous Beacon Dot (on md sizes and above) */}
         {size !== "xs" && size !== "sm" && (
-          <span className="absolute h-1 w-1 rounded-full bg-current animate-pulse-beacon shadow-[0_0_6px_currentColor] opacity-80" />
+          <span className="absolute h-1 w-1 rounded-full bg-current animate-pulse-beacon  opacity-80" />
         )}
       </div>
     );
@@ -250,23 +250,20 @@ export const PageSpinner = memo(function PageSpinner({
   description,
   variant = "ring",
   size = "xl",
-  color = "text-primary-600 dark:text-primary-400",
+  color = "text-accent dark:text-accent",
   className = "",
 }: PageSpinnerProps) {
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center bg-background/70 dark:bg-black/60 backdrop-blur-md animate-fade-in p-4",
+        "fixed inset-0 z-50 flex items-center justify-center bg-background/70 dark:bg-black/60  animate-fade-in p-4",
         className
       )}
       role="dialog"
       aria-modal="true"
       aria-label={label}
     >
-      <div className="relative bg-surface/95 dark:bg-surface/90 backdrop-blur-2xl border border-border/80 rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/60 p-6 sm:p-8 flex flex-col items-center justify-center max-w-xs sm:max-w-sm w-full text-center transform-gpu before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/50 before:to-transparent overflow-hidden">
-        {/* Subtle Ambient Radial Glow */}
-        <div className="absolute -top-12 -left-12 w-32 h-32 bg-primary-500/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-accent/10 rounded-full blur-2xl pointer-events-none" />
+      <div className="relative bg-surface dark:bg-surface  border border-border/80 rounded-2xl shadow-lg   p-6 sm:p-8 flex flex-col items-center justify-center max-w-xs sm:max-w-sm w-full text-center transform-gpu overflow-hidden">
 
         <Spinner
           size={size}
@@ -316,7 +313,7 @@ export const InlineLoader = memo(function InlineLoader({
   label,
   size = "xs",
   className = "",
-  color = "text-primary-600 dark:text-primary-400",
+  color = "text-accent dark:text-accent",
 }: InlineLoaderProps) {
   return (
     <span className={cn("inline-flex items-center gap-1.5 align-middle text-xs font-medium text-text-muted select-none", className)} role="status">

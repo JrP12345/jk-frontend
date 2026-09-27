@@ -1,7 +1,8 @@
 "use client";
 
-import { type ReactNode, useState, useRef, useEffect, useCallback, memo } from "react";
+import { type ReactNode, useState, useRef, useEffect, useCallback, useId, cloneElement, isValidElement, type ReactElement, memo } from "react";
 import { createPortal } from "react-dom";
+import { popoverPosition } from "@/lib/popoverPosition";
 import { cn } from "./utils";
 
 /* ────────────────────────────────────────────────
@@ -28,11 +29,13 @@ export interface DropdownProps {
 }
 
 const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width = "w-48", className = "" }: DropdownProps) {
+  const id = useId();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [owner, setOwner] = useState<string>();
   const [open, setOpen] = useState(false);
   const [render, setRender] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
-  const [openUpward, setOpenUpward] = useState(false);
-  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const [coords, setCoords] = useState<ReturnType<typeof popoverPosition> | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [mounted, setMounted] = useState(false);
 
@@ -42,7 +45,8 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
     setMounted(true);
   }, []);
 
-  const close = useCallback(() => {
+  const close = useCallback((restoreFocus = true) => {
+    if (restoreFocus) containerRef.current?.querySelector<HTMLElement>("button, [tabindex]")?.focus();
     setOpen(false);
     setFocusedIndex(-1);
   }, []);
@@ -64,14 +68,8 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
   const updateCoords = useCallback(() => {
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const isUpward = spaceBelow < 220;
-
-      setOpenUpward(isUpward);
-      setCoords({
-        top: isUpward ? rect.top : rect.bottom,
-        left: align === "right" ? rect.right : rect.left,
-      });
+      setOwner(containerRef.current.closest('[role="dialog"]')?.id || undefined);
+      setCoords(popoverPosition(rect, menuRef.current?.getBoundingClientRect().width || 192, 220, align));
     }
   }, [align]);
 
@@ -92,16 +90,17 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
     if (!open) return;
     const onClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        const portalEl = document.getElementById("dropdown-portal-root");
+        const portalEl = menuRef.current;
         if (portalEl && portalEl.contains(e.target as Node)) return;
-        close();
+        close(false);
       }
     };
     const onEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape" && !e.defaultPrevented) { e.preventDefault(); close(); }
     };
-    const onScrollOrResize = () => {
-      close();
+    const onScrollOrResize = (event: Event) => {
+      if (event.target instanceof Node && menuRef.current?.contains(event.target)) return;
+      close(false);
     };
 
     document.addEventListener("mousedown", onClickOutside);
@@ -116,6 +115,16 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
       window.removeEventListener("resize", onScrollOrResize);
     };
   }, [open, close]);
+
+  useEffect(() => {
+    if (!open || !render) return;
+    const timer = window.setTimeout(() => {
+      updateCoords();
+      const buttons = menuRef.current?.querySelectorAll<HTMLButtonElement>('button:not([disabled])');
+      buttons?.[Math.max(0, focusedIndex)]?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [open, render, focusedIndex, updateCoords]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (items.length === 0) return;
@@ -138,6 +147,10 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
         focusableItems.length > 0 ? (prev - 1 + focusableItems.length) % focusableItems.length : -1
       );
       e.preventDefault();
+    } else if (e.key === "Home" || e.key === "End") {
+      e.preventDefault(); setFocusedIndex(e.key === "Home" ? 0 : focusableItems.length - 1);
+    } else if (e.key === "Escape") {
+      e.preventDefault(); close();
     } else if (e.key === "Enter" || e.key === " ") {
       if (focusedIndex >= 0 && focusedIndex < focusableItems.length) {
         const { item } = focusableItems[focusedIndex];
@@ -154,11 +167,9 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
     <div ref={containerRef} onKeyDown={handleKeyDown} className={cn("relative inline-flex", className)}>
       <div
         onClick={handleToggle}
-        className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg touch-manipulation active:scale-[0.98] transition-transform duration-100"
-        aria-haspopup="menu"
-        aria-expanded={open}
+        className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-lg touch-manipulation active:scale-[0.98] transition-transform duration-100"
       >
-        {trigger}
+        {isValidElement(trigger) ? cloneElement(trigger as ReactElement<Record<string, unknown>>, { "aria-haspopup": "menu", "aria-expanded": open, "aria-controls": open ? id : undefined }) : trigger}
       </div>
 
       {render &&
@@ -166,17 +177,22 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
         coords &&
         createPortal(
           <div
-            id="dropdown-portal-root"
+            id={id}
+            ref={menuRef}
+            data-overlay-owner={owner}
+            data-exiting={isExiting}
+            aria-label="Actions"
             style={{
               position: "fixed",
-              top: openUpward ? undefined : coords.top + 6,
-              bottom: openUpward ? window.innerHeight - coords.top + 6 : undefined,
-              left: align === "right" ? undefined : coords.left,
-              right: align === "right" ? window.innerWidth - coords.left : undefined,
+              top: coords.top,
+              bottom: coords.bottom,
+              left: coords.left,
+              maxWidth: "calc(100vw - 16px)",
+              maxHeight: coords.maxHeight,
               zIndex: 99999,
             }}
             className={cn(
-              "bg-surface/98 rounded-2xl border border-border/80 shadow-xl p-1.5 focus:outline-none backdrop-blur-2xl ring-1 ring-border/50 transform-gpu select-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent overflow-hidden",
+              "bg-surface rounded-2xl border border-border/80 shadow-xl p-1.5 focus:outline-none  ring-1 ring-border/50 transform-gpu select-none overflow-y-auto",
               isExiting ? "animate-dropdown-out" : "animate-dropdown-in",
               width
             )}
@@ -195,21 +211,23 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
                   type="button"
                   role="menuitem"
                   disabled={item.disabled}
+                  tabIndex={isFocused || (focusedIndex < 0 && focusableIdx === 0) ? 0 : -1}
+                  onFocus={() => setFocusedIndex(focusableIdx)}
                   onClick={() => {
                     item.onClick?.();
                     close();
                   }}
                   className={cn(
-                    "w-full flex items-center justify-between gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-left cursor-pointer transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 min-h-[36px] sm:min-h-0",
+                    "w-full flex items-center justify-between gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-left cursor-pointer transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring min-h-[44px] md:min-h-0",
                     item.danger || item.variant === "danger"
-                      ? "text-danger-500 hover:bg-danger-500/10 dark:hover:bg-danger-500/20 font-semibold"
+                      ? "text-danger-text hover:bg-danger-500/10 dark:hover:bg-danger-500/20 font-semibold"
                       : item.variant === "warning"
-                      ? "text-warning-600 dark:text-warning-400 hover:bg-warning-500/10"
+                      ? "text-warning-text dark:text-warning-text hover:bg-warning-500/10"
                       : item.variant === "primary"
-                      ? "text-primary-600 dark:text-primary-400 hover:bg-primary-500/10"
+                      ? "text-accent dark:text-accent hover:bg-primary-500/10"
                       : "text-text hover:bg-surface-hover hover:text-text",
                     isFocused && !(item.danger || item.variant === "danger") && "bg-surface-hover text-text",
-                    isSelected && "font-semibold text-primary-500"
+                    isSelected && "font-semibold text-accent"
                   )}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
@@ -218,7 +236,7 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
                         className={cn(
                           "shrink-0 [&>svg]:h-4 [&>svg]:w-4 transition-colors",
                           item.danger || item.variant === "danger"
-                            ? "text-danger-500"
+                            ? "text-danger-text"
                             : "text-text-muted group-hover:text-text"
                         )}
                       >
@@ -228,7 +246,7 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
                     <span className="truncate">{item.label}</span>
                   </div>
                   {isSelected && (
-                    <svg className="h-3.5 w-3.5 text-primary-500 shrink-0 animate-scale-in" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg className="h-3.5 w-3.5 text-accent shrink-0 animate-scale-in" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   )}

@@ -7,9 +7,7 @@ import api from "../lib/api";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("../components/MarketplaceNavbar", () => ({ default: () => null }));
-vi.mock("../lib/geo/locationDetector", () => ({ detectUserLocation: async () => null, mapStateToLanguage: () => "en", findMatchingClinicCity: () => null }));
-const { setLanguage } = vi.hoisted(() => ({ setLanguage: vi.fn() }));
-vi.mock("../lib/i18n", () => ({ useTranslation: () => ({ t: (_key: string, fallback: string) => fallback, setLanguage }) }));
+vi.mock("../lib/geo/locationDetector", () => ({ detectUserLocation: async () => null, findMatchingClinicCity: () => null }));
 
 beforeEach(() => {
   vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
@@ -33,11 +31,12 @@ describe("Mobile calendar and browse loading", () => {
     const cell = first.parentElement!.parentElement!;
     expect(Array.from(cell.parentElement!.children).indexOf(cell)).toBe(13);
   });
-  it("sorts seeded clinics without another request", () => {
+  it("sorts seeded clinics without another request", async () => {
     const request = vi.spyOn(api, "get");
     const clinics = [{ id: "b", name: "Zeta Clinic", city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "", minFee: 500 }, { id: "a", name: "Alpha Clinic", city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "", minFee: 100 }];
     render(<BrowseClient initialClinics={clinics} initialLoaded />);
-    fireEvent.change(screen.getByLabelText("Sort clinics by"), { target: { value: "name" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "Sort clinics by" }));
+    fireEvent.click(await screen.findByRole("option", { name: /name/i }));
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["Alpha Clinic", "Zeta Clinic"]);
     expect(request).not.toHaveBeenCalled();
   });

@@ -40,7 +40,7 @@ export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode }
       <p className="text-xs text-text-muted">Root controls the shared sender for all clinics. Blank credential fields keep the saved values.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Input label="Platform WABA ID" value={wabaId} placeholder={data?.connection.wabaId || "Business account ID"} onChange={e => setWabaId(e.target.value)} />
-        <Input label="Platform phone number ID" value={phoneNumberId} placeholder={data?.connection.phoneNumberId || "Phone number ID"} onChange={e => setPhoneNumberId(e.target.value)} />
+        <Input label="Platform phone number ID" value={phoneNumberId} placeholder={data?.connection.phoneNumberId || "Phone number ID"} onChange={e => setPhoneNumberId(e.target.value)} type="tel" inputMode="tel" />
         <Input label="System user access token" type="password" autoComplete="new-password" value={accessToken} placeholder={data?.connection.hasToken ? "Saved — leave blank to keep" : "Paste access token"} onChange={e => setAccessToken(e.target.value)} />
         <Input label="Meta app secret" type="password" autoComplete="new-password" value={appSecret} placeholder={data?.connection.hasAppSecret ? "Saved — leave blank to keep" : "Paste app secret"} onChange={e => setAppSecret(e.target.value)} />
       </div>

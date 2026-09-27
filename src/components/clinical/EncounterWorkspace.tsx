@@ -10,10 +10,10 @@ import { SOAPNoteEditor } from "./SOAPNoteEditor";
 import { NEWS2Calculator } from "./NEWS2Calculator";
 import { PatientTimeline } from "../ehr/PatientTimeline";
 import { DoctorCopilotCard } from "./DoctorCopilotCard";
-import { Tabs, Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, Select, Modal, useToast, Table, Spinner, Skeleton } from "@/components/ui";
+import { Tabs, Card, CardContent, Badge, Button, Input, Select, Modal, useToast, Table, Skeleton } from "@/components/ui";
 import api from "@/lib/api";
 import { OrdersService } from "@/services/orders.service";
-import { Receipt, Megaphone, Plus, Activity, FileText, Clock, Layers } from "lucide-react";
+import { Receipt, Megaphone, Activity, FileText, Clock } from "lucide-react";
 
 interface EncounterWorkspaceProps {
   patient: PatientHeaderData;
@@ -272,7 +272,7 @@ export function EncounterWorkspace({
 
       {/* Main Workspace Container */}
       <div className="p-4 max-w-7xl mx-auto w-full space-y-4">
-        {/* ANANTA 20-Second Doctor Pre-Visit Briefing Card */}
+        {/* Ekavyu 20-Second Doctor Pre-Visit Briefing Card */}
         <DoctorCopilotCard patientName={patient.name} />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <Tabs
@@ -518,9 +518,9 @@ export function EncounterWorkspace({
               </div>
 
               {chargePreview.isFeeEditable && (
-                <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="p-3.5 bg-warning/10 border border-warning/20 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                    <p className="text-xs font-bold text-warning-text dark:text-warning-text flex items-center gap-1.5">
                       <span>🩺 Post-Consultation Physician Fee</span>
                       <Badge variant="warning" size="sm" className="text-[10px]">
                         {chargePreview.feeType === "post_consultation" ? "Variable Fee Mode" : "Adjustable"}
@@ -538,7 +538,7 @@ export function EncounterWorkspace({
                       value={customConsultFee}
                       onChange={(e) => setCustomConsultFee(e.target.value)}
                       onBlur={(e) => handleOpenChargePreview(Number(e.target.value) || 0)}
-                      className="w-28 px-3 py-1.5 bg-surface border border-border rounded-xl text-xs font-bold text-text focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 shadow-2xs"
+                      className="w-28 px-3 py-1.5 bg-surface border border-border rounded-xl text-xs font-bold text-text focus:ring-2 focus:ring-focus-ring focus:border-primary-500 shadow-2xs"
                       placeholder="Fee (₹)"
                     />
                     <Button
@@ -616,7 +616,7 @@ export function EncounterWorkspace({
                 )}
                 <div className="flex justify-between text-base font-bold text-text pt-2 border-t border-border">
                   <span>Total Amount Due:</span>
-                  <span className="text-primary-600">₹{chargePreview.totalAmount?.toLocaleString("en-IN")}</span>
+                  <span className="text-accent">₹{chargePreview.totalAmount?.toLocaleString("en-IN")}</span>
                 </div>
               </div>
 

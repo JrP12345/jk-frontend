@@ -6,6 +6,8 @@ import Checkbox from "./Checkbox";
 import Button from "./Button";
 import Dropdown from "./Dropdown";
 import Select from "./Select";
+import Input from "./Input";
+import Alert from "./Alert";
 
 export interface Column<T> {
   key?: string;
@@ -47,6 +49,8 @@ export interface TableProps<T> {
   bulkActions?: TableBulkAction<T>[];
   emptyMessage?: string;
   loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   stickyHeader?: boolean;
   className?: string;
   searchable?: boolean;
@@ -69,6 +73,14 @@ const densityPadding: Record<TableDensity, string> = {
   spacious: "px-5 py-4 text-sm",
 };
 
+function extractSearchableText(obj: any): string {
+    if (obj === null || obj === undefined) return "";
+    if (typeof obj !== "object") return String(obj);
+    if (Array.isArray(obj)) return obj.map(extractSearchableText).join(" ");
+    return Object.values(obj).map(extractSearchableText).join(" ");
+}
+
+
 export default function Table<T extends Record<string, any>>({
   columns,
   data,
@@ -85,6 +97,8 @@ export default function Table<T extends Record<string, any>>({
   bulkActions = [],
   emptyMessage = "No entries available at the moment.",
   loading = false,
+  error,
+  onRetry,
   stickyHeader = false,
   className = "",
   searchable = true,
@@ -101,7 +115,7 @@ export default function Table<T extends Record<string, any>>({
   renderMobileCard,
 }: TableProps<T>) {
   // State
-  const [density, setDensity] = useState<TableDensity>(initialDensity);
+  const density = initialDensity;
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selected, setSelected] = useState<Set<unknown>>(new Set());
@@ -110,22 +124,19 @@ export default function Table<T extends Record<string, any>>({
   const [showFilterRow, setShowFilterRow] = useState(false);
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
 
-  const [currentPage, setCurrentPage] = useState(1);
+  const [requestedPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(defaultRowsPerPage);
 
-  // Auto-prune orphan selections when dataset changes or items are deleted
+  // Preserve valid selections when a refreshed dataset removes records.
   useEffect(() => {
-    if (selected.size > 0) {
-      const validIds = new Set(data.map((d) => d[keyField]));
-      setSelected((prev) => {
-        const next = new Set([...prev].filter((id) => validIds.has(id)));
-        if (next.size !== prev.size) {
-          onSelectionChange?.(data.filter((d) => next.has(d[keyField])));
-        }
-        return next;
-      });
+    if (!selected.size) return;
+    const validIds = new Set(data.map((row) => row[keyField]));
+    const next = new Set([...selected].filter((id) => validIds.has(id)));
+    if (next.size !== selected.size) {
+      setSelected(next);
+      onSelectionChange?.(data.filter((row) => next.has(row[keyField])));
     }
-  }, [data, keyField]);
+  }, [data, keyField, selected, onSelectionChange]);
 
   // Filtered columns based on visibility menu
   const visibleColumns = useMemo(() => {
@@ -157,22 +168,16 @@ export default function Table<T extends Record<string, any>>({
     setCurrentPage(1);
   };
 
-  // Helper to extract searchable string representation recursively
-  const extractSearchableText = (obj: any): string => {
-    if (obj === null || obj === undefined) return "";
-    if (typeof obj !== "object") return String(obj);
-    if (Array.isArray(obj)) return obj.map(extractSearchableText).join(" ");
-    return Object.values(obj).map(extractSearchableText).join(" ");
-  };
+  const searchableRows = useMemo(() => data.map((row) => extractSearchableText(row).toLowerCase()), [data]);
 
   // Global Search & Column Filter Matching
   const filteredData = useMemo(() => {
-    return data.filter((row) => {
+    return data.filter((row, rowIndex) => {
       // 1. Global Search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         // Check row's flat values, nested objects, and column accessors
-        const deepRowString = extractSearchableText(row).toLowerCase();
+        const deepRowString = searchableRows[rowIndex];
         let matches = deepRowString.includes(q);
 
         if (!matches) {
@@ -202,7 +207,7 @@ export default function Table<T extends Record<string, any>>({
 
       return true;
     });
-  }, [data, searchQuery, columnFilters, columns]);
+  }, [data, searchQuery, columnFilters, columns, searchableRows]);
 
   // Sorting
   const sortedData = useMemo(() => {
@@ -220,6 +225,9 @@ export default function Table<T extends Record<string, any>>({
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(sortedData.length / rowsPerPage));
+  const currentPage = Math.min(requestedPage, totalPages);
+  useEffect(() => { if (requestedPage > totalPages) setCurrentPage(totalPages); }, [requestedPage, totalPages]);
+  const displayEmptyMessage = error ? "Results are unavailable. Please try again." : searchQuery.trim() || Object.values(columnFilters).some(Boolean) ? "No results match your search or filters." : emptyMessage;
   const currentData = useMemo(() => {
     if (!pagination) return sortedData;
     const start = (currentPage - 1) * rowsPerPage;
@@ -246,7 +254,7 @@ export default function Table<T extends Record<string, any>>({
 
   // Selection Logic
   const toggleAll = () => {
-    if (selected.size === currentData.length && currentData.length > 0) {
+    if (currentData.length > 0 && currentData.every((row) => selected.has(row[keyField]))) {
       setSelected(new Set());
       onSelectionChange?.([]);
     } else {
@@ -337,47 +345,34 @@ export default function Table<T extends Record<string, any>>({
           )}
 
           {/* Top Row: Pill Search Bar + Quick Icon Controls */}
-          <div className="flex items-center gap-2.5 w-full">
+          <div className="flex flex-wrap md:flex-nowrap items-center gap-2.5 w-full">
             {/* Pill Search Input */}
             {searchable && (
-              <div className="relative flex-1">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                  placeholder={searchPlaceholder}
-                  className="w-full bg-surface border border-border/80 rounded-xl pl-10 pr-9 py-2 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 transition-all shadow-2xs min-h-[40px] sm:min-h-0"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text text-xs cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center"
-                    aria-label="Clear search"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
+              <Input
+                type="search"
+                aria-label="Search table"
+                value={searchQuery}
+                onChange={(event) => { setSearchQuery(event.target.value); setCurrentPage(1); }}
+                onClear={() => { setSearchQuery(""); setCurrentPage(1); }}
+                placeholder={searchPlaceholder}
+                size="sm"
+                containerClassName="basis-full md:basis-0 flex-1 min-w-0"
+              />
             )}
 
             {/* Quick Action Icons */}
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center justify-end gap-1.5 shrink-0 ml-auto">
               {hasFilterableColumns && (
                 <button
                   type="button"
                   onClick={() => setShowFilterRow(!showFilterRow)}
                   className={cn(
-                    "p-2 rounded-xl border border-border/80 bg-surface text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors relative cursor-pointer shadow-2xs",
-                    (showFilterRow || activeFiltersCount > 0) && "border-primary-500 text-primary-500 bg-primary-500/10"
+                    "touch-target p-2 rounded-xl border border-border/80 bg-surface text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors relative cursor-pointer shadow-2xs",
+                    (showFilterRow || activeFiltersCount > 0) && "border-primary-500 text-accent bg-primary-500/10"
                   )}
                   title="Toggle Header Filters"
                   aria-label="Toggle column filters"
+                  aria-expanded={showFilterRow}
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
@@ -391,7 +386,7 @@ export default function Table<T extends Record<string, any>>({
                   trigger={
                     <button
                       type="button"
-                      className="p-2 rounded-xl border border-border/80 bg-surface text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer shadow-2xs"
+                      className="touch-target p-2 rounded-xl border border-border/80 bg-surface text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer shadow-2xs"
                       title="Column Visibility"
                       aria-label="Column visibility"
                     >
@@ -417,7 +412,7 @@ export default function Table<T extends Record<string, any>>({
                 <button
                   type="button"
                   onClick={exportToCSV}
-                  className="p-2 rounded-xl border border-border/80 bg-surface text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer shadow-2xs"
+                  className="touch-target p-2 rounded-xl border border-border/80 bg-surface text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer shadow-2xs"
                   title="Export to CSV"
                   aria-label="Export table data to CSV"
                 >
@@ -432,7 +427,7 @@ export default function Table<T extends Record<string, any>>({
                 <button
                   type="button"
                   onClick={onAddClick}
-                  className="p-2 rounded-xl bg-primary-600 hover:bg-primary-500 text-white font-bold text-xs shadow-xs transition-all active:scale-95 flex items-center justify-center shrink-0 cursor-pointer"
+                  className="touch-target p-2 rounded-xl bg-primary-600 hover:bg-primary-500 text-brand-mist font-bold text-xs shadow-xs transition-all active:scale-95 flex items-center justify-center shrink-0 cursor-pointer"
                   title={actionLabel || "Add New Entry"}
                   aria-label={actionLabel || "Add new entry"}
                 >
@@ -459,9 +454,28 @@ export default function Table<T extends Record<string, any>>({
           </div>
         )}
 
+
+        {error && <Alert variant="error" title="Unable to load results" className="m-3" action={onRetry ? <Button variant="outline" size="sm" onClick={onRetry} loading={loading}>Try again</Button> : undefined}>{error}</Alert>}
+        {mobileCardView && (
+          <div className="md:hidden p-3 border-b border-border/60 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {selectable && <Checkbox label="Select page" checked={currentData.length > 0 && currentData.every((row) => selected.has(row[keyField]))} onChange={toggleAll} disabled={!currentData.length} />}
+              {columns.some((column) => column.sortable) && <div className="flex-1 min-w-0"><Select aria-label="Sort table" size="sm" value={sortKey || ""} placeholder="Sort results" options={columns.filter((column) => column.sortable).map((column) => ({ value: column.key || (typeof column.accessor === "string" ? column.accessor : column.header), label: column.header }))} onChange={(event) => { setSortKey(event.target.value); setSortDir("asc"); }} /></div>}
+              {sortKey && <Button variant="outline" size="sm" aria-label="Reverse sort order" onClick={() => setSortDir((direction) => direction === "asc" ? "desc" : "asc")}>{sortDir === "asc" ? "Ascending" : "Descending"}</Button>}
+            </div>
+            {showFilterRow && <div className="grid grid-cols-1 min-[430px]:grid-cols-2 gap-3">
+              {visibleColumns.filter((column) => column.filterable).map((column, index) => {
+                const key = column.key || (typeof column.accessor === "string" ? column.accessor : column.header) || String(index);
+                return column.filterType === "select" && column.filterOptions ? <Select key={key} label={column.header} size="sm" value={columnFilters[key] || ""} placeholder="All" options={column.filterOptions} onChange={(event) => handleColumnFilterChange(key, event.target.value)} /> : <Input key={key} label={column.header} size="sm" value={columnFilters[key] || ""} onChange={(event) => handleColumnFilterChange(key, event.target.value)} placeholder={`Filter ${column.header}`} />;
+              })}
+            </div>}
+          </div>
+        )}
+        {(searchQuery || activeFiltersCount > 0) && <div className="px-3 py-2"><Button size="sm" variant="ghost" onClick={() => { setSearchQuery(""); setColumnFilters({}); setCurrentPage(1); }}>Clear search and filters</Button></div>}
+
         {/* 2. TABLE GRID AREA — Desktop table, Mobile card view */}
         {mobileCardView && (
-          <div className={cn("sm:hidden p-3 space-y-2.5 transition-opacity duration-200", loading && currentData.length > 0 && "opacity-60 pointer-events-none")}>
+          <div className={cn("md:hidden p-3 space-y-2.5 transition-opacity duration-200", loading && currentData.length > 0 && "opacity-60 pointer-events-none")}>
             {loading && currentData.length === 0 ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="p-3.5 rounded-xl border border-border/60 bg-surface-alt/30 space-y-2.5">
@@ -473,21 +487,23 @@ export default function Table<T extends Record<string, any>>({
             ) : currentData.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center text-text-muted">
                 <div className="w-10 h-10 rounded-xl bg-surface-alt flex items-center justify-center text-text-muted border border-border/60 mb-2">
-                  <svg className="w-5 h-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                  <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
                 </div>
-                <span className="font-semibold text-text text-sm">{emptyMessage}</span>
+                <span className="font-semibold text-text text-sm">{displayEmptyMessage}</span>
               </div>
             ) : (
               currentData.map((row, i) => {
                 if (renderMobileCard) {
                   return (
-                    <div key={String(row[keyField] ?? i)}>
+                    <div key={String(row[keyField] ?? i)} className="space-y-2 min-w-0">
+                      {selectable && <Checkbox aria-label={`Select row ${row[keyField] ?? i}`} checked={selected.has(row[keyField])} onChange={() => toggleRow(row)} />}
                       {renderMobileCard(row, i)}
                     </div>
                   );
                 }
                 const val = row[keyField];
-                const mobileColumns = visibleColumns.filter((col) => col.mobileVisible !== false);
+                const mobileColumns = visibleColumns.filter((col) => col.mobileVisible !== false || /action/i.test(col.key || col.header));
+                const detailColumns = visibleColumns.filter((col) => !mobileColumns.includes(col));
                 return (
                   <div
                     key={String(val ?? i)}
@@ -497,6 +513,7 @@ export default function Table<T extends Record<string, any>>({
                       onRowClick && "cursor-pointer active:scale-[0.99] hover:border-primary-500/30 hover:shadow-sm"
                     )}
                   >
+                    {selectable && <div onClick={(event) => event.stopPropagation()}><Checkbox aria-label={`Select row ${val ?? i}`} checked={selected.has(val)} onChange={() => toggleRow(row)} /></div>}
                     {mobileColumns.map((col, colIdx) => {
                       const cellContent = col.render
                         ? col.render(row, i)
@@ -510,7 +527,7 @@ export default function Table<T extends Record<string, any>>({
                       const isActionCol = (col.key || col.header || "").toLowerCase().includes("action");
                       if (isActionCol) {
                         return (
-                          <div key={colIdx} className="flex flex-wrap items-center justify-end gap-2 pt-2 mt-1 border-t border-border/50 w-full [&>button]:min-h-[38px] [&>button]:text-xs [&>a]:min-h-[38px] [&>div]:w-full sm:[&>div]:w-auto">
+                          <div key={colIdx} className="flex flex-wrap items-center justify-end gap-2 pt-2 mt-1 border-t border-border/50 w-full [&>button]:min-h-[44px] [&>button]:text-xs [&>a]:min-h-[44px] [&>div]:w-full sm:[&>div]:w-auto">
                             {cellContent}
                           </div>
                         );
@@ -518,10 +535,14 @@ export default function Table<T extends Record<string, any>>({
                       return (
                         <div key={colIdx} className="flex items-start justify-between gap-2">
                           <span className="text-[11px] font-medium text-text-muted shrink-0">{col.header}</span>
-                          <span className="text-xs font-medium text-text text-right min-w-0">{cellContent}</span>
+                          <span className="text-xs font-medium text-text text-right min-w-0 break-words">{cellContent}</span>
                         </div>
                       );
                     })}
+                    {detailColumns.length > 0 && <details className="border-t border-border/50 pt-2">
+                      <summary className="min-h-11 flex items-center text-sm font-medium text-accent cursor-pointer">More details</summary>
+                      <dl className="space-y-2 pb-2">{detailColumns.map((column, index) => <div key={column.key || index} className="flex flex-wrap justify-between gap-2"><dt className="text-xs text-text-secondary">{column.header}</dt><dd className="text-sm text-text break-words min-w-0">{column.render ? column.render(row, i) : typeof column.accessor === "function" ? column.accessor(row, i) : row[typeof column.accessor === "string" ? column.accessor : column.key || ""] ?? "?"}</dd></div>)}</dl>
+                    </details>}
                   </div>
                 );
               })
@@ -529,17 +550,18 @@ export default function Table<T extends Record<string, any>>({
           </div>
         )}
 
-        <div className={cn("w-full overflow-x-auto min-h-[220px] touch-scroll scroll-smooth", mobileCardView && "hidden sm:block")}>
+        <div tabIndex={0} role="region" aria-label="Table results" className={cn("w-full overflow-x-auto min-h-[220px] touch-scroll scroll-smooth", mobileCardView && "hidden md:block")}>
           <table className="w-full text-sm border-collapse text-left min-w-[650px] sm:min-w-full">
             <thead>
               <tr className={cn(
-                "border-b border-border/80 bg-surface-alt/70 text-text font-bold text-xs uppercase tracking-wider",
+                "border-b border-border/80 bg-surface-alt text-text font-bold text-xs uppercase tracking-wider",
                 stickyHeader && "sticky top-0 z-10"
               )}>
                 {selectable && (
                   <th className="w-10 px-3 py-3 align-middle text-center border-r border-border/60">
                     <Checkbox
-                      checked={selected.size === currentData.length && currentData.length > 0}
+                      checked={currentData.length > 0 && currentData.every((row) => selected.has(row[keyField]))}
+                      aria-label="Select all rows on this page"
                       onChange={toggleAll}
                     />
                   </th>
@@ -554,6 +576,7 @@ export default function Table<T extends Record<string, any>>({
                   return (
                     <th
                       key={colKey}
+                      aria-sort={col.sortable ? sortKey === colKey ? sortDir === "asc" ? "ascending" : "descending" : "none" : undefined}
                       style={col.width ? { width: col.width } : undefined}
                       className={cn(
                         "px-4 py-3 text-text-secondary select-none font-bold text-xs tracking-wider whitespace-nowrap",
@@ -600,6 +623,7 @@ export default function Table<T extends Record<string, any>>({
                           placeholder={`Filter ${col.header}...`}
                           value={columnFilters[colKey] || ""}
                           onChange={(e) => handleColumnFilterChange(colKey, e.target.value)}
+                          aria-label={`Filter ${col.header}`}
                           className="w-full bg-surface border border-border rounded-lg px-2.5 py-1 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-primary-500 font-normal"
                         />
                       </th>
@@ -641,9 +665,9 @@ export default function Table<T extends Record<string, any>>({
                   <td colSpan={visibleColumns.length + (selectable ? 1 : 0)} className="px-4 py-16 text-center text-text-muted">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <div className="w-10 h-10 rounded-xl bg-surface-alt flex items-center justify-center text-text-muted border border-border/60">
-                        <svg className="w-5 h-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                        <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
                       </div>
-                      <span className="font-semibold text-text text-sm">{emptyMessage}</span>
+                      <span className="font-semibold text-text text-sm">{displayEmptyMessage}</span>
                     </div>
                   </td>
                 </tr>
@@ -664,9 +688,9 @@ export default function Table<T extends Record<string, any>>({
                         }
                       } : undefined}
                       className={cn(
-                        "transform-gpu transition-all duration-150 ease-smooth border-b border-border/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset",
+                        "transform-gpu transition-all duration-150 ease-smooth border-b border-border/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset",
                         onRowClick && "cursor-pointer",
-                        isSelected ? "bg-primary-500/10 text-primary-400 font-medium" : "hover:bg-surface-hover/60"
+                        isSelected ? "bg-primary-500/10 text-accent font-medium" : "hover:bg-surface-hover/60"
                       )}
                     >
                       {selectable && (
@@ -715,7 +739,7 @@ export default function Table<T extends Record<string, any>>({
 
         {/* 3. FOOTER PAGINATION BAR (ALIGNED & RESPONSIVE) */}
         {pagination && (currentData.length > 0 || !loading) && (
-          <div className="px-4 py-3 border-t border-border/80 bg-surface-alt/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-muted">
+          <div className="px-4 py-3 border-t border-border/80 bg-surface-alt/40 flex flex-col xl:flex-row items-center justify-between gap-3 text-xs text-text-muted">
             <div className="flex items-center justify-between w-full sm:w-auto gap-4 font-medium">
               <span className="shrink-0">
                 Showing {sortedData.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} to {Math.min(currentPage * rowsPerPage, sortedData.length)} of {sortedData.length}
@@ -726,6 +750,7 @@ export default function Table<T extends Record<string, any>>({
                 <div className="w-18 shrink-0">
                   <Select
                     size="sm"
+                    aria-label="Rows per page"
                     fullWidth={false}
                     value={rowsPerPage.toString()}
                     onChange={(e) => {
@@ -744,19 +769,19 @@ export default function Table<T extends Record<string, any>>({
                   type="button"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="h-8 min-w-[34px] px-2.5 rounded-lg border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-2xs cursor-pointer flex items-center justify-center font-bold min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-[34px]"
+                  className="h-8 min-w-[34px] px-2.5 rounded-lg border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-2xs cursor-pointer flex items-center justify-center font-bold min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-[34px]"
                   aria-label="Previous page"
                 >
                   ‹
                 </button>
 
                 {/* Compact mobile page text */}
-                <span className="text-xs font-semibold text-text sm:hidden px-2">
+                <span className="text-xs font-semibold text-text md:hidden px-2">
                   Page {currentPage} of {totalPages}
                 </span>
 
                 {/* Desktop Numeric page buttons */}
-                <div className="hidden sm:flex items-center gap-1">
+                <div className="hidden md:flex items-center gap-1">
                   {paginationRange.map((item, idx) => {
                     if (typeof item === "string") {
                       return (
@@ -774,7 +799,7 @@ export default function Table<T extends Record<string, any>>({
                         onClick={() => setCurrentPage(pNum)}
                         className={cn(
                           "h-7 min-w-[28px] px-1.5 rounded-lg flex items-center justify-center font-bold text-xs transition-all cursor-pointer shadow-2xs",
-                          isActive ? "bg-primary-600 text-white shadow-xs border border-primary-500" : "border border-border/80 bg-surface text-text-muted hover:text-text hover:bg-surface-hover"
+                          isActive ? "bg-primary-600 text-brand-mist shadow-xs border border-primary-500" : "border border-border/80 bg-surface text-text-muted hover:text-text hover:bg-surface-hover"
                         )}
                       >
                         {pNum}
@@ -806,8 +831,8 @@ export default function Table<T extends Record<string, any>>({
 
       {/* Floating Bulk Actions Bar — Elevated on mobile to clear MobileBottomNav */}
       {selectable && selected.size > 0 && (
-        <div className="fixed bottom-22 md:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-surface/95 border border-primary-500/40 text-text px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl shadow-xl shadow-slate-900/10 dark:shadow-black/70 ring-1 ring-black/5 dark:ring-white/10 backdrop-blur-xl flex items-center gap-3 sm:gap-4 max-w-[calc(100vw-1.5rem)] animate-fade-up overflow-x-auto no-scrollbar pb-safe">
-          <span className="text-xs font-bold text-primary-500">
+        <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] md:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-surface border border-primary-500/40 text-text px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl shadow-xl shadow-text-muted/10  ring-1 ring-black/5 dark:ring-white/10  flex items-center gap-3 sm:gap-4 max-w-[calc(100vw-1.5rem)] animate-fade-up overflow-x-auto no-scrollbar pb-safe">
+          <span className="text-xs font-bold text-accent">
             {selected.size} item{selected.size > 1 ? "s" : ""} selected
           </span>
           <div className="h-4 w-px bg-border" />

@@ -2,16 +2,7 @@
 
 import React from "react";
 import { StatCard, SkeletonCard } from "@/components/ui";
-import {
-  IndianRupee,
-  AlertCircle,
-  Building2,
-  Stethoscope,
-  Calendar,
-  Clock,
-  CheckCircle2,
-  Receipt,
-} from "lucide-react";
+import { IndianRupee, AlertCircle, Building2, Stethoscope, Calendar, Clock, CheckCircle2, Receipt } from "lucide-react";
 
 interface AdminStats {
   clinics: number;

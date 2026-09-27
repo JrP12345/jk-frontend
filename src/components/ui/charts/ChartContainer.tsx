@@ -42,9 +42,8 @@ export const ChartContainer = memo(function ChartContainer({
   height = 240,
 }: ChartContainerProps) {
   return (
-    <Card className={cn("overflow-hidden relative flex flex-col justify-between select-none border border-border/80 bg-surface/95 dark:bg-surface/85 backdrop-blur-xl shadow-xs group hover:border-border transition-all duration-300", className)}>
+    <Card className={cn("overflow-hidden relative flex flex-col justify-between select-none border border-border/80 bg-surface dark:bg-surface  shadow-xs group hover:border-border transition-all duration-300", className)}>
       {/* Top Ambient Subtle Glow Accent */}
-      <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-primary-500/35 dark:via-primary-400/40 to-transparent pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity" />
 
       <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 px-4 sm:px-5 pt-4 border-b border-border/40 shrink-0">
         <div className="min-w-0">
@@ -62,7 +61,7 @@ export const ChartContainer = memo(function ChartContainer({
 
         <div className="flex items-center gap-2 shrink-0">
           {timeRanges && timeRanges.length > 0 && (
-            <div className="flex items-center p-0.5 bg-surface-alt/90 dark:bg-surface-alt/70 rounded-xl border border-border/60 text-[11px] font-semibold">
+            <div className="flex items-center p-0.5 bg-surface-alt dark:bg-surface-alt rounded-xl border border-border/60 text-[11px] font-semibold">
               {timeRanges.map((tr) => {
                 const isActive = activeRange === tr.value;
                 return (
@@ -73,7 +72,7 @@ export const ChartContainer = memo(function ChartContainer({
                     className={cn(
                       "px-2.5 py-1 rounded-lg transition-all duration-150 cursor-pointer active:scale-95",
                       isActive
-                        ? "bg-surface text-primary-600 dark:text-primary-400 font-bold shadow-xs border border-border/70"
+                        ? "bg-surface text-accent dark:text-accent font-bold shadow-xs border border-border/70"
                         : "text-text-muted hover:text-text hover:bg-surface/50"
                     )}
                   >

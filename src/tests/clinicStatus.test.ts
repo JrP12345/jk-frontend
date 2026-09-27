@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  parseTimeToMinutes,
-  formatMinutesTo12Hour,
-  parseWeeklySchedule,
-  getClinicOperationalStatus,
-} from "../lib/timing/clinicStatus";
+import { parseTimeToMinutes, formatMinutesTo12Hour, getClinicOperationalStatus } from "../lib/timing/clinicStatus";
 
 describe("Clinic Operational Status Engine", () => {
   describe("parseTimeToMinutes", () => {

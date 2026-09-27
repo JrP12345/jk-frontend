@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Input, Select, useToast } from "@/components/ui";
 import { UnifiedDocumentData, UnifiedDocumentModal } from "./UnifiedDocumentModal";
-import { FileText, Building2, HeartPulse, CheckCircle2, ShieldAlert } from "lucide-react";
+import { FileText, Building2, HeartPulse, CheckCircle2 } from "lucide-react";
 
 interface PatientContext {
   _id?: string;
@@ -250,7 +250,7 @@ export function ClinicalDocumentGeneratorModal({
               onClick={() => setCategory("referral")}
               className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
                 category === "referral"
-                  ? "bg-primary-600 text-white shadow"
+                  ? "bg-primary-600 text-brand-mist shadow"
                   : "text-text-muted hover:text-text"
               }`}
             >
@@ -262,7 +262,7 @@ export function ClinicalDocumentGeneratorModal({
               onClick={() => setCategory("leave")}
               className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
                 category === "leave"
-                  ? "bg-primary-600 text-white shadow"
+                  ? "bg-primary-600 text-brand-mist shadow"
                   : "text-text-muted hover:text-text"
               }`}
             >
@@ -274,7 +274,7 @@ export function ClinicalDocumentGeneratorModal({
               onClick={() => setCategory("fitness")}
               className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all ${
                 category === "fitness"
-                  ? "bg-primary-600 text-white shadow"
+                  ? "bg-primary-600 text-brand-mist shadow"
                   : "text-text-muted hover:text-text"
               }`}
             >
@@ -302,7 +302,7 @@ export function ClinicalDocumentGeneratorModal({
                 label="Phone Number"
                 value={patientPhone}
                 onChange={(e) => setPatientPhone(e.target.value)}
-                placeholder="e.g. 9876543210"
+                placeholder="e.g. 9876543210" type="tel" inputMode="tel"
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1 border-t border-border/50 text-[11px]">
@@ -312,7 +312,7 @@ export function ClinicalDocumentGeneratorModal({
               </div>
               <div className="text-right">
                 <span className="text-text-muted">NMC / State Reg No: </span>
-                <span className="font-mono font-bold text-primary-600">{docRegNo}</span>
+                <span className="font-mono font-bold text-accent">{docRegNo}</span>
               </div>
             </div>
           </div>
@@ -365,7 +365,7 @@ export function ClinicalDocumentGeneratorModal({
                   Clinical History & Presenting Complaints
                 </label>
                 <textarea
-                  className="w-full text-xs p-2.5 rounded-lg border border-border bg-surface text-text focus:ring-1 focus:ring-primary-500 min-h-[70px]"
+                  className="w-full text-xs p-2.5 rounded-lg border border-border bg-surface text-text focus:ring-1 focus:ring-focus-ring min-h-[70px]"
                   value={refSummary}
                   onChange={(e) => setRefSummary(e.target.value)}
                   placeholder="Describe patient symptoms, duration, examination findings..."

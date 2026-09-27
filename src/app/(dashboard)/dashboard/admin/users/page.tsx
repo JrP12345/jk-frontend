@@ -2,42 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Users,
-  Building2,
-  Layers,
-  Shield,
-  KeyRound,
-  RotateCw,
-  MapPin,
-  Phone,
-  Mail,
-  UserCheck,
-  Stethoscope,
-  ChevronRight,
-  ExternalLink,
-} from "lucide-react";
-import {
-  Button,
-  Badge,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  StatCard,
-  Table,
-  Column,
-  Tabs,
-  Select,
-  SearchInput,
-  Modal,
-  Avatar,
-  EmptyState,
-  Spinner,
-  SkeletonCard,
-  useToast,
-} from "@/components/ui";
+import { Users, Building2, Layers, Shield, KeyRound, RotateCw, MapPin } from "lucide-react";
+import { Button, Badge, Card, CardHeader, CardTitle, CardContent, StatCard, Table, Column, Tabs, Select, SearchInput, Modal, Avatar, EmptyState, SkeletonCard, useToast } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
 
@@ -366,7 +332,7 @@ export default function PlatformUsersPage() {
   if (currentUser?.role !== "root") {
     return (
       <EmptyState
-        icon={<Shield className="w-8 h-8 text-primary-500" />}
+        icon={<Shield className="w-8 h-8 text-accent" />}
         title="Superadmin Access Required"
         description="Only platform Root administrators have authority to access multi-tenant directory and impersonate users."
         action={
@@ -388,7 +354,7 @@ export default function PlatformUsersPage() {
   return (
     <div className="space-y-6 font-sans text-text antialiased animate-fade-up pb-12">
       {/* 1. HEADER BANNER */}
-      <div className="relative overflow-hidden rounded-2xl border border-primary-500/20 bg-surface p-5 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-primary-600 before:via-primary-500 before:to-indigo-500">
+      <div className="relative overflow-hidden rounded-2xl border border-primary-500/20 bg-surface p-5 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -427,25 +393,25 @@ export default function PlatformUsersPage() {
         <StatCard
           title="Tenant Organizations"
           value={summary.totalOrganizations}
-          icon={<Building2 className="w-5 h-5 text-primary-500" />}
+          icon={<Building2 className="w-5 h-5 text-accent" />}
           description="Active multi-tenant clients"
         />
         <StatCard
           title="Clinic Branches"
           value={summary.totalBranches}
-          icon={<Layers className="w-5 h-5 text-emerald-500" />}
+          icon={<Layers className="w-5 h-5 text-success-text" />}
           description="Physical health facilities"
         />
         <StatCard
           title="Total Personnel"
           value={summary.totalMembers}
-          icon={<Users className="w-5 h-5 text-blue-500" />}
+          icon={<Users className="w-5 h-5 text-accent" />}
           description="Doctors, staff & receptionists"
         />
         <StatCard
           title="Platform Superadmins"
           value={summary.totalPlatformAdmins}
-          icon={<Shield className="w-5 h-5 text-purple-500" />}
+          icon={<Shield className="w-5 h-5 text-accent" />}
           description="Root system operators"
         />
       </div>
@@ -479,7 +445,7 @@ export default function PlatformUsersPage() {
           {/* Organization Filter Bar */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface p-3.5 rounded-2xl border border-border">
             <div className="flex items-center gap-2 text-xs font-semibold text-text-secondary">
-              <Building2 className="w-4 h-4 text-primary-500" />
+              <Building2 className="w-4 h-4 text-accent" />
               <span>Select Tenant Scope:</span>
             </div>
             <div className="w-full sm:w-80">
@@ -499,7 +465,7 @@ export default function PlatformUsersPage() {
             </div>
           ) : filteredOrganizations.length === 0 ? (
             <EmptyState
-              icon={<Building2 className="w-8 h-8 text-primary-500" />}
+              icon={<Building2 className="w-8 h-8 text-accent" />}
               title="No Organizations Found"
               description="No tenant organizations registered yet or none match your filter."
             />
@@ -511,7 +477,7 @@ export default function PlatformUsersPage() {
                   <CardHeader className="bg-surface-alt/40 border-b border-border/60 pb-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-primary-600 font-bold flex items-center justify-center text-sm shrink-0 border border-primary-500/20">
+                        <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-accent font-bold flex items-center justify-center text-sm shrink-0 border border-primary-500/20">
                           {org.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -565,7 +531,7 @@ export default function PlatformUsersPage() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-                          <Layers className="w-3.5 h-3.5 text-primary-500" />
+                          <Layers className="w-3.5 h-3.5 text-accent" />
                           Branches & Assigned Staff ({org.branches.length})
                         </h3>
                       </div>
@@ -584,7 +550,7 @@ export default function PlatformUsersPage() {
                               <div className="flex items-start justify-between gap-2 border-b border-border/50 pb-2.5">
                                 <div>
                                   <p className="font-bold text-sm text-text flex items-center gap-1.5">
-                                    <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+                                    <MapPin className="w-3.5 h-3.5 text-success-text" />
                                     {branch.name}
                                   </p>
                                   <p className="text-xs text-text-muted mt-0.5">
@@ -633,7 +599,7 @@ export default function PlatformUsersPage() {
                                         }
                                         className="rounded-lg text-[11px] font-semibold h-7 px-2 shrink-0 flex items-center gap-1"
                                       >
-                                        <KeyRound className="w-3 h-3 text-amber-500" />
+                                        <KeyRound className="w-3 h-3 text-warning-text" />
                                         Login As
                                       </Button>
                                     </div>
@@ -650,7 +616,7 @@ export default function PlatformUsersPage() {
                     {org.admins.length > 0 && (
                       <div className="space-y-3 pt-3 border-t border-border/60">
                         <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-                          <Shield className="w-3.5 h-3.5 text-amber-500" />
+                          <Shield className="w-3.5 h-3.5 text-warning-text" />
                           Organization Administrators ({org.admins.length})
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -692,7 +658,7 @@ export default function PlatformUsersPage() {
                     {org.unassignedMembers.length > 0 && (
                       <div className="space-y-3 pt-3 border-t border-border/60">
                         <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5 text-blue-500" />
+                          <Users className="w-3.5 h-3.5 text-accent" />
                           Org-Wide / Unassigned Staff ({org.unassignedMembers.length})
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -726,7 +692,7 @@ export default function PlatformUsersPage() {
                                 }
                                 className="font-semibold text-xs rounded-lg h-7 px-2 shrink-0 flex items-center gap-1"
                               >
-                                <KeyRound className="w-3 h-3 text-amber-500" />
+                                <KeyRound className="w-3 h-3 text-warning-text" />
                                 Login As
                               </Button>
                             </div>
@@ -902,7 +868,7 @@ export default function PlatformUsersPage() {
               )}
             </div>
 
-            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-700 dark:text-amber-400 space-y-1">
+            <div className="p-3 bg-warning/10 border border-warning/20 rounded-xl text-xs text-warning-text dark:text-warning-text space-y-1">
               <p className="font-bold">Sticky Return Banner Active</p>
               <p>
                 A high-visibility banner will stay pinned at the top allowing you to return to Root Superadmin at any time in 1 click.

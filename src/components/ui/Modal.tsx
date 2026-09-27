@@ -1,9 +1,9 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState, useId } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "./utils";
-import { lockScroll, unlockScroll } from "@/lib/scrollLock";
+import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import Spinner from "./Spinner";
 
 /* ────────────────────────────────────────────────
@@ -36,12 +36,12 @@ export interface ModalProps {
 }
 
 const sizeStyles: Record<ModalSize, string> = {
-  sm: "max-w-sm",
-  md: "max-w-md",
-  lg: "max-w-lg",
-  xl: "max-w-2xl",
-  "2xl": "max-w-4xl",
-  full: "max-w-[calc(100vw-2rem)]",
+  sm: "md:max-w-sm",
+  md: "md:max-w-md",
+  lg: "md:max-w-lg",
+  xl: "md:max-w-2xl",
+  "2xl": "md:max-w-4xl",
+  full: "md:max-w-[calc(100vw-2rem)]",
 };
 
 export default function Modal({
@@ -71,7 +71,10 @@ export default function Modal({
   const [render, setRender] = useState(open);
   const [isExiting, setIsExiting] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const id = useId();
+  const titleId = `${id}-title`;
+  const descriptionId = `${id}-description`;
+  useOverlayFocus(open && render && mounted, modalRef, () => { if (!loading) onClose(); });
 
   useEffect(() => {
     setMounted(true);
@@ -92,91 +95,16 @@ export default function Modal({
     }
   }, [open, render]);
 
-  // Lock scroll on mount, restore on unmount via reference-counted scroll lock
-  useEffect(() => {
-    if (!open) return;
-    lockScroll();
-    return () => {
-      unlockScroll();
-    };
-  }, [open]);
-
-  // Focus trap and focus restoration
-  useEffect(() => {
-    if (open) {
-      previousFocusRef.current = document.activeElement as HTMLElement;
-      const timer = setTimeout(() => {
-        const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable && focusable.length > 0) {
-          focusable[0].focus();
-        } else {
-          modalRef.current?.focus();
-        }
-      }, 50);
-      return () => {
-        clearTimeout(timer);
-        previousFocusRef.current?.focus();
-      };
-    }
-  }, [open]);
-
-  // Keyboard navigation & safe escape listener
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (loading) return; // Prevent dismissing modal while critical transaction is in-flight
-        onClose();
-        return;
-      }
-      if (e.key === "Tab") {
-        if (!modalRef.current) return;
-        const focusable = Array.from(
-          modalRef.current.querySelectorAll<HTMLElement>(
-            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-          )
-        ).filter((el) => {
-          const style = window.getComputedStyle(el);
-          return el.tabIndex !== -1 && style.display !== "none" && style.visibility !== "hidden";
-        });
-
-        if (focusable.length === 0) {
-          e.preventDefault();
-          return;
-        }
-
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === first) {
-            last.focus();
-            e.preventDefault();
-          }
-        } else {
-          if (document.activeElement === last) {
-            first.focus();
-            e.preventDefault();
-          }
-        }
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose, loading]);
-
   if (!render || !mounted) return null;
 
   const hasHeader = Boolean(header || title || description);
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
       {/* Overlay Backdrop */}
       <div
         className={cn(
-          "absolute inset-0 bg-black/60 backdrop-blur-md cursor-pointer transition-all duration-200",
+          "absolute inset-0 bg-black/60  cursor-pointer transition-all duration-200",
           isExiting ? "animate-backdrop-out" : "animate-backdrop-in"
         )}
         onClick={closeOnOverlay && !loading ? onClose : undefined}
@@ -186,28 +114,29 @@ export default function Modal({
       {/* Modal Container */}
       <div
         ref={modalRef}
+        id={id}
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
-        aria-labelledby={ariaLabelledBy || (title ? "modal-title" : undefined)}
-        aria-describedby={ariaDescribedBy || (description ? "modal-desc" : undefined)}
-        aria-label={ariaLabel || (!title && !ariaLabelledBy ? "Dialog" : undefined)}
+        aria-labelledby={ariaLabelledBy || (title && !header ? titleId : undefined)}
+        aria-describedby={ariaDescribedBy || (description && !header ? descriptionId : undefined)}
+        aria-label={ariaLabel || (!ariaLabelledBy && (!title || header) ? title || "Dialog" : undefined)}
         className={cn(
-          "relative w-full bg-surface/98 backdrop-blur-2xl rounded-t-3xl sm:rounded-2xl shadow-2xl border border-border/80 ring-1 ring-border/50 flex flex-col focus:outline-none overflow-hidden max-h-[92vh] sm:max-h-[90vh] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-0 transform-gpu before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/40 before:to-transparent",
+          "relative w-full bg-surface  rounded-t-3xl md:rounded-2xl shadow-lg border border-border/80 ring-1 ring-border/50 flex flex-col focus:outline-none overflow-hidden max-h-[92dvh] md:max-h-[90dvh] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0 transform-gpu ",
           isExiting ? "animate-sheet-out" : "animate-sheet-in",
           sizeStyles[size],
           className
         )}
       >
         {/* Mobile Sheet Drag Handle */}
-        <div className="w-full flex items-center justify-center pt-2.5 pb-0.5 sm:hidden shrink-0">
+        <div className="w-full flex items-center justify-center pt-2.5 pb-0.5 md:hidden shrink-0">
           <div className="w-10 h-1 rounded-full bg-border" />
         </div>
 
         {/* Sticky Header Section */}
         {hasHeader && (
           <div className={cn(
-            "px-4 sm:px-6 pt-2.5 sm:pt-4 pb-3 sm:pb-3.5 shrink-0 border-b border-border/70 bg-surface-alt/40 backdrop-blur-xs relative pr-12",
+            "px-4 md:px-6 pt-2.5 md:pt-4 pb-3 md:pb-3.5 shrink-0 border-b border-border/70 bg-surface-alt/40  relative pr-12",
             headerClassName
           )}>
             {header ? (
@@ -215,12 +144,12 @@ export default function Modal({
             ) : (
               <>
                 {title && (
-                  <h2 id="modal-title" className="text-sm sm:text-base font-bold text-text tracking-tight leading-snug">
+                  <h2 id={titleId} className="text-sm md:text-base font-bold text-text tracking-tight leading-snug">
                     {title}
                   </h2>
                 )}
                 {description && (
-                  <p id="modal-desc" className="text-xs sm:text-sm text-text-secondary mt-0.5 sm:mt-1 leading-relaxed">
+                  <p id={descriptionId} className="text-xs md:text-sm text-text-secondary mt-0.5 md:mt-1 leading-relaxed">
                     {description}
                   </p>
                 )}
@@ -232,13 +161,13 @@ export default function Modal({
         {/* Scrollable Content Body */}
         <div
           className={cn(
-            "overflow-y-auto flex-1 min-h-0 touch-scroll relative p-4 sm:p-5",
+            "overflow-y-auto flex-1 min-h-0 touch-scroll relative p-4 md:p-5",
             bodyClassName
           )}
         >
           {loading && (
             <div
-              className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-surface/85 backdrop-blur-xs p-6 text-center animate-fade-in"
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-surface  p-6 text-center animate-fade-in"
               role="status"
               aria-live="polite"
             >
@@ -253,7 +182,7 @@ export default function Modal({
         {/* Sticky Footer Section — Buttons stay pinned without requiring scroll */}
         {footer && (
           <div className={cn(
-            "px-4 sm:px-6 py-3 sm:py-3.5 shrink-0 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2.5 border-t border-border/80 bg-surface-alt/70 backdrop-blur-md z-10",
+            "px-4 md:px-6 py-3 md:py-3.5 shrink-0 flex flex-col-reverse md:flex-row items-stretch md:items-center justify-end gap-2 md:gap-2.5 border-t border-border/80 bg-surface-alt  z-10",
             footerClassName
           )}>
             {footer}
@@ -266,7 +195,7 @@ export default function Modal({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="absolute top-2 right-2 sm:top-3 sm:right-3 w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-xl cursor-pointer text-text-muted hover:text-text hover:bg-surface-hover active:scale-95 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 z-20 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="absolute top-2 right-2 md:top-3 md:right-3 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-xl cursor-pointer text-text-muted hover:text-text hover:bg-surface-hover active:scale-95 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring z-20 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label="Close modal"
           >
             <svg className="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -288,7 +217,7 @@ export function ModalHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("px-4 sm:px-6 pt-3 pb-3 border-b border-border/70 shrink-0 bg-surface-alt/40", className)}>
+    <div className={cn("px-4 md:px-6 pt-3 pb-3 border-b border-border/70 shrink-0 bg-surface-alt/40", className)}>
       {children}
     </div>
   );
@@ -302,7 +231,7 @@ export function ModalBody({
   className?: string;
 }) {
   return (
-    <div className={cn("flex-1 min-h-0 overflow-y-auto p-4 sm:p-5", className)}>
+    <div className={cn("flex-1 min-h-0 overflow-y-auto p-4 md:p-5", className)}>
       {children}
     </div>
   );
@@ -316,7 +245,7 @@ export function ModalFooter({
   className?: string;
 }) {
   return (
-    <div className={cn("px-4 sm:px-6 py-3 shrink-0 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2.5 border-t border-border/80 bg-surface-alt/70 backdrop-blur-md z-10", className)}>
+    <div className={cn("px-4 md:px-6 py-3 shrink-0 flex flex-col-reverse md:flex-row items-stretch md:items-center justify-end gap-2 md:gap-2.5 border-t border-border/80 bg-surface-alt  z-10", className)}>
       {children}
     </div>
   );

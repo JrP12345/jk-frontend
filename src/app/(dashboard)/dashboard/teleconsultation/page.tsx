@@ -4,22 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Button,
-  Modal,
-  Input,
-  Select,
-  useToast,
-  Badge,
-  StatCard,
-  Spinner,
-  SkeletonCardGrid,
-  cn,
-} from "@/components/ui";
+import { Card, CardContent, Button, Modal, Input, Select, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
 import { RotateCw, Plus, Video, Clock, Activity, CheckCircle2 } from "lucide-react";
 
 export interface TeleconsultationAppointment {
@@ -446,7 +431,7 @@ export default function TeleconsultationPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-primary before: before: before:">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -546,7 +531,7 @@ export default function TeleconsultationPage() {
                 className={cn(
                   "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
                   statusFilter === s.key
-                    ? "bg-primary-500/10 text-primary-600 dark:text-primary-400"
+                    ? "bg-primary-500/10 text-accent dark:text-accent"
                     : "bg-surface-alt text-text-muted"
                 )}
               >
@@ -595,16 +580,16 @@ export default function TeleconsultationPage() {
                 key={item.id}
                 className={`p-4 rounded-2xl border transition-all space-y-3 flex flex-col justify-between text-xs shadow-xs relative overflow-hidden ${
                   isInCall
-                    ? "bg-purple-500/10 border-purple-500/50 hover:border-purple-500 ring-1 ring-purple-500/20"
+                    ? "bg-primary/10 border-accent/50 hover:border-accent ring-1 ring-accent/20"
                     : isCompleted
-                    ? "bg-emerald-500/5 border-emerald-500/30 hover:border-emerald-500"
+                    ? "bg-success/5 border-success/30 hover:border-success"
                     : "bg-surface border-border/80 hover:border-primary-500/40"
                 }`}
               >
                 {/* Header Badge & Status */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono font-bold text-xs text-purple-600 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20 flex items-center gap-1.5">
+                    <span className="font-mono font-bold text-xs text-accent bg-primary/10 px-2.5 py-1 rounded-lg border border-accent/20 flex items-center gap-1.5">
                       <Video className="w-3.5 h-3.5" />
                       <span>Virtual Visit</span>
                     </span>
@@ -618,7 +603,7 @@ export default function TeleconsultationPage() {
                   </div>
 
                   <div className="flex items-center gap-3 pt-1">
-                    <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-600 font-bold text-sm shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-accent font-bold text-sm shrink-0">
                       {patientName.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -626,7 +611,7 @@ export default function TeleconsultationPage() {
                       {patientPhone ? (
                         <a
                           href={`tel:${patientPhone}`}
-                          className="text-[11px] text-text-muted hover:text-primary-600 transition-colors flex items-center gap-1 truncate"
+                          className="text-[11px] text-text-muted hover:text-accent transition-colors flex items-center gap-1 truncate"
                         >
                           <span>📞</span> {patientPhone}
                         </a>
@@ -671,7 +656,7 @@ export default function TeleconsultationPage() {
                     size="sm"
                     variant="primary"
                     onClick={() => handleJoinVideoCall(item)}
-                    className="font-bold text-xs rounded-xl w-full gap-2 bg-purple-600 hover:bg-purple-700 text-white cursor-pointer min-h-[44px] justify-center shadow-xs"
+                    className="font-bold text-xs rounded-xl w-full gap-2 bg-primary hover:bg-primary text-brand-mist cursor-pointer min-h-[44px] justify-center shadow-xs"
                   >
                     <Video className="w-4 h-4" />
                     <span>{isInCall ? "Resume Video Workspace" : "Join Video Room"}</span>
@@ -698,24 +683,24 @@ export default function TeleconsultationPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 text-xs">
               {/* Left Column: Pure Native WebRTC Video Call Theater */}
               <div className="lg:col-span-7 space-y-3">
-                <div className="relative w-full h-[360px] sm:h-[460px] bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 text-white shadow-2xl flex flex-col justify-between">
+                <div className="relative w-full h-[360px] sm:h-[460px] bg-background rounded-2xl overflow-hidden border border-border text-text shadow-2xl flex flex-col justify-between">
                   {/* Main Video Stream Container (Remote Feed / Native Player) */}
-                  <div className="relative w-full h-full bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 flex flex-col items-center justify-center text-center p-4">
+                  <div className="relative w-full h-full bg-surface    flex flex-col items-center justify-center text-center p-4">
                     {/* Patient Profile Remote Feed Video / Avatar */}
                     <div className="flex flex-col items-center justify-center space-y-3">
                       <div className="relative">
-                        <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-purple-600/30 border-2 border-purple-500/50 flex items-center justify-center text-3xl sm:text-4xl shadow-inner text-purple-200">
+                        <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-primary/30 border-2 border-accent/50 flex items-center justify-center text-3xl sm:text-4xl shadow-inner text-accent">
                           👤
                         </div>
-                        <span className="absolute bottom-0 right-0 h-4.5 w-4.5 rounded-full bg-emerald-500 border-2 border-slate-950" />
+                        <span className="absolute bottom-0 right-0 h-4.5 w-4.5 rounded-full bg-success border-2 border-border" />
                       </div>
                       <div>
-                        <h4 className="font-bold text-base text-white tracking-wide">
+                        <h4 className="font-bold text-base text-brand-mist tracking-wide">
                           {activeApptForCall.patientId?.userId?.name || "Patient Remote Feed"}
                         </h4>
                         <div className="flex items-center justify-center gap-2 mt-1">
-                          <span className="text-[11px] text-emerald-400 font-mono flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-0.5 rounded-md border border-emerald-500/20">
-                            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                          <span className="text-[11px] text-success-text font-mono flex items-center gap-1.5 bg-success/10 px-2.5 py-0.5 rounded-md border border-success/20">
+                            <span className="h-2 w-2 rounded-full bg-success animate-ping" />
                             Encrypted Native P2P Stream ({formatDuration(callDuration)})
                           </span>
                         </div>
@@ -723,7 +708,7 @@ export default function TeleconsultationPage() {
                     </div>
 
                     {/* Picture-in-Picture Doctor Local Webcam Video Window */}
-                    <div className="absolute top-3 right-3 w-28 h-24 sm:w-40 sm:h-32 bg-slate-900 rounded-2xl overflow-hidden border-2 border-purple-500/40 shadow-2xl transition-all">
+                    <div className="absolute top-3 right-3 w-28 h-24 sm:w-40 sm:h-32 bg-surface rounded-2xl overflow-hidden border-2 border-accent/40 shadow-2xl transition-all">
                       <video
                         ref={localVideoRef}
                         autoPlay
@@ -732,24 +717,24 @@ export default function TeleconsultationPage() {
                         className={`w-full h-full object-cover transform -scale-x-100 ${isCamOn ? "block" : "hidden"}`}
                       />
                       {!isCamOn && (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-slate-400 text-xs font-semibold space-y-1">
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-background text-text-muted text-xs font-semibold space-y-1">
                           <span className="text-lg">📷</span>
                           <span>Cam Off</span>
                         </div>
                       )}
-                      <div className="absolute bottom-1.5 left-2 flex items-center gap-1 text-[9px] font-mono bg-slate-950/85 px-2 py-0.5 rounded-md text-slate-200 backdrop-blur-xs font-bold border border-slate-800">
+                      <div className="absolute bottom-1.5 left-2 flex items-center gap-1 text-[9px] font-mono bg-background/85 px-2 py-0.5 rounded-md text-text-secondary backdrop-blur-xs font-bold border border-border">
                         <span>You (MD)</span>
                         {isMicOn && (
                           <span className="flex items-center gap-0.5 ml-1">
-                            <span className="h-2 w-0.5 bg-emerald-400 rounded-full animate-pulse" />
-                            <span className="h-2.5 w-0.5 bg-emerald-400 rounded-full animate-pulse delay-75" />
+                            <span className="h-2 w-0.5 bg-success rounded-full animate-pulse" />
+                            <span className="h-2.5 w-0.5 bg-success rounded-full animate-pulse delay-75" />
                           </span>
                         )}
                       </div>
                     </div>
 
                     {/* In-Call Action Control Bar */}
-                    <div className="absolute bottom-3 left-3 right-3 p-2.5 sm:p-3 bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-800/90 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 shadow-2xl">
+                    <div className="absolute bottom-3 left-3 right-3 p-2.5 sm:p-3 bg-surface/90 backdrop-blur-md rounded-2xl border border-border/90 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 shadow-2xl">
                       <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
                         {/* Mic Button */}
                         <button
@@ -757,8 +742,8 @@ export default function TeleconsultationPage() {
                           onClick={toggleMic}
                           className={`h-9 min-h-[38px] px-2.5 sm:px-3.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
                             isMicOn
-                              ? "bg-purple-600/30 text-purple-200 border-purple-500/50 hover:bg-purple-600/40 shadow-xs"
-                              : "bg-red-500/20 text-red-400 border-red-500/40 hover:bg-red-500/30"
+                              ? "bg-primary/30 text-accent border-accent/50 hover:bg-primary/40 shadow-xs"
+                              : "bg-danger/20 text-danger-text border-danger/40 hover:bg-danger/30"
                           }`}
                         >
                           {isMicOn ? "🎙️ Mic On" : "🔇 Muted"}
@@ -770,8 +755,8 @@ export default function TeleconsultationPage() {
                           onClick={toggleCam}
                           className={`h-9 min-h-[38px] px-2.5 sm:px-3.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
                             isCamOn
-                              ? "bg-purple-600/30 text-purple-200 border-purple-500/50 hover:bg-purple-600/40 shadow-xs"
-                              : "bg-red-500/20 text-red-400 border-red-500/40 hover:bg-red-500/30"
+                              ? "bg-primary/30 text-accent border-accent/50 hover:bg-primary/40 shadow-xs"
+                              : "bg-danger/20 text-danger-text border-danger/40 hover:bg-danger/30"
                           }`}
                         >
                           {isCamOn ? "📹 Video On" : "📷 Video Off"}
@@ -783,8 +768,8 @@ export default function TeleconsultationPage() {
                           onClick={handleScreenShare}
                           className={`h-9 min-h-[38px] px-2.5 sm:px-3.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
                             isScreenSharing
-                              ? "bg-purple-600 text-white border-purple-500 shadow-xs"
-                              : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
+                              ? "bg-primary text-brand-mist border-accent shadow-xs"
+                              : "bg-surface-alt text-text-secondary border-border hover:bg-surface-alt"
                           }`}
                         >
                           🖥️ <span className="hidden sm:inline">{isScreenSharing ? "Sharing Screen" : "Screen Share"}</span><span className="sm:hidden">Share</span>
@@ -795,7 +780,7 @@ export default function TeleconsultationPage() {
                         size="xs"
                         variant="outline"
                         onClick={handleCopyLink}
-                        className="text-xs h-9 min-h-[38px] px-3 border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 font-semibold rounded-xl"
+                        className="text-xs h-9 min-h-[38px] px-3 border-border bg-surface-alt text-text-secondary hover:bg-surface-alt font-semibold rounded-xl"
                       >
                         📋 <span className="hidden sm:inline">Copy Link</span>
                       </Button>
@@ -819,7 +804,7 @@ export default function TeleconsultationPage() {
                     variant="primary"
                     onClick={handleEndCall}
                     loading={submittingEndCall}
-                    className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs gap-1.5 px-4 cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+                    className="bg-danger hover:bg-danger text-background font-bold rounded-xl text-xs gap-1.5 px-4 cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
                   >
                     <span>🔴 End & Complete Consultation</span>
                   </Button>
@@ -835,7 +820,7 @@ export default function TeleconsultationPage() {
                       type="button"
                       onClick={() => setActiveTab("ehr")}
                       className={`flex-1 py-2 sm:py-1.5 rounded-lg transition-all cursor-pointer min-h-[38px] sm:min-h-[32px] flex items-center justify-center ${
-                        activeTab === "ehr" ? "bg-surface text-purple-600 shadow-xs" : "text-text-muted hover:text-text"
+                        activeTab === "ehr" ? "bg-surface text-accent shadow-xs" : "text-text-muted hover:text-text"
                       }`}
                     >
                       👤 EHR Context
@@ -844,7 +829,7 @@ export default function TeleconsultationPage() {
                       type="button"
                       onClick={() => setActiveTab("notes")}
                       className={`flex-1 py-2 sm:py-1.5 rounded-lg transition-all cursor-pointer min-h-[38px] sm:min-h-[32px] flex items-center justify-center ${
-                        activeTab === "notes" ? "bg-surface text-purple-600 shadow-xs" : "text-text-muted hover:text-text"
+                        activeTab === "notes" ? "bg-surface text-accent shadow-xs" : "text-text-muted hover:text-text"
                       }`}
                     >
                       📝 Notes & Vitals
@@ -853,7 +838,7 @@ export default function TeleconsultationPage() {
                       type="button"
                       onClick={() => setActiveTab("rx")}
                       className={`flex-1 py-2 sm:py-1.5 rounded-lg transition-all cursor-pointer min-h-[38px] sm:min-h-[32px] flex items-center justify-center ${
-                        activeTab === "rx" ? "bg-surface text-purple-600 shadow-xs" : "text-text-muted hover:text-text"
+                        activeTab === "rx" ? "bg-surface text-accent shadow-xs" : "text-text-muted hover:text-text"
                       }`}
                     >
                       💊 Quick Rx
@@ -874,7 +859,7 @@ export default function TeleconsultationPage() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-muted">Consultation Mode:</span>
-                          <span className="font-bold text-purple-600 uppercase">{activeApptForCall.appointmentType}</span>
+                          <span className="font-bold text-accent uppercase">{activeApptForCall.appointmentType}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-muted">Appointment Time:</span>
@@ -885,13 +870,13 @@ export default function TeleconsultationPage() {
                       </div>
 
                       {activeApptForCall.notes && (
-                        <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl text-purple-950 dark:text-purple-200">
+                        <div className="p-3 bg-primary/10 border border-accent/20 rounded-xl text-accent dark:text-accent">
                           <span className="font-bold block text-[11px] mb-0.5">Chief Complaint / Visit Reason:</span>
                           <p className="italic text-[11px] leading-relaxed">{activeApptForCall.notes}</p>
                         </div>
                       )}
 
-                      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-900 dark:text-blue-200 text-[11px]">
+                      <div className="p-3 bg-primary/10 border border-accent/20 rounded-xl text-accent dark:text-accent text-[11px]">
                         💡 Clinical Documentation recorded in this workspace will sync with the patient chart record upon completion.
                       </div>
                     </div>
@@ -937,7 +922,7 @@ export default function TeleconsultationPage() {
                           placeholder="Type clinical consultation summary, symptoms, physical examination findings..."
                           value={clinicalNotesInput}
                           onChange={(e) => setClinicalNotesInput(e.target.value)}
-                          className="w-full p-2.5 bg-surface border border-border rounded-xl text-xs focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+                          className="w-full p-2.5 bg-surface border border-border rounded-xl text-xs focus:ring-2 focus:ring-accent outline-none transition-all"
                         />
                       </div>
 
@@ -946,7 +931,7 @@ export default function TeleconsultationPage() {
                         variant="primary"
                         onClick={handleSaveNotes}
                         loading={savingNotes}
-                        className="w-full font-bold bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs min-h-[44px] sm:min-h-[36px] cursor-pointer"
+                        className="w-full font-bold bg-primary hover:bg-primary text-brand-mist rounded-xl text-xs min-h-[44px] sm:min-h-[36px] cursor-pointer"
                       >
                         Save Notes & Vitals
                       </Button>
@@ -1007,7 +992,7 @@ export default function TeleconsultationPage() {
                         size="sm"
                         variant="primary"
                         loading={savingRx}
-                        className="w-full font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs mt-1 min-h-[44px] sm:min-h-[36px] cursor-pointer"
+                        className="w-full font-bold bg-success hover:bg-success text-background rounded-xl text-xs mt-1 min-h-[44px] sm:min-h-[36px] cursor-pointer"
                       >
                         Issue Prescription
                       </Button>
@@ -1030,7 +1015,7 @@ export default function TeleconsultationPage() {
             <Button type="button" variant="outline" size="sm" onClick={() => setIsLaunchModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
-            <Button type="submit" form="launch-session-form" variant="primary" size="sm" loading={launchingSession} className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
+            <Button type="submit" form="launch-session-form" variant="primary" size="sm" loading={launchingSession} className="bg-primary hover:bg-primary text-brand-mist w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Provision Room
             </Button>
           </div>
@@ -1051,7 +1036,7 @@ export default function TeleconsultationPage() {
             required
           />
 
-          <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-xl text-[11px] text-purple-900 dark:text-purple-200">
+          <div className="p-3 bg-primary/10 border border-accent/30 rounded-xl text-[11px] text-accent dark:text-accent">
             💡 Provisioning will generate a secure WebRTC room ID (`TELE-XXXXX`) and provide a join link for both physician and patient portals.
           </div>
         </form>

@@ -47,8 +47,8 @@ describe("Clinic Store State Management", () => {
       data: {
         success: true,
         data: [
-          { _id: "clinic-1", name: "Ananta Main", city: "Bengaluru" },
-          { id: "clinic-2", name: "Ananta Koramangala", city: "Bengaluru" },
+          { _id: "clinic-1", name: "Ekavyu Main", city: "Bengaluru" },
+          { id: "clinic-2", name: "Ekavyu Koramangala", city: "Bengaluru" },
         ],
       },
     } as any);
@@ -56,7 +56,7 @@ describe("Clinic Store State Management", () => {
     const list = await useClinicStore.getState().fetchClinics();
     expect(list).toHaveLength(2);
     expect(list[0].id).toBe("clinic-1");
-    expect(list[0].name).toBe("Ananta Main");
+    expect(list[0].name).toBe("Ekavyu Main");
     expect(list[1].id).toBe("clinic-2");
     expect(useClinicStore.getState().isLoaded).toBe(true);
   });
@@ -125,7 +125,7 @@ describe("Dashboard Modular Components", () => {
         followUpTimeline: "7 days",
         appointmentTime: new Date().toISOString(),
         doctorId: { name: "Ramesh Sharma", id: "doc-1" },
-        clinicId: { name: "Ananta Indiranagar", id: "clinic-1" },
+        clinicId: { name: "Ekavyu Indiranagar", id: "clinic-1" },
       },
     ];
 
@@ -155,7 +155,7 @@ describe("Clinics Page Active and Archived Branch Lifecycle", () => {
     });
     useClinicStore.setState({
       clinics: [
-        { id: "clinic-1", name: "Ananta Indiranagar", city: "Bengaluru", isActive: true },
+        { id: "clinic-1", name: "Ekavyu Indiranagar", city: "Bengaluru", isActive: true },
       ],
       activeClinicId: "clinic-1",
       isLoaded: true,
@@ -171,7 +171,7 @@ describe("Clinics Page Active and Archived Branch Lifecycle", () => {
           data: {
             success: true,
             data: [
-              { id: "clinic-2", name: "Ananta Whitefield", city: "Bengaluru", isActive: false },
+              { id: "clinic-2", name: "Ekavyu Whitefield", city: "Bengaluru", isActive: false },
             ],
           },
         } as any;
@@ -180,7 +180,7 @@ describe("Clinics Page Active and Archived Branch Lifecycle", () => {
         data: {
           success: true,
           data: [
-            { id: "clinic-1", name: "Ananta Indiranagar", city: "Bengaluru", isActive: true },
+            { id: "clinic-1", name: "Ekavyu Indiranagar", city: "Bengaluru", isActive: true },
           ],
         },
       } as any;
@@ -199,7 +199,7 @@ describe("Clinics Page Active and Archived Branch Lifecycle", () => {
     // Wait for initial load and archived count badge to appear
     expect(await screen.findByText("1 Active Location")).toBeInTheDocument();
     expect(await screen.findByText(/1 Archived/i)).toBeInTheDocument();
-    expect(screen.getByText("Ananta Indiranagar")).toBeInTheDocument();
+    expect(screen.getByText("Ekavyu Indiranagar")).toBeInTheDocument();
 
     // Click on Archived Branches tab
     const archivedTab = screen.getByTestId("tab-archived-branches");
@@ -208,7 +208,7 @@ describe("Clinics Page Active and Archived Branch Lifecycle", () => {
     });
 
     // Archived branch row is displayed across responsive views (desktop table + mobile cards)
-    const branchNames = await screen.findAllByText("Ananta Whitefield");
+    const branchNames = await screen.findAllByText("Ekavyu Whitefield");
     expect(branchNames.length).toBeGreaterThan(0);
 
     const reactivateBtns = await screen.findAllByText("Reactivate Branch");

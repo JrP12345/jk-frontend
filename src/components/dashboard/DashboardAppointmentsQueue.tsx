@@ -3,29 +3,9 @@
 import React from "react";
 import { localDateKey } from "@/lib/date";
 import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Badge,
-  Table,
-  Button,
-  Dropdown,
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Badge, Table, Button, Dropdown } from "@/components/ui";
 import { hasAnyPermission } from "@/lib/permissions";
-import {
-  Clock,
-  CheckCircle2,
-  PlayCircle,
-  XCircle,
-  ChevronRight,
-  UserCheck,
-  CalendarX2,
-  MoreHorizontal,
-  Plus,
-  Stethoscope,
-} from "lucide-react";
+import { Clock, CheckCircle2, PlayCircle, XCircle, ChevronRight, UserCheck, CalendarX2, MoreHorizontal, Plus, Stethoscope } from "lucide-react";
 
 interface DashboardAppointmentsQueueProps {
   appointments: any[];
@@ -46,7 +26,7 @@ export function DashboardAppointmentsQueue({
   const router = useRouter();
 
   return (
-    <Card className="lg:col-span-2 rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/20 before:to-transparent">
+    <Card className="lg:col-span-2 rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden ">
       <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/60">
         <div className="flex items-center gap-2.5">
           <CardTitle className="text-sm sm:text-base font-bold text-text">
@@ -66,7 +46,7 @@ export function DashboardAppointmentsQueue({
           variant="ghost"
           size="xs"
           onClick={() => router.push("/dashboard/appointments")}
-          className="text-xs font-semibold text-primary-600 hover:text-primary-700 dark:text-primary-400 px-2 py-1 min-h-[36px] hover:bg-surface-hover/60 rounded-lg"
+          className="text-xs font-semibold text-accent hover:text-accent dark:text-accent px-2 py-1 min-h-[36px] hover:bg-surface-hover/60 rounded-lg"
         >
           View All
           <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
@@ -114,7 +94,7 @@ export function DashboardAppointmentsQueue({
                   <div key={row.id || row._id || Math.random()} className="p-3.5 space-y-2.5 hover:bg-surface-alt/60 transition-colors active:scale-[0.99] touch-manipulation">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-md bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                        <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-md bg-primary-500/10 text-accent dark:text-accent border border-primary-500/20">
                           #{String(row.tokenNumber || "—").padStart(2, "0")}
                         </span>
                         <div className="flex items-center gap-1 text-xs text-text-muted">
@@ -173,17 +153,17 @@ export function DashboardAppointmentsQueue({
                           items={[
                             {
                               label: "Check-In",
-                              icon: <UserCheck className="w-4 h-4 text-primary-500" />,
+                              icon: <UserCheck className="w-4 h-4 text-accent" />,
                               onClick: () => onUpdateStatus(row.id, "checked-in"),
                             },
                             {
                               label: "In Consultation",
-                              icon: <PlayCircle className="w-4 h-4 text-sky-500" />,
+                              icon: <PlayCircle className="w-4 h-4 text-accent" />,
                               onClick: () => onUpdateStatus(row.id, "in-consultation"),
                             },
                             {
                               label: "Complete Visit",
-                              icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
+                              icon: <CheckCircle2 className="w-4 h-4 text-success-text" />,
                               onClick: () => onUpdateStatus(row.id, "completed"),
                             },
                             { divider: true, label: "" },
@@ -200,7 +180,7 @@ export function DashboardAppointmentsQueue({
                           size="xs"
                           variant="ghost"
                           onClick={() => router.push("/dashboard/appointments")}
-                          className="h-9 px-3 text-xs font-semibold text-text-muted hover:text-primary-600 hover:bg-surface-hover shrink-0 min-h-[44px] rounded-xl touch-manipulation"
+                          className="h-9 px-3 text-xs font-semibold text-text-muted hover:text-accent hover:bg-surface-hover shrink-0 min-h-[44px] rounded-xl touch-manipulation"
                         >
                           Details
                           <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
@@ -229,7 +209,7 @@ export function DashboardAppointmentsQueue({
                           header: "Token",
                           width: "80px",
                           render: (row: any) => (
-                            <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-md bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                            <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-md bg-primary-500/10 text-accent dark:text-accent border border-primary-500/20">
                               #{String(row.tokenNumber || "—").padStart(2, "0")}
                             </span>
                           ),
@@ -306,17 +286,17 @@ export function DashboardAppointmentsQueue({
                               items={[
                                 {
                                   label: "Check-In",
-                                  icon: <UserCheck className="w-4 h-4 text-primary-500" />,
+                                  icon: <UserCheck className="w-4 h-4 text-accent" />,
                                   onClick: () => onUpdateStatus(row.id, "checked-in"),
                                 },
                                 {
                                   label: "In Consultation",
-                                  icon: <PlayCircle className="w-4 h-4 text-sky-500" />,
+                                  icon: <PlayCircle className="w-4 h-4 text-accent" />,
                                   onClick: () => onUpdateStatus(row.id, "in-consultation"),
                                 },
                                 {
                                   label: "Complete Visit",
-                                  icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
+                                  icon: <CheckCircle2 className="w-4 h-4 text-success-text" />,
                                   onClick: () => onUpdateStatus(row.id, "completed"),
                                 },
                                 { divider: true, label: "" },
@@ -337,7 +317,7 @@ export function DashboardAppointmentsQueue({
                           header: "Token",
                           width: "80px",
                           render: (row: any) => (
-                            <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-md bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                            <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-md bg-primary-500/10 text-accent dark:text-accent border border-primary-500/20">
                               #{String(row.tokenNumber || "—").padStart(2, "0")}
                             </span>
                           ),

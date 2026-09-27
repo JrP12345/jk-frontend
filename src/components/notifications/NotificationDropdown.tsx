@@ -6,14 +6,14 @@ import { notificationService, type NotificationItem } from "@/services/notificat
 import { useNotifications } from "@/hooks/useNotifications";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Badge } from "@/components/ui";
+import { Alert, Button, Badge } from "@/components/ui";
 
 export function NotificationDropdown({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const { markAsRead, markAllAsRead, archiveNotification, snoozeNotification, togglePinNotification } = useNotifications();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["notifications", "dropdown", filter],
     queryFn: () =>
       notificationService.getNotifications({
@@ -90,13 +90,13 @@ export function NotificationDropdown({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="w-80 sm:w-96 bg-surface/95 backdrop-blur-xl border border-border/80 rounded-2xl shadow-2xl shadow-black/20 overflow-hidden flex flex-col max-h-[85vh] z-[999] animate-popover-in">
+    <div className="w-full min-h-0 bg-surface/95  border border-border/80 rounded-2xl shadow-lg  overflow-hidden flex flex-col max-h-[inherit] z-[999] animate-popover-in">
       {/* Header */}
       <div className="p-4 border-b border-border flex items-center justify-between bg-surface-alt">
         <div className="flex items-center gap-2.5">
           <h3 className="font-bold text-text text-base tracking-wide">Notifications</h3>
           {unreadCount > 0 && (
-            <span className="px-2 py-0.5 text-xs font-bold bg-primary-500 text-white rounded-full shadow-xs">
+            <span className="px-2 py-0.5 text-xs font-bold bg-primary-500 text-brand-mist rounded-full shadow-xs">
               {unreadCount}
             </span>
           )}
@@ -104,7 +104,7 @@ export function NotificationDropdown({ onClose }: { onClose: () => void }) {
         {unreadCount > 0 && (
           <button
             onClick={() => markAllAsRead()}
-            className="text-xs font-semibold text-primary-500 hover:underline cursor-pointer"
+            className="text-xs font-semibold text-accent hover:underline cursor-pointer"
           >
             Mark all read
           </button>
@@ -115,9 +115,9 @@ export function NotificationDropdown({ onClose }: { onClose: () => void }) {
       <div className="flex border-b border-border bg-surface px-4 py-2 gap-2 text-xs font-medium">
         <button
           onClick={() => setFilter("all")}
-          className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+          className={`min-h-11 md:min-h-8 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
             filter === "all"
-              ? "bg-primary-500/10 text-primary-500 font-bold border border-primary-500/20"
+              ? "bg-primary-500/10 text-accent dark:text-accent font-bold border border-primary-500/20"
               : "text-text-muted hover:text-text hover:bg-surface-hover"
           }`}
         >
@@ -127,7 +127,7 @@ export function NotificationDropdown({ onClose }: { onClose: () => void }) {
           onClick={() => setFilter("unread")}
           className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
             filter === "unread"
-              ? "bg-primary-500/10 text-primary-500 font-bold border border-primary-500/20"
+              ? "bg-primary-500/10 text-accent font-bold border border-primary-500/20"
               : "text-text-muted hover:text-text hover:bg-surface-hover"
           }`}
         >
@@ -141,6 +141,8 @@ export function NotificationDropdown({ onClose }: { onClose: () => void }) {
           <div className="p-8 text-center text-xs text-text-muted animate-pulse">
             Loading notifications...
           </div>
+        ) : isError ? (
+          <Alert variant="error" title="Notifications could not be loaded" className="m-3" action={<Button size="sm" variant="outline" onClick={() => refetch()}>Try again</Button>}>Check your connection and try again.</Alert>
         ) : notifications.length === 0 ? (
           <div className="p-8 text-center">
             <svg
@@ -229,7 +231,7 @@ export function NotificationDropdown({ onClose }: { onClose: () => void }) {
         <Link
           href="/dashboard/notifications"
           onClick={onClose}
-          className="text-xs font-bold text-primary-500 hover:underline block tracking-wide"
+          className="text-xs font-bold text-accent dark:text-accent hover:underline block tracking-wide"
         >
           View all in Inbox →
         </Link>
@@ -258,16 +260,16 @@ function NotificationRow({
   return (
     <div
       className={`relative group overflow-hidden border-b border-border/40 last:border-b-0 ${
-        item.pinned ? "bg-amber-500/5 dark:bg-amber-500/10 border-l-2 border-l-amber-500" : !item.readAt ? "bg-primary-500/5 dark:bg-primary-500/10" : ""
+        item.pinned ? "bg-warning/5 dark:bg-warning/10 border-l-2 border-l-amber-500" : !item.readAt ? "bg-primary-500/5 dark:bg-primary-500/10" : ""
       }`}
     >
       <button
         type="button"
         onClick={onClick}
-        className="w-full text-left p-3.5 flex items-start gap-3 hover:bg-surface-hover transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+        className="w-full text-left p-3.5 flex items-start gap-3 hover:bg-surface-hover transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring"
       >
         {!item.readAt && (
-          <span className="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-1.5 shadow-xs shadow-primary-500/50" />
+          <span className="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-1.5 shadow-xs " />
         )}
         <div className="flex-1 min-w-0 pr-16">
           <div className="flex items-center justify-between gap-2">
@@ -276,7 +278,7 @@ function NotificationRow({
                 {item.category}
               </Badge>
               {item.pinned && (
-                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] font-bold text-warning-text dark:text-warning-text bg-warning/15 px-1.5 py-0.5 rounded">
                   📌 Pinned
                 </span>
               )}
@@ -305,7 +307,7 @@ function NotificationRow({
           title={item.pinned ? "Unpin notification" : "Pin notification"}
           aria-label={item.pinned ? "Unpin notification" : "Pin notification"}
           className={`p-1 rounded cursor-pointer transition-colors text-xs ${
-            item.pinned ? "text-amber-500 font-bold" : "text-text-muted hover:text-amber-500"
+            item.pinned ? "text-warning-text font-bold" : "text-text-muted hover:text-warning-text"
           }`}
         >
           📌
@@ -318,7 +320,7 @@ function NotificationRow({
           }}
           title="Snooze for 1 hour"
           aria-label="Snooze notification for 1 hour"
-          className="p-1 text-text-muted hover:text-primary-500 rounded text-xs cursor-pointer transition-colors"
+          className="p-1 text-text-muted hover:text-accent rounded text-xs cursor-pointer transition-colors"
         >
           ⏰
         </button>
@@ -331,7 +333,7 @@ function NotificationRow({
             }}
             title="Mark as read"
             aria-label="Mark notification as read"
-            className="p-1 text-text-muted hover:text-primary-500 rounded cursor-pointer transition-colors"
+            className="p-1 text-text-muted hover:text-accent rounded cursor-pointer transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

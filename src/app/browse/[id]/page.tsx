@@ -5,7 +5,7 @@ import BrowseDetailClient, { ClinicDetail } from "./BrowseDetailClient";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 
 export const metadata: Metadata = {
-  title: "Hospital Details | JK Healthcare",
+  title: "Hospital Details | Ekavyu",
   description: "View hospital details, timings, and book appointments with specialized doctors.",
 };
 

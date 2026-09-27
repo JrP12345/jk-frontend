@@ -2,20 +2,9 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import Link from "next/link";
+
 import api from "@/lib/api";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-  Button,
-  ModeSwitcher,
-  AnantaLogo,
-  Spinner,
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Button, ModeSwitcher, EkavyuLogo, Spinner } from "@/components/ui";
 import { CheckCircle2, AlertTriangle, MailCheck, ArrowRight, Home } from "lucide-react";
 
 function VerifyEmailContent() {
@@ -71,19 +60,19 @@ function VerifyEmailContent() {
 
       <div className="w-full max-w-md relative z-10">
         <div className="flex flex-col items-center mb-8">
-          <AnantaLogo size="xl" className="mb-2" />
+          <EkavyuLogo size="xl" showTagline className="mb-2" />
         </div>
 
-        <Card className="border-border/60 shadow-xl backdrop-blur-md bg-card/95">
+        <Card className="border-border/60 shadow-xl  bg-card/95">
           <CardHeader className="text-center pb-2">
             {status === "loading" && (
-              <div className="mx-auto my-4 w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+              <div className="mx-auto my-4 w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-accent">
                 <Spinner size="lg" />
               </div>
             )}
 
             {status === "success" && (
-              <div className="mx-auto my-4 w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center animate-in zoom-in-50 duration-300">
+              <div className="mx-auto my-4 w-14 h-14 rounded-full bg-success/10 text-success-text flex items-center justify-center animate-in zoom-in-50 duration-300">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
             )}
@@ -95,7 +84,7 @@ function VerifyEmailContent() {
             )}
 
             {status === "no_token" && (
-              <div className="mx-auto my-4 w-14 h-14 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center">
+              <div className="mx-auto my-4 w-14 h-14 rounded-full bg-warning/10 text-warning-text flex items-center justify-center">
                 <MailCheck className="w-8 h-8" />
               </div>
             )}
@@ -109,7 +98,7 @@ function VerifyEmailContent() {
 
             <CardDescription className="text-muted-foreground mt-2">
               {status === "loading" && "Please wait while we confirm your account details."}
-              {status === "success" && "Your ANANTA account email has been verified. You now have full access."}
+              {status === "success" && "Your Ekavyu account email has been verified. You now have full access."}
               {status === "error" && errorMessage}
               {status === "no_token" && "No verification token was detected in your link. Please check your email inbox."}
             </CardDescription>
@@ -117,7 +106,7 @@ function VerifyEmailContent() {
 
           <CardContent className="pt-2">
             {status === "success" && (
-              <div className="rounded-lg bg-emerald-500/10 p-4 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-sm text-center">
+              <div className="rounded-lg bg-success/10 p-4 border border-success/20 text-success-text dark:text-success-text text-sm text-center">
                 Ready to sign in to your healthcare workspace or patient portal.
               </div>
             )}
@@ -168,7 +157,7 @@ function VerifyEmailContent() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          &copy; {new Date().getFullYear()} ANANTA Health Platform. All rights reserved.
+          &copy; {new Date().getFullYear()} Ekavyu Health Platform. All rights reserved.
         </p>
       </div>
     </div>

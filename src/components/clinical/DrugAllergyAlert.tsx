@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, ShieldAlert, Check, X } from "lucide-react";
-import { Badge, Button, cn } from "@/components/ui";
+import { AlertTriangle, ShieldAlert, Check } from "lucide-react";
+import { Badge, cn } from "@/components/ui";
 
 interface AllergyClass {
   allergenKeywords: string[];
@@ -162,8 +162,8 @@ export function DrugAllergyAlert({
   return (
     <div className="rounded-2xl border border-danger-500/30 bg-danger-500/10 p-3.5 space-y-2.5 animate-pulse-once shadow-sm">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-danger-700 dark:text-danger-400 font-bold text-xs">
-          <ShieldAlert className="w-4 h-4 text-danger-600 dark:text-danger-400 shrink-0" />
+        <div className="flex items-center gap-2 text-danger-text dark:text-danger-text font-bold text-xs">
+          <ShieldAlert className="w-4 h-4 text-danger-text dark:text-danger-text shrink-0" />
           <span className="uppercase tracking-wider">Clinical Decision Support: Drug-Allergy Warning</span>
         </div>
         <Badge variant="danger" size="sm" className="font-bold">
@@ -188,7 +188,7 @@ export function DrugAllergyAlert({
             >
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-danger-700 dark:text-danger-300 text-sm">
+                  <span className="font-bold text-danger-text dark:text-danger-text text-sm">
                     {conflict.medicineName}
                   </span>
                   <span className="text-text-muted">&bull;</span>
@@ -215,18 +215,18 @@ export function DrugAllergyAlert({
                   className={cn(
                     "px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1",
                     isOverridden
-                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
-                      : "bg-danger-600 hover:bg-danger-700 text-white shadow-xs"
+                      ? "bg-success/15 text-success-text dark:text-success-text border border-success/30"
+                      : "bg-danger-600 hover:bg-danger text-background shadow-xs"
                   )}
                 >
                   {isOverridden ? (
                     <>
-                      <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <Check className="w-3.5 h-3.5 text-success-text dark:text-success-text" />
                       <span>Risk Acknowledged</span>
                     </>
                   ) : (
                     <>
-                      <AlertTriangle className="w-3.5 h-3.5 text-white" />
+                      <AlertTriangle className="w-3.5 h-3.5 text-brand-mist" />
                       <span>Acknowledge Risk</span>
                     </>
                   )}

@@ -1,23 +1,10 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-  Input,
-  Button,
-  useToast,
-  ModeSwitcher,
-  AnantaLogo,
-  cn,
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, useToast, ModeSwitcher, EkavyuLogo, cn } from "@/components/ui";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -119,8 +106,7 @@ function ResetPasswordForm() {
     <div className="min-h-screen flex flex-col items-center justify-center pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] px-4 bg-surface-alt relative font-sans text-text animate-page-enter">
       {/* Background glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-15%] left-[-15%] w-[50%] h-[50%] bg-primary-500/10 rounded-full blur-[140px]" />
-        <div className="absolute bottom-[-15%] right-[-15%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[140px]" />
+        <div className="absolute inset-0 brand-wash" />
       </div>
 
       <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
@@ -129,20 +115,20 @@ function ResetPasswordForm() {
 
       <div className="w-full max-w-md relative z-10 animate-fade-up">
         <div className="text-center mb-6 flex flex-col items-center justify-center">
-          <AnantaLogo size="xl" />
+          <EkavyuLogo size="xl" showTagline />
           <p className="text-text-secondary text-xs sm:text-sm mt-2">Set New Account Password</p>
         </div>
 
         <Card
           className={cn(
-            "shadow-xl border-border/80 backdrop-blur-md bg-surface p-0 rounded-2xl overflow-hidden transition-transform duration-300",
+            "shadow-xl border-border/80  bg-surface p-0 rounded-2xl overflow-hidden transition-transform duration-300",
             isShaking && "animate-shake"
           )}
         >
           {!isSuccess ? (
             <form onSubmit={handleResetPassword} noValidate className="p-5 sm:p-6 space-y-4">
               <CardHeader className="p-0 mb-3">
-                <CardTitle className="text-xl font-bold">Reset Password</CardTitle>
+                <CardTitle as="h1" className="text-xl font-bold">Reset Password</CardTitle>
                 <CardDescription className="text-xs text-text-muted mt-1">
                   Enter your new password below to regain access to your account.
                 </CardDescription>
@@ -184,7 +170,7 @@ function ResetPasswordForm() {
             </form>
           ) : (
             <div className="p-6 text-center space-y-4">
-              <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 bg-success/10 border border-success/20 text-success-text rounded-full flex items-center justify-center mx-auto">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>

@@ -4,24 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Table,
-  Button,
-  Modal,
-  Input,
-  Select,
-  Textarea,
-  useToast,
-  Badge,
-  StatCard,
-  Spinner,
-  SkeletonCardGrid,
-  cn,
-} from "@/components/ui";
+import { Card, CardContent, Button, Modal, Input, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
 import { RotateCw, Plus, ShieldCheck, IndianRupee, Clock, AlertCircle, FileText, CheckCircle2, FileCheck } from "lucide-react";
 
 interface PatientUser {
@@ -440,7 +423,7 @@ export default function InsurancePage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -510,7 +493,7 @@ export default function InsurancePage() {
               : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
           )}
         >
-          <ShieldCheck className={cn("w-3.5 h-3.5", activeTab === "preAuth" ? "text-primary-500" : "text-text-muted")} />
+          <ShieldCheck className={cn("w-3.5 h-3.5", activeTab === "preAuth" ? "text-accent" : "text-text-muted")} />
           <span>Pre-Authorization Requests</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
             {preAuths.length}
@@ -530,7 +513,7 @@ export default function InsurancePage() {
               : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
           )}
         >
-          <FileCheck className={cn("w-3.5 h-3.5", activeTab === "claims" ? "text-primary-500" : "text-text-muted")} />
+          <FileCheck className={cn("w-3.5 h-3.5", activeTab === "claims" ? "text-accent" : "text-text-muted")} />
           <span>Insurance Claims & Adjudication</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
             {claims.length}
@@ -592,7 +575,7 @@ export default function InsurancePage() {
             label="Fully Settled Claims"
             value={settledClaimsCount.toString()}
             description="Reconciled & finalized"
-            icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+            icon={<CheckCircle2 className="w-5 h-5 text-success-text" />}
           />
         </div>
       )}
@@ -630,7 +613,7 @@ export default function InsurancePage() {
             </div>
           ) : (
             <div className="text-xs font-bold text-text flex items-center gap-2">
-              <FileCheck className="w-4 h-4 text-primary-500" />
+              <FileCheck className="w-4 h-4 text-accent" />
               <span>Claims Adjudication Pipeline</span>
             </div>
           )}
@@ -707,18 +690,18 @@ export default function InsurancePage() {
                   key={item.id}
                   className={`p-4 rounded-2xl border transition-all space-y-3.5 flex flex-col justify-between text-xs shadow-xs ${
                     isApproved
-                      ? "bg-emerald-500/5 border-emerald-500/30 hover:border-emerald-500"
+                      ? "bg-success/5 border-success/30 hover:border-success"
                       : isUnderQuery
-                      ? "bg-purple-500/5 border-purple-500/30 hover:border-purple-500"
+                      ? "bg-primary/5 border-accent/30 hover:border-accent"
                       : isRejected
-                      ? "bg-red-500/5 border-red-500/30 hover:border-red-500"
+                      ? "bg-danger/5 border-danger/30 hover:border-danger"
                       : "bg-surface border-border hover:border-primary-500"
                   }`}
                 >
                   {/* Header Badge & PA Number */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono font-bold text-xs text-primary-600 bg-primary-500/10 px-2.5 py-0.5 rounded-lg border border-primary-500/20">
+                      <span className="font-mono font-bold text-xs text-accent bg-primary-500/10 px-2.5 py-0.5 rounded-lg border border-primary-500/20">
                         {item.preAuthNumber}
                       </span>
                       <Badge
@@ -744,7 +727,7 @@ export default function InsurancePage() {
                         {patientPhone && (
                           <a
                             href={`tel:${patientPhone}`}
-                            className="text-text-muted hover:text-primary-600 transition-colors text-[10px] font-mono"
+                            className="text-text-muted hover:text-accent transition-colors text-[10px] font-mono"
                           >
                             📞 {patientPhone}
                           </a>
@@ -757,7 +740,7 @@ export default function InsurancePage() {
                     </div>
                     <div className="flex items-center justify-between pt-1 border-t border-border/40">
                       <span className="text-text-muted">ICD-10 Code:</span>
-                      <span className="font-mono text-primary-600 font-bold">{item.diagnosisCode}</span>
+                      <span className="font-mono text-accent font-bold">{item.diagnosisCode}</span>
                     </div>
                     <div className="text-[10px] text-text-muted italic truncate">
                       Treatment: {item.proposedTreatment}
@@ -771,7 +754,7 @@ export default function InsurancePage() {
                       <span className="font-mono font-bold text-text">₹{item.requestedAmount.toLocaleString("en-IN")}</span>
                     </div>
                     {isApproved && item.approvedAmount !== undefined && (
-                      <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20 text-emerald-600 font-bold">
+                      <div className="flex items-center justify-between pt-1 border-t border-success/20 text-success-text font-bold">
                         <span>Approved Cashless:</span>
                         <span className="font-mono text-sm">₹{item.approvedAmount.toLocaleString("en-IN")}</span>
                       </div>
@@ -786,12 +769,12 @@ export default function InsurancePage() {
 
                   {/* Query Notes or Denial Reason if present */}
                   {isUnderQuery && item.queryNotes && (
-                    <div className="p-2 bg-purple-500/10 border border-purple-500/30 rounded-xl text-[11px] text-purple-700 dark:text-purple-300">
+                    <div className="p-2 bg-primary/10 border border-accent/30 rounded-xl text-[11px] text-accent dark:text-accent">
                       <b>TPA Query:</b> {item.queryNotes}
                     </div>
                   )}
                   {isRejected && item.denialReason && (
-                    <div className="p-2 bg-red-500/10 border border-red-500/30 rounded-xl text-[11px] text-red-700 dark:text-red-300">
+                    <div className="p-2 bg-danger/10 border border-danger/30 rounded-xl text-[11px] text-danger-text dark:text-danger-text">
                       <b>Denial Reason:</b> {item.denialReason}
                     </div>
                   )}
@@ -850,17 +833,17 @@ export default function InsurancePage() {
                   key={claim.id || claim._id}
                   className={`p-4 rounded-2xl border transition-all space-y-3.5 flex flex-col justify-between text-xs shadow-xs ${
                     isSettled
-                      ? "bg-emerald-500/5 border-emerald-500/40 hover:border-emerald-500"
+                      ? "bg-success/5 border-success/40 hover:border-success"
                       : isApproved
-                      ? "bg-blue-500/5 border-blue-500/30 hover:border-blue-500"
+                      ? "bg-primary/5 border-accent/30 hover:border-accent"
                       : isRejected
-                      ? "bg-red-500/5 border-red-500/30 hover:border-red-500"
+                      ? "bg-danger/5 border-danger/30 hover:border-danger"
                       : "bg-surface border-border hover:border-primary-500"
                   }`}
                 >
                   <div className="space-y-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono font-bold text-xs text-primary-600 bg-primary-500/10 px-2.5 py-0.5 rounded-lg border border-primary-500/20">
+                      <span className="font-mono font-bold text-xs text-accent bg-primary-500/10 px-2.5 py-0.5 rounded-lg border border-primary-500/20">
                         {claim.claimNumber}
                       </span>
                       <Badge
@@ -885,7 +868,7 @@ export default function InsurancePage() {
                         {patientPhone && (
                           <a
                             href={`tel:${patientPhone}`}
-                            className="text-text-muted hover:text-primary-600 transition-colors text-[10px] font-mono"
+                            className="text-text-muted hover:text-accent transition-colors text-[10px] font-mono"
                           >
                             📞 {patientPhone}
                           </a>
@@ -899,7 +882,7 @@ export default function InsurancePage() {
                     {claim.preAuthCode && (
                       <div className="flex items-center justify-between pt-1 border-t border-border/40">
                         <span className="text-text-muted">Pre-Auth Code:</span>
-                        <span className="font-mono font-bold text-primary-600">{claim.preAuthCode}</span>
+                        <span className="font-mono font-bold text-accent">{claim.preAuthCode}</span>
                       </div>
                     )}
                   </div>
@@ -910,7 +893,7 @@ export default function InsurancePage() {
                       <span className="font-mono font-bold text-text">₹{claim.totalClaimAmount?.toLocaleString("en-IN")}</span>
                     </div>
                     {claim.approvedAmount !== undefined && (
-                      <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20 text-emerald-600 font-bold">
+                      <div className="flex items-center justify-between pt-1 border-t border-success/20 text-success-text font-bold">
                         <span>Approved Payout:</span>
                         <span className="font-mono text-sm">₹{claim.approvedAmount.toLocaleString("en-IN")}</span>
                       </div>
@@ -930,7 +913,7 @@ export default function InsurancePage() {
                   </div>
 
                   {isRejected && claim.rejectionReason && (
-                    <div className="p-2 bg-red-500/10 border border-red-500/30 rounded-xl text-[11px] text-red-700 dark:text-red-300">
+                    <div className="p-2 bg-danger/10 border border-danger/30 rounded-xl text-[11px] text-danger-text dark:text-danger-text">
                       <b>Rejection Reason:</b> {claim.rejectionReason}
                     </div>
                   )}
@@ -1094,7 +1077,7 @@ export default function InsurancePage() {
             />
 
             {updateStatus === "approved" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/30">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-success/10 rounded-xl border border-success/30">
                 <Input
                   label="Approved Cashless Amount (₹) *"
                   type="number"
@@ -1276,7 +1259,7 @@ export default function InsurancePage() {
             />
 
             {(adjudicateStatus === "approved" || adjudicateStatus === "settled") && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/30">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-success/10 rounded-xl border border-success/30">
                 <Input
                   label="Approved Amount (₹) *"
                   type="number"

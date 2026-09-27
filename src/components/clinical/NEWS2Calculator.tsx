@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, Spinner, useToast, Table } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, useToast, Table } from "@/components/ui";
 import { NEWS2Service } from "@/services/news2.service";
 
 interface NEWS2CalculatorProps {
@@ -163,7 +163,7 @@ export function NEWS2Calculator({ encounterId, patientId }: NEWS2CalculatorProps
         </CardHeader>
         <CardContent className="space-y-4 pt-4">
           {validationError && (
-            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-600 dark:text-red-400 font-semibold">
+            <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg text-xs text-danger-text dark:text-danger-text font-semibold">
               {validationError}
             </div>
           )}
@@ -184,7 +184,7 @@ export function NEWS2Calculator({ encounterId, patientId }: NEWS2CalculatorProps
             <div className="p-4 rounded-xl border border-border bg-surface-hover space-y-2 mt-4">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-sm text-text">Evaluated NEWS2 Score:</span>
-                <span className="text-2xl font-extrabold text-primary-600">{news2Result.totalScore ?? news2Result.score ?? 0}</span>
+                <span className="text-2xl font-extrabold text-accent">{news2Result.totalScore ?? news2Result.score ?? 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-text-secondary">Risk Classification:</span>

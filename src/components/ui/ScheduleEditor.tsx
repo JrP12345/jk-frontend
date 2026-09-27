@@ -269,7 +269,7 @@ const ScheduleEditor = memo(function ScheduleEditor({
             className={cn(
               "px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer",
               mode === "same"
-                ? "bg-primary-600 text-white shadow-xs"
+                ? "bg-primary-600 text-brand-mist shadow-xs"
                 : "text-text-muted hover:text-text"
             )}
           >
@@ -281,7 +281,7 @@ const ScheduleEditor = memo(function ScheduleEditor({
             className={cn(
               "px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer",
               mode === "custom"
-                ? "bg-primary-600 text-white shadow-xs"
+                ? "bg-primary-600 text-brand-mist shadow-xs"
                 : "text-text-muted hover:text-text"
             )}
           >
@@ -309,7 +309,7 @@ const ScheduleEditor = memo(function ScheduleEditor({
                     className={cn(
                       "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border",
                       isSelected
-                        ? "bg-primary-50 dark:bg-primary-950/40 text-primary-600 border-primary-500/50 shadow-2xs"
+                        ? "bg-accent-subtle dark:bg-primary-950/40 text-accent border-primary-500/50 shadow-2xs"
                         : "bg-surface-alt text-text-muted border-border/80 hover:border-text-muted hover:text-text"
                     )}
                   >
@@ -356,13 +356,13 @@ const ScheduleEditor = memo(function ScheduleEditor({
       {mode === "custom" && (
         <div className="border border-border rounded-xl bg-surface shadow-2xs overflow-hidden">
           {/* Custom Mode Quick Header */}
-          <div className="px-3 py-2 bg-surface-alt/70 border-b border-border/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="px-3 py-2 bg-surface-alt border-b border-border/70 flex flex-wrap items-center justify-between gap-2 text-xs">
             <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-primary-500" />
+              <Layers className="w-3.5 h-3.5 text-accent" />
               Custom Per-Day Shifts
             </span>
             <span className="text-[11px] text-text-muted hidden sm:inline">
-              Configure any day, then click <strong className="text-primary-600 font-semibold">Clone</strong> to copy its shifts to other days
+              Configure any day, then click <strong className="text-accent font-semibold">Clone</strong> to copy its shifts to other days
             </span>
           </div>
 
@@ -391,7 +391,7 @@ const ScheduleEditor = memo(function ScheduleEditor({
                         id={`custom-${day}`}
                         checked={isActive}
                         onChange={(e) => toggleCustomDay(day, e.target.checked)}
-                        className="h-4 w-4 rounded border-border text-primary-600 focus:ring-primary-500 cursor-pointer"
+                        className="h-4 w-4 rounded border-border text-accent focus:ring-focus-ring cursor-pointer"
                       />
                       <label htmlFor={`custom-${day}`} className="text-xs font-bold text-text cursor-pointer select-none">
                         {day}
@@ -422,7 +422,7 @@ const ScheduleEditor = memo(function ScheduleEditor({
                               <button
                                 type="button"
                                 onClick={() => removeCustomSlot(day, index)}
-                                className="text-text-muted hover:text-red-500 p-1 rounded cursor-pointer"
+                                className="text-text-muted hover:text-danger-text p-1 rounded cursor-pointer"
                                 title="Remove shift"
                               >
                                 &times;
@@ -434,7 +434,7 @@ const ScheduleEditor = memo(function ScheduleEditor({
                         <button
                           type="button"
                           onClick={() => addCustomSlot(day)}
-                          className="text-[11px] font-bold text-primary-600 hover:text-primary-700 px-2 py-1 rounded-md transition-colors cursor-pointer"
+                          className="text-[11px] font-bold text-accent hover:text-accent px-2 py-1 rounded-md transition-colors cursor-pointer"
                         >
                           + Shift
                         </button>
@@ -453,8 +453,8 @@ const ScheduleEditor = memo(function ScheduleEditor({
                           className={cn(
                             "inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-md transition-all cursor-pointer border shadow-2xs",
                             isCloningThis
-                              ? "bg-primary-600 text-white border-primary-600 shadow-xs"
-                              : "text-text-muted hover:text-primary-600 bg-surface-alt hover:bg-primary-50 dark:hover:bg-primary-950/40 border-border/80 hover:border-primary-500/40"
+                              ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs"
+                              : "text-text-muted hover:text-accent bg-surface-alt hover:bg-accent-subtle dark:hover:bg-primary-950/40 border-border/80 hover:border-primary-500/40"
                           )}
                           title={`Clone ${day}'s working shifts to other days`}
                         >
@@ -463,7 +463,7 @@ const ScheduleEditor = memo(function ScheduleEditor({
                         </button>
 
                         {cloneFeedback?.day === day && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded-md animate-fade-in">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success-text dark:text-success-text bg-success-subtle dark:bg-success/40 border border-success/30 px-2 py-0.5 rounded-md animate-fade-in">
                             <Check className="w-3 h-3" />
                             {cloneFeedback.msg}
                           </span>
@@ -478,10 +478,10 @@ const ScheduleEditor = memo(function ScheduleEditor({
 
                   {/* Inline Clone Expandable Drawer */}
                   {isCloningThis && isActive && (
-                    <div className="p-3 bg-primary-50/40 dark:bg-primary-950/30 border-t border-primary-500/20 rounded-b-lg space-y-2.5 animate-fade-in">
+                    <div className="p-3 bg-accent-subtle/40 dark:bg-primary-950/30 border-t border-primary-500/20 rounded-b-lg space-y-2.5 animate-fade-in">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5">
-                          <Copy className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" />
+                          <Copy className="w-3.5 h-3.5 text-accent dark:text-accent" />
                           <span className="text-xs font-bold text-text">
                             Clone {day}&apos;s schedule ({slots.length} shift{slots.length > 1 ? "s" : ""}) to other days:
                           </span>
@@ -502,21 +502,21 @@ const ScheduleEditor = memo(function ScheduleEditor({
                         <button
                           type="button"
                           onClick={() => copyToAllActiveDays(day)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-surface border border-border hover:border-primary-500 text-text hover:text-primary-600 cursor-pointer transition-colors shadow-2xs"
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-surface border border-border hover:border-primary-500 text-text hover:text-accent cursor-pointer transition-colors shadow-2xs"
                         >
                           All Active Days
                         </button>
                         <button
                           type="button"
                           onClick={() => copyToWeekdays(day)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-surface border border-border hover:border-primary-500 text-text hover:text-primary-600 cursor-pointer transition-colors shadow-2xs"
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-surface border border-border hover:border-primary-500 text-text hover:text-accent cursor-pointer transition-colors shadow-2xs"
                         >
                           Mon – Fri (Weekdays)
                         </button>
                         <button
                           type="button"
                           onClick={() => copyToAllDays(day)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-surface border border-border hover:border-primary-500 text-text hover:text-primary-600 cursor-pointer transition-colors shadow-2xs"
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-surface border border-border hover:border-primary-500 text-text hover:text-accent cursor-pointer transition-colors shadow-2xs"
                         >
                           All 7 Days (Mon – Sun)
                         </button>
@@ -540,7 +540,7 @@ const ScheduleEditor = memo(function ScheduleEditor({
                                 className={cn(
                                   "px-2.5 py-1 rounded-md text-xs font-bold border transition-all cursor-pointer",
                                   isSelected
-                                    ? "bg-primary-600 text-white border-primary-600 shadow-2xs"
+                                    ? "bg-primary-600 text-brand-mist border-primary-600 shadow-2xs"
                                     : "bg-surface text-text-muted border-border hover:border-text-muted hover:text-text"
                                 )}
                               >
@@ -557,7 +557,7 @@ const ScheduleEditor = memo(function ScheduleEditor({
                           className={cn(
                             "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1.5",
                             selectedTargetDays.length > 0
-                              ? "bg-primary-600 hover:bg-primary-700 text-white"
+                              ? "bg-primary-600 hover:bg-primary-700 text-brand-mist"
                               : "bg-surface-alt text-text-muted border border-border cursor-not-allowed opacity-60"
                           )}
                         >

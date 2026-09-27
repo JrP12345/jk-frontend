@@ -38,11 +38,11 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
   };
 
   return (
-    <div className="relative sm:sticky sm:top-0 z-20 bg-surface/95 backdrop-blur-md border border-border/80 rounded-2xl p-3.5 sm:p-4 shadow-xs">
+    <div className="relative sm:sticky sm:top-0 z-20 bg-surface/95  border border-border/80 rounded-2xl p-3.5 sm:p-4 shadow-xs">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         {/* Patient Identity & MRN */}
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-full bg-primary-600 text-white font-bold flex items-center justify-center text-sm shadow-md shrink-0">
+          <div className="w-10 h-10 rounded-full bg-primary-600 text-brand-mist font-bold flex items-center justify-center text-sm shadow-md shrink-0">
             {patient.name ? patient.name.charAt(0).toUpperCase() : "P"}
           </div>
           <div className="min-w-0 flex-1">

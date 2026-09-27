@@ -1,36 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  Modal,
-  Button,
-  Input,
-  Select,
-  Badge,
-  useToast,
-  Spinner,
-} from "@/components/ui";
+import { Modal, Button, Input, Select, Badge, useToast } from "@/components/ui";
 import api from "@/lib/api";
-import {
-  ShieldCheck,
-  QrCode,
-  Search,
-  CheckCircle2,
-  Printer,
-  Smartphone,
-  CreditCard,
-  UserCheck,
-  ArrowRight,
-  Sparkles,
-  Zap,
-  FileCode,
-  Share2,
-  Copy,
-  Check,
-  Download,
-  Layers,
-  FileText,
-} from "lucide-react";
+import { ShieldCheck, QrCode, Search, CheckCircle2, Printer, Smartphone, CreditCard, UserCheck, Sparkles, Zap, FileCode, Share2, Copy, Check, Download, Layers } from "lucide-react";
 
 interface AbdmProfile {
   abhaNumber: string;
@@ -301,7 +274,7 @@ export function AbdmRegistrationModal({
             onClick={() => setActiveTab("generate")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === "generate"
-                ? "bg-emerald-600 text-white shadow-xs"
+                ? "bg-success text-background shadow-xs"
                 : "text-text-muted hover:text-text hover:bg-surface-alt"
             }`}
           >
@@ -313,7 +286,7 @@ export function AbdmRegistrationModal({
             onClick={() => setActiveTab("search")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === "search"
-                ? "bg-emerald-600 text-white shadow-xs"
+                ? "bg-success text-background shadow-xs"
                 : "text-text-muted hover:text-text hover:bg-surface-alt"
             }`}
           >
@@ -325,7 +298,7 @@ export function AbdmRegistrationModal({
             onClick={() => setActiveTab("standee")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === "standee"
-                ? "bg-emerald-600 text-white shadow-xs"
+                ? "bg-success text-background shadow-xs"
                 : "text-text-muted hover:text-text hover:bg-surface-alt"
             }`}
           >
@@ -337,7 +310,7 @@ export function AbdmRegistrationModal({
             onClick={() => setActiveTab("m3_fhir")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === "m3_fhir"
-                ? "bg-emerald-600 text-white shadow-xs"
+                ? "bg-success text-background shadow-xs"
                 : "text-text-muted hover:text-text hover:bg-surface-alt"
             }`}
           >
@@ -367,8 +340,8 @@ export function AbdmRegistrationModal({
               <>
                 {!txnId ? (
                   <form onSubmit={handleSendOtp} className="space-y-3.5 p-4 rounded-2xl bg-surface border border-border">
-                    <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 font-bold">
-                      <CreditCard className="w-4 h-4 text-emerald-600" />
+                    <div className="flex items-center gap-2 text-xs text-brand-mist dark:text-brand-mist font-bold">
+                      <CreditCard className="w-4 h-4 text-success-text" />
                       Step 1: Enter Aadhaar & Mobile Details for OTP Authentication
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -399,7 +372,7 @@ export function AbdmRegistrationModal({
                       <Button
                         type="submit"
                         loading={isSendingOtp}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer"
+                        className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shadow-xs cursor-pointer"
                       >
                         <Smartphone className="w-3.5 h-3.5 mr-1" />
                         Send Aadhaar OTP
@@ -409,8 +382,8 @@ export function AbdmRegistrationModal({
                 ) : (
                   <form onSubmit={handleVerifyOtp} className="space-y-3.5 p-4 rounded-2xl bg-surface border border-border">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 font-bold">
-                        <UserCheck className="w-4 h-4 text-emerald-600" />
+                      <div className="flex items-center gap-2 text-xs text-brand-mist dark:text-brand-mist font-bold">
+                        <UserCheck className="w-4 h-4 text-success-text" />
                         Step 2: Enter 6-Digit OTP & Profile Preferences
                       </div>
                       <Badge variant="success" size="sm" className="font-mono text-[9px]">
@@ -468,7 +441,7 @@ export function AbdmRegistrationModal({
                       <Button
                         type="submit"
                         loading={isVerifyingOtp}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer"
+                        className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shadow-xs cursor-pointer"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
                         Verify OTP & Issue ABHA Card
@@ -480,7 +453,7 @@ export function AbdmRegistrationModal({
             ) : (
               <div className="space-y-4">
                 {/* Official NHA Digital ABHA Card */}
-                <div className="max-w-md mx-auto p-4 rounded-2xl bg-gradient-to-br from-emerald-800 via-teal-900 to-emerald-950 text-white shadow-xl border border-emerald-500/40 relative overflow-hidden">
+                <div className="max-w-md mx-auto p-4 rounded-2xl bg-primary    text-brand-mist shadow-xl border border-success/40 relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10" />
                   <div className="flex items-center justify-between border-b border-white/20 pb-2 mb-3">
                     <div className="flex items-center gap-2">
@@ -488,11 +461,11 @@ export function AbdmRegistrationModal({
                         🇮🇳
                       </div>
                       <div>
-                        <p className="text-[9px] uppercase font-bold tracking-widest text-emerald-200">National Health Authority</p>
+                        <p className="text-[9px] uppercase font-bold tracking-widest text-brand-mist">National Health Authority</p>
                         <p className="text-[11px] font-black tracking-wide">Ayushman Bharat Digital Mission</p>
                       </div>
                     </div>
-                    <Badge variant="success" size="sm" className="bg-white/20 text-white border-0 text-[8px] font-mono">
+                    <Badge variant="success" size="sm" className="bg-white/20 text-brand-mist border-0 text-[8px] font-mono">
                       VERIFIED
                     </Badge>
                   </div>
@@ -502,20 +475,20 @@ export function AbdmRegistrationModal({
                       {generatedProfile.name[0]?.toUpperCase()}
                     </div>
                     <div className="space-y-0.5">
-                      <h4 className="font-bold text-sm tracking-wide text-white">{generatedProfile.name}</h4>
-                      <p className="text-[11px] text-emerald-200 capitalize">
+                      <h4 className="font-bold text-sm tracking-wide text-brand-mist">{generatedProfile.name}</h4>
+                      <p className="text-[11px] text-brand-mist capitalize">
                         {generatedProfile.gender} • DOB: {generatedProfile.dob}
                       </p>
-                      <p className="text-xs font-mono font-bold text-amber-300">
+                      <p className="text-xs font-mono font-bold text-brand-mist">
                         ABHA: {generatedProfile.abhaNumber}
                       </p>
-                      <p className="text-[11px] font-mono text-white/80">
+                      <p className="text-[11px] font-mono text-brand-mist/80">
                         {generatedProfile.abhaAddress}
                       </p>
                     </div>
                   </div>
 
-                  <div className="pt-2.5 mt-2 border-t border-white/20 flex items-center justify-between text-[9px] text-emerald-200">
+                  <div className="pt-2.5 mt-2 border-t border-white/20 flex items-center justify-between text-[9px] text-brand-mist">
                     <span>Ministry of Health & Family Welfare</span>
                     <span>NHA Gateway ID: verified</span>
                   </div>
@@ -540,7 +513,7 @@ export function AbdmRegistrationModal({
                     size="sm"
                     onClick={() => handleIssueTokenForProfile(generatedProfile)}
                     loading={isIssuingToken}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer"
+                    className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shadow-xs cursor-pointer"
                   >
                     <Zap className="w-3.5 h-3.5 mr-1" />
                     Issue Instant OPD Queue Token (3s)
@@ -569,7 +542,7 @@ export function AbdmRegistrationModal({
                 <Button
                   type="submit"
                   loading={isSearching}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shrink-0 cursor-pointer shadow-xs"
+                  className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shrink-0 cursor-pointer shadow-xs"
                 >
                   <Search className="w-3.5 h-3.5 mr-1" />
                   Search
@@ -578,10 +551,10 @@ export function AbdmRegistrationModal({
             </form>
 
             {searchedProfile && (
-              <div className="p-4 rounded-2xl bg-emerald-500/[0.04] border border-emerald-500/20 space-y-3">
+              <div className="p-4 rounded-2xl bg-success/[0.04] border border-success/20 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-emerald-800 dark:text-emerald-200 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span className="font-bold text-xs text-brand-mist dark:text-brand-mist flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-success-text" />
                     Verified ABHA Record Found
                   </span>
                   <Badge variant="success" size="sm" className="font-mono text-[9px]">
@@ -595,7 +568,7 @@ export function AbdmRegistrationModal({
                   </div>
                   <div>
                     <span className="text-text-muted text-[10px] block">ABHA Number</span>
-                    <strong className="text-emerald-700 dark:text-emerald-300 font-mono">{searchedProfile.abhaNumber}</strong>
+                    <strong className="text-brand-mist dark:text-brand-mist font-mono">{searchedProfile.abhaNumber}</strong>
                   </div>
                   <div>
                     <span className="text-text-muted text-[10px] block">ABHA Address</span>
@@ -607,13 +580,13 @@ export function AbdmRegistrationModal({
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-2 border-t border-emerald-500/20">
+                <div className="flex justify-end pt-2 border-t border-success/20">
                   <Button
                     type="button"
                     size="sm"
                     onClick={() => handleIssueTokenForProfile(searchedProfile)}
                     loading={isIssuingToken}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer"
+                    className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shadow-xs cursor-pointer"
                   >
                     <Zap className="w-3.5 h-3.5 mr-1" />
                     Link to Live Queue & Issue Token
@@ -634,9 +607,9 @@ export function AbdmRegistrationModal({
               </p>
             </div>
 
-            <div className="w-52 h-52 mx-auto p-3 bg-white rounded-2xl border-2 border-emerald-600 shadow-md flex flex-col items-center justify-center space-y-2">
-              <QrCode className="w-36 h-36 text-emerald-800" />
-              <span className="text-[10px] font-mono font-bold text-emerald-950 uppercase tracking-widest">
+            <div className="w-52 h-52 mx-auto p-3 bg-white rounded-2xl border-2 border-success shadow-md flex flex-col items-center justify-center space-y-2">
+              <QrCode className="w-36 h-36 text-success-text" />
+              <span className="text-[10px] font-mono font-bold text-success-text uppercase tracking-widest">
                 ABDM COUNTER-01
               </span>
             </div>
@@ -657,7 +630,7 @@ export function AbdmRegistrationModal({
                 size="sm"
                 onClick={handleSimulateScanAndShare}
                 loading={isSimulatingScan}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer"
+                className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shadow-xs cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5 mr-1" />
                 Simulate Patient Mobile Scan (3s Token Check-In)
@@ -720,7 +693,7 @@ export function AbdmRegistrationModal({
                     }
                   }}
                   loading={m3Loading}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shrink-0 cursor-pointer"
+                  className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shrink-0 cursor-pointer"
                 >
                   <Search className="w-3.5 h-3.5 mr-1" />
                   Load Care Contexts
@@ -785,7 +758,7 @@ export function AbdmRegistrationModal({
                             }}
                             className="text-[11px] rounded-xl font-semibold cursor-pointer"
                           >
-                            <FileCode className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                            <FileCode className="w-3.5 h-3.5 mr-1 text-success-text" />
                             View FHIR R4 Bundle
                           </Button>
                         </div>
@@ -829,7 +802,7 @@ export function AbdmRegistrationModal({
                       }
                     }}
                     loading={isRequestingConsent}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer"
+                    className="bg-primary hover:bg-primary text-brand-mist font-bold rounded-xl text-xs shadow-xs cursor-pointer"
                   >
                     <Share2 className="w-3.5 h-3.5 mr-1" />
                     Request External Health Records (HIU)
@@ -840,10 +813,10 @@ export function AbdmRegistrationModal({
 
             {/* FHIR R4 Bundle Preview Inspector */}
             {m3FhirBundle && (
-              <div className="p-3.5 rounded-2xl bg-surface border-2 border-emerald-500/30 space-y-2">
+              <div className="p-3.5 rounded-2xl bg-surface border-2 border-success/30 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <FileCode className="w-4 h-4 text-emerald-600" />
+                    <FileCode className="w-4 h-4 text-success-text" />
                     <span className="font-bold text-xs text-text">HL7 FHIR R4 JSON Bundle (NRCES Compliant)</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -860,7 +833,7 @@ export function AbdmRegistrationModal({
                     >
                       {m3Copied ? (
                         <>
-                          <Check className="w-3 h-3 mr-1 text-emerald-600" /> Copied!
+                          <Check className="w-3 h-3 mr-1 text-success-text" /> Copied!
                         </>
                       ) : (
                         <>
@@ -886,7 +859,7 @@ export function AbdmRegistrationModal({
                     </Button>
                   </div>
                 </div>
-                <pre className="p-3 bg-neutral-900 text-emerald-400 font-mono text-[10px] rounded-xl max-h-52 overflow-y-auto overflow-x-auto leading-relaxed">
+                <pre className="p-3 bg-surface text-success-text font-mono text-[10px] rounded-xl max-h-52 overflow-y-auto overflow-x-auto leading-relaxed">
                   {JSON.stringify(m3FhirBundle, null, 2)}
                 </pre>
               </div>
@@ -894,10 +867,10 @@ export function AbdmRegistrationModal({
 
             {/* External Records Retrieved via HIU */}
             {m3ExternalRecords && (
-              <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/30 space-y-3">
+              <div className="p-3.5 rounded-2xl bg-primary/10 border border-accent/30 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Share2 className="w-4 h-4 text-purple-600" />
+                    <Share2 className="w-4 h-4 text-accent" />
                     <span className="font-bold text-xs text-text">
                       External Health Records Received via ABDM ({m3ExternalRecords.records?.length || 0} Facilities)
                     </span>

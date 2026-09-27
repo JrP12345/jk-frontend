@@ -22,14 +22,14 @@ export interface DonutChartProps {
 }
 
 const DEFAULT_COLORS = [
-  "var(--s-chart-1, #3b82f6)",
-  "var(--s-chart-2, #10b981)",
-  "var(--s-chart-3, #f59e0b)",
-  "var(--s-chart-4, #8b5cf6)",
-  "var(--s-chart-5, #ec4899)",
-  "#06b6d4",
-  "#f97316",
-  "#14b8a6",
+  "var(--s-chart-1)",
+  "var(--s-chart-2)",
+  "var(--s-chart-3)",
+  "var(--s-chart-4)",
+  "var(--s-chart-5)",
+  "var(--chart-6)",
+  "var(--chart-7)",
+  "var(--chart-8)",
 ];
 
 export const DonutChart = memo(function DonutChart({
@@ -106,7 +106,7 @@ export const DonutChart = memo(function DonutChart({
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="var(--color-surface-alt, #1e293b)"
+            stroke="var(--s-surface-alt)"
             strokeWidth={strokeWidth}
             className="opacity-40"
           />
@@ -184,7 +184,7 @@ export const DonutChart = memo(function DonutChart({
                   "flex items-center justify-between px-2.5 py-1.5 rounded-xl border transition-all duration-200 cursor-pointer text-xs",
                   isHovered
                     ? "bg-surface border-border shadow-xs scale-[1.02] translate-x-1"
-                    : "border-transparent hover:bg-surface-alt/70"
+                    : "border-transparent hover:bg-surface-alt"
                 )}
               >
                 <div className="flex items-center gap-2 min-w-0">

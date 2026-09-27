@@ -4,24 +4,9 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Table,
-  Button,
-  Modal,
-  Input,
-  Select,
-  Textarea,
-  useToast,
-  Badge,
-  StatCard,
-  cn,
-} from "@/components/ui";
+import { Card, Table, Button, Modal, Input, Select, Textarea, useToast, Badge, StatCard, cn } from "@/components/ui";
 import { DICOMViewerModal, ImagingStudyItem } from "@/components/clinical/DicomViewerModal";
-import { RotateCw, Scan, Clock, CheckCircle2, Activity, Eye, FileText, Upload, Plus } from "lucide-react";
+import { RotateCw, Scan, Clock, CheckCircle2, Activity, Plus } from "lucide-react";
 
 interface PatientUser {
   name: string;
@@ -212,7 +197,7 @@ export default function RadiologyPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -438,7 +423,7 @@ export default function RadiologyPage() {
                       setRadiologyReportText(study.radiologyReport || "");
                       setIsReportModalOpen(true);
                     }}
-                    className="font-bold text-[11px] text-emerald-600 hover:bg-emerald-50 rounded-lg min-h-[36px]"
+                    className="font-bold text-[11px] text-success-text hover:bg-success-subtle rounded-lg min-h-[36px]"
                     title="Draft / Sign Radiology Report"
                   >
                     📝 Report
@@ -473,7 +458,7 @@ export default function RadiologyPage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-600 font-bold text-sm shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-accent font-bold text-sm shrink-0">
                       {study.modality}
                     </div>
                     <div className="min-w-0">
@@ -481,7 +466,7 @@ export default function RadiologyPage() {
                       {patientPhone && (
                         <a
                           href={`tel:${patientPhone}`}
-                          className="text-xs text-text-muted hover:text-primary-600 transition-colors flex items-center gap-1"
+                          className="text-xs text-text-muted hover:text-accent transition-colors flex items-center gap-1"
                         >
                           <span>📞</span> {patientPhone}
                         </a>
@@ -524,7 +509,7 @@ export default function RadiologyPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => setActiveViewerStudy(study)}
-                    className="w-full font-bold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5 hover:border-primary-500 hover:text-primary-600"
+                    className="w-full font-bold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5 hover:border-primary-500 hover:text-accent"
                   >
                     <span>🖼️</span> View DICOM
                   </Button>
@@ -536,7 +521,7 @@ export default function RadiologyPage() {
                       setRadiologyReportText(study.radiologyReport || "");
                       setIsReportModalOpen(true);
                     }}
-                    className="w-full font-bold text-xs min-h-[42px] rounded-xl text-emerald-600 hover:bg-emerald-500/10 border-emerald-500/30 flex items-center justify-center gap-1.5"
+                    className="w-full font-bold text-xs min-h-[42px] rounded-xl text-success-text hover:bg-success/10 border-success/30 flex items-center justify-center gap-1.5"
                   >
                     <span>📝</span> Report
                   </Button>

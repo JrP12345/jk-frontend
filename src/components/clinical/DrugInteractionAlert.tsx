@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { AlertTriangle, AlertCircle, ShieldAlert, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
-import { Badge, Button, cn } from "@/components/ui";
+import { Badge, cn } from "@/components/ui";
 
 export interface DrugInteractionWarning {
   id: string;
@@ -174,9 +174,9 @@ export function DrugInteractionAlert({ prescriptions, onOverrideChange }: DrugIn
         "rounded-2xl border-2 p-3.5 transition-all text-xs space-y-3",
         hasCritical
           ? acknowledged
-            ? "bg-rose-500/[0.04] border-rose-500/30 text-rose-950 dark:text-rose-100"
-            : "bg-rose-500/10 border-rose-500/60 shadow-md ring-2 ring-rose-500/20 text-rose-950 dark:text-rose-100 animate-pulse-subtle"
-          : "bg-amber-500/10 border-amber-500/40 text-amber-950 dark:text-amber-100"
+            ? "bg-danger/[0.04] border-danger/30 text-danger-text dark:text-danger-text"
+            : "bg-danger/10 border-danger/60 shadow-md ring-2 ring-danger/20 text-danger-text dark:text-danger-text animate-pulse-subtle"
+          : "bg-warning/10 border-warning/40 text-warning-text dark:text-warning-text"
       )}
     >
       {/* Header Strip */}
@@ -184,8 +184,8 @@ export function DrugInteractionAlert({ prescriptions, onOverrideChange }: DrugIn
         <div className="flex items-center gap-2.5">
           <div
             className={cn(
-              "w-7 h-7 rounded-xl flex items-center justify-center shrink-0 shadow-xs font-bold text-white",
-              hasCritical ? "bg-rose-600" : "bg-amber-500"
+              "w-7 h-7 rounded-xl flex items-center justify-center shrink-0 shadow-xs font-bold text-brand-mist",
+              hasCritical ? "bg-danger" : "bg-warning"
             )}
           >
             {hasCritical ? <ShieldAlert className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
@@ -222,11 +222,11 @@ export function DrugInteractionAlert({ prescriptions, onOverrideChange }: DrugIn
               key={w.id}
               className={cn(
                 "p-2.5 rounded-xl border space-y-1 bg-surface/90 text-text",
-                w.severity === "critical" ? "border-rose-500/30" : "border-amber-500/30"
+                w.severity === "critical" ? "border-danger/30" : "border-warning/30"
               )}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="font-bold text-xs flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
+                <span className="font-bold text-xs flex items-center gap-1.5 text-danger-text dark:text-danger-text">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   {w.title}
                 </span>
@@ -249,7 +249,7 @@ export function DrugInteractionAlert({ prescriptions, onOverrideChange }: DrugIn
                 type="checkbox"
                 checked={acknowledged}
                 onChange={handleToggleAcknowledge}
-                className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-border"
+                className="w-4 h-4 rounded text-accent focus:ring-focus-ring border-border"
               />
               <span className="font-bold text-xs">
                 I have reviewed these pharmacological interactions and acknowledge clinical responsibility

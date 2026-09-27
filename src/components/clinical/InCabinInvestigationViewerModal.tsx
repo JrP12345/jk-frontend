@@ -3,23 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { Modal, Button, Badge, Spinner, cn } from "@/components/ui";
-import {
-  FlaskConical,
-  TrendingDown,
-  TrendingUp,
-  FileText,
-  Download,
-  ExternalLink,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Copy,
-  Check,
-  Calendar,
-  User,
-  Minus,
-  Volume2,
-} from "lucide-react";
+import { FlaskConical, TrendingDown, TrendingUp, FileText, ExternalLink, AlertTriangle, CheckCircle2, Clock, Copy, Check, Minus, Volume2 } from "lucide-react";
 import { useToast } from "@/components/ui";
 
 export interface InvestigationResultItem {
@@ -199,7 +183,7 @@ export function InCabinInvestigationViewerModal({
           </div>
         ) : testNames.length === 0 ? (
           <div className="py-12 text-center text-text-muted space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-purple-500">
+            <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-accent">
               <FlaskConical className="w-6 h-6" />
             </div>
             <p className="font-bold text-sm text-text">No Diagnostic Results Found</p>
@@ -226,18 +210,18 @@ export function InCabinInvestigationViewerModal({
                       className={cn(
                         "w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-1",
                         isSelected
-                          ? "bg-purple-500/15 border-purple-500/50 shadow-xs"
+                          ? "bg-primary/15 border-accent/50 shadow-xs"
                           : "bg-surface-alt hover:bg-surface border-border/80 text-text-secondary"
                       )}
                     >
                       <div className="flex items-center justify-between gap-1">
                         <span className="font-bold text-xs truncate text-text">{name}</span>
                         {isAbnormal ? (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-700 dark:text-rose-400 shrink-0">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-danger/20 text-danger-text dark:text-danger-text shrink-0">
                             Abnormal
                           </span>
                         ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 shrink-0">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-success/15 text-success-text dark:text-success-text shrink-0">
                             Normal
                           </span>
                         )}
@@ -251,9 +235,9 @@ export function InCabinInvestigationViewerModal({
                             className={cn(
                               "text-[10px] font-semibold inline-flex items-center gap-0.5",
                               item.trend === "improved"
-                                ? "text-emerald-600 dark:text-emerald-400"
+                                ? "text-success-text dark:text-success-text"
                                 : item.trend === "worsened"
-                                ? "text-rose-600 dark:text-rose-400"
+                                ? "text-danger-text dark:text-danger-text"
                                 : "text-text-muted"
                             )}
                           >
@@ -283,8 +267,8 @@ export function InCabinInvestigationViewerModal({
                     latestReading.notes?.toLowerCase().includes("panic") ||
                     latestReading.value?.toLowerCase().includes("critical") ||
                     (latestReading.isAbnormal && (activeTest.testName.toLowerCase().includes("troponin") || Number(latestReading.value) > 400))) && (
-                    <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2 animate-pulse shadow-xs">
-                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <div className="p-3 rounded-xl bg-danger/15 border border-danger/40 text-danger-text dark:text-danger-text text-xs font-semibold flex items-center gap-2 animate-pulse shadow-xs">
+                      <AlertTriangle className="w-4 h-4 text-danger-text shrink-0" />
                       <span>
                         🚨 <strong>CRITICAL PANIC VALUE ALERT:</strong> Immediate Clinical Review & Cabin Recall Advised ({latestReading.notes || latestReading.value})
                       </span>
@@ -334,17 +318,17 @@ export function InCabinInvestigationViewerModal({
 
                   {/* Official Attached PDF / Scan Report Preview */}
                   {latestReading.attachmentUrl && (
-                    <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/25 space-y-2">
+                    <div className="p-3 rounded-2xl bg-primary/10 border border-accent/25 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
-                          <FileText className="w-4 h-4 text-purple-600" />
+                        <span className="font-bold text-xs text-accent dark:text-accent flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-accent" />
                           Diagnostic Lab Report Document Attached
                         </span>
                         <a
                           href={latestReading.attachmentUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-2.5 py-1 rounded-xl bg-purple-600 text-white font-bold text-[11px] hover:bg-purple-700 transition-colors inline-flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-xl bg-primary text-brand-mist font-bold text-[11px] hover:bg-primary transition-colors inline-flex items-center gap-1"
                         >
                           <ExternalLink className="w-3 h-3" />
                           Open Full Report
@@ -360,7 +344,7 @@ export function InCabinInvestigationViewerModal({
                           />
                         </div>
                       ) : (
-                        <p className="text-[11px] text-purple-800 dark:text-purple-300">
+                        <p className="text-[11px] text-accent dark:text-accent">
                           Official PDF document uploaded by lab. Click above to view or download full diagnostic sheet.
                         </p>
                       )}
@@ -371,7 +355,7 @@ export function InCabinInvestigationViewerModal({
                   <div className="space-y-2 pt-2 border-t border-border/60">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
-                        <Clock className="w-4 h-4 text-primary-500" />
+                        <Clock className="w-4 h-4 text-accent" />
                         <h5 className="font-bold text-xs text-text">Historical Parameter Comparison</h5>
                         <Badge variant="neutral" size="sm" className="font-mono text-[10px]">
                           {historyList.length} reading{historyList.length !== 1 ? "s" : ""}
@@ -385,9 +369,9 @@ export function InCabinInvestigationViewerModal({
                             className={cn(
                               "font-mono px-1.5 py-0.5 rounded",
                               activeTest.trend === "improved"
-                                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                                ? "bg-success/15 text-success-text dark:text-success-text"
                                 : activeTest.trend === "worsened"
-                                ? "bg-rose-500/15 text-rose-700 dark:text-rose-400"
+                                ? "bg-danger/15 text-danger-text dark:text-danger-text"
                                 : "bg-surface-alt text-text"
                             )}
                           >
@@ -417,12 +401,12 @@ export function InCabinInvestigationViewerModal({
                                 key={idx}
                                 className={cn(
                                   "hover:bg-surface-hover/50 transition-colors",
-                                  isLatest && "bg-purple-500/5 font-medium"
+                                  isLatest && "bg-primary/5 font-medium"
                                 )}
                               >
                                 <td className="py-2 px-3 text-text font-mono text-[11px]">
                                   {item.date ? new Date(item.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Recent"}
-                                  {isLatest && <span className="ml-1.5 text-[9px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold uppercase">Latest</span>}
+                                  {isLatest && <span className="ml-1.5 text-[9px] px-1 py-0.2 rounded bg-primary/20 text-accent dark:text-accent font-bold uppercase">Latest</span>}
                                 </td>
                                 <td className="py-2 px-3 font-mono font-bold text-text">
                                   {item.value} {item.unit || ""}
@@ -432,11 +416,11 @@ export function InCabinInvestigationViewerModal({
                                 </td>
                                 <td className="py-2 px-3">
                                   {item.isAbnormal ? (
-                                    <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded">
+                                    <span className="text-[10px] font-bold text-danger-text dark:text-danger-text bg-danger/10 px-1.5 py-0.5 rounded">
                                       Abnormal
                                     </span>
                                   ) : (
-                                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                    <span className="text-[10px] font-semibold text-success-text dark:text-success-text bg-success/10 px-1.5 py-0.5 rounded">
                                       Normal
                                     </span>
                                   )}
@@ -447,7 +431,7 @@ export function InCabinInvestigationViewerModal({
                                       href={item.attachmentUrl}
                                       target="_blank"
                                       rel="noreferrer"
-                                      className="text-primary-600 hover:text-primary-700 text-[11px] font-medium inline-flex items-center gap-1"
+                                      className="text-accent hover:text-accent text-[11px] font-medium inline-flex items-center gap-1"
                                     >
                                       <FileText className="w-3 h-3" /> View
                                     </a>
@@ -476,16 +460,16 @@ export function InCabinInvestigationViewerModal({
             size="sm"
             onClick={handleCopySummary}
             disabled={!activeTest}
-            className="font-bold text-xs rounded-xl border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-500/10 cursor-pointer"
+            className="font-bold text-xs rounded-xl border-accent/30 text-accent dark:text-accent hover:bg-primary/10 cursor-pointer"
           >
             {copied ? (
               <>
-                <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+                <Check className="w-3.5 h-3.5 mr-1.5 text-success-text" />
                 Copied / Inserted into Note!
               </>
             ) : (
               <>
-                <Copy className="w-3.5 h-3.5 mr-1.5 text-purple-600" />
+                <Copy className="w-3.5 h-3.5 mr-1.5 text-accent" />
                 1-Click Insert into Visit Note
               </>
             )}
@@ -499,7 +483,7 @@ export function InCabinInvestigationViewerModal({
                 size="sm"
                 onClick={handleRecallToCabin}
                 loading={recalling}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                className="bg-success hover:bg-success text-background font-bold text-xs rounded-xl shadow-xs cursor-pointer"
               >
                 <Volume2 className="w-3.5 h-3.5 mr-1.5" />
                 Recall Patient to Cabin (Chime)

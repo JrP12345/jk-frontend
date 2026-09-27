@@ -116,7 +116,7 @@ export function PatientSearchModal({ isOpen, onClose, patientId }: PatientSearch
             placeholder="Search notes, medications, lab orders, or diagnoses..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full px-4 py-2.5 bg-surface-alt/70 border border-border/80 rounded-xl text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 text-text shadow-2xs transition-all"
+            className="w-full px-4 py-2.5 bg-surface-alt/70 border border-border/80 rounded-xl text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring text-text shadow-2xs transition-all"
             autoFocus
           />
           {loading && (
@@ -135,7 +135,7 @@ export function PatientSearchModal({ isOpen, onClose, patientId }: PatientSearch
               onClick={() => setCategory(cat)}
               className={`px-3 py-1 rounded-xl capitalize font-semibold transition-all cursor-pointer shadow-2xs ${
                 category === cat
-                  ? "bg-primary-600 text-white shadow-xs border border-primary-500"
+                  ? "bg-primary-600 text-brand-mist shadow-xs border border-primary-500"
                   : "bg-surface-alt/70 text-text-secondary border border-border/70 hover:bg-surface-hover hover:text-text"
               }`}
             >
@@ -152,9 +152,9 @@ export function PatientSearchModal({ isOpen, onClose, patientId }: PatientSearch
                 type="button"
                 key={item.id}
                 onClick={() => handleSelectResult(item)}
-                className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
                   selectedIndex === idx
-                    ? "bg-primary-50 dark:bg-primary-900/20 border-primary-500 shadow-sm"
+                    ? "bg-accent-subtle dark:bg-primary-900/20 border-primary-500 shadow-sm"
                     : "bg-surface border-border hover:bg-surface-hover"
                 }`}
               >

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { Card, CardContent, Badge, Button, Spinner, Skeleton } from "@/components/ui";
+import { Card, CardContent, Badge, Button, Skeleton } from "@/components/ui";
 
 interface PatientQueueTrackerProps {
   appointmentId: string;
@@ -84,7 +84,7 @@ export function PatientQueueTracker({ appointmentId, clinicId, doctorId }: Patie
     <Card className="border-l-4 border-l-primary-500 bg-surface border border-border/80 shadow-xs rounded-2xl overflow-hidden">
       <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs font-sans">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-primary-600 text-white flex flex-col items-center justify-center font-extrabold shadow-md shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-primary-600 text-brand-mist flex flex-col items-center justify-center font-extrabold shadow-md shrink-0">
             <span className="text-[9px] opacity-80 uppercase tracking-widest font-semibold">My Token</span>
             <span className="text-xl leading-5 mt-0.5">#{queueInfo.myToken}</span>
           </div>
@@ -98,7 +98,7 @@ export function PatientQueueTracker({ appointmentId, clinicId, doctorId }: Patie
             </div>
             <p className="text-text-secondary text-xs">
               Currently in consultation:{" "}
-              <span className="font-bold text-primary-500">
+              <span className="font-bold text-accent">
                 {queueInfo.currentInConsultationToken ? `Token #${queueInfo.currentInConsultationToken}` : "Doctor Desk Ready"}
               </span>
             </p>
@@ -113,7 +113,7 @@ export function PatientQueueTracker({ appointmentId, clinicId, doctorId }: Patie
 
           <div className="text-center md:text-right">
             <span className="text-text-muted block font-medium">Estimated Wait</span>
-            <span className="font-bold text-amber-600 text-sm">{queueInfo.estimatedWaitTime} mins</span>
+            <span className="font-bold text-warning-text text-sm">{queueInfo.estimatedWaitTime} mins</span>
           </div>
 
           {(queueInfo.myStatus === "pending" || queueInfo.myStatus === "confirmed") && (

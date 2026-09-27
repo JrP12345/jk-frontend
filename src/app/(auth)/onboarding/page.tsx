@@ -4,24 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-  Input,
-  Button,
-  useToast,
-  Stepper,
-  ModeSwitcher,
-  AnantaLogo,
-  Badge,
-  Spinner,
-  Checkbox,
-  cn
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, useToast, Stepper, ModeSwitcher, EkavyuLogo, Badge, Spinner, Checkbox, cn } from "@/components/ui";
 import { Eye, EyeOff, RefreshCw, ArrowLeft } from "lucide-react";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -339,8 +322,7 @@ function OnboardingInner() {
     <div className="min-h-screen flex items-center justify-center p-3 sm:p-4 py-8 sm:py-12 bg-surface-alt relative font-sans animate-page-enter">
       {/* Background Glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-15%] left-[-15%] w-[50%] h-[50%] bg-primary-500/15 rounded-full blur-[140px] animate-pulse duration-[8s]" />
-        <div className="absolute bottom-[-15%] right-[-15%] w-[50%] h-[50%] bg-blue-500/15 rounded-full blur-[140px] animate-pulse duration-[6s] delay-1000" />
+        <div className="absolute inset-0 brand-wash" />
       </div>
 
       <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 sm:right-6 z-20">
@@ -350,7 +332,7 @@ function OnboardingInner() {
       <div className="w-full max-w-xl relative z-10 animate-fade-up">
         {/* Brand Header */}
         <div className="text-center mb-6 select-none flex flex-col items-center justify-center">
-          <AnantaLogo size="md" className="mb-2" />
+          <EkavyuLogo size="md" className="mb-2" />
           <h1 className="text-xl font-bold text-text tracking-tight">Set Up Your Practice</h1>
           <p className="text-text-secondary text-xs mt-0.5">Get your workspace ready in under 2 minutes</p>
         </div>
@@ -358,14 +340,14 @@ function OnboardingInner() {
         {/* Wizard Card Container */}
         <Card 
           className={cn(
-            "shadow-xl shadow-black/5 border-border/50 backdrop-blur-md bg-surface/90 transition-transform duration-300", 
+            "shadow-xl  border-border/50  bg-surface/90 transition-transform duration-300", 
             isShaking && "animate-shake"
           )}
         >
           {/* Header & Stepper */}
           <CardHeader className="border-b border-border bg-surface-alt/50 pb-4">
             <div className="flex items-center justify-between mb-3 text-xs">
-              <span className="font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
+              <span className="font-bold text-accent dark:text-accent uppercase tracking-wider">
                 Step {step + 1} of {STEPS.length} — {STEPS[step].label}
               </span>
               <span className="text-text-muted font-medium">
@@ -395,7 +377,7 @@ function OnboardingInner() {
 
                 {/* Section A: Practice Details */}
                 <div className="space-y-3">
-                  <h3 className="text-xs font-bold text-text uppercase tracking-wider text-primary-600 dark:text-primary-400">
+                  <h3 className="text-xs font-bold text-text uppercase tracking-wider text-accent dark:text-accent">
                     Practice Details
                   </h3>
                   <Input
@@ -450,13 +432,13 @@ function OnboardingInner() {
                 {/* Section B: Administrator Credentials (Always Visible) */}
                 <div className="space-y-3 pt-3 border-t border-border">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-text uppercase tracking-wider text-primary-600 dark:text-primary-400">
+                    <h3 className="text-xs font-bold text-text uppercase tracking-wider text-accent dark:text-accent">
                       Your Admin Account
                     </h3>
                   </div>
 
                   {user && (
-                    <div className="p-2.5 rounded-xl bg-primary-500/10 border border-primary-500/20 text-xs text-primary-700 dark:text-primary-300 flex items-center gap-2">
+                    <div className="p-2.5 rounded-xl bg-primary-500/10 border border-primary-500/20 text-xs text-accent dark:text-accent flex items-center gap-2">
                       <span className="text-sm">ℹ️</span>
                       <span>
                         Signed in as <strong>{user.name || user.email}</strong>. Define the administrator credentials for this new practice.
@@ -540,7 +522,7 @@ function OnboardingInner() {
                   {/* Multi-location: First Location Name */}
                   {isMultiLocation && (
                     <div className="mt-3 space-y-3 animate-fade-in pl-1">
-                      <h3 className="text-xs font-bold text-text uppercase tracking-wider text-primary-600 dark:text-primary-400">
+                      <h3 className="text-xs font-bold text-text uppercase tracking-wider text-accent dark:text-accent">
                         First Location
                       </h3>
                       <Input
@@ -589,7 +571,7 @@ function OnboardingInner() {
                     {totpSecret && (
                       <div className="space-y-1">
                         <p className="text-[11px] text-text-muted">Secret Key (Manual Entry):</p>
-                        <code className="text-xs bg-surface-hover px-3 py-1 rounded-lg font-mono text-primary-600 dark:text-primary-400 select-all font-bold">
+                        <code className="text-xs bg-surface-hover px-3 py-1 rounded-lg font-mono text-accent dark:text-accent select-all font-bold">
                           {totpSecret}
                         </code>
                       </div>
@@ -602,7 +584,7 @@ function OnboardingInner() {
                         size="xs"
                         onClick={fetchTOTPSetup}
                         loading={isGeneratingQR}
-                        className="text-xs text-primary-600 dark:text-primary-400 gap-1"
+                        className="text-xs text-accent dark:text-accent gap-1"
                       >
                         <RefreshCw className={cn("w-3 h-3", isGeneratingQR && "animate-spin")} />
                         Regenerate QR Code
@@ -618,7 +600,7 @@ function OnboardingInner() {
                         variant="ghost"
                         size="xs"
                         onClick={fetchTOTPSetup}
-                        className="text-xs text-primary-600 dark:text-primary-400 gap-1"
+                        className="text-xs text-accent dark:text-accent gap-1"
                       >
                         <RefreshCw className="w-3 h-3" />
                         Retry QR Generation
@@ -646,7 +628,7 @@ function OnboardingInner() {
             {/* ── STEP 2: Success & Next Steps ───────────────────────────── */}
             {step === 2 && (
               <div className="space-y-6 animate-fade-in text-center py-2">
-                <div className="w-16 h-16 rounded-full bg-success-500/15 text-success-500 flex items-center justify-center text-3xl mx-auto animate-bounce">
+                <div className="w-16 h-16 rounded-full bg-success-500/15 text-success-text flex items-center justify-center text-3xl mx-auto animate-bounce">
                   ✓
                 </div>
 
@@ -669,7 +651,7 @@ function OnboardingInner() {
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-text-muted">Account Security:</span>
-                    <span className="font-bold text-success-600 dark:text-success-400">2FA Verified ✓</span>
+                    <span className="font-bold text-success-text dark:text-success-text">2FA Verified ✓</span>
                   </div>
                 </div>
 
@@ -680,15 +662,15 @@ function OnboardingInner() {
                   </p>
                   <ul className="space-y-1.5 text-xs text-text-secondary">
                     <li className="flex items-center gap-2">
-                      <span className="text-primary-500">•</span>
+                      <span className="text-accent">•</span>
                       <span>Add your team — doctors, nurses, receptionists</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <span className="text-primary-500">•</span>
+                      <span className="text-accent">•</span>
                       <span>Set up your consultation schedule & availability</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <span className="text-primary-500">•</span>
+                      <span className="text-accent">•</span>
                       <span>Start booking your first appointments</span>
                     </li>
                   </ul>

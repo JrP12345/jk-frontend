@@ -4,20 +4,8 @@ import React, { useState, useEffect } from "react";
 import QRCode from "qrcode";
 import api from "@/lib/api";
 import Modal from "@/components/ui/Modal";
-import { Button, Badge, useToast, cn } from "@/components/ui";
-import {
-  QrCode,
-  CheckCircle2,
-  Copy,
-  Receipt,
-  Smartphone,
-  Banknote,
-  CreditCard,
-  Building2,
-  ShieldCheck,
-  AlertCircle,
-  ExternalLink,
-} from "lucide-react";
+import { Button, Badge, useToast } from "@/components/ui";
+import { QrCode, CheckCircle2, Copy, Receipt, Smartphone, Banknote, CreditCard, ShieldCheck } from "lucide-react";
 
 export interface UpiPaymentModalProps {
   open: boolean;
@@ -44,7 +32,7 @@ export default function UpiPaymentModal({
   patientName,
   tokenNumber,
   doctorName,
-  clinicName = "Ananta Health Clinic",
+  clinicName = "Ekavyu Health Clinic",
   upiVpa,
   merchantName,
   amount,
@@ -60,7 +48,7 @@ export default function UpiPaymentModal({
 
   // Dynamic NPCI UPI VPA & Merchant Name
   const vpa = upiVpa?.trim() || "ananta.health@icici";
-  const businessName = merchantName?.trim() || clinicName || "Ananta Health Clinic";
+  const businessName = merchantName?.trim() || clinicName || "Ekavyu Health Clinic";
   const note = `Token #${tokenNumber || "OPD"} ${patientName} Consultation`;
   const upiPayload = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(
     businessName
@@ -78,7 +66,7 @@ export default function UpiPaymentModal({
       width: 280,
       margin: 2,
       color: {
-        dark: "#0f172a",
+        dark: "#0E2A28",
         light: "#ffffff",
       },
     })
@@ -174,16 +162,16 @@ export default function UpiPaymentModal({
     >
       <div className="space-y-6">
         {paidSuccess ? (
-          <div className="p-8 text-center bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 animate-fade-in space-y-4">
-            <CheckCircle2 className="w-16 h-16 text-emerald-600 dark:text-emerald-400 mx-auto" />
+          <div className="p-8 text-center bg-success-subtle dark:bg-success/40 rounded-2xl border border-success dark:border-success animate-fade-in space-y-4">
+            <CheckCircle2 className="w-16 h-16 text-success-text dark:text-success-text mx-auto" />
             <div>
-              <h3 className="text-xl font-bold text-emerald-900 dark:text-emerald-100">
+              <h3 className="text-xl font-bold text-success-text dark:text-success-text">
                 Payment Confirmed & Settled!
               </h3>
-              <p className="text-sm text-emerald-700 dark:text-emerald-300 mt-1">
+              <p className="text-sm text-success-text dark:text-success-text mt-1">
                 ₹{amount.toFixed(2)} collected via UPI &bull; Token #{tokenNumber} ({patientName}).
               </p>
-              <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full bg-emerald-600 text-white text-xs font-semibold shadow-xs">
+              <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full bg-success text-background text-xs font-semibold shadow-xs">
                 <span>📢</span> Soundbox Voice Verified
               </div>
             </div>
@@ -196,7 +184,7 @@ export default function UpiPaymentModal({
                   rel="noopener noreferrer"
                   className="px-4 py-2 text-xs font-bold rounded-xl bg-surface border border-border text-foreground hover:bg-surface-hover transition-colors inline-flex items-center gap-1.5 shadow-xs"
                 >
-                  <Receipt className="w-4 h-4 text-primary" />
+                  <Receipt className="w-4 h-4 text-accent" />
                   Print Receipt Slip
                 </a>
               )}
@@ -208,16 +196,16 @@ export default function UpiPaymentModal({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             {/* Left: Dynamic BharatPe / NPCI UPI QR */}
-            <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-border">
+            <div className="flex flex-col items-center justify-center p-6 bg-surface dark:bg-surface/60 rounded-2xl border border-border">
               <div className="flex items-center gap-2 mb-3">
-                <QrCode className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <QrCode className="w-5 h-5 text-accent dark:text-accent" />
                 <span className="font-semibold text-sm text-foreground">
                   Scan to Pay (Instant UPI)
                 </span>
               </div>
 
               {qrDataUrl ? (
-                <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+                <div className="p-3 bg-white rounded-xl shadow-sm border border-border dark:border-border">
                   <img
                     src={qrDataUrl}
                     alt="UPI Payment QR Code"
@@ -225,17 +213,17 @@ export default function UpiPaymentModal({
                   />
                 </div>
               ) : (
-                <div className="w-52 h-52 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-xl text-xs text-muted">
+                <div className="w-52 h-52 flex items-center justify-center bg-surface-alt dark:bg-surface-alt rounded-xl text-xs text-muted">
                   Generating UPI QR...
                 </div>
               )}
 
               <div className="mt-2 text-[11px] font-mono font-semibold text-text-muted text-center truncate max-w-full px-2">
-                VPA: <strong className="text-primary">{vpa}</strong>
+                VPA: <strong className="text-accent">{vpa}</strong>
               </div>
 
               <div className="mt-2 flex items-center gap-1.5 text-xs text-muted">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <ShieldCheck className="w-3.5 h-3.5 text-success-text shrink-0" />
                 <span>Supports GPay, PhonePe, Paytm, BHIM</span>
               </div>
 
@@ -244,7 +232,7 @@ export default function UpiPaymentModal({
                 href={upiPayload}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 w-full py-2 px-3 text-xs font-bold text-center rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs inline-flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="mt-3 w-full py-2 px-3 text-xs font-bold text-center rounded-xl bg-primary hover:bg-primary text-brand-mist shadow-xs inline-flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
                 <Smartphone className="w-3.5 h-3.5" />
                 Pay via UPI App (GPay / PhonePe)
@@ -253,7 +241,7 @@ export default function UpiPaymentModal({
               <Button
                 variant="ghost"
                 size="sm"
-                className="mt-1.5 text-xs text-indigo-600 dark:text-indigo-400"
+                className="mt-1.5 text-xs text-accent dark:text-accent"
                 onClick={copyUpiLink}
               >
                 <Copy className="w-3 h-3 mr-1" />
@@ -304,7 +292,7 @@ export default function UpiPaymentModal({
                   <span className="text-sm font-semibold text-foreground">
                     Total Amount Due:
                   </span>
-                  <span className="text-2xl font-black text-primary font-mono">
+                  <span className="text-2xl font-black text-accent font-mono">
                     ₹{amount.toFixed(2)}
                   </span>
                 </div>
@@ -317,7 +305,7 @@ export default function UpiPaymentModal({
 
                 <Button
                   variant="primary"
-                  className="w-full justify-between h-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm font-bold"
+                  className="w-full justify-between h-11 bg-primary hover:bg-primary text-brand-mist shadow-sm font-bold"
                   onClick={() => handleRecordPayment("upi")}
                   disabled={submitting}
                 >
@@ -325,19 +313,19 @@ export default function UpiPaymentModal({
                     <Smartphone className="w-4 h-4" />
                     Verified Patient UPI Transfer
                   </span>
-                  <Badge variant="info" className="bg-white/20 text-white border-0 font-mono">
+                  <Badge variant="info" className="bg-white/20 text-brand-mist border-0 font-mono">
                     ₹{amount.toFixed(0)}
                   </Badge>
                 </Button>
 
                 <Button
                   variant="outline"
-                  className="w-full justify-between h-11 border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 font-bold"
+                  className="w-full justify-between h-11 border-success/40 hover:bg-success-subtle dark:hover:bg-success/30 text-success-text dark:text-success-text font-bold"
                   onClick={() => handleRecordPayment("cash")}
                   disabled={submitting}
                 >
                   <span className="flex items-center gap-2">
-                    <Banknote className="w-4 h-4 text-emerald-600" />
+                    <Banknote className="w-4 h-4 text-success-text" />
                     Received Cash at Counter
                   </span>
                   <span className="text-xs font-bold font-mono">₹{amount.toFixed(0)}</span>
@@ -350,7 +338,7 @@ export default function UpiPaymentModal({
                   disabled={submitting}
                 >
                   <span className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4 text-primary" />
+                    <CreditCard className="w-4 h-4 text-accent" />
                     Swiped Card / POS Machine
                   </span>
                   <span className="text-xs text-muted">Visa/Mastercard</span>

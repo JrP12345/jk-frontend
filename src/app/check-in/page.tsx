@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Button, Input, Card, CardHeader, CardTitle, CardContent, Badge, useToast, ModeSwitcher, cn } from "@/components/ui";
+import { Button, Input, Card, CardContent, useToast, ModeSwitcher, cn } from "@/components/ui";
 import api from "@/lib/api";
-import { Printer, Phone, Hash, CheckCircle2, AlertCircle, ArrowRight, RotateCw, Stethoscope, Clock } from "lucide-react";
+import { Printer, Phone, Hash, CheckCircle2, ArrowRight, Stethoscope, Clock } from "lucide-react";
 
 export default function PublicSelfCheckInKiosk() {
   const { toast } = useToast();
@@ -156,7 +156,7 @@ export default function PublicSelfCheckInKiosk() {
         </head>
         <body>
           <div class="slip">
-            <h2 class="title">HEALTHOS CLINIC RECEPTION</h2>
+            <h2 class="title">Ekavyu CLINIC RECEPTION</h2>
             <p class="subtitle">Outpatient Self Check-In Kiosk</p>
             <div class="divider"></div>
             <div class="token-box">
@@ -186,7 +186,7 @@ export default function PublicSelfCheckInKiosk() {
         <div className="flex items-center justify-between">
           <Link
             href="/browse"
-            className="text-xs font-semibold text-text-secondary hover:text-text flex items-center gap-1.5 bg-surface/80 backdrop-blur-md px-3.5 py-2 sm:py-1.5 rounded-full border border-border/70 transition-all hover:border-border min-h-[44px] sm:min-h-0"
+            className="text-xs font-semibold text-text-secondary hover:text-text flex items-center gap-1.5 bg-surface/80  px-3.5 py-2 sm:py-1.5 rounded-full border border-border/70 transition-all hover:border-border min-h-[44px] sm:min-h-0"
           >
             ← Browse Clinics
           </Link>
@@ -195,16 +195,16 @@ export default function PublicSelfCheckInKiosk() {
 
         {/* Kiosk Branding Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-500/10 border border-primary-500/20 text-xs font-bold text-primary-600 dark:text-primary-400">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-500/10 border border-primary-500/20 text-xs font-bold text-accent dark:text-accent">
             🏥 Staff Reception Kiosk • Authenticated Check-In
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-text tracking-tight">ANANT Health Desk</h1>
+          <h1 className="text-3xl sm:text-4xl font-black text-text tracking-tight">Ekavyu Health Desk</h1>
           <p className="text-xs sm:text-sm text-text-muted max-w-md mx-auto leading-relaxed">
             Reception staff can check in a confirmed appointment below. Patients should use the private tracker link sent with their booking.
           </p>
         </div>
 
-        <Card className="border-border/80 shadow-2xl rounded-3xl overflow-hidden bg-surface">
+        <Card className="border-border/80 shadow-lg rounded-3xl overflow-hidden bg-surface">
           {!checkInResult ? (
             <div>
               {/* Segmented Mode Selector */}
@@ -219,7 +219,7 @@ export default function PublicSelfCheckInKiosk() {
                       : "text-text-muted hover:text-text"
                   )}
                 >
-                  <Hash className="w-4 h-4 text-primary-500" />
+                  <Hash className="w-4 h-4 text-accent" />
                   <span>By Appointment</span>
                 </button>
 
@@ -233,7 +233,7 @@ export default function PublicSelfCheckInKiosk() {
                       : "text-text-muted hover:text-text"
                   )}
                 >
-                  <Phone className="w-4 h-4 text-primary-500" />
+                  <Phone className="w-4 h-4 text-accent" />
                   <span>By Phone Number</span>
                 </button>
               </div>
@@ -316,30 +316,30 @@ export default function PublicSelfCheckInKiosk() {
             </div>
           ) : (
             <CardContent className="p-6 sm:p-8 space-y-6 text-center animate-fade-in">
-              <div className="p-6 bg-emerald-500/10 border-2 border-emerald-500/40 rounded-3xl space-y-3 relative overflow-hidden shadow-inner">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-black">
+              <div className="p-6 bg-success/10 border-2 border-success/40 rounded-3xl space-y-3 relative overflow-hidden shadow-inner">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-success/20 text-success-text dark:text-success-text text-xs font-black">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>CHECKED IN SUCCESSFULLY</span>
                 </div>
 
                 <div className="space-y-1">
                   <p className="text-xs font-bold uppercase tracking-widest text-text-muted">Your Queue Token</p>
-                  <div className="text-7xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight leading-none drop-shadow-sm py-2">
+                  <div className="text-7xl font-black text-success-text dark:text-success-text tracking-tight leading-none drop-shadow-sm py-2">
                     #{checkInResult.tokenNumber}
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-emerald-500/20 space-y-1 text-xs">
+                <div className="pt-3 border-t border-success/20 space-y-1 text-xs">
                   <p className="font-bold text-base text-text">{checkInResult.patientName}</p>
                   <p className="text-text-secondary flex items-center justify-center gap-1 font-medium">
-                    <Stethoscope className="w-3.5 h-3.5 text-primary-500" />
+                    <Stethoscope className="w-3.5 h-3.5 text-accent" />
                     <span>Attending: Dr. {checkInResult.doctorName}</span>
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center justify-center gap-2 text-xs text-text-muted">
-                <Clock className="w-4 h-4 text-primary-500" />
+                <Clock className="w-4 h-4 text-accent" />
                 <span>Please take a seat. The doctor will call your token on the waiting room TV.</span>
               </div>
 

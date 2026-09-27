@@ -1,60 +1,18 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { notificationService, type NotificationItem } from "@/services/notificationService";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useToast } from "@/components/ui/Toast";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import Checkbox from "@/components/ui/Checkbox";
-import {
-  Button,
-  Input,
-  Select,
-  Textarea,
-  Badge,
-  Card,
-  Spinner,
-  Table,
-  Pagination,
-  Dropdown,
-  cn,
-  type Column,
-  type TableBulkAction,
-} from "@/components/ui";
+
+import { Button, Input, Select, Textarea, Badge, Card, Table, Pagination, Dropdown, cn, type Column, type TableBulkAction } from "@/components/ui";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
-import {
-  Bell,
-  BellOff,
-  Sparkles,
-  CheckCheck,
-  Send,
-  Plus,
-  Search,
-  Pin,
-  PinOff,
-  Check,
-  Eye,
-  Trash2,
-  MoreHorizontal,
-  Clock,
-  ExternalLink,
-  Mail,
-  Smartphone,
-  Stethoscope,
-  ShieldAlert,
-  Receipt,
-  Settings,
-  CheckSquare,
-  Users,
-  Building2,
-  ArrowRight,
-  CheckCircle2,
-  Filter,
-} from "lucide-react";
+import { Bell, Sparkles, CheckCheck, Send, Search, Pin, PinOff, Check, Eye, Trash2, MoreHorizontal, Clock, ExternalLink, Mail, Stethoscope, ShieldAlert, Receipt, Settings, CheckSquare, Users, Building2, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function NotificationsInboxPage() {
   const router = useRouter();
@@ -90,7 +48,7 @@ export default function NotificationsInboxPage() {
 
   const { markAsRead, markAllAsRead, deleteNotification, togglePinNotification } = useNotifications();
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["notifications", "inbox", page, category, unreadOnly, search],
     queryFn: () =>
       notificationService.getNotifications({
@@ -266,7 +224,7 @@ export default function NotificationsInboxPage() {
           {!row.readAt ? (
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary-500 shadow-xs shadow-primary-500/50" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary-500 shadow-xs " />
             </span>
           ) : (
             <span className="w-2 h-2 rounded-full bg-border/80" title="Read" />
@@ -290,7 +248,7 @@ export default function NotificationsInboxPage() {
               <span>{row.category}</span>
             </Badge>
             {row.pinned && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded-md">
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-warning-text dark:text-warning-text bg-warning/15 border border-warning/30 px-1.5 py-0.5 rounded-md">
                 <Pin className="w-2.5 h-2.5 fill-current" />
                 Pinned
               </span>
@@ -299,7 +257,7 @@ export default function NotificationsInboxPage() {
           {row.priority === "urgent" || row.priority === "high" ? (
             <div className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-danger-500 animate-pulse" />
-              <span className="text-[10px] font-bold text-danger-500 uppercase tracking-wider">
+              <span className="text-[10px] font-bold text-danger-text uppercase tracking-wider">
                 {row.priority} Priority
               </span>
             </div>
@@ -314,7 +272,7 @@ export default function NotificationsInboxPage() {
         <div className="space-y-1 min-w-[260px]">
           <div className="flex items-center gap-2 flex-wrap">
             <p
-              className={`text-xs sm:text-sm text-text cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 transition-colors ${
+              className={`text-xs sm:text-sm text-text cursor-pointer hover:text-accent dark:hover:text-accent transition-colors ${
                 !row.readAt ? "font-bold text-text" : "font-medium text-text-secondary"
               }`}
               onClick={() => handleViewDetail(row)}
@@ -322,7 +280,7 @@ export default function NotificationsInboxPage() {
               {row.title}
             </p>
             {row.actionUrl && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary-600 dark:text-primary-400 bg-primary-500/10 px-1.5 py-0.5 rounded border border-primary-500/20">
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-accent dark:text-accent bg-primary-500/10 px-1.5 py-0.5 rounded border border-primary-500/20">
                 <ExternalLink className="w-2.5 h-2.5" />
                 Action Link
               </span>
@@ -366,14 +324,14 @@ export default function NotificationsInboxPage() {
             items={[
               {
                 label: row.pinned ? "Unpin Alert" : "Pin Alert",
-                icon: row.pinned ? <PinOff className="w-4 h-4 text-text-muted" /> : <Pin className="w-4 h-4 text-amber-500" />,
+                icon: row.pinned ? <PinOff className="w-4 h-4 text-text-muted" /> : <Pin className="w-4 h-4 text-warning-text" />,
                 onClick: () => togglePinNotification(row.id),
               },
               ...(!row.readAt
                 ? [
                     {
                       label: "Mark as Read",
-                      icon: <Check className="w-4 h-4 text-primary-500" />,
+                      icon: <Check className="w-4 h-4 text-accent" />,
                       onClick: () => markAsRead(row.id),
                     },
                   ]
@@ -424,7 +382,7 @@ export default function NotificationsInboxPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -497,7 +455,7 @@ export default function NotificationsInboxPage() {
               placeholder="Search notifications by title, keywords, or message content..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+              className="w-full pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 transition-all"
             />
           </div>
 
@@ -535,6 +493,8 @@ export default function NotificationsInboxPage() {
          ────────────────────────────────────────────────────────────────────────── */}
       <div>
         <Table
+            error={isError ? "Notifications could not be loaded. Please try again." : null}
+            onRetry={() => refetch()}
           columns={columns}
           data={notifications}
           keyField="id"
@@ -571,7 +531,7 @@ export default function NotificationsInboxPage() {
                       <span>{row.category}</span>
                     </Badge>
                     {row.pinned && (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.2 rounded-md">
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-warning-text dark:text-warning-text bg-warning/15 border border-warning/30 px-1.5 py-0.2 rounded-md">
                         <Pin className="w-2.5 h-2.5 fill-current" />
                         Pinned
                       </span>
@@ -610,7 +570,7 @@ export default function NotificationsInboxPage() {
                       size="xs"
                       variant="ghost"
                       onClick={() => markAsRead(row.id)}
-                      className="font-semibold text-xs rounded-xl min-h-[36px] px-3 text-primary-600 dark:text-primary-400 hover:bg-primary-500/10"
+                      className="font-semibold text-xs rounded-xl min-h-[36px] px-3 text-accent dark:text-accent hover:bg-primary-500/10"
                     >
                       <Check className="w-3.5 h-3.5 mr-1" />
                       Mark Read
@@ -634,7 +594,7 @@ export default function NotificationsInboxPage() {
                     items={[
                       {
                         label: row.pinned ? "Unpin Alert" : "Pin Alert",
-                        icon: row.pinned ? <PinOff className="w-4 h-4 text-text-muted" /> : <Pin className="w-4 h-4 text-amber-500" />,
+                        icon: row.pinned ? <PinOff className="w-4 h-4 text-text-muted" /> : <Pin className="w-4 h-4 text-warning-text" />,
                         onClick: () => togglePinNotification(row.id),
                       },
                       { divider: true, label: "" },
@@ -691,7 +651,7 @@ export default function NotificationsInboxPage() {
                 <div className="flex items-center gap-2.5">
                   <div
                     className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      sendInApp ? "bg-primary-500/20 text-primary-600 dark:text-primary-400" : "bg-surface-alt text-text-muted"
+                      sendInApp ? "bg-primary-500/20 text-accent dark:text-accent" : "bg-surface-alt text-text-muted"
                     }`}
                   >
                     <Bell className="w-4 h-4" />
@@ -705,7 +665,7 @@ export default function NotificationsInboxPage() {
                   type="checkbox"
                   checked={sendInApp}
                   onChange={(e) => setSendInApp(e.target.checked)}
-                  className="rounded text-primary-600 focus:ring-primary-500 h-4 w-4"
+                  className="rounded text-accent focus:ring-focus-ring h-4 w-4"
                 />
               </label>
 
@@ -719,7 +679,7 @@ export default function NotificationsInboxPage() {
                 <div className="flex items-center gap-2.5">
                   <div
                     className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      sendEmail ? "bg-primary-500/20 text-primary-600 dark:text-primary-400" : "bg-surface-alt text-text-muted"
+                      sendEmail ? "bg-primary-500/20 text-accent dark:text-accent" : "bg-surface-alt text-text-muted"
                     }`}
                   >
                     <Mail className="w-4 h-4" />
@@ -733,7 +693,7 @@ export default function NotificationsInboxPage() {
                   type="checkbox"
                   checked={sendEmail}
                   onChange={(e) => setSendEmail(e.target.checked)}
-                  className="rounded text-primary-600 focus:ring-primary-500 h-4 w-4"
+                  className="rounded text-accent focus:ring-focus-ring h-4 w-4"
                 />
               </label>
             </div>
@@ -921,7 +881,7 @@ export default function NotificationsInboxPage() {
                   {viewingNotification.severity}
                 </Badge>
                 {viewingNotification.priority && (
-                  <span className="text-[10px] font-bold text-primary-600 dark:text-primary-400 bg-primary-500/10 border border-primary-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  <span className="text-[10px] font-bold text-accent dark:text-accent bg-primary-500/10 border border-primary-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
                     {viewingNotification.priority} Priority
                   </span>
                 )}
@@ -946,7 +906,7 @@ export default function NotificationsInboxPage() {
                 Delivery Channels: <strong className="text-text">In-App &bull; Email</strong>
               </span>
               <div className="flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-success-text" />
                 <span className="text-text-secondary font-medium">Delivered & Marked as Read</span>
               </div>
             </div>

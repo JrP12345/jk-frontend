@@ -53,9 +53,9 @@ export function DashboardAnalytics({
         <AreaChart
           data={appointmentTrendData}
           series={[
-            { key: "completed", name: "Completed Visits", color: "var(--s-chart-2, #10b981)" },
-            { key: "scheduled", name: "Scheduled", color: "var(--s-chart-1, #3b82f6)" },
-            { key: "cancelled", name: "Cancelled", color: "var(--s-chart-5, #f43f5e)" },
+            { key: "completed", name: "Completed Visits", color: "var(--s-chart-2)" },
+            { key: "scheduled", name: "Scheduled", color: "var(--s-chart-1)" },
+            { key: "cancelled", name: "Cancelled", color: "var(--s-chart-5)" },
           ]}
           height={220}
           valueFormatter={(v) => `${v} visits`}
@@ -76,8 +76,8 @@ export function DashboardAnalytics({
         <BarChart
           data={clinicThroughputData}
           series={[
-            { key: "completed", name: "Completed", color: "var(--s-chart-2, #10b981)" },
-            { key: "waiting", name: "Scheduled", color: "var(--s-chart-1, #3b82f6)" },
+            { key: "completed", name: "Completed", color: "var(--s-chart-2)" },
+            { key: "waiting", name: "Scheduled", color: "var(--s-chart-1)" },
           ]}
           layout="stacked"
           height={220}

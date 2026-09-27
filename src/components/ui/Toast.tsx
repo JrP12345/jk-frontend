@@ -6,7 +6,7 @@ import { cn } from "./utils";
 import { vibrateFeedback } from "@/lib/haptics";
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   ANANT Healthcare OS — Production-Grade Top-Center 3D Stacked Toast Notification Engine
+   Ekavyu Healthcare OS — Production-Grade Top-Center 3D Stacked Toast Notification Engine
    ───────────────────────────────────────────────────────────────────────────── */
 
 export type ToastVariant = "default" | "success" | "error" | "warning" | "info";
@@ -164,7 +164,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   <button
                     type="button"
                     onClick={() => setIsHovered(true)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-tight bg-surface/90 dark:bg-surface-alt/90 text-text-secondary border border-border/80 shadow-md backdrop-blur-md hover:bg-surface-hover hover:text-text cursor-pointer transition-all hover:scale-105"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-tight bg-surface dark:bg-surface-alt text-text-secondary border border-border/80 shadow-md  hover:bg-surface-hover hover:text-text cursor-pointer transition-all hover:scale-105"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
                     <span>+{totalToasts - 1} more</span>
@@ -184,35 +184,35 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 const icons: Record<ToastVariant, ReactNode> = {
   default: (
-    <div className="w-8 h-8 rounded-xl bg-primary-500/10 border border-primary-500/30 flex items-center justify-center text-primary-500 shrink-0">
+    <div className="w-8 h-8 rounded-xl bg-primary-500/10 border border-primary-500/30 flex items-center justify-center text-accent shrink-0">
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
       </svg>
     </div>
   ),
   info: (
-    <div className="w-8 h-8 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-500 shrink-0">
+    <div className="w-8 h-8 rounded-xl bg-primary/10 border border-accent/30 flex items-center justify-center text-accent shrink-0">
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
       </svg>
     </div>
   ),
   success: (
-    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-500 shrink-0">
+    <div className="w-8 h-8 rounded-xl bg-success/10 border border-success/30 flex items-center justify-center text-success-text shrink-0">
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a10 10 0 11-20 0 10 10 0 0120 0z" />
       </svg>
     </div>
   ),
   error: (
-    <div className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-500 shrink-0">
+    <div className="w-8 h-8 rounded-xl bg-danger/10 border border-danger/30 flex items-center justify-center text-danger-text shrink-0">
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a10 10 0 11-20 0 10 10 0 0120 0z" />
       </svg>
     </div>
   ),
   warning: (
-    <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
+    <div className="w-8 h-8 rounded-xl bg-warning/10 border border-warning/30 flex items-center justify-center text-warning-text shrink-0">
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M12 2l10 18H2L12 2z" />
       </svg>
@@ -221,19 +221,19 @@ const icons: Record<ToastVariant, ReactNode> = {
 };
 
 const variantBorders: Record<ToastVariant, string> = {
-  default: "border-border/80 shadow-black/40",
-  info: "border-sky-500/30 shadow-sky-500/10",
-  success: "border-emerald-500/30 shadow-emerald-500/10",
-  error: "border-rose-500/30 shadow-rose-500/10",
-  warning: "border-amber-500/30 shadow-amber-500/10",
+  default: "border-border/80 ",
+  info: "border-accent/30 ",
+  success: "border-success/30 shadow-success/10",
+  error: "border-danger/30 shadow-danger/10",
+  warning: "border-warning/30 shadow-warning/10",
 };
 
 const progressColors: Record<ToastVariant, string> = {
   default: "bg-primary-500",
-  info: "bg-sky-500",
-  success: "bg-emerald-500",
-  error: "bg-rose-500",
-  warning: "bg-amber-500",
+  info: "bg-primary",
+  success: "bg-success",
+  error: "bg-danger",
+  warning: "bg-warning",
 };
 
 /* ── Toast Item Component ──────────────────────────────────────────────────── */
@@ -340,7 +340,7 @@ function ToastItem({ id, title, description, variant, duration, onDismiss, isHov
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       className={cn(
-        "relative flex items-start gap-3 border rounded-2xl p-3 px-3.5 min-h-[58px] shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)] backdrop-blur-2xl bg-surface/95 dark:bg-surface/90 cursor-grab active:cursor-grabbing select-none overflow-hidden transform-gpu transition-all duration-200 before:absolute before:inset-x-0 before:top-0 before:h-[1px] before:bg-gradient-to-r before:from-transparent before:via-white/40 dark:before:via-white/15 before:to-transparent",
+        "relative flex items-start gap-3 border rounded-2xl p-3 px-3.5 min-h-[58px]    bg-surface dark:bg-surface cursor-grab active:cursor-grabbing select-none overflow-hidden transform-gpu transition-all duration-200 ",
         variantBorders[variant],
         exiting ? "animate-toast-exit opacity-0 scale-95 -translate-y-4" : "animate-toast-enter"
       )}

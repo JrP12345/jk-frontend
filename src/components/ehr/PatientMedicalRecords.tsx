@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
 import PatientHistoryAccess from "./PatientHistoryAccess";
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, Tabs, Skeleton, SkeletonCardGrid } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Tabs, Skeleton, SkeletonCardGrid } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "../clinical/UnifiedDocumentModal";
 
 interface PatientMedicalRecordsProps {
@@ -54,7 +54,7 @@ export function PatientMedicalRecords({ patientId, accessToken }: PatientMedical
     setUnifiedDoc({
       documentType: "prescription",
       title: "PRESCRIPTION RX",
-      clinicName: note.clinicId?.name || "ANANT Healthcare System",
+      clinicName: note.clinicId?.name || "Ekavyu Healthcare System",
       doctorName: note.doctorId?.name || "Attending Physician",
       doctorSpecialization: note.doctorId?.specialization || "General Medicine",
       patientName: "My Medical Record",
@@ -140,7 +140,7 @@ export function PatientMedicalRecords({ patientId, accessToken }: PatientMedical
                             {note.assessment?.diagnoses?.[0] && (
                               <div>
                                 <span className="text-text-muted font-medium block">Diagnosis:</span>
-                                <span className="font-semibold text-primary-600">
+                                <span className="font-semibold text-accent">
                                   {note.assessment.diagnoses[0].description} ({note.assessment.diagnoses[0].code || "ICD-10"})
                                 </span>
                               </div>
@@ -192,7 +192,7 @@ export function PatientMedicalRecords({ patientId, accessToken }: PatientMedical
                       <div key={inv.id || inv._id} className="p-4 bg-surface rounded-xl border border-border flex items-center justify-between text-xs">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-primary-600">#{inv.invoiceNumber}</span>
+                            <span className="font-mono font-bold text-accent">#{inv.invoiceNumber}</span>
                             <Badge variant={inv.status === "paid" ? "success" : "warning"}>{inv.status}</Badge>
                           </div>
                           <p className="text-text-secondary mt-1">Date: {new Date(inv.createdAt).toLocaleDateString()}</p>

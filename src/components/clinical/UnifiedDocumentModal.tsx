@@ -1,5 +1,7 @@
 "use client";
 
+import { getPrintBrandStyles } from "@/lib/printBrand";
+
 import React, { useRef, useState, useEffect } from "react";
 import Modal from "../ui/Modal";
 import Button from "../ui/Button";
@@ -124,7 +126,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
       <html>
         <head>
           <title>${document.title} — ${document.patientName}</title>
-          <style>
+          <style>${getPrintBrandStyles()}
             @page {
               size: A4;
               margin: ${isPreprinted ? "65mm 15mm 20mm 15mm" : "15mm 15mm 15mm 15mm"};
@@ -134,7 +136,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                 margin: 0 !important;
                 padding: 0 !important;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                color: #111827;
+                color: var(--print-text);
                 background: #fff;
                 font-size: 11pt;
                 line-height: 1.4;
@@ -147,11 +149,11 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
             body {
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
               padding: 24px;
-              color: #111827;
+              color: var(--print-text);
               background: #fff;
             }
             .header-banner {
-              border-bottom: 2px solid #2563eb;
+              border-bottom: 2px solid var(--print-accent);
               padding-bottom: 12px;
               margin-bottom: 16px;
               display: flex;
@@ -161,24 +163,24 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
             .hospital-name {
               font-size: 20px;
               font-weight: 800;
-              color: #1e40af;
+              color: var(--print-accent-strong);
               margin: 0;
             }
             .doc-title {
               font-size: 14px;
               font-weight: 700;
               text-transform: uppercase;
-              color: #2563eb;
+              color: var(--print-accent);
               letter-spacing: 0.05em;
             }
             .meta-grid {
               display: grid;
               grid-template-columns: 1fr 1fr;
               gap: 12px;
-              background: #f9fafb;
+              background: var(--print-background);
               padding: 12px;
               border-radius: 8px;
-              border: 1px solid #e5e7eb;
+              border: 1px solid var(--print-border);
               margin-bottom: 16px;
               font-size: 12px;
             }
@@ -189,22 +191,22 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
               font-size: 11px;
             }
             .table-doc th, .table-doc td {
-              border: 1px solid #e5e7eb;
+              border: 1px solid var(--print-border);
               padding: 6px 10px;
               text-align: left;
             }
             .table-doc th {
-              background: #f3f4f6;
+              background: var(--print-surface-muted);
               font-weight: 700;
-              color: #374151;
+              color: var(--print-secondary);
             }
             .vitals-strip {
               display: flex;
               flex-wrap: wrap;
               gap: 8px;
               padding: 6px 10px;
-              background: #f8fafc;
-              border: 1px solid #e2e8f0;
+              background: var(--print-background);
+              border: 1px solid var(--print-border);
               border-radius: 6px;
               font-size: 10.5px;
               margin-bottom: 12px;
@@ -220,15 +222,15 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
               justify-content: space-between;
               align-items: flex-end;
               font-size: 11px;
-              color: #4b5563;
-              border-top: 1px solid #e5e7eb;
+              color: var(--print-secondary);
+              border-top: 1px solid var(--print-border);
               padding-top: 12px;
             }
             .rx-symbol {
               font-size: 22px;
               font-weight: 900;
               font-family: Georgia, serif;
-              color: #1e40af;
+              color: var(--print-accent-strong);
               line-height: 1;
               display: inline-block;
               margin-right: 6px;
@@ -262,7 +264,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                   onClick={() => setLetterheadMode("plain_a4")}
                   className={`px-3 py-1 rounded-md font-bold text-xs transition-all cursor-pointer ${
                     letterheadMode === "plain_a4"
-                      ? "bg-primary-600 text-white shadow-2xs"
+                      ? "bg-primary-600 text-brand-mist shadow-2xs"
                       : "text-text-muted hover:text-text"
                   }`}
                 >
@@ -273,7 +275,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                   onClick={() => setLetterheadMode("preprinted_stationery")}
                   className={`px-3 py-1 rounded-md font-bold text-xs transition-all cursor-pointer ${
                     letterheadMode === "preprinted_stationery"
-                      ? "bg-amber-600 text-white shadow-2xs"
+                      ? "bg-warning text-background shadow-2xs"
                       : "text-text-muted hover:text-text"
                   }`}
                   title="Leaves top 65mm blank to feed directly into physical doctor/clinic letterhead pads"
@@ -284,7 +286,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
             </div>
 
             {isPreprinted && (
-              <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+              <span className="text-[11px] font-semibold text-warning-text dark:text-warning-text bg-warning/10 px-2 py-0.5 rounded-md border border-warning/20">
                 Top 65mm header suppressed for physical stationery
               </span>
             )}
@@ -294,7 +296,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
         {/* Printable Document Container */}
         <div
           ref={printRef}
-          className={`bg-white text-zinc-900 text-xs shadow-sm rounded-xl border border-zinc-200 space-y-4 transition-all ${
+          className={`bg-white text-text text-xs shadow-sm rounded-xl border border-border space-y-4 transition-all ${
             isPreprinted ? "pt-16 p-6" : "p-6"
           }`}
         >
@@ -306,14 +308,14 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
           >
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] uppercase tracking-widest font-black text-primary-600">
-                  ANANT Healthcare Clinic System
+                <span className="text-[10px] uppercase tracking-widest font-black text-accent">
+                  Ekavyu Healthcare Clinic System
                 </span>
               </div>
-              <h2 className="text-xl font-black text-zinc-900 leading-tight">{document.clinicName}</h2>
-              {document.clinicAddress && <p className="text-zinc-500 text-[11px]">{document.clinicAddress}</p>}
+              <h2 className="text-xl font-black text-text leading-tight">{document.clinicName}</h2>
+              {document.clinicAddress && <p className="text-text-muted text-[11px]">{document.clinicAddress}</p>}
               {(document.clinicPhone || document.clinicEmail) && (
-                <p className="text-zinc-400 text-[10px]">
+                <p className="text-text-muted text-[10px]">
                   {document.clinicPhone && `Tel: ${document.clinicPhone}`}
                   {document.clinicPhone && document.clinicEmail && " • "}
                   {document.clinicEmail && `Email: ${document.clinicEmail}`}
@@ -321,40 +323,40 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
               )}
             </div>
             <div className="text-right">
-              <span className="px-2.5 py-1 bg-primary-50 text-primary-700 font-bold rounded text-xs uppercase tracking-wide inline-block mb-1 border border-primary-200">
+              <span className="px-2.5 py-1 bg-accent-subtle text-accent font-bold rounded text-xs uppercase tracking-wide inline-block mb-1 border border-primary-200">
                 {document.title}
               </span>
-              <p className="text-zinc-500 text-[11px]">
+              <p className="text-text-muted text-[11px]">
                 Date: <b>{document.date}</b>
               </p>
               {document.referenceNumber && (
-                <p className="text-zinc-500 text-[11px] font-mono">Ref: {document.referenceNumber}</p>
+                <p className="text-text-muted text-[11px] font-mono">Ref: {document.referenceNumber}</p>
               )}
             </div>
           </div>
 
           {/* Patient & Doctor Meta Banner */}
-          <div className="grid grid-cols-2 gap-4 bg-zinc-50 p-3 rounded-lg border border-zinc-200 text-xs">
+          <div className="grid grid-cols-2 gap-4 bg-surface p-3 rounded-lg border border-border text-xs">
             <div>
-              <span className="text-zinc-400 block font-bold text-[10px] uppercase tracking-wider">Patient Details</span>
-              <span className="font-bold text-zinc-900 text-sm block">{document.patientName}</span>
-              <div className="text-zinc-600 text-[11px] space-y-0.5">
+              <span className="text-text-muted block font-bold text-[10px] uppercase tracking-wider">Patient Details</span>
+              <span className="font-bold text-text text-sm block">{document.patientName}</span>
+              <div className="text-text-secondary text-[11px] space-y-0.5">
                 {document.patientAgeGender && <div>Age/Gender: <b>{document.patientAgeGender}</b></div>}
                 {document.patientPhone && <div>Phone: <b>{document.patientPhone}</b></div>}
-                {document.patientId && <div className="text-zinc-400 font-mono text-[10px]">UHID: {document.patientId}</div>}
+                {document.patientId && <div className="text-text-muted font-mono text-[10px]">UHID: {document.patientId}</div>}
               </div>
             </div>
 
             <div className="text-right">
-              <span className="text-zinc-400 block font-bold text-[10px] uppercase tracking-wider">Attending Physician</span>
-              <span className="font-bold text-zinc-900 text-sm block">
+              <span className="text-text-muted block font-bold text-[10px] uppercase tracking-wider">Attending Physician</span>
+              <span className="font-bold text-text text-sm block">
                 Dr. {document.doctorName?.replace(/^Dr\.\s*/i, "") || "Physician"}
               </span>
-              <div className="text-zinc-600 text-[11px] space-y-0.5">
+              <div className="text-text-secondary text-[11px] space-y-0.5">
                 {document.doctorQualification && <div>{document.doctorQualification}</div>}
                 {document.doctorSpecialization && <div>Specialty: <b>{document.doctorSpecialization}</b></div>}
                 {document.doctorRegistrationNumber && (
-                  <div className="font-semibold text-primary-700 font-mono text-[10.5px]">
+                  <div className="font-semibold text-accent font-mono text-[10.5px]">
                     NMC/MCI Reg: {document.doctorRegistrationNumber}
                   </div>
                 )}
@@ -379,7 +381,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
               {/* Pre-Consultation Vitals Summary */}
               {document.vitals && Object.keys(document.vitals).length > 0 && (
                 <div className="vitals-strip">
-                  <strong className="text-zinc-700 font-bold uppercase text-[9.5px] mr-1">Vitals:</strong>
+                  <strong className="text-text-secondary font-bold uppercase text-[9.5px] mr-1">Vitals:</strong>
                   {document.vitals.bloodPressure && (
                     <span className="vitals-item">
                       BP: <b>{document.vitals.bloodPressure} mmHg</b>
@@ -416,18 +418,18 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
               {/* Symptoms / Chief Complaint */}
               {document.symptoms && (
                 <div className="text-[11.5px]">
-                  <strong className="text-zinc-700 font-bold">Chief Complaints:</strong>{" "}
-                  <span className="text-zinc-800">{document.symptoms}</span>
+                  <strong className="text-text-secondary font-bold">Chief Complaints:</strong>{" "}
+                  <span className="text-text">{document.symptoms}</span>
                 </div>
               )}
 
               {/* Clinical Diagnoses */}
               {document.diagnoses && document.diagnoses.length > 0 && (
                 <div>
-                  <strong className="text-zinc-700 block mb-1 font-bold text-[11.5px]">Diagnosis:</strong>
+                  <strong className="text-text-secondary block mb-1 font-bold text-[11.5px]">Diagnosis:</strong>
                   <div className="flex flex-wrap gap-1">
                     {document.diagnoses.map((d, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-800 rounded font-bold text-[11px] border border-blue-100">
+                      <span key={i} className="px-2 py-0.5 bg-accent-subtle text-accent rounded font-bold text-[11px] border border-accent">
                         {d.description} {d.code ? `(${d.code})` : ""}
                       </span>
                     ))}
@@ -440,7 +442,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                 <div className="pt-1">
                   <div className="flex items-center mb-1">
                     <span className="rx-symbol">℞</span>
-                    <strong className="text-zinc-900 text-sm">Prescribed Medications</strong>
+                    <strong className="text-text text-sm">Prescribed Medications</strong>
                   </div>
                   <table className="table-doc">
                     <thead>
@@ -456,10 +458,10 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                       {document.prescriptions.map((rx, idx) => (
                         <tr key={idx}>
                           <td style={{ textAlign: "center", fontWeight: "bold" }}>{idx + 1}</td>
-                          <td style={{ fontWeight: "bold", color: "#1d4ed8" }}>{rx.name}</td>
+                          <td style={{ fontWeight: "bold", color: "var(--print-accent)" }}>{rx.name}</td>
                           <td>{rx.dosage}</td>
                           <td>{rx.duration}</td>
-                          <td style={{ color: "#4b5563" }}>{rx.instructions || "As directed"}</td>
+                          <td style={{ color: "var(--print-secondary)" }}>{rx.instructions || "As directed"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -470,8 +472,8 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
               {/* General Dietary & Lifestyle Advice */}
               {document.advice && (
                 <div className="pt-1 text-[11.5px]">
-                  <strong className="text-zinc-800 block mb-0.5 font-bold">Dietary & Lifestyle Advice:</strong>
-                  <p className="text-zinc-700 bg-amber-50/70 p-2 rounded border border-amber-200/60 leading-relaxed">
+                  <strong className="text-text block mb-0.5 font-bold">Dietary & Lifestyle Advice:</strong>
+                  <p className="text-text-secondary bg-warning-subtle/70 p-2 rounded border border-warning/60 leading-relaxed">
                     {document.advice}
                   </p>
                 </div>
@@ -479,24 +481,24 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
 
               {/* Follow-Up Plan */}
               {(document.followUpTimeline || document.followUpNotes) && (
-                <div className="p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200/80 text-[11px] flex items-center justify-between gap-2">
+                <div className="p-2.5 rounded-lg bg-success-subtle/70 border border-success/80 text-[11px] flex items-center justify-between gap-2">
                   <div>
-                    <strong className="text-emerald-900 font-bold">Recommended Follow-Up: </strong>
-                    <span className="text-emerald-800 font-semibold">
+                    <strong className="text-success-text font-bold">Recommended Follow-Up: </strong>
+                    <span className="text-success-text font-semibold">
                       Review in {document.followUpTimeline || "1-2 weeks"}
                     </span>
                     {document.followUpNotes && (
-                      <p className="text-emerald-700 mt-0.5 text-[10.5px]">Note: {document.followUpNotes}</p>
+                      <p className="text-success-text mt-0.5 text-[10.5px]">Note: {document.followUpNotes}</p>
                     )}
                   </div>
-                  <span className="px-2 py-0.5 bg-emerald-600 text-white font-bold rounded text-[10px] uppercase shrink-0">
+                  <span className="px-2 py-0.5 bg-success text-background font-bold rounded text-[10px] uppercase shrink-0">
                     SOS / Review
                   </span>
                 </div>
               )}
 
               {/* Emergency Advisory */}
-              <div className="text-[10px] text-zinc-500 italic pt-1">
+              <div className="text-[10px] text-text-muted italic pt-1">
                 * In case of acute chest pain, severe breathlessness, high unyielding fever, or any sudden distress, please visit the nearest hospital emergency room immediately.
               </div>
             </div>
@@ -530,20 +532,20 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                 <div className="flex justify-end pt-2">
                   <div className="w-56 space-y-1 text-xs text-right">
                     <div className="flex justify-between">
-                      <span className="text-zinc-600">Subtotal:</span>
+                      <span className="text-text-secondary">Subtotal:</span>
                       <span className="font-semibold">₹{document.invoiceTotals.subtotal}</span>
                     </div>
                     {document.invoiceTotals.discount > 0 && (
-                      <div className="flex justify-between text-emerald-700">
+                      <div className="flex justify-between text-success-text">
                         <span>Discount:</span>
                         <span>- ₹{document.invoiceTotals.discount}</span>
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-zinc-600">Tax:</span>
+                      <span className="text-text-secondary">Tax:</span>
                       <span>₹{document.invoiceTotals.tax}</span>
                     </div>
-                    <div className="flex justify-between font-bold text-sm text-zinc-900 border-t border-zinc-300 pt-1">
+                    <div className="flex justify-between font-bold text-sm text-text border-t border-border pt-1">
                       <span>Total Amount:</span>
                       <span>₹{document.invoiceTotals.total}</span>
                     </div>
@@ -569,10 +571,10 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                   {document.labResults?.map((res, idx) => (
                     <tr key={idx}>
                       <td style={{ fontWeight: "bold" }}>{res.testName}</td>
-                      <td style={{ fontWeight: "bold", color: "#1d4ed8" }}>
+                      <td style={{ fontWeight: "bold", color: "var(--print-accent)" }}>
                         {res.result} {res.unit || ""}
                       </td>
-                      <td style={{ color: "#6b7280" }}>{res.referenceRange || "Normal"}</td>
+                      <td style={{ color: "var(--print-muted)" }}>{res.referenceRange || "Normal"}</td>
                       <td style={{ textAlign: "center", fontWeight: "bold" }}>{res.status}</td>
                     </tr>
                   ))}
@@ -583,11 +585,11 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
 
           {/* 4. Token Slip */}
           {document.documentType === "token_slip" && document.tokenDetails && (
-            <div className="text-center py-6 space-y-2 border-2 border-dashed border-zinc-300 rounded-xl bg-zinc-50">
-              <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest block">Queue Token Number</span>
-              <span className="text-5xl font-black text-primary-600 block">#{document.tokenDetails.tokenNumber}</span>
+            <div className="text-center py-6 space-y-2 border-2 border-dashed border-border rounded-xl bg-surface">
+              <span className="text-xs font-bold text-text-muted uppercase tracking-widest block">Queue Token Number</span>
+              <span className="text-5xl font-black text-accent block">#{document.tokenDetails.tokenNumber}</span>
               {document.tokenDetails.estWaitTime !== undefined && (
-                <span className="text-xs text-amber-700 font-bold block">
+                <span className="text-xs text-warning-text font-bold block">
                   Estimated Wait: {document.tokenDetails.estWaitTime} mins
                 </span>
               )}
@@ -598,17 +600,17 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
           {document.documentType === "referral_letter" && document.referralDetails && (
             <div className="space-y-4">
               {/* Referral Destination & Urgency Banner */}
-              <div className="p-3.5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50/60 border border-blue-200">
+              <div className="p-3.5 rounded-xl bg-accent-subtle   border border-accent">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 block">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-accent block">
                       Referral Destination / Tertiary Facility
                     </span>
-                    <span className="text-base font-extrabold text-blue-950">
+                    <span className="text-base font-extrabold text-accent">
                       {document.referralDetails.referredToDoctorOrHospital}
                     </span>
                     {document.referralDetails.department && (
-                      <span className="text-xs text-blue-800 font-medium block">
+                      <span className="text-xs text-accent font-medium block">
                         Department: <b>{document.referralDetails.department}</b>
                       </span>
                     )}
@@ -616,10 +618,10 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                   <div className="text-right">
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
                       document.referralDetails.urgencyLevel === "Emergency / Immediate"
-                        ? "bg-rose-600 text-white animate-pulse"
+                        ? "bg-danger text-background animate-pulse"
                         : document.referralDetails.urgencyLevel === "Urgent"
-                        ? "bg-amber-500 text-white"
-                        : "bg-blue-100 text-blue-800"
+                        ? "bg-warning text-background"
+                        : "bg-accent-subtle text-accent"
                     }`}>
                       {document.referralDetails.urgencyLevel || "Routine Referral"}
                     </span>
@@ -628,21 +630,21 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
               </div>
 
               {/* Indication / Diagnosis */}
-              <div className="border border-zinc-200 rounded-lg p-3 bg-white space-y-2">
+              <div className="border border-border rounded-lg p-3 bg-white space-y-2">
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-zinc-500 block">Provisional / Working Diagnosis</span>
-                  <p className="text-sm font-bold text-zinc-900 mt-0.5">{document.referralDetails.provisionalDiagnosis}</p>
+                  <span className="text-[10px] font-bold uppercase text-text-muted block">Provisional / Working Diagnosis</span>
+                  <p className="text-sm font-bold text-text mt-0.5">{document.referralDetails.provisionalDiagnosis}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-zinc-500 block">Reason for Specialized Referral</span>
-                  <p className="text-xs text-zinc-800 font-medium mt-0.5">{document.referralDetails.reasonForReferral}</p>
+                  <span className="text-[10px] font-bold uppercase text-text-muted block">Reason for Specialized Referral</span>
+                  <p className="text-xs text-text font-medium mt-0.5">{document.referralDetails.reasonForReferral}</p>
                 </div>
               </div>
 
               {/* Clinical Summary & History */}
-              <div className="border border-zinc-200 rounded-lg p-3 bg-white space-y-2">
-                <span className="text-[10px] font-bold uppercase text-zinc-500 block">Clinical Summary & Presenting History</span>
-                <p className="text-xs text-zinc-800 whitespace-pre-wrap leading-relaxed">
+              <div className="border border-border rounded-lg p-3 bg-white space-y-2">
+                <span className="text-[10px] font-bold uppercase text-text-muted block">Clinical Summary & Presenting History</span>
+                <p className="text-xs text-text whitespace-pre-wrap leading-relaxed">
                   {document.referralDetails.clinicalSummary}
                 </p>
               </div>
@@ -650,25 +652,25 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
               {/* Investigations & Treatment Given */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {document.referralDetails.investigationsDone && (
-                  <div className="border border-zinc-200 rounded-lg p-3 bg-zinc-50/70">
-                    <span className="text-[10px] font-bold uppercase text-zinc-600 block">Investigations Done So Far</span>
-                    <p className="text-xs text-zinc-800 mt-1 whitespace-pre-wrap">
+                  <div className="border border-border rounded-lg p-3 bg-surface/70">
+                    <span className="text-[10px] font-bold uppercase text-text-secondary block">Investigations Done So Far</span>
+                    <p className="text-xs text-text mt-1 whitespace-pre-wrap">
                       {document.referralDetails.investigationsDone}
                     </p>
                   </div>
                 )}
                 {document.referralDetails.treatmentGivenSoFar && (
-                  <div className="border border-zinc-200 rounded-lg p-3 bg-zinc-50/70">
-                    <span className="text-[10px] font-bold uppercase text-zinc-600 block">Emergency Care / Treatment Given</span>
-                    <p className="text-xs text-zinc-800 mt-1 whitespace-pre-wrap">
+                  <div className="border border-border rounded-lg p-3 bg-surface/70">
+                    <span className="text-[10px] font-bold uppercase text-text-secondary block">Emergency Care / Treatment Given</span>
+                    <p className="text-xs text-text mt-1 whitespace-pre-wrap">
                       {document.referralDetails.treatmentGivenSoFar}
                     </p>
                   </div>
                 )}
               </div>
 
-              <div className="text-[11px] text-zinc-500 bg-zinc-50 p-2.5 rounded-lg border border-dashed border-zinc-300">
-                <strong className="text-zinc-700">Referring Physician Note: </strong>
+              <div className="text-[11px] text-text-muted bg-surface p-2.5 rounded-lg border border-dashed border-border">
+                <strong className="text-text-secondary">Referring Physician Note: </strong>
                 Kindly evaluate the patient and initiate tertiary interventional / inpatient management as deemed appropriate. Please communicate any findings back to our OPD for continuity of care.
               </div>
             </div>
@@ -677,12 +679,12 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
           {/* 6. Medical Sick Leave Certificate */}
           {document.documentType === "medical_certificate" && (
             <div className="space-y-4 py-2">
-              <div className="text-center py-2 border-b border-zinc-200">
-                <span className="text-xs font-black uppercase tracking-widest text-primary-700">Official Medico-Legal Document</span>
-                <h3 className="text-lg font-black text-zinc-900 mt-0.5">CERTIFICATE OF MEDICAL ILLNESS & RECOMMENDED LEAVE</h3>
+              <div className="text-center py-2 border-b border-border">
+                <span className="text-xs font-black uppercase tracking-widest text-accent">Official Medico-Legal Document</span>
+                <h3 className="text-lg font-black text-text mt-0.5">CERTIFICATE OF MEDICAL ILLNESS & RECOMMENDED LEAVE</h3>
               </div>
 
-              <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/50 space-y-3.5 text-xs text-zinc-800 leading-relaxed">
+              <div className="p-4 rounded-xl border border-border bg-surface/50 space-y-3.5 text-xs text-text leading-relaxed">
                 <p>
                   This is to officially certify that <b>Mr. / Ms. {document.patientName}</b>
                   {document.patientAgeGender ? `, aged ${document.patientAgeGender}` : ""}
@@ -698,27 +700,27 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                     <div className="p-3 bg-white rounded-lg border border-primary-200 shadow-sm space-y-2">
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
-                          <span className="text-[10px] font-bold text-zinc-500 uppercase block">Leave Period</span>
-                          <span className="font-bold text-zinc-900">
+                          <span className="text-[10px] font-bold text-text-muted uppercase block">Leave Period</span>
+                          <span className="font-bold text-text">
                             {document.leaveCertificateDetails.recommendedRestDays} Day(s) (From {document.leaveCertificateDetails.restStartDate} to {document.leaveCertificateDetails.restEndDate})
                           </span>
                         </div>
                         <div>
-                          <span className="text-[10px] font-bold text-zinc-500 uppercase block">Fit to Resume Duties On</span>
-                          <span className="font-black text-emerald-700">{document.leaveCertificateDetails.fitToResumeDate}</span>
+                          <span className="text-[10px] font-bold text-text-muted uppercase block">Fit to Resume Duties On</span>
+                          <span className="font-black text-success-text">{document.leaveCertificateDetails.fitToResumeDate}</span>
                         </div>
                       </div>
 
                       {document.leaveCertificateDetails.purpose && (
-                        <div className="pt-1 border-t border-zinc-100 text-[11px] text-zinc-600">
-                          <span className="font-semibold text-zinc-700">Submitted for: </span>
+                        <div className="pt-1 border-t border-border text-[11px] text-text-secondary">
+                          <span className="font-semibold text-text-secondary">Submitted for: </span>
                           {document.leaveCertificateDetails.purpose}
                         </div>
                       )}
 
                       {document.leaveCertificateDetails.remarks && (
-                        <div className="text-[11px] text-zinc-600">
-                          <span className="font-semibold text-zinc-700">Doctor's Clinical Remarks: </span>
+                        <div className="text-[11px] text-text-secondary">
+                          <span className="font-semibold text-text-secondary">Doctor's Clinical Remarks: </span>
                           {document.leaveCertificateDetails.remarks}
                         </div>
                       )}
@@ -728,7 +730,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                   <p className="whitespace-pre-wrap">{document.certificateText || "The patient was examined and advised medical rest for recuperation."}</p>
                 )}
 
-                <p className="text-[10.5px] text-zinc-500 italic">
+                <p className="text-[10.5px] text-text-muted italic">
                   * This certificate is issued upon physical examination of the patient for official / workplace submission. Validated under Indian Medical Council (Professional Conduct, Etiquette and Ethics) Regulations.
                 </p>
               </div>
@@ -738,12 +740,12 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
           {/* 7. Medical Fitness Certificate */}
           {document.documentType === "fitness_certificate" && (
             <div className="space-y-4 py-2">
-              <div className="text-center py-2 border-b border-zinc-200">
-                <span className="text-xs font-black uppercase tracking-widest text-emerald-700">Physical & Health Assessment</span>
-                <h3 className="text-lg font-black text-zinc-900 mt-0.5">CERTIFICATE OF MEDICAL FITNESS</h3>
+              <div className="text-center py-2 border-b border-border">
+                <span className="text-xs font-black uppercase tracking-widest text-success-text">Physical & Health Assessment</span>
+                <h3 className="text-lg font-black text-text mt-0.5">CERTIFICATE OF MEDICAL FITNESS</h3>
               </div>
 
-              <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/50 space-y-3.5 text-xs text-zinc-800 leading-relaxed">
+              <div className="p-4 rounded-xl border border-border bg-surface/50 space-y-3.5 text-xs text-text leading-relaxed">
                 <p>
                   I, <b>Dr. {document.doctorName?.replace(/^Dr\.\s*/i, "") || "Attending Medical Officer"}</b>,
                   {document.doctorQualification ? ` ${document.doctorQualification},` : ""}
@@ -755,10 +757,10 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                 </p>
 
                 {/* Fitness Status Badge */}
-                <div className="flex items-center justify-between p-3.5 bg-emerald-50 rounded-xl border border-emerald-200">
+                <div className="flex items-center justify-between p-3.5 bg-success-subtle rounded-xl border border-success">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-emerald-700 block tracking-wider">Clinical Assessment Finding</span>
-                    <span className="text-base font-black text-emerald-900">
+                    <span className="text-[10px] uppercase font-bold text-success-text block tracking-wider">Clinical Assessment Finding</span>
+                    <span className="text-base font-black text-success-text">
                       {document.fitnessCertificateDetails?.isFit !== false ? "DECLARED MEDICALLY FIT" : "MEDICALLY UNFIT / CONDITIONAL"}
                     </span>
                   </div>
@@ -767,25 +769,25 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
 
                 {/* Clinical Exam Findings Grid */}
                 {document.fitnessCertificateDetails && (
-                  <div className="bg-white rounded-lg border border-zinc-200 p-3 space-y-2.5">
-                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Examination Findings</span>
+                  <div className="bg-white rounded-lg border border-border p-3 space-y-2.5">
+                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider block">Examination Findings</span>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 text-xs">
                       {document.fitnessCertificateDetails.bloodPressure && (
                         <div>
-                          <span className="text-zinc-500 block text-[10px]">Blood Pressure:</span>
-                          <span className="font-bold text-zinc-900">{document.fitnessCertificateDetails.bloodPressure} mmHg</span>
+                          <span className="text-text-muted block text-[10px]">Blood Pressure:</span>
+                          <span className="font-bold text-text">{document.fitnessCertificateDetails.bloodPressure} mmHg</span>
                         </div>
                       )}
                       {document.fitnessCertificateDetails.pulseRate && (
                         <div>
-                          <span className="text-zinc-500 block text-[10px]">Pulse Rate:</span>
-                          <span className="font-bold text-zinc-900">{document.fitnessCertificateDetails.pulseRate} bpm</span>
+                          <span className="text-text-muted block text-[10px]">Pulse Rate:</span>
+                          <span className="font-bold text-text">{document.fitnessCertificateDetails.pulseRate} bpm</span>
                         </div>
                       )}
                       {document.fitnessCertificateDetails.vision && (
                         <div>
-                          <span className="text-zinc-500 block text-[10px]">Visual Acuity:</span>
-                          <span className="font-bold text-zinc-900">
+                          <span className="text-text-muted block text-[10px]">Visual Acuity:</span>
+                          <span className="font-bold text-text">
                             L: {document.fitnessCertificateDetails.vision.leftEye || "6/6"} | R: {document.fitnessCertificateDetails.vision.rightEye || "6/6"}
                           </span>
                         </div>
@@ -793,9 +795,9 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                     </div>
 
                     {document.fitnessCertificateDetails.identificationMarks && document.fitnessCertificateDetails.identificationMarks.length > 0 && (
-                      <div className="pt-2 border-t border-zinc-100 text-[11px]">
-                        <span className="text-zinc-500 font-bold block text-[10px] uppercase">Identification Marks:</span>
-                        <ul className="list-disc list-inside text-zinc-700 font-medium">
+                      <div className="pt-2 border-t border-border text-[11px]">
+                        <span className="text-text-muted font-bold block text-[10px] uppercase">Identification Marks:</span>
+                        <ul className="list-disc list-inside text-text-secondary font-medium">
                           {document.fitnessCertificateDetails.identificationMarks.map((mark, mIdx) => (
                             <li key={mIdx}>{mark}</li>
                           ))}
@@ -804,15 +806,15 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                     )}
 
                     {document.fitnessCertificateDetails.systemicExamination && (
-                      <div className="pt-2 border-t border-zinc-100 text-[11px]">
-                        <span className="text-zinc-500 font-bold block text-[10px] uppercase">Systemic Examination:</span>
-                        <p className="text-zinc-700">{document.fitnessCertificateDetails.systemicExamination}</p>
+                      <div className="pt-2 border-t border-border text-[11px]">
+                        <span className="text-text-muted font-bold block text-[10px] uppercase">Systemic Examination:</span>
+                        <p className="text-text-secondary">{document.fitnessCertificateDetails.systemicExamination}</p>
                       </div>
                     )}
                   </div>
                 )}
 
-                <p className="font-medium text-zinc-900 bg-white p-2.5 rounded-lg border border-zinc-200 text-xs">
+                <p className="font-medium text-text bg-white p-2.5 rounded-lg border border-border text-xs">
                   {document.fitnessCertificateDetails?.fitnessDeclaration ||
                     "I consider the candidate to be in sound physical and mental health, free from any communicable disease or constitutional defect, and physically fit to discharge all duties."}
                 </p>
@@ -823,8 +825,8 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
           {/* Reusable Footer Signature & Verification Seal */}
           <div className="footer-sign">
             <div className={isPreprinted ? "suppress-on-stationery" : ""}>
-              <p className="font-semibold text-zinc-600">Generated via ANANT Healthcare Clinic OS</p>
-              <p className="font-mono text-[10px] text-zinc-400">Electronic Clinical Audit Token: Validated</p>
+              <p className="font-semibold text-text-secondary">Generated via Ekavyu Healthcare Platform</p>
+              <p className="font-mono text-[10px] text-text-muted">Electronic Clinical Audit Token: Validated</p>
             </div>
             <div className="text-right">
               {document.doctorSignatureUrl ? (
@@ -834,16 +836,16 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                   className="h-10 max-w-[140px] ml-auto object-contain mb-1"
                 />
               ) : (
-                <div className="h-10 w-36 border-b border-zinc-400 mb-1 ml-auto"></div>
+                <div className="h-10 w-36 border-b border-border mb-1 ml-auto"></div>
               )}
-              <span className="font-bold text-zinc-900 block text-xs">
+              <span className="font-bold text-text block text-xs">
                 Dr. {document.doctorName?.replace(/^Dr\.\s*/i, "") || "Attending Physician"}
               </span>
               {document.doctorQualification && (
-                <span className="text-[10px] text-zinc-500 block">{document.doctorQualification}</span>
+                <span className="text-[10px] text-text-muted block">{document.doctorQualification}</span>
               )}
               {document.doctorRegistrationNumber && (
-                <span className="text-[10px] font-mono text-zinc-600 block font-semibold">
+                <span className="text-[10px] font-mono text-text-secondary block font-semibold">
                   Reg No: {document.doctorRegistrationNumber}
                 </span>
               )}

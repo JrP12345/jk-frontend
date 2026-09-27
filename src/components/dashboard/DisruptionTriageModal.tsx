@@ -2,33 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
-import {
-  Modal,
-  Button,
-  Select,
-  Input,
-  Badge,
-  Checkbox,
-  Spinner,
-  useToast,
-  cn,
-} from "@/components/ui";
-import {
-  AlertTriangle,
-  UserCheck,
-  Clock,
-  ArrowRight,
-  RotateCw,
-  Calendar,
-  XCircle,
-  CheckCircle2,
-  Users,
-  Phone,
-  Stethoscope,
-  Zap,
-  RefreshCw,
-  HelpCircle,
-} from "lucide-react";
+import { Modal, Button, Input, Badge, Checkbox, useToast, cn } from "@/components/ui";
+import { AlertTriangle, UserCheck, Clock, Calendar, XCircle, CheckCircle2, Phone, Stethoscope, RefreshCw } from "lucide-react";
 
 export interface TriageAppointment {
   id: string;
@@ -359,8 +334,8 @@ export default function DisruptionTriageModal({
     >
       <div className="space-y-5 pt-1 font-sans">
         {/* Banner Explainer */}
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
-          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div className="p-4 rounded-2xl bg-warning/10 border border-warning/25 flex items-start gap-3 text-xs leading-relaxed text-warning-text dark:text-warning-text">
+          <AlertTriangle className="w-5 h-5 text-warning-text dark:text-warning-text shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="font-bold text-sm">Doctor Availability Disruption Active</p>
             <p>
@@ -392,8 +367,8 @@ export default function DisruptionTriageModal({
               className={cn(
                 "px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 cursor-pointer",
                 selectedTab === "waiting"
-                  ? "bg-rose-500 text-white shadow-xs"
-                  : "text-rose-600 dark:text-rose-400 hover:text-rose-700"
+                  ? "bg-danger text-background shadow-xs"
+                  : "text-danger-text dark:text-danger-text hover:text-danger-text"
               )}
             >
               <UserCheck className="w-3.5 h-3.5" />
@@ -405,7 +380,7 @@ export default function DisruptionTriageModal({
               className={cn(
                 "px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 cursor-pointer",
                 selectedTab === "remote"
-                  ? "bg-primary-500 text-white shadow-xs"
+                  ? "bg-primary-500 text-brand-mist shadow-xs"
                   : "text-text-muted hover:text-text"
               )}
             >
@@ -504,7 +479,7 @@ export default function DisruptionTriageModal({
         {/* Patient Cards List */}
         {displayedAppointments.length === 0 ? (
           <div className="py-12 text-center text-text-muted space-y-2 border border-dashed border-border rounded-2xl">
-            <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+            <CheckCircle2 className="w-8 h-8 text-success-text mx-auto" />
             <p className="font-bold text-sm text-text">No Patients Require Triage</p>
             <p className="text-xs">All disrupted patients in this category have been safely triaged or reassigned.</p>
           </div>
@@ -522,7 +497,7 @@ export default function DisruptionTriageModal({
                   className={cn(
                     "p-4 rounded-2xl border transition-all space-y-3",
                     isCheckedIn
-                      ? "bg-rose-500/[0.04] border-rose-500/30"
+                      ? "bg-danger/[0.04] border-danger/30"
                       : "bg-surface border-border/80"
                   )}
                 >
@@ -536,8 +511,8 @@ export default function DisruptionTriageModal({
 
                       <div
                         className={cn(
-                          "w-10 h-10 rounded-xl flex flex-col items-center justify-center font-mono font-bold shrink-0 text-white shadow-xs",
-                          isCheckedIn ? "bg-rose-500" : "bg-primary-500"
+                          "w-10 h-10 rounded-xl flex flex-col items-center justify-center font-mono font-bold shrink-0 text-brand-mist shadow-xs",
+                          isCheckedIn ? "bg-danger" : "bg-primary-500"
                         )}
                       >
                         <span className="text-[8px] uppercase font-bold tracking-wider opacity-80">
@@ -574,7 +549,7 @@ export default function DisruptionTriageModal({
                           {timeRemaining && (
                             <>
                               <span>&bull;</span>
-                              <span className="text-amber-600 dark:text-amber-400 font-medium">
+                              <span className="text-warning-text dark:text-warning-text font-medium">
                                 {timeRemaining}
                               </span>
                             </>
@@ -594,7 +569,7 @@ export default function DisruptionTriageModal({
                           setCancellingId(null);
                         }}
                         disabled={submittingAction}
-                        className="rounded-lg font-semibold text-xs flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        className="rounded-lg font-semibold text-xs flex items-center gap-1 bg-success hover:bg-success text-background"
                       >
                         <Stethoscope className="w-3 h-3" />
                         Transfer
@@ -624,7 +599,7 @@ export default function DisruptionTriageModal({
                           setReschedulingId(null);
                         }}
                         disabled={submittingAction}
-                        className="rounded-lg font-semibold text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 flex items-center gap-1"
+                        className="rounded-lg font-semibold text-xs text-danger-text hover:text-danger-text hover:bg-danger/10 flex items-center gap-1"
                       >
                         <XCircle className="w-3 h-3" />
                         Refund
@@ -634,10 +609,10 @@ export default function DisruptionTriageModal({
 
                   {/* Inline Drawer: Transfer Doctor */}
                   {transferringId === appt.id && (
-                    <div className="p-3 bg-surface rounded-xl border border-emerald-500/30 space-y-3 animate-fade-in text-xs">
+                    <div className="p-3 bg-surface rounded-xl border border-success/30 space-y-3 animate-fade-in text-xs">
                       <div className="flex items-center justify-between font-semibold text-text">
                         <span>Transfer Patient #{appt.tokenNumber} to Available Doctor:</span>
-                        <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
+                        <span className="text-[11px] text-success-text dark:text-success-text font-bold">
                           ⚡ Priority: Next Up (Pos #1)
                         </span>
                       </div>
@@ -662,7 +637,7 @@ export default function DisruptionTriageModal({
                           onClick={() => handleSingleTransfer(appt.id)}
                           loading={submittingAction}
                           disabled={eligibleReplacements.length === 0}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg"
+                          className="bg-success hover:bg-success text-background font-bold rounded-lg"
                         >
                           Confirm Transfer
                         </Button>
@@ -726,7 +701,7 @@ export default function DisruptionTriageModal({
 
                   {/* Inline Drawer: Cancel & Refund */}
                   {cancellingId === appt.id && (
-                    <div className="p-3 bg-rose-500/10 rounded-xl border border-rose-500/30 space-y-3 animate-fade-in text-xs text-rose-900 dark:text-rose-200">
+                    <div className="p-3 bg-danger/10 rounded-xl border border-danger/30 space-y-3 animate-fade-in text-xs text-danger-text dark:text-danger-text">
                       <div className="font-semibold">
                         Confirm Cancellation & Full Refund for Patient #{appt.tokenNumber}?
                       </div>

@@ -1,5 +1,5 @@
-// ANANTA Progressive Web App (PWA) Service Worker
-const CACHE_NAME = 'ananta-cache-v3';
+// Ekavyu Progressive Web App (PWA) Service Worker
+const CACHE_NAME = 'ekavyu-cache-v6';
 const STATIC_ASSETS = [
   '/',
   '/browse',
@@ -7,7 +7,11 @@ const STATIC_ASSETS = [
   '/app-icon-192.png',
   '/app-icon-512.png',
   '/app-icon-light-192.png',
-  '/app-icon-dark-192.png',
+  '/ekavyu-leaf.png',
+  '/favicon-16.png',
+  '/favicon-32.png',
+  '/app-icon-180.png',
+  '/app-icon-maskable-512.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -113,7 +117,7 @@ self.addEventListener('fetch', (event) => {
           const cached = await caches.match(request);
           if (cached) return cached;
           const rootFallback = await caches.match('/');
-          return rootFallback || new Response('Offline - ANANTA Healthcare', { status: 503 });
+          return rootFallback || new Response('Offline - Ekavyu Healthcare', { status: 503 });
         })
     );
     return;

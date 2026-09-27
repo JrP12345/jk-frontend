@@ -119,7 +119,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
               key={mode}
               onClick={() => setViewMode(mode)}
               className={`min-h-11 px-3 text-xs font-bold rounded-lg uppercase transition-all cursor-pointer ${
-                viewMode === mode ? "bg-primary text-white shadow-xs" : "text-text-muted hover:text-text"
+                viewMode === mode ? "bg-primary text-brand-mist shadow-xs" : "text-text-muted hover:text-text"
               }`}
             >
               {mode}
@@ -149,11 +149,11 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
                   type="button"
                   key={appt.id}
                   onClick={() => { setSelectedAppt(appt); if (onSelectAppointment) onSelectAppointment(appt); }}
-                  className="w-full text-left p-3 bg-surface rounded-xl border border-border hover:border-primary-500 cursor-pointer transition-all space-y-1.5 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  className="w-full text-left p-3 bg-surface rounded-xl border border-border hover:border-primary-500 cursor-pointer transition-all space-y-1.5 shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                 >
                   <div className="flex justify-between items-center font-bold text-text text-xs">
                     <span>Token #{appt.tokenNumber}</span>
-                    <span className="text-primary font-semibold">
+                    <span className="text-accent font-semibold">
                       {new Date(appt.appointmentTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
@@ -188,7 +188,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
               >
                 <div className="flex items-center justify-between text-xs border-b border-border/40 pb-1.5">
                   <span className="font-bold text-text">{d.toLocaleDateString("en-US", { weekday: "short" })}</span>
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black ${isToday ? "bg-primary text-white" : "text-text-muted"}`}>
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black ${isToday ? "bg-primary text-brand-mist" : "text-text-muted"}`}>
                     {d.getDate()}
                   </span>
                 </div>
@@ -202,11 +202,11 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
                         type="button"
                         key={appt.id}
                         onClick={() => { setSelectedAppt(appt); if (onSelectAppointment) onSelectAppointment(appt); }}
-                        className="w-full text-left p-1.5 bg-surface rounded-lg border border-border/80 text-[11px] shadow-2xs hover:border-primary-500 cursor-pointer transition-all space-y-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500"
+                        className="w-full text-left p-1.5 bg-surface rounded-lg border border-border/80 text-[11px] shadow-2xs hover:border-primary-500 cursor-pointer transition-all space-y-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
                       >
                         <div className="flex justify-between items-center font-bold text-text">
                           <span>#{appt.tokenNumber}</span>
-                          <span className="text-[10px] font-semibold text-primary-600">
+                          <span className="text-[10px] font-semibold text-accent">
                             {new Date(appt.appointmentTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
@@ -251,11 +251,11 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
                 }`}
               >
                 <div className="flex flex-wrap gap-1 justify-between items-center text-xs">
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[11px] ${isToday ? "bg-primary text-white" : "text-text"}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[11px] ${isToday ? "bg-primary text-brand-mist" : "text-text"}`}>
                     {dayNum}
                   </span>
                   {dayAppts.length > 0 && (
-                    <span className="text-[10px] font-extrabold text-primary-600 bg-primary/10 px-1.5 py-0.2 rounded-full">
+                    <span className="text-[10px] font-extrabold text-accent bg-primary/10 px-1.5 py-0.2 rounded-full">
                       {dayAppts.length}<span className="hidden sm:inline"> appt{dayAppts.length > 1 ? "s" : ""}</span>
                     </span>
                   )}
@@ -267,7 +267,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
                       type="button"
                       key={appt.id}
                       onClick={() => { setSelectedAppt(appt); if (onSelectAppointment) onSelectAppointment(appt); }}
-                      className="w-full text-left text-[10px] p-1 bg-surface rounded border border-border/60 truncate font-semibold cursor-pointer hover:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500"
+                      className="w-full text-left text-[10px] p-1 bg-surface rounded border border-border/60 truncate font-semibold cursor-pointer hover:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
                     >
                       #{appt.tokenNumber} {appt.patientId?.userId?.name || "Patient"}
                     </button>

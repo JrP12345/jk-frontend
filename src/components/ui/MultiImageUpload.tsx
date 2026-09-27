@@ -134,7 +134,7 @@ export default function MultiImageUpload({
         className={cn(
           "grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-3 p-3 rounded-2xl border transition-all duration-200",
           isDragging
-            ? "border-primary-500 bg-primary-500/10 ring-2 ring-primary-500/30"
+            ? "border-primary-500 bg-primary-500/10 ring-2 ring-focus-ring"
             : error
             ? "border-danger-500/60 bg-danger-500/5"
             : "border-border/80 bg-surface-alt/40 hover:border-border"
@@ -154,7 +154,7 @@ export default function MultiImageUpload({
 
             {/* Badge for Cover/Primary on first image */}
             {index === 0 && (
-              <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-600 text-white shadow-xs backdrop-blur-xs">
+              <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-600 text-brand-mist shadow-xs ">
                 <Sparkles className="w-2.5 h-2.5" />
                 Featured
               </span>
@@ -166,7 +166,7 @@ export default function MultiImageUpload({
                 type="button"
                 onClick={(e) => handleRemove(index, e)}
                 disabled={disabled}
-                className="p-1.5 rounded-full bg-danger-500 text-white shadow-md hover:bg-danger-600 active:scale-95 transition-transform cursor-pointer"
+                className="p-1.5 rounded-full bg-danger-500 text-brand-mist shadow-md hover:bg-danger-600 active:scale-95 transition-transform cursor-pointer"
                 title="Remove photo"
               >
                 <X className="w-4 h-4" />
@@ -185,10 +185,10 @@ export default function MultiImageUpload({
               "hover:border-primary-500/70 hover:bg-primary-500/5 active:scale-98 group bg-surface/50"
             )}
           >
-            <div className="w-8 h-8 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-full bg-primary-500/10 text-accent dark:text-accent flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
               <Plus className="w-4 h-4" />
             </div>
-            <span className="text-xs font-semibold text-text group-hover:text-primary-600 transition-colors">
+            <span className="text-xs font-semibold text-text group-hover:text-accent transition-colors">
               Add Photo
             </span>
             <span className="text-[10px] text-text-muted mt-0.5">Click or drop</span>
@@ -200,9 +200,9 @@ export default function MultiImageUpload({
             type="button"
             disabled={disabled}
             onClick={() => fileInputRef.current?.click()}
-            className="col-span-full py-8 flex flex-col items-center justify-center text-center rounded-xl cursor-pointer hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="col-span-full py-8 flex flex-col items-center justify-center text-center rounded-xl cursor-pointer hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <div className="w-12 h-12 rounded-2xl bg-primary-500/10 text-primary-500 flex items-center justify-center mb-2">
+            <div className="w-12 h-12 rounded-2xl bg-primary-500/10 text-accent flex items-center justify-center mb-2">
               <ImageIcon className="w-6 h-6" />
             </div>
             <p className="text-sm font-semibold text-text">No facility photos added yet</p>
@@ -213,7 +213,7 @@ export default function MultiImageUpload({
         )}
       </div>
 
-      {error && <p className="text-xs font-medium text-danger-500">{error}</p>}
+      {error && <p className="text-xs font-medium text-danger-text">{error}</p>}
 
       <input
         ref={fileInputRef}

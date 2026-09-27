@@ -1,25 +1,21 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import {
-  Card, CardHeader, CardTitle, CardContent, CardDescription,
-  Button, Input, useToast, Spinner, Toggle, StatCard, Badge, cn,
-  Skeleton, SkeletonCardGrid
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Input, useToast, Toggle, StatCard, Badge, Skeleton, SkeletonCardGrid } from "@/components/ui";
 import { Boxes, CheckCircle2, PowerOff, ShieldCheck } from "lucide-react";
 import { useModuleStore, type ModuleInfo } from "@/store/moduleStore";
 
 const PRIORITY_CONFIG = {
   P1: {
     label: "Clinic Essentials",
-    color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-    dot: "bg-emerald-500",
+    color: "bg-success/10 text-success-text dark:text-success-text border-success/20",
+    dot: "bg-success",
     description: "Core modules required for day-to-day clinic operations",
   },
   P2: {
     label: "Important / Extended",
-    color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-    dot: "bg-amber-500",
+    color: "bg-warning/10 text-warning-text dark:text-warning-text border-warning/20",
+    dot: "bg-warning",
     description: "Valuable modules for enhanced outpatient clinical workflows",
   },
 } as const;
@@ -150,7 +146,7 @@ export default function ModulesSettingsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -280,7 +276,7 @@ export default function ModulesSettingsPage() {
                       <div className="flex items-center gap-3 min-w-0">
                         <div
                           className={`w-2 h-2 rounded-full shrink-0 transition-colors duration-300 ${
-                            mod.enabled ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600"
+                            mod.enabled ? "bg-success" : "bg-surface-hover dark:bg-surface-hover"
                           }`}
                         />
                         <div className="min-w-0">
@@ -292,7 +288,7 @@ export default function ModulesSettingsPage() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {mod.alwaysOn && (
-                          <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+                          <span className="text-[10px] font-bold text-accent bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
                             ALWAYS ON
                           </span>
                         )}

@@ -1,11 +1,11 @@
 "use client";
 
+import { getPrintBrandStyles } from "@/lib/printBrand";
+
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import {
-  Card, CardContent, Table, Button, Modal, useToast, Spinner, Badge, cn
-} from "@/components/ui";
+import { Table, Button, Modal, useToast, Badge, cn } from "@/components/ui";
 import { RotateCw, Printer, CreditCard } from "lucide-react";
 
 interface InvoiceItem {
@@ -108,22 +108,22 @@ export default function PatientBillsPage() {
       <html>
         <head>
           <title>Payment Receipt - ${inv.invoiceNumber}</title>
-          <style>
+          <style>${getPrintBrandStyles()}
             body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #fff; padding: 20px; }
-            .receipt { width: 380px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+            .receipt { width: 380px; padding: 20px; border: 1px solid var(--print-border); border-radius: 8px; }
             .center { text-align: center; }
-            .border-dashed { border-bottom: 1px dashed #ccc; margin: 15px 0; }
+            .border-dashed { border-bottom: 1px dashed var(--print-border); margin: 15px 0; }
             .flex-between { display: flex; justify-content: space-between; margin: 4px 0; font-size: 13px; }
             .bold { font-weight: bold; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
-            th { border-bottom: 1px solid #ddd; text-align: left; padding-bottom: 5px; }
+            th { border-bottom: 1px solid var(--print-border); text-align: left; padding-bottom: 5px; }
             td { padding: 4px 0; }
           </style>
         </head>
         <body>
           <div class="receipt">
             <div class="center">
-              <h3 style="margin:2px 0;">ANANT HEALTHCARE SYSTEM</h3>
+              <h3 style="margin:2px 0;">Ekavyu HEALTHCARE SYSTEM</h3>
               <p style="margin:2px 0; font-size:11px;">${inv.clinicId?.name}</p>
             </div>
             <div class="border-dashed"></div>
@@ -151,7 +151,7 @@ export default function PatientBillsPage() {
             </div>
             <div class="border-dashed"></div>
             <div class="center">
-              <span style="font-size: 13px; font-weight: bold; background: #e6f4ea; color: #137333; padding: 4px 12px; border-radius: 99px;">
+              <span style="font-size: 13px; font-weight: bold; background: var(--print-success-subtle); color: var(--print-success); padding: 4px 12px; border-radius: 99px;">
                 PAID via ${inv.paymentMethod?.toUpperCase()}
               </span>
             </div>
@@ -170,7 +170,7 @@ export default function PatientBillsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -216,7 +216,7 @@ export default function PatientBillsPage() {
                 <div className="space-y-0.5">
                   <span className="font-semibold text-text">₹{row.totalAmount}</span>
                   {row.status === "partially_paid" && (
-                    <span className="block text-[10px] text-amber-600 dark:text-amber-400 font-bold">
+                    <span className="block text-[10px] text-warning-text dark:text-warning-text font-bold">
                       Bal: ₹{balance}
                     </span>
                   )}
@@ -292,8 +292,8 @@ export default function PatientBillsPage() {
                     </div>
                     {row.status === "partially_paid" && (
                       <div className="text-right">
-                        <span className="text-amber-600 dark:text-amber-400 text-[10px] uppercase font-bold block">Balance Due</span>
-                        <span className="font-bold text-sm text-amber-600 dark:text-amber-400 mt-0.5 block">₹{balance}</span>
+                        <span className="text-warning-text dark:text-warning-text text-[10px] uppercase font-bold block">Balance Due</span>
+                        <span className="font-bold text-sm text-warning-text dark:text-warning-text mt-0.5 block">₹{balance}</span>
                       </div>
                     )}
                   </div>
@@ -338,7 +338,7 @@ export default function PatientBillsPage() {
         <form onSubmit={handleCheckoutSubmit} className="space-y-5 font-sans pt-1">
           <div className="p-4 bg-surface-alt border border-border/80 rounded-2xl space-y-1 text-center relative overflow-hidden shadow-xs">
             <div className="inline-block">
-              <span className="text-[10px] tracking-widest font-black uppercase text-primary-500 bg-primary-500/10 px-2.5 py-0.5 rounded-full border border-primary-500/20">
+              <span className="text-[10px] tracking-widest font-black uppercase text-accent bg-primary-500/10 px-2.5 py-0.5 rounded-full border border-primary-500/20">
                 🔒 PCI-DSS Tokenized Gateway
               </span>
             </div>
@@ -356,7 +356,7 @@ export default function PatientBillsPage() {
               onClick={() => setPaymentOption("upi")}
               className={`p-3.5 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs ${
                 paymentOption === "upi"
-                  ? "bg-primary-600 text-white border-primary-600 shadow-xs"
+                  ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs"
                   : "bg-surface-alt border-border text-text-secondary hover:bg-surface-hover"
               }`}
             >
@@ -367,7 +367,7 @@ export default function PatientBillsPage() {
               onClick={() => setPaymentOption("card")}
               className={`p-3.5 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs ${
                 paymentOption === "card"
-                  ? "bg-primary-600 text-white border-primary-600 shadow-xs"
+                  ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs"
                   : "bg-surface-alt border-border text-text-secondary hover:bg-surface-hover"
               }`}
             >
@@ -379,7 +379,7 @@ export default function PatientBillsPage() {
             <div className="space-y-4 text-center py-2 animate-fade-in">
               <div className="mx-auto w-36 h-36 bg-surface border border-border p-2 rounded-xl flex items-center justify-center shadow-inner relative overflow-hidden group">
                 <div className="w-full h-full border-2 border-dashed border-primary-500/30 rounded flex flex-col items-center justify-center gap-1.5 bg-surface-alt/50">
-                  <svg className="w-8 h-8 text-primary-500 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-16v.01M4 12h4m12 0h.01M4 20h.01M4 4h10v10H4V4z" /></svg>
+                  <svg className="w-8 h-8 text-accent animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-16v.01M4 12h4m12 0h.01M4 20h.01M4 4h10v10H4V4z" /></svg>
                   <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Scan UPI QR</span>
                 </div>
               </div>
@@ -389,7 +389,7 @@ export default function PatientBillsPage() {
             <div className="space-y-3.5 animate-fade-in py-2">
               <div className="p-4 border border-border rounded-xl bg-surface-alt text-center space-y-2">
                 <div className="flex items-center justify-center gap-2 text-xs font-bold text-text">
-                  <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                  <svg className="w-4 h-4 text-success-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                   <span>Hosted Payment Gateway (SAQ A)</span>
                 </div>
                 <p className="text-xs text-text-muted">Payment details are tokenized directly via hosted Elements iframe SDK (`pm_card_visa`). No card numbers touch application servers.</p>
@@ -412,7 +412,7 @@ export default function PatientBillsPage() {
           <div className="space-y-6">
             <div className="border border-border rounded-xl p-5 bg-surface-alt font-mono text-sm space-y-4">
               <div className="text-center border-b border-border/80 border-dashed pb-4 mb-2">
-                <h3 className="font-extrabold text-base tracking-tight text-text">JK HEALTHCARE SYSTEM</h3>
+                <h3 className="font-extrabold text-base tracking-tight text-text">Ekavyu</h3>
                 <p className="text-xs text-text-muted mt-0.5">{receiptInvoice.clinicId?.name}</p>
                 <p className="text-[11px] text-text-muted">{receiptInvoice.clinicId?.address}, {receiptInvoice.clinicId?.city}</p>
               </div>
@@ -451,7 +451,7 @@ export default function PatientBillsPage() {
               </div>
 
               <div className="text-center pt-2">
-                <span className="inline-block font-extrabold text-xs px-4 py-1.5 rounded-full uppercase border bg-success-100/50 text-success-800 border-success-300/40">
+                <span className="inline-block font-extrabold text-xs px-4 py-1.5 rounded-full uppercase border bg-success-100/50 text-success-text border-success/40">
                   {receiptInvoice.status}
                 </span>
                 {receiptInvoice.paymentMethod && (

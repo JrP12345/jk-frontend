@@ -57,7 +57,7 @@ const Textarea = memo(
                 className={cn(
                   "text-[11px] font-mono tabular-nums px-1.5 py-0.5 rounded border border-border/60 bg-surface-alt transition-colors duration-150 ml-auto select-none",
                   hasMaxLength && valueLength >= rest.maxLength!
-                    ? "text-danger-500 font-semibold border-danger-500/30 bg-danger-500/10"
+                    ? "text-danger-text font-semibold border-danger-500/30 bg-danger-500/10"
                     : "text-text-muted"
                 )}
                 aria-live="polite"
@@ -68,22 +68,23 @@ const Textarea = memo(
             )}
           </div>
           <textarea
+            data-touch-control
             ref={ref}
             id={id}
             disabled={disabled}
             aria-invalid={error ? true : undefined}
             aria-describedby={describedBy}
             className={cn(
-              "w-full rounded-xl border bg-surface text-text px-3.5 py-2.5 text-base sm:text-sm min-h-[88px] resize-y font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted/70 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt shadow-2xs",
+              "w-full rounded-xl border bg-surface text-text px-3.5 py-2.5 text-base md:text-sm min-h-[88px] resize-y font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt shadow-2xs",
               error
                 ? "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:border-danger-500"
-                : "border-border hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500",
+                : "border-border hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring",
               className
             )}
             {...rest}
           />
           {error && (
-            <p id={errorId} className="text-xs font-medium text-danger-500 animate-fade-in">
+            <p id={errorId} className="text-xs font-medium text-danger-text animate-fade-in">
               {error}
             </p>
           )}

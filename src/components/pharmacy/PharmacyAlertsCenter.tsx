@@ -1,18 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Badge,
-  Button,
-  Select,
-  Spinner,
-  useToast,
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Badge, Button, Select, useToast } from "@/components/ui";
 import api from "@/lib/api";
 
 export interface ExpiringBatchItem {
@@ -134,12 +123,12 @@ export function PharmacyAlertsCenter({
       {/* Quick Summary Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Low Stock Warning Card */}
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-warning/10 border border-warning/30 flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-amber-600 dark:text-amber-400 block uppercase tracking-wider">
+            <span className="text-xs font-bold text-warning-text dark:text-warning-text block uppercase tracking-wider">
               Low Stock Warnings
             </span>
-            <span className="text-2xl font-black text-amber-700 dark:text-amber-300">
+            <span className="text-2xl font-black text-warning-text dark:text-warning-text">
               {lowStockMedicines.length} Medicines
             </span>
             <p className="text-[11px] text-text-muted mt-0.5">Stock &le; Reorder Threshold</p>
@@ -148,12 +137,12 @@ export function PharmacyAlertsCenter({
         </div>
 
         {/* Expiring Soon Card */}
-        <div className="p-4 rounded-2xl bg-blue-500/10 border border-border flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-primary/10 border border-border flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-blue-600 dark:text-blue-400 block uppercase tracking-wider">
+            <span className="text-xs font-bold text-accent dark:text-accent block uppercase tracking-wider">
               Expiring Within {daysThreshold} Days
             </span>
-            <span className="text-2xl font-black text-blue-700 dark:text-blue-300">
+            <span className="text-2xl font-black text-accent dark:text-accent">
               {expiringSoonBatches.length} Batches
             </span>
             <p className="text-[11px] text-text-muted mt-0.5">FEFO Action Required</p>
@@ -162,12 +151,12 @@ export function PharmacyAlertsCenter({
         </div>
 
         {/* Expired Card */}
-        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-danger/10 border border-danger/30 flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-red-600 dark:text-red-400 block uppercase tracking-wider">
+            <span className="text-xs font-bold text-danger-text dark:text-danger-text block uppercase tracking-wider">
               Expired Batches
             </span>
-            <span className="text-2xl font-black text-red-700 dark:text-red-300">
+            <span className="text-2xl font-black text-danger-text dark:text-danger-text">
               {expiredBatches.length} Batches
             </span>
             <p className="text-[11px] text-text-muted mt-0.5">Quarantine / Disposal</p>
@@ -197,7 +186,7 @@ export function PharmacyAlertsCenter({
               {lowStockMedicines.map((med) => (
                 <div
                   key={med.id}
-                  className="p-3.5 bg-amber-500/5 border border-amber-500/30 rounded-2xl space-y-2.5 text-xs flex flex-col justify-between"
+                  className="p-3.5 bg-warning/5 border border-warning/30 rounded-2xl space-y-2.5 text-xs flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between">
@@ -207,7 +196,7 @@ export function PharmacyAlertsCenter({
                       </Badge>
                     </div>
                     <p className="text-[11px] text-text-muted">{med.genericName}</p>
-                    <div className="flex items-center gap-2 text-[10px] text-text-muted mt-2 pt-2 border-t border-amber-500/20">
+                    <div className="flex items-center gap-2 text-[10px] text-text-muted mt-2 pt-2 border-t border-warning/20">
                       <span>Reorder Threshold: <b>{med.reorderLevel || 20}</b></span>
                       <span>HSN: <b>{med.hsnCode || "3004"}</b></span>
                     </div>
@@ -257,8 +246,8 @@ export function PharmacyAlertsCenter({
                     key={batch._id}
                     className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
                       isPastExpiry
-                        ? "bg-red-500/5 border-red-500/30"
-                        : "bg-blue-500/5 border-blue-500/30"
+                        ? "bg-danger/5 border-danger/30"
+                        : "bg-primary/5 border-accent/30"
                     }`}
                   >
                     <div className="space-y-1">
@@ -283,7 +272,7 @@ export function PharmacyAlertsCenter({
 
                     <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-between sm:justify-end">
                       <div className="text-right mr-2 hidden sm:block">
-                        <span className="font-mono font-bold text-primary-600 block">₹{batch.sellingPrice}/unit</span>
+                        <span className="font-mono font-bold text-accent block">₹{batch.sellingPrice}/unit</span>
                         <span className="text-[10px] text-text-muted">Cost: ₹{batch.purchaseCost}</span>
                       </div>
                       <Button

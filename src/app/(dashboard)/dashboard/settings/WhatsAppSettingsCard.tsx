@@ -2,43 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Button,
-  Input,
-  Toggle,
-  Badge,
-  useToast,
-  Spinner,
-  cn,
-  SkeletonForm,
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Toggle, Badge, useToast, cn, SkeletonForm } from "@/components/ui";
 import Modal from "@/components/ui/Modal";
 import WhatsAppConnectionPanel from "./WhatsAppConnectionPanel";
-import {
-  whatsappSettingsService,
-  type WhatsAppSettingsData,
-  type WhatsAppPack,
-} from "@/services/whatsappSettings.service";
+import { whatsappSettingsService } from "@/services/whatsappSettings.service";
 import { useAuthStore } from "@/store/authStore";
-import {
-  MessageSquare,
-  Zap,
-  CheckCircle2,
-  AlertTriangle,
-  CreditCard,
-  Check,
-  Save,
-  ShieldCheck,
-  ExternalLink,
-  Sparkles,
-  Lock,
-  Layers,
-} from "lucide-react";
+import { MessageSquare, Zap, CheckCircle2, AlertTriangle, CreditCard, Save, ShieldCheck, Sparkles, Lock } from "lucide-react";
 
 interface WhatsAppSettingsCardProps {
   selectedOrgId?: string;
@@ -179,7 +148,7 @@ export default function WhatsAppSettingsCard({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <div className="p-1.5 rounded-lg bg-success/10 text-success-text dark:text-success-text">
                   <MessageSquare className="w-4 h-4" />
                 </div>
                 <CardTitle className="text-base font-bold text-text">
@@ -193,7 +162,7 @@ export default function WhatsAppSettingsCard({
                 >
                   {mode === "disabled" ? "Disabled" : isLowBalance ? "Low Credits" : "Active"}
                 </Badge>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-success/10 text-success-text dark:text-success-text border-success/20">
                   Cloud API v21.0
                 </span>
               </div>
@@ -207,7 +176,7 @@ export default function WhatsAppSettingsCard({
                 variant="secondary"
                 size="sm"
                 onClick={() => setIsTopUpModalOpen(true)}
-                className="font-semibold rounded-xl gap-1.5 cursor-pointer shadow-xs text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
+                className="font-semibold rounded-xl gap-1.5 cursor-pointer shadow-xs text-success-text dark:text-success-text border-success/30 hover:bg-success/10 flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <Zap className="w-3.5 h-3.5 fill-current" />
                 Top-Up Credits
@@ -229,12 +198,12 @@ export default function WhatsAppSettingsCard({
         <CardContent className="space-y-5 pt-5">
           {/* Low Balance Warning Banner */}
           {isLowBalance && mode !== "disabled" && (
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-800 dark:text-amber-300 flex items-start justify-between gap-3 animate-fade-in">
+            <div className="p-4 rounded-2xl bg-warning/10 border border-warning/25 text-xs text-warning-text dark:text-warning-text flex items-start justify-between gap-3 animate-fade-in">
               <div className="flex items-start gap-2.5">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500 mt-0.5" />
+                <AlertTriangle className="w-4 h-4 shrink-0 text-warning-text mt-0.5" />
                 <div>
                   <p className="font-bold text-xs mb-0.5">WhatsApp Credit Balance Running Low</p>
-                  <p className="leading-relaxed text-[11px] text-amber-700/90 dark:text-amber-300/90">
+                  <p className="leading-relaxed text-[11px] text-warning-text/90 dark:text-warning-text/90">
                     You have <span className="font-bold underline">{creditsBalance} credits</span> remaining (below threshold of {lowBalanceThreshold}). If credits reach 0, appointment bookings and queue operations will continue uninterrupted, with live queue tracking automatically falling back to patient web links and email.
                   </p>
                 </div>
@@ -243,7 +212,7 @@ export default function WhatsAppSettingsCard({
                 variant="primary"
                 size="sm"
                 onClick={() => setIsTopUpModalOpen(true)}
-                className="shrink-0 text-xs rounded-xl py-1 px-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold cursor-pointer"
+                className="shrink-0 text-xs rounded-xl py-1 px-3 bg-warning hover:bg-warning text-background font-semibold cursor-pointer"
               >
                 Add Credits
               </Button>
@@ -255,7 +224,7 @@ export default function WhatsAppSettingsCard({
             <div className="p-4 rounded-2xl border border-border/80 bg-surface-alt/60 space-y-1 relative overflow-hidden">
               <div className="flex items-center justify-between text-[11px] font-bold text-text-muted uppercase tracking-wider">
                 <span>Available Credits</span>
-                <Zap className="w-3.5 h-3.5 text-emerald-500" />
+                <Zap className="w-3.5 h-3.5 text-success-text" />
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-extrabold text-text tracking-tight">
@@ -281,8 +250,8 @@ export default function WhatsAppSettingsCard({
                   className={cn(
                     "h-full transition-all duration-300 rounded-full",
                     usagePercentage >= 90
-                      ? "bg-amber-500"
-                      : "bg-gradient-to-r from-primary-500 to-emerald-500"
+                      ? "bg-warning"
+                      : "bg-primary  "
                   )}
                   style={{ width: `${usagePercentage}%` }}
                 />
@@ -295,7 +264,7 @@ export default function WhatsAppSettingsCard({
             <div className="p-4 rounded-2xl border border-border/80 bg-surface-alt/60 space-y-1">
               <div className="flex items-center justify-between text-[11px] font-bold text-text-muted uppercase tracking-wider">
                 <span>Prepaid Credits</span>
-                <CreditCard className="w-3.5 h-3.5 text-primary-500" />
+                <CreditCard className="w-3.5 h-3.5 text-accent" />
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-extrabold text-text tracking-tight">
@@ -321,25 +290,25 @@ export default function WhatsAppSettingsCard({
                 onClick={() => setMode("shared")}
                 aria-pressed={mode === "shared"}
                 className={cn(
-                  "p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1 relative text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                  "p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1 relative text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success",
                   mode === "shared"
-                    ? "border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500/30"
+                    ? "border-success bg-success/5 ring-1 ring-success/30"
                     : "border-border/80 bg-surface hover:bg-surface-alt/50"
                 )}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-emerald-500" />
+                    <Sparkles className="w-4 h-4 text-success-text" />
                     <p className="text-xs font-bold text-text">Shared Gateway</p>
                   </div>
                   {mode === "shared" && (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success-text dark:text-success-text shrink-0" />
                   )}
                 </div>
                 <p className="text-[11px] text-text-muted leading-relaxed">
-                  Managed by ANANTA Cloud. Uses the shared sender configured by root.
+                  Managed by Ekavyu Cloud. Uses the shared sender configured by root.
                 </p>
-                <span className="inline-block text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
+                <span className="inline-block text-[10px] font-semibold text-success-text dark:text-success-text mt-1">
                   Default Platform
                 </span>
               </button>
@@ -350,25 +319,25 @@ export default function WhatsAppSettingsCard({
                 onClick={() => setMode("dedicated")}
                 aria-pressed={mode === "dedicated"}
                 className={cn(
-                  "p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1 relative text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
+                  "p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1 relative text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
                   mode === "dedicated"
-                    ? "border-primary-500 bg-primary-500/5 ring-1 ring-primary-500/30"
+                    ? "border-primary-500 bg-primary-500/5 ring-1 ring-focus-ring"
                     : "border-border/80 bg-surface hover:bg-surface-alt/50"
                 )}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-primary-500" />
+                    <ShieldCheck className="w-4 h-4 text-accent" />
                     <p className="text-xs font-bold text-text">Dedicated WABA</p>
                   </div>
                   {mode === "dedicated" && (
-                    <CheckCircle2 className="w-4 h-4 text-primary-600 dark:text-primary-400 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-accent dark:text-accent shrink-0" />
                   )}
                 </div>
                 <p className="text-[11px] text-text-muted leading-relaxed">
                   Bring your own Meta Business Account and registered clinical phone number.
                 </p>
-                <span className="inline-block text-[10px] font-semibold text-primary-600 dark:text-primary-400 mt-1">
+                <span className="inline-block text-[10px] font-semibold text-accent dark:text-accent mt-1">
                   Enterprise Custom
                 </span>
               </button>
@@ -379,25 +348,25 @@ export default function WhatsAppSettingsCard({
                 onClick={() => setMode("disabled")}
                 aria-pressed={mode === "disabled"}
                 className={cn(
-                  "p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1 relative text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500",
+                  "p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1 relative text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning",
                   mode === "disabled"
-                    ? "border-amber-500 bg-amber-500/5 ring-1 ring-amber-500/30"
+                    ? "border-warning bg-warning/5 ring-1 ring-warning/30"
                     : "border-border/80 bg-surface hover:bg-surface-alt/50"
                 )}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <Lock className="w-4 h-4 text-amber-500" />
+                    <Lock className="w-4 h-4 text-warning-text" />
                     <p className="text-xs font-bold text-text">Disabled</p>
                   </div>
                   {mode === "disabled" && (
-                    <CheckCircle2 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-warning-text dark:text-warning-text shrink-0" />
                   )}
                 </div>
                 <p className="text-[11px] text-text-muted leading-relaxed">
                   Turn off WhatsApp notifications. Patient alerts will fall back to Email and SMS.
                 </p>
-                <span className="inline-block text-[10px] font-semibold text-amber-600 dark:text-amber-400 mt-1">
+                <span className="inline-block text-[10px] font-semibold text-warning-text dark:text-warning-text mt-1">
                   No Outbound
                 </span>
               </button>
@@ -408,7 +377,7 @@ export default function WhatsAppSettingsCard({
               <div className="p-4 rounded-2xl border border-primary-500/30 bg-surface-alt space-y-3 mt-2 animate-fade-in">
                 <div className="flex items-center justify-between">
                   <h5 className="text-xs font-bold text-text flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-primary-500" />
+                    <ShieldCheck className="w-3.5 h-3.5 text-accent" />
                     Custom Meta Cloud API Credentials
                   </h5>
                   <span className="text-[11px] text-text-muted">
@@ -426,7 +395,7 @@ export default function WhatsAppSettingsCard({
                     label="Phone Number ID *"
                     placeholder="e.g. 104928374650192"
                     value={phoneNumberId}
-                    onChange={(e) => setPhoneNumberId(e.target.value)}
+                    onChange={(e) => setPhoneNumberId(e.target.value)} type="tel" inputMode="tel"
                   />
                 </div>
                 <Input
@@ -464,7 +433,7 @@ export default function WhatsAppSettingsCard({
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5">
                     <p className="text-xs font-bold text-text">Booking Confirmation & Tracker</p>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-success/10 text-success-text dark:text-success-text border border-success/20">
                       Essential
                     </span>
                   </div>
@@ -486,7 +455,7 @@ export default function WhatsAppSettingsCard({
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5">
                     <p className="text-xs font-bold text-text">Post-Consultation Digital Handoff</p>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-success/10 text-success-text dark:text-success-text border border-success/20">
                       Essential
                     </span>
                   </div>
@@ -525,7 +494,7 @@ export default function WhatsAppSettingsCard({
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5">
                     <p className="text-xs font-bold text-text">Turn Approaching Alert (2 Ahead)</p>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-warning/10 text-warning-text dark:text-warning-text border border-warning/20">
                       Optional
                     </span>
                   </div>
@@ -547,7 +516,7 @@ export default function WhatsAppSettingsCard({
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5">
                     <p className="text-xs font-bold text-text">Queue Delay Domino Alerts</p>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-primary/10 text-accent dark:text-accent border border-accent/20">
                       Smart Flow
                     </span>
                   </div>
@@ -569,7 +538,7 @@ export default function WhatsAppSettingsCard({
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5">
                     <p className="text-xs font-bold text-text">Doctor Disruption & Triage</p>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-warning/10 text-warning-text dark:text-warning-text border border-warning/20">
                       High Priority
                     </span>
                   </div>
@@ -606,7 +575,7 @@ export default function WhatsAppSettingsCard({
             </div>
 
             <div className="text-[11px] text-text-muted flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <ShieldCheck className="w-3.5 h-3.5 text-success-text shrink-0" />
               <span>Inbound STOP opt-out and webhook delivery tracking active.</span>
             </div>
           </div>
@@ -641,7 +610,7 @@ export default function WhatsAppSettingsCard({
                 size="sm"
                 loading={topUpMutation.isPending}
                 onClick={() => topUpMutation.mutate(selectedPack)}
-                className="rounded-xl font-semibold gap-1.5 cursor-pointer shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+                className="rounded-xl font-semibold gap-1.5 cursor-pointer shadow-xs bg-success hover:bg-success text-background w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <Zap className="w-3.5 h-3.5 fill-current" />
                 Confirm & Top-Up
@@ -690,14 +659,14 @@ export default function WhatsAppSettingsCard({
                   onClick={() => setSelectedPack(pack.id)}
                   aria-pressed={isSelected}
                   className={cn(
-                    "p-4 rounded-2xl border cursor-pointer transition-all relative flex flex-col justify-between space-y-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                    "p-4 rounded-2xl border cursor-pointer transition-all relative flex flex-col justify-between space-y-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success",
                     isSelected
-                      ? "border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/40 shadow-sm"
+                      ? "border-success bg-success/10 ring-2 ring-success/40 shadow-sm"
                       : "border-border/80 bg-surface-alt/40 hover:bg-surface-alt"
                   )}
                 >
                   {pack.popular && (
-                    <span className="absolute -top-2.5 right-3 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-full shadow-xs">
+                    <span className="absolute -top-2.5 right-3 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide bg-primary   text-brand-mist rounded-full shadow-xs">
                       Popular
                     </span>
                   )}
@@ -717,7 +686,7 @@ export default function WhatsAppSettingsCard({
                   <div className="pt-2 border-t border-border/60 w-full">
                     <div className="flex items-center justify-between">
                       <span className="text-base font-bold text-text">{pack.price}</span>
-                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                      <span className="text-[10px] font-semibold text-success-text dark:text-success-text bg-success/10 px-1.5 py-0.5 rounded-md">
                         {pack.rate}
                       </span>
                     </div>
@@ -732,7 +701,7 @@ export default function WhatsAppSettingsCard({
 
           <div className="p-3.5 rounded-2xl bg-surface-alt border border-border/80 text-xs text-text-muted space-y-1">
             <p className="font-bold text-text flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+              <ShieldCheck className="w-3.5 h-3.5 text-success-text" />
               Platform Zero-Disruption Guarantee
             </p>
             <p className="text-[11px] leading-relaxed">

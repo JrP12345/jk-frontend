@@ -2,28 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Button,
-  Input,
-  Badge,
-  ProgressBar,
-  Table,
-  Modal,
-  Spinner,
-  Skeleton,
-  SkeletonCard,
-  SkeletonStats,
-  SkeletonForm,
-  useToast,
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Badge, ProgressBar, Table, Modal, Skeleton, SkeletonStats, SkeletonForm, useToast } from "@/components/ui";
 import { billingService, SaaSPlan, SubscriptionInfo, UsageInfo, DowngradeValidationResult } from "@/services/billing.service";
 import api from "@/lib/api";
-import { AlertTriangle, Building2, Users, ExternalLink, CheckCircle2, ArrowRight } from "lucide-react";
+import { AlertTriangle, Building2, Users, ExternalLink, CheckCircle2 } from "lucide-react";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { useAuthStore } from "@/store/authStore";
 
@@ -211,7 +193,7 @@ export default function BillingSettingsPage({
         key: order.keyId,
         amount: order.amount * 100, // in paise
         currency: order.currency,
-        name: "ANANT Healthcare SaaS",
+        name: "Ekavyu Healthcare SaaS",
         description: `${plan.name} Plan (${billingCycle}) Subscription`,
         order_id: order.orderId,
         handler: async (response: any) => {
@@ -244,7 +226,7 @@ export default function BillingSettingsPage({
           email: user?.email || "",
         },
         theme: {
-          color: "#0284c7",
+          color: "#0F6F66",
         },
       };
 
@@ -322,7 +304,7 @@ export default function BillingSettingsPage({
       {isRootAdmin && (
         <Card className="border border-primary-500/40 bg-primary-500/10 p-4 rounded-xl">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-primary-400 font-medium">
+            <div className="flex items-center gap-2 text-accent font-medium">
               <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -340,7 +322,7 @@ export default function BillingSettingsPage({
       )}
 
       {/* Active Subscription Banner */}
-      <Card className="border border-primary-500/30 bg-gradient-to-r from-surface via-surface-alt to-surface shadow-xs">
+      <Card className="border border-primary-500/30 bg-surface    shadow-xs">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="space-y-2">
@@ -363,7 +345,7 @@ export default function BillingSettingsPage({
               </h2>
 
               {isTrial && (
-                <p className="text-xs text-warning-600 dark:text-warning-400 font-medium flex items-center gap-1.5">
+                <p className="text-xs text-warning-text dark:text-warning-text font-medium flex items-center gap-1.5">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -403,7 +385,7 @@ export default function BillingSettingsPage({
             <div className="p-4 rounded-xl border border-border/70 bg-surface-alt/30 space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold text-text">
                 <span>Clinic Branches</span>
-                <span className="font-bold text-primary">{usage.clinicsCount} / {limits.maxClinics || 1}</span>
+                <span className="font-bold text-accent">{usage.clinicsCount} / {limits.maxClinics || 1}</span>
               </div>
               <ProgressBar value={usage.clinicsCount} max={limits.maxClinics || 1} size="md" color="primary" />
             </div>
@@ -412,7 +394,7 @@ export default function BillingSettingsPage({
             <div className="p-4 rounded-xl border border-border/70 bg-surface-alt/30 space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold text-text">
                 <span>Doctor Profiles</span>
-                <span className="font-bold text-primary">{usage.doctorsCount} / {limits.maxDoctors || 2}</span>
+                <span className="font-bold text-accent">{usage.doctorsCount} / {limits.maxDoctors || 2}</span>
               </div>
               <ProgressBar value={usage.doctorsCount} max={limits.maxDoctors || 2} size="md" color="primary" />
             </div>
@@ -421,7 +403,7 @@ export default function BillingSettingsPage({
             <div className="p-4 rounded-xl border border-border/70 bg-surface-alt/30 space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold text-text">
                 <span>Operational Staff</span>
-                <span className="font-bold text-primary">{usage.staffCount} / {limits.maxStaff || 5}</span>
+                <span className="font-bold text-accent">{usage.staffCount} / {limits.maxStaff || 5}</span>
               </div>
               <ProgressBar value={usage.staffCount} max={limits.maxStaff || 5} size="md" color="primary" />
             </div>
@@ -430,7 +412,7 @@ export default function BillingSettingsPage({
             <div className="p-4 rounded-xl border border-border/70 bg-surface-alt/30 space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold text-text">
                 <span>Patient Records</span>
-                <span className="font-bold text-primary">{usage.patientsCount} / {(limits.maxPatients || 500).toLocaleString()}</span>
+                <span className="font-bold text-accent">{usage.patientsCount} / {(limits.maxPatients || 500).toLocaleString()}</span>
               </div>
               <ProgressBar value={usage.patientsCount} max={limits.maxPatients || 500} size="md" color="primary" />
             </div>
@@ -449,7 +431,7 @@ export default function BillingSettingsPage({
             <button
               onClick={() => setBillingCycle("monthly")}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all min-h-[36px] sm:min-h-[30px] ${
-                billingCycle === "monthly" ? "bg-primary text-white shadow-xs" : "text-text-muted hover:text-text"
+                billingCycle === "monthly" ? "bg-primary text-brand-mist shadow-xs" : "text-text-muted hover:text-text"
               }`}
             >
               Monthly
@@ -457,7 +439,7 @@ export default function BillingSettingsPage({
             <button
               onClick={() => setBillingCycle("annual")}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all min-h-[36px] sm:min-h-[30px] ${
-                billingCycle === "annual" ? "bg-primary text-white shadow-xs" : "text-text-muted hover:text-text"
+                billingCycle === "annual" ? "bg-primary text-brand-mist shadow-xs" : "text-text-muted hover:text-text"
               }`}
             >
               Annual (Save 17%)
@@ -475,7 +457,7 @@ export default function BillingSettingsPage({
                   key={plan.id || plan.slug}
                   className={`p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-4 ${
                     isCurrent
-                      ? "border-primary bg-primary-50/10 dark:bg-primary-950/20 shadow-xs"
+                      ? "border-primary bg-accent-subtle/10 dark:bg-primary-950/20 shadow-xs"
                       : "border-border/70 bg-surface-alt/20 hover:border-border"
                   }`}
                 >
@@ -567,7 +549,7 @@ export default function BillingSettingsPage({
               columns={[
                 {
                   header: "Invoice #",
-                  accessor: (row: any) => <span className="font-mono text-xs font-bold text-primary">{row.invoiceNumber}</span>,
+                  accessor: (row: any) => <span className="font-mono text-xs font-bold text-accent">{row.invoiceNumber}</span>,
                 },
                 {
                   header: "Date",
@@ -609,7 +591,7 @@ export default function BillingSettingsPage({
                   className="p-4 rounded-xl border border-border hover:border-primary cursor-pointer bg-surface-alt/30 transition-all space-y-2"
                 >
                   <div className="font-bold text-text text-sm">{p.name}</div>
-                  <div className="text-lg font-black text-primary">₹{p.monthlyPrice.toLocaleString("en-IN")}/mo</div>
+                  <div className="text-lg font-black text-accent">₹{p.monthlyPrice.toLocaleString("en-IN")}/mo</div>
                   <Button variant="primary" size="xs" className="w-full font-bold cursor-pointer min-h-[36px]">Select {p.name}</Button>
                 </div>
               ))}
@@ -628,8 +610,8 @@ export default function BillingSettingsPage({
         >
           <div className="space-y-4 pt-1">
             {downgradeValidation.canDowngrade ? (
-              <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-start gap-3 animate-fade-in">
-                <div className="p-2 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0 mt-0.5">
+              <div className="p-3.5 bg-success/10 border border-success/20 rounded-2xl flex items-start gap-3 animate-fade-in">
+                <div className="p-2 bg-success/20 text-success-text dark:text-success-text rounded-xl shrink-0 mt-0.5">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
@@ -642,8 +624,8 @@ export default function BillingSettingsPage({
                 </div>
               </div>
             ) : (
-              <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3 animate-fade-in">
-                <div className="p-2 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl shrink-0 mt-0.5">
+              <div className="p-3.5 bg-warning/10 border border-warning/20 rounded-2xl flex items-start gap-3 animate-fade-in">
+                <div className="p-2 bg-warning/20 text-warning-text dark:text-warning-text rounded-xl shrink-0 mt-0.5">
                   <AlertTriangle className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
@@ -683,7 +665,7 @@ export default function BillingSettingsPage({
               <div className="p-3 bg-surface rounded-xl border border-border flex items-center justify-between gap-3 text-xs">
                 <div className="space-y-0.5">
                   <div className="font-bold text-text flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-primary-600" />
+                    <Users className="w-3.5 h-3.5 text-accent" />
                     <span>Manage Practitioner & Staff Roster</span>
                   </div>
                   <p className="text-[11px] text-text-muted">
@@ -709,7 +691,7 @@ export default function BillingSettingsPage({
                   </span>
                   <Link
                     href="/dashboard/clinics"
-                    className="text-xs text-primary-600 dark:text-primary-400 font-semibold hover:underline flex items-center gap-1"
+                    className="text-xs text-accent dark:text-accent font-semibold hover:underline flex items-center gap-1"
                   >
                     <span>Manage All Branches</span>
                     <ExternalLink className="w-3 h-3" />

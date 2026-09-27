@@ -26,22 +26,7 @@ export function usePWA() {
     if ("serviceWorker" in navigator && process.env.NODE_ENV !== "development") {
       navigator.serviceWorker
         .register("/sw.js")
-        .then((reg) => {
-          // Check for SW updates
-          reg.addEventListener("updatefound", () => {
-            const newWorker = reg.installing;
-            if (newWorker) {
-              newWorker.addEventListener("statechange", () => {
-                if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-                  // New update available
-                }
-              });
-            }
-          });
-        })
-        .catch((err) => {
-          console.debug("[PWA] Service worker registration ignored:", err);
-        });
+        .catch(() => {});
     }
 
     // Capture install prompt

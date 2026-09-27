@@ -1,14 +1,12 @@
 "use client";
 
+import { getPrintBrandStyles } from "@/lib/printBrand";
+
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
-import {
-  Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, ImageUpload, SkeletonTable, Dropdown, ConfirmDialog,
-  ChartContainer, DonutChart, cn
-} from "@/components/ui";
+import { Card, Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, ImageUpload, Dropdown, ConfirmDialog, ChartContainer, DonutChart, cn } from "@/components/ui";
 import { useR2Upload } from "@/hooks/useR2Upload";
 import { Activity, Layers, RotateCw, Plus, FlaskConical, Clock, CheckCircle2, Phone } from "lucide-react";
 
@@ -75,10 +73,12 @@ export default function LaboratoryPage() {
   const [doctors, setDoctors] = useState<DoctorUser[]>([]);
   const [tatMetrics, setTatMetrics] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      setLoadError(null);
       const isAll = !selectedClinicId || selectedClinicId === "all";
       if (user?.role === "patient") {
         const [testsRes, ordersRes] = await Promise.all([
@@ -101,6 +101,7 @@ export default function LaboratoryPage() {
         setTatMetrics(tatRes.data?.data || null);
       }
     } catch (err) {
+      setLoadError("Laboratory records could not be loaded. Check your connection and try again.");
       // Non-critical
     } finally {
       setLoading(false);
@@ -388,21 +389,21 @@ export default function LaboratoryPage() {
       <html>
         <head>
           <title>Diagnostic Laboratory Report</title>
-          <style>
-            body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.5; }
-            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+          <style>${getPrintBrandStyles()}
+            body { font-family: sans-serif; padding: 40px; color: var(--print-text); line-height: 1.5; }
+            .header { text-align: center; border-bottom: 2px solid var(--print-text); padding-bottom: 20px; margin-bottom: 30px; }
             .header h1 { margin: 0; font-size: 24px; text-transform: uppercase; letter-spacing: 1px; }
-            .header p { margin: 5px 0 0 0; font-size: 14px; color: #666; }
+            .header p { margin: 5px 0 0 0; font-size: 14px; color: var(--print-secondary); }
             .section { margin-bottom: 25px; }
             .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
-            .grid-item span { font-weight: bold; color: #555; }
+            .grid-item span { font-weight: bold; color: var(--print-secondary); }
             table { width: 100%; border-collapse: collapse; margin: 30px 0; }
-            th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-            th { background-color: #f5f5f5; }
-            .notes { background: #f9f9f9; border-left: 4px solid #0d9488; padding: 15px; margin-top: 30px; font-style: italic; }
-            .footer { margin-top: 60px; border-top: 1px solid #ddd; padding-top: 20px; text-align: center; font-size: 12px; color: #777; }
+            th, td { border: 1px solid var(--print-border); padding: 12px; text-align: left; }
+            th { background-color: var(--print-surface-muted); }
+            .notes { background: var(--print-background); border-left: 4px solid var(--print-accent); padding: 15px; margin-top: 30px; font-style: italic; }
+            .footer { margin-top: 60px; border-top: 1px solid var(--print-border); padding-top: 20px; text-align: center; font-size: 12px; color: var(--print-muted); }
             .signature { margin-top: 50px; display: flex; justify-content: space-between; }
-            .sig-line { width: 200px; border-top: 1px solid #333; text-align: center; padding-top: 5px; font-size: 14px; }
+            .sig-line { width: 200px; border-top: 1px solid var(--print-text); text-align: center; padding-top: 5px; font-size: 14px; }
             @media print {
               body { padding: 0; }
             }
@@ -430,7 +431,7 @@ export default function LaboratoryPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -542,7 +543,7 @@ export default function LaboratoryPage() {
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
             )}
           >
-            <Activity className={cn("w-3.5 h-3.5", activeTab === "worklist" ? "text-primary-500" : "text-text-muted")} />
+            <Activity className={cn("w-3.5 h-3.5", activeTab === "worklist" ? "text-accent" : "text-text-muted")} />
             <span>Diagnostics Worklist</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
               {labOrders.length}
@@ -558,7 +559,7 @@ export default function LaboratoryPage() {
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
             )}
           >
-            <Layers className={cn("w-3.5 h-3.5", activeTab === "catalog" ? "text-primary-500" : "text-text-muted")} />
+            <Layers className={cn("w-3.5 h-3.5", activeTab === "catalog" ? "text-accent" : "text-text-muted")} />
             <span>Tests Pricing Catalog</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
               {labTests.length}
@@ -586,13 +587,13 @@ export default function LaboratoryPage() {
                     counts[dept] = (counts[dept] || 0) + 1;
                   });
                   const colors = [
-                    "var(--s-chart-1, #3b82f6)",
-                    "var(--s-chart-2, #10b981)",
-                    "var(--s-chart-3, #f59e0b)",
-                    "var(--s-chart-4, #8b5cf6)",
-                    "var(--s-chart-5, #ec4899)",
-                    "#06b6d4",
-                    "#f97316",
+                    "var(--s-chart-1)",
+                    "var(--s-chart-2)",
+                    "var(--s-chart-3)",
+                    "var(--s-chart-4)",
+                    "var(--s-chart-5)",
+                    "var(--chart-6)",
+                    "var(--chart-7)",
                   ];
                   return Object.entries(counts).map(([name, value], idx) => ({
                     name,
@@ -608,6 +609,8 @@ export default function LaboratoryPage() {
 
           <Card className="overflow-hidden">
             <Table
+              error={loadError}
+              onRetry={fetchData}
               loading={loading}
               mobileCardView
                   columns={[
@@ -630,7 +633,7 @@ export default function LaboratoryPage() {
                     test: (
                       <div>
                         <div className="font-bold text-text">{order.testId?.name}</div>
-                        <div className="text-xs text-primary-600 font-mono font-semibold">{order.testId?.code}</div>
+                        <div className="text-xs text-accent font-mono font-semibold">{order.testId?.code}</div>
                       </div>
                     ),
                     dept: <Badge variant="default" className="text-[10px]">{order.testId?.department}</Badge>,
@@ -709,7 +712,7 @@ export default function LaboratoryPage() {
                         <div className="p-2.5 rounded-xl bg-surface-alt/70 border border-border/50 space-y-1.5 text-xs">
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-text">{order.testId?.name}</span>
-                            <span className="font-mono text-[10px] font-bold text-primary-600 dark:text-primary-400 bg-primary-500/10 px-1.5 py-0.2 rounded-md">
+                            <span className="font-mono text-[10px] font-bold text-accent dark:text-accent bg-primary-500/10 px-1.5 py-0.2 rounded-md">
                               {order.testId?.code}
                             </span>
                           </div>
@@ -781,6 +784,8 @@ export default function LaboratoryPage() {
             <div className="space-y-6">
               <Card className="overflow-hidden">
                 <Table
+              error={loadError}
+              onRetry={fetchData}
                   loading={loading}
                   mobileCardView
                   columns={[
@@ -908,6 +913,8 @@ export default function LaboratoryPage() {
 
               <Card className="overflow-hidden">
                 <Table
+              error={loadError}
+              onRetry={fetchData}
                   loading={loading}
                   mobileCardView
                   columns={[
@@ -938,7 +945,7 @@ export default function LaboratoryPage() {
                       </Badge>
                     ),
                     val: order.status === "result-uploaded" ? (
-                      <span className="font-bold text-primary-600">{order.resultValue}</span>
+                      <span className="font-bold text-accent">{order.resultValue}</span>
                     ) : (
                       <span className="text-xs text-text-muted italic">Processing...</span>
                     ),
@@ -987,7 +994,7 @@ export default function LaboratoryPage() {
                           {order.status === "result-uploaded" ? (
                             <div className="pt-1 border-t border-border/50 flex items-center justify-between">
                               <span className="font-bold text-text-muted">Result:</span>
-                              <span className="font-bold text-primary-600 dark:text-primary-400 text-sm">{order.resultValue}</span>
+                              <span className="font-bold text-accent dark:text-accent text-sm">{order.resultValue}</span>
                             </div>
                           ) : (
                             <p className="text-xs text-text-muted italic pt-0.5">Report under processing in laboratory.</p>
@@ -1060,12 +1067,12 @@ export default function LaboratoryPage() {
               </div>
             )}
             {selectedPatient && (
-              <div className="mt-2 p-3 bg-green-500/10 border border-green-500/20 rounded-xl flex justify-between items-center">
+              <div className="mt-2 p-3 bg-success/10 border border-success/20 rounded-xl flex justify-between items-center">
                 <div>
-                  <div className="text-sm font-bold text-green-700 dark:text-green-400">{selectedPatient.userId.name}</div>
+                  <div className="text-sm font-bold text-success-text dark:text-success-text">{selectedPatient.userId.name}</div>
                   <div className="text-xs text-text-muted">Phone: {selectedPatient.userId.phone}</div>
                 </div>
-                <Button variant="ghost" size="sm" className="text-red-500" onClick={() => setSelectedPatient(null)}>Change</Button>
+                <Button variant="ghost" size="sm" className="text-danger-text" onClick={() => setSelectedPatient(null)}>Change</Button>
               </div>
             )}
           </div>
@@ -1303,61 +1310,61 @@ export default function LaboratoryPage() {
       >
         {printOrder && (
           <div className="space-y-5 font-sans">
-            <div id="printable-lab-slip" className="border border-gray-200 p-5 sm:p-6 rounded-2xl bg-white text-black space-y-4 shadow-sm">
-              <div className="text-center border-b-2 border-gray-800 pb-3">
-                <h2 className="text-lg font-black uppercase tracking-wider text-gray-900">
-                  JK Laboratory & Diagnostics Services
+            <div id="printable-lab-slip" className="border border-border p-5 sm:p-6 rounded-2xl bg-white text-black space-y-4 shadow-sm">
+              <div className="text-center border-b-2 border-border pb-3">
+                <h2 className="text-lg font-black uppercase tracking-wider text-text">
+                  Ekavyu & Diagnostics Services
                 </h2>
-                <p className="text-xs text-gray-500 mt-0.5">Certified Medical Diagnostics Center &bull; Official Diagnostic Report</p>
+                <p className="text-xs text-text-muted mt-0.5">Certified Medical Diagnostics Center &bull; Official Diagnostic Report</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-xs sm:text-sm">
                 <div>
-                  <span className="font-semibold block text-gray-500 text-[11px] uppercase tracking-wider">Patient Recipient:</span>
-                  <strong className="text-gray-900 text-sm">{printOrder.patientId?.userId?.name}</strong>
-                  <div className="text-xs text-gray-500 mt-0.5">Phone: {printOrder.patientId?.userId?.phone || "N/A"}</div>
+                  <span className="font-semibold block text-text-muted text-[11px] uppercase tracking-wider">Patient Recipient:</span>
+                  <strong className="text-text text-sm">{printOrder.patientId?.userId?.name}</strong>
+                  <div className="text-xs text-text-muted mt-0.5">Phone: {printOrder.patientId?.userId?.phone || "N/A"}</div>
                 </div>
                 <div className="text-right">
-                  <span className="font-semibold block text-gray-500 text-[11px] uppercase tracking-wider">Ordering Clinician:</span>
-                  <strong className="text-gray-900 text-sm">{printOrder.doctorId?.name}</strong>
-                  <div className="text-xs text-gray-500 mt-0.5">{printOrder.doctorId?.specialization || "Clinical Practitioner"}</div>
+                  <span className="font-semibold block text-text-muted text-[11px] uppercase tracking-wider">Ordering Clinician:</span>
+                  <strong className="text-text text-sm">{printOrder.doctorId?.name}</strong>
+                  <div className="text-xs text-text-muted mt-0.5">{printOrder.doctorId?.specialization || "Clinical Practitioner"}</div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-xs sm:text-sm border-t border-gray-100 pt-3">
+              <div className="grid grid-cols-2 gap-4 text-xs sm:text-sm border-t border-border pt-3">
                 <div>
-                  <span className="font-semibold block text-gray-500 text-[11px] uppercase tracking-wider">Sample Collected Date:</span>
-                  <span className="text-gray-800 font-medium">{new Date(printOrder.orderDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</span>
+                  <span className="font-semibold block text-text-muted text-[11px] uppercase tracking-wider">Sample Collected Date:</span>
+                  <span className="text-text font-medium">{new Date(printOrder.orderDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</span>
                 </div>
                 <div className="text-right">
-                  <span className="font-semibold block text-gray-500 text-[11px] uppercase tracking-wider">Test Room Code:</span>
-                  <span className="font-mono font-bold text-gray-800">{printOrder.testId?.code}</span>
+                  <span className="font-semibold block text-text-muted text-[11px] uppercase tracking-wider">Test Room Code:</span>
+                  <span className="font-mono font-bold text-text">{printOrder.testId?.code}</span>
                 </div>
               </div>
 
               <div className="my-4 overflow-x-auto">
                 <table className="w-full border-collapse table-fixed text-xs">
                   <thead>
-                    <tr className="bg-gray-100 text-gray-700 text-[11px] uppercase font-bold">
-                      <th className="border border-gray-200 p-2.5 text-left w-[30%]">Examination</th>
-                      <th className="border border-gray-200 p-2.5 text-left w-[35%]">Patient Result</th>
-                      <th className="border border-gray-200 p-2.5 text-left w-[23%]">Normal Reference</th>
-                      <th className="border border-gray-200 p-2.5 text-left w-[12%]">Dept</th>
+                    <tr className="bg-surface-alt text-text-secondary text-[11px] uppercase font-bold">
+                      <th className="border border-border p-2.5 text-left w-[30%]">Examination</th>
+                      <th className="border border-border p-2.5 text-left w-[35%]">Patient Result</th>
+                      <th className="border border-border p-2.5 text-left w-[23%]">Normal Reference</th>
+                      <th className="border border-border p-2.5 text-left w-[12%]">Dept</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr className="text-xs">
-                      <td className="border border-gray-200 p-2.5 align-top">
-                        <div className="font-bold text-gray-900 leading-snug">{printOrder.testId?.name}</div>
-                        <div className="text-[10px] font-mono text-gray-500 mt-0.5">{printOrder.testId?.code}</div>
+                      <td className="border border-border p-2.5 align-top">
+                        <div className="font-bold text-text leading-snug">{printOrder.testId?.name}</div>
+                        <div className="text-[10px] font-mono text-text-muted mt-0.5">{printOrder.testId?.code}</div>
                       </td>
-                      <td className="border border-gray-200 p-2.5 align-top font-bold text-teal-700 whitespace-pre-wrap break-words leading-relaxed">
+                      <td className="border border-border p-2.5 align-top font-bold text-accent whitespace-pre-wrap break-words leading-relaxed">
                         {printOrder.resultValue}
                       </td>
-                      <td className="border border-gray-200 p-2.5 align-top font-mono text-gray-700 whitespace-pre-wrap break-words">
+                      <td className="border border-border p-2.5 align-top font-mono text-text-secondary whitespace-pre-wrap break-words">
                         {printOrder.testId?.normalRange}
                       </td>
-                      <td className="border border-gray-200 p-2.5 align-top text-[11px] text-gray-600 font-medium">
+                      <td className="border border-border p-2.5 align-top text-[11px] text-text-secondary font-medium">
                         {printOrder.testId?.department}
                       </td>
                     </tr>
@@ -1366,18 +1373,18 @@ export default function LaboratoryPage() {
               </div>
 
               {printOrder.resultNotes && (
-                <div className="bg-teal-50/50 border-l-4 border-teal-600 p-3 rounded-r-xl text-xs text-gray-800 leading-relaxed">
-                  <strong className="text-teal-900 block font-bold mb-0.5">Pathologist Findings & Clinical Notes:</strong>
+                <div className="bg-accent-subtle/50 border-l-4 border-accent p-3 rounded-r-xl text-xs text-text leading-relaxed">
+                  <strong className="text-accent block font-bold mb-0.5">Pathologist Findings & Clinical Notes:</strong>
                   <p className="whitespace-pre-wrap italic">{printOrder.resultNotes}</p>
                 </div>
               )}
 
-              <div className="mt-8 flex justify-between text-xs pt-8 border-t border-gray-100">
+              <div className="mt-8 flex justify-between text-xs pt-8 border-t border-border">
                 <div className="text-center w-36">
-                  <div className="border-t border-gray-400 pt-1 text-gray-500 font-medium text-[11px]">Lab Technician</div>
+                  <div className="border-t border-border pt-1 text-text-muted font-medium text-[11px]">Lab Technician</div>
                 </div>
                 <div className="text-center w-36">
-                  <div className="border-t border-gray-400 pt-1 text-gray-500 font-medium text-[11px]">Authorized Signatory</div>
+                  <div className="border-t border-border pt-1 text-text-muted font-medium text-[11px]">Authorized Signatory</div>
                 </div>
               </div>
             </div>

@@ -1,51 +1,16 @@
 "use client";
 
+import { getPrintBrandStyles } from "@/lib/printBrand";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
-import {
-  Card,
-  CardContent,
-  Table,
-  Button,
-  Modal,
-  Input,
-  Select,
-  Textarea,
-  useToast,
-  Spinner,
-  Badge,
-  StatCard,
-  Dropdown,
-  ChartContainer,
-  AreaChart,
-  DonutChart,
-  cn,
-} from "@/components/ui";
+import { Card, CardContent, Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, Dropdown, ChartContainer, AreaChart, DonutChart, cn } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
-import {
-  RotateCw,
-  Plus,
-  FileText,
-  IndianRupee,
-  Receipt,
-  CreditCard,
-  CheckCircle2,
-  Printer,
-  Search,
-  MoreHorizontal,
-  ArrowRight,
-  Banknote,
-  AlertTriangle,
-  AlertCircle,
-  Phone,
-  Building2,
-  Stethoscope,
-  Trash2,
-} from "lucide-react";
+import { RotateCw, Plus, FileText, IndianRupee, Receipt, CreditCard, CheckCircle2, Printer, Search, MoreHorizontal, Banknote, AlertTriangle, AlertCircle, Phone, Building2, Stethoscope, Trash2 } from "lucide-react";
 
 interface InvoiceItem {
   description: string;
@@ -85,6 +50,7 @@ export default function BillingPage() {
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filters State
@@ -572,6 +538,7 @@ export default function BillingPage() {
 
   const fetchInvoices = async () => {
     try {
+      setLoadError(null);
       setIsRefreshing(true);
       const queryParams = [];
       if (filterClinic) queryParams.push(`clinicId=${filterClinic}`);
@@ -581,6 +548,7 @@ export default function BillingPage() {
       const res = await api.get(`/invoices${queryString}`);
       setInvoices(res.data.data || []);
     } catch {
+      setLoadError("Invoices could not be loaded. Check your connection and try again.");
       toast({ title: "Error", description: "Failed to load invoices", variant: "error" });
     } finally {
       setLoading(false);
@@ -781,23 +749,23 @@ export default function BillingPage() {
       <html>
         <head>
           <title>Cash Receipt - ${ticketData.invoiceNumber}</title>
-          <style>
+          <style>${getPrintBrandStyles()}
             body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #fff; padding: 20px; }
-            .receipt { width: 380px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+            .receipt { width: 380px; padding: 20px; border: 1px solid var(--print-border); border-radius: 8px; }
             .center { text-align: center; }
-            .border-dashed { border-bottom: 1px dashed #ccc; margin: 15px 0; }
+            .border-dashed { border-bottom: 1px dashed var(--print-border); margin: 15px 0; }
             .flex-between { display: flex; justify-content: space-between; margin: 4px 0; font-size: 13px; }
             .bold { font-weight: bold; }
             .title { font-size: 16px; margin: 2px 0; }
             table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
-            th { border-bottom: 1px solid #ddd; text-align: left; padding-bottom: 5px; }
+            th { border-bottom: 1px solid var(--print-border); text-align: left; padding-bottom: 5px; }
             td { padding: 4px 0; }
           </style>
         </head>
         <body>
           <div class="receipt">
             <div class="center">
-              <h3 class="title">ANANT HEALTHCARE SYSTEM</h3>
+              <h3 class="title">Ekavyu HEALTHCARE SYSTEM</h3>
               <p style="margin:2px 0; font-size:11px;">${ticketData.clinicId?.name}</p>
               <p style="margin:2px 0; font-size:10px;">${ticketData.clinicId?.address}, ${ticketData.clinicId?.city}</p>
             </div>
@@ -838,7 +806,7 @@ export default function BillingPage() {
             </div>
             <div class="border-dashed"></div>
             <div class="center">
-              <span style="font-size: 13px; font-weight: bold; background: #e6f4ea; color: #137333; padding: 4px 12px; border-radius: 99px; text-transform: uppercase;">
+              <span style="font-size: 13px; font-weight: bold; background: var(--print-success-subtle); color: var(--print-success); padding: 4px 12px; border-radius: 99px; text-transform: uppercase;">
                 ${ticketData.status}
               </span>
               ${
@@ -928,11 +896,11 @@ export default function BillingPage() {
     });
 
     const colors: Record<string, string> = {
-      UPI: "var(--s-chart-1, #3b82f6)",
-      Card: "var(--s-chart-4, #8b5cf6)",
-      Cash: "var(--s-chart-2, #10b981)",
-      "Insurance / TPA": "var(--s-chart-3, #f59e0b)",
-      "Net Banking": "#06b6d4",
+      UPI: "var(--s-chart-1)",
+      Card: "var(--s-chart-4)",
+      Cash: "var(--s-chart-2)",
+      "Insurance / TPA": "var(--s-chart-3)",
+      "Net Banking": "var(--chart-6)",
     };
 
     return Object.entries(counts)
@@ -949,8 +917,8 @@ export default function BillingPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
+        <div className="flex flex-col gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
@@ -965,9 +933,9 @@ export default function BillingPage() {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0 w-full sm:w-auto">
+          <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-2.5 min-w-0 w-full">
             {/* Secondary Utilities & Shift Management */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-2 py-0.5 min-w-0 w-full md:w-auto md:flex-1">
               <Button
                 variant="outline"
                 size="sm"
@@ -994,10 +962,10 @@ export default function BillingPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleOpenTillModal}
-                  className="rounded-xl text-xs font-semibold border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 transition-colors shadow-2xs min-h-[38px] sm:min-h-[36px] shrink-0"
+                  className="rounded-xl text-xs font-semibold border-warning/40 text-warning-text dark:text-warning-text hover:bg-warning/10 transition-colors shadow-2xs min-h-[38px] sm:min-h-[36px] shrink-0"
                   title="Reconcile Cash Drawer & Close Daily Shift (Z-Report)"
                 >
-                  <Banknote className="h-3.5 w-3.5 mr-1 text-amber-600 dark:text-amber-400" />
+                  <Banknote className="h-3.5 w-3.5 mr-1 text-warning-text dark:text-warning-text" />
                   Close Till / Z-Report
                 </Button>
               )}
@@ -1005,15 +973,15 @@ export default function BillingPage() {
 
             {/* Primary Billing CTAs */}
             {canManageBilling && (
-              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+              <div className="grid grid-cols-2 md:flex md:items-center gap-2 w-full md:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleOpenCheckoutModal}
-                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold rounded-xl border-primary-500/40 text-primary-700 dark:text-primary-300 hover:bg-primary-500/10 transition-colors shadow-2xs justify-center"
+                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold rounded-xl border-primary-500/40 text-accent dark:text-accent hover:bg-primary-500/10 transition-colors shadow-2xs justify-center"
                   title="Consolidate Consultation + Lab Tests + Prescriptions into single 1-Click checkout"
                 >
-                  <Receipt className="h-3.5 w-3.5 mr-1 text-primary-500" />
+                  <Receipt className="h-3.5 w-3.5 mr-1 text-accent" />
                   1-Click OPD
                 </Button>
 
@@ -1040,19 +1008,19 @@ export default function BillingPage() {
           label="Today's Collections"
           value={`₹${todaysPaidAmount.toLocaleString("en-IN")}`}
           description="Settled outpatient receipts"
-          icon={<IndianRupee className="w-5 h-5 text-emerald-500" />}
+          icon={<IndianRupee className="w-5 h-5 text-success-text" />}
         />
         <StatCard
           label="Outstanding Balances"
           value={`₹${pendingAmount.toLocaleString("en-IN")}`}
           description="Uncollected pending receivables"
-          icon={<AlertCircle className="w-5 h-5 text-amber-500" />}
+          icon={<AlertCircle className="w-5 h-5 text-warning-text" />}
         />
         <StatCard
           label="Unpaid Invoices"
           value={unpaidCount.toString()}
           description="Invoices awaiting settlement"
-          icon={<Receipt className="w-5 h-5 text-rose-500" />}
+          icon={<Receipt className="w-5 h-5 text-danger-text" />}
         />
       </div>
 
@@ -1071,8 +1039,8 @@ export default function BillingPage() {
           <AreaChart
             data={cashflowTrendData}
             series={[
-              { key: "collected", name: "Collections Inflow", color: "var(--s-chart-2, #10b981)" },
-              { key: "pending", name: "Outstanding Aging", color: "var(--s-chart-3, #f59e0b)" },
+              { key: "collected", name: "Collections Inflow", color: "var(--s-chart-2)" },
+              { key: "pending", name: "Outstanding Aging", color: "var(--s-chart-3)" },
             ]}
             height={210}
             valueFormatter={(v) => `₹${v.toLocaleString("en-IN")}`}
@@ -1101,6 +1069,8 @@ export default function BillingPage() {
       <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
         <CardContent className="p-0">
           <Table
+              error={loadError}
+              onRetry={fetchInvoices}
             searchPlaceholder="Search patient name, phone, or invoice #..."
             loading={loading}
             toolbarFilters={
@@ -1137,7 +1107,7 @@ export default function BillingPage() {
                 key: "invoiceNumber",
                 header: "Invoice #",
                 render: (row: Invoice) => (
-                  <span className="font-mono font-bold text-xs text-primary-600 dark:text-primary-400">
+                  <span className="font-mono font-bold text-xs text-accent dark:text-accent">
                     #{row.invoiceNumber}
                   </span>
                 ),
@@ -1172,7 +1142,7 @@ export default function BillingPage() {
                 header: "Doctor",
                 render: (row: Invoice) => (
                   <div className="flex items-center gap-1 text-xs font-semibold text-text min-w-[130px]">
-                    <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                    <Stethoscope className="w-3.5 h-3.5 text-accent shrink-0" />
                     <span>Dr. {(row.doctorId?.name || "").replace(/^dr\.?\s+/i, "")}</span>
                   </div>
                 ),
@@ -1186,7 +1156,7 @@ export default function BillingPage() {
                       ₹{row.totalAmount.toLocaleString("en-IN")}
                     </span>
                     {row.status !== "paid" && (
-                      <span className="text-xs font-bold text-rose-500 block">
+                      <span className="text-xs font-bold text-danger-text block">
                         Due: ₹
                         {(row.balanceDue !== undefined
                           ? row.balanceDue
@@ -1261,7 +1231,7 @@ export default function BillingPage() {
                           ? [
                               {
                                 label: "Record Installment Payment",
-                                icon: <CreditCard className="w-4 h-4 text-primary-500" />,
+                                icon: <CreditCard className="w-4 h-4 text-accent" />,
                                 onClick: () => openPartialPaymentModal(row),
                               },
                             ]
@@ -1270,7 +1240,7 @@ export default function BillingPage() {
                           ? [
                               {
                                 label: "Collect Full Payment",
-                                icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
+                                icon: <CheckCircle2 className="w-4 h-4 text-success-text" />,
                                 onClick: () => {
                                   setActiveInvoice(row);
                                   setIsCollectOpen(true);
@@ -1310,8 +1280,8 @@ export default function BillingPage() {
                   className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="font-mono font-bold text-xs text-primary-600 dark:text-primary-400 block">
+                    <div className="min-w-0 flex-1">
+                      <span className="font-mono font-bold text-xs text-accent dark:text-accent block break-all">
                         #{row.invoiceNumber}
                       </span>
                       <p className="font-bold text-text text-sm pt-0.5 truncate">
@@ -1337,7 +1307,7 @@ export default function BillingPage() {
                   <div className="p-2.5 bg-surface-alt/70 rounded-xl border border-border/60 space-y-1.5 text-xs">
                     <div className="flex items-center justify-between gap-2 text-text-secondary">
                       <span className="flex items-center gap-1 text-text-muted">
-                        <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                        <Stethoscope className="w-3.5 h-3.5 text-accent shrink-0" />
                         <span>Doctor:</span>
                       </span>
                       <span className="font-semibold text-text truncate">
@@ -1362,8 +1332,8 @@ export default function BillingPage() {
                       </div>
                       {!isPaid && (
                         <div className="text-right">
-                          <span className="text-[10px] text-rose-500 font-bold block">Balance Due</span>
-                          <span className="font-bold text-rose-600 text-sm">
+                          <span className="text-[10px] text-danger-text font-bold block">Balance Due</span>
+                          <span className="font-bold text-danger-text text-sm">
                             ₹{dueAmount.toLocaleString("en-IN")}
                           </span>
                         </div>
@@ -1389,7 +1359,7 @@ export default function BillingPage() {
                         onClick={() => handlePrintReceipt(row)}
                         className="w-full font-semibold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5"
                       >
-                        <Printer className="w-4 h-4 text-emerald-600" />
+                        <Printer className="w-4 h-4 text-success-text" />
                         <span>Receipt</span>
                       </Button>
                     )}
@@ -1477,9 +1447,9 @@ export default function BillingPage() {
             )}
 
             {selectedPatient && (
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-between mt-2">
+              <div className="p-3 bg-success/10 border border-success/20 rounded-2xl flex items-center justify-between mt-2">
                 <div>
-                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                  <p className="text-xs font-bold text-success-text dark:text-success-text">
                     Selected: {selectedPatient.userId?.name}
                   </p>
                   <p className="text-[11px] text-text-muted">
@@ -1492,7 +1462,7 @@ export default function BillingPage() {
                     setSelectedPatient(null);
                     validateInvoiceField("patient", null);
                   }}
-                  className="text-xs font-bold text-rose-500 hover:underline cursor-pointer"
+                  className="text-xs font-bold text-danger-text hover:underline cursor-pointer"
                 >
                   Change
                 </button>
@@ -1500,7 +1470,7 @@ export default function BillingPage() {
             )}
 
             {!selectedPatient && errors.patient && (
-              <p className="text-xs text-rose-500 mt-1">{errors.patient}</p>
+              <p className="text-xs text-danger-text mt-1">{errors.patient}</p>
             )}
           </div>
 
@@ -1590,7 +1560,7 @@ export default function BillingPage() {
                       <button
                         type="button"
                         onClick={() => removeInvoiceItem(idx)}
-                        className="h-7 w-7 rounded-lg text-rose-500 hover:bg-rose-500/10 flex items-center justify-center transition-colors cursor-pointer"
+                        className="h-7 w-7 rounded-lg text-danger-text hover:bg-danger/10 flex items-center justify-center transition-colors cursor-pointer"
                         title="Remove Line Item"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1643,7 +1613,7 @@ export default function BillingPage() {
               </p>
               <div className="border-t border-border/60 my-1 pt-1.5">
                 <p className="text-base font-bold text-text">
-                  Total Due: <span className="text-primary-600 dark:text-primary-400 font-mono">₹{totalAmount.toLocaleString("en-IN")}</span>
+                  Total Due: <span className="text-accent dark:text-accent font-mono">₹{totalAmount.toLocaleString("en-IN")}</span>
                 </p>
               </div>
             </div>
@@ -1698,7 +1668,7 @@ export default function BillingPage() {
             </p>
             <p className="text-sm font-bold text-text pt-1">
               Total Amount Due:{" "}
-              <span className="text-primary-600 dark:text-primary-400 font-mono">
+              <span className="text-accent dark:text-accent font-mono">
                 ₹{activeInvoice?.totalAmount.toLocaleString("en-IN")}
               </span>
             </p>
@@ -1816,7 +1786,7 @@ export default function BillingPage() {
               </div>
 
               <div className="text-center pt-2">
-                <span className="inline-block font-bold text-[10px] px-3 py-1 rounded-full uppercase border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                <span className="inline-block font-bold text-[10px] px-3 py-1 rounded-full uppercase border bg-success/10 text-success-text dark:text-success-text border-success/20">
                   {receiptInvoice.status}
                 </span>
                 {receiptInvoice.paymentMethod && (
@@ -1875,7 +1845,7 @@ export default function BillingPage() {
             <p className="text-text-muted">
               Previously Settled: ₹{(partialTargetInvoice?.amountPaid || 0).toLocaleString("en-IN")}
             </p>
-            <p className="font-bold text-rose-500 pt-1">
+            <p className="font-bold text-danger-text pt-1">
               Remaining Balance Due: ₹
               {(partialTargetInvoice?.balanceDue !== undefined
                 ? partialTargetInvoice.balanceDue
@@ -1951,7 +1921,7 @@ export default function BillingPage() {
             <div className="p-4 rounded-2xl bg-surface border border-border/80 space-y-3 font-mono text-xs">
               <div className="text-center border-b border-dashed border-border/80 pb-3">
                 <h3 className="font-bold text-sm tracking-wide uppercase text-text">
-                  {clinics.find((c) => c.id === tillClinicId)?.name || "ANANTA HEALTH CLINIC"}
+                  {clinics.find((c) => c.id === tillClinicId)?.name || "Ekavyu HEALTH CLINIC"}
                 </h3>
                 <p className="text-[11px] text-text-muted">OFFICIAL END-OF-DAY Z-REPORT SLIP</p>
                 <p className="text-[10px] text-text-muted mt-0.5">
@@ -1997,7 +1967,7 @@ export default function BillingPage() {
                 )}
                 <div className="flex justify-between border-t border-dashed border-border/80 pt-1.5 font-bold text-text">
                   <span>Total Day Collections:</span>
-                  <span className="text-primary-600 dark:text-primary-400">
+                  <span className="text-accent dark:text-accent">
                     ₹{(zReportSlip.systemTotals?.total ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -2016,10 +1986,10 @@ export default function BillingPage() {
                     className={cn(
                       "px-2 py-0.5 rounded text-[11px] font-bold",
                       zReportSlip.cashVariance === 0
-                        ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400"
+                        ? "bg-success/20 text-success-text dark:text-success-text"
                         : zReportSlip.cashVariance < 0
-                        ? "bg-red-500/20 text-red-700 dark:text-red-400"
-                        : "bg-blue-500/20 text-blue-700 dark:text-blue-400"
+                        ? "bg-danger/20 text-danger-text dark:text-danger-text"
+                        : "bg-primary/20 text-accent dark:text-accent"
                     )}
                   >
                     {zReportSlip.cashVariance === 0
@@ -2069,7 +2039,7 @@ export default function BillingPage() {
                 variant="primary"
                 size="sm"
                 onClick={() => window.print()}
-                className="font-bold shadow-xs bg-amber-600 hover:bg-amber-700 text-white"
+                className="font-bold shadow-xs bg-warning hover:bg-warning text-background"
               >
                 <Printer className="w-3.5 h-3.5 mr-1.5" />
                 Print Z-Report Slip
@@ -2102,7 +2072,7 @@ export default function BillingPage() {
                 <div className="p-3.5 rounded-2xl bg-surface-alt border border-border/80 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-                      <Receipt className="w-3.5 h-3.5 text-primary-500" />
+                      <Receipt className="w-3.5 h-3.5 text-accent" />
                       System Collections ({tillSummary?.date || new Date().toISOString().slice(0, 10)})
                     </span>
                     <span className="text-xs font-bold text-text">
@@ -2113,19 +2083,19 @@ export default function BillingPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                     <div className="p-2.5 rounded-xl bg-surface border border-border/60">
                       <p className="text-[10px] text-text-muted font-semibold">CASH DRAWER</p>
-                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+                      <p className="text-sm font-bold text-success-text dark:text-success-text font-mono mt-0.5">
                         ₹{(tillSummary?.systemTotals?.cash ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                     <div className="p-2.5 rounded-xl bg-surface border border-border/60">
                       <p className="text-[10px] text-text-muted font-semibold">BHARATPE UPI</p>
-                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400 font-mono mt-0.5">
+                      <p className="text-sm font-bold text-accent dark:text-accent font-mono mt-0.5">
                         ₹{(tillSummary?.systemTotals?.upi ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                     <div className="p-2.5 rounded-xl bg-surface border border-border/60">
                       <p className="text-[10px] text-text-muted font-semibold">POS / CARDS</p>
-                      <p className="text-sm font-bold text-purple-600 dark:text-purple-400 font-mono mt-0.5">
+                      <p className="text-sm font-bold text-accent dark:text-accent font-mono mt-0.5">
                         ₹{(tillSummary?.systemTotals?.card ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </p>
                     </div>
@@ -2138,7 +2108,7 @@ export default function BillingPage() {
                   </div>
 
                   {tillSummary?.latestShift && (
-                    <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 flex items-center justify-between">
+                    <div className="p-2 rounded-xl bg-warning/10 border border-warning/20 text-xs text-warning-text dark:text-warning-text flex items-center justify-between">
                       <span>
                         ℹ️ Shift already closed today at{" "}
                         <strong>{new Date(tillSummary.latestShift.endedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</strong>.
@@ -2148,7 +2118,7 @@ export default function BillingPage() {
                         variant="outline"
                         size="xs"
                         onClick={() => setZReportSlip(tillSummary.latestShift)}
-                        className="text-[10px] font-bold border-amber-500/30"
+                        className="text-[10px] font-bold border-warning/30"
                       >
                         View Last Z-Report
                       </Button>
@@ -2182,25 +2152,25 @@ export default function BillingPage() {
                           className={cn(
                             "p-2.5 rounded-xl border flex items-center gap-2 text-xs font-bold",
                             isBalanced
-                              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+                              ? "bg-success/10 border-success/30 text-success-text dark:text-success-text"
                               : isShort
-                              ? "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400"
-                              : "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400"
+                              ? "bg-danger/10 border-danger/30 text-danger-text dark:text-danger-text"
+                              : "bg-primary/10 border-accent/30 text-accent dark:text-accent"
                           )}
                         >
                           {isBalanced ? (
                             <>
-                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <CheckCircle2 className="w-4 h-4 text-success-text shrink-0" />
                               <span>BALANCED: Matches system cash.</span>
                             </>
                           ) : isShort ? (
                             <>
-                              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                              <AlertTriangle className="w-4 h-4 text-danger-text shrink-0" />
                               <span>SHORTAGE: -₹{Math.abs(diff).toFixed(2)}</span>
                             </>
                           ) : (
                             <>
-                              <IndianRupee className="w-4 h-4 text-blue-600 shrink-0" />
+                              <IndianRupee className="w-4 h-4 text-accent shrink-0" />
                               <span>SURPLUS: +₹{diff.toFixed(2)}</span>
                             </>
                           )}
@@ -2243,7 +2213,7 @@ export default function BillingPage() {
                     size="sm"
                     variant="primary"
                     loading={submittingTillClose}
-                    className="w-full sm:w-auto min-h-[44px] font-bold shadow-xs bg-amber-600 hover:bg-amber-700 text-white"
+                    className="w-full sm:w-auto min-h-[44px] font-bold shadow-xs bg-warning hover:bg-warning text-background"
                   >
                     <Banknote className="w-3.5 h-3.5 mr-1.5" />
                     Reconcile & Generate Z-Report
@@ -2313,9 +2283,9 @@ export default function BillingPage() {
                 </div>
 
                 {checkoutPreview.isFeeEditable && (
-                  <div className="py-2.5 px-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between text-xs gap-3">
+                  <div className="py-2.5 px-3 bg-warning/10 border border-warning/20 rounded-xl flex items-center justify-between text-xs gap-3">
                     <div>
-                      <span className="font-bold text-amber-700 dark:text-amber-400 block">🩺 Doctor Consultation Fee:</span>
+                      <span className="font-bold text-warning-text dark:text-warning-text block">🩺 Doctor Consultation Fee:</span>
                       <span className="text-[10px] text-text-muted">
                         {checkoutPreview.feeType === "post_consultation" ? "Post-consultation fee entry" : "Adjustable consultation charge"}
                       </span>
@@ -2328,7 +2298,7 @@ export default function BillingPage() {
                         value={checkoutCustomConsultFee}
                         onChange={(e) => setCheckoutCustomConsultFee(e.target.value)}
                         onBlur={(e) => fetchCheckoutPreview(selectedCheckoutApptId, Number(e.target.value) || 0)}
-                        className="w-24 px-2 py-1 bg-surface border border-border rounded-lg text-xs font-bold text-text focus:ring-1 focus:ring-primary-500"
+                        className="w-24 px-2 py-1 bg-surface border border-border rounded-lg text-xs font-bold text-text focus:ring-1 focus:ring-focus-ring"
                         placeholder="Amount"
                       />
                       <button
@@ -2379,7 +2349,7 @@ export default function BillingPage() {
                   )}
                   <div className="flex justify-between text-sm font-bold text-text pt-1 border-t border-border/40">
                     <span>Gross Total:</span>
-                    <span className="font-mono text-primary-600 dark:text-primary-400">
+                    <span className="font-mono text-accent dark:text-accent">
                       ₹{checkoutPreview.totalAmount.toLocaleString("en-IN")}
                     </span>
                   </div>
@@ -2434,14 +2404,14 @@ export default function BillingPage() {
               </div>
 
               {/* Net Payable Banner */}
-              <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+              <div className="p-3.5 rounded-2xl bg-success/10 border border-success/30 flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">Net Payable Amount:</span>
-                  <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80">
+                  <span className="text-xs font-bold text-success-text dark:text-success-text">Net Payable Amount:</span>
+                  <p className="text-[11px] text-success-text/80 dark:text-success-text/80">
                     Official tax invoice will be generated upon settlement
                   </p>
                 </div>
-                <div className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                <div className="text-2xl font-black font-mono text-success-text dark:text-success-text">
                   ₹{Math.max(0, checkoutPreview.totalAmount - (Number(checkoutDiscount) || 0)).toLocaleString("en-IN")}
                 </div>
               </div>
@@ -2464,7 +2434,7 @@ export default function BillingPage() {
               type="submit"
               loading={submittingCheckout}
               disabled={!checkoutPreview || loadingCheckoutPreview}
-              className="w-full sm:w-auto font-bold rounded-xl bg-primary-600 hover:bg-primary-700 text-white shadow-xs min-h-[44px]"
+              className="w-full sm:w-auto font-bold rounded-xl bg-primary-600 hover:bg-primary-700 text-brand-mist shadow-xs min-h-[44px]"
             >
               <span>⚡</span> Settle & Issue Invoice
             </Button>

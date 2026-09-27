@@ -3,11 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { canViewAnalytics } from "@/lib/permissions";
-import {
-  Card, CardHeader, CardTitle, CardContent, Button,
-  Table, useToast, Spinner, Badge, StatCard, SkeletonCard, SkeletonTable,
-  ChartContainer, DonutChart, BarChart, cn
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Button, Table, useToast, Badge, StatCard, SkeletonCard, SkeletonTable, ChartContainer, DonutChart, cn } from "@/components/ui";
 import { RotateCw, IndianRupee, AlertCircle, Building2, Boxes } from "lucide-react";
 
 interface ClinicPerformance {
@@ -117,7 +113,7 @@ export default function AnalyticsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -212,13 +208,13 @@ export default function AnalyticsPage() {
                     header: "Revenue Collections", 
                     key: "revenue",
                     sortable: true,
-                    render: (row: ClinicPerformance) => <span className="text-green-600 font-bold">₹{row.revenue.toLocaleString()}</span>
+                    render: (row: ClinicPerformance) => <span className="text-success-text font-bold">₹{row.revenue.toLocaleString()}</span>
                   },
                   { 
                     header: "Outstanding Balance", 
                     key: "outstanding",
                     sortable: true,
-                    render: (row: ClinicPerformance) => <span className="text-red-500 font-semibold">₹{row.outstanding.toLocaleString()}</span>
+                    render: (row: ClinicPerformance) => <span className="text-danger-text font-semibold">₹{row.outstanding.toLocaleString()}</span>
                   }
                 ]}
                 data={clinicsPerformance}
@@ -240,13 +236,13 @@ export default function AnalyticsPage() {
                     <div className="grid grid-cols-2 gap-2 text-xs py-2 px-3 rounded-xl bg-surface-alt/70 border border-border/50">
                       <div>
                         <span className="text-text-muted text-[10px] uppercase font-bold block">Collections</span>
-                        <span className="font-bold text-sm text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                        <span className="font-bold text-sm text-success-text dark:text-success-text mt-0.5 block">
                           ₹{row.revenue.toLocaleString("en-IN")}
                         </span>
                       </div>
                       <div>
                         <span className="text-text-muted text-[10px] uppercase font-bold block">Outstanding</span>
-                        <span className="font-bold text-sm text-rose-500 mt-0.5 block">
+                        <span className="font-bold text-sm text-danger-text mt-0.5 block">
                           ₹{row.outstanding.toLocaleString("en-IN")}
                         </span>
                       </div>
@@ -291,13 +287,13 @@ export default function AnalyticsPage() {
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-text-muted">Referrals Completed:</span>
-                <span className="font-bold text-green-600">{referralStats.completedReferrals}</span>
+                <span className="font-bold text-success-text">{referralStats.completedReferrals}</span>
               </div>
 
               <div className="space-y-2 border-t border-border pt-4">
                 <div className="flex justify-between items-center text-sm">
                   <span className="font-bold text-text">Loop Completion Rate:</span>
-                  <span className="font-extrabold text-primary-600">{referralStats.completionRate}%</span>
+                  <span className="font-extrabold text-accent">{referralStats.completionRate}%</span>
                 </div>
                 
                 {/* Visual Progress Bar */}
@@ -328,19 +324,19 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-text-muted">30-Day Readmission Rate:</span>
-                  <span className="font-bold text-primary-600">{displayMetric(nabhKpis.indicators?.readmissionRate30DaysPercent, "%")}</span>
+                  <span className="font-bold text-accent">{displayMetric(nabhKpis.indicators?.readmissionRate30DaysPercent, "%")}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-text-muted">MAR Medication Safety:</span>
-                  <span className="font-bold text-green-600">{displayMetric(nabhKpis.indicators?.marMedicationCompliancePercent, "%")}</span>
+                  <span className="font-bold text-success-text">{displayMetric(nabhKpis.indicators?.marMedicationCompliancePercent, "%")}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-text-muted">HAI Rate (per 1000 days):</span>
-                  <span className="font-bold text-amber-600">{displayMetric(nabhKpis.indicators?.hospitalAcquiredInfectionRatePer1000)}</span>
+                  <span className="font-bold text-warning-text">{displayMetric(nabhKpis.indicators?.hospitalAcquiredInfectionRatePer1000)}</span>
                 </div>
                 <div className="flex justify-between items-center border-t border-border pt-2">
                   <span className="font-semibold text-text">Patient Satisfaction Index:</span>
-                  <span className="font-extrabold text-green-600">{displayMetric(nabhKpis.indicators?.patientSatisfactionScorePercent, "%")}</span>
+                  <span className="font-extrabold text-success-text">{displayMetric(nabhKpis.indicators?.patientSatisfactionScorePercent, "%")}</span>
                 </div>
               </CardContent>
             </Card>

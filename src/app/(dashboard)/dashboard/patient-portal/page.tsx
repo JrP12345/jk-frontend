@@ -2,26 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/authStore";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Button,
-  Badge,
-  Spinner,
-  Skeleton,
-  SkeletonCard,
-  Input,
-  DatePicker,
-  Select,
-  useToast,
-  Modal,
-  cn,
-} from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, Skeleton, SkeletonCard, Input, DatePicker, Select, useToast, Modal, cn } from "@/components/ui";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
-import { Link2, Plus, Download } from "lucide-react";
+import { Link2, Plus } from "lucide-react";
 
 interface PatientProfile {
   id: string;
@@ -42,6 +26,7 @@ export default function PatientPortalPage() {
 
   const [activeTab, setActiveTab] = useState<"profile" | "family" | "records" | "refills" | "timeline">("profile");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [patient, setPatient] = useState<PatientProfile | null>(null);
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
 
@@ -197,6 +182,7 @@ export default function PatientPortalPage() {
 
   const fetchPatientData = async () => {
     try {
+      setLoadError(null);
       setLoading(true);
       const res = await api.get("/patient/me");
       const p = res.data.data?.patient;
@@ -228,10 +214,11 @@ export default function PatientPortalPage() {
       const refillRes = await api.get("/prescriptions/refills");
       setRefillRequests(refillRes.data.data || []);
     } catch (err: any) {
+      setLoadError("Your health records could not be loaded. Please try again.");
       console.error("Failed to fetch patient portal data:", err);
       toast({
         title: "Error",
-        description: err.response?.data?.message || "Failed to load patient profile",
+        description: "Your health records could not be loaded. Please try again.",
         variant: "error",
       });
     } finally {
@@ -413,10 +400,11 @@ export default function PatientPortalPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {loadError && <Alert variant="error" title="Unable to load health records" action={<Button variant="outline" size="sm" onClick={fetchPatientData}>Try again</Button>}>{loadError}</Alert>}
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-6 bg-gradient-to-r from-primary-900/30 via-surface to-surface border border-primary-500/20 rounded-2xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-6 bg-accent-subtle    border border-primary-500/20 rounded-2xl">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-primary-600/20 border border-primary-500/30 flex items-center justify-center text-2xl font-black text-primary-400 shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-primary-600/20 border border-primary-500/30 flex items-center justify-center text-2xl font-black text-accent shrink-0">
             {user?.name?.[0]?.toUpperCase() || "P"}
           </div>
           <div>
@@ -529,7 +517,7 @@ export default function PatientPortalPage() {
                       Policy #: {patient.insurancePolicies[0].policyNumber}
                     </p>
                     {patient.insurancePolicies[0].coverageAmount && (
-                      <p className="text-xs font-bold text-success-500 mt-1">
+                      <p className="text-xs font-bold text-success-text mt-1">
                         Coverage: ₹{patient.insurancePolicies[0].coverageAmount.toLocaleString()}
                       </p>
                     )}
@@ -570,12 +558,12 @@ export default function PatientPortalPage() {
                 <Card key={fm.relationshipId} className="p-4 space-y-3 relative">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary-500/20 text-primary-400 font-bold flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-primary-500/20 text-accent font-bold flex items-center justify-center">
                         {(p?.name || "F")[0].toUpperCase()}
                       </div>
                       <div>
                         <h4 className="font-bold text-sm text-text">{p?.name || "Family Member"}</h4>
-                        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 bg-primary-500/10 text-primary-400 font-bold rounded-full border border-primary-500/20">
+                        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 bg-primary-500/10 text-accent font-bold rounded-full border border-primary-500/20">
                           {fm.relationship}
                         </span>
                       </div>
@@ -643,19 +631,19 @@ export default function PatientPortalPage() {
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 bg-surface-alt border border-border/80 rounded-xl">
-                <div className="text-xs font-bold text-primary-400 uppercase tracking-wider">Clinical Notes</div>
+                <div className="text-xs font-bold text-accent uppercase tracking-wider">Clinical Notes</div>
                 <div className="text-2xl font-bold text-text mt-1">{timelineEvents.filter((e: any) => e.eventType?.includes("ENCOUNTER")).length || 2} Recorded</div>
                 <p className="text-xs text-text-muted mt-1">SOAP notes & physician encounter summaries</p>
               </div>
 
               <div className="p-4 bg-surface-alt border border-border/80 rounded-xl">
-                <div className="text-xs font-bold text-success-500 uppercase tracking-wider">Prescriptions</div>
+                <div className="text-xs font-bold text-success-text uppercase tracking-wider">Prescriptions</div>
                 <div className="text-2xl font-bold text-text mt-1">{prescriptions.length || 3} Prescribed</div>
                 <p className="text-xs text-text-muted mt-1">Active medications & dosage instructions</p>
               </div>
 
               <div className="p-4 bg-surface-alt border border-border/80 rounded-xl">
-                <div className="text-xs font-bold text-warning-500 uppercase tracking-wider">Diagnostic Reports</div>
+                <div className="text-xs font-bold text-warning-text uppercase tracking-wider">Diagnostic Reports</div>
                 <div className="text-2xl font-bold text-text mt-1">Available</div>
                 <p className="text-xs text-text-muted mt-1">Pathology, hematology & LIS test results</p>
               </div>
@@ -705,7 +693,7 @@ export default function PatientPortalPage() {
                       </div>
                       <p className="text-xs text-text-muted mt-1">Reason: "{refill.reason}"</p>
                       {refill.decisionNotes && (
-                        <p className="text-xs font-semibold text-primary-400 mt-1">
+                        <p className="text-xs font-semibold text-accent mt-1">
                           Doctor Note: {refill.decisionNotes}
                         </p>
                       )}
@@ -746,7 +734,7 @@ export default function PatientPortalPage() {
                     <div className="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-primary-500 border-4 border-surface" />
                     <div className="p-4 bg-surface-alt border border-border/80 rounded-xl space-y-1">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-primary-400 uppercase tracking-wider">
+                        <span className="text-xs font-bold text-accent uppercase tracking-wider">
                           {(evt.eventType ? String(evt.eventType).replace(/_/g, " ") : "CLINICAL EVENT")}
                         </span>
                         <span className="text-xs text-text-muted">
@@ -784,7 +772,7 @@ export default function PatientPortalPage() {
               <Input
                 label="Phone Number"
                 value={editForm.phone}
-                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} type="tel" inputMode="tel"
               />
             </div>
 
@@ -844,7 +832,7 @@ export default function PatientPortalPage() {
                 <Input
                   label="Phone"
                   value={editForm.emergencyPhone}
-                  onChange={(e) => setEditForm({ ...editForm, emergencyPhone: e.target.value })}
+                  onChange={(e) => setEditForm({ ...editForm, emergencyPhone: e.target.value })} type="tel" inputMode="tel"
                 />
               </div>
             </div>
@@ -946,13 +934,13 @@ export default function PatientPortalPage() {
           />
 
           {selfDoctorBookingInfo?.bookingMode === "sequential_queue" ? (
-            <div className="p-3 bg-gradient-to-r from-primary-600/10 via-surface to-surface border border-primary-500/30 rounded-xl space-y-1.5">
+            <div className="p-3 bg-accent-subtle    border border-primary-500/30 rounded-xl space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-xs text-text">🎟 Live Sequential Token Queue Mode</span>
                 <Badge variant="primary" className="font-bold text-[10px]">Sequential Token</Badge>
               </div>
               <p className="text-xs text-text-secondary">
-                This doctor operates in live token queue mode. Booking will issue Token <strong className="text-primary-600 font-bold">#{selfDoctorBookingInfo.nextToken || 1}</strong> with an estimated turn time of <strong className="text-amber-600 font-bold">~{Math.max(0, ((selfDoctorBookingInfo.nextToken || 1) - 1) * (selfDoctorBookingInfo.appointmentDuration || 15))} mins</strong>.
+                This doctor operates in live token queue mode. Booking will issue Token <strong className="text-accent font-bold">#{selfDoctorBookingInfo.nextToken || 1}</strong> with an estimated turn time of <strong className="text-warning-text font-bold">~{Math.max(0, ((selfDoctorBookingInfo.nextToken || 1) - 1) * (selfDoctorBookingInfo.appointmentDuration || 15))} mins</strong>.
               </p>
             </div>
           ) : (

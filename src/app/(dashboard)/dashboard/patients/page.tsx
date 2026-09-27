@@ -6,45 +6,8 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { PatientService } from "@/services/patient.service";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Table,
-  Column,
-  Button,
-  Input,
-  Select,
-  Textarea,
-  Modal,
-  useToast,
-  Badge,
-  StatCard,
-  SkeletonTable,
-  Dropdown,
-  cn,
-} from "@/components/ui";
-import {
-  UserPlus,
-  RotateCw,
-  Search,
-  Users,
-  FileText,
-  User,
-  UserCheck,
-  MoreHorizontal,
-  AlertCircle,
-  CalendarPlus,
-  Activity,
-  ArrowLeft,
-  ArrowRight,
-  Mail,
-  Phone,
-  Droplets,
-  HeartPulse,
-} from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, Column, Button, Input, Select, Modal, useToast, Badge, StatCard, Dropdown, cn } from "@/components/ui";
+import { UserPlus, RotateCw, Search, Users, FileText, User, UserCheck, MoreHorizontal, AlertCircle, CalendarPlus, Activity, ArrowLeft, ArrowRight, Mail, Phone, Droplets } from "lucide-react";
 
 interface PatientUser {
   _id?: string;
@@ -75,6 +38,7 @@ export default function PatientsDirectoryPage() {
 
   const [patients, setPatients] = useState<PatientRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState("all");
@@ -196,6 +160,7 @@ export default function PatientsDirectoryPage() {
 
   const fetchPatients = async () => {
     try {
+      setLoadError(null);
       setIsRefreshing(true);
       const queryParams = new URLSearchParams();
       if (search.trim()) queryParams.set("search", search.trim());
@@ -218,9 +183,10 @@ export default function PatientsDirectoryPage() {
       if (pagesHeader) setTotalPages(Number(pagesHeader));
       else setTotalPages(1);
     } catch (err: any) {
+      setLoadError("Patient records could not be loaded. Check your connection and try again.");
       toast({
         title: "Unable to Load Patients",
-        description: err.response?.data?.message || "Could not retrieve patient records.",
+        description: "Patient records could not be loaded. Check your connection and try again.",
         variant: "error",
       });
     } finally {
@@ -323,7 +289,7 @@ export default function PatientsDirectoryPage() {
       header: "Blood Group",
       render: (p) =>
         p.bloodGroup ? (
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 font-mono font-bold text-[11px]">
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-danger/10 border border-danger/20 text-danger-text dark:text-danger-text font-mono font-bold text-[11px]">
             <Droplets className="w-3 h-3 shrink-0" />
             <span>{p.bloodGroup}</span>
           </div>
@@ -384,12 +350,12 @@ export default function PatientsDirectoryPage() {
                 },
                 {
                   label: "Book Appointment",
-                  icon: <CalendarPlus className="w-4 h-4 text-primary-500" />,
+                  icon: <CalendarPlus className="w-4 h-4 text-accent" />,
                   onClick: () => router.push(`/dashboard/appointments?patientId=${pid}`),
                 },
                 {
                   label: "Medical EHR Timeline",
-                  icon: <Activity className="w-4 h-4 text-emerald-500" />,
+                  icon: <Activity className="w-4 h-4 text-success-text" />,
                   onClick: () => router.push(`/dashboard/patients/${pid}/timeline`),
                 },
               ]}
@@ -405,7 +371,7 @@ export default function PatientsDirectoryPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -544,6 +510,8 @@ export default function PatientsDirectoryPage() {
         </CardHeader>
         <CardContent className="p-0">
           <Table
+              error={loadError}
+              onRetry={fetchPatients}
             columns={columns}
             data={patients}
             loading={loading}
@@ -567,13 +535,13 @@ export default function PatientsDirectoryPage() {
                   {/* Top Row: Avatar + Name + MRN/Gender */}
                   <div className="flex items-start justify-between gap-2.5">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold flex items-center justify-center text-sm shrink-0 border border-primary-500/20">
+                      <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-accent dark:text-accent font-bold flex items-center justify-center text-sm shrink-0 border border-primary-500/20">
                         {name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
                         <Link
                           href={`/dashboard/patients/${pid}`}
-                          className="font-bold text-text text-sm hover:text-primary-500 transition-colors block truncate"
+                          className="font-bold text-text text-sm hover:text-accent transition-colors block truncate"
                         >
                           {name}
                         </Link>
@@ -581,7 +549,7 @@ export default function PatientsDirectoryPage() {
                           {p.gender && <span className="capitalize">{p.gender}</span>}
                           {age && <span>&bull; {age}</span>}
                           {p.bloodGroup && (
-                            <span className="font-bold text-rose-600 dark:text-rose-400 text-[10px] bg-rose-500/10 px-1.5 py-0.2 rounded-md font-mono">
+                            <span className="font-bold text-danger-text dark:text-danger-text text-[10px] bg-danger/10 px-1.5 py-0.2 rounded-md font-mono">
                               {p.bloodGroup}
                             </span>
                           )}
@@ -601,7 +569,7 @@ export default function PatientsDirectoryPage() {
                     {phone && phone !== "-" && (
                       <a
                         href={`tel:${phone}`}
-                        className="flex items-center gap-1.5 text-text hover:text-primary-500 transition-colors font-mono min-h-[32px]"
+                        className="flex items-center gap-1.5 text-text hover:text-accent transition-colors font-mono min-h-[32px]"
                       >
                         <Phone className="w-3.5 h-3.5 text-text-muted" />
                         <span>{phone}</span>
@@ -624,7 +592,7 @@ export default function PatientsDirectoryPage() {
                       {allergies.map((allergy, idx) => (
                         <span
                           key={`al-${idx}`}
-                          className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                          className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-danger/10 text-danger-text dark:text-danger-text border border-danger/20"
                         >
                           Allergy: {allergy}
                         </span>
@@ -675,7 +643,7 @@ export default function PatientsDirectoryPage() {
                       items={[
                         {
                           label: "Medical EHR Timeline",
-                          icon: <Activity className="w-4 h-4 text-emerald-500" />,
+                          icon: <Activity className="w-4 h-4 text-success-text" />,
                           onClick: () => router.push(`/dashboard/patients/${pid}/timeline`),
                         },
                       ]}
@@ -738,8 +706,8 @@ export default function PatientsDirectoryPage() {
       >
         <form onSubmit={(e) => handleRegisterSubmit(e, false)} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
           {duplicateWarning && (
-            <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2 animate-fade-in text-xs">
-              <div className="flex items-center gap-2 font-bold text-amber-700 dark:text-amber-400">
+            <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-2xl space-y-2 animate-fade-in text-xs">
+              <div className="flex items-center gap-2 font-bold text-warning-text dark:text-warning-text">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>Existing Matching Patient Detected</span>
               </div>
@@ -762,7 +730,7 @@ export default function PatientsDirectoryPage() {
                   variant="primary"
                   onClick={(e) => handleRegisterSubmit(e, true)}
                   loading={registerLoading}
-                  className="w-full sm:w-auto min-h-[38px] bg-amber-600 hover:bg-amber-700 text-white font-bold"
+                  className="w-full sm:w-auto min-h-[38px] bg-warning hover:bg-warning text-background font-bold"
                 >
                   Proceed Anyway (Create Walk-in)
                 </Button>
@@ -782,7 +750,7 @@ export default function PatientsDirectoryPage() {
               label="Primary Phone Number"
               placeholder="e.g. +91 9876543210"
               value={registerForm.phone}
-              onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
+              onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })} type="tel" inputMode="tel"
             />
           </div>
 
@@ -887,7 +855,7 @@ export default function PatientsDirectoryPage() {
                 label="Contact Phone"
                 placeholder="e.g. +91 9812345678"
                 value={registerForm.emergencyContactPhone}
-                onChange={(e) => setRegisterForm({ ...registerForm, emergencyContactPhone: e.target.value })}
+                onChange={(e) => setRegisterForm({ ...registerForm, emergencyContactPhone: e.target.value })} type="tel" inputMode="tel"
               />
               <Select
                 label="Relationship"

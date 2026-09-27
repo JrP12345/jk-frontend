@@ -3,52 +3,16 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardDescription,
-  Button,
-  Input,
-  useToast,
-  Spinner,
-  ImageUpload,
-  MultiImageUpload,
-  ScheduleEditor,
-  Toggle,
-  Select,
-  Badge,
-  SkeletonForm,
-  cn,
-} from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Input, useToast, ImageUpload, MultiImageUpload, ScheduleEditor, Toggle, Select, Badge, SkeletonForm, cn } from "@/components/ui";
 import { useR2Upload } from "@/hooks/useR2Upload";
 import { notificationService, type SmtpConfig } from "@/services/notificationService";
 import { aiAdminService } from "@/services/aiAdmin.service";
 import { useAuthStore } from "@/store/authStore";
-import { isRootUser } from "@/lib/permissions";
+
 import BillingSettingsPage from "./billing/page";
 import ModulesSettingsPage from "./modules/page";
 import WhatsAppSettingsCard from "./WhatsAppSettingsCard";
-import {
-  Building2,
-  Bell,
-  Sparkles,
-  LayoutGrid,
-  CreditCard,
-  Save,
-  Check,
-  Mail,
-  Send,
-  Eye,
-  EyeOff,
-  Cpu,
-  Layers,
-  ShieldCheck,
-  AlertCircle,
-  CheckCircle2,
-  Lock,
-} from "lucide-react";
+import { Building2, Bell, Sparkles, LayoutGrid, CreditCard, Save, Send, Eye, EyeOff, Lock } from "lucide-react";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const PHONE_REGEX = /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s./0-9]*$/;
@@ -70,7 +34,7 @@ const TABS: { id: Tab; label: string; rootOnly?: boolean; icon: React.ReactNode 
     id: "ai",
     label: "AI Configuration",
     rootOnly: true,
-    icon: <Sparkles className="w-4 h-4 text-primary-500" />,
+    icon: <Sparkles className="w-4 h-4 text-accent" />,
   },
   {
     id: "modules",
@@ -99,6 +63,7 @@ function OrganizationTab({
 }) {
   const [formData, setFormData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
@@ -137,6 +102,7 @@ function OrganizationTab({
       return;
     }
     try {
+      setLoadError(null);
       setLoading(true);
       const url = selectedOrgId
         ? `/onboarding/organization/me?organizationId=${selectedOrgId}`
@@ -145,7 +111,8 @@ function OrganizationTab({
       setFormData(res.data.data);
       setErrors({});
     } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to load settings", variant: "error" });
+      setLoadError("Organization settings could not be loaded. Please try again.");
+      toast({ title: "Error", description: "Organization settings could not be loaded. Please try again.", variant: "error" });
     } finally {
       setLoading(false);
     }
@@ -213,10 +180,12 @@ function OrganizationTab({
   };
 
   if (loading || (isRoot && (!selectedOrgId || orgsLoading))) return <SkeletonForm fields={5} />;
+  if (loadError && !formData) return <Alert variant="error" title="Unable to load settings" action={<Button variant="outline" size="sm" onClick={fetchSettings}>Try again</Button>}>{loadError}</Alert>;
   if (!formData) return null;
 
   return (
     <Card className="border border-border/80 shadow-xs rounded-2xl overflow-hidden bg-surface">
+      {loadError && <Alert variant="error" title="Unable to refresh settings" action={<Button variant="outline" size="sm" onClick={fetchSettings}>Try again</Button>}>{loadError}</Alert>}
       <form onSubmit={handleSave}>
         <CardHeader className="border-b border-border/60 pb-4 bg-surface-alt/30">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -315,7 +284,7 @@ function OrganizationTab({
                 validateField("phone", e.target.value);
               }}
               onBlur={(e) => validateField("phone", e.target.value)}
-              error={errors.phone}
+              error={errors.phone} type="tel" inputMode="tel"
             />
           </div>
 
@@ -621,7 +590,7 @@ function NotificationsTab({
                 <label className="block text-xs font-semibold text-text mb-1">
                   Password / App Password
                   {smtpData?.passIsSet && (
-                    <span className="ml-2 text-[10px] text-emerald-600 font-normal">(password active)</span>
+                    <span className="ml-2 text-[10px] text-success-text font-normal">(password active)</span>
                   )}
                 </label>
                 <div className="relative">
@@ -648,7 +617,7 @@ function NotificationsTab({
               />
               <Input
                 label="Sender Name"
-                placeholder="Anant Health"
+                placeholder="Ekavyu Health"
                 value={smtp.fromName}
                 onChange={(e) => setSmtp({ ...smtp, fromName: e.target.value })}
               />
@@ -686,8 +655,8 @@ function NotificationsTab({
             </div>
           </>
         ) : (
-          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2.5">
-            <Lock className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+          <div className="p-4 rounded-2xl bg-warning/10 border border-warning/20 text-xs text-warning-text dark:text-warning-text flex items-start gap-2.5">
+            <Lock className="w-4 h-4 shrink-0 mt-0.5 text-warning-text" />
             <div>
               <p className="font-bold text-xs mb-0.5">System Outbound Gateway Restricted</p>
               <p className="leading-relaxed">
@@ -759,9 +728,9 @@ function AISettingsTab({
     {
       key: "enablePHIAnonymization" as const,
       label: "PHI Anonymization",
-      desc: "Auto-redact Protected Health Information (names, MRNs, emails) before sending data to the AI model. Strongly recommended for HIPAA compliance.",
-      badge: "Recommended",
-      badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+      desc: "Patient identifiers are redacted before deidentified clinical requests leave the server. This protection is always enabled.",
+      badge: "Required",
+      badgeColor: "bg-success/10 text-success-text dark:text-success-text border-success/20",
       impact: "Affects every AI request — prompts are scrubbed before leaving your server.",
     },
     {
@@ -769,7 +738,7 @@ function AISettingsTab({
       label: "Token Streaming (SSE)",
       desc: "Stream AI model tokens in real-time to clinician interfaces for immediate feedback.",
       badge: "Performance",
-      badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+      badgeColor: "bg-primary/10 text-accent dark:text-accent border-accent/20",
       impact: "Reduces perceived latency during note drafting and chat assistance.",
     },
     {
@@ -777,16 +746,16 @@ function AISettingsTab({
       label: "Multi-Agent Specialist Routing",
       desc: "Route clinical questions to sub-specialized agent pipelines (e.g. pharmacology, coding, diagnosis).",
       badge: "Accuracy",
-      badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+      badgeColor: "bg-primary/10 text-accent dark:text-accent border-accent/20",
       impact: "Improves diagnostic nuance; slightly increases latency per consultation turn.",
     },
     {
       key: "enableToolExecution" as const,
-      label: "Autonomous Clinical Tools",
-      desc: "Allow AI agents to autonomously query live EHR vitals, active lab orders, and drug databases.",
+      label: "Clinical Tools",
+      desc: "Allow clinical tool requests. Actions still require clinician approval and existing permissions.",
       badge: "Clinical Power",
-      badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-      impact: "Enables interactive tools (drug interaction checker, allergy guard) directly in chat.",
+      badgeColor: "bg-warning/10 text-warning-text dark:text-warning-text border-warning/20",
+      impact: "Controls new tool requests and approval of pending actions.",
     },
   ];
 
@@ -833,7 +802,9 @@ function AISettingsTab({
                   <p className="text-xs text-text-muted">{desc}</p>
                   <p className="text-[11px] text-text-muted/80 italic">{impact}</p>
                 </div>
-                {isRoot ? (
+                {key === "enablePHIAnonymization" ? (
+                  <span className="text-xs font-medium text-text-muted">Always enabled</span>
+                ) : isRoot ? (
                   <Toggle checked={flags[key]} onChange={(val) => setFlags({ ...flags, [key]: val })} />
                 ) : (
                   <span className="text-xs font-medium text-text-muted">{flags[key] ? "Enabled" : "Disabled"}</span>
@@ -852,7 +823,7 @@ function AISettingsTab({
           <div className="p-3.5 rounded-2xl border border-border/80 bg-surface-alt space-y-1">
             <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Fast Lane</p>
             <p className="text-xs font-bold text-text">CLINICAL_FAST</p>
-            <p className="text-[11px] text-text-muted">Real-time chat, autocomplete, voice transcribe. Latency: &lt;500ms.</p>
+            <p className="text-[11px] text-text-muted">Clinical chat. Latency depends on the configured provider.</p>
           </div>
           <div className="p-3.5 rounded-2xl border border-border/80 bg-surface-alt space-y-1">
             <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Default Tier</p>
@@ -903,7 +874,7 @@ export default function SettingsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -914,7 +885,7 @@ export default function SettingsPage() {
                 {isRoot ? "System Governance" : "Organization Management"}
               </Badge>
               {isRoot && (
-                <Badge variant="secondary" size="sm" className="font-semibold text-[10px] bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                <Badge variant="secondary" size="sm" className="font-semibold text-[10px] bg-primary/10 text-accent dark:text-accent border border-accent/20">
                   Root Super-Admin Workspace
                 </Badge>
               )}
@@ -960,15 +931,15 @@ export default function SettingsPage() {
                   : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
               )}
             >
-              <span className={cn(isActive ? "text-primary-500" : "text-text-muted")}>{tab.icon}</span>
+              <span className={cn(isActive ? "text-accent" : "text-text-muted")}>{tab.icon}</span>
               <span>{tab.label}</span>
               {tab.rootOnly && (
                 <span
                   className={cn(
                     "text-[9px] font-bold px-1.5 py-0.2 rounded-full",
                     isActive
-                      ? "bg-primary-500/10 text-primary-600 dark:text-primary-400"
-                      : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                      ? "bg-primary-500/10 text-accent dark:text-accent"
+                      : "bg-warning/15 text-warning-text dark:text-warning-text"
                   )}
                 >
                   Root

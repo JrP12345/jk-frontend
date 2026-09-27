@@ -4,36 +4,12 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-import {
-  Button,
-  Input,
-  Select,
-  Badge,
-  Card,
-  EmptyState,
-} from "@/components/ui";
+import { Button, Input, Select, Badge, Card, EmptyState } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
-import {
-  Search,
-  MapPin,
-  Clock,
-  X,
-  ChevronRight,
-  ShieldCheck,
-  Building2,
-  Users,
-  CreditCard,
-  Camera,
-} from "lucide-react";
+import { Search, MapPin, Clock, X, ChevronRight, ShieldCheck, Building2, Users, CreditCard, Camera } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
-import { useTranslation } from "@/lib/i18n";
 import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
-import {
-  detectUserLocation,
-  mapStateToLanguage,
-  findMatchingClinicCity,
-  DetectedLocation,
-} from "@/lib/geo/locationDetector";
+import { detectUserLocation, findMatchingClinicCity, DetectedLocation } from "@/lib/geo/locationDetector";
 
 interface DoctorSummary {
   id: string;
@@ -64,21 +40,21 @@ export interface Clinic {
 }
 
 const QUICK_SPECIALTIES = [
-  { value: "", key: "browse.all_care", fallback: "All Care" },
-  { value: "General Medicine", key: "specialty.general_medicine", fallback: "General Medicine" },
-  { value: "Pediatrics", key: "specialty.pediatrics", fallback: "Pediatrics" },
-  { value: "Cardiology", key: "specialty.cardiology", fallback: "Cardiology" },
-  { value: "Dentistry", key: "specialty.dentistry", fallback: "Dentistry" },
-  { value: "Orthopedics", key: "specialty.orthopedics", fallback: "Orthopedics" },
-  { value: "Dermatology", key: "specialty.dermatology", fallback: "Dermatology" },
-  { value: "ENT", key: "specialty.ent", fallback: "ENT" },
+  { value: "", label: "All Care" },
+  { value: "General Medicine", label: "General Medicine" },
+  { value: "Pediatrics", label: "Pediatrics" },
+  { value: "Cardiology", label: "Cardiology" },
+  { value: "Dentistry", label: "Dentistry" },
+  { value: "Orthopedics", label: "Orthopedics" },
+  { value: "Dermatology", label: "Dermatology" },
+  { value: "ENT", label: "ENT" },
 ];
 
 const SORT_OPTIONS = [
-  { value: "featured", key: "sort.featured", fallback: "Sort: Featured" },
-  { value: "fee_low", key: "sort.fee_low", fallback: "Fee (Low to High)" },
-  { value: "name", key: "sort.name", fallback: "Name (A–Z)" },
-  { value: "city", key: "sort.city", fallback: "City" },
+  { value: "featured", label: "Sort: Featured" },
+  { value: "fee_low", label: "Fee (Low to High)" },
+  { value: "name", label: "Name (A–Z)" },
+  { value: "city", label: "City" },
 ];
 
 function format12HourTime(timeStr: string): string {
@@ -127,7 +103,6 @@ export default function BrowseClient({
   initialLoaded?: boolean;
 } = {}) {
   const router = useRouter();
-  const { t, setLanguage } = useTranslation();
   const [clinics, setClinics] = useState<Clinic[]>(initialClinics);
   const [loading, setLoading] = useState(!initialLoaded && initialClinics.length === 0);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -146,7 +121,7 @@ export default function BrowseClient({
     return [];
   });
 
-  // Auto location & language detection on initial load
+  // Auto location detection on initial load
   useEffect(() => {
     let isMounted = true;
     const initLocation = async () => {
@@ -158,14 +133,6 @@ export default function BrowseClient({
         if (loc && (loc.city || loc.state)) {
           setDetectedLocation(loc);
 
-          // Auto switch language based on detected state/city (unless user chose manually)
-          try {
-            const hasManualLang = localStorage.getItem("ananta_lang_manual");
-            if (!hasManualLang) {
-              const lang = mapStateToLanguage(loc.state, loc.city);
-              setLanguage(lang);
-            }
-          } catch {}
         }
       } catch (err) {
         console.error("Auto location error:", err);
@@ -178,7 +145,7 @@ export default function BrowseClient({
     return () => {
       isMounted = false;
     };
-  }, [setLanguage]);
+  }, []);
 
   // Auto-select city if user hasn't explicitly chosen one and a matching clinic city exists
   useEffect(() => {
@@ -286,37 +253,34 @@ export default function BrowseClient({
 
   const localizedSortOptions = SORT_OPTIONS.map((opt) => ({
     value: opt.value,
-    label: t(opt.key, opt.fallback),
+    label: opt.label,
   }));
 
   return (
-    <div className="min-h-screen bg-surface-alt font-sans text-text antialiased selection:bg-primary-500/20 selection:text-primary-600">
+    <div className="min-h-screen bg-surface-alt font-sans text-text antialiased selection:bg-primary-500/20 selection:text-accent">
       <MarketplaceNavbar />
 
       {/* Hero Header Section - Clean Modern Healthcare Design */}
-      <section className="relative pt-20 sm:pt-24 pb-4 sm:pb-8 overflow-hidden bg-gradient-to-b from-surface via-surface/95 to-surface-alt border-b border-border/50">
+      <section className="relative pt-20 sm:pt-24 pb-4 sm:pb-8 overflow-hidden brand-wash border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
           <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-text tracking-tight mb-1.5 sm:mb-2 leading-tight" suppressHydrationWarning>
-            {t("browse.hero_title_1", "Find and book")}{" "}
-            <span className="text-primary-600" suppressHydrationWarning>{t("browse.hero_title_highlight", "verified medical care")}</span>
+            {"Find and book"}{" "}
+            <span className="text-accent" suppressHydrationWarning>{"verified medical care"}</span>
           </h1>
           <p className="text-text-secondary text-xs sm:text-sm max-w-lg mx-auto mb-4 sm:mb-6 leading-relaxed hidden xs:block" suppressHydrationWarning>
-            {t(
-              "browse.hero_subtitle",
-              "Search verified clinics, view consulting doctors, and schedule your appointment with transparent fees."
-            )}
+            {"Search verified clinics, view consulting doctors, and schedule your appointment with transparent fees."}
           </p>
 
           {/* Unified Streamlined Search Console: Search + City Selector */}
           <div className="max-w-3xl mx-auto">
-            <div className="bg-surface rounded-2xl md:rounded-full border border-border shadow-xs p-1.5 focus-within:ring-2 focus-within:ring-primary-500/30 focus-within:border-primary-500 transition-all flex flex-col md:flex-row items-stretch md:items-center gap-1.5 sm:gap-2">
+            <div className="bg-surface rounded-2xl md:rounded-full border border-border shadow-xs p-1.5 focus-within:ring-2 focus-within:ring-focus-ring focus-within:border-primary-500 transition-all flex flex-col md:flex-row items-stretch md:items-center gap-1.5 sm:gap-2">
               {/* Keyword Search Input with Inside Icon */}
               <div className="flex-1 min-w-0">
                 <Input
                   variant="flush"
                   size="sm"
                   icon={<Search className="w-4 h-4 text-text-muted" strokeWidth={1.75} />}
-                  placeholder={t("browse.search_placeholder", "Search doctor, clinic name, or specialty...")}
+                  placeholder={"Search doctor, clinic name, or specialty..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onClear={() => setSearchQuery("")}
@@ -333,7 +297,7 @@ export default function BrowseClient({
                   value={selectedCity}
                   onChange={(e) => handleCitySelect(e.target.value)}
                   options={[
-                    { value: "", label: t("browse.all_cities", "All Cities") },
+                    { value: "", label: "All Cities" },
                     ...allCities.map((c) => ({ value: c, label: c })),
                   ]}
                   size="sm"
@@ -347,7 +311,7 @@ export default function BrowseClient({
             {/* Specialty 1-Tap Quick Filter Pills Carousel */}
             <div className="mt-3 sm:mt-4 pt-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-snap-x py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
               <span className="text-[11px] font-semibold text-text-muted shrink-0 mr-1 hidden sm:inline-block">
-                {t("browse.care_label", "Care:")}
+                {"Care:"}
               </span>
               {QUICK_SPECIALTIES.map((qs) => {
                 const isActive = selectedSpecialty === qs.value;
@@ -359,11 +323,11 @@ export default function BrowseClient({
                     aria-pressed={isActive}
                     className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer min-h-[36px] flex items-center justify-center ${
                       isActive
-                        ? "bg-primary-500/15 text-primary-600 dark:text-primary-400 font-bold ring-1 ring-primary-500/40"
+                        ? "bg-primary-500/15 text-accent dark:text-accent font-bold ring-1 ring-focus-ring"
                         : "bg-surface hover:bg-surface-hover text-text-secondary hover:text-text border border-border"
                     }`}
                   >
-                    <span>{t(qs.key, qs.fallback)}</span>
+                    <span>{qs.label}</span>
                   </button>
                 );
               })}
@@ -373,14 +337,14 @@ export default function BrowseClient({
             {hasActiveFilters && (
               <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-2.5 sm:mt-3 pt-1">
                 <span className="text-[11px] font-semibold text-text-muted">
-                  {t("browse.active_filters", "Active:")}
+                  {"Active:"}
                 </span>
                 {debouncedSearch && (
                   <Badge variant="neutral" className="flex items-center gap-1.5 py-0.5 px-2.5 text-xs bg-surface border border-border">
                     <span className="truncate max-w-[140px]">"{debouncedSearch}"</span>
                     <button
                       onClick={() => setSearchQuery("")}
-                      className="hover:text-danger-500 ml-1 cursor-pointer p-0.5 rounded-full"
+                      className="hover:text-danger-text ml-1 cursor-pointer p-0.5 rounded-full"
                       aria-label="Remove search filter"
                     >
                       <X className="w-3 h-3" strokeWidth={1.75} />
@@ -392,7 +356,7 @@ export default function BrowseClient({
                     <span>{selectedCity}</span>
                     <button
                       onClick={() => handleCitySelect("")}
-                      className="hover:text-danger-500 ml-1 cursor-pointer p-0.5 rounded-full"
+                      className="hover:text-danger-text ml-1 cursor-pointer p-0.5 rounded-full"
                       aria-label="Remove city filter"
                     >
                       <X className="w-3 h-3" strokeWidth={1.75} />
@@ -404,12 +368,12 @@ export default function BrowseClient({
                     <span>
                       {(() => {
                         const item = QUICK_SPECIALTIES.find((qs) => qs.value === selectedSpecialty);
-                        return item ? t(item.key, item.fallback) : selectedSpecialty;
+                        return item ? item.label : selectedSpecialty;
                       })()}
                     </span>
                     <button
                       onClick={() => setSelectedSpecialty("")}
-                      className="hover:text-danger-500 ml-1 cursor-pointer p-0.5 rounded-full"
+                      className="hover:text-danger-text ml-1 cursor-pointer p-0.5 rounded-full"
                       aria-label="Remove specialty filter"
                     >
                       <X className="w-3 h-3" strokeWidth={1.75} />
@@ -418,9 +382,9 @@ export default function BrowseClient({
                 )}
                 <button
                   onClick={resetAllFilters}
-                  className="text-[11px] font-bold text-primary-600 hover:text-primary-700 underline cursor-pointer ml-1 py-1"
+                  className="text-[11px] font-bold text-accent hover:text-accent underline cursor-pointer ml-1 py-1"
                 >
-                  {t("browse.reset_all", "Reset all")}
+                  {"Reset all"}
                 </button>
               </div>
             )}
@@ -436,16 +400,16 @@ export default function BrowseClient({
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold text-text-secondary">
               {loading ? (
-                t("browse.finding_clinics", "Finding clinics...")
+                "Finding clinics..."
               ) : (
                 <span>
                   <strong className="text-text font-bold">{clinics.length}</strong>{" "}
                   {clinics.length === 1
-                    ? t("browse.clinic_single", "clinic available")
-                    : t("browse.clinics_multiple", "clinics available")}
+                    ? "clinic available"
+                    : "clinics available"}
                   {hasActiveFilters && (
                     <span className="text-text-muted font-normal ml-1">
-                      {t("browse.filtered", "(filtered)")}
+                      {"(filtered)"}
                     </span>
                   )}
                 </span>
@@ -454,10 +418,10 @@ export default function BrowseClient({
 
             {/* Location Indicator Pill */}
             {detectedLocation && (detectedLocation.city || detectedLocation.state) && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-500/10 text-primary-700 dark:text-primary-400 border border-primary-500/20 text-[11px] font-medium">
-                <MapPin className="w-3 h-3 text-primary-600 shrink-0" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-500/10 text-accent dark:text-accent border border-primary-500/20 text-[11px] font-medium">
+                <MapPin className="w-3 h-3 text-accent shrink-0" />
                 <span>
-                  {t("browse.near_location", "Near")}{" "}
+                  {"Near"}{" "}
                   <strong className="font-bold">
                     {[detectedLocation.city, detectedLocation.state].filter(Boolean).join(", ")}
                   </strong>
@@ -466,9 +430,9 @@ export default function BrowseClient({
                   <button
                     type="button"
                     onClick={handleShowAllCities}
-                    className="ml-1 text-[11px] font-bold text-primary-600 hover:text-primary-800 underline cursor-pointer"
+                    className="ml-1 text-[11px] font-bold text-accent hover:text-accent underline cursor-pointer"
                   >
-                    {t("browse.view_all_cities", "Show all cities")}
+                    {"Show all cities"}
                   </button>
                 ) : null}
               </span>
@@ -517,11 +481,8 @@ export default function BrowseClient({
         ) : clinics.length === 0 ? (
           <Card className="p-8 sm:p-12 text-center border-dashed rounded-3xl bg-surface">
             <EmptyState
-              title={t("browse.empty_title", "No Healthcare Facilities Found")}
-              description={t(
-                "browse.empty_desc",
-                "No clinics match your current search criteria. Try choosing another city or clearing your filters."
-              )}
+              title={"No Healthcare Facilities Found"}
+              description={"No clinics match your current search criteria. Try choosing another city or clearing your filters."}
               action={
                 <Button
                   variant="primary"
@@ -529,7 +490,7 @@ export default function BrowseClient({
                   onClick={resetAllFilters}
                   className="rounded-xl font-bold px-5 min-h-[44px] flex items-center justify-center"
                 >
-                  {t("browse.reset_all_filters", "Reset all filters")}
+                  {"Reset all filters"}
                 </Button>
               }
             />
@@ -544,38 +505,39 @@ export default function BrowseClient({
               return (
                 <Card
                   key={clinic.id}
+                  role="group"
                   onClick={() => router.push(`/browse/${clinic.id}`)}
                   className="group cursor-pointer hover:shadow-lg hover:border-primary-500/40 hover:-translate-y-0.5 transition-all duration-200 p-4 sm:p-5 rounded-2xl border border-border bg-surface flex flex-col justify-between"
                 >
                   <div>
                     {/* Card Header: Avatar, Name & Verified Badge */}
                     <div className="flex items-start justify-between gap-2.5 mb-3">
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-12 h-12 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs group-hover:border-primary-500/30 transition-colors overflow-hidden">
                           {clinic.logo_url || clinic.image_url ? (
                             <img src={clinic.logo_url || clinic.image_url} alt={clinic.name} className="w-full h-full object-cover rounded-xl" />
                           ) : (
-                            <Building2 className="w-5 h-5 text-text-muted group-hover:text-primary-600 transition-colors" strokeWidth={1.75} />
+                            <Building2 className="w-5 h-5 text-text-muted group-hover:text-accent transition-colors" strokeWidth={1.75} />
                           )}
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             <h3
-                              className="text-sm sm:text-base font-bold text-text group-hover:text-primary-600 transition-colors truncate"
+                              className="text-sm sm:text-base font-bold text-text group-hover:text-accent transition-colors truncate"
                               title={clinic.name}
                             >
-                              <Link href={`/browse/${clinic.id}`} onClick={(event) => event.stopPropagation()} className="focus-visible:outline-none focus-visible:underline">{clinic.name}</Link>
+                              <Link href={`/browse/${clinic.id}`} onClick={(event) => event.stopPropagation()} className="block truncate focus-visible:outline-none focus-visible:underline">{clinic.name}</Link>
                             </h3>
                           </div>
                           {clinic.organizationName && clinic.organizationName !== clinic.name && (
                             <p className="text-[10px] text-text-muted font-medium truncate">
-                              {t("browse.part_of", "Part of")} {clinic.organizationName}
+                              {"Part of"} {clinic.organizationName}
                             </p>
                           )}
-                          <p className="text-xs text-text-muted flex items-center gap-1.5 mt-0.5 truncate">
+                          <p className="text-xs text-text-muted flex flex-wrap items-center gap-1.5 mt-0.5">
                             <span className="truncate">{clinic.city}</span>
                             <span>•</span>
-                            <ClinicStatusBadge timings={clinic.timings} compact />
+                            <ClinicStatusBadge timings={clinic.timings} compact className="max-w-full flex-wrap" />
                           </p>
                         </div>
                       </div>
@@ -586,13 +548,13 @@ export default function BrowseClient({
                           className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-text-secondary bg-surface-alt border border-border px-2 py-0.5 rounded-md"
                           title="Verified Healthcare Facility"
                         >
-                          <ShieldCheck className="w-3 h-3 text-primary-600" strokeWidth={1.75} />
-                          <span className="hidden xs:inline">{t("browse.verified", "Verified")}</span>
+                          <ShieldCheck className="w-3 h-3 text-accent" strokeWidth={1.75} />
+                          <span className="hidden xs:inline">{"Verified"}</span>
                         </span>
                         {clinic.images && clinic.images.length > 0 && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-medium text-text-muted bg-surface-alt/70 border border-border/60 px-1.5 py-0.5 rounded">
-                            <Camera className="w-2.5 h-2.5 text-primary-500" />
-                            <span>{clinic.images.length} {t("browse.photos", "photos")}</span>
+                            <Camera className="w-2.5 h-2.5 text-accent" />
+                            <span>{clinic.images.length} {"photos"}</span>
                           </span>
                         )}
                       </div>
@@ -606,10 +568,10 @@ export default function BrowseClient({
                           {clinic.doctorCount
                             ? `${clinic.doctorCount} ${
                                 clinic.doctorCount === 1
-                                  ? t("browse.doctor_single", "Doctor")
-                                  : t("browse.doctors_multiple", "Doctors")
+                                  ? "Doctor"
+                                  : "Doctors"
                               }`
-                            : t("browse.doctors_available", "Doctors Available")}
+                            : "Doctors Available"}
                         </span>
                       </span>
 
@@ -617,7 +579,7 @@ export default function BrowseClient({
                         <span className="text-[11px] font-semibold bg-surface-alt text-text px-2.5 py-1 rounded-lg border border-border flex items-center gap-1">
                           <CreditCard className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
                           <span>
-                            {t("browse.from_fee", "From")} {formatCurrency(clinic.minFee, clinic.currency || "INR")}
+                            {"From"} {formatCurrency(clinic.minFee, clinic.currency || "INR")}
                           </span>
                         </span>
                       )}
@@ -628,9 +590,9 @@ export default function BrowseClient({
                       <div className="bg-surface-alt p-2.5 sm:p-3 rounded-xl border border-border text-xs mb-3 space-y-0.5 sm:space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">
-                            {t("browse.practicing_specialist", "Practicing Specialist")}
+                            {"Practicing Specialist"}
                           </span>
-                          <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                          <span className="text-[11px] font-bold text-success-text dark:text-success-text">
                             {formatCurrency(singleDoctor.fees, clinic.currency || "INR")}
                           </span>
                         </div>
@@ -641,11 +603,11 @@ export default function BrowseClient({
                       <div className="bg-surface-alt p-2.5 sm:p-3 rounded-xl border border-border text-xs mb-3 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">
-                            {clinic.doctorsSummary.length} {t("browse.consulting_doctors", "Consulting Doctors")}
+                            {clinic.doctorsSummary.length} {"Consulting Doctors"}
                           </span>
                           {clinic.minFee !== undefined && clinic.minFee !== null && (
-                            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                              {t("browse.from_fee", "From")} {formatCurrency(clinic.minFee, clinic.currency || "INR")}
+                            <span className="text-[11px] font-bold text-success-text dark:text-success-text">
+                              {"From"} {formatCurrency(clinic.minFee, clinic.currency || "INR")}
                             </span>
                           )}
                         </div>
@@ -661,8 +623,8 @@ export default function BrowseClient({
                             </div>
                           ))}
                           {clinic.doctorsSummary.length > 2 && (
-                            <p className="text-[10px] text-primary-600 font-semibold pt-0.5">
-                              +{clinic.doctorsSummary.length - 2} {t("browse.more_doctors", "more doctors available")}
+                            <p className="text-[10px] text-accent font-semibold pt-0.5">
+                              +{clinic.doctorsSummary.length - 2} {"more doctors available"}
                             </p>
                           )}
                         </div>
@@ -670,10 +632,7 @@ export default function BrowseClient({
                     ) : (
                       <p className="text-xs text-text-muted line-clamp-2 leading-relaxed mb-3">
                         {clinic.description ||
-                          t(
-                            "browse.default_desc",
-                            "Verified healthcare facility providing doctor consultations and specialized healthcare services."
-                          )}
+                          "Verified healthcare facility providing doctor consultations and specialized healthcare services."}
                       </p>
                     )}
 
@@ -722,8 +681,8 @@ export default function BrowseClient({
                       >
                         <span>
                           {hasSingleDoctor && singleDoctor
-                            ? `${t("browse.book_with", "Book with")} Dr. ${singleDoctor.name.replace(/^Dr\.?\s*/i, "")}`
-                            : `${t("browse.view_doctors_book", "View Doctors & Book")} ${
+                            ? `${"Book with"} Dr. ${singleDoctor.name.replace(/^Dr\.?\s*/i, "")}`
+                            : `${"View Doctors & Book"} ${
                                 clinic.doctorCount ? `(${clinic.doctorCount})` : ""
                               }`}
                         </span>

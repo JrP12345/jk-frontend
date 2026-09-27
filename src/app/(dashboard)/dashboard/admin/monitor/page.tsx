@@ -4,47 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  Button,
-  Badge,
-  Table,
-  Column,
-  Input,
-  Select,
-  StatCard,
-  useToast,
-  ConfirmDialog,
-  Spinner,
-  cn,
-} from "@/components/ui";
-import {
-  Activity,
-  Radio,
-  Globe,
-  Users,
-  Shield,
-  ShieldCheck,
-  ShieldAlert,
-  Smartphone,
-  Laptop,
-  Tablet,
-  RotateCw,
-  LogOut,
-  Search,
-  Building2,
-  Calendar,
-  Clock,
-  MapPin,
-  TrendingUp,
-  Eye,
-  CheckCircle2,
-  Layers,
-} from "lucide-react";
+import { Card, CardTitle, CardDescription, Button, Badge, Table, Input, Select, StatCard, useToast, ConfirmDialog, cn } from "@/components/ui";
+import { Activity, Radio, Globe, Users, Shield, ShieldCheck, ShieldAlert, Smartphone, Laptop, Tablet, RotateCw, LogOut, Search, Building2, Calendar, Clock, MapPin, TrendingUp, Eye } from "lucide-react";
 
 interface ActiveSession {
   id: string;
@@ -278,7 +239,7 @@ export default function RootAdminMonitorPage() {
     return (
       <div className="py-16 text-center space-y-4 max-w-md mx-auto">
         <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-text-secondary">
-          <Shield className="w-6 h-6 text-primary-500" />
+          <Shield className="w-6 h-6 text-accent" />
         </div>
         <div>
           <h2 className="text-base font-bold text-text">Root Super-Admin Access Required</h2>
@@ -306,7 +267,7 @@ export default function RootAdminMonitorPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+            <div className="p-2 rounded-xl bg-primary-500/10 text-accent dark:text-accent border border-primary-500/20">
               <Activity className="w-5 h-5" />
             </div>
             <div>
@@ -334,11 +295,11 @@ export default function RootAdminMonitorPage() {
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                 activeTab === "sessions"
-                  ? "bg-surface text-primary-600 dark:text-primary-400 shadow-xs border border-border/60"
+                  ? "bg-surface text-accent dark:text-accent shadow-xs border border-border/60"
                   : "text-text-muted hover:text-text"
               )}
             >
-              <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
+              <Radio className="w-3.5 h-3.5 text-success-text animate-pulse" />
               Live Sessions ({sessionStats.totalSessions})
             </button>
             <button
@@ -347,11 +308,11 @@ export default function RootAdminMonitorPage() {
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                 activeTab === "traffic"
-                  ? "bg-surface text-primary-600 dark:text-primary-400 shadow-xs border border-border/60"
+                  ? "bg-surface text-accent dark:text-accent shadow-xs border border-border/60"
                   : "text-text-muted hover:text-text"
               )}
             >
-              <Globe className="w-3.5 h-3.5 text-primary-500" />
+              <Globe className="w-3.5 h-3.5 text-accent" />
               Website Traffic & Clinics
             </button>
           </div>
@@ -382,32 +343,32 @@ export default function RootAdminMonitorPage() {
               label="Active Sessions"
               value={sessionStats.totalSessions.toString()}
               description="Open browser & device tokens"
-              icon={<Radio className="w-5 h-5 text-emerald-500" />}
+              icon={<Radio className="w-5 h-5 text-success-text" />}
             />
             <StatCard
               label="Distinct Users"
               value={sessionStats.distinctUsers.toString()}
               description="Users currently online"
-              icon={<Users className="w-5 h-5 text-primary-500" />}
+              icon={<Users className="w-5 h-5 text-accent" />}
             />
             <StatCard
               label="Root Concurrency"
               value={`${sessionStats.rootCount} / 1`}
               description="Strict Single-Session Active"
-              icon={<ShieldCheck className="w-5 h-5 text-indigo-500" />}
+              icon={<ShieldCheck className="w-5 h-5 text-accent" />}
             />
             <StatCard
               label="Device Balance"
               value={`${sessionStats.desktopCount} Desktop · ${sessionStats.mobileCount} Mobile`}
               description="Client screen breakdown"
-              icon={<Laptop className="w-5 h-5 text-amber-500" />}
+              icon={<Laptop className="w-5 h-5 text-warning-text" />}
             />
           </div>
 
           {/* Root Policy Notice */}
-          <Card className="border border-indigo-500/30 bg-indigo-500/5 p-4 rounded-2xl">
+          <Card className="border border-accent/30 bg-primary/5 p-4 rounded-2xl">
             <div className="flex items-start gap-3">
-              <ShieldAlert className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+              <ShieldAlert className="w-5 h-5 text-accent dark:text-accent shrink-0 mt-0.5" />
               <div className="space-y-1 text-xs">
                 <p className="font-bold text-text">Root Single-Session Concurrency Active</p>
                 <p className="text-text-muted leading-relaxed">
@@ -464,7 +425,7 @@ export default function RootAdminMonitorPage() {
                 header: "User & Role",
                 accessor: (s) => (
                   <div className="flex items-center gap-3 min-w-[200px]">
-                    <div className="w-9 h-9 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold flex items-center justify-center text-xs shrink-0 border border-primary-500/20">
+                    <div className="w-9 h-9 rounded-xl bg-primary-500/10 text-accent dark:text-accent font-bold flex items-center justify-center text-xs shrink-0 border border-primary-500/20">
                       {s.userName.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="space-y-0.5">
@@ -524,11 +485,11 @@ export default function RootAdminMonitorPage() {
                   <div className="flex items-center gap-2 min-w-[160px]">
                     <div className="p-1.5 rounded-lg bg-surface-alt text-text-muted border border-border/60">
                       {s.deviceType === "Mobile" ? (
-                        <Smartphone className="w-4 h-4 text-emerald-500" />
+                        <Smartphone className="w-4 h-4 text-success-text" />
                       ) : s.deviceType === "Tablet" ? (
-                        <Tablet className="w-4 h-4 text-indigo-500" />
+                        <Tablet className="w-4 h-4 text-accent" />
                       ) : (
-                        <Laptop className="w-4 h-4 text-primary-500" />
+                        <Laptop className="w-4 h-4 text-accent" />
                       )}
                     </div>
                     <div className="space-y-0.5 text-xs">
@@ -590,7 +551,7 @@ export default function RootAdminMonitorPage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold flex items-center justify-center text-xs shrink-0 border border-primary-500/20">
+                    <div className="w-9 h-9 rounded-xl bg-primary-500/10 text-accent dark:text-accent font-bold flex items-center justify-center text-xs shrink-0 border border-primary-500/20">
                       {s.userName.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
@@ -683,7 +644,7 @@ export default function RootAdminMonitorPage() {
                 onClick={() => setTrafficDays(14)}
                 className={cn(
                   "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  trafficDays === 14 ? "bg-surface text-primary-600 shadow-xs" : "text-text-muted hover:text-text"
+                  trafficDays === 14 ? "bg-surface text-accent shadow-xs" : "text-text-muted hover:text-text"
                 )}
               >
                 Last 14 Days
@@ -693,7 +654,7 @@ export default function RootAdminMonitorPage() {
                 onClick={() => setTrafficDays(30)}
                 className={cn(
                   "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  trafficDays === 30 ? "bg-surface text-primary-600 shadow-xs" : "text-text-muted hover:text-text"
+                  trafficDays === 30 ? "bg-surface text-accent shadow-xs" : "text-text-muted hover:text-text"
                 )}
               >
                 Last 30 Days
@@ -707,25 +668,25 @@ export default function RootAdminMonitorPage() {
               label="Today's Visits"
               value={trafficSummary ? trafficSummary.todayVisits.toString() : "0"}
               description={`${trafficSummary?.todayVisitors || 0} unique visitors today`}
-              icon={<Eye className="w-5 h-5 text-primary-500" />}
+              icon={<Eye className="w-5 h-5 text-accent" />}
             />
             <StatCard
               label="Yesterday"
               value={trafficSummary ? trafficSummary.yesterdayVisits.toString() : "0"}
               description={`${trafficSummary?.yesterdayVisitors || 0} unique visitors`}
-              icon={<Calendar className="w-5 h-5 text-indigo-500" />}
+              icon={<Calendar className="w-5 h-5 text-accent" />}
             />
             <StatCard
               label="7-Day Traffic"
               value={trafficSummary ? trafficSummary.sevenDayVisits.toString() : "0"}
               description="Rolling weekly platform hits"
-              icon={<TrendingUp className="w-5 h-5 text-emerald-500" />}
+              icon={<TrendingUp className="w-5 h-5 text-success-text" />}
             />
             <StatCard
               label="30-Day Total"
               value={trafficSummary ? trafficSummary.thirtyDayVisits.toString() : "0"}
               description={`All-time cumulative: ${trafficSummary?.totalVisits || 0}`}
-              icon={<Globe className="w-5 h-5 text-amber-500" />}
+              icon={<Globe className="w-5 h-5 text-warning-text" />}
             />
           </div>
 
@@ -744,7 +705,7 @@ export default function RootAdminMonitorPage() {
                   <span className="text-text-muted">Total Visits</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded bg-emerald-500 inline-block" />
+                  <span className="w-3 h-3 rounded bg-success inline-block" />
                   <span className="text-text-muted">Unique Visitors</span>
                 </div>
               </div>
@@ -769,7 +730,7 @@ export default function RootAdminMonitorPage() {
                         className="flex-1 flex flex-col items-center gap-1 group relative h-full justify-end"
                       >
                         {/* Tooltip on hover */}
-                        <div className="absolute -top-12 z-20 hidden group-hover:flex flex-col items-center bg-black/90 text-white text-[10px] px-2 py-1 rounded-lg pointer-events-none whitespace-nowrap shadow-lg">
+                        <div className="absolute -top-12 z-20 hidden group-hover:flex flex-col items-center bg-black/90 text-brand-mist text-[10px] px-2 py-1 rounded-lg pointer-events-none whitespace-nowrap shadow-lg">
                           <span className="font-bold">{d.date}</span>
                           <span>
                             {d.visits} visits · {d.uniqueVisitors} unique
@@ -784,7 +745,7 @@ export default function RootAdminMonitorPage() {
                           />
                           <div
                             style={{ height: `${uniquePercent}%` }}
-                            className="w-1/2 rounded-t bg-emerald-500/80 group-hover:bg-emerald-500 transition-all duration-300"
+                            className="w-1/2 rounded-t bg-success/80 group-hover:bg-success transition-all duration-300"
                           />
                         </div>
 
@@ -825,7 +786,7 @@ export default function RootAdminMonitorPage() {
                   header: "Clinic Location",
                   accessor: (c) => (
                     <div className="flex items-center gap-2.5 min-w-[200px]">
-                      <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-xs shrink-0 border border-primary-500/20">
+                      <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-accent dark:text-accent flex items-center justify-center font-bold text-xs shrink-0 border border-primary-500/20">
                         <Building2 className="w-4 h-4" />
                       </div>
                       <div>
@@ -853,7 +814,7 @@ export default function RootAdminMonitorPage() {
                 {
                   header: "Unique Visitors",
                   accessor: (c) => (
-                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    <span className="text-xs font-semibold text-success-text dark:text-success-text">
                       {c.uniqueVisitors.toLocaleString()}
                     </span>
                   ),
@@ -895,7 +856,7 @@ export default function RootAdminMonitorPage() {
                     </div>
                     <div>
                       <span className="text-text-muted text-[10px] block">Unique Visitors</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400 block">
+                      <span className="font-bold text-success-text dark:text-success-text block">
                         {c.uniqueVisitors}
                       </span>
                     </div>

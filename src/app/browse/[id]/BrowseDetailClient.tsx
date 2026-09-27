@@ -1,5 +1,7 @@
 "use client";
 
+import { getPrintBrandStyles } from "@/lib/printBrand";
+
 import { useEffect, useState, useMemo, useRef, startTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -7,54 +9,11 @@ import api from "@/lib/api";
 import { vibrateFeedback } from "@/lib/haptics";
 import { localDateKey } from "@/lib/date";
 import { useAuthStore } from "@/store/authStore";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Spinner,
-  Button,
-  Modal,
-  Input,
-  useToast,
-  Badge,
-  Breadcrumbs,
-} from "@/components/ui";
+import { Card, CardContent, CardHeader, CardTitle, Button, Modal, Input, useToast, Badge, Breadcrumbs } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
-import {
-  AlertCircle,
-  MapPin,
-  Phone,
-  Clock,
-  ShieldCheck,
-  Building2,
-  Calendar,
-  ExternalLink,
-  Printer,
-  ChevronRight,
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
-  Copy,
-  Users,
-  CreditCard,
-  Star,
-  UserCheck,
-  User,
-  Smartphone,
-  Share2,
-  Mail,
-  FileText,
-  CalendarOff,
-  Camera,
-  X,
-  ChevronLeft,
-  MessageSquare,
-} from "lucide-react";
+import { AlertCircle, MapPin, Phone, Clock, ShieldCheck, Building2, Calendar, ExternalLink, Printer, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, Star, UserCheck, User, Smartphone, Share2, Mail, FileText, CalendarOff, Camera, X, ChevronLeft, MessageSquare } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
-import { useTranslation } from "@/lib/i18n";
 import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
-import { mapStateToLanguage } from "@/lib/geo/locationDetector";
 
 interface Doctor {
   id: string;
@@ -248,7 +207,6 @@ export default function BrowseDetailClient({
   id: string;
   initialClinic?: ClinicDetail | null;
 }) {
-  const { t, setLanguage } = useTranslation();
   const renderTimings = (timingsStr: string | null | undefined, compact = false) => {
     const todayDayIndex = new Date().getDay();
     const dayNamesShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -269,7 +227,7 @@ export default function BrowseDetailClient({
             <span className="font-semibold text-text-secondary flex items-center gap-1.5">
               <span>Mon – Sat</span>
               {todayDayIndex >= 1 && todayDayIndex <= 6 && (
-                <span className="text-[9px] uppercase tracking-wider bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 font-bold px-1.5 py-0.5 rounded">
+                <span className="text-[9px] uppercase tracking-wider bg-success-subtle dark:bg-success/60 text-success-text dark:text-success-text font-bold px-1.5 py-0.5 rounded">
                   Today
                 </span>
               )}
@@ -289,11 +247,11 @@ export default function BrowseDetailClient({
         return (
           <div className="space-y-2">
             {!compact && <ClinicStatusBadge timings={timingsStr} pill />}
-            <div className={`flex justify-between items-center text-xs p-2.5 rounded-xl border ${isToday ? "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800" : "bg-surface-alt border-border"}`}>
+            <div className={`flex justify-between items-center text-xs p-2.5 rounded-xl border ${isToday ? "bg-success-subtle/60 dark:bg-success/20 border-success dark:border-success" : "bg-surface-alt border-border"}`}>
               <span className="font-semibold text-text-secondary flex items-center gap-1.5">
                 <span>Mon – Sat</span>
                 {isToday && (
-                  <span className="text-[9px] uppercase tracking-wider bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 font-bold px-1.5 py-0.5 rounded">
+                  <span className="text-[9px] uppercase tracking-wider bg-success-subtle dark:bg-success/60 text-success-text dark:text-success-text font-bold px-1.5 py-0.5 rounded">
                     Today
                   </span>
                 )}
@@ -359,14 +317,14 @@ export default function BrowseDetailClient({
                 key={idx}
                 className={`flex justify-between items-center text-xs p-2 rounded-xl border ${
                   isToday
-                    ? "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800 shadow-2xs"
+                    ? "bg-success-subtle/60 dark:bg-success/20 border-success dark:border-success shadow-2xs"
                     : "bg-surface-alt border-border"
                 }`}
               >
                 <span className="font-semibold text-text-secondary flex items-center gap-1.5">
                   <span>{g.daysLabel}</span>
                   {isToday && (
-                    <span className="text-[9px] uppercase tracking-wider bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 font-bold px-1.5 py-0.5 rounded">
+                    <span className="text-[9px] uppercase tracking-wider bg-success-subtle dark:bg-success/60 text-success-text dark:text-success-text font-bold px-1.5 py-0.5 rounded">
                       Today
                     </span>
                   )}
@@ -504,20 +462,6 @@ export default function BrowseDetailClient({
     void fetchClinic();
     return () => controller.abort();
   }, [id, initialClinic, clinicRetry]);
-
-  // Auto-detect regional language from clinic location (unless user set an explicit manual preference)
-  useEffect(() => {
-    if (!clinic) return;
-    try {
-      const isManual = localStorage.getItem("ananta_lang_manual");
-      if (!isManual) {
-        const city = clinic.city || clinic.organization?.city || "";
-        const address = clinic.address || clinic.organization?.address || "";
-        const lang = mapStateToLanguage(address, city);
-        setLanguage(lang);
-      }
-    } catch {}
-  }, [clinic, setLanguage]);
 
   // Handle deep-link / auto-open booking (from single-doctor browse card or follow-up)
   useEffect(() => {
@@ -868,7 +812,7 @@ export default function BrowseDetailClient({
     }
 
     setBookingLoading(true);
-    setBookingProgressMessage(t("booking.progress_init", "Initializing your booking..."));
+    setBookingProgressMessage("Initializing your booking...");
     const timeToUse =
       selectedTime ||
       doctorSlotInfo?.dayStartTime ||
@@ -895,7 +839,7 @@ export default function BrowseDetailClient({
           return;
         }
 
-        setBookingProgressMessage(t("booking.progress_session", "Securing guest booking session..."));
+        setBookingProgressMessage("Securing guest booking session...");
         const bookingSessionRes = await api.post("/public/booking-session", {
           phone: guestForm.phone,
           name: guestForm.name,
@@ -903,7 +847,7 @@ export default function BrowseDetailClient({
         });
       }
 
-      setBookingProgressMessage(t("booking.progress_reserving", "Reserving consultation token & slot..."));
+      setBookingProgressMessage("Reserving consultation token & slot...");
       const res = await api.post("/appointments", {
         clinicId: id,
         doctorId: selectedDoctor!.id,
@@ -918,7 +862,7 @@ export default function BrowseDetailClient({
       const isPostConsultation = selectedDoctor?.feeType === "post_consultation";
       const isFree = selectedDoctor?.feeType === "free";
 
-      setBookingProgressMessage(t("booking.progress_finalizing", "Generating your confirmed token slip..."));
+      setBookingProgressMessage("Generating your confirmed token slip...");
 
       setCreatedTicket({
         appointmentId: appt._id || appt.id,
@@ -991,19 +935,19 @@ export default function BrowseDetailClient({
       <html>
         <head>
           <title>Appointment Token Slip - #${createdTicket.tokenNumber}</title>
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f8fafc; padding: 24px; color: #0f172a; }
-            .ticket { background: white; border: 1px solid #cbd5e1; border-radius: 16px; padding: 32px; width: 400px; text-align: left; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-            .header { text-align: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 16px; }
-            .clinic-title { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; }
-            .clinic-sub { font-size: 12px; color: #64748b; margin: 0; }
-            .token-box { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 14px; text-align: center; margin-bottom: 20px; }
-            .token-label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
-            .token-num { font-size: 40px; font-weight: 900; color: #0f172a; margin: 2px 0; line-height: 1; }
-            .details-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid #f8fafc; padding-bottom: 6px; }
-            .label { color: #64748b; font-weight: 500; }
-            .value { color: #0f172a; font-weight: 700; text-align: right; }
-            .footer { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 20px; padding-top: 14px; border-top: 1px solid #f1f5f9; }
+          <style>${getPrintBrandStyles()}
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: var(--print-background); padding: 24px; color: var(--print-text); }
+            .ticket { background: white; border: 1px solid var(--print-input-border); border-radius: 16px; padding: 32px; width: 400px; text-align: left; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+            .header { text-align: center; border-bottom: 1px solid var(--print-border); padding-bottom: 16px; margin-bottom: 16px; }
+            .clinic-title { font-size: 18px; font-weight: 800; color: var(--print-text); margin: 0 0 4px 0; }
+            .clinic-sub { font-size: 12px; color: var(--print-muted); margin: 0; }
+            .token-box { background: var(--print-surface-muted); border: 1px solid var(--print-input-border); border-radius: 12px; padding: 14px; text-align: center; margin-bottom: 20px; }
+            .token-label { font-size: 11px; font-weight: 700; color: var(--print-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+            .token-num { font-size: 40px; font-weight: 900; color: var(--print-text); margin: 2px 0; line-height: 1; }
+            .details-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid var(--print-background); padding-bottom: 6px; }
+            .label { color: var(--print-muted); font-weight: 500; }
+            .value { color: var(--print-text); font-weight: 700; text-align: right; }
+            .footer { text-align: center; font-size: 11px; color: var(--print-muted); margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--print-surface-muted); }
           </style>
         </head>
         <body>
@@ -1038,8 +982,8 @@ export default function BrowseDetailClient({
             </div>
             <div class="footer">
               ${createdTicket.appointmentId ? `
-              <p style="margin: 0 0 4px 0; font-weight: 700; color: #0f172a;">Live Appointment Tracker:</p>
-              <p style="margin: 0 0 8px 0; word-break: break-all; font-family: monospace; font-size: 11px; color: #2563eb;">
+              <p style="margin: 0 0 4px 0; font-weight: 700; color: var(--print-text);">Live Appointment Tracker:</p>
+              <p style="margin: 0 0 8px 0; word-break: break-all; font-family: monospace; font-size: 11px; color: var(--print-accent);">
                 ${window.location.origin}/track/${createdTicket.appointmentId}${createdTicket.trackerToken ? `?t=${encodeURIComponent(createdTicket.trackerToken)}` : ""}
               </p>` : ""}
               Please arrive 10 minutes prior to your consultation time. Present this token at reception.
@@ -1053,7 +997,7 @@ export default function BrowseDetailClient({
   };
 
   if (clinicError) {
-    return <div className="min-h-screen bg-surface-alt text-text"><MarketplaceNavbar /><main className="max-w-lg mx-auto px-4 pt-28"><Card><CardContent className="p-6 space-y-4"><h1 className="text-lg font-semibold">We couldn't load this clinic</h1><p className="text-sm text-text-muted">Check your connection and try again.</p><div className="flex flex-wrap gap-3"><Button onClick={() => setClinicRetry((value) => value + 1)}>Try again</Button><Link href="/browse" className="text-sm text-primary-600 py-2">Browse clinics</Link></div></CardContent></Card></main></div>;
+    return <div className="min-h-screen bg-surface-alt text-text"><MarketplaceNavbar /><main className="max-w-lg mx-auto px-4 pt-28"><Card><CardContent className="p-6 space-y-4"><h1 className="text-lg font-semibold">We couldn't load this clinic</h1><p className="text-sm text-text-muted">Check your connection and try again.</p><div className="flex flex-wrap gap-3"><Button onClick={() => setClinicRetry((value) => value + 1)}>Try again</Button><Link href="/browse" className="text-sm text-accent py-2">Browse clinics</Link></div></CardContent></Card></main></div>;
   }
 
   if (loading) {
@@ -1111,16 +1055,17 @@ export default function BrowseDetailClient({
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
           <Breadcrumbs
             items={[
-              { label: t("nav.browse", "Browse Clinics"), href: "/browse" },
+              { label: "Browse Clinics", href: "/browse" },
               { label: clinic.name },
             ]}
           />
           <Link
             href="/browse"
-            className="text-xs font-semibold text-text-muted hover:text-primary-600 transition-colors inline-flex items-center gap-1 shrink-0 py-1 px-2 rounded-lg hover:bg-surface-alt min-h-[36px]"
+            aria-label={"Back to clinics"}
+            className="text-xs font-semibold text-text-muted hover:text-accent transition-colors inline-flex items-center gap-1 shrink-0 py-1 px-2 rounded-lg hover:bg-surface-alt min-h-[36px]"
           >
             <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.75} />
-            <span className="hidden xs:inline">{t("detail.back_to_clinics", "Back to Clinics")}</span>
+            <span className="hidden xs:inline">{"Back to Clinics"}</span>
           </Link>
         </div>
       </div>
@@ -1133,22 +1078,22 @@ export default function BrowseDetailClient({
             {clinic.image_url ? (
               <img src={clinic.image_url} alt={clinic.name} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-surface via-surface-alt to-surface-hover p-4 text-center border-b border-border/40">
+              <div className="w-full h-full flex flex-col items-center justify-center bg-surface    p-4 text-center border-b border-border/40">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-surface border border-border flex items-center justify-center mb-1.5 sm:mb-2.5 shadow-2xs">
                   <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-text-muted" strokeWidth={1.75} />
                 </div>
                 <span className="text-sm sm:text-base font-bold text-text">{clinic.name}</span>
-                <span className="text-[11px] sm:text-xs text-text-muted mt-0.5">{t("detail.accredited_facility", "Accredited Healthcare Facility")}</span>
+                <span className="text-[11px] sm:text-xs text-text-muted mt-0.5">{"Accredited Healthcare Facility"}</span>
               </div>
             )}
             <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex flex-wrap gap-1.5 sm:gap-2">
-              <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-text bg-surface/90 backdrop-blur-md border border-border px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-xs">
+              <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-text bg-surface/90  border border-border px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-xs">
                 <MapPin className="w-3 h-3 text-text-muted" strokeWidth={1.75} />
                 <span>{clinic.city}</span>
               </span>
-              <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-text-secondary bg-surface/90 backdrop-blur-md border border-border px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-xs">
-                <ShieldCheck className="w-3.5 h-3.5 text-primary-600" strokeWidth={1.75} />
-                <span>{t("detail.verified_facility", "Verified Facility")}</span>
+              <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-text-secondary bg-surface/90  border border-border px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-xs">
+                <ShieldCheck className="w-3.5 h-3.5 text-accent" strokeWidth={1.75} />
+                <span>{"Verified Facility"}</span>
               </span>
             </div>
 
@@ -1157,10 +1102,10 @@ export default function BrowseDetailClient({
               <button
                 type="button"
                 onClick={() => setLightboxIndex(0)}
-                className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-black/60 hover:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-sm transition-colors cursor-pointer z-10"
+                className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-mist bg-black/60 hover:bg-black/80  px-3 py-1.5 rounded-xl border border-white/20 shadow-sm transition-colors cursor-pointer z-10"
               >
                 <Camera className="w-3.5 h-3.5" />
-                <span>{t("detail.view_photos", "View")} {clinic.images.length} {t("detail.photos_suffix", "Photos")}</span>
+                <span>{"View"} {clinic.images.length} {"Photos"}</span>
               </button>
             )}
           </div>
@@ -1185,7 +1130,7 @@ export default function BrowseDetailClient({
                   </div>
                   {clinic.organization?.name && clinic.organization.name !== clinic.name && (
                     <p className="text-xs text-text-muted font-medium">
-                      {t("detail.branch_of", "Branch of")} {clinic.organization.name}
+                      {"Branch of"} {clinic.organization.name}
                     </p>
                   )}
                 </div>
@@ -1199,14 +1144,14 @@ export default function BrowseDetailClient({
                     if (typeof navigator !== "undefined" && navigator.share) {
                       navigator.share({
                         title: clinic.name,
-                        text: `Check out ${clinic.name} on JK Healthcare`,
+                        text: `Check out ${clinic.name} on Ekavyu`,
                         url: window.location.href,
                       }).catch(() => {});
                     } else if (typeof navigator !== "undefined" && navigator.clipboard) {
                       navigator.clipboard.writeText(window.location.href);
                       toast({
-                        title: t("detail.link_copied_title", "Link Copied"),
-                        description: t("detail.link_copied_desc", "Clinic profile link copied to clipboard"),
+                        title: "Link Copied",
+                        description: "Clinic profile link copied to clipboard",
                         variant: "success",
                         duration: 2500,
                       });
@@ -1217,7 +1162,7 @@ export default function BrowseDetailClient({
                   aria-label="Share Clinic Profile"
                 >
                   <Share2 className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
-                  <span className="hidden sm:inline">{t("action.share", "Share")}</span>
+                  <span className="hidden sm:inline">{"Share"}</span>
                 </button>
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`}
@@ -1226,7 +1171,7 @@ export default function BrowseDetailClient({
                   className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-surface hover:bg-surface-hover text-text text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px]"
                 >
                   <MapPin className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
-                  <span>{t("action.directions", "Directions")}</span>
+                  <span>{"Directions"}</span>
                   <ExternalLink className="w-3 h-3 text-text-muted" strokeWidth={1.75} />
                 </a>
                 {clinic.phone && (
@@ -1235,19 +1180,19 @@ export default function BrowseDetailClient({
                       href={`https://wa.me/${clinic.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello, I would like to inquire about appointments and doctors at ${clinic.name}.`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px] transition-colors"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-success/30 bg-success/10 hover:bg-success/20 text-success-text dark:text-success-text text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px] transition-colors"
                       title="Chat on WhatsApp"
                       aria-label="Chat on WhatsApp"
                     >
-                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600" strokeWidth={1.75} />
-                      <span className="hidden sm:inline">{t("action.whatsapp", "WhatsApp")}</span>
+                      <MessageSquare className="w-3.5 h-3.5 text-success-text" strokeWidth={1.75} />
+                      <span className="hidden sm:inline">{"WhatsApp"}</span>
                     </a>
                     <a
                       href={`tel:${clinic.phone.replace(/\s+/g, "")}`}
-                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px]"
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-brand-mist text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px]"
                     >
                       <Phone className="w-3.5 h-3.5" strokeWidth={1.75} />
-                      <span>{t("action.call", "Call Clinic")}</span>
+                      <span>{"Call Clinic"}</span>
                     </a>
                   </>
                 )}
@@ -1288,18 +1233,18 @@ export default function BrowseDetailClient({
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <h2 className="text-lg sm:text-xl font-bold text-text flex items-center gap-2">
-                <span>{t("detail.available_doctors", "Available Doctors")}</span>
+                <span>{"Available Doctors"}</span>
                 <Badge variant="neutral" className="text-xs font-semibold">
                   {clinic.doctors.length}
                 </Badge>
               </h2>
-              <p className="text-xs text-text-muted">{t("detail.select_doctor_subtitle", "Select a doctor to book your consultation or clinic token")}</p>
+              <p className="text-xs text-text-muted">{"Select a doctor to book your consultation or clinic token"}</p>
             </div>
           </div>
 
           {clinic.doctors.length === 0 ? (
             <Card className="p-8 text-center text-text-muted text-xs border-dashed rounded-2xl bg-surface">
-              {t("detail.no_doctors", "No specialists registered at this healthcare location currently.")}
+              {"No specialists registered at this healthcare location currently."}
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
@@ -1321,15 +1266,15 @@ export default function BrowseDetailClient({
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1">
-                          <h3 className="text-sm sm:text-base font-bold text-text group-hover:text-primary-600 transition-colors truncate">
+                          <h3 className="text-sm sm:text-base font-bold text-text group-hover:text-accent transition-colors truncate">
                             Dr. {doc.name.replace(/^Dr\.?\s*/i, "")}
                           </h3>
                           <span className="text-xs font-semibold text-text-secondary flex items-center gap-1 shrink-0">
-                            <Star className="w-3 h-3 text-amber-500 fill-amber-500" strokeWidth={1.75} />
+                            <Star className="w-3 h-3 text-warning-text fill-warning" strokeWidth={1.75} />
                             <span>{doc.rating || 5.0}</span>
                           </span>
                         </div>
-                        <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 mt-0.5 truncate">{doc.specialization}</p>
+                        <p className="text-xs font-semibold text-accent dark:text-accent mt-0.5 truncate">{doc.specialization}</p>
                         <p className="text-[11px] text-text-muted truncate mt-0.5">{doc.qualification || "Consulting Specialist"}</p>
                       </div>
                     </div>
@@ -1337,19 +1282,19 @@ export default function BrowseDetailClient({
                     {/* Experience & Fees Row */}
                     <div className="grid grid-cols-2 gap-2 bg-surface-alt p-2.5 rounded-xl border border-border text-xs">
                       <div>
-                        <span className="text-[10px] text-text-muted block font-medium uppercase tracking-wider">{t("detail.experience", "Experience")}</span>
-                        <span className="font-semibold text-text">{doc.experience_years ? `${doc.experience_years}+ ${t("detail.years_exp", "Years")}` : t("detail.experienced", "Experienced")}</span>
+                        <span className="text-[10px] text-text-muted block font-medium uppercase tracking-wider">{"Experience"}</span>
+                        <span className="font-semibold text-text">{doc.experience_years ? `${doc.experience_years}+ ${"Years"}` : "Experienced"}</span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-text-muted block font-medium uppercase tracking-wider">{t("detail.consultation_fee", "Consultation Fee")}</span>
+                        <span className="text-[10px] text-text-muted block font-medium uppercase tracking-wider">{"Consultation Fee"}</span>
                         {doc.feeType === "post_consultation" ? (
-                          <span className="font-semibold text-amber-600 dark:text-amber-400">
-                            {doc.fees && doc.fees > 0 ? `${t("browse.from_fee", "From")} ${formatCurrency(doc.fees, clinic.currency || "INR")}` : t("detail.post_consultation", "Post-Consultation")}
+                          <span className="font-semibold text-warning-text dark:text-warning-text">
+                            {doc.fees && doc.fees > 0 ? `${"From"} ${formatCurrency(doc.fees, clinic.currency || "INR")}` : "Post-Consultation"}
                           </span>
                         ) : doc.feeType === "free" ? (
-                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">{t("detail.free", "Free")}</span>
+                          <span className="font-semibold text-success-text dark:text-success-text">{"Free"}</span>
                         ) : (
-                          <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                          <span className="font-semibold text-success-text dark:text-success-text">
                             {formatCurrency(doc.fees, clinic.currency || "INR")}
                           </span>
                         )}
@@ -1362,23 +1307,23 @@ export default function BrowseDetailClient({
                         {doc.bookingMode === "sequential_queue" ? (
                           <>
                             <Users className="w-3 h-3 text-text-muted" strokeWidth={1.75} />
-                            <span>{t("detail.queue_token_system", "Queue Token System")}</span>
+                            <span>{"Queue Token System"}</span>
                           </>
                         ) : (
                           <>
                             <Clock className="w-3 h-3 text-text-muted" strokeWidth={1.75} />
-                            <span>{t("detail.scheduled_time_slot", "Scheduled Time Slot")}</span>
+                            <span>{"Scheduled Time Slot"}</span>
                           </>
                         )}
                       </span>
                       {doc.isOnlineBookingClosed && (
                         <Badge variant="warning" size="sm" className="font-semibold text-[10px]">
-                          {t("detail.online_closed_today", "Online Closed Today")}
+                          {"Online Closed Today"}
                         </Badge>
                       )}
                       {doc.isAvailable === false && (
                         <Badge variant="danger" size="sm" className="font-semibold text-[10px]">
-                          {t("detail.unavailable_today", "Unavailable Today")}
+                          {"Unavailable Today"}
                         </Badge>
                       )}
                     </div>
@@ -1394,10 +1339,10 @@ export default function BrowseDetailClient({
                     >
                       <span>
                         {doc.isAvailable === false
-                          ? t("detail.schedule_upcoming", "Schedule Upcoming Date")
+                          ? "Schedule Upcoming Date"
                           : doc.isOnlineBookingClosed
-                          ? t("detail.schedule_next_available", "Schedule Next Available Date")
-                          : t("detail.book_consultation", "Book Consultation")}
+                          ? "Schedule Next Available Date"
+                          : "Book Consultation"}
                       </span>
                       <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" strokeWidth={2} />
                     </Button>
@@ -1414,30 +1359,30 @@ export default function BrowseDetailClient({
             <CardHeader className="pb-3 border-b border-border/40">
               <CardTitle className="text-base font-bold flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-text-muted" strokeWidth={1.75} />
-                <span>{t("detail.about_facility", "About Facility")}</span>
+                <span>{"About Facility"}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
               <p className="text-xs text-text-secondary leading-relaxed">
-                {clinic.description || t("browse.default_desc", "A premier healthcare facility offering specialized medical services, diagnostics, and doctor consultations.")}
+                {clinic.description || "Verified healthcare facility providing doctor consultations and specialized healthcare services."}
               </p>
 
               <div>
                 <h4 className="text-xs font-semibold text-text mb-2 uppercase tracking-wider flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
-                  <span>{t("detail.operating_hours", "Clinic Operating Hours")}</span>
+                  <span>{"Clinic Operating Hours"}</span>
                 </h4>
                 {renderTimings(clinic.timings)}
               </div>
 
               {/* Direct Help & Reception Contact */}
               <div className="pt-3 border-t border-border/40 space-y-2">
-                <h4 className="text-xs font-semibold text-text uppercase tracking-wider">{t("detail.reception_inquiries", "Reception & Inquiries")}</h4>
+                <h4 className="text-xs font-semibold text-text uppercase tracking-wider">{"Reception & Inquiries"}</h4>
                 <div className="space-y-1.5 text-xs text-text-secondary">
                   {clinic.phone && (
                     <a
                       href={`tel:${clinic.phone.replace(/\s+/g, "")}`}
-                      className="flex items-center gap-2 text-primary-600 hover:underline font-semibold min-h-[36px]"
+                      className="flex items-center gap-2 text-accent hover:underline font-semibold min-h-[36px]"
                     >
                       <Phone className="w-3.5 h-3.5" strokeWidth={1.75} />
                       <span>{clinic.phone}</span>
@@ -1445,7 +1390,7 @@ export default function BrowseDetailClient({
                   )}
                   {clinic.email && (
                     <p className="flex items-center gap-2 text-text-muted">
-                      <span>{t("detail.email_label", "Email:")}</span>
+                      <span>{"Email:"}</span>
                       <span>{clinic.email}</span>
                     </p>
                   )}
@@ -1459,8 +1404,8 @@ export default function BrowseDetailClient({
             <Card className="rounded-2xl border border-border bg-surface overflow-hidden shadow-xs">
               <CardHeader className="pb-3 border-b border-border/40">
                 <CardTitle className="text-sm font-bold flex items-center gap-2 text-text">
-                  <Building2 className="w-4 h-4 text-primary-600" strokeWidth={1.75} />
-                  <span>{t("browse.part_of", "About")} {clinic.organization.name}</span>
+                  <Building2 className="w-4 h-4 text-accent" strokeWidth={1.75} />
+                  <span>{"Part of"} {clinic.organization.name}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-3.5 space-y-3">
@@ -1473,7 +1418,7 @@ export default function BrowseDetailClient({
                     />
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-text truncate">{clinic.organization.name}</p>
-                      <p className="text-[10px] text-text-muted">{t("detail.parent_healthcare_system", "Parent Healthcare System")}</p>
+                      <p className="text-[10px] text-text-muted">{"Parent Healthcare System"}</p>
                     </div>
                   </div>
                 )}
@@ -1485,20 +1430,20 @@ export default function BrowseDetailClient({
                 {/* Clinical Standards Badges */}
                 <div className="pt-2 border-t border-border/40 grid grid-cols-2 gap-1.5 text-[10px] text-text-secondary font-medium">
                   <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-surface-alt">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span>{t("detail.verified_clinic", "Verified Clinic")}</span>
+                    <ShieldCheck className="w-3.5 h-3.5 text-success-text shrink-0" />
+                    <span>{"Verified Clinic"}</span>
                   </div>
                   <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-surface-alt">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-primary-500 shrink-0" />
-                    <span>{t("detail.digital_records", "Digital Records")}</span>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-accent shrink-0" />
+                    <span>{"Digital Records"}</span>
                   </div>
                   <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-surface-alt">
-                    <CreditCard className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                    <span>{t("detail.cashless_support", "Cashless Support")}</span>
+                    <CreditCard className="w-3.5 h-3.5 text-accent shrink-0" />
+                    <span>{"Cashless Support"}</span>
                   </div>
                   <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-surface-alt">
-                    <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span>{t("detail.live_queue_tokens", "Live Queue Tokens")}</span>
+                    <Clock className="w-3.5 h-3.5 text-warning-text shrink-0" />
+                    <span>{"Live Queue Tokens"}</span>
                   </div>
                 </div>
               </CardContent>
@@ -1510,10 +1455,10 @@ export default function BrowseDetailClient({
             <Card className="rounded-2xl border border-border bg-surface overflow-hidden shadow-xs">
               <CardHeader className="pb-3 border-b border-border/40 flex flex-row items-center justify-between">
                 <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <Camera className="w-4 h-4 text-primary-500" strokeWidth={1.75} />
-                  <span>{t("detail.facility_showcase", "Facility Showcase")}</span>
+                  <Camera className="w-4 h-4 text-accent" strokeWidth={1.75} />
+                  <span>{"Facility Showcase"}</span>
                 </CardTitle>
-                <span className="text-xs text-text-muted font-semibold">{clinic.images.length} {t("detail.photos_suffix", "Photos")}</span>
+                <span className="text-xs text-text-muted font-semibold">{clinic.images.length} {"Photos"}</span>
               </CardHeader>
               <CardContent className="pt-4 space-y-3">
                 <div className="grid grid-cols-3 gap-2">
@@ -1530,7 +1475,7 @@ export default function BrowseDetailClient({
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                       />
                       {idx === 5 && clinic.images!.length > 6 && (
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-xs font-bold">
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-brand-mist text-xs font-bold">
                           +{clinic.images!.length - 6}
                         </div>
                       )}
@@ -1544,7 +1489,7 @@ export default function BrowseDetailClient({
                   className="w-full rounded-xl text-xs font-semibold cursor-pointer"
                   onClick={() => setLightboxIndex(0)}
                 >
-                  {t("detail.browse_campus_gallery", "Browse Campus Gallery")}
+                  {"Browse Campus Gallery"}
                 </Button>
               </CardContent>
             </Card>
@@ -1554,10 +1499,10 @@ export default function BrowseDetailClient({
 
       {/* Sticky Mobile Bottom Booking Bar (For single-doctor clinics) */}
       {hasSingleDoctor && singleDoctor && (
-        <div className="fixed bottom-0 left-0 right-0 pt-3 pl-16 pr-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface/95 backdrop-blur-md border-t border-border z-40 lg:hidden shadow-lg flex items-center justify-between gap-3">
+        <div className="fixed bottom-0 left-0 right-0 pt-3 pl-16 pr-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface/95  border-t border-border z-40 lg:hidden shadow-lg flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-text truncate">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
-            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">{formatCurrency(singleDoctor.fees, clinic.currency || "INR")} {t("detail.consultation_fee", "Consultation Fee")}</p>
+            <p className="text-[11px] text-success-text dark:text-success-text font-semibold">{formatCurrency(singleDoctor.fees, clinic.currency || "INR")} {"Consultation Fee"}</p>
           </div>
           <Button
             variant="primary"
@@ -1565,7 +1510,7 @@ export default function BrowseDetailClient({
             onClick={() => handleOpenBooking(singleDoctor)}
             className="font-bold px-5 rounded-xl shadow-xs min-h-[44px] shrink-0"
           >
-            {t("detail.book_now", "Book Now")} →
+            {"Book Now"} →
           </Button>
         </div>
       )}
@@ -1576,8 +1521,8 @@ export default function BrowseDetailClient({
         onClose={() => setIsBookingOpen(false)}
         title={
           bookingStep === 1
-            ? t("booking.select_date_time", "Select Date & Time")
-            : t("booking.patient_details", "Patient Details")
+            ? "Select Date & Time"
+            : "Patient Details"
         }
         size="lg"
         loading={bookingLoading}
@@ -1587,8 +1532,8 @@ export default function BrowseDetailClient({
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex-1 space-y-1">
             <div className="flex items-center justify-between text-[11px] font-semibold">
-              <span className={bookingStep >= 1 ? "text-primary-600 font-bold" : "text-text-muted"}>{t("booking.step_1_label", "1. Date & Time")}</span>
-              <span className={bookingStep >= 2 ? "text-primary-600 font-bold" : "text-text-muted"}>{t("booking.step_2_label", "2. Patient Details")}</span>
+              <span className={bookingStep >= 1 ? "text-accent font-bold" : "text-text-muted"}>{"1. Date & Time"}</span>
+              <span className={bookingStep >= 2 ? "text-accent font-bold" : "text-text-muted"}>{"2. Patient Details"}</span>
             </div>
             <div className="flex items-center gap-1.5 h-1">
               <div className={`flex-1 h-full rounded-full transition-colors ${bookingStep >= 1 ? "bg-primary-600" : "bg-border"}`} />
@@ -1613,11 +1558,11 @@ export default function BrowseDetailClient({
                   </div>
                   <div className="min-w-0">
                     <p className="font-bold text-text text-xs sm:text-sm truncate">Dr. {selectedDoctor?.name.replace(/^Dr\.?\s*/i, "")}</p>
-                    <p className="text-[11px] text-primary-600 dark:text-primary-400 font-semibold truncate">{selectedDoctor?.specialization}</p>
+                    <p className="text-[11px] text-accent dark:text-accent font-semibold truncate">{selectedDoctor?.specialization}</p>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="text-xs sm:text-sm font-black text-emerald-700 dark:text-emerald-400 bg-surface px-2 py-0.5 rounded-lg border border-border">
+                  <span className="text-xs sm:text-sm font-black text-success-text dark:text-success-text bg-surface px-2 py-0.5 rounded-lg border border-border">
                     {formatCurrency(selectedDoctor?.fees || 0, clinic?.currency || "INR")}
                   </span>
                 </div>
@@ -1625,10 +1570,10 @@ export default function BrowseDetailClient({
 
               {/* Online Booking Backlog Buffer Banner */}
               {selectedDate === localDateKey() && selectedDoctor?.isOnlineBookingClosed && (
-                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2">
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" strokeWidth={1.75} />
+                <div className="p-2.5 rounded-xl bg-warning/10 border border-warning/30 text-warning-text dark:text-warning-text text-xs flex items-start gap-2">
+                  <AlertCircle className="w-3.5 h-3.5 text-warning-text shrink-0 mt-0.5" strokeWidth={1.75} />
                   <div className="space-y-0.5 text-[11px]">
-                    <p className="font-bold">{t("booking.same_day_closed", "Same-Day Online Booking Closed")}</p>
+                    <p className="font-bold">{"Same-Day Online Booking Closed"}</p>
                     <p className="opacity-90 leading-tight">
                       {selectedDoctor.onlineBookingClosedReason || "Queue cutoff reached for today. Please select tomorrow or an upcoming date below."}
                     </p>
@@ -1640,18 +1585,18 @@ export default function BrowseDetailClient({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold uppercase tracking-wider text-text text-[11px]">
-                    {t("booking.choose_date", "1. Choose Date")}
+                    {"1. Choose Date"}
                   </span>
                   {selectedDaySchedule?.isWorkingDay && (
                     <span className="text-[11px] text-text-muted font-medium">
-                      {t("booking.shift", "Shift:")} {selectedDaySchedule.workingHoursLabel}
+                      {"Shift:"} {selectedDaySchedule.workingHoursLabel}
                     </span>
                   )}
                 </div>
 
                 {upcomingDays.length === 0 ? (
-                  <p className="text-xs text-danger-500 p-2.5 bg-danger-500/10 rounded-xl border border-danger-500/20">
-                    {t("booking.no_schedules", "No active schedules configured for this doctor currently.")}
+                  <p className="text-xs text-danger-text p-2.5 bg-danger-500/10 rounded-xl border border-danger-500/20">
+                    {"No active schedules configured for this doctor currently."}
                   </p>
                 ) : (
                   <div className="flex sm:grid sm:grid-cols-6 gap-2 overflow-x-auto no-scrollbar py-0.5 touch-scroll">
@@ -1666,23 +1611,23 @@ export default function BrowseDetailClient({
                         }}
                         className={`shrink-0 w-[58px] sm:w-auto py-1.5 px-1 rounded-xl border text-center transition-all duration-150 cursor-pointer min-h-[48px] flex flex-col items-center justify-center ${
                           selectedDate === d.dateString
-                            ? "bg-primary-600 text-white border-primary-600 shadow-xs font-bold"
+                            ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs font-bold"
                             : "bg-surface hover:border-border hover:bg-surface-alt text-text border border-border"
                         }`}
                       >
                         <span className="text-[10px] font-semibold uppercase tracking-wider block opacity-85">{d.dayShort}</span>
                         <span className="text-xs sm:text-sm font-bold block mt-0.5">{d.dateNum}</span>
                         {d.isHoliday ? (
-                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-white/20 text-white" : "bg-amber-500/20 text-amber-600 dark:text-amber-400"}`}>
-                            {t("booking.holiday", "Holiday")}
+                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-white/20 text-brand-mist" : "bg-warning/20 text-warning-text dark:text-warning-text"}`}>
+                            {"Holiday"}
                           </span>
                         ) : d.isToday ? (
-                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-white/20 text-white" : "bg-primary-500/10 text-primary-600"}`}>
-                            {t("booking.today", "Today")}
+                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-white/20 text-brand-mist" : "bg-primary-500/10 text-accent"}`}>
+                            {"Today"}
                           </span>
                         ) : d.isTomorrow ? (
-                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-white/20 text-white" : "bg-surface-alt text-text-muted"}`}>
-                            {t("booking.tomorrow", "Tmrw")}
+                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-white/20 text-brand-mist" : "bg-surface-alt text-text-muted"}`}>
+                            {"Tmrw"}
                           </span>
                         ) : null}
                       </button>
@@ -1701,22 +1646,22 @@ export default function BrowseDetailClient({
                     const nextWorkingDay = upcomingDays.find((d) => !d.isHoliday && d.schedule?.isWorkingDay && d.dateString > selectedDate) || upcomingDays.find((d) => !d.isHoliday && d.schedule?.isWorkingDay);
 
                     return (
-                      <div key={`holiday-${selectedDate}`} className="p-6 text-center bg-amber-500/5 rounded-2xl border border-amber-500/20 flex flex-col items-center justify-center space-y-3 min-h-[200px] animate-fade-in">
-                        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                      <div key={`holiday-${selectedDate}`} className="p-6 text-center bg-warning/5 rounded-2xl border border-warning/20 flex flex-col items-center justify-center space-y-3 min-h-[200px] animate-fade-in">
+                        <div className="w-12 h-12 rounded-2xl bg-warning/10 border border-warning/20 flex items-center justify-center text-warning-text dark:text-warning-text">
                           <CalendarOff className="w-6 h-6" />
                         </div>
                         <div className="space-y-1.5 max-w-sm">
                           <div className="flex items-center justify-center gap-1.5">
                             <Badge variant="warning" size="sm" className="font-bold uppercase tracking-wider text-[10px]">
-                              {t("booking.scheduled_leave", "Scheduled Leave")}
+                              {"Scheduled Leave"}
                             </Badge>
                           </div>
-                          <h4 className="text-sm font-bold text-text">{t("booking.doctor_on_leave", "Doctor on Holiday / Leave")}</h4>
+                          <h4 className="text-sm font-bold text-text">{"Doctor on Holiday / Leave"}</h4>
                           <p className="text-xs text-text-muted">
-                            Dr. {selectedDoctor?.name} {t("booking.not_available_notice", "is not available on this date")} ({holidayReasonText}).
+                            Dr. {selectedDoctor?.name} {"is not available on this date"} ({holidayReasonText}).
                           </p>
-                          <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                            {t("booking.pick_another_date", "Please select another date from the schedule ribbon above to reserve your consultation.")}
+                          <p className="text-[11px] text-warning-text dark:text-warning-text font-medium">
+                            {"Please select another date from the schedule ribbon above to reserve your consultation."}
                           </p>
                         </div>
                         {nextWorkingDay && (
@@ -1730,10 +1675,10 @@ export default function BrowseDetailClient({
                                   loadSlotsForDate(nextWorkingDay.dateString, selectedDoctor);
                                 }
                               }}
-                              className="text-xs font-bold gap-1.5 shadow-xs border-amber-500/30 text-text hover:border-primary-500 cursor-pointer"
+                              className="text-xs font-bold gap-1.5 shadow-xs border-warning/30 text-text hover:border-primary-500 cursor-pointer"
                             >
-                              <span>{t("booking.book_next_avail", "Book Next Available:")} {nextWorkingDay.label || nextWorkingDay.dateString}</span>
-                              <ArrowRight className="w-3.5 h-3.5 text-primary-600" />
+                              <span>{"Book Next Available:"} {nextWorkingDay.label || nextWorkingDay.dateString}</span>
+                              <ArrowRight className="w-3.5 h-3.5 text-accent" />
                             </Button>
                           </div>
                         )}
@@ -1747,29 +1692,29 @@ export default function BrowseDetailClient({
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-xs sm:text-sm text-text flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
-                        <span>{t("booking.clinic_queue_token", "Clinic Queue Token")}</span>
+                        <span>{"Clinic Queue Token"}</span>
                       </span>
                       <Badge variant="neutral" className="text-[10px] font-semibold">
-                        {selectedDate ? upcomingDays.find((d) => d.dateString === selectedDate)?.label || selectedDate : t("booking.today", "Today")}
+                        {selectedDate ? upcomingDays.find((d) => d.dateString === selectedDate)?.label || selectedDate : "Today"}
                       </Badge>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
                       <div className="bg-surface p-2.5 rounded-xl border border-border text-center">
-                        <span className="text-[9px] text-text-muted uppercase font-semibold block">{t("booking.token_number", "Your Token Number")}</span>
+                        <span className="text-[9px] text-text-muted uppercase font-semibold block">{"Your Token Number"}</span>
                         <span className="text-xl font-black text-text">#{doctorSlotInfo.nextToken || 1}</span>
                       </div>
                       <div className="bg-surface p-2.5 rounded-xl border border-border text-center">
-                        <span className="text-[9px] text-text-muted uppercase font-semibold block">{t("booking.estimated_wait", "Estimated Wait")}</span>
+                        <span className="text-[9px] text-text-muted uppercase font-semibold block">{"Estimated Wait"}</span>
                         <span className="text-xl font-black text-text-secondary">
-                          ~{Math.max(0, ((doctorSlotInfo.nextToken || 1) - 1) * (doctorSlotInfo.appointmentDuration || 15))} {t("booking.mins", "mins")}
+                          ~{Math.max(0, ((doctorSlotInfo.nextToken || 1) - 1) * (doctorSlotInfo.appointmentDuration || 15))} {"mins"}
                         </span>
                       </div>
                     </div>
 
                     <div className="p-2.5 bg-surface rounded-xl border border-border text-[11px] text-text-secondary leading-relaxed">
-                      {t("booking.consultation_starts_at", "Doctor's consultation starts at")} <strong>{selectedDaySchedule?.startFormatted || "09:00 AM"}</strong>.{" "}
-                      {t("booking.arrive_prior_notice", "Please arrive 15 minutes prior to confirm your token at reception.")}
+                      {"Doctor's consultation starts at"} <strong>{selectedDaySchedule?.startFormatted || "09:00 AM"}</strong>.{" "}
+                      {"Please arrive 15 minutes prior to confirm your token at reception."}
                     </div>
                   </div>
                 );
@@ -1778,17 +1723,17 @@ export default function BrowseDetailClient({
               return selectedDate ? (
                 <div key={`slots-${selectedDate}`} className="space-y-1.5 pt-0.5 animate-fade-in flex-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold uppercase tracking-wider text-text text-[11px]">{t("booking.select_time_slot", "2. Select Time Slot")}</span>
+                    <span className="font-bold uppercase tracking-wider text-text text-[11px]">{"2. Select Time Slot"}</span>
                     {selectedTime && (
-                      <span className="text-primary-600 font-bold text-xs">
-                        {t("booking.selected_time", "Selected:")} {format12Hour(selectedTime)}
+                      <span className="text-accent font-bold text-xs">
+                        {"Selected:"} {format12Hour(selectedTime)}
                       </span>
                     )}
                   </div>
 
                       {activeSlotsList.length === 0 ? (
                         <div className="p-4 text-center bg-surface-alt rounded-2xl border border-border text-xs text-text-muted flex items-center justify-center min-h-[160px]">
-                          {t("booking.no_slots_date", "No available consultation slots on this date. Please pick another day above.")}
+                          {"No available consultation slots on this date. Please pick another day above."}
                         </div>
                       ) : (
                         <div className="space-y-2 bg-surface-alt p-2.5 rounded-2xl border border-border min-h-[160px] max-h-52 sm:max-h-64 overflow-y-auto touch-scroll">
@@ -1796,7 +1741,7 @@ export default function BrowseDetailClient({
                           {categorizedSlots.morning.length > 0 && (
                             <div className="space-y-1">
                               <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                                {t("booking.morning", "Morning (Before 12:00 PM)")}
+                                {"Morning (Before 12:00 PM)"}
                               </div>
                               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
                                 {categorizedSlots.morning.map((s) => {
@@ -1812,7 +1757,7 @@ export default function BrowseDetailClient({
                                         !isAvailable
                                           ? "bg-surface-alt/60 text-text-muted/50 border border-dashed border-border/70 line-through cursor-not-allowed"
                                           : isSelected
-                                          ? "bg-primary-600 text-white border-primary-600 shadow-xs font-bold cursor-pointer"
+                                          ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs font-bold cursor-pointer"
                                           : "bg-surface hover:border-border text-text border border-border cursor-pointer"
                                       }`}
                                     >
@@ -1828,7 +1773,7 @@ export default function BrowseDetailClient({
                           {categorizedSlots.afternoon.length > 0 && (
                             <div className="space-y-1 pt-0.5">
                               <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                                {t("booking.afternoon", "Afternoon (12:00 PM – 4:00 PM)")}
+                                {"Afternoon (12:00 PM – 4:00 PM)"}
                               </div>
                               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
                                 {categorizedSlots.afternoon.map((s) => {
@@ -1844,7 +1789,7 @@ export default function BrowseDetailClient({
                                         !isAvailable
                                           ? "bg-surface-alt/60 text-text-muted/50 border border-dashed border-border/70 line-through cursor-not-allowed"
                                           : isSelected
-                                          ? "bg-primary-600 text-white border-primary-600 shadow-xs font-bold cursor-pointer"
+                                          ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs font-bold cursor-pointer"
                                           : "bg-surface hover:border-border text-text border border-border cursor-pointer"
                                       }`}
                                     >
@@ -1860,7 +1805,7 @@ export default function BrowseDetailClient({
                           {categorizedSlots.evening.length > 0 && (
                             <div className="space-y-1 pt-0.5">
                               <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
-                                {t("booking.evening", "Evening (After 4:00 PM)")}
+                                {"Evening (After 4:00 PM)"}
                               </div>
                               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
                                 {categorizedSlots.evening.map((s) => {
@@ -1876,7 +1821,7 @@ export default function BrowseDetailClient({
                                         !isAvailable
                                           ? "bg-surface-alt/60 text-text-muted/50 border border-dashed border-border/70 line-through cursor-not-allowed"
                                           : isSelected
-                                          ? "bg-primary-600 text-white border-primary-600 shadow-xs font-bold cursor-pointer"
+                                          ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs font-bold cursor-pointer"
                                           : "bg-surface hover:border-border text-text border border-border cursor-pointer"
                                       }`}
                                     >
@@ -1895,9 +1840,9 @@ export default function BrowseDetailClient({
               </div>
 
               {/* Step 1 Actions Footer */}
-              <div className="sticky bottom-0 -mx-4 -mb-3 sm:-mx-5 sm:-mb-5 px-4 sm:px-5 py-2.5 bg-surface/95 backdrop-blur-md border-t border-border/50 flex items-center justify-between gap-2 z-10">
+              <div className="sticky bottom-0 -mx-4 -mb-3 sm:-mx-5 sm:-mb-5 px-4 sm:px-5 py-2.5 bg-surface/95  border-t border-border/50 flex items-center justify-between gap-2 z-10">
                 <Button variant="ghost" size="sm" onClick={() => setIsBookingOpen(false)} className="text-xs font-semibold text-text-muted min-h-[42px] px-3">
-                  {t("action.cancel", "Cancel")}
+                  {"Cancel"}
                 </Button>
                 {(() => {
                   const isCurrentDateHoliday = doctorSlotInfo?.isHoliday || upcomingDays.find((d) => d.dateString === selectedDate)?.isHoliday;
@@ -1910,7 +1855,7 @@ export default function BrowseDetailClient({
                       onClick={() => setBookingStep(2)}
                       className="font-bold px-4 py-2 rounded-xl shadow-xs min-h-[42px] flex-1 sm:flex-initial flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <span>{isCurrentDateHoliday ? t("booking.doctor_on_holiday_btn", "Doctor on Holiday") : t("booking.continue_to_details", "Continue to Details")}</span>
+                      <span>{isCurrentDateHoliday ? "Doctor on Holiday" : "Continue to Details"}</span>
                       {!isCurrentDateHoliday && <ArrowRight className="w-3.5 h-3.5" strokeWidth={2} />}
                     </Button>
                   );
@@ -1925,52 +1870,52 @@ export default function BrowseDetailClient({
               {/* Selected Slot Summary Bar */}
               <div className="p-3 bg-surface-alt rounded-2xl border border-border flex items-center justify-between gap-3 text-xs">
                 <div className="space-y-0.5 min-w-0">
-                  <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider block">{t("booking.selected_consultation", "Selected Consultation")}</span>
+                  <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider block">{"Selected Consultation"}</span>
                   <p className="font-bold text-text truncate">
                     {upcomingDays.find((d) => d.dateString === selectedDate)?.label || selectedDate} •{" "}
-                    {doctorSlotInfo?.bookingMode === "sequential_queue" ? t("booking.clinic_queue_token", "Clinic Queue Token") : format12Hour(selectedTime)}
+                    {doctorSlotInfo?.bookingMode === "sequential_queue" ? "Clinic Queue Token" : format12Hour(selectedTime)}
                   </p>
-                  <p className="text-[11px] text-primary-600 truncate">
+                  <p className="text-[11px] text-accent truncate">
                     Dr. {selectedDoctor?.name.replace(/^Dr\.?\s*/i, "")} •{" "}
                     {selectedDoctor?.feeType === "post_consultation"
                       ? (selectedDoctor?.fees && selectedDoctor.fees > 0
-                        ? `${t("browse.from_fee", "From")} ${formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} (${t("detail.post_consultation", "Post-Consultation")})`
-                        : t("detail.post_consultation", "Post-Consultation"))
+                        ? `${"From"} ${formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} (${"Post-Consultation"})`
+                        : "Post-Consultation")
                       : selectedDoctor?.feeType === "free"
-                      ? t("detail.free", "Free")
+                      ? "Free"
                       : `${formatCurrency(selectedDoctor?.fees || 0, clinic?.currency || "INR")}`}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setBookingStep(1)}
-                  className="shrink-0 text-xs font-semibold text-primary-600 hover:text-primary-700 bg-surface px-2.5 py-1.5 rounded-xl border border-border shadow-xs cursor-pointer min-h-[36px]"
+                  className="shrink-0 text-xs font-semibold text-accent hover:text-accent bg-surface px-2.5 py-1.5 rounded-xl border border-border shadow-xs cursor-pointer min-h-[36px]"
                 >
-                  {t("booking.change_slot", "Change Slot")}
+                  {"Change Slot"}
                 </button>
               </div>
 
               {/* Patient Details Input */}
               <div className="space-y-2.5">
                 <label className="text-xs font-semibold uppercase tracking-wider text-text block">
-                  {t("booking.patient_info_heading", "Patient Information")}
+                  {"Patient Information"}
                 </label>
 
                 {isGuest ? (
                   <div className="bg-surface-alt p-4 rounded-2xl border border-border space-y-3">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-semibold text-text">
-                        {t("booking.quick_booking", "Quick Booking")}
+                        {"Quick Booking"}
                       </p>
                       <span className="text-[10px] font-semibold text-text-secondary bg-surface px-2 py-0.5 rounded-full border border-border">
-                        {t("booking.no_account_needed", "No Account Needed")}
+                        {"No Account Needed"}
                       </span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Input
-                        label={t("booking.full_name", "Patient Full Name *")}
-                        placeholder={t("booking.full_name_placeholder", "e.g. Ramesh Patel")}
+                        label={"Patient Full Name *"}
+                        placeholder={"e.g. Ramesh Patel"}
                         icon={<User className="w-3.5 h-3.5" strokeWidth={1.75} />}
                         value={guestForm.name}
                         onChange={(e) => setGuestForm({ ...guestForm, name: e.target.value })}
@@ -1978,7 +1923,7 @@ export default function BrowseDetailClient({
                         autoComplete="name"
                       />
                       <Input
-                        label={t("booking.phone_number", "Mobile Phone Number *")}
+                        label={"Mobile Phone Number *"}
                         type="tel"
                         inputMode="tel"
                         placeholder="9876543210"
@@ -1992,7 +1937,7 @@ export default function BrowseDetailClient({
                     </div>
                     <div>
                       <Input
-                        label={t("booking.email_optional", "Email Address (Optional)")}
+                        label={"Email Address (Optional)"}
                         type="email"
                         inputMode="email"
                         placeholder="patient@example.com"
@@ -2001,31 +1946,31 @@ export default function BrowseDetailClient({
                         onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })}
                         autoComplete="email"
                       />
-                      <p className="text-[11px] text-text-muted mt-1">{t("booking.email_note", "We'll send your visit confirmation and appointment details here.")}</p>
+                      <p className="text-[11px] text-text-muted mt-1">{"We'll send your visit confirmation and appointment details here."}</p>
                     </div>
                   </div>
                 ) : (
                   <div className="bg-surface-alt border border-border p-3.5 rounded-2xl flex items-center justify-between">
                     <div>
                       <p className="text-xs text-text font-semibold flex items-center gap-1.5">
-                        <UserCheck className="w-4 h-4 text-primary-600" strokeWidth={1.75} />
-                        <span>{t("booking.booking_as", "Booking as:")} <strong className="text-text">{user?.name}</strong></span>
+                        <UserCheck className="w-4 h-4 text-accent" strokeWidth={1.75} />
+                        <span>{"Booking as:"} <strong className="text-text">{user?.name}</strong></span>
                       </p>
                       <p className="text-[11px] text-text-secondary mt-0.5">
                         {(user as any)?.phone || user?.email || "Authenticated Account"}
                       </p>
                     </div>
-                    <Badge variant="neutral" className="text-[10px] font-semibold">{t("booking.logged_in", "Logged In")}</Badge>
+                    <Badge variant="neutral" className="text-[10px] font-semibold">{"Logged In"}</Badge>
                   </div>
                 )}
               </div>
 
               {/* Payment Preference */}
               {selectedDoctor?.feeType === "post_consultation" ? (
-                <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-1">
-                  <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-xs">
+                <div className="p-3.5 bg-warning/10 border border-warning/20 rounded-2xl space-y-1">
+                  <div className="flex items-center gap-2 text-warning-text dark:text-warning-text font-bold text-xs">
                     <Building2 className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-                    <span>{t("booking.post_consultation_billing", "Post-Consultation Billing")}{selectedDoctor?.fees && selectedDoctor.fees > 0 ? ` • Min. ${formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} ${t("booking.min_charge_suffix", "visit charge")}` : ""}</span>
+                    <span>{"Post-Consultation Billing"}{selectedDoctor?.fees && selectedDoctor.fees > 0 ? ` • Min. ${formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} ${"visit charge"}` : ""}</span>
                   </div>
                   <p className="text-[11px] text-text-secondary leading-relaxed">
                     {selectedDoctor?.fees && selectedDoctor.fees > 0
@@ -2034,21 +1979,21 @@ export default function BrowseDetailClient({
                   </p>
                 </div>
               ) : selectedDoctor?.feeType === "free" ? (
-                <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl space-y-1">
-                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-xs">
-                    <span>✨ {t("booking.complimentary", "Complimentary Consultation")}</span>
+                <div className="p-3.5 bg-success/10 border border-success/20 rounded-2xl space-y-1">
+                  <div className="flex items-center gap-2 text-success-text dark:text-success-text font-bold text-xs">
+                    <span>✨ {"Complimentary Consultation"}</span>
                   </div>
                   <p className="text-[11px] text-text-secondary leading-relaxed">
-                    {t("booking.complimentary_desc", "This consultation is free of charge. No payment is required.")}
+                    {"This consultation is free of charge. No payment is required."}
                   </p>
                 </div>
               ) : selectedDoctor?.fees && selectedDoctor.fees > 0 ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold uppercase tracking-wider text-text block">
-                      {t("booking.payment_preference", "Payment Preference")}
+                      {"Payment Preference"}
                     </label>
-                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                    <span className="text-xs font-bold text-success-text dark:text-success-text">
                       {formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")}
                     </span>
                   </div>
@@ -2058,15 +2003,15 @@ export default function BrowseDetailClient({
                       onClick={() => setPaymentMode("pay_at_clinic")}
                       className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer min-h-[56px] ${
                         paymentMode === "pay_at_clinic"
-                          ? "bg-primary-600/10 border-primary-600 text-primary-600 font-bold shadow-xs ring-1 ring-primary-500/20"
+                          ? "bg-primary-600/10 border-primary-600 text-accent font-bold shadow-xs ring-1 ring-focus-ring"
                           : "bg-surface border-border text-text hover:border-border"
                       }`}
                     >
                       <div className="flex items-center gap-2">
                         <Building2 className="w-4 h-4 text-text-muted shrink-0" strokeWidth={1.75} />
-                        <span className="text-xs font-bold">{t("booking.pay_at_clinic", "Pay at Clinic Reception")}</span>
+                        <span className="text-xs font-bold">{"Pay at Clinic Reception"}</span>
                       </div>
-                      <span className="text-[10px] text-text-muted block mt-1 pl-6">{t("action.pay", "Pay")} {formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} {t("booking.pay_at_clinic_desc", "at the desk upon arrival")}</span>
+                      <span className="text-[10px] text-text-muted block mt-1 pl-6">{"Pay"} {formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} {"at the desk upon arrival"}</span>
                     </button>
 
                     <button
@@ -2074,15 +2019,15 @@ export default function BrowseDetailClient({
                       onClick={() => setPaymentMode("online")}
                       className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer min-h-[56px] ${
                         paymentMode === "online"
-                          ? "bg-primary-600/10 border-primary-600 text-primary-600 font-bold shadow-xs ring-1 ring-primary-500/20"
+                          ? "bg-primary-600/10 border-primary-600 text-accent font-bold shadow-xs ring-1 ring-focus-ring"
                           : "bg-surface border-border text-text hover:border-border"
                       }`}
                     >
                       <div className="flex items-center gap-2">
                         <CreditCard className="w-4 h-4 text-text-muted shrink-0" strokeWidth={1.75} />
-                        <span className="text-xs font-bold">{t("booking.pay_online", "Pay Online Now")}</span>
+                        <span className="text-xs font-bold">{"Pay Online Now"}</span>
                       </div>
-                      <span className="text-[10px] text-text-muted block mt-1 pl-6">{t("action.pay", "Pay")} {formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} {t("booking.pay_online_desc", "via UPI / Card")}</span>
+                      <span className="text-[10px] text-text-muted block mt-1 pl-6">{"Pay"} {formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} {"via UPI / Card"}</span>
                     </button>
                   </div>
                 </div>
@@ -2090,9 +2035,9 @@ export default function BrowseDetailClient({
 
               {/* Optional Reason for Visit */}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-text">{t("booking.reason_label", "Reason for Visit / Symptoms (Optional)")}</label>
+                <label className="text-xs font-medium text-text">{"Reason for Visit / Symptoms (Optional)"}</label>
                 <Input
-                  placeholder={t("booking.reason_placeholder", "e.g. Fever, routine follow-up, pediatric checkup")}
+                  placeholder={"e.g. Fever, routine follow-up, pediatric checkup"}
                   icon={<FileText className="w-3.5 h-3.5" strokeWidth={1.75} />}
                   value={bookingNotes}
                   onChange={(e) => setBookingNotes(e.target.value)}
@@ -2101,17 +2046,17 @@ export default function BrowseDetailClient({
 
               {/* Active Booking Loading Feedback */}
               {bookingLoading && (
-                <div className="p-3 bg-primary-50 dark:bg-primary-950/40 border border-primary-200 dark:border-primary-800 rounded-xl flex items-center gap-2.5 text-xs text-primary-700 dark:text-primary-300 animate-pulse">
+                <div className="p-3 bg-accent-subtle dark:bg-primary-950/40 border border-primary-200 dark:border-primary-800 rounded-xl flex items-center gap-2.5 text-xs text-accent dark:text-accent animate-pulse">
                   <div className="w-4 h-4 rounded-full border-2 border-primary-600 border-t-transparent animate-spin shrink-0" />
-                  <span className="font-semibold">{bookingProgressMessage || t("booking.processing", "Securing your appointment, please wait...")}</span>
+                  <span className="font-semibold">{bookingProgressMessage || "Securing your appointment, please wait..."}</span>
                 </div>
               )}
 
               {/* Step 2 Actions Footer */}
-              <div className="sticky bottom-0 -mx-4 -mb-3 sm:-mx-5 sm:-mb-5 px-4 sm:px-5 py-2.5 bg-surface/95 backdrop-blur-md border-t border-border/50 flex items-center justify-between gap-2 z-10">
+              <div className="sticky bottom-0 -mx-4 -mb-3 sm:-mx-5 sm:-mb-5 px-4 sm:px-5 py-2.5 bg-surface/95  border-t border-border/50 flex items-center justify-between gap-2 z-10">
                 <Button variant="outline" size="sm" type="button" disabled={bookingLoading} onClick={() => setBookingStep(1)} className="min-h-[42px] px-3.5 flex items-center justify-center gap-1 text-xs">
                   <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.75} />
-                  <span>{t("action.back", "Back")}</span>
+                  <span>{"Back"}</span>
                 </Button>
                 <Button
                   variant="primary"
@@ -2121,7 +2066,7 @@ export default function BrowseDetailClient({
                   disabled={bookingLoading}
                   className="font-bold px-4 py-2 rounded-xl shadow-xs min-h-[42px] flex-1 sm:flex-initial flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <span>{bookingLoading ? (bookingProgressMessage || t("booking.confirming", "Confirming...")) : t("booking.confirm_appointment", "Confirm Appointment")}</span>
+                  <span>{bookingLoading ? (bookingProgressMessage || "Confirming...") : "Confirm Appointment"}</span>
                   {!bookingLoading && <CheckCircle2 className="w-4 h-4" strokeWidth={2} />}
                 </Button>
               </div>
@@ -2134,46 +2079,46 @@ export default function BrowseDetailClient({
       <Modal
         open={ticketModalOpen}
         onClose={() => setTicketModalOpen(false)}
-        title={t("ticket.title", "Appointment Confirmed")}
+        title={"Appointment Confirmed"}
         size="sm"
       >
         <div className="text-center space-y-4 py-1">
           <div className="p-5 bg-surface-alt border border-border rounded-2xl space-y-3">
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-surface border border-border text-emerald-600 flex items-center justify-center shadow-xs">
-              <CheckCircle2 className="w-6 h-6 text-emerald-600" strokeWidth={2} />
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-surface border border-border text-success-text flex items-center justify-center shadow-xs">
+              <CheckCircle2 className="w-6 h-6 text-success-text" strokeWidth={2} />
             </div>
             <div>
               <span className="text-3xl font-black text-text block">
                 #{createdTicket?.tokenNumber}
               </span>
-              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mt-0.5">{t("ticket.token_label", "Appointment Token")}</p>
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mt-0.5">{"Appointment Token"}</p>
             </div>
 
             {createdTicket && (
               <div className="pt-3 border-t border-border text-xs text-text-secondary space-y-1.5 text-left">
                 <div className="flex justify-between">
-                  <span>{t("ticket.patient", "Patient:")}</span>
+                  <span>{"Patient:"}</span>
                   <strong className="text-text">{createdTicket.patientName}</strong>
                 </div>
                 <div className="flex justify-between">
-                  <span>{t("ticket.doctor", "Doctor:")}</span>
+                  <span>{"Doctor:"}</span>
                   <strong className="text-text">Dr. {createdTicket.doctorName}</strong>
                 </div>
                 <div className="flex justify-between">
-                  <span>{t("ticket.date", "Date:")}</span>
+                  <span>{"Date:"}</span>
                   <strong className="text-text">{createdTicket.selectedDate}</strong>
                 </div>
                 <div className="flex justify-between">
-                  <span>{t("ticket.time_mode", "Time / Mode:")}</span>
+                  <span>{"Time / Mode:"}</span>
                   <strong className="text-text">
-                    {doctorSlotInfo?.bookingMode === "sequential_queue" ? t("booking.clinic_queue_token", "Clinic Queue Token") : format12Hour(createdTicket.selectedTime)}
+                    {doctorSlotInfo?.bookingMode === "sequential_queue" ? "Clinic Queue Token" : format12Hour(createdTicket.selectedTime)}
                   </strong>
                 </div>
                 {createdTicket.fees !== undefined && (
                   <div className="flex justify-between">
-                    <span>{t("ticket.fee", "Fee:")}</span>
-                    <strong className="text-emerald-700 dark:text-emerald-400">
-                      {typeof createdTicket.fees === "string" ? createdTicket.fees : formatCurrency(createdTicket.fees, clinic?.currency || "INR")} ({createdTicket.paymentMode === "online" ? t("ticket.online_paid", "Online Paid") : createdTicket.paymentMode === "free" ? t("ticket.free", "Free") : t("ticket.pay_at_reception", "Pay at Reception")})
+                    <span>{"Fee:"}</span>
+                    <strong className="text-success-text dark:text-success-text">
+                      {typeof createdTicket.fees === "string" ? createdTicket.fees : formatCurrency(createdTicket.fees, clinic?.currency || "INR")} ({createdTicket.paymentMode === "online" ? "Online Paid" : createdTicket.paymentMode === "free" ? "Free" : "Pay at Reception"})
                     </strong>
                   </div>
                 )}
@@ -2184,10 +2129,10 @@ export default function BrowseDetailClient({
           <div className="p-3 bg-surface-alt rounded-xl border border-border text-xs text-left space-y-1">
             <p className="font-semibold text-text flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
-              <span>{t("ticket.next_steps", "Next Steps:")}</span>
+              <span>{"Next Steps:"}</span>
             </p>
             <p className="text-text-secondary text-[11px] leading-relaxed">
-              {t("ticket.arrive_desk_notice", "Please arrive at the clinic 10-15 minutes prior to your consultation time. Present this token at the reception desk upon arrival.")}
+              {"Please arrive at the clinic 10-15 minutes prior to your consultation time. Present this token at the reception desk upon arrival."}
             </p>
           </div>
 
@@ -2196,20 +2141,20 @@ export default function BrowseDetailClient({
             <div className="p-3.5 bg-surface-alt rounded-2xl border border-border text-left space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-text flex items-center gap-1.5">
-                  <Smartphone className="w-3.5 h-3.5 text-primary-600" strokeWidth={1.75} />
-                  <span>{t("ticket.live_tracker_title", "Live Visit Status & Tracker")}</span>
+                  <Smartphone className="w-3.5 h-3.5 text-accent" strokeWidth={1.75} />
+                  <span>{"Live Visit Status & Tracker"}</span>
                 </span>
                 <span className="text-[10px] bg-surface text-text-secondary font-semibold px-2 py-0.5 rounded-full border border-border">
-                  {t("ticket.zero_login", "Zero Login Required")}
+                  {"Zero Login Required"}
                 </span>
               </div>
               <p className="text-[11px] text-text-muted leading-relaxed">
-                {t("ticket.tracker_desc", "Track live waiting time, see when your turn is coming, or self check-in upon arrival directly from your phone.")}
+                {"Track live waiting time, see when your turn is coming, or self check-in upon arrival directly from your phone."}
               </p>
               <div className="flex gap-2 pt-1">
                 <Link href={`/track/${createdTicket.appointmentId}${createdTicket.trackerToken ? `?t=${encodeURIComponent(createdTicket.trackerToken)}` : ""}`} target="_blank" className="w-full">
                   <Button size="sm" className="w-full text-xs font-bold rounded-xl shadow-xs min-h-[44px] flex items-center justify-center gap-1">
-                    <span>{t("ticket.open_tracker", "Open Live Tracker")}</span>
+                    <span>{"Open Live Tracker"}</span>
                     <ExternalLink className="w-3 h-3" strokeWidth={1.75} />
                   </Button>
                 </Link>
@@ -2220,12 +2165,12 @@ export default function BrowseDetailClient({
                   onClick={() => {
                     const trackingUrl = `${window.location.origin}/track/${createdTicket.appointmentId}${createdTicket.trackerToken ? `?t=${encodeURIComponent(createdTicket.trackerToken)}` : ""}`;
                     navigator.clipboard.writeText(trackingUrl);
-                    toast({ title: t("detail.link_copied_title", "Link Copied"), description: t("detail.link_copied_desc", "Mobile tracking URL copied to clipboard"), variant: "success" });
+                    toast({ title: "Link Copied", description: "Clinic profile link copied to clipboard", variant: "success" });
                   }}
-                  title={t("ticket.copy_link", "Copy Link")}
+                  title={"Copy Link"}
                 >
                   <Copy className="w-3.5 h-3.5" strokeWidth={1.75} />
-                  <span className="hidden xs:inline">{t("ticket.copy_link", "Copy Link")}</span>
+                  <span className="hidden xs:inline">{"Copy Link"}</span>
                 </Button>
               </div>
             </div>
@@ -2241,7 +2186,7 @@ export default function BrowseDetailClient({
                 onClick={handlePrintSlip}
               >
                 <Printer className="w-3.5 h-3.5" strokeWidth={1.75} />
-                <span>{t("ticket.print_slip", "Print Slip")}</span>
+                <span>{"Print Slip"}</span>
               </Button>
               <Button
                 variant="primary"
@@ -2253,7 +2198,7 @@ export default function BrowseDetailClient({
                 }}
               >
                 <Calendar className="w-3.5 h-3.5" strokeWidth={1.75} />
-                <span>{t("ticket.my_appointments", "My Appointments")}</span>
+                <span>{"My Appointments"}</span>
               </Button>
             </div>
             <Button
@@ -2262,7 +2207,7 @@ export default function BrowseDetailClient({
               className="w-full text-xs text-text-muted min-h-[40px] flex items-center justify-center"
               onClick={() => setTicketModalOpen(false)}
             >
-              {t("action.done", "Done")}
+              {"Done"}
             </Button>
           </div>
         </div>
@@ -2274,12 +2219,12 @@ export default function BrowseDetailClient({
           role="dialog"
           aria-modal="true"
           aria-label="Photo gallery"
-          className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4 backdrop-blur-md animate-fade-in"
+          className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4  animate-fade-in"
           onClick={() => setLightboxIndex(null)}
         >
           <button
             type="button"
-            className="absolute top-4 right-4 text-white/80 hover:text-white p-2.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer z-20"
+            className="absolute top-4 right-4 text-brand-mist/80 hover:text-brand-mist p-2.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors cursor-pointer z-20"
             onClick={() => setLightboxIndex(null)}
             aria-label="Close photo viewer"
           >
@@ -2293,7 +2238,7 @@ export default function BrowseDetailClient({
             <img
               src={clinic.images[lightboxIndex]}
               alt={`Facility showcase ${lightboxIndex + 1}`}
-              className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl border border-white/10"
+              className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-lg border border-white/10"
             />
 
             {clinic.images.length > 1 && (
@@ -2301,7 +2246,7 @@ export default function BrowseDetailClient({
                 <button
                   type="button"
                   onClick={() => setLightboxIndex((lightboxIndex - 1 + clinic.images!.length) % clinic.images!.length)}
-                  className="absolute left-2 sm:-left-14 p-2.5 rounded-full bg-white/10 hover:bg-white/30 text-white transition-colors cursor-pointer"
+                  className="absolute left-2 sm:-left-14 p-2.5 rounded-full bg-white/10 hover:bg-white/30 text-brand-mist transition-colors cursor-pointer"
                   aria-label="Previous photo"
                 >
                   <ChevronLeft className="w-6 h-6" />
@@ -2309,7 +2254,7 @@ export default function BrowseDetailClient({
                 <button
                   type="button"
                   onClick={() => setLightboxIndex((lightboxIndex + 1) % clinic.images!.length)}
-                  className="absolute right-2 sm:-right-14 p-2.5 rounded-full bg-white/10 hover:bg-white/30 text-white transition-colors cursor-pointer"
+                  className="absolute right-2 sm:-right-14 p-2.5 rounded-full bg-white/10 hover:bg-white/30 text-brand-mist transition-colors cursor-pointer"
                   aria-label="Next photo"
                 >
                   <ChevronRight className="w-6 h-6" />
@@ -2318,7 +2263,7 @@ export default function BrowseDetailClient({
             )}
           </div>
 
-          <p className="text-white/80 text-xs font-semibold mt-4">
+          <p className="text-brand-mist/80 text-xs font-semibold mt-4">
             Photo {lightboxIndex + 1} of {clinic.images.length} — {clinic.name}
           </p>
         </div>

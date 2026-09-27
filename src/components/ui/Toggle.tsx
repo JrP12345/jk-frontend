@@ -70,9 +70,9 @@ const Toggle = memo(
             onClick={toggle}
             onKeyDown={handleKeyDown}
             className={cn(
-              "relative inline-flex shrink-0 items-center rounded-full cursor-pointer transform-gpu transition-all duration-200 ease-spring focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/20 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 shadow-2xs",
+              "relative inline-flex shrink-0 items-center rounded-full cursor-pointer transform-gpu transition-all duration-200 ease-spring focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 shadow-2xs",
               isSm ? "w-8 h-[18px]" : isLg ? "w-12 h-7" : "w-10 h-[22px]",
-              isChecked ? "bg-primary-600 shadow-xs shadow-primary-500/25 border border-primary-500/30" : "bg-surface-alt border border-border hover:border-border-focus hover:bg-surface-hover"
+              isChecked ? "bg-primary-600 shadow-xs  border border-primary-500/30" : "bg-surface-alt border border-border hover:border-border-focus hover:bg-surface-hover"
             )}
           >
             <span
@@ -96,7 +96,7 @@ const Toggle = memo(
               onClick={toggle}
             >
               {label && (
-                <span id={labelId} className="text-sm font-medium text-text leading-tight hover:text-primary-600 transition-colors duration-150">
+                <span id={labelId} className="text-sm font-medium text-text leading-tight hover:text-accent transition-colors duration-150">
                   {label}
                 </span>
               )}

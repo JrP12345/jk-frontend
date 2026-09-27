@@ -29,7 +29,7 @@ export function DashboardClinicFacilities({
           variant="ghost"
           size="xs"
           onClick={() => router.push("/dashboard/clinics")}
-          className="text-xs font-semibold text-primary-600 hover:text-primary-700 dark:text-primary-400 p-0 hover:bg-transparent"
+          className="text-xs font-semibold text-accent hover:text-accent dark:text-accent p-0 hover:bg-transparent"
         >
           Manage Clinics
           <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
@@ -41,21 +41,21 @@ export function DashboardClinicFacilities({
           <Card
             key={cl.id ? `${cl.id}-${idx}` : `clinic-${idx}`}
             onClick={() => router.push("/dashboard/clinics")}
-            className="group cursor-pointer hover:shadow-md hover:border-primary-500/40 transition-all duration-200 p-4 rounded-2xl border border-border/80 bg-surface flex flex-col justify-between active:scale-[0.99] touch-manipulation relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/20 before:to-transparent"
+            className="group cursor-pointer hover:shadow-md hover:border-primary-500/40 transition-all duration-200 p-4 rounded-2xl border border-border/80 bg-surface flex flex-col justify-between active:scale-[0.99] touch-manipulation relative overflow-hidden "
           >
             <div className="flex items-start justify-between gap-3 mb-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center shrink-0 text-primary-600 dark:text-primary-400 group-hover:bg-primary-500/15 group-hover:scale-105 transition-all duration-200">
+                <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center shrink-0 text-accent dark:text-accent group-hover:bg-primary-500/15 group-hover:scale-105 transition-all duration-200">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-xs sm:text-sm font-bold text-text group-hover:text-primary-600 transition-colors truncate">
+                  <h3 className="text-xs sm:text-sm font-bold text-text group-hover:text-accent transition-colors truncate">
                     {cl.name}
                   </h3>
                   <p className="text-xs text-text-muted truncate">{cl.city || "Main Facility"}</p>
                 </div>
               </div>
-              <ArrowUpRight className="w-4 h-4 text-text-muted group-hover:text-primary-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-200 shrink-0" />
+              <ArrowUpRight className="w-4 h-4 text-text-muted group-hover:text-accent group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-200 shrink-0" />
             </div>
 
             <div className="flex items-center justify-between text-xs text-text-secondary pt-2.5 border-t border-border/60">

@@ -2,42 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Table,
-  StatCard,
-  Badge,
-  Button,
-  Input,
-  Select,
-  Modal,
-  useToast,
-  SkeletonCard,
-} from "@/components/ui";
-import {
-  CalendarDays,
-  Clock,
-  UserCheck,
-  Users,
-  Building2,
-  Plus,
-  Search,
-  CheckCircle2,
-  AlertCircle,
-  FileText,
-  RefreshCw,
-  Moon,
-  Sun,
-  Sunset,
-  ShieldCheck,
-  Stethoscope,
-  Activity,
-  ArrowRightLeft,
-} from "lucide-react";
+import { Card, CardContent, Table, StatCard, Badge, Button, Input, Select, Modal, useToast } from "@/components/ui";
+import { Clock, UserCheck, Users, Building2, Plus, Search, CheckCircle2, FileText, RefreshCw, Moon, Sun, Sunset, Stethoscope } from "lucide-react";
 
 interface ShiftRosterItem {
   id: string;
@@ -240,7 +206,7 @@ export default function NursingShiftRosterPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -630,7 +596,7 @@ export default function NursingShiftRosterPage() {
               placeholder="e.g. Bed 3 ventilator pressure adjusted. Meds administered at 14:00."
               value={handoverText}
               onChange={(e) => setHandoverText(e.target.value)}
-              className="w-full p-3 bg-surface-alt border border-border rounded-xl text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+              className="w-full p-3 bg-surface-alt border border-border rounded-xl text-sm text-text focus:outline-none focus:ring-2 focus:ring-focus-ring"
             />
           </div>
 

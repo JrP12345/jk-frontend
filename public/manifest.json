@@ -1,13 +1,13 @@
 {
-  "name": "ANANTA — Healthcare Platform",
-  "short_name": "ANANTA",
-  "description": "Integrated Digital Health Operating System — Clinical EHR, Appointments, OPD Queue & Hospital Management",
+  "name": "Ekavyu — Healthcare Platform",
+  "short_name": "Ekavyu",
+  "description": "Ekavyu — Care That Keeps Moving. Clinical EHR, appointments, OPD queue and hospital management.",
   "id": "ananta-healthcare-pwa",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#090d16",
-  "theme_color": "#1068eb",
+  "background_color": "#F7F7F2",
+  "theme_color": "#0F6F66",
   "orientation": "any",
   "categories": ["medical", "health", "productivity", "business"],
   "icons": [
@@ -21,7 +21,13 @@
       "src": "/app-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [

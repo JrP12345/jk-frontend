@@ -2,46 +2,12 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  Table,
-  Button,
-  Modal,
-  Input,
-  useToast,
-  Spinner,
-  Badge,
-  Checkbox,
-  ConfirmDialog,
-  ScheduleEditor,
-  ImageUpload,
-  Select,
-  SkeletonTable,
-  Dropdown,
-  StatCard,
-  cn,
-} from "@/components/ui";
+import { Alert, Card, CardContent, Table, Button, Modal, Input, useToast, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, SkeletonTable, Dropdown, StatCard, cn } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import { hasAnyPermission, isRootUser } from "@/lib/permissions";
 import { useR2Upload } from "@/hooks/useR2Upload";
-import {
-  RotateCw,
-  Plus,
-  Building2,
-  MapPin,
-  Phone,
-  Mail,
-  QrCode,
-  MoreHorizontal,
-  Edit3,
-  Trash2,
-  ShieldCheck,
-  Archive,
-  RotateCcw,
-  Clock,
-} from "lucide-react";
+import { RotateCw, Plus, Building2, MapPin, Phone, Mail, QrCode, MoreHorizontal, Edit3, Trash2, Archive, RotateCcw, Clock } from "lucide-react";
 import ClinicQrPosterModal from "@/components/dashboard/ClinicQrPosterModal";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -64,7 +30,7 @@ interface Clinic {
 
 export default function ClinicsPage() {
   const { user } = useAuthStore();
-  const { clinics, fetchClinics, isLoading: clinicsLoading } = useClinicStore();
+  const { clinics, fetchClinics, isLoading: clinicsLoading, error: clinicLoadError } = useClinicStore();
   const canManageClinics = hasAnyPermission(user, "MANAGE_CLINICS");
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +42,7 @@ export default function ClinicsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [qrClinic, setQrClinic] = useState<Clinic | null>(null);
   const [archivedClinics, setArchivedClinics] = useState<Clinic[]>([]);
+  const [archivedError, setArchivedError] = useState<string | null>(null);
   const [loadingArchived, setLoadingArchived] = useState(false);
   const [activeTab, setActiveTab] = useState<"active" | "archived">("active");
   const [reactivatingId, setReactivatingId] = useState<string | null>(null);
@@ -134,6 +101,7 @@ export default function ClinicsPage() {
 
   const fetchArchivedClinics = async () => {
     try {
+      setArchivedError(null);
       setLoadingArchived(true);
       const res = await api.get("/onboarding/clinics?status=inactive");
       const rawList = res.data.data || [];
@@ -143,7 +111,7 @@ export default function ClinicsPage() {
       }));
       setArchivedClinics(list);
     } catch {
-      // Fallback cleanly
+      setArchivedError("Archived locations could not be loaded. Please try again.");
     } finally {
       setLoadingArchived(false);
     }
@@ -301,10 +269,11 @@ export default function ClinicsPage() {
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+      {(activeTab === "archived" ? archivedError : clinicLoadError) && <Alert variant="error" title="Unable to load locations" action={<Button variant="outline" size="sm" onClick={reloadClinics} loading={isRefreshing}>Try again</Button>}>Locations could not be loaded. Check your connection and try again.</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -384,7 +353,7 @@ export default function ClinicsPage() {
             className={cn(
               "flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer min-h-[44px] sm:min-h-[36px]",
               activeTab === "active"
-                ? "bg-surface text-primary shadow-xs font-bold"
+                ? "bg-surface text-accent shadow-xs font-bold"
                 : "text-text-muted hover:text-text"
             )}
           >
@@ -398,7 +367,7 @@ export default function ClinicsPage() {
             className={cn(
               "flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer min-h-[44px] sm:min-h-[36px]",
               activeTab === "archived"
-                ? "bg-surface text-primary shadow-xs font-bold"
+                ? "bg-surface text-accent shadow-xs font-bold"
                 : "text-text-muted hover:text-text"
             )}
           >
@@ -424,7 +393,7 @@ export default function ClinicsPage() {
               <div className="space-y-4 flex-1">
                 <div className="flex items-center gap-2">
                   <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-primary-500" />
+                    <Building2 className="w-5 h-5 text-accent" />
                   </div>
                   <div>
                     <h3 className="font-bold text-text text-base sm:text-lg">{clinics[0].name}</h3>
@@ -466,7 +435,7 @@ export default function ClinicsPage() {
                   className="rounded-xl text-xs font-semibold min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-initial justify-center"
                   onClick={() => setQrClinic(clinics[0] as Clinic)}
                 >
-                  <QrCode className="w-3.5 h-3.5 mr-1 text-primary-500" />
+                  <QrCode className="w-3.5 h-3.5 mr-1 text-accent" />
                   QR Poster
                 </Button>
                 {canManageClinics && (
@@ -488,7 +457,7 @@ export default function ClinicsPage() {
                 <button
                   type="button"
                   onClick={openModal}
-                  className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer flex items-center gap-1"
+                  className="text-xs font-semibold text-accent dark:text-accent hover:underline cursor-pointer flex items-center gap-1"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Add another location
@@ -517,7 +486,7 @@ export default function ClinicsPage() {
                         {row.image_url ? (
                           <img src={row.image_url} alt={row.name} className="w-full h-full object-cover" />
                         ) : (
-                          <Building2 className="w-5 h-5 text-primary-500" />
+                          <Building2 className="w-5 h-5 text-accent" />
                         )}
                       </div>
                       <div className="space-y-0.5 min-w-0">
@@ -575,7 +544,7 @@ export default function ClinicsPage() {
                         className="rounded-lg font-semibold text-xs min-h-[36px] px-2.5"
                         onClick={() => setQrClinic(row)}
                       >
-                        <QrCode className="w-3.5 h-3.5 mr-1 text-primary-500" />
+                        <QrCode className="w-3.5 h-3.5 mr-1 text-accent" />
                         QR
                       </Button>
                       {canManageClinics && (
@@ -594,7 +563,7 @@ export default function ClinicsPage() {
                           items={[
                             {
                               label: "Reception QR Code",
-                              icon: <QrCode className="w-4 h-4 text-primary-500" />,
+                              icon: <QrCode className="w-4 h-4 text-accent" />,
                               onClick: () => setQrClinic(row),
                             },
                             {
@@ -617,7 +586,7 @@ export default function ClinicsPage() {
                 },
               ]}
               data={clinics as Clinic[]}
-              emptyMessage="No locations configured yet. Click 'Add Location' to register your first branch."
+              emptyMessage={clinicLoadError ? "Locations are unavailable. Please try again." : "No locations configured yet. Click 'Add Location' to register your first branch."}
               renderMobileCard={(row: Clinic) => (
                 <div
                   key={row.id}
@@ -625,11 +594,11 @@ export default function ClinicsPage() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-surface-alt border border-border flex items-center justify-center text-primary-600 font-bold text-sm shrink-0 overflow-hidden shadow-2xs">
+                      <div className="w-10 h-10 rounded-xl bg-surface-alt border border-border flex items-center justify-center text-accent font-bold text-sm shrink-0 overflow-hidden shadow-2xs">
                         {row.image_url ? (
                           <img src={row.image_url} alt={row.name} className="w-full h-full object-cover" />
                         ) : (
-                          <Building2 className="w-5 h-5 text-primary-500" />
+                          <Building2 className="w-5 h-5 text-accent" />
                         )}
                       </div>
                       <div className="min-w-0">
@@ -646,7 +615,7 @@ export default function ClinicsPage() {
                       className="rounded-xl font-semibold text-xs min-h-[36px] px-2.5 shrink-0"
                       onClick={() => setQrClinic(row)}
                     >
-                      <QrCode className="w-3.5 h-3.5 mr-1 text-primary-500" />
+                      <QrCode className="w-3.5 h-3.5 mr-1 text-accent" />
                       QR
                     </Button>
                   </div>
@@ -665,7 +634,7 @@ export default function ClinicsPage() {
                       {row.phone && (
                         <a
                           href={`tel:${row.phone}`}
-                          className="text-text-muted hover:text-primary-600 transition-colors flex items-center gap-1 font-mono"
+                          className="text-text-muted hover:text-accent transition-colors flex items-center gap-1 font-mono"
                         >
                           <Phone className="w-3 h-3 text-text-muted" />
                           <span>{row.phone}</span>
@@ -689,7 +658,7 @@ export default function ClinicsPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => setDeletingId(row.id)}
-                        className="w-full font-semibold text-xs min-h-[42px] rounded-xl text-rose-500 hover:bg-rose-500/10 border-rose-500/30 flex items-center justify-center gap-1.5"
+                        className="w-full font-semibold text-xs min-h-[42px] rounded-xl text-danger-text hover:bg-danger/10 border-danger/30 flex items-center justify-center gap-1.5"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Deactivate</span>
@@ -867,7 +836,7 @@ export default function ClinicsPage() {
 
           {/* Section 1: Clinic Media & Basic Identity */}
           <div className="space-y-3.5 border-b border-border/60 pb-4">
-            <h3 className="text-xs font-bold text-primary-600 uppercase tracking-wider">
+            <h3 className="text-xs font-bold text-accent uppercase tracking-wider">
               1. Branding & Clinic Identity
             </h3>
 
@@ -886,7 +855,7 @@ export default function ClinicsPage() {
                 value={formData.name || ""}
                 onChange={(e) => handleFieldChange("name", e.target.value)}
                 onBlur={() => validateClinicField("name", formData.name || "")}
-                placeholder="e.g. HealthOS Central Clinic"
+                placeholder="e.g. Ekavyu Central Clinic"
                 error={clinicErrors.name}
                 required
               />
@@ -906,7 +875,7 @@ export default function ClinicsPage() {
                 label="Phone Number"
                 value={formData.phone || ""}
                 onChange={(e) => handleFieldChange("phone", e.target.value)}
-                placeholder="e.g. +1 415 555 0199"
+                placeholder="e.g. +1 415 555 0199" type="tel" inputMode="tel"
               />
               <Input
                 label="Email Address"
@@ -936,7 +905,7 @@ export default function ClinicsPage() {
 
           {/* Section 2: Facilities & Operating Hours */}
           <div className="space-y-3.5">
-            <h3 className="text-xs font-bold text-primary-600 uppercase tracking-wider">
+            <h3 className="text-xs font-bold text-accent uppercase tracking-wider">
               2. Facilities & Operating Hours
             </h3>
 
@@ -966,7 +935,7 @@ export default function ClinicsPage() {
           {/* Section 3: Digital Payments & Countertop UPI Soundbox Routing */}
           <div className="space-y-3.5 border-b border-border/60 pb-4">
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+              <h3 className="text-xs font-bold text-success-text dark:text-success-text uppercase tracking-wider">
                 3. Digital Payments & Countertop UPI Soundbox Routing
               </h3>
               <Badge variant="success" size="sm" className="text-[10px] font-bold">

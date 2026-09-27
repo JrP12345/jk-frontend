@@ -2,34 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Button,
-  Badge,
-  Input,
-  useToast,
-  Spinner,
-  StatCard,
-  cn,
-  SkeletonCardGrid,
-} from "@/components/ui";
-import {
-  CalendarClock,
-  Clock,
-  Send,
-  UserCheck,
-  AlertTriangle,
-  Search,
-  RotateCw,
-  Phone,
-  CheckCircle2,
-  Calendar,
-  Sparkles,
-  Users,
-} from "lucide-react";
+import { Card, CardContent, Button, Badge, Input, useToast, cn, SkeletonCardGrid } from "@/components/ui";
+import { CalendarClock, Send, UserCheck, AlertTriangle, Search, RotateCw, Phone, CheckCircle2, Calendar, Users } from "lucide-react";
 
 interface FollowUpItem {
   id: string;
@@ -190,7 +164,7 @@ export function FollowUpRecallRegister({
           type="button"
           onClick={() => setTimeframe("all")}
           className={cn(
-            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
+            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
             timeframe === "all"
               ? "bg-primary-500/15 border-primary-500/40 shadow-xs"
               : "bg-surface border-border/80 hover:bg-surface-hover"
@@ -198,7 +172,7 @@ export function FollowUpRecallRegister({
         >
           <div className="flex items-center justify-between text-xs font-bold text-text-muted mb-1">
             <span>Total Follow-Ups</span>
-            <Users className="w-4 h-4 text-primary-500" />
+            <Users className="w-4 h-4 text-accent" />
           </div>
           <div className="text-2xl font-black text-text">{metrics.totalCount}</div>
           <p className="text-[10px] text-text-muted">Total recorded review plans</p>
@@ -208,17 +182,17 @@ export function FollowUpRecallRegister({
           type="button"
           onClick={() => setTimeframe("today")}
           className={cn(
-            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500",
+            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning",
             timeframe === "today"
-              ? "bg-amber-500/20 border-amber-500/50 shadow-xs"
+              ? "bg-warning/20 border-warning/50 shadow-xs"
               : "bg-surface border-border/80 hover:bg-surface-hover"
           )}
         >
-          <div className="flex items-center justify-between text-xs font-bold text-amber-700 dark:text-amber-300 mb-1">
+          <div className="flex items-center justify-between text-xs font-bold text-warning-text dark:text-warning-text mb-1">
             <span>Due Today</span>
-            <CalendarClock className="w-4 h-4 text-amber-500" />
+            <CalendarClock className="w-4 h-4 text-warning-text" />
           </div>
-          <div className="text-2xl font-black text-amber-800 dark:text-amber-200">{metrics.dueTodayCount}</div>
+          <div className="text-2xl font-black text-warning-text dark:text-warning-text">{metrics.dueTodayCount}</div>
           <p className="text-[10px] text-text-muted">Scheduled for consultation today</p>
         </button>
 
@@ -226,17 +200,17 @@ export function FollowUpRecallRegister({
           type="button"
           onClick={() => setTimeframe("upcoming")}
           className={cn(
-            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success",
             timeframe === "upcoming"
-              ? "bg-emerald-500/20 border-emerald-500/50 shadow-xs"
+              ? "bg-success/20 border-success/50 shadow-xs"
               : "bg-surface border-border/80 hover:bg-surface-hover"
           )}
         >
-          <div className="flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-1">
+          <div className="flex items-center justify-between text-xs font-bold text-success-text dark:text-success-text mb-1">
             <span>Upcoming (7 Days)</span>
-            <Calendar className="w-4 h-4 text-emerald-500" />
+            <Calendar className="w-4 h-4 text-success-text" />
           </div>
-          <div className="text-2xl font-black text-emerald-800 dark:text-emerald-200">{metrics.upcomingCount}</div>
+          <div className="text-2xl font-black text-success-text dark:text-success-text">{metrics.upcomingCount}</div>
           <p className="text-[10px] text-text-muted">Next 7 days scheduled reviews</p>
         </button>
 
@@ -244,17 +218,17 @@ export function FollowUpRecallRegister({
           type="button"
           onClick={() => setTimeframe("overdue")}
           className={cn(
-            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500",
+            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger",
             timeframe === "overdue"
-              ? "bg-rose-500/20 border-rose-500/50 shadow-xs"
+              ? "bg-danger/20 border-danger/50 shadow-xs"
               : "bg-surface border-border/80 hover:bg-surface-hover"
           )}
         >
-          <div className="flex items-center justify-between text-xs font-bold text-rose-700 dark:text-rose-300 mb-1">
+          <div className="flex items-center justify-between text-xs font-bold text-danger-text dark:text-danger-text mb-1">
             <span>Overdue (Missed)</span>
-            <AlertTriangle className="w-4 h-4 text-rose-500" />
+            <AlertTriangle className="w-4 h-4 text-danger-text" />
           </div>
-          <div className="text-2xl font-black text-rose-800 dark:text-rose-200">{metrics.overdueCount}</div>
+          <div className="text-2xl font-black text-danger-text dark:text-danger-text">{metrics.overdueCount}</div>
           <p className="text-[10px] text-text-muted">Past scheduled date - needs recall</p>
         </button>
       </div>
@@ -277,7 +251,7 @@ export function FollowUpRecallRegister({
               className={cn(
                 "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
                 timeframe === t.id
-                  ? "bg-primary-600 text-white shadow-xs"
+                  ? "bg-primary-600 text-brand-mist shadow-xs"
                   : "bg-surface border border-border/80 text-text-secondary hover:bg-surface-hover"
               )}
             >
@@ -315,7 +289,7 @@ export function FollowUpRecallRegister({
       ) : items.length === 0 ? (
         <Card className="py-14 text-center rounded-2xl border border-border/80 bg-surface">
           <CardContent className="space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-primary-500">
+            <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-accent">
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <h4 className="text-sm font-bold text-text">No Follow-Up Records Found</h4>
@@ -338,9 +312,9 @@ export function FollowUpRecallRegister({
                 className={cn(
                   "rounded-2xl border transition-all hover:shadow-sm",
                   isOverdue
-                    ? "border-rose-500/30 bg-rose-500/[0.02]"
+                    ? "border-danger/30 bg-danger/[0.02]"
                     : isDueToday
-                    ? "border-amber-500/40 bg-amber-500/[0.02]"
+                    ? "border-warning/40 bg-warning/[0.02]"
                     : "border-border/80 bg-surface"
                 )}
               >
@@ -390,7 +364,7 @@ export function FollowUpRecallRegister({
 
                     <div className="flex items-center gap-3 text-xs text-text-muted flex-wrap">
                       <div className="flex items-center gap-1 font-mono">
-                        <Phone className="w-3 h-3 text-emerald-600" />
+                        <Phone className="w-3 h-3 text-success-text" />
                         <span>{item.patient.phone || "No phone provided"}</span>
                       </div>
                       <div>
@@ -432,7 +406,7 @@ export function FollowUpRecallRegister({
                         variant="outline"
                         onClick={() => handleCheckInPatient(item)}
                         loading={checkingInId === item.id}
-                        className="font-bold text-xs rounded-xl border-primary-500/40 text-primary-700 dark:text-primary-300 hover:bg-primary-500/10 cursor-pointer shadow-2xs"
+                        className="font-bold text-xs rounded-xl border-primary-500/40 text-accent dark:text-accent hover:bg-primary-500/10 cursor-pointer shadow-2xs"
                         title="Check patient into live queue if arrived"
                       >
                         <UserCheck className="w-3.5 h-3.5 mr-1" />
@@ -447,7 +421,7 @@ export function FollowUpRecallRegister({
                         onClick={() => handleSendRecall(item)}
                         loading={sendingRecallId === item.id}
                         disabled={!item.patient.phone}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1"
+                        className="bg-success hover:bg-success text-background font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1"
                         title="Send personalized WhatsApp recall message with direct live wait tracker"
                       >
                         <Send className="w-3.5 h-3.5" />

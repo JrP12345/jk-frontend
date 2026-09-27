@@ -132,7 +132,7 @@ export default function ImageUpload({
         onDrop={handleDrop}
         onClick={() => !currentUploading && !disabled && fileInputRef.current?.click()}
         className={cn(
-          "relative min-h-[140px] w-full rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-6 text-center cursor-pointer transform-gpu transition-all duration-200 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+          "relative min-h-[140px] w-full rounded-2xl border-2 border-dashed flex flex-col items-center justify-center p-6 text-center cursor-pointer transform-gpu transition-all duration-200 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
           isDragging
             ? "border-primary-500 bg-primary-500/10 scale-[1.01]"
             : error
@@ -143,7 +143,7 @@ export default function ImageUpload({
       >
         {currentUploading ? (
           <div className="flex flex-col items-center w-full max-w-[200px] gap-3">
-            <svg className="h-8 w-8 animate-spin text-primary-500 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <svg className="h-8 w-8 animate-spin text-accent shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-20" />
               <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-80" />
             </svg>
@@ -161,7 +161,7 @@ export default function ImageUpload({
           <div className="relative w-full h-32 rounded-xl overflow-hidden group shadow-xs flex items-center justify-center bg-surface-alt">
             {isPdf ? (
               <div className="flex flex-col items-center justify-center p-4">
-                <svg className="w-10 h-10 text-danger-500 mb-1" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <svg className="w-10 h-10 text-danger-text mb-1" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path
                     fillRule="evenodd"
                     d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
@@ -180,7 +180,7 @@ export default function ImageUpload({
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-3">
               <button
                 type="button"
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all transform-gpu scale-95 group-hover:scale-100 active:scale-90 duration-150 cursor-pointer"
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-brand-mist transition-all transform-gpu scale-95 group-hover:scale-100 active:scale-90 duration-150 cursor-pointer"
                 aria-label="Change file"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -195,7 +195,7 @@ export default function ImageUpload({
               <button
                 type="button"
                 onClick={removeImage}
-                className="p-2 rounded-full bg-danger-500/80 hover:bg-danger-500 text-white transition-all transform-gpu scale-95 group-hover:scale-100 active:scale-90 duration-150 cursor-pointer"
+                className="p-2 rounded-full bg-danger-500/80 hover:bg-danger-500 text-brand-mist transition-all transform-gpu scale-95 group-hover:scale-100 active:scale-90 duration-150 cursor-pointer"
                 aria-label="Remove file"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -210,7 +210,7 @@ export default function ImageUpload({
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <div className="bg-primary-500/10 p-3 rounded-2xl mb-1 text-primary-500 transition-transform duration-200 group-hover:scale-110">
+            <div className="bg-primary-500/10 p-3 rounded-2xl mb-1 text-accent transition-transform duration-200 group-hover:scale-110">
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path
                   strokeLinecap="round"
@@ -220,7 +220,7 @@ export default function ImageUpload({
               </svg>
             </div>
             <div>
-              <span className="text-sm text-primary-600 dark:text-primary-400 font-semibold hover:underline">
+              <span className="text-sm text-accent dark:text-accent font-semibold hover:underline">
                 Click to upload
               </span>{" "}
               <span className="text-sm text-text-secondary">or drag and drop</span>
@@ -230,7 +230,7 @@ export default function ImageUpload({
         )}
       </div>
 
-      {error && <p className="text-xs font-medium text-danger-500 animate-fade-in">{error}</p>}
+      {error && <p className="text-xs font-medium text-danger-text animate-fade-in">{error}</p>}
 
       <input
         ref={fileInputRef}

@@ -49,7 +49,7 @@ const StatCard = memo(function StatCard({
   const effectiveTrend = trend || (change ? (change.positive ? "up" : "down") : "neutral");
 
   return (
-    <Card hover padding="sm" onClick={onClick} className={cn("relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/20 before:to-transparent", className)}>
+    <Card hover padding="sm" onClick={onClick} className={cn("relative overflow-hidden ", className)}>
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <p className="text-xs sm:text-sm text-text-secondary font-medium truncate select-none">{displayLabel}</p>
@@ -64,8 +64,8 @@ const StatCard = memo(function StatCard({
                   className={cn(
                     "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold select-none border tracking-tight",
                     change.positive
-                      ? "bg-success-500/10 text-success-600 dark:text-success-400 border-success-500/20"
-                      : "bg-danger-500/10 text-danger-600 dark:text-danger-400 border-danger-500/20"
+                      ? "bg-success-500/10 text-success-text dark:text-success-text border-success-500/20"
+                      : "bg-danger-500/10 text-danger-text dark:text-danger-text border-danger-500/20"
                   )}
                 >
                   {effectiveTrend === "up" && (
@@ -78,7 +78,7 @@ const StatCard = memo(function StatCard({
                       <path d="M8 12l4-5H4l4 5z" />
                     </svg>
                   )}
-                  <span className={change.positive ? "text-success-600 dark:text-success-400" : "text-danger-600 dark:text-danger-400"}>{change.value}</span>
+                  <span className={change.positive ? "text-success-text dark:text-success-text" : "text-danger-text dark:text-danger-text"}>{change.value}</span>
                 </div>
               )}
               {description && <span className="text-xs text-text-muted">{description}</span>}
@@ -86,7 +86,7 @@ const StatCard = memo(function StatCard({
           )}
         </div>
         {icon && (
-          <div className="shrink-0 p-2 sm:p-2.5 rounded-2xl bg-gradient-to-br from-primary-500/15 via-primary-500/10 to-transparent border border-primary-500/20 text-primary-500 [&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5 ml-2 sm:ml-4 shadow-xs transition-transform duration-200 group-hover:scale-105">
+          <div className="shrink-0 p-2 sm:p-2.5 rounded-2xl bg-accent-subtle border border-primary-500/20 text-accent [&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5 ml-2 sm:ml-4 shadow-xs transition-transform duration-200 group-hover:scale-105">
             {icon}
           </div>
         )}

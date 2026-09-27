@@ -93,7 +93,7 @@ export const RouteProgress = memo(function RouteProgress() {
       className="fixed top-0 left-0 right-0 z-[99999] h-[2.5px] pointer-events-none overflow-hidden bg-transparent"
     >
       <div
-        className="h-full bg-gradient-to-r from-primary-600 via-primary-400 to-indigo-400 dark:from-primary-500 dark:via-primary-300 dark:to-cyan-400 shadow-[0_0_8px_rgba(37,99,235,0.6)] dark:shadow-[0_0_8px_rgba(56,189,248,0.7)] transform-gpu transition-all duration-200 ease-out"
+        className="h-full bg-accent dark:from-primary-500 dark:via-primary-300 dark:to-primary   transform-gpu transition-all duration-200 ease-out"
         style={{
           width: `${progress}%`,
           opacity: progress === 100 ? 0 : 1,

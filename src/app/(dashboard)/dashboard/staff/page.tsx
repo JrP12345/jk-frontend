@@ -3,52 +3,14 @@
 import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
 import TeamLoading from "./loading";
-import {
-  Card,
-  CardContent,
-  Table,
-  Tabs,
-  Button,
-  Modal,
-  Input,
-  useToast,
-  Spinner,
-  ImageUpload,
-  ConfirmDialog,
-  ScheduleEditor,
-  Select,
-  SkeletonTable,
-  Dropdown,
-  Badge,
-  Avatar,
-  StatCard,
-  cn,
-} from "@/components/ui";
+import { Alert, Card, CardContent, Table, Tabs, Button, Modal, Input, useToast, Spinner, ImageUpload, ConfirmDialog, ScheduleEditor, Select, Dropdown, Badge, Avatar, StatCard, cn } from "@/components/ui";
 import { useR2Upload } from "@/hooks/useR2Upload";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import { RBACPermissionMatrix } from "@/components/clinical/RBACPermissionMatrix";
 import { ExecutiveAnalytics } from "@/components/analytics/ExecutiveAnalytics";
-import {
-  RotateCw,
-  Plus,
-  UserPlus,
-  UserCheck,
-  Users,
-  Stethoscope,
-  ShieldCheck,
-  MoreHorizontal,
-  Edit3,
-  Trash2,
-  Building2,
-  Mail,
-  Phone,
-  Eye,
-  EyeOff,
-  CalendarOff,
-  Calendar,
-} from "lucide-react";
+import { RotateCw, Plus, UserPlus, UserCheck, Users, Stethoscope, ShieldCheck, MoreHorizontal, Edit3, Trash2, Building2, Mail, Phone, Eye, EyeOff, CalendarOff, Calendar } from "lucide-react";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -109,6 +71,7 @@ export default function StaffPage() {
   const [customStaff, setCustomStaff] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<string>("doctor");
@@ -414,6 +377,7 @@ export default function StaffPage() {
 
   const fetchStaff = async () => {
     try {
+      setLoadError(null);
       const url = activeClinicId ? `/onboarding/staff?clinicId=${activeClinicId}` : "/onboarding/staff";
       const res = await api.get(url);
       const data = res.data.data || {};
@@ -428,6 +392,7 @@ export default function StaffPage() {
       const builtInRoles = new Set(["doctor", "receptionist", "nurse", "lab_tech", "pharmacist", "cashier"]);
       setCustomStaff(allStaff.filter((s: any) => !builtInRoles.has(s.role)));
     } catch {
+      setLoadError("Team members could not be loaded. Check your connection and try again.");
       toast({ title: "Error", description: "Failed to load staff list", variant: "error" });
     }
   };
@@ -741,10 +706,11 @@ export default function StaffPage() {
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+      {loadError && <Alert variant="error" title="Unable to load staff" action={<Button variant="outline" size="sm" onClick={fetchStaff}>Try again</Button>}>{loadError}</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -769,7 +735,7 @@ export default function StaffPage() {
                   onClick={() => setIsAdminDoctorModalOpen(true)}
                   className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover justify-center"
                 >
-                  <UserCheck className="w-3.5 h-3.5 mr-1.5 text-primary-500" />
+                  <UserCheck className="w-3.5 h-3.5 mr-1.5 text-accent" />
                   Link Admin
                 </Button>
 
@@ -851,7 +817,7 @@ export default function StaffPage() {
                           className={cn(
                             "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
                             isSelected
-                              ? "bg-primary-500/10 text-primary-600 dark:text-primary-400"
+                              ? "bg-primary-500/10 text-accent dark:text-accent"
                               : "bg-surface-alt text-text-muted"
                           )}
                         >
@@ -865,6 +831,7 @@ export default function StaffPage() {
                 <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
                   <CardContent className="p-0">
                     <Table
+
                       searchable
                       searchPlaceholder="Search staff members by name, email, role, or specialty..."
                       mobileCardView
@@ -968,12 +935,12 @@ export default function StaffPage() {
                                     ? [
                                         {
                                           label: "Manage Clinic Assignments",
-                                          icon: <Stethoscope className="w-4 h-4 text-primary-500" />,
+                                          icon: <Stethoscope className="w-4 h-4 text-accent" />,
                                           onClick: () => openAssignmentsModal(row),
                                         },
                                         {
                                           label: "Holidays & Leave Schedule",
-                                          icon: <CalendarOff className="w-4 h-4 text-amber-500" />,
+                                          icon: <CalendarOff className="w-4 h-4 text-warning-text" />,
                                           onClick: () => openHolidaysModal(row),
                                         },
                                       ]
@@ -1006,7 +973,7 @@ export default function StaffPage() {
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-600 font-bold text-sm shrink-0">
+                              <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-accent font-bold text-sm shrink-0">
                                 {(row.name || "S").charAt(0).toUpperCase()}
                               </div>
                               <div className="min-w-0">
@@ -1049,12 +1016,12 @@ export default function StaffPage() {
                                     ? [
                                         {
                                           label: "Manage Clinic Assignments",
-                                          icon: <Stethoscope className="w-4 h-4 text-primary-500" />,
+                                          icon: <Stethoscope className="w-4 h-4 text-accent" />,
                                           onClick: () => openAssignmentsModal(row),
                                         },
                                         {
                                           label: "Holidays & Leave Schedule",
-                                          icon: <CalendarOff className="w-4 h-4 text-amber-500" />,
+                                          icon: <CalendarOff className="w-4 h-4 text-warning-text" />,
                                           onClick: () => openHolidaysModal(row),
                                         },
                                       ]
@@ -1079,14 +1046,14 @@ export default function StaffPage() {
                           <div className="p-2.5 bg-surface-alt/70 rounded-xl border border-border/60 space-y-1.5 text-xs">
                             <div className="flex items-center gap-1.5 text-text-secondary">
                               <Mail className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                              <a href={`mailto:${row.email}`} className="truncate hover:text-primary-600 transition-colors">
+                              <a href={`mailto:${row.email}`} className="truncate hover:text-accent transition-colors">
                                 {row.email}
                               </a>
                             </div>
                             {row.phone && (
                               <div className="flex items-center gap-1.5 text-text-secondary">
                                 <Phone className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                                <a href={`tel:${row.phone}`} className="hover:text-primary-600 transition-colors">
+                                <a href={`tel:${row.phone}`} className="hover:text-accent transition-colors">
                                   {row.phone}
                                 </a>
                               </div>
@@ -1107,14 +1074,14 @@ export default function StaffPage() {
                                 onClick={() => openAssignmentsModal(row)}
                                 className="w-full font-semibold text-xs min-h-[40px] rounded-xl flex items-center justify-center gap-1"
                               >
-                                <Stethoscope className="w-3.5 h-3.5 text-primary-500" />
+                                <Stethoscope className="w-3.5 h-3.5 text-accent" />
                                 <span>Assignments</span>
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => openHolidaysModal(row)}
-                                className="w-full font-semibold text-xs min-h-[40px] rounded-xl flex items-center justify-center gap-1 text-amber-600 hover:bg-amber-500/10 border-amber-500/30"
+                                className="w-full font-semibold text-xs min-h-[40px] rounded-xl flex items-center justify-center gap-1 text-warning-text hover:bg-warning/10 border-warning/30"
                               >
                                 <CalendarOff className="w-3.5 h-3.5" />
                                 <span>Leave</span>
@@ -1231,7 +1198,7 @@ export default function StaffPage() {
               label="Phone Number"
               value={formData.phone || ""}
               onChange={(e) => handleFieldChange("phone", e.target.value)}
-              placeholder="e.g. +1 415 555 0199"
+              placeholder="e.g. +1 415 555 0199" type="tel" inputMode="tel"
             />
           </div>
 
@@ -1410,7 +1377,7 @@ export default function StaffPage() {
                 }}
                 className="rounded-xl text-xs font-semibold hover:bg-surface-hover gap-1.5"
               >
-                <CalendarOff className="w-3.5 h-3.5 text-amber-500" />
+                <CalendarOff className="w-3.5 h-3.5 text-warning-text" />
                 Holidays & Leaves
               </Button>
             </div>
@@ -1421,7 +1388,7 @@ export default function StaffPage() {
               </div>
             ) : assignments.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center p-6 border border-dashed border-border/80 rounded-2xl bg-surface space-y-2">
-                <div className="w-10 h-10 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-500">
+                <div className="w-10 h-10 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-accent">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <h4 className="text-xs font-bold text-text">No Clinic Branches Assigned Yet</h4>
@@ -1440,7 +1407,7 @@ export default function StaffPage() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 font-bold text-xs text-text">
-                          <Building2 className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                          <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
                           <span>{asg.clinicId?.name || "Clinic Branch"}</span>
                         </div>
                         <Badge
@@ -1457,11 +1424,11 @@ export default function StaffPage() {
                           <span className="text-[10px] text-text-muted block">Fee</span>
                           <span className="font-bold">
                             {asg.feeType === "post_consultation" ? (
-                              <span className="text-amber-500 text-[11px]">Post-Visit</span>
+                              <span className="text-warning-text text-[11px]">Post-Visit</span>
                             ) : asg.feeType === "free" ? (
-                              <span className="text-emerald-500 text-[11px]">Free</span>
+                              <span className="text-success-text text-[11px]">Free</span>
                             ) : (
-                              <span className="text-emerald-600 dark:text-emerald-400">₹{asg.fees}</span>
+                              <span className="text-success-text dark:text-success-text">₹{asg.fees}</span>
                             )}
                           </span>
                         </div>
@@ -1517,7 +1484,7 @@ export default function StaffPage() {
                         <tr key={asg.id || asg._id} className="hover:bg-surface-hover/50 transition-colors">
                           <td className="p-3 text-text font-bold whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
-                              <Building2 className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                              <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
                               <span>{asg.clinicId?.name || "Clinic Branch"}</span>
                             </div>
                           </td>
@@ -1531,7 +1498,7 @@ export default function StaffPage() {
                                 Free / ₹0
                               </Badge>
                             ) : (
-                              <span className="text-emerald-600 dark:text-emerald-400">₹{asg.fees}</span>
+                              <span className="text-success-text dark:text-success-text">₹{asg.fees}</span>
                             )}
                           </td>
                           <td className="p-3 whitespace-nowrap">
@@ -1613,7 +1580,7 @@ export default function StaffPage() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-text block">Clinic Branch</label>
                     <div className="p-2.5 bg-surface-alt border border-border/80 rounded-xl text-xs font-bold text-text flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-primary-500" />
+                      <Building2 className="w-3.5 h-3.5 text-accent" />
                       <span>
                         {assignments.find((a) => (a.id || a._id) === editingAssignmentId)?.clinicId?.name ||
                           "Selected Branch"}
@@ -1815,7 +1782,7 @@ export default function StaffPage() {
           {/* Add Holiday Form */}
           <form onSubmit={handleAddHoliday} className="p-4 rounded-2xl border border-border/80 bg-surface-alt/40 space-y-3.5">
             <h4 className="text-xs font-bold uppercase tracking-wider text-text flex items-center gap-1.5">
-              <CalendarOff className="w-4 h-4 text-amber-500" />
+              <CalendarOff className="w-4 h-4 text-warning-text" />
               <span>Declare Upcoming Holiday / Day Off</span>
             </h4>
 
@@ -1925,7 +1892,7 @@ export default function StaffPage() {
                       </div>
 
                       <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-                        <Building2 className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                        <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
                         <span>{h.clinicId?.name || "All Assigned Clinics"}</span>
                       </div>
 
@@ -1938,7 +1905,7 @@ export default function StaffPage() {
                           size="xs"
                           variant="ghost"
                           onClick={() => handleDeleteHoliday(h.id || h._id)}
-                          className="w-full text-danger-500 hover:text-danger-600 hover:bg-danger-500/10 rounded-xl text-xs font-semibold min-h-[38px] justify-center"
+                          className="w-full text-danger-text hover:text-danger-text hover:bg-danger-500/10 rounded-xl text-xs font-semibold min-h-[38px] justify-center"
                         >
                           <Trash2 className="w-3.5 h-3.5 mr-1" />
                           Cancel Holiday
@@ -1968,7 +1935,7 @@ export default function StaffPage() {
                           </td>
                           <td className="p-3 text-text-secondary whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
-                              <Building2 className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                              <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
                               <span>{h.clinicId?.name || "All Assigned Clinics"}</span>
                             </div>
                           </td>
@@ -1985,7 +1952,7 @@ export default function StaffPage() {
                               size="xs"
                               variant="ghost"
                               onClick={() => handleDeleteHoliday(h.id || h._id)}
-                              className="text-danger-500 hover:text-danger-600 hover:bg-danger-500/10 rounded-lg text-[11px] font-semibold"
+                              className="text-danger-text hover:text-danger-text hover:bg-danger-500/10 rounded-lg text-[11px] font-semibold"
                             >
                               <Trash2 className="w-3.5 h-3.5 mr-1" />
                               Cancel Holiday

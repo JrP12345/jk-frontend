@@ -4,22 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Table,
-  Button,
-  Modal,
-  Input,
-  Select,
-  Textarea,
-  useToast,
-  Badge,
-  StatCard,
-  Dropdown,
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Table, Button, Modal, Input, Select, Textarea, useToast, Badge, StatCard, Dropdown } from "@/components/ui";
 import { Plus, FileText, Stethoscope, FlaskConical, Building2 } from "lucide-react";
 
 interface ServiceItem {
@@ -200,7 +185,7 @@ export default function ServiceCatalogPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -319,7 +304,7 @@ export default function ServiceCatalogPage() {
                 key: "code",
                 header: "Service Code",
                 sortable: true,
-                render: (row: ServiceItem) => <span className="font-mono text-xs font-bold text-primary-600">{row.code}</span>,
+                render: (row: ServiceItem) => <span className="font-mono text-xs font-bold text-accent">{row.code}</span>,
               },
               {
                 key: "name",
@@ -406,7 +391,7 @@ export default function ServiceCatalogPage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-bold text-primary-600 dark:text-primary-400 px-2 py-0.5 rounded-md bg-primary-500/10 border border-primary-500/20">
+                    <span className="font-mono text-xs font-bold text-accent dark:text-accent px-2 py-0.5 rounded-md bg-primary-500/10 border border-primary-500/20">
                       {row.code}
                     </span>
                     <Badge variant={getCategoryBadgeVariant(row.category)} size="sm" className="capitalize text-[10px]">

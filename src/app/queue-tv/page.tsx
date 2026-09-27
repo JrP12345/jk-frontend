@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Badge, Spinner } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import api from "@/lib/api";
 import { announcePatientToken, VoiceAnnounceLanguage } from "@/utils/audioChimes";
 import { getWebSocketUrl } from "@/utils/websocket";
 
 export default function WaitingRoomTvQueueBoard() {
-  const [clinicName, setClinicName] = useState("ANANT Healthcare OPD");
+  const [clinicName, setClinicName] = useState("Ekavyu Healthcare OPD");
   const [clinicId, setClinicId] = useState<string>("");
   const [doctorId, setDoctorId] = useState<string>("");
   const [activeToken, setActiveToken] = useState<any | null>(null);
@@ -24,6 +24,7 @@ export default function WaitingRoomTvQueueBoard() {
   } | null>(null);
   const [cabins, setCabins] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<"auto" | "single" | "multi">("auto");
+  const [clockReady, setClockReady] = useState(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   // Play two-tone medical waiting room chime (E5 -> C5)
@@ -127,6 +128,7 @@ export default function WaitingRoomTvQueueBoard() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      setClockReady(true);
       const search = new URLSearchParams(window.location.search);
       const cId = search.get("clinicId") || localStorage.getItem("ananta_active_clinic_id") || localStorage.getItem("activeClinicId") || "";
       const dId = search.get("doctorId") || "";
@@ -253,23 +255,23 @@ export default function WaitingRoomTvQueueBoard() {
   }, [fetchQueueState, clinicId]);
 
   return (
-    <div className="min-h-screen bg-[#0b0c10] text-white p-4 sm:p-8 lg:p-10 flex flex-col justify-between select-none animate-fade-in font-sans">
+    <div className="min-h-screen bg-background text-text p-4 sm:p-8 lg:p-10 flex flex-col justify-between select-none animate-fade-in font-sans">
       {/* Top TV Banner */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between border-b border-zinc-800 pb-6 gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between border-b border-border pb-6 gap-4">
         <div className="flex items-center gap-3 sm:gap-4">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-600 flex items-center justify-center font-black text-xl sm:text-2xl shadow-xl border border-primary-400/20 shrink-0">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-primary   flex items-center justify-center font-black text-xl sm:text-2xl shadow-xl border border-primary-400/20 shrink-0">
             ⚡
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">{clinicName}</h1>
-            <p className="text-xs sm:text-sm font-semibold text-zinc-400">Live Waiting Room Queue Display • Real-Time OPD Calls</p>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-text tracking-tight">{clinicName}</h1>
+            <p className="text-xs sm:text-sm font-semibold text-text-muted">Live Waiting Room Queue Display • Real-Time OPD Calls</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
           {/* Multi-Lingual Voice Announcer Selector */}
-          <div className="flex items-center gap-1 bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 text-xs">
-            <span className="text-[11px] font-bold text-zinc-400 px-1.5 flex items-center gap-1">
+          <div className="flex items-center gap-1 bg-surface/90 p-1 rounded-2xl border border-border text-xs">
+            <span className="text-[11px] font-bold text-text-muted px-1.5 flex items-center gap-1">
               <span>🔊</span> <span className="hidden xs:inline">Voice:</span>
             </span>
             {(["off", "en", "hi", "both"] as const).map((lang) => (
@@ -282,8 +284,8 @@ export default function WaitingRoomTvQueueBoard() {
                 }}
                 className={`px-2.5 py-1.5 min-h-[36px] rounded-xl text-[11px] font-bold uppercase transition-all cursor-pointer flex items-center justify-center ${
                   voiceLanguage === lang
-                    ? "bg-primary-600 text-white shadow-xs"
-                    : "text-zinc-400 hover:text-white hover:bg-zinc-800/80"
+                    ? "bg-primary-600 text-brand-mist shadow-xs"
+                    : "text-text-muted hover:text-text hover:bg-surface-alt/80"
                 }`}
                 title={`Announce in ${lang.toUpperCase()}`}
               >
@@ -294,11 +296,11 @@ export default function WaitingRoomTvQueueBoard() {
 
           {/* Multi-Cabin vs Single Stage View Selector */}
           {cabins.length > 1 && (
-            <div className="flex items-center gap-1 bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 text-xs">
+            <div className="flex items-center gap-1 bg-surface/90 p-1 rounded-2xl border border-border text-xs">
               <button
                 type="button"
                 onClick={() => setViewMode(viewMode === "multi" ? "single" : "multi")}
-                className="px-3 py-1.5 min-h-[36px] rounded-xl text-[11px] font-bold text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-3 py-1.5 min-h-[36px] rounded-xl text-[11px] font-bold text-text-secondary hover:text-text bg-surface-alt hover:bg-surface-alt transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span>{viewMode === "multi" ? "🖥️ Stage View" : "🔲 Multi-Cabin"}</span>
               </button>
@@ -308,48 +310,48 @@ export default function WaitingRoomTvQueueBoard() {
           {!audioUnlocked && (
             <button
               onClick={unlockAudio}
-              className="px-3.5 py-2 min-h-[40px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-xl text-xs font-bold border border-amber-500/30 flex items-center gap-2 cursor-pointer transition-all animate-pulse"
+              className="px-3.5 py-2 min-h-[40px] bg-warning-subtle hover:bg-warning/20 text-warning-text rounded-xl text-xs font-bold border border-warning/30 flex items-center gap-2 cursor-pointer transition-all"
             >
               <span>🔔</span> Enable Audio
             </button>
           )}
           <Badge variant="success" className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 font-black tracking-wide flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+            <span className="w-2.5 h-2.5 rounded-full bg-success animate-ping" />
             LIVE QUEUE
           </Badge>
-          <span className="text-xl sm:text-2xl font-black text-zinc-300 font-mono">
-            {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          <span className="text-xl sm:text-2xl font-black text-text-secondary font-mono min-w-[8ch]">
+            {clockReady ? new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:-- --"}
           </span>
         </div>
       </div>
 
       {/* Doctor OPD Intermission / Break Waiting Lounge Banner */}
       {doctorBreak?.isOnBreak && (
-        <div className="mt-6 p-6 rounded-3xl bg-gradient-to-r from-amber-950/80 via-amber-900/60 to-zinc-900 border-2 border-amber-500/50 shadow-2xl flex items-center justify-between gap-6 animate-pulse">
+        <div className="mt-6 p-6 rounded-3xl bg-warning-subtle border-2 border-warning/50 shadow-lg flex items-center justify-between gap-6">
           <div className="flex items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-3xl shrink-0">
+            <div className="w-14 h-14 rounded-2xl bg-warning/20 border border-warning/40 flex items-center justify-center text-3xl shrink-0">
               ☕
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-widest text-amber-400 bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/30">
+                <span className="text-xs font-black uppercase tracking-widest text-warning-text bg-warning/20 px-3 py-1 rounded-full border border-warning/30">
                   DOCTOR INTERMISSION IN PROGRESS
                 </span>
-                <span className="text-xs text-amber-200/80 font-bold">
+                <span className="text-xs text-warning-text/80 font-bold">
                   {doctorBreak.reason || "Short Break"}
                 </span>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-amber-100 mt-1">
+              <h2 className="text-2xl sm:text-3xl font-black text-warning-text mt-1">
                 Consultations will resume in approx. {doctorBreak.expectedMinutes || 15} minutes
               </h2>
-              <p className="text-xs sm:text-sm text-amber-200/70 mt-0.5">
+              <p className="text-xs sm:text-sm text-warning-text/70 mt-0.5">
                 Please remain seated in the waiting lounge. Your sequence in the queue is fully preserved.
               </p>
             </div>
           </div>
           <div className="hidden sm:flex flex-col items-end shrink-0">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-400">Queue Order</span>
-            <span className="text-lg font-black text-white">🔒 Locked & Preserved</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-warning-text">Queue Order</span>
+            <span className="text-lg font-black text-text">🔒 Locked & Preserved</span>
           </div>
         </div>
       )}
@@ -359,12 +361,12 @@ export default function WaitingRoomTvQueueBoard() {
         <div className="my-8 flex-1">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-              <h2 className="text-xl font-black text-zinc-200 uppercase tracking-wider">
+              <span className="w-3 h-3 rounded-full bg-success animate-pulse" />
+              <h2 className="text-xl font-black text-text-secondary uppercase tracking-wider">
                 Active Polyclinic Consultation Cabins ({cabins.length})
               </h2>
             </div>
-            <span className="text-xs text-zinc-400 font-semibold">
+            <span className="text-xs text-text-muted font-semibold">
               Please proceed directly to the designated cabin when your token is called
             </span>
           </div>
@@ -377,23 +379,23 @@ export default function WaitingRoomTvQueueBoard() {
               return (
                 <div
                   key={cabin.doctorId || cIdx}
-                  className={`p-6 rounded-3xl border transition-all flex flex-col justify-between shadow-2xl relative overflow-hidden ${
+                  className={`p-6 rounded-3xl border transition-all flex flex-col justify-between shadow-lg relative overflow-hidden ${
                     isOnBreak
-                      ? "bg-gradient-to-br from-zinc-900 via-amber-950/20 to-zinc-900 border-amber-500/40"
+                      ? "bg-surface    border-warning/40"
                       : isActive
-                      ? "bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/40 border-emerald-500/50 ring-2 ring-emerald-500/20 shadow-emerald-500/10"
-                      : "bg-zinc-900/90 border-zinc-800"
+                      ? "bg-surface    border-success/50 ring-2 ring-success/20 shadow-success/10"
+                      : "bg-surface/90 border-border"
                   }`}
                 >
                   <div>
                     {/* Cabin Header */}
-                    <div className="flex items-center justify-between border-b border-zinc-800 pb-3 mb-4">
+                    <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
                       <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 rounded-xl bg-primary-500/20 border border-primary-500/40 text-primary-300 font-black text-xs font-mono uppercase tracking-wider">
+                        <span className="px-3 py-1 rounded-xl bg-primary-500/20 border border-primary-500/40 text-accent font-black text-xs font-mono uppercase tracking-wider">
                           {cabin.cabinNumber}
                         </span>
                         {isActive && (
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                          <span className="w-2 h-2 rounded-full bg-success animate-ping" />
                         )}
                       </div>
                       <Badge
@@ -406,41 +408,41 @@ export default function WaitingRoomTvQueueBoard() {
 
                     {/* Doctor Info */}
                     <div className="mb-4">
-                      <h3 className="text-lg font-black text-white">Dr. {cabin.doctorName}</h3>
-                      <p className="text-xs text-zinc-400 font-medium">{cabin.specialization}</p>
+                      <h3 className="text-lg font-black text-text">Dr. {cabin.doctorName}</h3>
+                      <p className="text-xs text-text-muted font-medium">{cabin.specialization}</p>
                     </div>
 
                     {/* Active Token Display */}
                     {isOnBreak ? (
-                      <div className="my-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center space-y-1">
+                      <div className="my-4 p-4 rounded-2xl bg-warning/10 border border-warning/30 text-center space-y-1">
                         <span className="text-2xl">☕</span>
-                        <p className="text-xs font-bold text-amber-300 uppercase tracking-wider">Doctor on Break</p>
-                        <p className="text-[11px] text-amber-200/80">
+                        <p className="text-xs font-bold text-warning-text uppercase tracking-wider">Doctor on Break</p>
+                        <p className="text-[11px] text-warning-text/80">
                           {cabin.breakReason || "Short Intermission"} (~{cabin.breakExpectedMinutes || 15}m)
                         </p>
                       </div>
                     ) : cabin.activeToken ? (
-                      <div className="my-4 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-1 animate-pulse">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                      <div className="my-4 p-4 rounded-2xl bg-success-subtle border border-success/30 text-center space-y-1">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-success-text">
                           NOW SERVING
                         </span>
-                        <div className="text-5xl font-black font-mono text-white tracking-tight">
+                        <div className="text-5xl font-black font-mono text-text tracking-tight">
                           #{cabin.activeToken.tokenNumber}
                         </div>
-                        <p className="text-xs font-bold text-emerald-200 truncate">
+                        <p className="text-xs font-bold text-success-text truncate">
                           {cabin.activeToken.patientName}
                         </p>
                       </div>
                     ) : (
-                      <div className="my-6 py-6 text-center text-zinc-500 text-xs font-semibold rounded-2xl bg-zinc-950/40 border border-zinc-800/60">
+                      <div className="my-6 py-6 text-center text-text-muted text-xs font-semibold rounded-2xl bg-background/40 border border-border/60">
                         Ready for Next Patient
                       </div>
                     )}
                   </div>
 
                   {/* Next in Queue Chips */}
-                  <div className="pt-3 border-t border-zinc-800/80">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-2">
+                  <div className="pt-3 border-t border-border/80">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted block mb-2">
                       Upcoming Tokens
                     </span>
                     {cabin.upcomingQueue && cabin.upcomingQueue.length > 0 ? (
@@ -448,14 +450,14 @@ export default function WaitingRoomTvQueueBoard() {
                         {cabin.upcomingQueue.map((w: any) => (
                           <span
                             key={w.id}
-                            className="px-2.5 py-1 rounded-xl bg-zinc-800/80 border border-zinc-700/60 text-xs font-mono font-bold text-zinc-200"
+                            className="px-2.5 py-1 rounded-xl bg-surface-alt/80 border border-border/60 text-xs font-mono font-bold text-text-secondary"
                           >
                             #{w.tokenNumber}
                           </span>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-[11px] text-zinc-500 italic">No patients in queue</span>
+                      <span className="text-[11px] text-text-muted italic">No patients in queue</span>
                     )}
                   </div>
                 </div>
@@ -467,56 +469,56 @@ export default function WaitingRoomTvQueueBoard() {
         /* Main Waiting Room Display Grid (Single Doctor Focus) */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 my-8 flex-1">
           {/* Left Column: Currently Serving / Called Token */}
-          <div className="lg:col-span-2 bg-gradient-to-br from-zinc-900 via-zinc-900 to-primary-950/50 p-8 sm:p-12 rounded-3xl border border-primary-500/30 flex flex-col justify-between shadow-2xl relative overflow-hidden">
+          <div className="lg:col-span-2 bg-surface    p-8 sm:p-12 rounded-3xl border border-primary-500/30 flex flex-col justify-between shadow-lg relative overflow-hidden">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <span className="text-sm font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-5 py-2 rounded-full border border-emerald-500/30 animate-pulse">
+                <span className="text-sm font-black uppercase tracking-widest text-success-text bg-success-subtle px-5 py-2 rounded-full border border-success/30">
                   NOW CALLING / CURRENT CONSULTATION
                 </span>
                 {activeToken?.consultationPhase === "report_review" && (
-                  <span className="text-xs font-black uppercase tracking-widest text-purple-300 bg-purple-500/20 px-4 py-1.5 rounded-full border border-purple-500/30">
+                  <span className="text-xs font-black uppercase tracking-widest text-accent bg-primary/20 px-4 py-1.5 rounded-full border border-accent/30">
                     🔬 REPORT REVIEW
                   </span>
                 )}
               </div>
-              <span className="text-sm text-zinc-400 font-bold tracking-wide">
+              <span className="text-sm text-text-muted font-bold tracking-wide">
                 {activeToken?.room || "OPD Room 1"} • Main Hall
               </span>
             </div>
 
             {activeToken ? (
               <div className="my-6 sm:my-10 text-center space-y-3 sm:space-y-4">
-                <div className="text-6xl xs:text-7xl sm:text-[120px] lg:text-[150px] font-black text-emerald-400 leading-none tracking-tighter drop-shadow-[0_0_50px_rgba(52,211,153,0.35)] font-mono">
+                <div className="text-6xl xs:text-7xl sm:text-[120px] lg:text-[150px] font-black text-success-text leading-none tracking-tighter drop- font-mono">
                   #{activeToken.tokenNumber}
                 </div>
-                <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-wide">
+                <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-text tracking-wide">
                   {activeToken.patientName || "Patient"}
                 </h2>
-                <p className="text-base sm:text-2xl font-medium text-zinc-400 pt-1 sm:pt-2">
-                  Attending Doctor: <span className="text-primary-400 font-extrabold">Dr. {activeToken.doctorName || "On Duty"}</span>
+                <p className="text-base sm:text-2xl font-medium text-text-muted pt-1 sm:pt-2">
+                  Attending Doctor: <span className="text-accent font-extrabold">Dr. {activeToken.doctorName || "On Duty"}</span>
                 </p>
               </div>
             ) : (
-              <div className="my-20 text-center text-zinc-500 space-y-3">
-                <p className="text-4xl font-extrabold text-zinc-400">Doctor Ready for Next Consultation</p>
-                <p className="text-base text-zinc-500">Please watch the screen for your token call.</p>
+              <div className="my-20 text-center text-text-muted space-y-3">
+                <p className="text-4xl font-extrabold text-text-muted">Doctor Ready for Next Consultation</p>
+                <p className="text-base text-text-muted">Please watch the screen for your token call.</p>
               </div>
             )}
 
-            <div className="p-4 bg-zinc-950/70 rounded-2xl border border-zinc-800 flex justify-between items-center text-sm font-semibold text-zinc-300">
+            <div className="p-4 bg-background/70 rounded-2xl border border-border flex justify-between items-center text-sm font-semibold text-text-secondary">
               <div className="flex items-center gap-2">
                 <span>🔔 Melodic Chime & Voice Synthesis Active</span>
               </div>
-              <span className="text-xs text-emerald-400 font-mono">Real-time sync</span>
+              <span className="text-xs text-success-text font-mono">Real-time sync</span>
             </div>
           </div>
 
           {/* Right Column: Upcoming Queue */}
-          <div className="bg-zinc-900/95 p-6 sm:p-8 rounded-3xl border border-zinc-800 flex flex-col justify-between shadow-xl">
+          <div className="bg-surface/95 p-6 sm:p-8 rounded-3xl border border-border flex flex-col justify-between shadow-xl">
             <div>
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-4 mb-4">
-                <h3 className="text-xl font-black text-white">Next in Line</h3>
-                <span className="text-xs text-zinc-400 font-bold px-2.5 py-1 bg-zinc-800 rounded-lg">
+              <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
+                <h3 className="text-xl font-black text-text">Next in Line</h3>
+                <span className="text-xs text-text-muted font-bold px-2.5 py-1 bg-surface-alt rounded-lg">
                   {waitingQueue.length} Patient{waitingQueue.length === 1 ? "" : "s"} Waiting
                 </span>
               </div>
@@ -524,8 +526,8 @@ export default function WaitingRoomTvQueueBoard() {
               <div className="space-y-3">
                 {waitingQueue.length === 0 ? (
                   <div className="text-center py-16 space-y-2">
-                    <p className="text-base text-zinc-400 font-bold">Waiting Queue is Empty</p>
-                    <p className="text-xs text-zinc-600">All registered patients have been attended.</p>
+                    <p className="text-base text-text-muted font-bold">Waiting Queue is Empty</p>
+                    <p className="text-xs text-text-secondary">All registered patients have been attended.</p>
                   </div>
                 ) : (
                   waitingQueue.map((item, idx) => (
@@ -533,41 +535,41 @@ export default function WaitingRoomTvQueueBoard() {
                       key={item.id || idx}
                       className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
                         item.isEmergency
-                          ? "bg-red-950/40 border-red-500/60 shadow-lg shadow-red-500/10 animate-pulse"
-                          : "bg-zinc-950 border-zinc-800/80 hover:border-zinc-700"
+                          ? "bg-danger/40 border-danger/60 shadow-lg shadow-danger/10 animate-pulse"
+                          : "bg-background border-border/80 hover:border-border"
                       }`}
                     >
                       <div className="flex items-center gap-4">
                         <div
                           className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black font-mono border ${
                             item.isEmergency
-                              ? "bg-red-600 text-white border-red-400"
-                              : "bg-zinc-800 text-white border-zinc-700"
+                              ? "bg-danger text-background border-danger"
+                              : "bg-surface-alt text-text border-border"
                           }`}
                         >
                           #{item.tokenNumber}
                         </div>
                         <div>
-                          <p className="font-extrabold text-base text-white">{item.patientName}</p>
-                          <p className="text-xs text-zinc-400">Dr. {item.doctorName}</p>
+                          <p className="font-extrabold text-base text-text">{item.patientName}</p>
+                          <p className="text-xs text-text-muted">Dr. {item.doctorName}</p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2">
                         {item.isEmergency ? (
-                          <span className="px-3 py-1 rounded-md bg-red-600 text-white text-xs font-black tracking-wide border border-red-400">
+                          <span className="px-3 py-1 rounded-md bg-danger text-background text-xs font-black tracking-wide border border-danger">
                             🚨 STAT Emergency
                           </span>
                         ) : item.isReportReview ? (
-                          <span className="px-2.5 py-1 rounded-md bg-purple-500/20 text-purple-300 text-[11px] font-bold border border-purple-500/30">
+                          <span className="px-2.5 py-1 rounded-md bg-primary/20 text-accent text-[11px] font-bold border border-accent/30">
                             🔬 Report Review
                           </span>
                         ) : item.isStandby ? (
-                          <span className="px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-300 text-[11px] font-bold border border-amber-500/30">
+                          <span className="px-2.5 py-1 rounded-md bg-warning/20 text-warning-text text-[11px] font-bold border border-warning/30">
                             {item.patientReturned ? "✓ In Waiting" : "Standby"}
                           </span>
                         ) : (
-                          <span className="px-3 py-1 rounded-md bg-zinc-800 text-zinc-300 text-xs font-bold">
+                          <span className="px-3 py-1 rounded-md bg-surface-alt text-text-secondary text-xs font-bold">
                             Next Up #{idx + 1}
                           </span>
                         )}
@@ -578,17 +580,17 @@ export default function WaitingRoomTvQueueBoard() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-zinc-800 text-center text-xs text-zinc-500">
-              Displaying live OPD token order • Automatically updated via HealthOS
+            <div className="pt-4 border-t border-border text-center text-xs text-text-muted">
+              Displaying live OPD token order • Automatically updated via Ekavyu
             </div>
           </div>
         </div>
       )}
 
       {/* Footer ticker */}
-      <div className="bg-zinc-900/90 px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl border border-zinc-800 text-xs text-zinc-400 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+      <div className="bg-surface/90 px-4 sm:px-6 py-3 sm:py-3.5 rounded-2xl border border-border text-xs text-text-muted flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <span>If you require emergency medical attention or wheelchair assistance, please notify the reception desk immediately.</span>
-        <span className="font-black text-primary-400 tracking-wide shrink-0">ANANT HealthOS Live Display</span>
+        <span className="font-black text-accent tracking-wide shrink-0">Ekavyu Live Display</span>
       </div>
     </div>
   );

@@ -20,30 +20,40 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "group relative inline-flex items-center justify-center font-medium select-none cursor-pointer rounded-xl transform-gpu transition-all duration-150 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:pointer-events-none disabled:transform-none active:scale-[0.98] hover:translate-y-[-1px] touch-manipulation min-h-[38px] sm:min-h-0";
+  "group relative inline-flex items-center justify-center font-medium select-none cursor-pointer rounded-xl transform-gpu transition-all duration-150 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:pointer-events-none disabled:transform-none active:scale-[0.98] touch-manipulation min-h-[44px] md:min-h-0";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "bg-gradient-to-b from-primary-500 to-primary-600 text-white shadow-xs shadow-primary-500/20 hover:from-primary-400 hover:to-primary-500 hover:shadow-md hover:shadow-primary-500/30 active:from-primary-600 active:to-primary-700 border border-primary-400/30 overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/25 active:scale-[0.98]",
+    "bg-primary border border-transparent shadow-xs hover:bg-primary-hover active:bg-primary-active",
   secondary:
-    "bg-surface-alt/90 backdrop-blur-sm border border-border/80 text-text shadow-xs hover:bg-surface-hover hover:border-border hover:shadow-sm active:bg-surface-alt active:scale-[0.98]",
+    "bg-surface-alt border border-border shadow-xs hover:bg-surface-hover hover:border-border hover:shadow-sm active:bg-surface-alt active:scale-[0.98]",
   outline:
-    "border border-border/80 bg-surface text-text shadow-xs hover:bg-surface-hover hover:border-border active:bg-surface-alt active:scale-[0.98]",
+    "border border-border/80 bg-surface shadow-xs hover:bg-surface-hover hover:border-border active:bg-surface-alt active:scale-[0.98]",
   ghost:
-    "text-text-secondary hover:bg-surface-hover hover:text-text active:bg-surface-alt border border-transparent",
+    "hover:bg-surface-hover hover:text-text active:bg-surface-alt border border-transparent",
   danger:
-    "bg-gradient-to-b from-danger-500 to-danger-600 text-white shadow-xs shadow-danger-500/20 hover:from-danger-400 hover:to-danger-500 hover:shadow-md hover:shadow-danger-500/30 active:from-danger-600 active:to-danger-700 border border-danger-400/30 overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/25 active:scale-[0.98]",
+    "bg-error-text shadow-xs hover:brightness-95 active:brightness-90 border border-transparent overflow-hidden",
   warning:
-    "bg-gradient-to-b from-warning-500 to-warning-600 text-white shadow-xs shadow-warning-500/20 hover:from-warning-400 hover:to-warning-500 hover:shadow-md hover:shadow-warning-500/30 active:from-warning-600 active:to-warning-700 border border-warning-400/30 overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/25 active:scale-[0.98]",
+    "bg-warning-text shadow-xs hover:brightness-95 active:brightness-90 border border-transparent overflow-hidden",
   success:
-    "bg-gradient-to-b from-success-500 to-success-600 text-white shadow-xs shadow-success-500/20 hover:from-success-400 hover:to-success-500 hover:shadow-md hover:shadow-success-500/30 active:from-success-600 active:to-success-700 border border-success-400/30 overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/25 active:scale-[0.98]",
+    "bg-success-text shadow-xs hover:brightness-95 active:brightness-90 border border-transparent overflow-hidden",
 };
 
+const foregrounds: Record<ButtonVariant, string> = {
+  primary: "text-brand-mist", secondary: "text-text", outline: "text-text",
+  ghost: "text-text-secondary", danger: "text-background",
+  warning: "text-background", success: "text-background",
+};
+
+// cn joins utilities without merging conflicts. Respect a caller's semantic
+// foreground so a status-colored action keeps readable text in both modes.
+const semanticForeground = /(?:^|\s)text-(?:background|accent|text(?:-primary|-secondary|-muted)?|brand-(?:mist|ink|primary|secondary|soft|warm)|(?:success|warning|danger|error)(?:-text)?)(?:\/\d+)?(?=\s|$)/;
+
 const sizes: Record<ButtonSize, string> = {
-  xs: "px-2.5 text-xs gap-1.5 rounded-lg font-medium tracking-tight min-h-[36px] sm:min-h-[28px] sm:h-7",
-  sm: "px-3.5 text-xs sm:text-sm gap-1.5 rounded-xl font-medium tracking-tight min-h-[40px] sm:min-h-[32px] sm:h-8",
-  md: "px-4 text-sm gap-2 rounded-xl font-medium tracking-tight min-h-[44px] sm:min-h-[36px] sm:h-9",
-  lg: "px-5 text-base gap-2.5 rounded-xl font-medium tracking-tight min-h-[48px] sm:min-h-[44px] h-11",
+  xs: "px-2.5 text-xs gap-1.5 rounded-lg font-medium tracking-tight min-h-[44px] md:min-h-[28px] md:h-7",
+  sm: "px-3.5 text-xs md:text-sm gap-1.5 rounded-xl font-medium tracking-tight min-h-[44px] md:min-h-[32px] md:h-8",
+  md: "px-4 text-sm gap-2 rounded-xl font-medium tracking-tight min-h-[44px] md:min-h-[36px] md:h-9",
+  lg: "px-5 text-base gap-2.5 rounded-xl font-medium tracking-tight min-h-[48px] md:min-h-[44px] h-11",
 };
 
 const iconSizes: Record<ButtonSize, string> = {
@@ -78,6 +88,7 @@ const Button = memo(
 
       return (
         <button
+          data-touch-control
           ref={ref}
           type={type}
           disabled={isBasicallyDisabled}
@@ -86,6 +97,7 @@ const Button = memo(
           className={cn(
             base,
             variants[variant],
+            !semanticForeground.test(className) && foregrounds[variant],
             sizes[size],
             fullWidth && "w-full",
             loading && "cursor-wait select-none",
@@ -128,5 +140,4 @@ const Button = memo(
 
 Button.displayName = "Button";
 export default Button;
-
 

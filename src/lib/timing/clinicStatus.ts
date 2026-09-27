@@ -35,7 +35,6 @@ export type WeeklySchedule = Record<DayOfWeek, TimeSlot[]>;
 
 export interface OperationalStatusResult {
   status: OperationalStatusType;
-  labelKey: string;
   defaultLabel: string;
   secondaryText: string;
   dotColorClass: string;
@@ -351,12 +350,11 @@ export function getClinicOperationalStatus(
   if (is24x7) {
     return {
       status: "open_24_7",
-      labelKey: "status.open_24_7",
       defaultLabel: "Open 24/7",
       secondaryText: "Emergency & OPD open 24 hours",
       dotColorClass: "bg-success-500",
-      textColorClass: "text-emerald-600 dark:text-emerald-400",
-      badgeBgClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+      textColorClass: "text-success-text dark:text-success-text",
+      badgeBgClass: "bg-success/15 text-success-text dark:text-success-text border-success/30",
       isOpen: true,
     };
   }
@@ -394,7 +392,6 @@ export function getClinicOperationalStatus(
 
     return {
       status: "closed_today",
-      labelKey: "status.closed_today",
       defaultLabel: "Closed today",
       secondaryText: secondary,
       dotColorClass: "bg-text-muted",
@@ -415,7 +412,6 @@ export function getClinicOperationalStatus(
     const openTimeStr = formatMinutesTo12Hour(firstSlot.startMinutes);
     return {
       status: "closed",
-      labelKey: "status.closed",
       defaultLabel: "Closed",
       secondaryText: `Opens today at ${openTimeStr}`,
       dotColorClass: "bg-text-muted",
@@ -440,12 +436,11 @@ export function getClinicOperationalStatus(
       if (minutesRemaining <= 30) {
         return {
           status: "closing_soon",
-          labelKey: "status.closing_soon",
           defaultLabel: "Closing soon",
           secondaryText: `Closes in ${minutesRemaining} min${minutesRemaining === 1 ? "" : "s"} (${closeTimeStr})`,
           dotColorClass: "bg-warning-500",
-          textColorClass: "text-amber-600 dark:text-amber-400",
-          badgeBgClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+          textColorClass: "text-warning-text dark:text-warning-text",
+          badgeBgClass: "bg-warning/15 text-warning-text dark:text-warning-text border-warning/30",
           isOpen: true,
           closingTime: closeTimeStr,
           minutesUntilClose: minutesRemaining,
@@ -455,12 +450,11 @@ export function getClinicOperationalStatus(
       // Case 2: Open Now (Normal hours)
       return {
         status: "open_now",
-        labelKey: "status.open_now",
         defaultLabel: "Open now",
         secondaryText: `Closes at ${closeTimeStr}`,
         dotColorClass: "bg-success-500",
-        textColorClass: "text-emerald-600 dark:text-emerald-400",
-        badgeBgClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+        textColorClass: "text-success-text dark:text-success-text",
+        badgeBgClass: "bg-success/15 text-success-text dark:text-success-text border-success/30",
         isOpen: true,
         closingTime: closeTimeStr,
         minutesUntilClose: minutesRemaining,
@@ -474,12 +468,11 @@ export function getClinicOperationalStatus(
         const reopenTimeStr = formatMinutesTo12Hour(nextSlotToday.startMinutes);
         return {
           status: "on_break",
-          labelKey: "status.on_break",
           defaultLabel: "On break",
           secondaryText: `Reopens today at ${reopenTimeStr}`,
           dotColorClass: "bg-warning-500",
-          textColorClass: "text-amber-600 dark:text-amber-400",
-          badgeBgClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+          textColorClass: "text-warning-text dark:text-warning-text",
+          badgeBgClass: "bg-warning/15 text-warning-text dark:text-warning-text border-warning/30",
           isOpen: false,
           nextOpenDay: "today",
           nextOpenTime: reopenTimeStr,
@@ -499,7 +492,6 @@ export function getClinicOperationalStatus(
 
     return {
       status: "closed",
-      labelKey: "status.closed",
       defaultLabel: "Closed",
       secondaryText: secondary,
       dotColorClass: "bg-text-muted",
@@ -514,7 +506,6 @@ export function getClinicOperationalStatus(
   // Fallback for unspecified
   return {
     status: "unspecified",
-    labelKey: "status.consultation_hours",
     defaultLabel: "Consultation hours",
     secondaryText: "Contact clinic for hours",
     dotColorClass: "bg-text-muted",

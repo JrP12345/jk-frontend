@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { Button, Spinner, Badge, Skeleton } from "@/components/ui";
+import { Button, Badge, Skeleton } from "@/components/ui";
 
 interface PreviousVisitsSidebarProps {
   patientId: string;
@@ -38,7 +38,7 @@ export function PreviousVisitsSidebar({ patientId, onCopyForward }: PreviousVisi
     <div className="bg-surface rounded-2xl border border-border/80 p-4 space-y-4 shadow-xs">
       <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
         <h3 className="font-bold text-sm text-text flex items-center gap-2">
-          <svg className="w-4 h-4 text-primary-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="w-4 h-4 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
           </svg>
           <span>Previous Patient Visits</span>
@@ -94,7 +94,7 @@ export function PreviousVisitsSidebar({ patientId, onCopyForward }: PreviousVisi
                 {note.assessment?.diagnoses?.[0] && (
                   <div>
                     <span className="text-text-muted block font-medium">Diagnosis:</span>
-                    <span className="font-semibold text-primary-600">
+                    <span className="font-semibold text-accent">
                       {note.assessment.diagnoses[0].description}
                     </span>
                   </div>
@@ -104,7 +104,7 @@ export function PreviousVisitsSidebar({ patientId, onCopyForward }: PreviousVisi
                   <button
                     type="button"
                     onClick={() => setExpandedId(isExpanded ? null : (note.id || note._id))}
-                    className="text-[11px] text-primary-600 font-semibold hover:underline"
+                    className="text-[11px] text-accent font-semibold hover:underline"
                   >
                     {isExpanded ? "Hide Details ▲" : "View Details ▼"}
                   </button>

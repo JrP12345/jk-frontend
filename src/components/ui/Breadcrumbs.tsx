@@ -34,7 +34,7 @@ const Breadcrumbs = memo(function Breadcrumbs({ items, separator, className = ""
               {item.href && !isLast ? (
                 <Link
                   href={item.href}
-                  className="flex items-center gap-1 text-text-secondary hover:text-primary-600 dark:hover:text-primary-400 transition-colors duration-150 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  className="flex items-center gap-1 text-text-secondary hover:text-accent dark:hover:text-accent transition-colors duration-150 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                 >
                   {item.icon && <span className="[&>svg]:h-3.5 [&>svg]:w-3.5 shrink-0 text-text-muted">{item.icon}</span>}
                   <span>{item.label}</span>

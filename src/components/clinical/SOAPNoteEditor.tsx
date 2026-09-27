@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { SOAPService } from "@/services/soap.service";
-import { Modal, Button, Badge, Spinner, Textarea, Select, Dropdown, Card, Input } from "@/components/ui";
+import { Modal, Button, Badge, Spinner, Textarea, Select, Dropdown } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "./UnifiedDocumentModal";
 import { PreviousVisitsSidebar } from "./PreviousVisitsSidebar";
-import { Sparkles, Printer, History, Save, Lock, CheckCircle2, Edit3, Plus, Trash2, FileSpreadsheet, ChevronDown } from "lucide-react";
+import { Sparkles, Printer, History, Save, Lock, CheckCircle2, Edit3, FileSpreadsheet, ChevronDown } from "lucide-react";
 
 interface SOAPNoteEditorProps {
   patientId: string;
@@ -270,7 +270,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
     setUnifiedDoc({
       documentType: "prescription",
       title: "PRESCRIPTION RX",
-      clinicName: "ANANT Healthcare System",
+      clinicName: "Ekavyu Healthcare System",
       doctorName: "Attending Physician",
       doctorSpecialization: "Outpatient General Medicine",
       patientName: "Patient Profile",
@@ -580,7 +580,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
             <div className="flex flex-wrap items-center gap-2">
               {lastAutoSavedAt && (
                 <span className="text-[11px] text-text-muted hidden md:inline-flex items-center gap-1 font-medium bg-surface-alt/60 px-2.5 py-1 rounded-lg border border-border/50">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
                   Auto-saved {lastAutoSavedAt}
                 </span>
               )}
@@ -631,12 +631,12 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
 
       {/* Recovered Unsaved Local Draft Banner */}
       {recoveredDraft && (
-        <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between text-xs text-amber-700 dark:text-amber-300">
+        <div className="p-3 bg-warning/10 border border-warning/30 rounded-xl flex items-center justify-between text-xs text-warning-text dark:text-warning-text">
           <div>
             <b>Unsaved Local Draft Detected:</b> Saved locally at {new Date(recoveredDraft.savedAt).toLocaleTimeString()}.
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={handleApplyRecoveredDraft} className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] shadow-xs cursor-pointer">
+            <button type="button" onClick={handleApplyRecoveredDraft} className="px-3 py-1 bg-warning hover:bg-warning text-background rounded-lg font-bold text-[11px] shadow-xs cursor-pointer">
               Restore Draft
             </button>
             <button type="button" onClick={handleDiscardRecoveredDraft} className="px-2.5 py-1 bg-surface border border-border/80 text-text hover:bg-surface-hover rounded-lg font-medium text-[11px] cursor-pointer shadow-xs">
@@ -652,7 +652,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
         <div className="lg:col-span-2 space-y-4">
 
       {message && (
-        <div className={`p-3 rounded-lg text-sm border ${message.type === "success" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400"}`}>
+        <div className={`p-3 rounded-lg text-sm border ${message.type === "success" ? "bg-success/10 border-success/20 text-success-text dark:text-success-text" : "bg-danger/10 border-danger/20 text-danger-text dark:text-danger-text"}`}>
           {message.text}
         </div>
       )}
@@ -661,7 +661,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* S: Subjective */}
         <div className="p-4 sm:p-5 bg-surface-alt/70 rounded-2xl border border-border/80 space-y-3.5 shadow-2xs">
-          <h3 className="font-bold text-sm text-primary-600 dark:text-primary-400 flex items-center gap-1.5">
+          <h3 className="font-bold text-sm text-accent dark:text-accent flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
             S — Subjective (Patient Complaints)
           </h3>
@@ -673,7 +673,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
               value={chiefComplaint}
               onChange={(e) => setChiefComplaint(e.target.value)}
               disabled={isSigned}
-              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
+              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
             />
           </div>
           <div>
@@ -684,7 +684,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
               value={symptomsText}
               onChange={(e) => setSymptomsText(e.target.value)}
               disabled={isSigned}
-              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
+              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
             />
           </div>
           <div>
@@ -695,37 +695,37 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
               value={historyOfPresentIllness}
               onChange={(e) => setHistoryOfPresentIllness(e.target.value)}
               disabled={isSigned}
-              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
+              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
             />
           </div>
         </div>
 
         {/* O: Objective */}
         <div className="p-4 sm:p-5 bg-surface-alt/70 rounded-2xl border border-border/80 space-y-3.5 shadow-2xs">
-          <h3 className="font-bold text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+          <h3 className="font-bold text-sm text-accent dark:text-accent flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
             O — Objective (Vitals & Physical Exam)
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             <div>
               <label className="text-[11px] font-semibold text-text-secondary">BP Systolic</label>
-              <input type="number" placeholder="120" value={bpSystolic} onChange={(e) => setBpSystolic(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
+              <input type="number" placeholder="120" value={bpSystolic} onChange={(e) => setBpSystolic(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text" />
             </div>
             <div>
               <label className="text-[11px] font-semibold text-text-secondary">BP Diastolic</label>
-              <input type="number" placeholder="80" value={bpDiastolic} onChange={(e) => setBpDiastolic(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
+              <input type="number" placeholder="80" value={bpDiastolic} onChange={(e) => setBpDiastolic(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text" />
             </div>
             <div>
               <label className="text-[11px] font-semibold text-text-secondary">Heart Rate</label>
-              <input type="number" placeholder="72" value={pulseRate} onChange={(e) => setPulseRate(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
+              <input type="number" placeholder="72" value={pulseRate} onChange={(e) => setPulseRate(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text" />
             </div>
             <div>
               <label className="text-[11px] font-semibold text-text-secondary">SpO₂ (%)</label>
-              <input type="number" placeholder="98" value={spO2} onChange={(e) => setSpO2(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
+              <input type="number" placeholder="98" value={spO2} onChange={(e) => setSpO2(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text" />
             </div>
             <div className="col-span-2 sm:col-span-1">
               <label className="text-[11px] font-semibold text-text-secondary">Temp (°F)</label>
-              <input type="number" step="0.1" placeholder="98.6" value={temperatureF} onChange={(e) => setTemperatureF(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text" />
+              <input type="number" step="0.1" placeholder="98.6" value={temperatureF} onChange={(e) => setTemperatureF(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text" />
             </div>
           </div>
           <div>
@@ -736,15 +736,15 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
               value={physicalExamination}
               onChange={(e) => setPhysicalExamination(e.target.value)}
               disabled={isSigned}
-              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
+              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
             />
           </div>
         </div>
 
         {/* A: Assessment */}
         <div className="p-4 sm:p-5 bg-surface-alt/70 rounded-2xl border border-border/80 space-y-3.5 shadow-2xs">
-          <h3 className="font-bold text-sm text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
+          <h3 className="font-bold text-sm text-accent dark:text-accent flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
             A — Assessment (Diagnosis & Coding)
           </h3>
           <div>
@@ -755,7 +755,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
               value={primaryDiagnosis}
               onChange={(e) => setPrimaryDiagnosis(e.target.value)}
               disabled={isSigned}
-              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
+              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
             />
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -767,7 +767,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                 value={icdCode}
                 onChange={(e) => setIcdCode(e.target.value)}
                 disabled={isSigned}
-                className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
+                className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
               />
             </div>
             <div className="w-1/2">
@@ -790,8 +790,8 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
 
         {/* P: Plan */}
         <div className="p-4 sm:p-5 bg-surface-alt/70 rounded-2xl border border-border/80 space-y-3.5 shadow-2xs">
-          <h3 className="font-bold text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+          <h3 className="font-bold text-sm text-warning-text dark:text-warning-text flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
             P — Plan (Treatment & Rx Builder)
           </h3>
           <div>
@@ -802,7 +802,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
               value={treatmentPlan}
               onChange={(e) => setTreatmentPlan(e.target.value)}
               disabled={isSigned}
-              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 transition-all text-text"
+              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
             />
           </div>
 
@@ -811,7 +811,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-text">Add Rx Medication (Search Catalog)</span>
               {selectedMedStock !== null && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${selectedMedStock < 10 ? "bg-amber-500/15 text-amber-600 border-amber-500/30" : "bg-emerald-500/15 text-emerald-600 border-emerald-500/30"}`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${selectedMedStock < 10 ? "bg-warning/15 text-warning-text border-warning/30" : "bg-success/15 text-success-text border-success/30"}`}>
                   Stock: {selectedMedStock} units
                 </span>
               )}
@@ -826,12 +826,12 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                   onChange={(e) => setMedName(e.target.value)}
                   onFocus={() => { if (medicineResults.length > 0) setShowMedDropdown(true); }}
                   disabled={isSigned}
-                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text min-h-[38px]"
+                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text min-h-[38px]"
                 />
 
                 {/* Autocomplete Dropdown Overlay */}
                 {showMedDropdown && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-surface border border-border/80 shadow-2xl shadow-black/20 rounded-xl z-50 max-h-48 overflow-y-auto divide-y divide-border/60 text-xs">
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-surface border border-border/80 shadow-lg  rounded-xl z-50 max-h-48 overflow-y-auto divide-y divide-border/60 text-xs">
                     {searchingMeds ? (
                       <div className="p-2.5 text-center text-text-muted">Searching catalog...</div>
                     ) : (
@@ -844,14 +844,14 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                             setSelectedMedStock(m.stockQuantity);
                             setShowMedDropdown(false);
                           }}
-                          className="w-full text-left p-2.5 hover:bg-surface-hover cursor-pointer flex justify-between items-center transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500"
+                          className="w-full text-left p-2.5 hover:bg-surface-hover cursor-pointer flex justify-between items-center transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
                         >
                           <div>
                             <span className="font-bold text-text block">{m.name}</span>
                             <span className="text-[11px] text-text-secondary">{m.genericName}</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-xs font-bold text-primary-600 dark:text-primary-400">₹{m.price}</span>
+                            <span className="text-xs font-bold text-accent dark:text-accent">₹{m.price}</span>
                             <span className="text-[10px] text-text-muted block">Stock: {m.stockQuantity}</span>
                           </div>
                         </button>
@@ -861,8 +861,8 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                 )}
               </div>
 
-              <input type="text" placeholder="Dosage" value={medDosage} onChange={(e) => setMedDosage(e.target.value)} disabled={isSigned} className="w-full sm:w-24 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text min-h-[38px]" />
-              <input type="text" placeholder="Duration" value={medDuration} onChange={(e) => setMedDuration(e.target.value)} disabled={isSigned} className="w-full sm:w-20 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 disabled:opacity-60 text-text min-h-[38px]" />
+              <input type="text" placeholder="Dosage" value={medDosage} onChange={(e) => setMedDosage(e.target.value)} disabled={isSigned} className="w-full sm:w-24 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text min-h-[38px]" />
+              <input type="text" placeholder="Duration" value={medDuration} onChange={(e) => setMedDuration(e.target.value)} disabled={isSigned} className="w-full sm:w-20 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text min-h-[38px]" />
               <Button size="xs" variant="primary" onClick={handleAddMedication} disabled={isSigned} className="w-full sm:w-auto rounded-xl font-bold min-h-[38px]">Add Rx</Button>
             </div>
 
@@ -875,7 +875,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                       <button
                         type="button"
                         onClick={() => setPrescriptions((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="text-danger-500 hover:text-danger-600 text-xs font-bold cursor-pointer"
+                        className="text-danger-text hover:text-danger-text text-xs font-bold cursor-pointer"
                       >
                         ✕ Remove
                       </button>

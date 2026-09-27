@@ -224,21 +224,21 @@ export function NurseVitalsModal({
       <form onSubmit={handleSaveVitals} className="space-y-4 pt-1 max-h-[80vh] overflow-y-auto pr-1">
         {/* Realtime Safety Alerts Bar */}
         {(isHighBp || isHypoxic || isFever) && (
-          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl space-y-1 text-xs">
-            <div className="flex items-center gap-1.5 font-bold text-red-600 dark:text-red-400">
+          <div className="p-3 bg-danger/10 border border-danger/30 rounded-xl space-y-1 text-xs">
+            <div className="flex items-center gap-1.5 font-bold text-danger-text dark:text-danger-text">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>Clinical Triage Alert — Critical Vitals Detected:</span>
             </div>
             <ul className="list-disc list-inside space-y-0.5 text-text-secondary pl-1 font-medium">
-              {isHighBp && <li className="text-red-600 dark:text-red-400">Blood Pressure elevated: {bpSystolic}/{bpDiastolic} mmHg (Stage 2 Hypertension risk)</li>}
-              {isHypoxic && <li className="text-red-600 dark:text-red-400">Low Oxygen Saturation: {spO2}% (Hypoxia threshold &lt;95%)</li>}
-              {isFever && <li className="text-amber-600 dark:text-amber-400">Fever Present: {temperature} °{tempUnit} (Pyrexia)</li>}
+              {isHighBp && <li className="text-danger-text dark:text-danger-text">Blood Pressure elevated: {bpSystolic}/{bpDiastolic} mmHg (Stage 2 Hypertension risk)</li>}
+              {isHypoxic && <li className="text-danger-text dark:text-danger-text">Low Oxygen Saturation: {spO2}% (Hypoxia threshold &lt;95%)</li>}
+              {isFever && <li className="text-warning-text dark:text-warning-text">Fever Present: {temperature} °{tempUnit} (Pyrexia)</li>}
             </ul>
           </div>
         )}
 
         <div className="p-3 bg-primary-500/5 rounded-xl border border-primary-500/20 text-xs text-text-secondary flex items-start gap-2">
-          <Stethoscope className="w-4 h-4 text-primary-500 shrink-0 mt-0.5" />
+          <Stethoscope className="w-4 h-4 text-accent shrink-0 mt-0.5" />
           <span>
             Logged vitals auto-sync to the doctor&apos;s queue card, consultation SOAP note, and patient&apos;s mobile live tracker.
           </span>
@@ -247,13 +247,13 @@ export function NurseVitalsModal({
         {/* Section 1: Core Hemodynamics */}
         <div className="space-y-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-            <HeartPulse className="w-3.5 h-3.5 text-primary-500" />
+            <HeartPulse className="w-3.5 h-3.5 text-accent" />
             Hemodynamics & Oxygenation
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold text-text mb-1">
-                BP (Systolic / Diastolic) <span className="text-red-500">*</span>
+                BP (Systolic / Diastolic) <span className="text-danger-text">*</span>
               </label>
               <div className="flex gap-2">
                 <Input
@@ -277,7 +277,7 @@ export function NurseVitalsModal({
 
             <div>
               <label className="block text-xs font-bold text-text mb-1">
-                Pulse / Heart Rate <span className="text-red-500">*</span>
+                Pulse / Heart Rate <span className="text-danger-text">*</span>
               </label>
               <Input
                 type="number"
@@ -291,7 +291,7 @@ export function NurseVitalsModal({
 
             <div>
               <label className="block text-xs font-bold text-text mb-1">
-                SpO2 Saturation <span className="text-red-500">*</span>
+                SpO2 Saturation <span className="text-danger-text">*</span>
               </label>
               <Input
                 type="number"
@@ -310,7 +310,7 @@ export function NurseVitalsModal({
         {/* Section 2: Temperature & Anthropometrics */}
         <div className="space-y-3 border-t border-border/60 pt-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-            <Flame className="w-3.5 h-3.5 text-amber-500" />
+            <Flame className="w-3.5 h-3.5 text-warning-text" />
             Temperature & Anthropometrics
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
@@ -329,7 +329,7 @@ export function NurseVitalsModal({
                     type="button"
                     onClick={() => setTempUnit("F")}
                     className={`px-3 py-1 text-xs font-bold transition-colors ${
-                      tempUnit === "F" ? "bg-primary-500 text-white" : "bg-surface-alt text-text-secondary hover:bg-surface"
+                      tempUnit === "F" ? "bg-primary-500 text-brand-mist" : "bg-surface-alt text-text-secondary hover:bg-surface"
                     }`}
                   >
                     °F
@@ -338,7 +338,7 @@ export function NurseVitalsModal({
                     type="button"
                     onClick={() => setTempUnit("C")}
                     className={`px-3 py-1 text-xs font-bold transition-colors ${
-                      tempUnit === "C" ? "bg-primary-500 text-white" : "bg-surface-alt text-text-secondary hover:bg-surface"
+                      tempUnit === "C" ? "bg-primary-500 text-brand-mist" : "bg-surface-alt text-text-secondary hover:bg-surface"
                     }`}
                   >
                     °C
@@ -398,7 +398,7 @@ export function NurseVitalsModal({
                 <select
                   value={bloodSugarType}
                   onChange={(e) => setBloodSugarType(e.target.value as any)}
-                  className="rounded-xl border border-border bg-surface text-text text-xs px-2.5 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-primary-500"
+                  className="rounded-xl border border-border bg-surface text-text text-xs px-2.5 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-focus-ring"
                 >
                   <option value="random">Random (RBS)</option>
                   <option value="fasting">Fasting (FBS)</option>

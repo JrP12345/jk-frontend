@@ -4,54 +4,10 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  Button,
-  Badge,
-  Table,
-  Column,
-  Spinner,
-  Modal,
-  Input,
-  Select,
-  Checkbox,
-  Dropdown,
-  StatCard,
-  useToast,
-  cn,
-} from "@/components/ui";
+import { Card, Button, Badge, Table, Column, Spinner, Modal, Input, Select, Checkbox, Dropdown, StatCard, useToast, cn } from "@/components/ui";
 import ImageUpload from "@/components/ui/ImageUpload";
 import { useR2Upload } from "@/hooks/useR2Upload";
-import {
-  Building2,
-  ShieldCheck,
-  Crown,
-  RotateCw,
-  Plus,
-  Search,
-  ArrowRight,
-  ArrowLeft,
-  MoreHorizontal,
-  Edit3,
-  Trash2,
-  KeyRound,
-  Copy,
-  Check,
-  CheckCircle2,
-  MapPin,
-  Mail,
-  Phone,
-  Shield,
-  Layers,
-  Eye,
-  EyeOff,
-  Users,
-  UserCheck,
-  Power,
-  Zap,
-  Sparkles,
-} from "lucide-react";
+import { Building2, ShieldCheck, Crown, RotateCw, Plus, Search, ArrowRight, ArrowLeft, MoreHorizontal, Edit3, Trash2, KeyRound, Copy, Check, MapPin, Shield, Eye, EyeOff, Users, Power, Zap, Sparkles } from "lucide-react";
 
 interface Organization {
   id: string;
@@ -454,7 +410,7 @@ export default function OrganizationsPage() {
 
   const handleCopyCredentials = () => {
     if (!createdCredentialsSummary) return;
-    const text = `ANANT Healthcare OS - Administrator Credentials\nOrganization: ${createdCredentialsSummary.orgName}\nLogin Portal: ${createdCredentialsSummary.loginUrl}\nEmail: ${createdCredentialsSummary.adminEmail}\nPassword: ${createdCredentialsSummary.adminPassword}`;
+    const text = `Ekavyu Healthcare OS - Administrator Credentials\nOrganization: ${createdCredentialsSummary.orgName}\nLogin Portal: ${createdCredentialsSummary.loginUrl}\nEmail: ${createdCredentialsSummary.adminEmail}\nPassword: ${createdCredentialsSummary.adminPassword}`;
     navigator.clipboard.writeText(text);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
@@ -637,7 +593,7 @@ export default function OrganizationsPage() {
                 className="w-10 h-10 rounded-xl object-cover border border-border/80 shadow-xs shrink-0"
               />
             ) : (
-              <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 flex items-center justify-center font-bold text-sm shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-accent dark:text-accent border border-primary-500/20 flex items-center justify-center font-bold text-sm shrink-0">
                 {org.name.slice(0, 2).toUpperCase()}
               </div>
             )}
@@ -747,12 +703,12 @@ export default function OrganizationsPage() {
               items={[
                 {
                   label: "Login as Admin",
-                  icon: <KeyRound className="w-4 h-4 text-amber-500" />,
+                  icon: <KeyRound className="w-4 h-4 text-warning-text" />,
                   onClick: () => handleLoginAsOrgAdmin(org),
                 },
                 {
                   label: "Members & Impersonate",
-                  icon: <Users className="w-4 h-4 text-primary-500" />,
+                  icon: <Users className="w-4 h-4 text-accent" />,
                   onClick: () => handleOpenMembersModal(org),
                 },
                 { divider: true, label: "" },
@@ -763,7 +719,7 @@ export default function OrganizationsPage() {
                 },
                 {
                   label: isInactive ? "Reactivate Workspace" : "Suspend Workspace",
-                  icon: <Power className={`w-4 h-4 ${isInactive ? "text-emerald-500" : "text-amber-500"}`} />,
+                  icon: <Power className={`w-4 h-4 ${isInactive ? "text-success-text" : "text-warning-text"}`} />,
                   onClick: () => handleToggleOrgStatus(org),
                 },
                 { divider: true, label: "" },
@@ -785,7 +741,7 @@ export default function OrganizationsPage() {
     return (
       <div className="py-16 text-center space-y-4 max-w-md mx-auto">
         <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-text-secondary">
-          <Shield className="w-6 h-6 text-primary-500" />
+          <Shield className="w-6 h-6 text-accent" />
         </div>
         <div>
           <h2 className="text-base font-bold text-text">Root Super-Admin Access Required</h2>
@@ -810,7 +766,7 @@ export default function OrganizationsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. EXECUTIVE TOP BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -915,7 +871,7 @@ export default function OrganizationsPage() {
                   className={cn(
                     "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
                     activeTab === tab.id
-                      ? "bg-primary-500/20 text-primary-700 dark:text-primary-300"
+                      ? "bg-primary-500/20 text-accent dark:text-accent"
                       : "bg-surface-alt text-text-muted"
                   )}
                 >
@@ -933,7 +889,7 @@ export default function OrganizationsPage() {
               placeholder="Search by name, city, email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+              className="w-full pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 transition-all"
             />
           </div>
         </div>
@@ -969,7 +925,7 @@ export default function OrganizationsPage() {
                         className="w-10 h-10 rounded-xl object-cover border border-border/80 shadow-xs shrink-0"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 flex items-center justify-center font-bold text-sm shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-accent dark:text-accent border border-primary-500/20 flex items-center justify-center font-bold text-sm shrink-0">
                         {org.name.slice(0, 2).toUpperCase()}
                       </div>
                     )}
@@ -1035,12 +991,12 @@ export default function OrganizationsPage() {
                     items={[
                       {
                         label: "Login as Admin",
-                        icon: <KeyRound className="w-4 h-4 text-amber-500" />,
+                        icon: <KeyRound className="w-4 h-4 text-warning-text" />,
                         onClick: () => handleLoginAsOrgAdmin(org),
                       },
                       {
                         label: "Members & Impersonate",
-                        icon: <Users className="w-4 h-4 text-primary-500" />,
+                        icon: <Users className="w-4 h-4 text-accent" />,
                         onClick: () => handleOpenMembersModal(org),
                       },
                       { divider: true, label: "" },
@@ -1051,7 +1007,7 @@ export default function OrganizationsPage() {
                       },
                       {
                         label: isInactive ? "Reactivate Workspace" : "Suspend Workspace",
-                        icon: <Power className={`w-4 h-4 ${isInactive ? "text-emerald-500" : "text-amber-500"}`} />,
+                        icon: <Power className={`w-4 h-4 ${isInactive ? "text-success-text" : "text-warning-text"}`} />,
                         onClick: () => handleToggleOrgStatus(org),
                       },
                       { divider: true, label: "" },
@@ -1085,13 +1041,13 @@ export default function OrganizationsPage() {
           <div
             className={cn(
               "flex items-center gap-2",
-              wizardStep === 1 ? "text-primary-600 dark:text-primary-400 font-bold" : "text-text-muted"
+              wizardStep === 1 ? "text-accent dark:text-accent font-bold" : "text-text-muted"
             )}
           >
             <span
               className={cn(
                 "w-5 h-5 rounded-full flex items-center justify-center text-[11px]",
-                wizardStep === 1 ? "bg-primary-500 text-white font-bold" : "bg-surface-alt border border-border"
+                wizardStep === 1 ? "bg-primary-500 text-brand-mist font-bold" : "bg-surface-alt border border-border"
               )}
             >
               1
@@ -1102,13 +1058,13 @@ export default function OrganizationsPage() {
           <div
             className={cn(
               "flex items-center gap-2",
-              wizardStep === 2 ? "text-primary-600 dark:text-primary-400 font-bold" : "text-text-muted"
+              wizardStep === 2 ? "text-accent dark:text-accent font-bold" : "text-text-muted"
             )}
           >
             <span
               className={cn(
                 "w-5 h-5 rounded-full flex items-center justify-center text-[11px]",
-                wizardStep === 2 ? "bg-primary-500 text-white font-bold" : "bg-surface-alt border border-border"
+                wizardStep === 2 ? "bg-primary-500 text-brand-mist font-bold" : "bg-surface-alt border border-border"
               )}
             >
               2
@@ -1147,7 +1103,7 @@ export default function OrganizationsPage() {
                       className={cn(
                         "p-3 rounded-xl border text-left transition-all cursor-pointer select-none",
                         formData.plan === tier.id
-                          ? "border-primary-500 bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold shadow-xs"
+                          ? "border-primary-500 bg-primary-500/10 text-accent dark:text-accent font-bold shadow-xs"
                           : "border-border/80 hover:bg-surface-hover text-text-secondary"
                       )}
                     >
@@ -1257,7 +1213,7 @@ export default function OrganizationsPage() {
             </div>
 
             {/* Static Footer — Step 1 Action Buttons */}
-            <div className="shrink-0 flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/80 bg-surface/95 backdrop-blur-md">
+            <div className="shrink-0 flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/80 bg-surface/95 ">
               <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 Cancel
               </Button>
@@ -1344,7 +1300,7 @@ export default function OrganizationsPage() {
                     <button
                       type="button"
                       onClick={handleGeneratePassword}
-                      className="text-[11px] font-bold text-primary-600 dark:text-primary-400 hover:underline cursor-pointer inline-flex items-center gap-1"
+                      className="text-[11px] font-bold text-accent dark:text-accent hover:underline cursor-pointer inline-flex items-center gap-1"
                     >
                       <Sparkles className="w-3 h-3" />
                       Generate Secure Password
@@ -1364,7 +1320,7 @@ export default function OrganizationsPage() {
             </div>
 
             {/* Static Footer — Step 2 Action Buttons */}
-            <div className="shrink-0 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-2 pt-3 border-t border-border/80 bg-surface/95 backdrop-blur-md">
+            <div className="shrink-0 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-2 pt-3 border-t border-border/80 bg-surface/95 ">
               <Button type="button" variant="outline" size="sm" onClick={() => setWizardStep(1)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 <ArrowLeft className="w-3.5 h-3.5 mr-1" />
                 Back
@@ -1401,9 +1357,9 @@ export default function OrganizationsPage() {
         <div className="space-y-4 pt-1">
           {createdCredentialsSummary && (
             <div className="space-y-3">
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl space-y-1.5">
+              <div className="p-4 bg-success/10 border border-success/20 rounded-2xl space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <p className="font-bold text-emerald-700 dark:text-emerald-400 text-sm">
+                  <p className="font-bold text-success-text dark:text-success-text text-sm">
                     {createdCredentialsSummary.orgName}
                   </p>
                   <Badge variant="success" size="sm" className="text-[10px] font-bold uppercase">
@@ -1426,7 +1382,7 @@ export default function OrganizationsPage() {
                 </div>
                 <div className="flex justify-between py-1">
                   <span className="text-text-muted font-medium">Password:</span>
-                  <span className="font-mono font-bold text-primary-600 dark:text-primary-400 select-all">
+                  <span className="font-mono font-bold text-accent dark:text-accent select-all">
                     {createdCredentialsSummary.adminPassword}
                   </span>
                 </div>
@@ -1442,7 +1398,7 @@ export default function OrganizationsPage() {
               onClick={handleCopyCredentials}
               className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl"
             >
-              {isCopied ? <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+              {isCopied ? <Check className="w-3.5 h-3.5 mr-1.5 text-success-text" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
               {isCopied ? "Copied" : "Copy Credentials"}
             </Button>
             <Button
@@ -1507,7 +1463,7 @@ export default function OrganizationsPage() {
                     className={cn(
                       "p-2.5 rounded-xl border text-left transition-all cursor-pointer select-none",
                       editFormData.plan === tier.id
-                        ? "border-primary-500 bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold shadow-xs"
+                        ? "border-primary-500 bg-primary-500/10 text-accent dark:text-accent font-bold shadow-xs"
                         : "border-border/80 hover:bg-surface-hover text-text-secondary"
                     )}
                   >
@@ -1600,7 +1556,7 @@ export default function OrganizationsPage() {
           </div>
 
           {/* Static Footer — Edit Action Buttons */}
-          <div className="shrink-0 flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/80 bg-surface/95 backdrop-blur-md">
+          <div className="shrink-0 flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/80 bg-surface/95 ">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsEditModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
@@ -1622,8 +1578,8 @@ export default function OrganizationsPage() {
       >
         <div className="space-y-4 pt-1">
           {deletingOrg && (
-            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-xs space-y-1">
-              <p className="font-bold text-red-600 dark:text-red-400 text-sm">{deletingOrg.name}</p>
+            <div className="p-4 bg-danger/10 border border-danger/20 rounded-2xl text-xs space-y-1">
+              <p className="font-bold text-danger-text dark:text-danger-text text-sm">{deletingOrg.name}</p>
               <p className="text-text-secondary">City: {deletingOrg.city} &bull; Plan: {deletingOrg.plan?.toUpperCase()}</p>
             </div>
           )}
@@ -1680,7 +1636,7 @@ export default function OrganizationsPage() {
                     className="p-3.5 flex items-center justify-between gap-3 hover:bg-surface-alt/50 transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold flex items-center justify-center shrink-0 text-xs border border-primary-500/20">
+                      <div className="w-9 h-9 rounded-xl bg-primary-500/10 text-accent dark:text-accent font-bold flex items-center justify-center shrink-0 text-xs border border-primary-500/20">
                         {member.name ? member.name.charAt(0).toUpperCase() : "?"}
                       </div>
                       <div className="min-w-0">

@@ -2,6 +2,7 @@
 
 import { type SelectHTMLAttributes, type ReactNode, forwardRef, useId, useState, useEffect, useRef, useCallback, memo } from "react";
 import { createPortal } from "react-dom";
+import { popoverPosition } from "@/lib/popoverPosition";
 import { cn } from "./utils";
 
 export interface SelectOption {
@@ -30,16 +31,16 @@ export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
 }
 
 const triggerSizes: Record<SelectSize, string> = {
-  sm: "text-base sm:text-sm px-3 gap-2 min-h-[38px] sm:min-h-[32px] sm:h-8",
-  md: "text-base sm:text-sm px-3.5 gap-2 min-h-[42px] sm:min-h-[36px] sm:h-9",
-  lg: "text-base px-4 gap-2.5 min-h-[46px] sm:min-h-[44px] h-11",
+  sm: "text-base md:text-sm px-3 gap-2 min-h-[44px] md:min-h-[32px] md:h-8",
+  md: "text-base md:text-sm px-3.5 gap-2 min-h-[44px] md:min-h-[36px] md:h-9",
+  lg: "text-base px-4 gap-2.5 min-h-[46px] md:min-h-[44px] h-11",
 };
 
 const variantStyles: Record<SelectVariant, string> = {
-  default: "rounded-xl border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500 shadow-2xs",
-  filled: "rounded-xl border border-transparent bg-surface-alt hover:bg-surface-hover focus-visible:bg-surface focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500 shadow-2xs",
+  default: "rounded-xl border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
+  filled: "rounded-xl border border-transparent bg-surface-alt hover:bg-surface-hover focus-visible:bg-surface focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
   flush: "rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:border-0",
-  pill: "rounded-full border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500 shadow-2xs",
+  pill: "rounded-full border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
 };
 
 const iconSizes: Record<SelectSize, string> = {
@@ -80,11 +81,13 @@ const Select = memo(
       const hintId = `${id}-hint`;
       const listboxId = `${id}-listbox`;
 
+      const [nativeError, setNativeError] = useState("");
+      const visibleError = error || nativeError;
       const [isOpen, setIsOpen] = useState(false);
       const [render, setRender] = useState(false);
       const [isExiting, setIsExiting] = useState(false);
-      const [openUpward, setOpenUpward] = useState(false);
-      const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+      const [owner, setOwner] = useState<string>();
+      const [coords, setCoords] = useState<ReturnType<typeof popoverPosition> | null>(null);
       const [search, setSearch] = useState("");
       const [selectedValue, setSelectedValue] = useState(controlledValue || "");
       const [focusedIndex, setFocusedIndex] = useState(-1);
@@ -121,21 +124,15 @@ const Select = memo(
       const updateCoords = useCallback(() => {
         if (buttonRef.current) {
           const rect = buttonRef.current.getBoundingClientRect();
-          const spaceBelow = window.innerHeight - rect.bottom;
-          const isUpward = spaceBelow < 230 && rect.top > 230;
-
-          setOpenUpward(isUpward);
-          setCoords({
-            top: isUpward ? rect.top : rect.bottom,
-            left: rect.left,
-            width: rect.width,
-          });
+          setOwner(buttonRef.current.closest('[role="dialog"]')?.id || undefined);
+          setCoords(popoverPosition(rect, rect.width, 280));
         }
       }, []);
 
       const handleToggle = () => {
         if (disabled) return;
         if (!isOpen) {
+          buttonRef.current?.focus();
           updateCoords();
         }
         setIsOpen(!isOpen);
@@ -145,27 +142,30 @@ const Select = memo(
         if (!isOpen) return;
 
         const handler = (e: MouseEvent) => {
-          if (buttonRef.current && buttonRef.current.contains(e.target as Node)) return;
+          if (buttonRef.current && e.target instanceof Node && buttonRef.current.contains(e.target)) return;
           const portalEl = document.getElementById(`select-portal-${id}`);
-          if (portalEl && portalEl.contains(e.target as Node)) return;
+          if (portalEl && e.target instanceof Node && portalEl.contains(e.target)) return;
+          restoreFocusRef.current = false;
           setIsOpen(false);
         };
 
         const onScrollOrResize = (e: Event) => {
           const portalEl = document.getElementById(`select-portal-${id}`);
-          if (portalEl && portalEl.contains(e.target as Node)) return;
-          if (buttonRef.current && buttonRef.current.contains(e.target as Node)) return;
+          if (portalEl && e.target instanceof Node && portalEl.contains(e.target)) return;
+          if (buttonRef.current && e.target instanceof Node && buttonRef.current.contains(e.target)) return;
           updateCoords();
         };
 
         document.addEventListener("mousedown", handler);
         window.addEventListener("scroll", onScrollOrResize, { capture: true, passive: true });
         window.addEventListener("resize", onScrollOrResize, { passive: true });
+        window.visualViewport?.addEventListener("resize", updateCoords);
 
         return () => {
           document.removeEventListener("mousedown", handler);
           window.removeEventListener("scroll", onScrollOrResize, { capture: true });
           window.removeEventListener("resize", onScrollOrResize);
+          window.visualViewport?.removeEventListener("resize", updateCoords);
         };
       }, [isOpen, id, updateCoords]);
 
@@ -177,18 +177,20 @@ const Select = memo(
       );
 
       const wasOpenRef = useRef(false);
+      const restoreFocusRef = useRef(true);
 
       useEffect(() => {
         if (isOpen) {
           wasOpenRef.current = true;
+          restoreFocusRef.current = true;
           setSearch("");
-          const initialIndex = filteredOptions.findIndex((o) => o.value === selectedValue);
-          setFocusedIndex(initialIndex >= 0 ? initialIndex : 0);
+          const initialIndex = options.findIndex((o) => o.value === selectedValue);
+          setFocusedIndex(initialIndex >= 0 && !options[initialIndex]?.disabled ? initialIndex : options.findIndex((option) => !option.disabled));
           if (shouldShowSearch) {
             setTimeout(() => searchInputRef.current?.focus(), 50);
           }
         } else if (wasOpenRef.current) {
-          buttonRef.current?.focus();
+          if (restoreFocusRef.current) buttonRef.current?.focus();
           wasOpenRef.current = false;
         }
       }, [isOpen, shouldShowSearch]);
@@ -198,13 +200,14 @@ const Select = memo(
         if (isOpen && focusedIndex >= 0 && listboxRef.current) {
           const focusedElement = listboxRef.current.children[focusedIndex] as HTMLElement;
           if (focusedElement) {
-            focusedElement.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            focusedElement.scrollIntoView({ block: "nearest", behavior: "auto" });
           }
         }
       }, [focusedIndex, isOpen]);
 
       const handleSelectOption = (o: SelectOption) => {
         if (o.disabled) return;
+        setNativeError("");
         setSelectedValue(o.value);
         onChange?.({
           target: {
@@ -226,17 +229,24 @@ const Select = memo(
           return;
         }
 
+        if (e.key === "Tab") {
+          restoreFocusRef.current = false;
+          buttonRef.current?.focus();
+          setIsOpen(false);
+          return;
+        }
         if (e.key === "Escape") {
+          e.preventDefault();
           setIsOpen(false);
           return;
         }
 
         if (e.key === "ArrowDown") {
           e.preventDefault();
-          setFocusedIndex((prev) => (prev < filteredOptions.length - 1 ? prev + 1 : prev));
+          setFocusedIndex((previous) => { const next = filteredOptions.findIndex((option, index) => index > previous && !option.disabled); return next < 0 ? previous : next; });
         } else if (e.key === "ArrowUp") {
           e.preventDefault();
-          setFocusedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+          setFocusedIndex((previous) => { for (let index = previous - 1; index >= 0; index--) if (!filteredOptions[index].disabled) return index; return previous; });
         } else if (e.key === "Enter" && focusedIndex >= 0 && filteredOptions[focusedIndex]) {
           e.preventDefault();
           handleSelectOption(filteredOptions[focusedIndex]);
@@ -244,7 +254,7 @@ const Select = memo(
       };
 
       const describedBy =
-        [ariaDescribedByProp, error ? errorId : null, !error && hint ? hintId : null]
+        [ariaDescribedByProp, visibleError ? errorId : null, !visibleError && hint ? hintId : null]
           .filter(Boolean)
           .join(" ") || undefined;
 
@@ -253,7 +263,7 @@ const Select = memo(
       return (
         <div className={cn("flex flex-col gap-1.5 relative", fullWidth && "w-full", containerClassName)}>
           {label && (
-            <label htmlFor={id} className="text-sm font-medium text-text select-none">
+            <label id={`${id}-label`} htmlFor={`${id}-trigger`} className="text-sm font-medium text-text select-none">
               {label}
             </label>
           )}
@@ -265,6 +275,7 @@ const Select = memo(
             id={id}
             value={selectedValue}
             onChange={(e) => {
+              setNativeError("");
               setSelectedValue(e.target.value);
               onChange?.(e);
             }}
@@ -272,6 +283,8 @@ const Select = memo(
             tabIndex={-1}
             disabled={disabled}
             {...rest}
+            aria-hidden="true"
+            onInvalid={(event) => { event.preventDefault(); setNativeError("Please choose an option."); buttonRef.current?.focus(); rest.onInvalid?.(event); }}
           >
             {placeholder && <option value="">{placeholder}</option>}
             {options.map((o) => (
@@ -294,14 +307,19 @@ const Select = memo(
             )}
 
             <button
+              id={`${id}-trigger`}
+              data-touch-control
               ref={buttonRef}
+              aria-label={rest["aria-label"] || (!label && !rest["aria-labelledby"] ? placeholder : undefined)}
+              aria-labelledby={rest["aria-labelledby"] || (label ? `${id}-label` : undefined)}
+              aria-required={rest.required || undefined}
               type="button"
               role="combobox"
               aria-expanded={isOpen}
               aria-haspopup="listbox"
               aria-controls={isOpen ? listboxId : undefined}
               aria-activedescendant={isOpen ? activeOptionId : undefined}
-              aria-invalid={error ? true : undefined}
+              aria-invalid={visibleError ? true : undefined}
               aria-describedby={describedBy}
               disabled={disabled}
               onClick={handleToggle}
@@ -311,12 +329,12 @@ const Select = memo(
                 triggerSizes[size],
                 variantStyles[variant],
                 icon && (size === "sm" ? "pl-9" : size === "lg" ? "pl-11" : "pl-10"),
-                error && variant !== "flush" && "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:border-danger-500",
-                isOpen && variant !== "flush" && "border-primary-500 ring-2 ring-primary-500",
+                visibleError && variant !== "flush" && "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:border-danger-500",
+                isOpen && variant !== "flush" && "border-primary-500 ring-2 ring-focus-ring",
                 className
               )}
             >
-              <span className={cn("truncate flex-1 min-w-0 text-left", !activeOption && "text-text-muted/70")}>
+              <span className={cn("truncate flex-1 min-w-0 text-left", !activeOption && "text-text-muted")}>
                 {activeOption ? activeOption.label : placeholder}
               </span>
               <svg
@@ -344,21 +362,24 @@ const Select = memo(
             createPortal(
               <div
                 id={`select-portal-${id}`}
+                data-overlay-owner={owner}
+                data-exiting={isExiting}
                 style={{
                   position: "fixed",
-                  top: openUpward ? undefined : coords.top + 4,
-                  bottom: openUpward ? window.innerHeight - coords.top + 4 : undefined,
+                  top: coords.top,
+                  bottom: coords.bottom,
                   left: coords.left,
                   width: coords.width,
+                  maxHeight: coords.maxHeight,
                   zIndex: 99999,
                 }}
                 className={cn(
-                  "flex flex-col rounded-2xl border border-border/80 bg-surface/98 shadow-xl overflow-hidden backdrop-blur-xl ring-1 ring-border/50 select-none transform-gpu",
+                  "flex flex-col rounded-2xl border border-border/80 bg-surface shadow-xl overflow-hidden  ring-1 ring-border/50 select-none transform-gpu",
                   isExiting ? "animate-popover-out" : "animate-popover-in"
                 )}
               >
                 {shouldShowSearch && (
-                  <div className="flex items-center border-b border-border/60 px-3 py-2 bg-surface-alt/70">
+                  <div className="flex items-center border-b border-border/60 px-3 py-2 bg-surface-alt">
                     <svg
                       className="h-3.5 w-3.5 text-text-muted shrink-0 mr-2"
                       fill="none"
@@ -375,7 +396,13 @@ const Select = memo(
                     </svg>
                     <input
                       ref={searchInputRef}
+                      aria-label={`Search ${label || rest["aria-label"] || "options"}`}
                       type="text"
+                      role="combobox"
+                      aria-expanded={isOpen}
+                      aria-controls={listboxId}
+                      aria-activedescendant={activeOptionId}
+                      aria-autocomplete="list"
                       placeholder="Type to search..."
                       value={search}
                       onChange={(e) => {
@@ -383,7 +410,7 @@ const Select = memo(
                         setFocusedIndex(-1);
                       }}
                       onKeyDown={handleKeyDown}
-                      className="w-full text-base sm:text-xs font-normal bg-transparent focus:outline-none placeholder:text-text-muted/70 border-none p-0 text-text"
+                      className="w-full text-base md:text-xs font-normal bg-transparent focus:outline-none placeholder:text-text-muted border-none p-0 text-text"
                     />
                   </div>
                 )}
@@ -393,8 +420,9 @@ const Select = memo(
                   ref={listboxRef}
                   id={listboxId}
                   role="listbox"
+                    aria-label={label || rest["aria-label"] || placeholder}
                   tabIndex={-1}
-                  className="overflow-y-auto max-h-52 p-1 space-y-0.5"
+                  className="min-h-0 overflow-y-auto max-h-52 p-1 space-y-0.5"
                 >
                   {filteredOptions.length === 0 ? (
                     <div className="px-4 py-3 text-xs text-text-muted text-center select-none">
@@ -410,13 +438,14 @@ const Select = memo(
                           id={`${id}-opt-${idx}`}
                           type="button"
                           role="option"
+                          tabIndex={-1}
                           aria-selected={isSelected}
                           disabled={o.disabled}
                           onClick={() => handleSelectOption(o)}
                           className={cn(
-                            "flex items-center justify-between w-full text-left px-3.5 py-2.5 sm:py-2 text-sm sm:text-xs font-medium rounded-xl transition-all duration-150 cursor-pointer select-none min-h-[44px] sm:min-h-0",
+                            "flex items-center justify-between w-full text-left px-3.5 py-2.5 md:py-2 text-sm md:text-xs font-medium rounded-xl transition-all duration-150 cursor-pointer select-none min-h-[44px] md:min-h-0",
                             isSelected
-                              ? "bg-primary-500/10 text-primary-500 font-semibold"
+                              ? "bg-primary-500/10 text-accent font-semibold"
                               : "text-text-secondary hover:bg-surface-hover hover:text-text",
                             isFocused && "bg-surface-hover text-text",
                             o.disabled && "opacity-40 cursor-not-allowed"
@@ -425,7 +454,7 @@ const Select = memo(
                           <span className="truncate">{o.label}</span>
                           {isSelected && (
                             <svg
-                              className="h-4 w-4 text-primary-500 shrink-0"
+                              className="h-4 w-4 text-accent shrink-0"
                               fill="none"
                               viewBox="0 0 24 24"
                               stroke="currentColor"
@@ -444,12 +473,12 @@ const Select = memo(
               document.body
             )}
 
-          {error && (
-            <p id={errorId} className="text-xs font-medium text-danger-500 animate-fade-in">
-              {error}
+          {visibleError && (
+            <p id={errorId} role="alert" className="text-xs font-medium text-danger-text animate-fade-in">
+              {visibleError}
             </p>
           )}
-          {!error && hint && (
+          {!visibleError && hint && (
             <p id={hintId} className="text-xs text-text-muted">
               {hint}
             </p>
@@ -462,5 +491,4 @@ const Select = memo(
 
 Select.displayName = "Select";
 export default Select;
-
 

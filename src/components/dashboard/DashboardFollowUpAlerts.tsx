@@ -19,11 +19,11 @@ export function DashboardFollowUpAlerts({ alerts }: DashboardFollowUpAlertsProps
       {alerts.map((appt) => (
         <div
           key={appt.id}
-          className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-amber-500/[0.04] dark:bg-amber-500/[0.06] p-4 sm:p-5 shadow-xs"
+          className="relative overflow-hidden rounded-2xl border border-warning/30 bg-warning/[0.04] dark:bg-warning/[0.06] p-4 sm:p-5 shadow-xs"
         >
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+              <div className="w-10 h-10 rounded-xl bg-warning/15 border border-warning/25 flex items-center justify-center text-warning-text dark:text-warning-text shrink-0 mt-0.5">
                 <CalendarClock className="w-5 h-5" />
               </div>
               <div className="space-y-1">

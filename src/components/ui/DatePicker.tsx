@@ -2,6 +2,8 @@
 
 import { type ReactNode, forwardRef, useId, useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useOverlayFocus } from "@/hooks/useOverlayFocus";
+import { popoverPosition } from "@/lib/popoverPosition";
 import { cn } from "./utils";
 
 export type DatePickerVariant = "outline" | "filled" | "ghost" | "danger";
@@ -39,14 +41,14 @@ export interface DatePickerProps {
 }
 
 const triggerSizes: Record<DatePickerSize, string> = {
-  sm: "h-8 text-xs px-3 rounded-md gap-1.5",
-  md: "h-9 text-sm px-3.5 rounded-lg gap-2",
+  sm: "min-h-11 md:min-h-8 md:h-8 text-base md:text-xs px-3 rounded-md gap-1.5",
+  md: "min-h-11 md:min-h-9 md:h-9 text-base md:text-sm px-3.5 rounded-lg gap-2",
   lg: "h-11 text-base px-4 rounded-xl gap-2.5",
 };
 
 const variantStyles: Record<DatePickerVariant, string> = {
-  outline: "border border-border bg-surface text-text hover:border-text-secondary focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15",
-  filled: "border border-transparent bg-surface-alt text-text hover:bg-surface-hover focus:bg-surface focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15",
+  outline: "border border-border bg-surface text-text hover:border-text-secondary focus:border-primary-500 focus:ring-2 focus:ring-focus-ring",
+  filled: "border border-transparent bg-surface-alt text-text hover:bg-surface-hover focus:bg-surface focus:border-primary-500 focus:ring-2 focus:ring-focus-ring",
   ghost: "border border-transparent bg-transparent text-text hover:bg-surface-hover focus:bg-surface focus:border-primary-500",
   danger: "border border-danger-500 bg-surface text-text focus:ring-2 focus:ring-danger-500/15 focus:border-danger-500",
 };
@@ -158,14 +160,16 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     const renderPresets = showPresetsProp ?? (mode === "range");
 
     const [isOpen, setIsOpen] = useState(false);
-    const [openUpward, setOpenUpward] = useState(false);
-    const [alignRight, setAlignRight] = useState(false);
-    const [coords, setCoords] = useState<{ top: number; left: number; right: number } | null>(null);
+    const popupRef = useRef<HTMLDivElement>(null);
+    const [owner, setOwner] = useState<string>();
+    const [coords, setCoords] = useState<ReturnType<typeof popoverPosition> | null>(null);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
       setMounted(true);
     }, []);
+
+    useOverlayFocus(isOpen && mounted && !!coords, popupRef, () => setIsOpen(false), false);
 
     // Mode single/datetime states
     const initialParsed = parseISOValue(controlledValue, mode);
@@ -234,19 +238,8 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     const updateCoords = useCallback(() => {
       if (buttonRef.current) {
         const rect = buttonRef.current.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const spaceRight = window.innerWidth - rect.left;
-        
-        const isUpward = spaceBelow < 340;
-        const isRightAlign = spaceRight < 300;
-
-        setOpenUpward(isUpward);
-        setAlignRight(isRightAlign);
-        setCoords({
-          top: isUpward ? rect.top : rect.bottom,
-          left: rect.left,
-          right: window.innerWidth - rect.right,
-        });
+        setOwner(buttonRef.current.closest('[role="dialog"]')?.id || undefined);
+        setCoords(popoverPosition(rect, 288, 360));
       }
     }, []);
 
@@ -263,38 +256,31 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
       if (!isOpen) return;
 
       const handleClickOutside = (e: MouseEvent) => {
-        if (buttonRef.current && buttonRef.current.contains(e.target as Node)) return;
+        if (buttonRef.current && e.target instanceof Node && buttonRef.current.contains(e.target)) return;
         const portalEl = document.getElementById(`datepicker-portal-${id}`);
-        if (portalEl && portalEl.contains(e.target as Node)) return;
+        if (portalEl && e.target instanceof Node && portalEl.contains(e.target)) return;
         setIsOpen(false);
       };
 
       const onScroll = (e: Event) => {
         const portalEl = document.getElementById(`datepicker-portal-${id}`);
-        if (portalEl && portalEl.contains(e.target as Node)) return;
-        if (buttonRef.current && buttonRef.current.contains(e.target as Node)) return;
+        if (portalEl && e.target instanceof Node && portalEl.contains(e.target)) return;
+        if (buttonRef.current && e.target instanceof Node && buttonRef.current.contains(e.target)) return;
         updateCoords();
       };
 
       document.addEventListener("mousedown", handleClickOutside);
       window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+      window.addEventListener("resize", updateCoords);
+      window.visualViewport?.addEventListener("resize", updateCoords);
 
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
         window.removeEventListener("scroll", onScroll, { capture: true });
+        window.removeEventListener("resize", updateCoords);
+        window.visualViewport?.removeEventListener("resize", updateCoords);
       };
     }, [isOpen, id, updateCoords]);
-
-    // Escape key listener
-    useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape" && isOpen) {
-          setIsOpen(false);
-        }
-      };
-      document.addEventListener("keydown", handleKeyDown);
-      return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [isOpen]);
 
     const emitSingleChange = (d: Date | null, t: string = selectedTime) => {
       const formatted = formatDateISO(d, t, mode);
@@ -506,7 +492,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     return (
       <div className={cn("flex flex-col gap-1.5 relative", fullWidth && "w-full", className)}>
         {label && (
-          <label htmlFor={id} className="text-sm font-medium text-text flex items-center justify-between">
+          <label id={`${id}-label`} htmlFor={`${id}-trigger`} className="text-sm font-medium text-text flex items-center justify-between">
             <span>{label}</span>
           </label>
         )}
@@ -527,18 +513,22 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
 
           {/* Main Trigger Button */}
           <button
+            id={`${id}-trigger`}
             ref={buttonRef}
+            aria-labelledby={label ? `${id}-label` : undefined}
+            aria-label={!label ? placeholder || (mode === "range" ? "Choose date range" : "Choose date") : undefined}
+            aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
             type="button"
             disabled={disabled}
             onClick={handleToggle}
             aria-expanded={isOpen}
             aria-haspopup="dialog"
-            aria-controls={`datepicker-portal-${id}`}
+            aria-controls={isOpen ? `datepicker-portal-${id}` : undefined}
             className={cn(
               "w-full inline-flex items-center text-left font-normal transition-all duration-200 select-none cursor-pointer focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt",
               triggerSizes[size],
               activeVariantClass,
-              isClearable && hasValue && !disabled && "pr-8"
+              isClearable && hasValue && !disabled && "pr-12"
             )}
           >
             <span className="shrink-0 text-text-muted [&>svg]:h-4 [&>svg]:w-4">
@@ -558,7 +548,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             <button
               type="button"
               onClick={handleClear}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text p-1 rounded hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 cursor-pointer transition-colors"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 touch-target text-text-muted hover:text-text p-1 rounded hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring cursor-pointer transition-colors"
               aria-label="Clear date"
               title="Clear date"
             >
@@ -573,15 +563,21 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
         {isOpen && mounted && coords && createPortal(
           <div
             id={`datepicker-portal-${id}`}
+            ref={popupRef}
+            role="dialog"
+            aria-label={label ? `Choose ${label}` : "Choose date and time"}
+            tabIndex={-1}
+            data-overlay-owner={owner}
             style={{
               position: "fixed",
-              top: openUpward ? undefined : coords.top + 4,
-              bottom: openUpward ? window.innerHeight - coords.top + 4 : undefined,
-              left: alignRight ? undefined : coords.left,
-              right: alignRight ? coords.right : undefined,
+              top: coords.top,
+              bottom: coords.bottom,
+              left: coords.left,
+              width: coords.width,
+              maxHeight: coords.maxHeight,
               zIndex: 99999,
             }}
-            className="w-72 rounded-2xl border border-border/80 bg-surface/95 p-4 shadow-2xl shadow-black/25 backdrop-blur-xl animate-popover-in ring-1 ring-white/10"
+            className="overflow-y-auto rounded-2xl border border-border/80 bg-surface p-4 shadow-lg   animate-popover-in ring-1 ring-white/10"
           >
             {mode === "datetime" && timeScreenOpen ? (
               /* SCREEN MODE 2: WHEEL TIME PICKER SCREEN (Matching Reference Image) */
@@ -616,13 +612,13 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                         </svg>
                         <span>Back</span>
                       </button>
-                      <span className="px-3 py-1 rounded-xl bg-primary/15 text-primary-400 border border-primary/30 font-mono font-extrabold text-xs animate-in fade-in duration-200">
+                      <span className="px-3 py-1 rounded-xl bg-primary/15 text-accent border border-primary/30 font-mono font-extrabold text-xs animate-in fade-in duration-200">
                         Set: {displayFormatted12}
                       </span>
                     </div>
 
                     {/* 3-Column Vertical Scroll Wheel Box */}
-                    <div className="relative border border-border/80 rounded-2xl bg-surface/95 p-2 overflow-hidden shadow-inner my-2 h-44">
+                    <div className="relative border border-border/80 rounded-2xl bg-surface p-2 overflow-hidden shadow-inner my-2 h-44">
                       {/* Central Highlight Selection Bar Across All 3 Columns */}
                       <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 h-8 bg-primary-500/25 border border-primary-500/50 rounded-xl pointer-events-none z-0 shadow-xs transition-all duration-200" />
 
@@ -652,7 +648,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                                 onClick={() => setTimeVal(hVal, mins, isPM)}
                                 className={cn(
                                   "w-full h-8 flex items-center justify-center text-sm font-extrabold transition-all duration-150 ease-out cursor-pointer rounded-lg snap-center active:scale-95",
-                                  isSelected ? "text-primary font-black scale-105" : "text-text-muted/50 hover:text-text hover:bg-surface/60"
+                                  isSelected ? "text-accent font-black scale-105" : "text-text-muted/50 hover:text-text hover:bg-surface/60"
                                 )}
                               >
                                 {String(hVal).padStart(2, "0")}
@@ -688,7 +684,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                                 onClick={() => setTimeVal(h12, mVal, isPM)}
                                 className={cn(
                                   "w-full h-8 flex items-center justify-center text-sm font-extrabold transition-all duration-150 ease-out cursor-pointer rounded-lg snap-center active:scale-95",
-                                  isSelected ? "text-primary font-black scale-105" : "text-text-muted/50 hover:text-text hover:bg-surface/60"
+                                  isSelected ? "text-accent font-black scale-105" : "text-text-muted/50 hover:text-text hover:bg-surface/60"
                                 )}
                               >
                                 {mStrVal}
@@ -722,7 +718,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                                 onClick={() => setTimeVal(h12, mins, pVal === "PM")}
                                 className={cn(
                                   "w-full h-8 flex items-center justify-center text-sm font-extrabold transition-all duration-150 ease-out cursor-pointer rounded-lg snap-center active:scale-95",
-                                  isSelected ? "text-primary font-black scale-105" : "text-text-muted/50 hover:text-text hover:bg-surface/60"
+                                  isSelected ? "text-accent font-black scale-105" : "text-text-muted/50 hover:text-text hover:bg-surface/60"
                                 )}
                               >
                                 {pVal}
@@ -737,7 +733,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                     <button
                       type="button"
                       onClick={() => { setTimeScreenOpen(false); setIsOpen(false); }}
-                      className="w-full py-2 bg-primary text-white font-bold text-xs rounded-xl shadow-md hover:bg-primary-600 hover:scale-[1.02] active:scale-95 transition-all duration-150 cursor-pointer text-center"
+                      className="w-full py-2 bg-primary text-brand-mist font-bold text-xs rounded-xl shadow-md hover:bg-primary-600 hover:scale-[1.02] active:scale-95 transition-all duration-150 cursor-pointer text-center"
                     >
                       Set Date & Time
                     </button>
@@ -815,7 +811,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                       className={cn(
                         "px-2 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold",
                         viewMode === "months"
-                          ? "bg-primary-600 border-primary-600 text-white shadow-xs"
+                          ? "bg-primary-600 border-primary-600 text-brand-mist shadow-xs"
                           : "bg-surface border-border/80 text-text hover:bg-surface-hover hover:border-text-secondary"
                       )}
                     >
@@ -831,7 +827,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                       className={cn(
                         "px-2 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold",
                         viewMode === "years"
-                          ? "bg-primary-600 border-primary-600 text-white shadow-xs"
+                          ? "bg-primary-600 border-primary-600 text-brand-mist shadow-xs"
                           : "bg-surface border-border/80 text-text hover:bg-surface-hover hover:border-text-secondary"
                       )}
                     >
@@ -870,7 +866,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                           className={cn(
                             "py-2 px-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer text-center",
                             isCurrentMonth
-                              ? "bg-primary-600 border-primary-600 text-white font-bold shadow-sm scale-105"
+                              ? "bg-primary-600 border-primary-600 text-brand-mist font-bold shadow-sm scale-105"
                               : "bg-surface border-border/60 text-text hover:bg-surface-hover hover:border-text-secondary"
                           )}
                         >
@@ -897,7 +893,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                           className={cn(
                             "py-1.5 px-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-center",
                             isCurrentYear
-                              ? "bg-primary-600 border-primary-600 text-white font-bold shadow-sm scale-105"
+                              ? "bg-primary-600 border-primary-600 text-brand-mist font-bold shadow-sm scale-105"
                               : "bg-surface border-border/60 text-text hover:bg-surface-hover hover:border-text-secondary"
                           )}
                         >
@@ -946,15 +942,17 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                             type="button"
                             disabled={disabledDay}
                             onClick={() => handleSelectDay(day)}
+                            aria-label={new Date(viewYear, viewMonth, day).toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                            aria-pressed={Boolean(isSingleSelected(day) || isRangeBoundary(day, "start") || isRangeBoundary(day, "end"))}
                             onMouseEnter={() => mode === "range" && rangeStart && !rangeEnd && setHoverDate(new Date(viewYear, viewMonth, day))}
                             className={cn(
                               "h-8 w-full flex items-center justify-center font-medium text-xs transition-all relative cursor-pointer",
                               disabledDay && "opacity-30 cursor-not-allowed text-text-muted",
                               todayDay && !singleSelected && !(mode === "range" && (isStart || isEnd)) && "font-extrabold text-text ring-1 ring-border rounded-lg",
-                              singleSelected && mode !== "range" && "bg-primary-600 text-white font-bold rounded-lg shadow-sm scale-105 z-10",
-                              isStart && mode === "range" && "bg-primary-600 text-white font-bold rounded-l-lg z-10",
-                              isEnd && mode === "range" && "bg-primary-600 text-white font-bold rounded-r-lg z-10",
-                              isMiddle && mode === "range" && "bg-primary-500/20 text-primary-400 font-semibold rounded-none",
+                              singleSelected && mode !== "range" && "bg-primary-600 text-brand-mist font-bold rounded-lg shadow-sm scale-105 z-10",
+                              isStart && mode === "range" && "bg-primary-600 text-brand-mist font-bold rounded-l-lg z-10",
+                              isEnd && mode === "range" && "bg-primary-600 text-brand-mist font-bold rounded-r-lg z-10",
+                              isMiddle && mode === "range" && "bg-primary-500/20 text-accent font-semibold rounded-none",
                               !singleSelected && !(mode === "range" && (isStart || isEnd || isMiddle)) && !disabledDay && "hover:bg-surface-hover text-text rounded-lg"
                             )}
                           >
@@ -983,7 +981,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                         onClick={() => setTimeScreenOpen(true)}
                         className="px-2.5 py-1.5 rounded-xl bg-surface border border-border/80 hover:border-primary-500/50 hover:bg-surface-hover text-text font-mono font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs"
                       >
-                        <svg className="w-3.5 h-3.5 text-primary-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span>{displayFormatted12}</span>
@@ -1003,8 +1001,8 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
           document.body
         )}
 
-        {error && <p className="text-xs text-danger-500 animate-fade-in">{error}</p>}
-        {!error && hint && <p className="text-xs text-text-muted">{hint}</p>}
+        {error && <p id={`${id}-error`} role="alert" className="text-xs text-danger-text animate-fade-in">{error}</p>}
+        {!error && hint && <p id={`${id}-hint`} className="text-xs text-text-muted">{hint}</p>}
       </div>
     );
   }

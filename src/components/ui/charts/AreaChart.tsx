@@ -28,11 +28,11 @@ export interface AreaChartProps {
 }
 
 const DEFAULT_COLORS = [
-  "var(--s-chart-1, #3b82f6)",
-  "var(--s-chart-2, #10b981)",
-  "var(--s-chart-3, #f59e0b)",
-  "var(--s-chart-4, #8b5cf6)",
-  "var(--s-chart-5, #ec4899)",
+  "var(--s-chart-1)",
+  "var(--s-chart-2)",
+  "var(--s-chart-3)",
+  "var(--s-chart-4)",
+  "var(--s-chart-5)",
 ];
 
 function createSmoothPath(points: { x: number; y: number }[]): string {
@@ -188,11 +188,6 @@ export const AreaChart = memo(function AreaChart({
                 <stop offset="100%" stopColor={color} stopOpacity="0.0" />
               </linearGradient>
             ))}
-            {/* Filter glow */}
-            <filter id={`glow-${chartId}`} x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
           </defs>
 
           {/* Grid lines */}
@@ -207,7 +202,7 @@ export const AreaChart = memo(function AreaChart({
                       y1={y}
                       x2={padding.left + chartWidth}
                       y2={y}
-                      stroke="var(--color-border, #334155)"
+                      stroke="var(--s-border)"
                       strokeDasharray="4 4"
                       strokeWidth="1"
                       className="opacity-35"
@@ -217,7 +212,7 @@ export const AreaChart = memo(function AreaChart({
                       y={y + 3.5}
                       textAnchor="end"
                       fontSize="9"
-                      fill="var(--color-text-muted, #94a3b8)"
+                      fill="var(--s-text-muted)"
                       className="font-mono font-medium text-[9px]"
                     >
                       {valueFormatter(val)}
@@ -242,7 +237,7 @@ export const AreaChart = memo(function AreaChart({
                   y={viewBoxHeight - 6}
                   textAnchor="middle"
                   fontSize="9.5"
-                  fill="var(--color-text-muted, #94a3b8)"
+                  fill="var(--s-text-muted)"
                   className="font-semibold text-[9px] tracking-tight"
                 >
                   {d.label}
@@ -286,7 +281,7 @@ export const AreaChart = memo(function AreaChart({
                 y1={padding.top}
                 x2={getX(hoverIndex)}
                 y2={padding.top + chartHeight}
-                stroke="var(--color-primary-500, #3b82f6)"
+                stroke="var(--accent)"
                 strokeWidth="1.5"
                 strokeDasharray="3 3"
                 className="opacity-75"
@@ -319,7 +314,7 @@ export const AreaChart = memo(function AreaChart({
                       cy={pt.y}
                       r="4"
                       fill={color}
-                      stroke="var(--color-surface, #0f172a)"
+                      stroke="var(--s-surface)"
                       strokeWidth="2"
                       className="shadow-sm"
                     />
@@ -340,7 +335,7 @@ export const AreaChart = memo(function AreaChart({
                     cy={pt.y}
                     r="2.5"
                     fill={color}
-                    stroke="var(--color-surface, #0f172a)"
+                    stroke="var(--s-surface)"
                     strokeWidth="1.5"
                     className="opacity-80"
                   />
@@ -359,7 +354,7 @@ export const AreaChart = memo(function AreaChart({
             }}
             className="absolute pointer-events-none z-30 animate-chart-tooltip"
           >
-            <div className="px-3.5 py-2.5 rounded-2xl bg-surface/95 dark:bg-surface/90 border border-border/80 shadow-2xl shadow-black/35 backdrop-blur-xl text-xs space-y-1.5 min-w-[140px] relative overflow-hidden">
+            <div className="px-3.5 py-2.5 rounded-2xl bg-surface dark:bg-surface border border-border/80 shadow-lg   text-xs space-y-1.5 min-w-[140px] relative overflow-hidden">
               {/* Tooltip top light stripe */}
               <div
                 className="absolute top-0 inset-x-0 h-[2px] opacity-90"

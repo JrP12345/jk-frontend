@@ -1,27 +1,14 @@
 "use client";
 
 import { useAuthStore } from "@/store/authStore";
-import {
-  Sidebar,
-  Button,
-  Spinner,
-  Dropdown,
-  ModeSwitcher,
-  PaletteSwitcher,
-  Avatar,
-  useToast,
-  AnantLogo,
-  AnantIcon,
-  Select,
-  Badge,
-  cn,
-} from "@/components/ui";
+import { Sidebar, Button, Spinner, Dropdown, ModeSwitcher, Avatar, useToast, EkavyuLogo, EkavyuIcon, Select, Badge, cn } from "@/components/ui";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useRouter, usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { hasRoutePermission } from "@/lib/routePermissions";
 import { getModuleKeyForRoute } from "@/lib/routeModules";
-import { FloatingAICopilot } from "@/components/ai/FloatingAICopilot";
+import dynamic from "next/dynamic";
+import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import { useModuleStore } from "@/store/moduleStore";
 import { useClinicStore } from "@/store/clinicStore";
 import { hasAnyPermission } from "@/lib/permissions";
@@ -30,34 +17,9 @@ import { OfflineStatusBanner } from "@/components/clinical/OfflineStatusBanner";
 import { MobileBottomNav } from "@/components/dashboard";
 import { useTrafficTracker } from "@/hooks/useTrafficTracker";
 import DashboardLoading from "./loading";
-import {
-  LayoutDashboard,
-  Calendar,
-  User,
-  CreditCard,
-  Bell,
-  BarChart3,
-  Building2,
-  Users,
-  FileText,
-  Video,
-  FlaskConical,
-  Image as ImageIcon,
-  Pill,
-  Receipt,
-  ShieldCheck,
-  ClipboardList,
-  Clock,
-  MessageSquare,
-  Settings,
-  Activity,
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-  X,
-  LogOut,
-  Lock,
-} from "lucide-react";
+import { LayoutDashboard, Calendar, User, CreditCard, Bell, BarChart3, Building2, Users, FileText, Video, FlaskConical, Image as ImageIcon, Pill, Receipt, ShieldCheck, ClipboardList, Clock, MessageSquare, Settings, Activity, ChevronLeft, ChevronRight, Menu, X, LogOut, Lock } from "lucide-react";
+
+const FloatingAICopilot = dynamic(() => import("@/components/ai/FloatingAICopilot").then((module) => module.FloatingAICopilot), { ssr: false });
 
 interface NavItem {
   section: string;
@@ -74,6 +36,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  useOverlayFocus(mobileMenuOpen, drawerRef, () => setMobileMenuOpen(false));
   const { clinics: headerClinics, fetchClinics, activeClinicId, setActiveClinic } = useClinicStore();
   const { toast } = useToast();
   const { isLoaded: modulesLoaded, fetchModules, isModuleEnabled } = useModuleStore();
@@ -178,17 +142,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace("/login");
     }
   }, [isLoading, user, router]);
-
-  useEffect(() => {
-    if (!mobileMenuOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setMobileMenuOpen(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [mobileMenuOpen]);
 
   const handleLogout = async () => {
     await logout();
@@ -298,11 +251,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       });
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-alt relative">
+    <div className="flex h-dvh overflow-hidden bg-background relative">
       {/* Mobile Backdrop Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[45] md:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-black/60  z-[45] lg:hidden transition-opacity duration-300"
           onClick={() => setMobileMenuOpen(false)}
           aria-hidden="true"
         />
@@ -310,26 +263,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar Container — Desktop flow + Mobile Off-Canvas Drawer */}
       <div
+        ref={drawerRef}
+        id="dashboard-navigation"
+        role={mobileMenuOpen ? "dialog" : undefined}
+        aria-modal={mobileMenuOpen || undefined}
+        aria-label="Workspace navigation"
+        tabIndex={-1}
         className={cn(
-          "fixed md:static inset-y-0 left-0 z-50 shrink-0 h-full flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          "fixed lg:static inset-y-0 left-0 z-50 shrink-0 h-full flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
           mobileMenuOpen
-            ? "translate-x-0 opacity-100 visible pointer-events-auto shadow-2xl"
-            : "-translate-x-full opacity-0 invisible pointer-events-none md:translate-x-0 md:opacity-100 md:visible md:pointer-events-auto"
+            ? "translate-x-0 opacity-100 visible pointer-events-auto shadow-lg"
+            : "-translate-x-full opacity-0 invisible pointer-events-none lg:translate-x-0 lg:opacity-100 lg:visible lg:pointer-events-auto"
         )}
       >
         <Sidebar
-          collapsed={sidebarCollapsed}
+          collapsed={sidebarCollapsed && !mobileMenuOpen}
           loading={isLoading || !user}
           brand={
-            sidebarCollapsed ? (
-              <AnantIcon className="h-8 w-8" />
+            sidebarCollapsed && !mobileMenuOpen ? (
+              <EkavyuIcon className="h-8 w-8" />
             ) : (
               <div className="flex items-center justify-between w-full">
-                <AnantLogo size="md" />
+                <EkavyuLogo size="md" />
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-hover md:hidden transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-hover lg:hidden transition-colors cursor-pointer"
                   aria-label="Close menu drawer"
                 >
                   <X className="w-5 h-5" />
@@ -345,7 +304,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <button
               type="button"
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-text-muted hover:text-text hover:bg-surface-hover border border-border/40 hover:border-border transition-all duration-200 cursor-pointer hidden md:flex"
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-text-muted hover:text-text hover:bg-surface-hover border border-border/40 hover:border-border transition-all duration-200 cursor-pointer hidden lg:flex"
               title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {!sidebarCollapsed && <span className="tracking-tight">Collapse sidebar</span>}
@@ -357,10 +316,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       </div>
 
-      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col h-dvh overflow-hidden min-w-0">
         {/* Active Impersonation Top Banner */}
         {isImpersonating && user?.impersonatedBy && (
-          <div className="bg-surface/95 backdrop-blur-md border-b border-amber-500/30 dark:border-amber-500/20 px-3 sm:px-6 py-2 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 shadow-2xs z-50 shrink-0 text-xs sm:text-sm font-medium animate-fade-in relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-gradient-to-r before:from-amber-500 before:via-amber-400 before:to-amber-500">
+          <div className="bg-surface/95  border-b border-warning/30 dark:border-warning/20 px-3 sm:px-6 py-2 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 shadow-2xs z-50 shrink-0 text-xs sm:text-sm font-medium animate-fade-in relative overflow-hidden ">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <Badge variant="warning" size="sm" dot pulse className="font-bold tracking-wide uppercase text-[10px] shrink-0">
                 Impersonation
@@ -377,8 +336,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               variant="outline"
               onClick={handleExitImpersonation}
               loading={isExiting}
-              icon={<LogOut className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
-              className="rounded-xl border-amber-500/40 hover:bg-amber-500/10 hover:border-amber-500/60 text-amber-700 dark:text-amber-300 font-semibold text-xs shrink-0 cursor-pointer shadow-2xs min-h-[32px]"
+              icon={<LogOut className="w-3.5 h-3.5 text-warning-text dark:text-warning-text" />}
+              className="rounded-xl border-warning/40 hover:bg-warning/10 hover:border-warning/60 text-warning-text dark:text-warning-text font-semibold text-xs shrink-0 cursor-pointer shadow-2xs min-h-[32px]"
             >
               Exit
             </Button>
@@ -389,18 +348,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <OfflineStatusBanner />
 
         {/* Top Navbar */}
-        <header className="h-16 border-b border-border/80 bg-surface/90 backdrop-blur-xl flex items-center justify-between px-3 sm:px-4 md:px-6 shrink-0 z-40 relative shadow-2xs">
+        <header className="min-h-16 flex-wrap gap-y-2 py-2 md:py-0 border-b border-border/80 bg-surface/90  flex items-center justify-between px-3 sm:px-4 md:px-6 shrink-0 z-40 relative shadow-2xs">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {/* Mobile Hamburger Toggle Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 -ml-1 rounded-xl text-text-secondary hover:text-text hover:bg-surface-hover md:hidden transition-colors cursor-pointer shrink-0 min-h-[42px] min-w-[42px] flex items-center justify-center active:scale-95"
+              className="p-2 -ml-1 rounded-xl text-text-secondary hover:text-text hover:bg-surface-hover lg:hidden transition-colors cursor-pointer shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95"
               aria-label="Toggle Navigation Drawer"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="dashboard-navigation"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            <AnantLogo size="sm" className="md:hidden shrink-0" />
-            <h1 className="text-base md:text-lg font-semibold text-text capitalize hidden sm:block truncate">
+            <EkavyuLogo size="sm" className="lg:hidden shrink-0" />
+            <p className="text-base md:text-lg font-semibold text-text capitalize hidden xl:block truncate">
               {user
                 ? isRootAdmin
                   ? "Platform Superadmin Console"
@@ -408,15 +369,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   ? "Organization Admin Dashboard"
                   : `${user.role} Dashboard`
                 : "Clinical Workspace"}
-            </h1>
+            </p>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-4">
+          <div className="contents md:flex md:items-center md:gap-2 xl:gap-4">
             {/* Only show Clinic selector when in operational clinic/tenant workspace */}
             {user && user.role !== "patient" && !isRootAdmin && headerClinics.length > 0 && (
-              <div className="w-24 xs:w-32 sm:w-56 md:w-64 shrink-0">
+              <div className="order-last w-full md:order-none md:w-48 xl:w-64 shrink-0">
                 <Select
                   size="sm"
+                  aria-label="Active clinic"
                   options={[
                     ...(headerClinics.length > 1 || hasAnyPermission(user, "MANAGE_CLINICS", "VIEW_CLINICS")
                       ? [{ value: "all", label: "All Clinics" }]
@@ -429,21 +391,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             )}
             <NotificationBell />
-            <div className="hidden md:block">
-              <PaletteSwitcher />
+            <div className="hidden lg:block">
             </div>
             {/* ModeSwitcher: sleek icon on mobile, segmented on tablet/desktop */}
-            <div className="block sm:hidden">
+            <div className="block lg:hidden">
               <ModeSwitcher variant="icon" />
             </div>
-            <div className="hidden sm:block">
+            <div className="hidden lg:block">
               <ModeSwitcher variant="segmented" />
             </div>
-            <div className="w-px h-6 bg-border mx-0.5 sm:mx-1 md:mx-2 hidden xs:block" />
+            <div className="w-px h-6 bg-border mx-0.5 sm:mx-1 md:mx-2 hidden xl:block" />
             {user ? (
               <Dropdown
                 trigger={
-                  <button className="flex items-center gap-2 hover:bg-surface-hover p-1 pr-1.5 sm:pr-2 rounded-full transition-colors shrink-0 cursor-pointer">
+                  <button type="button" aria-label="Account menu" className="min-h-11 min-w-11 flex items-center gap-2 hover:bg-surface-hover p-1 pr-1.5 sm:pr-2 rounded-full transition-colors shrink-0 cursor-pointer">
                     <Avatar src={user.image_url} name={user.name} size="sm" status="online" />
                     <div className="text-left hidden sm:block">
                       <p className="text-xs font-semibold text-text leading-tight truncate max-w-[120px]">{user.name}</p>
@@ -509,6 +470,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <MobileBottomNav
         user={user}
         pathname={pathname}
+        availableItems={filteredNavItems}
         onOpenMenu={() => setMobileMenuOpen(true)}
         isMenuOpen={mobileMenuOpen}
       />

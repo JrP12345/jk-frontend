@@ -4,10 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
-import {
-  Card, CardHeader, CardTitle, CardContent,
-  Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, SkeletonTable
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Button, Modal, Input, Textarea, useToast, Badge, StatCard, SkeletonTable } from "@/components/ui";
 import { Plus, Target, Star, MessageSquare, Sparkles } from "lucide-react";
 
 interface AspectRatings {
@@ -193,7 +190,7 @@ export default function PatientExperienceFeedbackPage() {
 
   const renderStars = (count: number) => {
     return Array.from({ length: 5 }).map((_, i) => (
-      <span key={i} className={`text-lg ${i < count ? "text-amber-400" : "text-gray-300 dark:text-gray-600"}`}>
+      <span key={i} className={`text-lg ${i < count ? "text-warning-text" : "text-text-secondary dark:text-text-secondary"}`}>
         ★
       </span>
     ));
@@ -214,7 +211,7 @@ export default function PatientExperienceFeedbackPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -288,7 +285,7 @@ export default function PatientExperienceFeedbackPage() {
               <span className="font-bold text-text">{formatAspectRating(stats.averageAspectRatings.waitTime)}</span>
             </div>
             <div className="w-full bg-surface-alt h-2.5 rounded-full overflow-hidden">
-              <div className="bg-emerald-500 h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.waitTime) }} />
+              <div className="bg-success h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.waitTime) }} />
             </div>
             <p className="text-xs text-text-muted">Target: Avg consult wait time under 15 minutes.</p>
           </CardContent>
@@ -306,7 +303,7 @@ export default function PatientExperienceFeedbackPage() {
               <span className="font-bold text-text">{formatAspectRating(stats.averageAspectRatings.doctorAttitude)}</span>
             </div>
             <div className="w-full bg-surface-alt h-2.5 rounded-full overflow-hidden">
-              <div className="bg-teal-500 h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.doctorAttitude) }} />
+              <div className="bg-primary h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.doctorAttitude) }} />
             </div>
             <p className="text-xs text-text-muted">High patient trust in clinical explanation & empathy.</p>
           </CardContent>
@@ -324,7 +321,7 @@ export default function PatientExperienceFeedbackPage() {
               <span className="font-bold text-text">{formatAspectRating(stats.averageAspectRatings.cleanliness)}</span>
             </div>
             <div className="w-full bg-surface-alt h-2.5 rounded-full overflow-hidden">
-              <div className="bg-indigo-500 h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.cleanliness) }} />
+              <div className="bg-primary h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.cleanliness) }} />
             </div>
             <p className="text-xs text-text-muted">Sanitization & room hygiene standards compliant.</p>
           </CardContent>
@@ -364,7 +361,7 @@ export default function PatientExperienceFeedbackPage() {
               <SkeletonTable rows={4} cols={5} />
             </div>
           ) : filteredFeedbacks.length === 0 ? (
-            <div className="p-12 text-center text-gray-500 space-y-3">
+            <div className="p-12 text-center text-text-muted space-y-3">
               <div className="text-4xl">📝</div>
               <p className="text-sm font-medium">No patient feedback matching current sentiment filter.</p>
             </div>
@@ -374,7 +371,7 @@ export default function PatientExperienceFeedbackPage() {
                 <div key={fb.id} className="p-5 hover:bg-surface-hover/50 transition-colors space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-sm border border-emerald-500/20">
+                      <div className="w-10 h-10 rounded-full bg-success/10 text-success-text dark:text-success-text font-bold flex items-center justify-center text-sm border border-success/20">
                         {fb.patientId?.userId?.name?.charAt(0) || "P"}
                       </div>
                       <div>

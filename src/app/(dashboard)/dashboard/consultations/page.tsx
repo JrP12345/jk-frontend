@@ -7,39 +7,8 @@ import { todayRangeParams } from "@/lib/date";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import { hasAnyPermission } from "@/lib/permissions";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Table,
-  Button,
-  Modal,
-  Input,
-  Select,
-  Textarea,
-  useToast,
-  Badge,
-  StatCard,
-  Spinner,
-  SkeletonCardGrid,
-  cn,
-} from "@/components/ui";
-import {
-  RotateCw,
-  Plus,
-  Calendar,
-  Clock,
-  Stethoscope,
-  CheckCircle2,
-  Search,
-  Ticket,
-  Phone,
-  ArrowRight,
-  User,
-  AlertCircle,
-  FileText,
-} from "lucide-react";
+import { Alert, Card, CardContent, Button, Modal, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
+import { RotateCw, Plus, Calendar, Clock, Stethoscope, CheckCircle2, Search, Ticket, Phone, ArrowRight } from "lucide-react";
 
 interface PatientUser {
   name: string;
@@ -78,20 +47,6 @@ export interface OPDQueueAppointment {
   notes?: string;
 }
 
-export interface ClinicalNoteRecord {
-  id: string;
-  _id?: string;
-  patientId: { id: string; userId?: { name: string } };
-  doctorId: { id: string; name: string };
-  version: number;
-  status: "draft" | "signed" | "amended";
-  subjective?: { chiefComplaint?: string };
-  assessment?: { diagnoses?: string[] };
-  plan?: { followUpDate?: string; treatmentPlan?: string };
-  createdAt?: string;
-  signature?: { signedAt?: string; signerName?: string };
-}
-
 export default function ConsultationsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
@@ -105,6 +60,7 @@ export default function ConsultationsPage() {
   const [patients, setPatients] = useState<PatientProfile[]>([]);
   const [doctors, setDoctors] = useState<DoctorUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -123,6 +79,7 @@ export default function ConsultationsPage() {
 
   const fetchData = async () => {
     try {
+      setLoadError(null);
       setIsRefreshing(true);
       if (user?.role === "patient") {
         const apptsRes = await api.get("/appointments");
@@ -142,6 +99,7 @@ export default function ConsultationsPage() {
         setDoctors(staffRes.data?.data?.doctors || []);
       }
     } catch (err: any) {
+      setLoadError("Consultations could not be loaded. Check your connection and try again.");
       toast({
         title: "Failed to Fetch Consultation Queue",
         description: err.response?.data?.message || "Could not retrieve appointments.",
@@ -226,10 +184,11 @@ export default function ConsultationsPage() {
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+      {loadError && <Alert variant="error" title="Unable to load consultations" action={<Button variant="outline" size="sm" onClick={fetchData}>Try again</Button>}>{loadError}</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -332,7 +291,7 @@ export default function ConsultationsPage() {
                   className={cn(
                     "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
                     statusFilter === s.key
-                      ? "bg-primary-500/10 text-primary-600 dark:text-primary-400"
+                      ? "bg-primary-500/10 text-accent dark:text-accent"
                       : "bg-surface-alt text-text-muted"
                   )}
                 >
@@ -350,7 +309,7 @@ export default function ConsultationsPage() {
               placeholder="Search patient, doctor, complaint..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+              className="w-full pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 transition-all"
             />
           </div>
         </div>
@@ -364,7 +323,7 @@ export default function ConsultationsPage() {
       ) : filteredQueue.length === 0 ? (
         <Card className="py-16 text-center text-text-muted rounded-2xl border border-border/80 bg-surface shadow-xs">
           <CardContent className="space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-primary-500">
+            <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-accent">
               <Stethoscope className="w-6 h-6" />
             </div>
             <p className="font-bold text-text text-sm">No Patients in Selected Queue Filter</p>
@@ -399,16 +358,16 @@ export default function ConsultationsPage() {
                 className={cn(
                   "p-4 rounded-2xl border transition-all flex flex-col justify-between text-xs shadow-xs space-y-3.5 overflow-hidden",
                   isInConsultation
-                    ? "border-emerald-500/40 bg-emerald-500/[0.03] dark:bg-emerald-500/[0.06]"
+                    ? "border-success/40 bg-success/[0.03] dark:bg-success/[0.06]"
                     : isCompleted
-                    ? "border-emerald-500/20 bg-surface"
+                    ? "border-success/20 bg-surface"
                     : "border-border/80 bg-surface hover:border-primary-500/40"
                 )}
               >
                 {/* Header Badge */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono font-bold text-xs text-primary-600 dark:text-primary-400 bg-primary-500/10 px-2.5 py-1 rounded-xl border border-primary-500/20 inline-flex items-center gap-1">
+                    <span className="font-mono font-bold text-xs text-accent dark:text-accent bg-primary-500/10 px-2.5 py-1 rounded-xl border border-primary-500/20 inline-flex items-center gap-1">
                       <Ticket className="w-3.5 h-3.5 opacity-70" />
                       Token #{item.tokenNumber || item.queuePosition || 1}
                     </span>
@@ -427,7 +386,7 @@ export default function ConsultationsPage() {
                   {patientPhone && (
                     <a
                       href={`tel:${patientPhone}`}
-                      className="text-xs text-text-muted hover:text-primary-600 transition-colors flex items-center gap-1 w-fit"
+                      className="text-xs text-text-muted hover:text-accent transition-colors flex items-center gap-1 w-fit"
                     >
                       <Phone className="w-3 h-3 text-text-muted shrink-0" />
                       {patientPhone}
@@ -440,7 +399,7 @@ export default function ConsultationsPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-text-muted">Physician:</span>
                     <span className="font-bold text-text flex items-center gap-1">
-                      <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                      <Stethoscope className="w-3.5 h-3.5 text-accent shrink-0" />
                       Dr. {doctorName.replace(/^dr\.?\s+/i, "")}
                     </span>
                   </div>

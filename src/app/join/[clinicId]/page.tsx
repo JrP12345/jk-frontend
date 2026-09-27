@@ -4,34 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Button,
-  Badge,
-  Spinner,
-  useToast,
-  ModeSwitcher,
-  cn,
-} from "@/components/ui";
-import {
-  Stethoscope,
-  MapPin,
-  Users,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  Sparkles,
-  Phone,
-  ShieldCheck,
-  ChevronRight,
-  ArrowRight,
-  UserCheck,
-  RefreshCw,
-  Building2,
-} from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, useToast, ModeSwitcher, cn } from "@/components/ui";
+import { Stethoscope, MapPin, Users, Clock, CheckCircle2, AlertCircle, Sparkles, Phone, ShieldCheck, ChevronRight, ArrowRight, UserCheck, RefreshCw, Building2 } from "lucide-react";
 
 interface PublicDoctor {
   doctorId: string;
@@ -247,7 +221,7 @@ export default function JoinClinicQueuePage() {
       <div className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-4">
         <div className="flex flex-col items-center gap-4 text-center max-w-sm">
           <div className="w-16 h-16 rounded-2xl bg-primary-500/10 flex items-center justify-center animate-pulse">
-            <Building2 className="w-8 h-8 text-primary-600 dark:text-primary-400" />
+            <Building2 className="w-8 h-8 text-accent dark:text-accent" />
           </div>
           <div className="space-y-2">
             <h3 className="text-lg font-semibold text-text">
@@ -257,7 +231,7 @@ export default function JoinClinicQueuePage() {
               Retrieving live doctor availability and wait times.
             </p>
           </div>
-          <Spinner className="w-6 h-6 text-primary-600" />
+          <Spinner className="w-6 h-6 text-accent" />
         </div>
       </div>
     );
@@ -266,17 +240,17 @@ export default function JoinClinicQueuePage() {
   // 2. Error State
   if (error || !clinic) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
-        <Card className="w-full max-w-md border-red-200 dark:border-red-900 shadow-xl">
+      <div className="min-h-screen bg-surface dark:bg-background flex flex-col items-center justify-center p-4">
+        <Card className="w-full max-w-md border-danger dark:border-danger shadow-xl">
           <CardContent className="pt-6 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 mx-auto flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-danger-subtle dark:bg-danger/60 text-danger-text mx-auto flex items-center justify-center">
               <AlertCircle className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-xl font-bold text-text dark:text-text">
                 Queue Registration Unavailable
               </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-300">
+              <p className="text-sm text-text-secondary dark:text-text-secondary">
                 {error || "Could not find clinic details for this QR link."}
               </p>
             </div>
@@ -299,40 +273,40 @@ export default function JoinClinicQueuePage() {
   // 3. Celebratory Success Screen (Immediate token preview with redirect timer)
   if (successResult) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-sky-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 flex flex-col items-center justify-center p-4">
-        <Card className="w-full max-w-md border-emerald-300 dark:border-emerald-800 shadow-2xl overflow-hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur">
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white text-center">
-            <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 backdrop-blur shadow-inner">
-              <CheckCircle2 className="w-8 h-8 text-white" />
+      <div className="min-h-screen brand-wash       flex flex-col items-center justify-center p-4">
+        <Card className="w-full max-w-md border-success dark:border-success shadow-lg overflow-hidden bg-surface/95 dark:bg-surface/95 ">
+          <div className="bg-primary p-6 text-brand-mist text-center">
+            <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3  shadow-inner">
+              <CheckCircle2 className="w-8 h-8 text-brand-mist" />
             </div>
             <h2 className="text-2xl font-black tracking-tight">
               {successResult.isExisting ? "Token Retrieved!" : "You're in the Queue!"}
             </h2>
-            <p className="text-emerald-100 text-xs font-medium mt-1">
+            <p className="text-brand-mist text-xs font-medium mt-1">
               {clinic.name}
             </p>
           </div>
 
           <CardContent className="p-6 text-center space-y-6">
-            <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl p-5 border border-slate-200 dark:border-slate-700">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <div className="bg-surface dark:bg-surface-alt/80 rounded-2xl p-5 border border-border dark:border-border">
+              <span className="text-xs font-bold uppercase tracking-wider text-text-muted dark:text-text-muted">
                 Your Assigned Live Token
               </span>
-              <div className="text-5xl font-black text-indigo-600 dark:text-indigo-400 mt-1 mb-2 tracking-tight">
+              <div className="text-5xl font-black text-accent dark:text-accent mt-1 mb-2 tracking-tight">
                 #{successResult.tokenNumber}
               </div>
-              <div className="flex items-center justify-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-                <Users className="w-4 h-4 text-indigo-500" />
+              <div className="flex items-center justify-center gap-2 text-xs font-medium text-text-secondary dark:text-text-secondary">
+                <Users className="w-4 h-4 text-accent" />
                 <span>Estimated Position in Queue: #{successResult.queuePosition}</span>
               </div>
             </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-text-muted dark:text-text-muted">
               Redirecting you to the live mobile tracker with real-time audio announcements & doctor status...
             </p>
 
             <Button
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-6 text-base shadow-lg shadow-indigo-600/20"
+              className="w-full bg-primary hover:bg-primary text-brand-mist font-semibold py-6 text-base shadow-lg "
               onClick={() => router.push(successResult.trackingUrl)}
             >
               Open Live Tracker Now
@@ -348,10 +322,10 @@ export default function JoinClinicQueuePage() {
   return (
     <div className="min-h-screen bg-surface-alt pb-12 font-sans text-text">
       {/* Sticky Top Facility Banner */}
-      <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-border shadow-xs px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <header className="sticky top-0 z-30 bg-surface/90  border-b border-border shadow-xs px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="max-w-md mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-primary-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-primary-600 text-brand-mist flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
               <Building2 className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -375,31 +349,31 @@ export default function JoinClinicQueuePage() {
       {/* Main Content Form */}
       <main className="max-w-md mx-auto px-4 pt-5">
         {/* Step Visual Indicator */}
-        <div className="mb-5 bg-gradient-to-r from-indigo-600 to-sky-600 rounded-2xl p-4 text-white shadow-lg shadow-indigo-500/10">
-          <div className="flex items-center justify-between text-xs font-semibold mb-1 opacity-90">
+        <div className="mb-5 bg-primary rounded-2xl p-4 text-brand-mist shadow-lg ">
+          <div className="flex items-center justify-between text-xs font-semibold mb-1">
             <span>Fast Walk-In Registration</span>
-            <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">Zero Login</span>
+            <span className="bg-brand-ink/20 text-brand-mist px-2 py-0.5 rounded-full text-[10px]">Zero Login</span>
           </div>
           <h2 className="text-lg font-extrabold tracking-tight">
             Join the Live Doctor Queue
           </h2>
-          <p className="text-xs text-indigo-100 mt-0.5">
+          <p className="text-xs text-brand-mist mt-0.5">
             Fill your name & number below to instantly receive your token and live mobile tracking link.
           </p>
 
           <div className="mt-3 pt-3 border-t border-white/20 flex items-center justify-between text-[11px] font-medium">
             <div className="flex items-center gap-1">
-              <span className="w-4 h-4 rounded-full bg-white text-indigo-600 text-[10px] font-bold flex items-center justify-center">1</span>
+              <span className="w-4 h-4 rounded-full bg-white text-accent text-[10px] font-bold flex items-center justify-center">1</span>
               <span>Your Details</span>
             </div>
             <ChevronRight className="w-3.5 h-3.5 opacity-60" />
             <div className="flex items-center gap-1">
-              <span className="w-4 h-4 rounded-full bg-white/30 text-white text-[10px] font-bold flex items-center justify-center">2</span>
+              <span className="w-4 h-4 rounded-full bg-white/30 text-brand-mist text-[10px] font-bold flex items-center justify-center">2</span>
               <span>Doctor</span>
             </div>
             <ChevronRight className="w-3.5 h-3.5 opacity-60" />
             <div className="flex items-center gap-1">
-              <span className="w-4 h-4 rounded-full bg-white/30 text-white text-[10px] font-bold flex items-center justify-center">3</span>
+              <span className="w-4 h-4 rounded-full bg-white/30 text-brand-mist text-[10px] font-bold flex items-center justify-center">3</span>
               <span>Live Token</span>
             </div>
           </div>
@@ -407,18 +381,18 @@ export default function JoinClinicQueuePage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Card 1: Patient Information */}
-          <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+          <Card className="border-border dark:border-border shadow-sm">
             <CardHeader className="pb-3 pt-4 px-4">
-              <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-indigo-600" />
+              <CardTitle className="text-sm font-bold text-text dark:text-text-secondary flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-accent" />
                 Step 1: Patient Information
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-3.5">
               {/* Name */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Full Name <span className="text-red-500">*</span>
+                <label className="block text-xs font-semibold text-text-secondary dark:text-text-secondary mb-1">
+                  Full Name <span className="text-danger-text">*</span>
                 </label>
                 <input
                   type="text"
@@ -426,17 +400,17 @@ export default function JoinClinicQueuePage() {
                   placeholder="e.g. Ramesh Patel"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border dark:border-border bg-surface dark:bg-surface text-text dark:text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition"
                 />
               </div>
 
               {/* Mobile Phone */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Mobile Number <span className="text-red-500">*</span>
+                <label className="block text-xs font-semibold text-text-secondary dark:text-text-secondary mb-1">
+                  Mobile Number <span className="text-danger-text">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
                     <Phone className="w-4 h-4" />
                   </div>
                   <input
@@ -446,10 +420,10 @@ export default function JoinClinicQueuePage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     maxLength={14}
-                    className="w-full pl-9 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                    className="w-full pl-9 pr-3.5 py-2.5 text-sm rounded-xl border border-border dark:border-border bg-surface dark:bg-surface text-text dark:text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition"
                   />
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-[11px] text-text-muted dark:text-text-muted mt-1">
                   We use this to recover your existing token or send queue updates.
                 </p>
               </div>
@@ -468,7 +442,7 @@ export default function JoinClinicQueuePage() {
                       className={cn(
                         "py-2.5 px-3 text-xs font-semibold rounded-xl capitalize border transition text-center min-h-[44px] flex items-center justify-center cursor-pointer",
                         gender === g
-                          ? "bg-primary-600 text-white border-primary-600 shadow-xs"
+                          ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs"
                           : "bg-surface text-text border-border hover:bg-surface-hover"
                       )}
                     >
@@ -480,34 +454,34 @@ export default function JoinClinicQueuePage() {
 
               {/* Reason / Notes (Optional) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Reason for Visit / Symptoms <span className="text-slate-400 font-normal">(Optional)</span>
+                <label className="block text-xs font-semibold text-text-secondary dark:text-text-secondary mb-1">
+                  Reason for Visit / Symptoms <span className="text-text-muted font-normal">(Optional)</span>
                 </label>
                 <input
                   type="text"
                   placeholder="e.g. Fever, routine checkup, cough"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-border dark:border-border bg-surface dark:bg-surface text-text dark:text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition"
                 />
               </div>
             </CardContent>
           </Card>
 
           {/* Card 2: Select Doctor */}
-          <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+          <Card className="border-border dark:border-border shadow-sm">
             <CardHeader className="pb-2 pt-4 px-4 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                <Stethoscope className="w-4 h-4 text-indigo-600" />
+              <CardTitle className="text-sm font-bold text-text dark:text-text-secondary flex items-center gap-2">
+                <Stethoscope className="w-4 h-4 text-accent" />
                 Step 2: Select Doctor
               </CardTitle>
-              <span className="text-[11px] text-slate-500 font-medium">
+              <span className="text-[11px] text-text-muted font-medium">
                 {clinic.doctors.length} available
               </span>
             </CardHeader>
             <CardContent className="px-4 pb-4 pt-1">
               {clinic.doctors.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-500">
+                <div className="py-6 text-center text-xs text-text-muted">
                   No doctors currently active at this clinic. Please speak with the front desk.
                 </div>
               ) : (
@@ -532,25 +506,25 @@ export default function JoinClinicQueuePage() {
                           if (!isUnavailable) setSelectedDoctorId(doc.doctorId);
                         }}
                         className={cn(
-                          "w-full relative rounded-xl border p-3.5 transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                          "w-full relative rounded-xl border p-3.5 transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
                           isUnavailable
-                            ? "bg-slate-100/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-60 cursor-not-allowed"
+                            ? "bg-surface-alt/70 dark:bg-surface-alt/40 border-border dark:border-border opacity-60 cursor-not-allowed"
                             : isSelected
-                            ? "bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-600 ring-2 ring-indigo-500/20 shadow-sm cursor-pointer"
-                            : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-indigo-300 cursor-pointer"
+                            ? "bg-accent-subtle/70 dark:bg-primary/40 border-accent ring-2 ring-accent/20 shadow-sm cursor-pointer"
+                            : "bg-surface dark:bg-surface border-border dark:border-border hover:border-accent cursor-pointer"
                         )}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                              <h3 className="text-sm font-bold text-text dark:text-text truncate">
                                 {doc.name}
                               </h3>
                               {isSelected && !isUnavailable && (
-                                <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+                                <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
                               )}
                             </div>
-                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                            <p className="text-xs text-text-secondary dark:text-text-muted">
                               {doc.specialization || "General Physician"}
                             </p>
                           </div>
@@ -567,8 +541,8 @@ export default function JoinClinicQueuePage() {
                                 className={cn(
                                   "text-[10px] px-2 py-0.5 font-semibold",
                                   (doc.waitingPatientsCount || 0) === 0
-                                    ? "border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40"
-                                    : "border-amber-500/30 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40"
+                                    ? "border-success/30 text-success-text dark:text-success-text bg-success-subtle dark:bg-success/40"
+                                    : "border-warning/30 text-warning-text dark:text-warning-text bg-warning-subtle dark:bg-warning/40"
                                 )}
                               >
                                 {(doc.waitingPatientsCount || 0) === 0
@@ -581,12 +555,12 @@ export default function JoinClinicQueuePage() {
 
                         {/* Wait Time Info if Available */}
                         {!isUnavailable && (
-                          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                          <div className="mt-2.5 pt-2 border-t border-border dark:border-border/80 flex items-center justify-between text-[11px] text-text-muted dark:text-text-muted">
                             <div className="flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                              <Clock className="w-3.5 h-3.5 text-accent" />
                               <span>
                                 Est. Wait:{" "}
-                                <strong className="text-slate-700 dark:text-slate-200">
+                                <strong className="text-text-secondary dark:text-text-secondary">
                                   {doc.estimatedWaitMinutes || 0} mins
                                 </strong>
                               </span>
@@ -611,33 +585,33 @@ export default function JoinClinicQueuePage() {
               loading={submitting}
               loadingText="Assigning Your Token..."
               iconRight={<Sparkles className="w-5 h-5" />}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-6 text-base rounded-xl shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center gap-2"
+              className="w-full bg-primary hover:bg-primary text-brand-mist font-bold py-6 text-base rounded-xl shadow-lg  transition-all flex items-center justify-center gap-2"
             >
               Join Queue & Get Token
             </Button>
 
-            <div className="flex items-center justify-center gap-2 text-center text-xs text-slate-500 dark:text-slate-400">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            <div className="flex items-center justify-center gap-2 text-center text-xs text-text-muted dark:text-text-muted">
+              <ShieldCheck className="w-4 h-4 text-success-text" />
               <span>Free instant check-in. No app download required.</span>
             </div>
           </div>
         </form>
 
         {/* Existing Token / Help Footer */}
-        <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 text-center space-y-2 text-xs text-slate-500">
+        <div className="mt-8 pt-6 border-t border-border dark:border-border text-center space-y-2 text-xs text-text-muted">
           <p>
             Already hold an appointment token?{" "}
             <Link
               href="/track"
-              className="font-semibold text-indigo-600 dark:text-indigo-400 underline underline-offset-2"
+              className="font-semibold text-accent dark:text-accent underline underline-offset-2"
             >
               Track Your Live Queue
             </Link>
           </p>
           {clinic.phone && (
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-text-muted">
               Need assistance? Call reception at{" "}
-              <a href={`tel:${clinic.phone}`} className="font-medium text-slate-600 dark:text-slate-300">
+              <a href={`tel:${clinic.phone}`} className="font-medium text-text-secondary dark:text-text-secondary">
                 {clinic.phone}
               </a>
             </p>

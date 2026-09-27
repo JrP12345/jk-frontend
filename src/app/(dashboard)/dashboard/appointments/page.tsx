@@ -1,62 +1,16 @@
 "use client";
 
+import { getPrintBrandStyles } from "@/lib/printBrand";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Table,
-  Button,
-  Modal,
-  Input,
-  DatePicker,
-  Select,
-  Textarea,
-  useToast,
-  Spinner,
-  Badge,
-  ConfirmDialog,
-  Stepper,
-  Dropdown,
-  Checkbox,
-  cn,
-} from "@/components/ui";
+import { Alert, Card, CardContent, Table, Button, Modal, Input, DatePicker, Select, Textarea, useToast, Spinner, Badge, ConfirmDialog, Stepper, Dropdown, Checkbox, cn } from "@/components/ui";
 import dynamic from "next/dynamic";
-import {
-  RotateCw,
-  Plus,
-  LayoutList,
-  Calendar,
-  Search,
-  Ticket,
-  FileText,
-  MoreHorizontal,
-  Stethoscope,
-  MapPin,
-  User,
-  Clock,
-  UserPlus,
-  ArrowRight,
-  ArrowLeft,
-  Printer,
-  Star,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  CalendarClock,
-  Sparkles,
-  Phone,
-  Building2,
-  Mail,
-  Lock,
-  CalendarOff,
-} from "lucide-react";
+import { RotateCw, Plus, LayoutList, Calendar, Search, Ticket, FileText, MoreHorizontal, Stethoscope, MapPin, User, Clock, UserPlus, ArrowRight, ArrowLeft, Printer, CheckCircle2, XCircle, CalendarClock, Phone, Building2, Mail, CalendarOff } from "lucide-react";
 
 const AppointmentCalendarView = dynamic(
   () => import("@/components/clinical/AppointmentCalendarView").then((mod) => mod.AppointmentCalendarView),
@@ -132,6 +86,7 @@ export default function AppointmentsPage() {
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filter States
@@ -453,20 +408,20 @@ export default function AppointmentsPage() {
       <html>
         <head>
           <title>Appointment Token Slip - #${ticketData.tokenNumber}</title>
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f3f4f6; padding: 20px; }
-            .ticket { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 32px; width: 380px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); text-align: left; }
-            .header { text-align: center; border-bottom: 2px dashed #e5e7eb; padding-bottom: 20px; margin-bottom: 20px; }
-            .brand { font-size: 12px; font-weight: 800; color: #0d9488; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+          <style>${getPrintBrandStyles()}
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: var(--print-surface-muted); padding: 20px; }
+            .ticket { background: white; border: 1px solid var(--print-border); border-radius: 16px; padding: 32px; width: 380px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); text-align: left; }
+            .header { text-align: center; border-bottom: 2px dashed var(--print-border); padding-bottom: 20px; margin-bottom: 20px; }
+            .brand { font-size: 12px; font-weight: 800; color: var(--print-accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
             .clinic-name { font-size: 18px; font-weight: 700; color: #1f2937; margin: 0; }
             .token-box { text-align: center; margin: 16px 0; }
-            .token-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; font-weight: 600; }
-            .token-num { font-size: 48px; font-weight: 800; color: #0d9488; margin: 4px 0; line-height: 1; }
-            .details { font-size: 13px; color: #4b5563; }
+            .token-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--print-muted); font-weight: 600; }
+            .token-num { font-size: 48px; font-weight: 800; color: var(--print-accent); margin: 4px 0; line-height: 1; }
+            .details { font-size: 13px; color: var(--print-secondary); }
             .row { display: flex; justify-content: space-between; margin-bottom: 8px; }
-            .label { font-weight: 500; color: #6b7280; }
+            .label { font-weight: 500; color: var(--print-muted); }
             .val { font-weight: 600; color: #1f2937; text-align: right; }
-            .footer { border-top: 1px solid #f3f4f6; margin-top: 24px; padding-top: 16px; text-align: center; font-size: 11px; color: #9ca3af; }
+            .footer { border-top: 1px solid var(--print-surface-muted); margin-top: 24px; padding-top: 16px; text-align: center; font-size: 11px; color: #9ca3af; }
             @media print {
               body { background: white; padding: 0; }
               .ticket { box-shadow: none; border: 1px solid #000; }
@@ -476,14 +431,14 @@ export default function AppointmentsPage() {
         <body>
           <div class="ticket">
             <div class="header">
-              <div class="brand">ANANT Health OS</div>
+              <div class="brand">Ekavyu</div>
               <h1 class="clinic-name">${ticketData.clinicName}</h1>
-              <p style="margin: 4px 0 0; font-size: 12px; color: #6b7280;">${ticketData.clinicAddress}</p>
+              <p style="margin: 4px 0 0; font-size: 12px; color: var(--print-muted);">${ticketData.clinicAddress}</p>
             </div>
             <div class="token-box">
               <span class="token-label">Queue Token Number</span>
               <div class="token-num">#${ticketData.tokenNumber}</div>
-              <span style="font-size: 12px; color: #10b981; font-weight: 700;">✓ Confirmed Schedule</span>
+              <span style="font-size: 12px; color: var(--print-success); font-weight: 700;">✓ Confirmed Schedule</span>
             </div>
             <div class="details">
               <div class="row">
@@ -518,6 +473,7 @@ export default function AppointmentsPage() {
 
   const fetchAppointments = async () => {
     try {
+      setLoadError(null);
       setIsRefreshing(true);
       const queryParams = [];
       if (filterClinic) queryParams.push(`clinicId=${filterClinic}`);
@@ -537,6 +493,7 @@ export default function AppointmentsPage() {
       const res = await api.get(`/appointments${queryString}`);
       setAppointments(res.data.data || []);
     } catch {
+      setLoadError("Appointments could not be loaded. Check your connection and try again.");
       toast({
         title: "Error",
         description: "Failed to load appointments list",
@@ -862,7 +819,7 @@ export default function AppointmentsPage() {
       ? [
           {
             label: "Open Encounter Workspace",
-            icon: <Stethoscope className="w-4 h-4 text-primary-500" />,
+            icon: <Stethoscope className="w-4 h-4 text-accent" />,
             onClick: () => router.push(`/dashboard/consultations/${row.id}`),
           },
         ]
@@ -871,7 +828,7 @@ export default function AppointmentsPage() {
       ? [
           {
             label: "Mark Confirmed",
-            icon: <CheckCircle2 className="w-4 h-4 text-primary-500" />,
+            icon: <CheckCircle2 className="w-4 h-4 text-accent" />,
             onClick: () => {
               setUpdatingStatusId(row.id);
               setConfirmStatus("confirmed");
@@ -895,7 +852,7 @@ export default function AppointmentsPage() {
       ? [
           {
             label: "Start Consultation",
-            icon: <Stethoscope className="w-4 h-4 text-emerald-500" />,
+            icon: <Stethoscope className="w-4 h-4 text-success-text" />,
             onClick: () => {
               setUpdatingStatusId(row.id);
               setConfirmStatus("in-consultation");
@@ -907,7 +864,7 @@ export default function AppointmentsPage() {
       ? [
           {
             label: "Mark Completed",
-            icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
+            icon: <CheckCircle2 className="w-4 h-4 text-success-text" />,
             onClick: () => {
               setUpdatingStatusId(row.id);
               setConfirmStatus("completed");
@@ -935,10 +892,11 @@ export default function AppointmentsPage() {
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-16">
+      {loadError && <Alert variant="error" title="Unable to load appointments" action={<Button variant="outline" size="sm" onClick={fetchAppointments}>Try again</Button>}>{loadError}</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary-500/30 before:to-transparent">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -1027,7 +985,7 @@ export default function AppointmentsPage() {
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
             )}
           >
-            <LayoutList className={cn("h-3.5 w-3.5", viewLayout === "table" ? "text-primary-500" : "text-text-muted")} />
+            <LayoutList className={cn("h-3.5 w-3.5", viewLayout === "table" ? "text-accent" : "text-text-muted")} />
             <span>List View</span>
           </button>
           <button
@@ -1040,7 +998,7 @@ export default function AppointmentsPage() {
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
             )}
           >
-            <Calendar className={cn("h-3.5 w-3.5", viewLayout === "calendar" ? "text-primary-500" : "text-text-muted")} />
+            <Calendar className={cn("h-3.5 w-3.5", viewLayout === "calendar" ? "text-accent" : "text-text-muted")} />
             <span>Calendar View</span>
           </button>
         </div>
@@ -1058,6 +1016,7 @@ export default function AppointmentsPage() {
         <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
           <CardContent className="p-0">
             <Table
+
               data={appointments || []}
               exportFilename="appointments_list"
               searchPlaceholder="Search by patient, doctor, or token..."
@@ -1127,7 +1086,7 @@ export default function AppointmentsPage() {
                       <button
                         type="button"
                         onClick={() => handleViewSlip(row)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary-500/10 border border-primary-500/20 text-primary-600 dark:text-primary-400 font-mono font-bold text-xs hover:bg-primary-500/15 transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary-500/10 border border-primary-500/20 text-accent dark:text-accent font-mono font-bold text-xs hover:bg-primary-500/15 transition-colors cursor-pointer"
                         title="View Booking Slip"
                       >
                         <Ticket className="w-3.5 h-3.5 shrink-0" />
@@ -1153,7 +1112,7 @@ export default function AppointmentsPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 text-sm font-bold text-text truncate">
-                          <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                          <Stethoscope className="w-3.5 h-3.5 text-accent shrink-0" />
                           <span className="truncate">Dr. {(row.doctorId?.name || "Unassigned").replace(/^dr\.?\s+/i, "")}</span>
                         </div>
                         <p className="text-[11px] text-text-muted pl-5 truncate">
@@ -1237,7 +1196,7 @@ export default function AppointmentsPage() {
                     <button
                       type="button"
                       onClick={() => handleViewSlip(row)}
-                      className="font-mono font-bold text-xs sm:text-sm text-primary-600 dark:text-primary-400 hover:underline cursor-pointer focus:outline-none inline-flex items-center gap-1"
+                      className="font-mono font-bold text-xs sm:text-sm text-accent dark:text-accent hover:underline cursor-pointer focus:outline-none inline-flex items-center gap-1"
                       title="View Booking Slip"
                     >
                       <Ticket className="w-3.5 h-3.5 shrink-0 opacity-70" />
@@ -1281,7 +1240,7 @@ export default function AppointmentsPage() {
                   render: (row: Appointment) => (
                     <div className="space-y-0.5 min-w-[140px]">
                       <div className="flex items-center gap-1 text-xs font-semibold text-text">
-                        <Stethoscope className="w-3.5 h-3.5 text-primary-500 shrink-0" />
+                        <Stethoscope className="w-3.5 h-3.5 text-accent shrink-0" />
                         <span>Dr. {(row.doctorId?.name || "Unassigned").replace(/^dr\.?\s+/i, "")}</span>
                       </div>
                       <span className="text-[10px] text-text-muted block pl-4.5">
@@ -1402,6 +1361,7 @@ export default function AppointmentsPage() {
               <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   icon={<Search className="w-4 h-4 text-text-muted" />}
+                  aria-label="Search patients by name, email or mobile"
                   placeholder="Search by patient name, email, or mobile..."
                   value={patientSearch}
                   onChange={(e) => setPatientSearch(e.target.value)}
@@ -1446,7 +1406,7 @@ export default function AppointmentsPage() {
 
           {/* STEP 2: Location, Doctor & Registration */}
           {bookingStep === 2 && (
-            <div className="space-y-4 animate-fade-in max-h-[70vh] overflow-y-auto pr-1">
+            <div className="space-y-4 animate-fade-in">
               {isNewPatient && (
                 <div className="space-y-3.5 border-b border-border/60 pb-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-text">Patient Registration</h3>
@@ -1491,7 +1451,7 @@ export default function AppointmentsPage() {
                       label="Mobile Phone Number"
                       placeholder="98765 43210"
                       value={newPatientForm.phone}
-                      onChange={(e) => handleNewPatientChange("phone", e.target.value)}
+                      onChange={(e) => handleNewPatientChange("phone", e.target.value)} type="tel" inputMode="tel"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1622,7 +1582,7 @@ export default function AppointmentsPage() {
                   </div>
                   <p className="text-xs text-text-secondary leading-relaxed">
                     Practitioner operates in sequential queue mode. Confirming will issue Token{" "}
-                    <strong className="text-primary-600 dark:text-primary-400 font-bold">
+                    <strong className="text-accent dark:text-accent font-bold">
                       #{nextTokenNum || tokensTodayCount + 1}
                     </strong>{" "}
                     for today.
@@ -1631,8 +1591,8 @@ export default function AppointmentsPage() {
               ) : (
                 <div className="space-y-2 border-t border-border/60 pt-3">
                   {doctorHolidayInfo?.isHoliday && (
-                    <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300 animate-fade-in">
-                      <CalendarOff className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-2xl flex items-start gap-2.5 text-xs text-warning-text dark:text-warning-text animate-fade-in">
+                      <CalendarOff className="w-5 h-5 text-warning-text shrink-0 mt-0.5" />
                       <div className="space-y-0.5">
                         <p className="font-bold">Doctor is on Holiday / Leave on this date</p>
                         <p className="text-[11px] leading-relaxed opacity-90">
@@ -1652,7 +1612,7 @@ export default function AppointmentsPage() {
                       <Spinner size="sm" label="Fetching time slots..." />
                     </div>
                   ) : availableSlots.length === 0 ? (
-                    <div className="p-3 bg-amber-500/[0.06] border border-amber-500/20 rounded-xl text-xs text-amber-700 dark:text-amber-300">
+                    <div className="p-3 bg-warning/[0.06] border border-warning/20 rounded-xl text-xs text-warning-text dark:text-warning-text">
                       No 15-min open slots for this date. You may specify a custom time below or choose another date.
                     </div>
                   ) : (
@@ -1674,18 +1634,18 @@ export default function AppointmentsPage() {
                               className={cn(
                                 "px-2 py-2 text-xs font-bold rounded-xl border transition-all relative select-none cursor-pointer min-h-[40px] flex items-center justify-center",
                                 isSelected
-                                    ? "bg-primary-500 text-white border-primary-500 shadow-xs"
+                                    ? "bg-primary-500 text-brand-mist border-primary-500 shadow-xs"
                                     : isHeldByOther
-                                    ? "bg-amber-500/10 text-amber-500 border-amber-300 cursor-not-allowed opacity-60"
+                                    ? "bg-warning/10 text-warning-text border-warning cursor-not-allowed opacity-60"
                                     : "bg-surface hover:bg-surface-hover text-text border-border"
                               )}
                             >
                               {slot.time}
                               {isHeldByOther && (
-                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400" />
+                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-warning" />
                               )}
                               {isMyLock && (
-                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400" />
+                                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-success" />
                               )}
                             </button>
                           );
@@ -1713,7 +1673,7 @@ export default function AppointmentsPage() {
                 rows={2}
               />
 
-              <div className="p-3 bg-amber-500/[0.06] border border-amber-500/20 rounded-xl">
+              <div className="p-3 bg-warning/[0.06] border border-warning/20 rounded-xl">
                 <Checkbox
                   id="forceBooking"
                   label="Emergency Walk-in / Capacity Override (Bypass Closing Cutoff)"
@@ -1783,7 +1743,7 @@ export default function AppointmentsPage() {
           <div className="space-y-4 py-1">
             <div className="border border-border/80 rounded-2xl p-4 sm:p-5 bg-surface-alt relative overflow-hidden shadow-xs space-y-3">
               <div className="text-center border-b border-border/60 border-dashed pb-3">
-                <span className="text-[10px] font-bold text-primary-600 dark:text-primary-400 tracking-wider uppercase block">
+                <span className="text-[10px] font-bold text-accent dark:text-accent tracking-wider uppercase block">
                   Healthcare System
                 </span>
                 <h3 className="text-base font-bold text-text mt-0.5">{createdTicket.clinicName}</h3>
@@ -1794,7 +1754,7 @@ export default function AppointmentsPage() {
                 <span className="text-[10px] text-text-muted uppercase tracking-wider block font-semibold">
                   Queue Token Number
                 </span>
-                <div className="text-4xl font-black text-primary-600 dark:text-primary-400 tracking-tight my-1">
+                <div className="text-4xl font-black text-accent dark:text-accent tracking-tight my-1">
                   #{createdTicket.tokenNumber}
                 </div>
                 <Badge
@@ -1874,7 +1834,7 @@ export default function AppointmentsPage() {
                 onClick={() => setRatingValue(star)}
                 className="focus:outline-none text-3xl cursor-pointer transition-transform hover:scale-110 min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-xl"
               >
-                <span className={star <= ratingValue ? "text-amber-400" : "text-border"}>★</span>
+                <span className={star <= ratingValue ? "text-warning-text" : "text-border"}>★</span>
               </button>
             ))}
           </div>
@@ -1910,7 +1870,7 @@ export default function AppointmentsPage() {
             >
               <div className="border-b border-border/60 pb-3 flex justify-between items-start">
                 <div>
-                  <h2 className="text-base sm:text-lg font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wide">
+                  <h2 className="text-base sm:text-lg font-bold text-accent dark:text-accent uppercase tracking-wide">
                     {activeRecord.clinicId?.name || "Healthcare Facility"}
                   </h2>
                   <p className="text-xs text-text-muted mt-0.5">
@@ -1947,7 +1907,7 @@ export default function AppointmentsPage() {
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-muted block">EHR Status</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">Verified Record</span>
+                  <span className="font-semibold text-success-text dark:text-success-text">Verified Record</span>
                 </div>
               </div>
 
@@ -2039,9 +1999,9 @@ export default function AppointmentsPage() {
                     .map(
                       (m: any) => `
                     <tr>
-                      <td style="padding: 8px 12px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #e2e8f0;">${m.name}</td>
-                      <td style="padding: 8px 12px; color: #334155; border-bottom: 1px solid #e2e8f0;">${m.dosage}</td>
-                      <td style="padding: 8px 12px; color: #334155; border-bottom: 1px solid #e2e8f0;">${m.duration}</td>
+                      <td style="padding: 8px 12px; font-weight: 700; color: var(--print-text); border-bottom: 1px solid var(--print-border);">${m.name}</td>
+                      <td style="padding: 8px 12px; color: var(--print-secondary); border-bottom: 1px solid var(--print-border);">${m.dosage}</td>
+                      <td style="padding: 8px 12px; color: var(--print-secondary); border-bottom: 1px solid var(--print-border);">${m.duration}</td>
                     </tr>
                   `
                     )
@@ -2065,25 +2025,25 @@ export default function AppointmentsPage() {
                     <html>
                       <head>
                         <title>Prescription Slip - Token #${tokenNo}</title>
-                        <style>
+                        <style>${getPrintBrandStyles()}
                           @page { size: A4 portrait; margin: 12mm; }
                           * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                          body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #111827; background: #ffffff; margin: 0; padding: 10px; line-height: 1.4; font-size: 12px; }
-                          .header-bar { border-bottom: 3px solid #0d9488; padding-bottom: 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-start; }
-                          .clinic-title { font-size: 20px; font-weight: 800; color: #0f766e; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
-                          .clinic-sub { font-size: 11px; color: #6b7280; margin-top: 3px; }
-                          .token-badge { background: #0f766e; color: #ffffff; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 12px; display: inline-block; }
-                          .meta-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; }
-                          .meta-label { font-weight: 600; color: #64748b; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
-                          .meta-value { font-weight: 700; color: #0f172a; margin-top: 1px; }
-                          .rx-header { font-size: 28px; font-weight: 900; color: #0f766e; font-style: italic; margin-bottom: 6px; font-family: Georgia, serif; }
-                          .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #0f766e; border-bottom: 1.5px solid #ccfbf1; padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; letter-spacing: 0.5px; }
-                          .section-body { font-size: 13px; color: #334155; margin-bottom: 12px; background: #ffffff; }
-                          table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
-                          th { background: #f1f5f9; color: #475569; font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left; padding: 8px 12px; border-bottom: 2px solid #cbd5e1; }
+                          body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: var(--print-text); background: #ffffff; margin: 0; padding: 10px; line-height: 1.4; font-size: 12px; }
+                          .header-bar { border-bottom: 3px solid var(--print-accent); padding-bottom: 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-start; }
+                          .clinic-title { font-size: 20px; font-weight: 800; color: var(--print-accent); margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+                          .clinic-sub { font-size: 11px; color: var(--print-muted); margin-top: 3px; }
+                          .token-badge { background: var(--print-accent); color: #ffffff; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 12px; display: inline-block; }
+                          .meta-box { background: var(--print-background); border: 1px solid var(--print-border); border-radius: 8px; padding: 12px; margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; }
+                          .meta-label { font-weight: 600; color: var(--print-muted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
+                          .meta-value { font-weight: 700; color: var(--print-text); margin-top: 1px; }
+                          .rx-header { font-size: 28px; font-weight: 900; color: var(--print-accent); font-style: italic; margin-bottom: 6px; font-family: Georgia, serif; }
+                          .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--print-accent); border-bottom: 1.5px solid var(--print-surface-muted); padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; letter-spacing: 0.5px; }
+                          .section-body { font-size: 13px; color: var(--print-secondary); margin-bottom: 12px; background: #ffffff; }
+                          table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1px solid var(--print-border); border-radius: 6px; overflow: hidden; }
+                          th { background: var(--print-surface-muted); color: var(--print-secondary); font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--print-input-border); }
                           .signature-box { margin-top: 40px; display: flex; justify-content: flex-end; }
-                          .sig-line { border-top: 1.5px solid #94a3b8; width: 200px; text-align: center; padding-top: 4px; font-size: 11px; font-weight: 600; color: #475569; }
-                          .footer-bar { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center; font-size: 10px; color: #94a3b8; }
+                          .sig-line { border-top: 1.5px solid var(--print-muted); width: 200px; text-align: center; padding-top: 4px; font-size: 11px; font-weight: 600; color: var(--print-secondary); }
+                          .footer-bar { margin-top: 30px; border-top: 1px solid var(--print-border); padding-top: 10px; text-align: center; font-size: 10px; color: var(--print-muted); }
                         </style>
                       </head>
                       <body>
@@ -2104,7 +2064,7 @@ export default function AppointmentsPage() {
                           </div>
                           <div>
                             <div class="meta-label">Attending Doctor</div>
-                            <div class="meta-value">${doctorFormatted} <span style="font-weight: 400; color: #64748b;">(${doctorSpec})</span></div>
+                            <div class="meta-value">${doctorFormatted} <span style="font-weight: 400; color: var(--print-muted);">(${doctorSpec})</span></div>
                           </div>
                           <div>
                             <div class="meta-label">Consultation Date</div>
@@ -2112,7 +2072,7 @@ export default function AppointmentsPage() {
                           </div>
                           <div>
                             <div class="meta-label">Medical Record Status</div>
-                            <div class="meta-value" style="color: #059669;">Verified EHR Record</div>
+                            <div class="meta-value" style="color: var(--print-success);">Verified EHR Record</div>
                           </div>
                         </div>
 
@@ -2139,18 +2099,18 @@ export default function AppointmentsPage() {
                             </tbody>
                           </table>
                         `
-                            : `<p style="font-size: 12px; color: #64748b; font-style: italic;">No medications prescribed.</p>`
+                            : `<p style="font-size: 12px; color: var(--print-muted); font-style: italic;">No medications prescribed.</p>`
                         }
 
                         <div class="signature-box">
                           <div class="sig-line">
                             ${doctorFormatted}<br/>
-                            <span style="font-size: 10px; font-weight: 400; color: #94a3b8;">Authorized Signatory</span>
+                            <span style="font-size: 10px; font-weight: 400; color: var(--print-muted);">Authorized Signatory</span>
                           </div>
                         </div>
 
                         <div class="footer-bar">
-                          Official Electronic Medical Prescription &bull; HealthOS EMR
+                          Official Electronic Medical Prescription &bull; Ekavyu EMR
                         </div>
                       </body>
                     </html>

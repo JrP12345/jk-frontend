@@ -1,26 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Table,
-  Badge,
-  Button,
-  Modal,
-  Select,
-  Input,
-  Checkbox,
-  Tabs,
-  useToast,
-  Spinner,
-  cn,
-  Skeleton,
-  SkeletonTable,
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, Badge, Button, Modal, Select, Input, Checkbox, Tabs, useToast, cn, Skeleton, SkeletonTable } from "@/components/ui";
 import api from "@/lib/api";
 
 export interface UserRoleRecord {
@@ -470,7 +451,7 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
                       const catPerms = permissionsCatalog.filter((p) => p.category === cat);
                       return (
                         <div key={cat} className="space-y-2">
-                          <h4 className="text-xs font-bold text-primary-600 uppercase tracking-wider border-b border-border/60 pb-1">
+                          <h4 className="text-xs font-bold text-accent uppercase tracking-wider border-b border-border/60 pb-1">
                             {cat}
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -488,9 +469,9 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
                                   key={perm.code}
                                   onClick={() => handleToggleMatrixPermission(perm.code)}
                                   className={cn(
-                                    "w-full text-left p-3 rounded-xl border transition-all cursor-pointer select-none relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
+                                    "w-full text-left p-3 rounded-xl border transition-all cursor-pointer select-none relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
                                     isProtectedAdminPerm
-                                      ? "bg-amber-500/10 border-amber-500/40 text-text shadow-2xs"
+                                      ? "bg-warning/10 border-warning/40 text-text shadow-2xs"
                                       : isChecked
                                       ? "bg-primary-500/10 border-primary-500/40 text-text shadow-2xs"
                                       : "bg-surface-alt/50 border-border/60 text-text-muted hover:border-border"
@@ -508,7 +489,7 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
                                           {isProtectedAdminPerm && (
                                             <span
                                               title="Mandatory System Core Entitlement: Protected to prevent administrative lockout."
-                                              className="shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30 flex items-center gap-1 cursor-help"
+                                              className="shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full bg-warning/20 text-warning-text border border-warning/30 flex items-center gap-1 cursor-help"
                                             >
                                               <span>🔒</span> System Core
                                             </span>
@@ -517,7 +498,7 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
                                         <p className="font-mono text-[10px] text-text-muted">{perm.code}</p>
                                         <p className="text-[11px] text-text-secondary leading-snug">{perm.description}</p>
                                         {isProtectedAdminPerm && (
-                                          <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold pt-1 flex items-center gap-1">
+                                          <p className="text-[10px] text-warning-text dark:text-warning-text font-semibold pt-1 flex items-center gap-1">
                                             <span>🔒</span> Mandatory Admin Entitlement (Prevents Self-Lockout)
                                           </p>
                                         )}
@@ -686,7 +667,7 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
           {/* Quick Preset Role Combiner Bar */}
           <div className="space-y-2 p-3.5 rounded-xl bg-primary-500/10 border border-primary-500/30">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-xs text-primary-600 dark:text-primary-400">⚡ Combine Role Presets</span>
+              <span className="font-bold text-xs text-accent dark:text-accent">⚡ Combine Role Presets</span>
               <span className="text-[10px] text-text-muted">Click to merge permissions from existing system roles</span>
             </div>
             <div className="flex flex-wrap gap-2 pt-1">
@@ -708,8 +689,8 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
                     className={cn(
                       "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 select-none",
                       active
-                        ? "bg-primary-600 text-white border border-primary-500 shadow-md ring-2 ring-primary-500/30"
-                        : "bg-surface border border-border/80 text-text hover:bg-primary-500/10 hover:border-primary-500/50 hover:text-primary-600"
+                        ? "bg-primary-600 text-brand-mist border border-primary-500 shadow-md ring-2 ring-focus-ring"
+                        : "bg-surface border border-border/80 text-text hover:bg-primary-500/10 hover:border-primary-500/50 hover:text-accent"
                     )}
                   >
                     <span>{active ? "✓" : "+"}</span>
@@ -720,13 +701,13 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
             </div>
             {newRolePermissions.length > 0 && (
               <div className="flex items-center justify-between text-[11px] pt-1.5 text-text-secondary border-t border-primary-500/20">
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="font-bold text-success-text dark:text-success-text">
                   ✓ {newRolePermissions.length} Total Permissions Selected
                 </span>
                 <button
                   type="button"
                   onClick={() => setNewRolePermissions([])}
-                  className="text-red-500 hover:underline font-semibold cursor-pointer"
+                  className="text-danger-text hover:underline font-semibold cursor-pointer"
                 >
                   Clear All
                 </button>
@@ -782,13 +763,13 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
                 return (
                   <div key={cat} className="space-y-2.5">
                     <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
-                      <h4 className="text-[11px] font-bold text-primary-600 uppercase tracking-wider">
+                      <h4 className="text-[11px] font-bold text-accent uppercase tracking-wider">
                         {cat} ({catPerms.length})
                       </h4>
                       <button
                         type="button"
                         onClick={toggleCatSelect}
-                        className="text-[10px] text-primary-600 hover:underline font-bold cursor-pointer"
+                        className="text-[10px] text-accent hover:underline font-bold cursor-pointer"
                       >
                         {isCatAllSelected ? "Deselect Category" : "Select Category All"}
                       </button>
@@ -810,7 +791,7 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
                                 setNewRolePermissions([...newRolePermissions, perm.code]);
                               }
                             }}
-                            className={`w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                            className={`w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
                               isChecked
                                 ? "bg-primary-500/10 border-primary-500/40 text-text shadow-2xs font-semibold"
                                 : "bg-surface/60 border-border/60 text-text-muted hover:border-border"

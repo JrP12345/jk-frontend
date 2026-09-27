@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/authStore";
+import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import { Button, Input, Badge, Avatar, useToast } from "@/components/ui";
 import api from "@/lib/api";
 import { Lock, KeyRound, LogOut, ArrowRight } from "lucide-react";
@@ -15,6 +16,8 @@ export function ClinicalScreenLock() {
   const router = useRouter();
 
   const [isLocked, setIsLocked] = useState(false);
+  const lockRef = useRef<HTMLDivElement>(null);
+  useOverlayFocus(isLocked, lockRef, () => {});
   const [password, setPassword] = useState("");
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -98,16 +101,16 @@ export function ClinicalScreenLock() {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-2xl animate-fade-in select-none">
-      <div className="w-full max-w-md bg-surface/98 border border-border/90 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden text-center text-text">
+    <div ref={lockRef} id="clinical-screen-lock" role="dialog" aria-modal="true" aria-label="Workstation locked" tabIndex={-1} className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/85  animate-fade-in select-none overflow-y-auto">
+      <div className="w-full max-w-md bg-surface/98 border border-border/90 rounded-3xl p-6 sm:p-8 shadow-lg space-y-6 relative overflow-hidden text-center text-text">
         {/* Glow Header */}
-        <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-primary-500 via-purple-500 to-primary-500" />
+        <div className="absolute top-0 inset-x-0 h-1.5 bg-primary   " />
 
         {/* Lock Icon and User Badge */}
         <div className="space-y-3 flex flex-col items-center">
           <div className="relative">
             <Avatar name={user.name} size="lg" className="h-20 w-20 text-xl border-4 border-surface shadow-xl" />
-            <div className="absolute -bottom-1 -right-1 p-2 bg-primary-600 rounded-full text-white shadow-lg">
+            <div className="absolute -bottom-1 -right-1 p-2 bg-primary-600 rounded-full text-brand-mist shadow-lg">
               <Lock className="w-4 h-4" />
             </div>
           </div>
@@ -132,6 +135,9 @@ export function ClinicalScreenLock() {
           <div className="space-y-1.5">
             <Input
               type="password"
+              label="Account password"
+              autoComplete="current-password"
+              error={errorMsg || undefined}
               placeholder="Enter password..."
               value={password}
               onChange={(e) => {
@@ -142,7 +148,6 @@ export function ClinicalScreenLock() {
               autoFocus
               required
             />
-            {errorMsg && <p className="text-xs text-rose-500 font-medium">{errorMsg}</p>}
           </div>
 
           <Button type="submit" variant="primary" size="lg" className="w-full font-bold shadow-xs cursor-pointer" loading={isUnlocking}>

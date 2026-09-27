@@ -1,13 +1,36 @@
 "use client";
 
 import { usePWA } from "@/hooks/usePWA";
-import { Button } from "@/components/ui";
-import { Download, X } from "lucide-react";
+import { Button, EkavyuIcon } from "@/components/ui";
+import { X } from "lucide-react";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 export function PWAInstallBanner() {
   const { isInstallable, installApp } = usePWA();
   const [dismissed, setDismissed] = useState(true);
+  const [top, setTop] = useState(80);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (!isInstallable || dismissed) return;
+    const header = document.querySelector("header");
+    const update = () => setTop(header ? Math.max(12, header.getBoundingClientRect().bottom + 12) : 16);
+    const frame = requestAnimationFrame(update);
+    const resize = new ResizeObserver(update);
+    const changes = new MutationObserver(update);
+    if (header) {
+      resize.observe(header);
+      if (header.parentElement) changes.observe(header.parentElement, { childList: true });
+    }
+    window.addEventListener("resize", update);
+    return () => {
+      cancelAnimationFrame(frame);
+      resize.disconnect();
+      changes.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [isInstallable, dismissed, pathname]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -26,15 +49,15 @@ export function PWAInstallBanner() {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-sm z-40 animate-slide-in-up">
-      <div className="bg-surface/95 backdrop-blur-xl border border-primary-500/30 rounded-2xl p-3.5 shadow-2xl ring-1 ring-primary-500/20 flex items-center justify-between gap-3">
+    <div style={{ top }} className="fixed left-3 right-3 md:left-auto md:right-6 md:max-w-sm z-40 animate-slide-in-up">
+      <div className="bg-surface  border border-primary-500/30 rounded-2xl p-3.5 shadow-lg ring-1 ring-focus-ring flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-primary-600/15 border border-primary-500/30 flex items-center justify-center text-primary-600 shrink-0">
-            <Download className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-primary-600/15 border border-primary-500/30 flex items-center justify-center text-accent shrink-0">
+            <EkavyuIcon className="w-8 h-8" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-bold text-text truncate">Install ANANTA App</p>
-            <p className="text-[11px] text-text-muted truncate">Faster access & offline support</p>
+            <p className="text-xs font-bold text-text">Install Ekavyu App</p>
+            <p className="text-[11px] text-text-muted">Faster access & offline support</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -48,7 +71,7 @@ export function PWAInstallBanner() {
           </Button>
           <button
             onClick={handleDismiss}
-            className="w-7 h-7 rounded-lg text-text-muted hover:text-text hover:bg-surface-hover flex items-center justify-center transition-colors"
+            className="touch-target rounded-lg text-text-muted hover:text-text hover:bg-surface-hover flex items-center justify-center transition-colors"
             aria-label="Dismiss banner"
           >
             <X className="w-3.5 h-3.5" />

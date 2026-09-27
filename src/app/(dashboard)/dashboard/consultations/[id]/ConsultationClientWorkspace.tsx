@@ -6,7 +6,7 @@ import api from "@/lib/api";
 import { EncounterProvider } from "@/providers/EncounterProvider";
 import { EncounterWorkspace } from "@/components/clinical/EncounterWorkspace";
 import type { PatientHeaderData } from "@/components/clinical/PatientHeader";
-import { Spinner, Alert, Button, Card, Skeleton, SkeletonCard } from "@/components/ui";
+import { Alert, Button, Skeleton, SkeletonCard } from "@/components/ui";
 import { RotateCw, ArrowLeft } from "lucide-react";
 
 interface ConsultationClientWorkspaceProps {

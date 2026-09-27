@@ -2,17 +2,8 @@
 
 import { useState } from "react";
 import api from "@/lib/api";
-import { Modal, Button, Badge, Input, useToast, cn } from "@/components/ui";
-import {
-  FlaskConical,
-  Plus,
-  X,
-  Sparkles,
-  Check,
-  AlertTriangle,
-  Clock,
-  Send,
-} from "lucide-react";
+import { Modal, Button, Input, useToast, cn } from "@/components/ui";
+import { FlaskConical, Plus, X, Sparkles, Check } from "lucide-react";
 
 interface InCabinLabOrderModalProps {
   open: boolean;
@@ -185,7 +176,7 @@ export function InCabinLabOrderModal({
               <button
                 type="button"
                 onClick={() => setSelectedTests([])}
-                className="text-[11px] text-danger-600 dark:text-danger-400 hover:underline cursor-pointer"
+                className="text-[11px] text-danger-text dark:text-danger-text hover:underline cursor-pointer"
               >
                 Clear all
               </button>
@@ -200,14 +191,14 @@ export function InCabinLabOrderModal({
               {selectedTests.map((test) => (
                 <span
                   key={test}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-700 dark:text-purple-300 font-bold text-xs"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 border border-accent/30 text-accent dark:text-accent font-bold text-xs"
                 >
-                  <FlaskConical className="w-3 h-3 text-purple-600" />
+                  <FlaskConical className="w-3 h-3 text-accent" />
                   <span>{test}</span>
                   <button
                     type="button"
                     onClick={() => removeTest(test)}
-                    className="p-0.5 rounded-full hover:bg-purple-500/20 text-purple-600 cursor-pointer"
+                    className="p-0.5 rounded-full hover:bg-primary/20 text-accent cursor-pointer"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -230,7 +221,7 @@ export function InCabinLabOrderModal({
                 className={cn(
                   "flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer",
                   priority === "urgent"
-                    ? "bg-rose-600 text-white shadow-xs"
+                    ? "bg-danger text-background shadow-xs"
                     : "text-text-muted hover:text-text"
                 )}
               >
@@ -242,7 +233,7 @@ export function InCabinLabOrderModal({
                 className={cn(
                   "flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer",
                   priority === "routine"
-                    ? "bg-primary-600 text-white shadow-xs"
+                    ? "bg-primary-600 text-brand-mist shadow-xs"
                     : "text-text-muted hover:text-text"
                 )}
               >
@@ -279,7 +270,7 @@ export function InCabinLabOrderModal({
             onClick={handleSubmitOrder}
             loading={submitting}
             disabled={selectedTests.length === 0}
-            className="bg-secondary-600 hover:bg-secondary-700 text-white font-bold rounded-xl shadow-xs"
+            className="bg-secondary-600 hover:bg-secondary-700 text-brand-mist font-bold rounded-xl shadow-xs"
           >
             <FlaskConical className="w-4 h-4 mr-1.5" />
             Order & Move Patient to Standby

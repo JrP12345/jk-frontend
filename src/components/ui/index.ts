@@ -2,7 +2,7 @@
 
 export { cn } from "./utils";
 
-export { ThemeProvider, useTheme, PALETTES, ModeSwitcher, PaletteSwitcher, CelestialSun, CelestialMoon } from "./ThemeProvider";
+export { ThemeProvider, useTheme, ModeSwitcher, CelestialSun, CelestialMoon } from "./ThemeProvider";
 
 export { default as Button } from "./Button";
 export { default as Input } from "./Input";
@@ -31,7 +31,6 @@ export { default as RouteProgress } from "./RouteProgress";
 export { ToastProvider, useToast } from "./Toast";
 
 export { default as Modal, ModalHeader, ModalBody, ModalFooter } from "./Modal";
-export { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from "./Drawer";
 export { default as ConfirmDialog } from "./ConfirmDialog";
 export { default as Dropdown } from "./Dropdown";
 export { default as Tooltip } from "./Tooltip";
@@ -42,11 +41,9 @@ export { default as Breadcrumbs } from "./Breadcrumbs";
 export { default as Sidebar } from "./Sidebar";
 export { default as Stepper } from "./Stepper";
 
-export { default as AnantaLogo, AnantaIcon, AnantLogo, AnantIcon } from "./AnantaLogo";
+export { default as EkavyuLogo, EkavyuIcon } from "./EkavyuLogo";
 export { default as PageTransition } from "./PageTransition";
 
 export * from "./charts";
 export { default as MultiImageUpload } from "./MultiImageUpload";
 export { PWAInstallBanner } from "./PWAInstallBanner";
-export { LanguageSwitcher } from "./LanguageSwitcher";
-

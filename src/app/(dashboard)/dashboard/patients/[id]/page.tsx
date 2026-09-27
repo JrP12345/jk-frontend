@@ -7,26 +7,7 @@ import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { PatientService } from "@/services/patient.service";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Button,
-  Badge,
-  Table,
-  Column,
-  Spinner,
-  Skeleton,
-  SkeletonCard,
-  Tabs,
-  Modal,
-  Input,
-  Textarea,
-  Select,
-  useToast,
-} from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge, Table, Column, Spinner, Skeleton, SkeletonCard, Tabs, Modal, Input, Textarea, Select, useToast } from "@/components/ui";
 import dynamic from "next/dynamic";
 import PatientHistoryAccess from "@/components/ehr/PatientHistoryAccess";
 import { PatientHeader } from "@/components/clinical/PatientHeader";
@@ -76,7 +57,7 @@ export default function PatientDetailPage() {
       setPatientData((current: any) => {
         if (!current || !current.organizationId || String(current.organizationId) === user.organization_id) return current;
         const scoped = { ...current, clinicalProfileRestricted: true };
-        for (const field of ["allergies", "conditions", "medicalNotes", "insurancePolicies", "careContexts", "activeConsentGrants"]) delete scoped[field];
+        for (const field of ["allergies", "conditions", "medicalNotes", "insurancePolicies", "careContexts"]) delete scoped[field];
         return scoped;
       });
       setEditModalOpen(false);
@@ -384,7 +365,7 @@ export default function PatientDetailPage() {
     <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-12">
       {/* Top Breadcrumb Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <Link href="/dashboard/patients" className="text-xs text-text-muted hover:text-primary-600 flex items-center gap-1 font-semibold transition-colors min-h-[36px]">
+        <Link href="/dashboard/patients" className="text-xs text-text-muted hover:text-accent flex items-center gap-1 font-semibold transition-colors min-h-[36px]">
           ← Back to Patients Directory
         </Link>
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 w-full sm:w-auto">
@@ -529,11 +510,11 @@ export default function PatientDetailPage() {
                             <div className="text-right shrink-0">
                               {order.resultValue ? (
                                 <div>
-                                  <span className="font-mono font-black text-sm text-primary-600 block">{order.resultValue}</span>
+                                  <span className="font-mono font-black text-sm text-accent block">{order.resultValue}</span>
                                   <span className="text-[10px] text-text-muted">Ref Range: {order.testId?.normalRange || "Standard"}</span>
                                 </div>
                               ) : (
-                                <span className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold italic">
+                                <span className="text-[11px] text-warning-text dark:text-warning-text font-semibold italic">
                                   {order.status === "sample_collected" ? "Sample in Lab" : "Pending Results"}
                                 </span>
                               )}
@@ -592,7 +573,7 @@ export default function PatientDetailPage() {
                           <div key={inv.id || inv._id} className="p-4 bg-surface-alt rounded-xl border border-border/80 flex items-center justify-between text-xs hover:border-primary-500/40 transition-colors">
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
-                                <span className="font-mono font-bold text-sm text-primary-600">#{inv.invoiceNumber || "INV"}</span>
+                                <span className="font-mono font-bold text-sm text-accent">#{inv.invoiceNumber || "INV"}</span>
                                 <Badge variant={invStatusVariant} size="sm" className="capitalize font-bold">
                                   {inv.status || "unpaid"}
                                 </Badge>
@@ -607,7 +588,7 @@ export default function PatientDetailPage() {
                             <div className="text-right shrink-0">
                               <span className="text-base font-black text-text block">₹{(inv.totalAmount || 0).toLocaleString()}</span>
                               {inv.discount ? (
-                                <span className="text-[10px] text-emerald-600 block">Discount: ₹{inv.discount}</span>
+                                <span className="text-[10px] text-success-text block">Discount: ₹{inv.discount}</span>
                               ) : null}
                             </div>
                           </div>
@@ -644,7 +625,7 @@ export default function PatientDetailPage() {
             <Input
               label="Contact Phone"
               value={editForm.phone}
-              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} type="tel" inputMode="tel"
             />
           </div>
 

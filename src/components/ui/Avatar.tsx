@@ -38,11 +38,11 @@ const statusColors = {
 };
 
 const avatarColors = [
-  "bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20",
-  "bg-success-500/10 text-success-600 dark:text-success-400 border border-success-500/20",
-  "bg-warning-500/10 text-warning-600 dark:text-warning-400 border border-warning-500/20",
-  "bg-danger-500/10 text-danger-600 dark:text-danger-400 border border-danger-500/20",
-  "bg-primary-500/15 text-primary-700 dark:text-primary-300 border border-primary-500/25",
+  "bg-primary-500/10 text-accent dark:text-accent border border-primary-500/20",
+  "bg-success-500/10 text-success-text dark:text-success-text border border-success-500/20",
+  "bg-warning-500/10 text-warning-text dark:text-warning-text border border-warning-500/20",
+  "bg-danger-500/10 text-danger-text dark:text-danger-text border border-danger-500/20",
+  "bg-primary-500/15 text-accent dark:text-accent border border-primary-500/25",
 ];
 
 function getColor(name: string): string {

@@ -27,11 +27,11 @@ export interface BarChartProps {
 }
 
 const DEFAULT_COLORS = [
-  "var(--s-chart-1, #3b82f6)",
-  "var(--s-chart-2, #10b981)",
-  "var(--s-chart-3, #f59e0b)",
-  "var(--s-chart-4, #8b5cf6)",
-  "var(--s-chart-5, #ec4899)",
+  "var(--s-chart-1)",
+  "var(--s-chart-2)",
+  "var(--s-chart-3)",
+  "var(--s-chart-4)",
+  "var(--s-chart-5)",
 ];
 
 export const BarChart = memo(function BarChart({
@@ -143,7 +143,7 @@ export const BarChart = memo(function BarChart({
                       y1={y}
                       x2={padding.left + chartWidth}
                       y2={y}
-                      stroke="var(--color-border, #334155)"
+                      stroke="var(--s-border)"
                       strokeDasharray="4 4"
                       strokeWidth="1"
                       className="opacity-35"
@@ -153,7 +153,7 @@ export const BarChart = memo(function BarChart({
                       y={y + 3.5}
                       textAnchor="end"
                       fontSize="9"
-                      fill="var(--color-text-muted, #94a3b8)"
+                      fill="var(--s-text-muted)"
                       className="font-mono font-medium text-[9px]"
                     >
                       {valueFormatter(val)}
@@ -172,7 +172,7 @@ export const BarChart = memo(function BarChart({
                 y1={getY(benchmark.value)}
                 x2={padding.left + chartWidth}
                 y2={getY(benchmark.value)}
-                stroke={benchmark.color || "var(--color-danger-500, #ef4444)"}
+                stroke={benchmark.color || "var(--s-danger-500)"}
                 strokeWidth="1.5"
                 strokeDasharray="3 3"
                 className="opacity-80"
@@ -182,7 +182,7 @@ export const BarChart = memo(function BarChart({
                 y={getY(benchmark.value) - 4}
                 textAnchor="end"
                 fontSize="9"
-                fill={benchmark.color || "var(--color-danger-500, #ef4444)"}
+                fill={benchmark.color || "var(--s-danger-500)"}
                 className="font-bold uppercase tracking-wider text-[8.5px]"
               >
                 {benchmark.label} ({valueFormatter(benchmark.value)})
@@ -302,7 +302,7 @@ export const BarChart = memo(function BarChart({
                   y={viewBoxHeight - 6}
                   textAnchor="middle"
                   fontSize="9.5"
-                  fill="var(--color-text-muted, #94a3b8)"
+                  fill="var(--s-text-muted)"
                   className="font-semibold text-[9px] tracking-tight"
                 >
                   {d.label}
@@ -321,7 +321,7 @@ export const BarChart = memo(function BarChart({
             }}
             className="absolute pointer-events-none z-30 animate-chart-tooltip"
           >
-            <div className="px-3.5 py-2.5 rounded-2xl bg-surface/95 dark:bg-surface/90 border border-border/80 shadow-2xl shadow-black/35 backdrop-blur-xl text-xs space-y-1.5 min-w-[140px] relative overflow-hidden">
+            <div className="px-3.5 py-2.5 rounded-2xl bg-surface dark:bg-surface border border-border/80 shadow-lg   text-xs space-y-1.5 min-w-[140px] relative overflow-hidden">
               <div
                 className="absolute top-0 inset-x-0 h-[2px] opacity-90"
                 style={{
@@ -352,7 +352,7 @@ export const BarChart = memo(function BarChart({
                 {layout === "stacked" && series.length > 1 && (
                   <div className="flex items-center justify-between gap-3 text-[11px] pt-1.5 border-t border-border/50 font-bold">
                     <span className="text-text-secondary">Combined Total:</span>
-                    <span className="font-mono text-primary-600 dark:text-primary-400">
+                    <span className="font-mono text-accent dark:text-accent">
                       {valueFormatter(
                         series.reduce(
                           (sum, s) =>
