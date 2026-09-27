@@ -38,9 +38,9 @@ describe("Mobile calendar and browse loading", () => {
     const request = vi.spyOn(api, "get").mockResolvedValue({ data: { data: [clinics[1], clinics[0]] } });
     render(<BrowseClient initialClinics={clinics} initialLoaded />);
     fireEvent.click(screen.getByRole("combobox", { name: "Sort clinics by" }));
-    expect(await screen.findByRole("option", { name: "Rating (High to Low)" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "Top rated" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: /featured|name|city/i })).not.toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("option", { name: "Fee (Low to High)" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Lowest fee" }));
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["Alpha Clinic", "Zeta Clinic"]);
     await waitFor(() => expect(request).toHaveBeenCalledWith("/public/clinics?sort=fee_low", expect.anything()));
   });

@@ -32,7 +32,9 @@ export default function MarketplaceNavbar() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 border-b border-border bg-surface/85  z-50 transition-all duration-300">
+    <header className="fixed top-0 left-0 right-0 h-16 border-b border-border/70 shadow-xs z-50 transition-all duration-300">
+      {/* Blur the background layer so fixed mobile overlays remain viewport-sized. */}
+      <div aria-hidden="true" className="absolute inset-0 -z-10 pointer-events-none bg-surface supports-[backdrop-filter]:bg-surface/80 supports-[backdrop-filter]:backdrop-blur-xl supports-[backdrop-filter]:backdrop-saturate-150" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
         
         {/* Brand/Logo */}

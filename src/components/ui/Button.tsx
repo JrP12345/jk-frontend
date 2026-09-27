@@ -3,7 +3,7 @@
 import { type ButtonHTMLAttributes, type ReactNode, forwardRef, memo } from "react";
 import { vibrateFeedback } from "@/lib/haptics";
 import { cn } from "./utils";
-import Spinner from "./Spinner";
+import { InlineLoader } from "./Spinner";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger" | "warning" | "success";
 export type ButtonSize = "xs" | "sm" | "md" | "lg";
@@ -84,7 +84,7 @@ const Button = memo(
       ref
     ) => {
       const isBasicallyDisabled = disabled || loading;
-      const spinnerSize = size === "xs" ? "xs" : size === "sm" ? "sm" : size === "lg" ? "md" : "sm";
+      const spinnerSize = size === "xs" ? "xs" : "sm";
 
       return (
         <button
@@ -130,10 +130,17 @@ const Button = memo(
             <span className={cn("shrink-0 inline-flex items-center justify-center transition-transform duration-150 group-hover:scale-105", iconSizes[size])}>{iconRight}</span>
           )}
           </span>
-          {loading && <span className="absolute inset-0 flex min-w-0 items-center justify-center gap-[inherit] px-[inherit]">
-            <span aria-hidden="true" className="shrink-0"><Spinner size={spinnerSize} color="text-current" /></span>
-            {(loadingText || children) && <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap overflow-hidden [&_svg]:shrink-0">{loadingText || children}</span>}
-          </span>}
+          {loading && (
+            <span className="absolute inset-0 flex min-w-0 items-center justify-center gap-[inherit] px-[inherit]">
+              <InlineLoader
+                size={spinnerSize}
+                color="text-current"
+                label={loadingText || children}
+                inheritTypography
+                className="max-w-full"
+              />
+            </span>
+          )}
         </button>
       );
     }

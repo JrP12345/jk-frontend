@@ -54,8 +54,8 @@ function filtersFromClinics(clinics: Clinic[]): ClinicFilters {
 }
 
 const SORT_OPTIONS = [
-  { value: "rating", label: "Rating (High to Low)" },
-  { value: "fee_low", label: "Fee (Low to High)" },
+  { value: "rating", label: "Top rated" },
+  { value: "fee_low", label: "Lowest fee" },
 ];
 
 function format12HourTime(timeStr: string): string {
@@ -446,7 +446,7 @@ export default function BrowseClient({
             )}
           </div>
 
-          <div className="w-48 max-w-full shrink-0">
+          <div className="w-36 max-w-full shrink-0">
             <Select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}

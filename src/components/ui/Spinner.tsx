@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import { cn } from "./utils";
 
 export type SpinnerSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
@@ -289,10 +289,12 @@ export const CardLoader = memo(function CardLoader({
 });
 
 export interface InlineLoaderProps {
-  label?: string;
+  label?: ReactNode;
   size?: SpinnerSize;
   className?: string;
   color?: string;
+  /** Match the enclosing control's text and spacing instead of caption styles. */
+  inheritTypography?: boolean;
 }
 
 export const InlineLoader = memo(function InlineLoader({
@@ -300,11 +302,18 @@ export const InlineLoader = memo(function InlineLoader({
   size = "xs",
   className = "",
   color = "text-accent dark:text-accent",
+  inheritTypography = false,
 }: InlineLoaderProps) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5 align-middle text-xs font-medium text-text-muted select-none", className)} role="status">
-      <Spinner size={size} color={color} className="shrink-0" />
-      {label && <span>{label}</span>}
+    <span className={cn(
+      "inline-flex min-w-0 items-center justify-center align-middle select-none",
+      inheritTypography ? "gap-[inherit]" : "gap-1.5 text-xs font-medium text-text-muted",
+      className,
+    )} role="status">
+      <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center">
+        <Spinner size={size} color={color} />
+      </span>
+      {label && <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap overflow-hidden [&_svg]:shrink-0">{label}</span>}
     </span>
   );
 });

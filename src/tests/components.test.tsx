@@ -73,7 +73,7 @@ describe("Button Loading State Tests", () => {
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(screen.getByRole("button", { name: "Confirm Appointment" })).toBeInTheDocument();
-    expect(screen.getByRole("status", { hidden: true })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Confirm Appointment");
   });
 
   it("renders loadingText when provided", () => {
