@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import BrowseClient, { Clinic } from "./BrowseClient";
+import BrowseClient, { Clinic, ClinicFilters } from "./BrowseClient";
 
 export const metadata: Metadata = {
   title: "Browse Hospitals & Clinics | Ekavyu Healthcare",
@@ -8,20 +8,20 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-async function getInitialClinics(): Promise<Clinic[] | null> {
+async function getInitialClinics(): Promise<{ clinics: Clinic[]; filters?: ClinicFilters } | null> {
   try {
     const backendUrl =
       process.env.BACKEND_INTERNAL_URL ||
       process.env.NEXT_PUBLIC_BACKEND_URL ||
       process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ||
       "http://localhost:5000";
-    const res = await fetch(`${backendUrl}/api/public/clinics`, {
+    const res = await fetch(`${backendUrl}/api/public/clinics?sort=rating`, {
       cache: "no-store",
       signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) return null;
     const json = await res.json();
-    return json.data || [];
+    return Array.isArray(json.data) ? { clinics: json.data, filters: json.filters } : null;
   } catch {
     return null;
   }
@@ -29,5 +29,5 @@ async function getInitialClinics(): Promise<Clinic[] | null> {
 
 export default async function BrowsePage() {
   const initialClinics = await getInitialClinics();
-  return <BrowseClient initialClinics={initialClinics || []} initialLoaded={initialClinics !== null} />;
+  return <BrowseClient initialClinics={initialClinics?.clinics || []} initialFilters={initialClinics?.filters} initialLoaded={initialClinics !== null} />;
 }

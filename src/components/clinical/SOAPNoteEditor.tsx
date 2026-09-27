@@ -1,5 +1,6 @@
 "use client";
 
+import { useUnsavedClinicalChanges } from "@/hooks/useUnsavedClinicalChanges";
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { SOAPService } from "@/services/soap.service";
@@ -105,6 +106,13 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
   const [medDosage, setMedDosage] = useState("");
   const [medDuration, setMedDuration] = useState("");
   const [prescriptions, setPrescriptions] = useState<Array<{ name: string; dosage: string; duration: string }>>([]);
+
+  const draftSnapshot = JSON.stringify({ chiefComplaint, historyOfPresentIllness, symptomsText,
+    bpSystolic, bpDiastolic, pulseRate, spO2, temperatureF, physicalExamination,
+    primaryDiagnosis, icdCode, severity, treatmentPlan, prescriptions });
+  const [savedSnapshot, setSavedSnapshot] = useState(draftSnapshot);
+  const hasUnsavedChanges = !isSigned && (draftSnapshot !== savedSnapshot || Boolean(medName || medDosage || medDuration));
+  useUnsavedClinicalChanges(hasUnsavedChanges);
 
   // Medicine Autocomplete State
   const [medicineResults, setMedicineResults] = useState<any[]>([]);
@@ -424,6 +432,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
       };
 
       const savedNote = await SOAPService.saveDraft(payload);
+      setSavedSnapshot(draftSnapshot);
       if (savedNote?.id || savedNote?._id) {
         setCurrentNoteId(savedNote.id || savedNote._id);
       }
@@ -442,6 +451,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
   };
 
   const handleSignNote = async () => {
+    if (hasUnsavedChanges) { setMessage({ type: "error", text: "Save your latest changes before signing. Add or clear the medicine fields first." }); return; }
     if (!currentNoteId) {
       setMessage({ type: "error", text: "Please save draft note before signing" });
       return;
@@ -509,6 +519,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
 
   return (
     <div className="bg-surface rounded-2xl border border-border/80 p-5 sm:p-6 space-y-6 shadow-xs">
+      <p role="status" className="text-xs text-text-muted">{isSigned ? "Signed clinical note" : hasUnsavedChanges ? "Unsaved changes: use Save Draft before leaving" : currentNoteId ? "Draft saved to server" : "New clinical note"}</p>
       {/* Top Banner & Action Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
         <div>

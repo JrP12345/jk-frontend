@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { confirmLeavingClinicalDraft } from "@/hooks/useUnsavedClinicalChanges";
 import { useState } from "react";
 import { useEncounterContext } from "@/providers/EncounterProvider";
 import { PatientHeader, PatientHeaderData } from "./PatientHeader";
@@ -106,19 +108,26 @@ export function EncounterWorkspace({
     }
   };
 
-  const handleCallNextPatient = async () => {
+  const router = useRouter();
+  const handleCallNextPatient = async (confirmedAppointmentId?: string) => {
+    if (!confirmLeavingClinicalDraft()) return;
     try {
       setCallingNext(true);
-      const res = await api.post("/queue/call-next", { clinicId, doctorId });
+      const res = await api.post("/queue/call-next", { clinicId, doctorId, requireArrivalConfirmation: true, confirmedAppointmentId });
       if (res.data?.data) {
         toast({ title: "Patient Called 🩺", description: res.data.message || `Token #${res.data.data.tokenNumber} in consultation`, variant: "success" });
         const apptId = res.data.data.id || res.data.data._id;
         const pId = typeof res.data.data.patientId === "object" ? (res.data.data.patientId.id || res.data.data.patientId._id) : res.data.data.patientId;
-        window.location.href = `/dashboard/consultations/${apptId}?patientId=${pId}&clinicId=${clinicId || ""}`;
+        router.push(`/dashboard/consultations/${apptId}?patientId=${pId}&clinicId=${clinicId || ""}`);
       } else {
         toast({ title: "Queue Empty", description: res.data?.message || "No waiting patients in queue for today", variant: "default" });
       }
     } catch (err: any) {
+      if ((err.response?.data?.error || err.response?.data?.details) === "ARRIVAL_CONFIRMATION_REQUIRED") {
+        const candidate = err.response.data.data;
+        if (window.confirm(`Token #${candidate.tokenNumber} has not checked in. Call this booked patient now?`)) await handleCallNextPatient(candidate.id);
+        return;
+      }
       toast({ title: "Error", description: err.response?.data?.message || "Failed to call next patient", variant: "error" });
     } finally {
       setCallingNext(false);
@@ -300,7 +309,7 @@ export function EncounterWorkspace({
             <Button
               variant="primary"
               size="sm"
-              onClick={handleCallNextPatient}
+              onClick={() => handleCallNextPatient()}
               loading={callingNext}
               className="flex-1 sm:flex-initial min-h-[40px] font-semibold rounded-xl shadow-xs"
             >

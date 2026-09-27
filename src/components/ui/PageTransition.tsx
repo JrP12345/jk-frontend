@@ -12,7 +12,7 @@ export function PageTransition({ children, className = "" }: PageTransitionProps
   return (
     <div
       className={cn(
-        "w-full animate-page-enter transform-gpu",
+        "w-full",
         className
       )}
     >

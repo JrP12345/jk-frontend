@@ -30,11 +30,11 @@ const sizes: Record<InputSize, string> = {
 };
 
 const variantStyles: Record<InputVariant, string> = {
-  default: "rounded-xl border border-border bg-surface  hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-focus-ring shadow-2xs",
-  filled: "rounded-xl border border-transparent bg-surface-alt hover:bg-surface-hover focus-visible:bg-surface focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-focus-ring shadow-2xs",
+  default: "rounded-xl border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
+  filled: "rounded-xl border border-transparent bg-surface-alt hover:bg-surface-hover focus-visible:bg-surface focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
   flush: "rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:border-0 px-1 py-1 min-h-0",
-  pill: "rounded-full border border-border bg-surface  hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-focus-ring shadow-2xs",
-  inset: "rounded-xl border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-4 focus-visible:ring-focus-ring shadow-2xs",
+  pill: "rounded-full border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
+  inset: "rounded-xl border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
 };
 
 const iconPaddingLeft: Record<InputSize, string> = {
@@ -106,7 +106,7 @@ const Input = memo(
           <div className="group relative flex items-center w-full">
             <input
               data-touch-control
-            ref={ref}
+              ref={ref}
               id={id}
               disabled={disabled}
               aria-invalid={error ? true : undefined}
@@ -119,7 +119,7 @@ const Input = memo(
                 resolvedLeftIcon && prefix && (size === "sm" ? "pl-15" : size === "lg" ? "pl-18" : "pl-16"),
                 !resolvedLeftIcon && prefix && (size === "sm" ? "pl-10" : size === "lg" ? "pl-13" : "pl-11"),
                 (resolvedRightIcon || hasClear || suffix) && iconPaddingRight[size],
-                error && variant !== "flush" && "border-danger-500/80 focus-visible:ring-4 focus-visible:ring-danger-500/15 focus-visible:border-danger-500",
+                error && variant !== "flush" && "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500/15 focus-visible:border-danger-500",
                 className
               )}
               {...rest}
@@ -195,5 +195,4 @@ const Input = memo(
 
 Input.displayName = "Input";
 export default Input;
-
 

@@ -4,9 +4,9 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-import { Button, Input, Select, Badge, Card, EmptyState } from "@/components/ui";
+import { Alert, Button, Input, Select, Badge, Card, EmptyState } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
-import { Search, MapPin, Clock, X, ChevronRight, ShieldCheck, Building2, Users, CreditCard, Camera } from "lucide-react";
+import { Search, MapPin, Clock, X, ChevronRight, ShieldCheck, Building2, Users, CreditCard, Camera, Star } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
 import { detectUserLocation, findMatchingClinicCity, DetectedLocation } from "@/lib/geo/locationDetector";
@@ -35,26 +35,27 @@ export interface Clinic {
   facilities?: string[];
   doctorCount?: number;
   minFee?: number | null;
+  rating?: number | null;
+  reviewsCount?: number;
   specialties?: string[];
   doctorsSummary?: DoctorSummary[];
 }
 
-const QUICK_SPECIALTIES = [
-  { value: "", label: "All Care" },
-  { value: "General Medicine", label: "General Medicine" },
-  { value: "Pediatrics", label: "Pediatrics" },
-  { value: "Cardiology", label: "Cardiology" },
-  { value: "Dentistry", label: "Dentistry" },
-  { value: "Orthopedics", label: "Orthopedics" },
-  { value: "Dermatology", label: "Dermatology" },
-  { value: "ENT", label: "ENT" },
-];
+export interface ClinicFilters {
+  cities: string[];
+  specialties: string[];
+}
+
+function filtersFromClinics(clinics: Clinic[]): ClinicFilters {
+  return {
+    cities: Array.from(new Set(clinics.map(c => c.city).filter(Boolean))).sort(),
+    specialties: Array.from(new Set(clinics.flatMap(c => c.specialties || c.doctorsSummary?.map(d => d.specialization) || []).map(s => s.trim()).filter(Boolean))).sort(),
+  };
+}
 
 const SORT_OPTIONS = [
-  { value: "featured", label: "Sort: Featured" },
+  { value: "rating", label: "Rating (High to Low)" },
   { value: "fee_low", label: "Fee (Low to High)" },
-  { value: "name", label: "Name (A–Z)" },
-  { value: "city", label: "City" },
 ];
 
 function format12HourTime(timeStr: string): string {
@@ -98,28 +99,28 @@ function formatTimings(timingsStr: string | null | undefined): string {
 export default function BrowseClient({
   initialClinics = [],
   initialLoaded = false,
+  initialFilters,
 }: {
   initialClinics?: Clinic[];
   initialLoaded?: boolean;
+  initialFilters?: ClinicFilters;
 } = {}) {
   const router = useRouter();
   const [clinics, setClinics] = useState<Clinic[]>(initialClinics);
   const [loading, setLoading] = useState(!initialLoaded && initialClinics.length === 0);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(initialLoaded || initialClinics.length > 0);
   const [retryKey, setRetryKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
-  const [sortBy, setSortBy] = useState("featured");
+  const [sortBy, setSortBy] = useState("rating");
   const [detectedLocation, setDetectedLocation] = useState<DetectedLocation | null>(null);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
-  const [allCities, setAllCities] = useState<string[]>(() => {
-    if (initialClinics.length > 0) {
-      return Array.from(new Set(initialClinics.map((c) => c.city).filter(Boolean))).sort();
-    }
-    return [];
-  });
+  const [filters, setFilters] = useState<ClinicFilters>(() => initialFilters || filtersFromClinics(initialClinics));
+  const allCities = filters.cities;
+  const quickSpecialties = [{ value: "", label: "All Care" }, ...filters.specialties.map(value => ({ value, label: value }))];
 
   // Auto location detection on initial load
   useEffect(() => {
@@ -184,17 +185,26 @@ export default function BrowseClient({
       if (debouncedSearch) params.append("search", debouncedSearch);
       if (selectedCity) params.append("city", selectedCity);
       if (selectedSpecialty) params.append("specialization", selectedSpecialty);
+      params.append("sort", sortBy);
       const res = await api.get(`/public/clinics${params.toString() ? `?${params}` : ""}`, { signal: controller.signal });
       if (controller.signal.aborted) return;
-      const data: Clinic[] = res.data.data || [];
+      if (!Array.isArray(res.data.data)) throw new Error("Invalid clinic response");
+      const data: Clinic[] = res.data.data;
 
-      // Retain cumulative master list of cities
-      setAllCities((prev) => {
-        const set = new Set([...prev, ...data.map((c) => c.city).filter(Boolean)]);
-        return Array.from(set).sort();
+      // Full-directory metadata remains available when results are filtered or empty.
+      // Older servers fall back to actual clinic data rather than invented choices.
+      setFilters((prev) => {
+        const supplied = res.data.filters;
+        if (supplied && Array.isArray(supplied.cities) && Array.isArray(supplied.specialties)) return supplied;
+        const found = filtersFromClinics(data);
+        return {
+          cities: Array.from(new Set([...prev.cities, ...found.cities])).sort(),
+          specialties: Array.from(new Set([...prev.specialties, ...found.specialties])).sort(),
+        };
       });
 
       setClinics(data);
+      setHasLoaded(true);
     } catch (err) {
       if (!controller.signal.aborted) setFetchError("We couldn't load clinics. Please try again.");
     } finally {
@@ -203,17 +213,17 @@ export default function BrowseClient({
     };
     void fetchClinics();
     return () => controller.abort();
-  }, [debouncedSearch, selectedCity, selectedSpecialty, retryKey]);
+  }, [debouncedSearch, selectedCity, selectedSpecialty, retryKey, sortBy]);
 
   const sortedClinics = useMemo(() => [...clinics].sort((a, b) => {
-        if (sortBy === "name") return a.name.localeCompare(b.name);
-        if (sortBy === "city") return a.city.localeCompare(b.city);
         if (sortBy === "fee_low") {
-          const feeA = a.minFee ?? 999999;
-          const feeB = b.minFee ?? 999999;
-          return feeA - feeB;
+          if (a.minFee == null) return b.minFee == null ? 0 : 1;
+          if (b.minFee == null) return -1;
+          return a.minFee - b.minFee;
         }
-        return 0;
+        if (a.rating == null) return b.rating == null ? 0 : 1;
+        if (b.rating == null) return -1;
+        return b.rating - a.rating;
       }), [clinics, sortBy]);
 
   const handleBookingAction = (e: React.MouseEvent, clinic: Clinic) => {
@@ -273,7 +283,7 @@ export default function BrowseClient({
 
           {/* Unified Streamlined Search Console: Search + City Selector */}
           <div className="max-w-3xl mx-auto">
-            <div className="bg-surface rounded-2xl md:rounded-full border border-border shadow-xs p-1.5 focus-within:ring-2 focus-within:ring-focus-ring focus-within:border-primary-500 transition-all flex flex-col md:flex-row items-stretch md:items-center gap-1.5 sm:gap-2">
+            <div className="bg-surface rounded-2xl md:rounded-full border border-border shadow-xs p-1.5 focus-within:ring-2 focus-within:ring-focus-ring focus-within:border-primary-500/60 transition-[border-color,box-shadow] duration-200 flex flex-col md:flex-row items-stretch md:items-center gap-1.5 sm:gap-2">
               {/* Keyword Search Input with Inside Icon */}
               <div className="flex-1 min-w-0">
                 <Input
@@ -302,7 +312,7 @@ export default function BrowseClient({
                   ]}
                   size="sm"
                   variant="flush"
-                  className="text-xs w-full min-h-[38px] sm:min-h-0"
+                  className="rounded-xl md:rounded-full text-xs w-full min-h-[38px] sm:min-h-0 focus-visible:bg-surface-alt"
                   aria-label="Filter by location"
                 />
               </div>
@@ -313,7 +323,7 @@ export default function BrowseClient({
               <span className="text-[11px] font-semibold text-text-muted shrink-0 mr-1 hidden sm:inline-block">
                 {"Care:"}
               </span>
-              {QUICK_SPECIALTIES.map((qs) => {
+              {quickSpecialties.map((qs) => {
                 const isActive = selectedSpecialty === qs.value;
                 return (
                   <button
@@ -365,12 +375,7 @@ export default function BrowseClient({
                 )}
                 {selectedSpecialty && (
                   <Badge variant="neutral" className="flex items-center gap-1.5 py-0.5 px-2.5 text-xs bg-surface border border-border">
-                    <span>
-                      {(() => {
-                        const item = QUICK_SPECIALTIES.find((qs) => qs.value === selectedSpecialty);
-                        return item ? item.label : selectedSpecialty;
-                      })()}
-                    </span>
+                    <span>{selectedSpecialty}</span>
                     <button
                       onClick={() => setSelectedSpecialty("")}
                       className="hover:text-danger-text ml-1 cursor-pointer p-0.5 rounded-full"
@@ -394,13 +399,15 @@ export default function BrowseClient({
 
       {/* Main Listing Section */}
       <main aria-busy={loading} className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-20">
-        {fetchError && <Card className="p-4 mb-4 flex flex-wrap items-center justify-between gap-3"><p>{fetchError}</p><Button size="sm" onClick={() => setRetryKey((key) => key + 1)}>Try again</Button></Card>}
+        {fetchError && <Alert variant="error" title="Unable to load clinics" className="mb-4" action={<Button size="sm" loading={loading} onClick={() => setRetryKey((key) => key + 1)}>Try again</Button>}>{fetchError}</Alert>}
         {/* Minimalist Compact Results & Sort Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6 text-xs">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-semibold text-text-secondary">
+            <p role="status" className="font-semibold text-text-secondary min-h-5">
               {loading ? (
-                "Finding clinics..."
+                clinics.length ? "Updating results. Showing previous clinics." : "Finding clinics..."
+              ) : fetchError ? (
+                clinics.length ? "Previous clinics shown. Results could not be updated." : "Results unavailable"
               ) : (
                 <span>
                   <strong className="text-text font-bold">{clinics.length}</strong>{" "}
@@ -439,7 +446,7 @@ export default function BrowseClient({
             )}
           </div>
 
-          <div className="w-40 xs:w-48 shrink-0">
+          <div className="w-48 max-w-full shrink-0">
             <Select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
@@ -478,11 +485,11 @@ export default function BrowseClient({
               </Card>
             ))}
           </div>
-        ) : clinics.length === 0 ? (
+        ) : clinics.length === 0 && hasLoaded && !fetchError ? (
           <Card className="p-8 sm:p-12 text-center border-dashed rounded-3xl bg-surface">
             <EmptyState
               title={"No Healthcare Facilities Found"}
-              description={"No clinics match your current search criteria. Try choosing another city or clearing your filters."}
+              description={hasActiveFilters ? "No clinics match your current search criteria. Try choosing another city or clearing your filters." : "There are no clinics available to browse yet. Please check again later."}
               action={
                 <Button
                   variant="primary"
@@ -495,7 +502,7 @@ export default function BrowseClient({
               }
             />
           </Card>
-        ) : (
+        ) : clinics.length === 0 ? null : (
           /* Modern Healthcare Clinic Card Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {sortedClinics.map((clinic) => {
@@ -581,6 +588,12 @@ export default function BrowseClient({
                           <span>
                             {"From"} {formatCurrency(clinic.minFee, clinic.currency || "INR")}
                           </span>
+                        </span>
+                      )}
+                      {clinic.rating != null && (clinic.reviewsCount || 0) > 0 && (
+                        <span className="text-[11px] font-semibold bg-surface-alt text-text px-2.5 py-1 rounded-lg border border-border flex items-center gap-1" aria-label={`${clinic.rating.toFixed(1)} out of 5 from ${clinic.reviewsCount} reviews`}>
+                          <Star className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} aria-hidden="true" />
+                          {clinic.rating.toFixed(1)} <span className="text-text-muted">({clinic.reviewsCount})</span>
                         </span>
                       )}
                     </div>

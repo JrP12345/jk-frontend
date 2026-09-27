@@ -3,8 +3,21 @@ import { useAuthStore } from "../store/authStore";
 import { useModuleStore } from "../store/moduleStore";
 import { hasRoutePermission } from "../lib/routePermissions";
 import api from "../lib/api";
+import { getDisabledRouteModule } from "../lib/routeModules";
 
 describe("Frontend Auth Store & RBAC Integration Tests", () => {
+  it("keeps the root audit console accessible when tenant modules are absent or disabled", () => {
+    const disabled = vi.fn().mockReturnValue(false);
+    expect(getDisabledRouteModule("/dashboard/audit", { role: "root" }, disabled)).toBeUndefined();
+    expect(getDisabledRouteModule("/dashboard/admin/settings", { role: "root" }, disabled)).toBeUndefined();
+    expect(disabled).not.toHaveBeenCalled();
+  });
+
+  it("enforces disabled modules for an impersonated tenant session using its effective role", () => {
+    const staff = { role: "admin", impersonatedBy: { id: "root-1" } };
+    expect(getDisabledRouteModule("/dashboard/laboratory", staff, () => false)).toBe("laboratory");
+    expect(getDisabledRouteModule("/dashboard/laboratory", staff, () => true)).toBeUndefined();
+  });
   beforeEach(() => {
     vi.restoreAllMocks();
     useAuthStore.setState({
@@ -160,5 +173,4 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
     expect(hasRoutePermission("/dashboard/patient-portal", state.user!.role, state.user!.permissions)).toBe(true);
   });
 });
-
 

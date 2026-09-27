@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { useLatestRead } from "@/hooks/useLatestRead";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
@@ -41,6 +42,8 @@ export default function PatientsDirectoryPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const startRead = useLatestRead();
   const [genderFilter, setGenderFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -159,17 +162,20 @@ export default function PatientsDirectoryPage() {
   };
 
   const fetchPatients = async () => {
+    const request = startRead();
     try {
       setLoadError(null);
       setIsRefreshing(true);
       const queryParams = new URLSearchParams();
-      if (search.trim()) queryParams.set("search", search.trim());
+      if (debouncedSearch.trim()) queryParams.set("search", debouncedSearch.trim());
       if (genderFilter !== "all") queryParams.set("gender", genderFilter);
       queryParams.set("page", String(page));
       queryParams.set("limit", "10");
 
-      const res = await api.get(`/patients?${queryParams.toString()}`);
-      const rawData = res.data.data || [];
+      const res = await api.get(`/patients?${queryParams.toString()}`, { signal: request.signal });
+      if (!request.isCurrent()) return;
+      if (!Array.isArray(res.data.data)) throw new Error("Invalid patient response");
+      const rawData = res.data.data;
 
       const totalHeader = res.headers["x-total-count"] || res.headers["total-count"];
       const pagesHeader = res.headers["x-total-pages"] || res.headers["total-pages"];
@@ -183,6 +189,7 @@ export default function PatientsDirectoryPage() {
       if (pagesHeader) setTotalPages(Number(pagesHeader));
       else setTotalPages(1);
     } catch (err: any) {
+      if (!request.isCurrent()) return;
       setLoadError("Patient records could not be loaded. Check your connection and try again.");
       toast({
         title: "Unable to Load Patients",
@@ -190,34 +197,32 @@ export default function PatientsDirectoryPage() {
         variant: "error",
       });
     } finally {
-      setLoading(false);
-      setIsRefreshing(false);
+      if (request.isCurrent()) {
+        setLoading(false);
+        setIsRefreshing(false);
+      }
     }
   };
 
-  const isFirstSearchMount = useRef(true);
-
   useEffect(() => {
     fetchPatients();
-  }, [page, genderFilter]);
+  }, [page, genderFilter, debouncedSearch]);
 
   // Debounced auto-search
   useEffect(() => {
-    if (isFirstSearchMount.current) {
-      isFirstSearchMount.current = false;
-      return;
-    }
+    if (search === debouncedSearch) return;
     const timer = setTimeout(() => {
       setPage(1);
-      fetchPatients();
+      setDebouncedSearch(search);
     }, 300);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, debouncedSearch]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (page === 1 && search === debouncedSearch) void fetchPatients();
     setPage(1);
-    fetchPatients();
+    setDebouncedSearch(search);
   };
 
   const calculateAge = (dobString?: string) => {
@@ -514,7 +519,7 @@ export default function PatientsDirectoryPage() {
               onRetry={fetchPatients}
             columns={columns}
             data={patients}
-            loading={loading}
+            loading={loading || isRefreshing}
             searchable={false}
             pagination={false}
             mobileCardView={true}

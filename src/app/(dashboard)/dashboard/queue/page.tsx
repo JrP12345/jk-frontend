@@ -1,5 +1,7 @@
 "use client";
 
+import { confirmLeavingClinicalDraft } from "@/hooks/useUnsavedClinicalChanges";
+import { useLatestRead } from "@/hooks/useLatestRead";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
@@ -546,50 +548,64 @@ export default function QueuePage() {
     if (user) initFilters();
   }, [user]);
 
+  const beginOverrideRead = useLatestRead();
   const fetchActiveOverride = async () => {
+    const request = beginOverrideRead();
     if (!selectedClinic || !selectedDoctor || !selectedDate) return;
     try {
-      const res = await api.get(`/doctor-overrides?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`);
+      const res = await api.get(`/doctor-overrides?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`, { signal: request.signal });
+      if (!request.isCurrent()) return;
       const overrides = res.data?.data || [];
       setActiveOverride(overrides.length > 0 ? overrides[0] : null);
     } catch {
+      if (!request.isCurrent()) return;
       setActiveOverride(null);
     }
   };
 
   // Fetch triage appointments
+  const beginTriageRead = useLatestRead();
   const fetchTriageAppointments = async () => {
+    const request = beginTriageRead();
     if (!selectedClinic) {
       setTriageAppointments([]);
       return;
     }
     try {
       setLoadingTriage(true);
-      const res = await api.get(`/doctor-overrides/triage?clinicId=${selectedClinic}&date=${selectedDate}`);
+      const res = await api.get(`/doctor-overrides/triage?clinicId=${selectedClinic}&date=${selectedDate}`, { signal: request.signal });
+      if (!request.isCurrent()) return;
       setTriageAppointments(res.data?.data || []);
     } catch (err) {
+      if (!request.isCurrent()) return;
       console.error("fetchTriageAppointments error:", err);
     } finally {
-      setLoadingTriage(false);
+      if (request.isCurrent()) setLoadingTriage(false);
     }
   };
 
   // Fetch queue delay status
+  const beginDelayRead = useLatestRead();
   const fetchDelayStatus = async () => {
+    const request = beginDelayRead();
     if (!selectedClinic || !selectedDoctor) {
       setDelayStatus(null);
       return;
     }
     try {
-      const res = await api.get(`/queue/delay-status?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`);
+      const res = await api.get(`/queue/delay-status?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`, { signal: request.signal });
+      if (!request.isCurrent()) return;
       setDelayStatus(res.data?.data || null);
     } catch {
+      if (!request.isCurrent()) return;
       setDelayStatus(null);
     }
   };
 
   // Fetch queue when filters change
+  const beginQueueRead = useLatestRead();
   const fetchQueue = async () => {
+    const request = beginQueueRead();
     if (!selectedClinic || !selectedDoctor) {
       setAppointments([]);
       return;
@@ -598,13 +614,15 @@ export default function QueuePage() {
       setQueueError(null);
       setLoadingQueue(true);
       const [resQueue, resStatus] = await Promise.all([
-        api.get(`/queue?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`),
-        api.get(`/queue/status?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`).catch(() => ({ data: { data: null } })),
+        api.get(`/queue?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`, { signal: request.signal }),
+        api.get(`/queue/status?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`, { signal: request.signal }),
       ]);
+      if (!request.isCurrent()) return;
       setAppointments(resQueue.data.data || []);
       setQueueStatusData(resStatus.data?.data || null);
       await Promise.all([fetchActiveOverride(), fetchTriageAppointments(), fetchDelayStatus()]);
     } catch (err: any) {
+      if (!request.isCurrent()) return;
       setQueueError("The queue could not be loaded. Check your connection and try again.");
       toast({
         title: "Error Loading Queue",
@@ -612,7 +630,7 @@ export default function QueuePage() {
         variant: "error",
       });
     } finally {
-      setLoadingQueue(false);
+      if (request.isCurrent()) setLoadingQueue(false);
     }
   };
 
@@ -1000,17 +1018,18 @@ export default function QueuePage() {
   };
 
   useEffect(() => {
+    setAppointments([]);
+    setQueueStatusData(null);
+    setActiveOverride(null);
+    setDelayStatus(null);
+    setTriageAppointments([]);
     fetchQueue();
+    fetchActiveOverride();
+    fetchDelayStatus();
     fetchTriageAppointments();
 
     const interval = setInterval(() => {
-      if (selectedClinic && selectedDoctor) {
-        api
-          .get(`/queue?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`)
-          .then((res) => setAppointments(res.data.data || []))
-          .catch(() => {});
-        fetchTriageAppointments();
-      }
+      if (document.visibilityState === "visible" && selectedClinic && selectedDoctor) void fetchQueue();
     }, 15000);
 
     // Real-time WebSocket connection to Clinic OPD Queue
@@ -1019,7 +1038,7 @@ export default function QueuePage() {
       try {
         const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-        let wsHost = apiUrl.replace(/^https?:\/\//, "").replace(/\/api\/?$/, "");
+        let wsHost = new URL(apiUrl, window.location.origin).host;
         if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
           wsHost = wsHost.replace("localhost", window.location.hostname).replace("127.0.0.1", window.location.hostname);
         }
@@ -1028,7 +1047,9 @@ export default function QueuePage() {
         ws.onmessage = (event) => {
           try {
             const payload = JSON.parse(event.data);
-            if (payload.type === "DISRUPTION_TRIAGE_REQUIRED") {
+            if (["QUEUE_UPDATED", "QUEUE_REORDERED", "QUEUE_CALL_NEXT", "QUEUE_CHECK_IN", "PATIENT_CHECKED_IN", "PATIENT_CALLED"].includes(payload.type)) {
+              void fetchQueue();
+            } else if (payload.type === "DISRUPTION_TRIAGE_REQUIRED") {
               playChimeSound("ding-dong");
               toast({
                 title: "🚨 Urgent Disruption Triage Required",
@@ -1130,7 +1151,7 @@ export default function QueuePage() {
     checkedIn: activeQueue.filter((a) => a.status === "checked-in").length,
     standby: standbyQueue.length,
     activeConsultation: activeQueue.filter((a) => a.status === "in-consultation").length,
-    nextInLine: activeQueue.find((a) => ["checked-in", "confirmed", "pending"].includes(a.status))?.tokenNumber || null,
+    nextInLine: activeQueue.filter((a) => ["checked-in", "confirmed", "pending"].includes(a.status)).sort((a,b) => { const rank = (status: string) => status === "checked-in" ? 0 : status === "confirmed" ? 1 : 2; return rank(a.status) - rank(b.status) || (a.queuePosition ?? a.tokenNumber ?? 999) - (b.queuePosition ?? b.tokenNumber ?? 999); })[0]?.tokenNumber || null,
   };
 
   const [chimeType, setChimeType] = useState<ChimeType>(() => {
@@ -1165,13 +1186,17 @@ export default function QueuePage() {
     }
   };
 
-  const handleCallNext = async (completePrevious = false) => {
+  const handleCallNext = async (completePrevious = false, confirmedAppointmentId?: string) => {
+    if (selectedDate !== new Date().toISOString().slice(0, 10)) { toast({ title: "Select today", description: "Call Next operates on today's queue. Change the date before calling a patient.", variant: "warning" }); return; }
+    if (!confirmLeavingClinicalDraft()) return;
     try {
       setCallingNext(true);
       const res = await api.post("/queue/call-next", {
         clinicId: selectedClinic,
         doctorId: selectedDoctor,
         completePrevious,
+        requireArrivalConfirmation: true,
+        confirmedAppointmentId,
       });
       if (res.data?.data) {
         const docObj = doctors.find((d) => (d.id || d._id) === selectedDoctor);
@@ -1196,7 +1221,10 @@ export default function QueuePage() {
       }
       await fetchQueue();
     } catch (err: any) {
-      if (err.response?.status === 409 && err.response?.data?.error === "ACTIVE_CONSULTATION_IN_PROGRESS") {
+      if ((err.response?.data?.error || err.response?.data?.details) === "ARRIVAL_CONFIRMATION_REQUIRED") {
+        const candidate = err.response.data.data;
+        if (window.confirm(`Token #${candidate.tokenNumber} has not checked in. Call this booked patient now?`)) await handleCallNext(completePrevious, candidate.id);
+      } else if (err.response?.status === 409 && (err.response?.data?.error || err.response?.data?.details) === "ACTIVE_CONSULTATION_IN_PROGRESS") {
         const docObj = doctors.find((d) => (d.id || d._id) === selectedDoctor);
         setConflictDoctorName(docObj?.name || user?.name || "Doctor");
         setConflictModalOpen(true);
@@ -2018,13 +2046,13 @@ export default function QueuePage() {
       {selectedClinic && selectedDoctor && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
-            label="Total Waiting"
-            value={stats.waiting.toString()}
-            description="Patients in queue line"
+            label="Booked, not arrived"
+            value={(stats.waiting - stats.checkedIn).toString()}
+            description="Pending or confirmed bookings"
             icon={<Users className="w-5 h-5 text-text-secondary" />}
           />
           <StatCard
-            label="Checked-In"
+            label="Arrived and waiting"
             value={stats.checkedIn.toString()}
             description="Present at waiting area"
             icon={<UserCheck className="w-5 h-5 text-text-secondary" />}
@@ -3928,7 +3956,7 @@ export default function QueuePage() {
 
           <p className="text-text-secondary leading-relaxed">
             Would you like to auto-complete the previous consultation and summon the next waiting patient now?
-          </p>
+           Save and sign required clinical notes first. This explicit close does not save or sign unsaved notes.</p>
 
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-border/60">
             <Button

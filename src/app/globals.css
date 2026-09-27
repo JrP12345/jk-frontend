@@ -329,7 +329,7 @@ select:-webkit-autofill {
   --s-hover: var(--surface-hover);
   --s-active: var(--active);
   --s-selected: var(--selected);
-  --s-focus-ring: var(--focus-ring);
+  --s-focus-ring: color-mix(in srgb, var(--focus-ring) 20%, transparent);
   --s-text-primary: var(--text-primary);
   --s-text: var(--text-primary);
   --s-text-secondary: var(--text-secondary);
@@ -565,15 +565,16 @@ select:-webkit-autofill {
 /* ────────────────────────────────────────────────
    Focus and initial paint states
    ──────────────────────────────────────────────── */
-/* ── Focus Outline Reset — Suppress mouse/reload focus rings while preserving keyboard focus-visible ── */
-:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 3px;
-}
+/* Keep the fallback in the base layer so component focus utilities can replace it. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
 
-*:focus:not(:focus-visible) {
-  outline: none !important;
-  box-shadow: none !important;
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
 }
 
 /* Disable transitions during initial page load to prevent flash */
@@ -784,6 +785,15 @@ body {
 .smooth-transition {
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
+@keyframes route-progress {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+
+.animate-route-progress {
+  animation: route-progress 1.2s ease-in-out infinite;
+}
+
 @keyframes spin-gpu {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }

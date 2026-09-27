@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { useLatestRead } from "@/hooks/useLatestRead";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { Card, CardHeader, CardTitle, CardContent, Table, Button, Modal, Input, Select, Textarea, useToast, Badge, StatCard, Dropdown } from "@/components/ui";
@@ -28,6 +29,9 @@ export default function ServiceCatalogPage() {
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const startRead = useLatestRead();
   const [filterCategory, setFilterCategory] = useState("");
 
   // Modal State
@@ -50,25 +54,36 @@ export default function ServiceCatalogPage() {
   });
 
   const fetchServices = async () => {
+    const request = startRead();
     try {
       setLoading(true);
+      setLoadError(null);
       const params: string[] = [];
-      if (search) params.push(`search=${encodeURIComponent(search)}`);
+      if (debouncedSearch) params.push(`search=${encodeURIComponent(debouncedSearch)}`);
       if (filterCategory) params.push(`category=${filterCategory}`);
 
       const queryString = params.length ? `?${params.join("&")}` : "";
-      const res = await api.get(`/service-catalog${queryString}`);
-      setServices(res.data?.data || []);
+      const res = await api.get(`/service-catalog${queryString}`, { signal: request.signal });
+      if (!request.isCurrent()) return;
+      if (!Array.isArray(res.data?.data)) throw new Error("Invalid service response");
+      setServices(res.data.data);
     } catch (err: any) {
+      if (!request.isCurrent()) return;
+      setLoadError("Services could not be loaded. Check your connection and try again.");
       toast({ title: "Error", description: err.response?.data?.message || "Failed to load service catalog", variant: "error" });
     } finally {
-      setLoading(false);
+      if (request.isCurrent()) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchServices();
-  }, [search, filterCategory]);
+  }, [debouncedSearch, filterCategory]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const handleOpenAddModal = () => {
     setEditingService(null);
@@ -297,6 +312,8 @@ export default function ServiceCatalogPage() {
         </CardHeader>
         <CardContent className="p-0">
           <Table
+            error={loadError}
+            onRetry={fetchServices}
             loading={loading}
             mobileCardView
             columns={[

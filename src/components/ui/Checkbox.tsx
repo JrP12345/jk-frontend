@@ -75,7 +75,7 @@ const Checkbox = memo(
               <div
                 className={cn(
                   "flex items-center justify-center h-4.5 w-4.5 rounded-md border border-border bg-surface text-text transform-gpu transition-all duration-200 ease-smooth active:scale-90 shadow-2xs",
-                  "peer-focus-visible:ring-4 peer-focus-visible:ring-focus-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface",
+                  "peer-focus-visible:ring-2 peer-focus-visible:ring-focus-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface",
                   "peer-checked:bg-primary-600 peer-checked:border-primary-600 peer-checked:shadow-xs peer-checked: peer-checked:[&_svg]:scale-100",
                   indeterminate && "bg-primary-600 border-primary-600 shadow-xs  [&_svg]:scale-100",
                   error ? "border-danger-500/80" : "group-hover/chk:border-primary-500/60"
@@ -138,5 +138,4 @@ const Checkbox = memo(
 
 Checkbox.displayName = "Checkbox";
 export default Checkbox;
-
 

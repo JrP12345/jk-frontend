@@ -4,12 +4,12 @@ import { Skeleton, SkeletonCard, SkeletonTable } from "@/components/ui";
 
 export default function DashboardLoading() {
   return (
-    <div className="w-full space-y-6 animate-fade-in p-2">
+    <div role="status" aria-label="Loading dashboard" aria-busy="true" className="w-full min-w-0 space-y-6 p-2">
       {/* Top Banner / Header Skeleton */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-2 border-b border-border/40">
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0 max-w-full">
           <Skeleton width="180px" height="1.5rem" rounded="md" />
-          <Skeleton width="280px" height="0.875rem" rounded="sm" />
+          <Skeleton width="min(280px, 100%)" height="0.875rem" rounded="sm" />
         </div>
         <div className="flex items-center gap-3">
           <Skeleton width="100px" height="2.25rem" rounded="xl" />
@@ -26,10 +26,10 @@ export default function DashboardLoading() {
 
       {/* Filter / Search Bar Skeleton */}
       <div className="p-4 rounded-2xl bg-surface border border-border/80 flex flex-wrap items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-3 flex-1 min-w-[240px]">
+        <div className="flex items-center gap-3 flex-1 min-w-0 basis-60">
           <Skeleton width="100%" height="2.25rem" rounded="xl" />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
           <Skeleton width="120px" height="2.25rem" rounded="xl" />
           <Skeleton width="120px" height="2.25rem" rounded="xl" />
         </div>

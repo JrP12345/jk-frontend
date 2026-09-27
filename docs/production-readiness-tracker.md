@@ -136,3 +136,8 @@ auditor fixture success/failure behavior, frontend payment-boundary and logo
 commands, frontend script lint, three parsed workflow files and twenty local
 documentation links. Auditor fixture compiler/test outputs were stubbed; no new
 full-suite run or deployment is claimed by this filesystem cleanup.
+
+
+## Clinic workflow fixes - 2026-09-27
+
+The G1-G10 audit implementation and verification are recorded in [the workflow recovery tracker](clinic-workflow-recovery.md). These are local changes; no production deployment or live provider transaction was performed.

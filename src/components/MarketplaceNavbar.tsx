@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import Link from "next/link";
+import { NavigationPending } from "@/components/ui/RouteProgress";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 import { Button, Avatar, Dropdown, ModeSwitcher, EkavyuLogo } from "@/components/ui";
@@ -36,6 +37,7 @@ export default function MarketplaceNavbar() {
         
         {/* Brand/Logo */}
         <Link href="/browse">
+          <NavigationPending />
           <EkavyuLogo size="md" />
         </Link>
 
@@ -49,14 +51,13 @@ export default function MarketplaceNavbar() {
             <div className="w-24 h-9 rounded-xl bg-surface-alt/60 animate-pulse border border-border/40" />
           ) : isRealUser && user ? (
             <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/dashboard")}
-                className="text-text-secondary hover:text-text"
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center justify-center px-3.5 h-8 rounded-xl text-sm font-medium text-text-secondary hover:text-text hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
+                <NavigationPending />
                 {"Go to Dashboard"}
-              </Button>
+              </Link>
               
               <Dropdown
                 trigger={
@@ -78,14 +79,13 @@ export default function MarketplaceNavbar() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => router.push("/login")}
-                className="shadow-sm"
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center px-3.5 h-8 rounded-xl text-sm font-medium bg-primary text-brand-mist hover:bg-primary-hover shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
+                <NavigationPending />
                 {"Sign In"}
-              </Button>
+              </Link>
             </div>
           )}
         </div>
@@ -127,6 +127,7 @@ export default function MarketplaceNavbar() {
               onClick={() => setIsMobileMenuOpen(false)}
               className="min-h-11 flex items-center text-sm font-medium text-text hover:text-accent py-1 transition-colors border-b border-border/40 pb-2"
             >
+              <NavigationPending />
               {"Browse Clinics"}
             </Link>
 
@@ -169,13 +170,14 @@ export default function MarketplaceNavbar() {
               </div>
             ) : (
               <div className="flex flex-col gap-3 pt-2">
-                <Button
-                  variant="primary"
-                  className="w-full text-center shadow-sm min-h-[44px] flex items-center justify-center"
-                  onClick={() => navigateTo("/login")}
+                <Link
+                  href="/login"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-full text-center shadow-sm min-h-11 flex items-center justify-center rounded-xl bg-primary text-brand-mist hover:bg-primary-hover text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                 >
+                  <NavigationPending />
                   {"Sign In"}
-                </Button>
+                </Link>
               </div>
             )}
           </div>

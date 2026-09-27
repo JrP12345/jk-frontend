@@ -40,10 +40,24 @@ export function EncounterProvider({ encounterId, patientId, clinicId, doctorId, 
     void refreshOrders().finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; generation.current++; };
   }, [refreshOrders]);
-  useEffect(() => EncounterEventBus.subscribe(EncounterEvents.ORDER_COMPLETED, data => {
-    const id = data?.encounterId?._id ?? data?.encounterId;
-    if (String(id) === encounterId) void refreshOrders();
-  }), [encounterId, refreshOrders]);
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === "visible") void refreshOrders(); };
+    const unsubscribe = [EncounterEvents.ORDER_CREATED, EncounterEvents.ORDER_COLLECTED,
+      EncounterEvents.ORDER_PROCESSING, EncounterEvents.ORDER_COMPLETED, EncounterEvents.ORDER_CANCELLED]
+      .map(event => EncounterEventBus.subscribe(event, data => {
+        const id = data?.encounterId?._id ?? data?.encounterId;
+        if (String(id) === encounterId) refresh();
+      }));
+    const timer = window.setInterval(refresh, 15000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+      unsubscribe.forEach(stop => stop());
+    };
+  }, [encounterId, refreshOrders]);
   return <EncounterContext.Provider value={{ encounterId, patientId, clinicId, doctorId, loading, error, orders, refreshOrders }}>{children}</EncounterContext.Provider>;
 }
 export function useEncounterContext() {

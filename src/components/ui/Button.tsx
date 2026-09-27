@@ -20,7 +20,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "group relative inline-flex items-center justify-center font-medium select-none cursor-pointer rounded-xl transform-gpu transition-all duration-150 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:pointer-events-none disabled:transform-none active:scale-[0.98] touch-manipulation min-h-[44px] md:min-h-0";
+  "group relative inline-flex items-center justify-center font-medium select-none cursor-pointer rounded-xl transform-gpu transition-all duration-150 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:pointer-events-none disabled:transform-none active:scale-[0.98] touch-manipulation min-h-[44px] md:min-h-0";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
@@ -100,38 +100,40 @@ const Button = memo(
             !semanticForeground.test(className) && foregrounds[variant],
             sizes[size],
             fullWidth && "w-full",
+            !loading && "disabled:opacity-50",
             loading && "cursor-wait select-none",
             className
           )}
           {...rest}
+          aria-label={rest["aria-label"] || (loading ? loadingText : undefined)}
           onClick={(event) => { vibrateFeedback("selection"); onClick?.(event); }}
         >
-          {loading ? (
+          <span className={cn("inline-flex min-w-0 items-center gap-[inherit]", loading && "invisible")} aria-hidden={loading || undefined}>
+          {icon ? (
             <span
               className={cn(
-                "shrink-0 inline-flex items-center justify-center animate-fade-in",
-                icon ? iconSizes[size] : ""
+                "shrink-0 inline-flex items-center justify-center",
+                iconSizes[size]
               )}
             >
-              <Spinner
-                size={spinnerSize}
-                color="text-current"
-                className="shrink-0"
-              />
+              {icon}
             </span>
-          ) : icon ? (
-            <span className={cn("shrink-0 inline-flex items-center justify-center transition-transform duration-150 group-hover:scale-105", iconSizes[size])}>{icon}</span>
           ) : null}
 
           {children && (
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap truncate max-w-full">
-              {loading && loadingText ? loadingText : children}
+            <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap overflow-hidden [&_svg]:shrink-0">
+              {children}
             </span>
           )}
 
-          {iconRight && !loading && (
+          {iconRight && (
             <span className={cn("shrink-0 inline-flex items-center justify-center transition-transform duration-150 group-hover:scale-105", iconSizes[size])}>{iconRight}</span>
           )}
+          </span>
+          {loading && <span className="absolute inset-0 flex min-w-0 items-center justify-center gap-[inherit] px-[inherit]">
+            <span aria-hidden="true" className="shrink-0"><Spinner size={spinnerSize} color="text-current" /></span>
+            {(loadingText || children) && <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap overflow-hidden [&_svg]:shrink-0">{loadingText || children}</span>}
+          </span>}
         </button>
       );
     }
@@ -140,4 +142,3 @@ const Button = memo(
 
 Button.displayName = "Button";
 export default Button;
-

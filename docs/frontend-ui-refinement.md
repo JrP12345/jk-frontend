@@ -1,5 +1,9 @@
 # Frontend refinement audit and implementation
 
+The subsequent loading, navigation and recovery improvements are documented in
+[frontend-experience-continuity.md](frontend-experience-continuity.md), including
+the prioritized audit, implementation scope and validation results.
+
 The 2026-09-27 Ekavyu theme migration is documented in
 [ekavyu-visual-identity.md](ekavyu-visual-identity.md). It replaces selectable
 palettes with one light/dark identity while retaining the responsive controls

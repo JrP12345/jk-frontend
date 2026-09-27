@@ -1,18 +1,5 @@
-"use client";
-
-import { Spinner, EkavyuLogo } from "@/components/ui";
+import LoadingState from "@/components/ui/LoadingState";
 
 export default function RootLoading() {
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="flex flex-col items-center justify-center min-h-[45vh] p-6 text-center animate-fade-in select-none"
-    >
-      <div className="flex flex-col items-center gap-3.5 max-w-sm">
-        <EkavyuLogo size="md" />
-        <Spinner size="sm" label="Loading platform content..." />
-      </div>
-    </div>
-  );
+  return <LoadingState fullPage />;
 }

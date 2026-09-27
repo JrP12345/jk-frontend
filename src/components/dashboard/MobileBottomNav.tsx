@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { NavigationPending } from "@/components/ui/RouteProgress";
 import { LayoutDashboard, Calendar, Clock, Users, FileText, Receipt, Building2, Menu, Bell, Settings } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 
@@ -144,6 +145,7 @@ export function MobileBottomNav({
               <div className={cn("relative flex items-center justify-center rounded-lg transition-all duration-150", isActive && "bg-primary-500/10 px-3 py-1")}>
                 <Icon className={cn("w-5 h-5 transition-transform duration-150", isActive && "scale-110")} />
               </div>
+              <NavigationPending />
               <span className="text-[11px] tracking-tight mt-0.5 font-medium truncate max-w-full">
                 {tab.label}
               </span>

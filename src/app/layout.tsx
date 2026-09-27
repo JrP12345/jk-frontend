@@ -23,11 +23,11 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/favicon-32.png?v=ekavyu-leaf-1", sizes: "32x32", type: "image/png" },
-      { url: "/app-icon-512.png?v=ekavyu-leaf-1", sizes: "512x512", type: "image/png" },
+      { url: "/favicon-32.png?v=ekavyu-leaf-2", sizes: "32x32", type: "image/png" },
+      { url: "/app-icon-512.png?v=ekavyu-leaf-2", sizes: "512x512", type: "image/png" },
     ],
-    shortcut: [{ url: "/favicon-16.png?v=ekavyu-leaf-1", sizes: "16x16", type: "image/png" }],
-    apple: [{ url: "/app-icon-180.png?v=ekavyu-leaf-1", sizes: "180x180", type: "image/png" }],
+    shortcut: [{ url: "/favicon-16.png?v=ekavyu-leaf-2", sizes: "16x16", type: "image/png" }],
+    apple: [{ url: "/app-icon-180.png?v=ekavyu-leaf-2", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,

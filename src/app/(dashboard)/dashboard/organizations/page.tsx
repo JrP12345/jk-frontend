@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
+import { useLatestRead } from "@/hooks/useLatestRead";
 import { Card, Button, Badge, Table, Column, Spinner, Modal, Input, Select, Checkbox, Dropdown, StatCard, useToast, cn } from "@/components/ui";
 import ImageUpload from "@/components/ui/ImageUpload";
 import { useR2Upload } from "@/hooks/useR2Upload";
@@ -35,6 +36,8 @@ interface Organization {
 export default function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const startRead = useLatestRead();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
 
@@ -129,21 +132,30 @@ export default function OrganizationsPage() {
   }, []);
 
   const fetchOrganizations = async () => {
+    const request = startRead();
     try {
       setIsRefreshing(true);
+      setLoadError(null);
       const res = await api.get(`/organizations?t=${Date.now()}`, {
         headers: { "Cache-Control": "no-cache" },
+        signal: request.signal,
       });
-      setOrganizations(res.data.data || []);
+      if (!request.isCurrent()) return;
+      if (!Array.isArray(res.data.data)) throw new Error("Invalid organization response");
+      setOrganizations(res.data.data);
     } catch (err: any) {
+      if (!request.isCurrent()) return;
+      setLoadError("Organizations could not be loaded. Check your connection and try again.");
       toast({
         title: "Error Loading Organizations",
         description: err.response?.data?.message || "Failed to fetch platform organizations",
         variant: "error",
       });
     } finally {
-      setLoading(false);
-      setIsRefreshing(false);
+      if (request.isCurrent()) {
+        setLoading(false);
+        setIsRefreshing(false);
+      }
     }
   };
 
@@ -900,10 +912,12 @@ export default function OrganizationsPage() {
          ────────────────────────────────────────────────────────────────────────── */}
       <div>
         <Table
+          error={loadError}
+          onRetry={fetchOrganizations}
           columns={tableColumns}
           data={filteredOrganizations}
           searchable={false}
-          loading={loading}
+          loading={loading || isRefreshing}
           emptyMessage="No tenant organizations registered yet."
           renderMobileCard={(org: Organization) => {
             const isCurrentOrg = user?.organization_id === org.id;
@@ -1695,4 +1709,3 @@ export default function OrganizationsPage() {
     </div>
   );
 }
-

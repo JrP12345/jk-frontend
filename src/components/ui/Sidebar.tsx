@@ -2,6 +2,7 @@
 
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
+import { NavigationPending } from "./RouteProgress";
 import { cn } from "./utils";
 import Tooltip from "./Tooltip";
 
@@ -111,6 +112,7 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
       )}
     >
       {/* Active Glowing Leading Indicator Bar */}
+      <NavigationPending />
       {item.active && !collapsed && (
         <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full bg-accent  animate-fade-in" />
       )}
@@ -151,5 +153,4 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
     </li>
   );
 }
-
 

@@ -323,7 +323,7 @@ export default function Table<T extends Record<string, any>>({
   const activeFiltersCount = Object.values(columnFilters).filter(Boolean).length;
 
   return (
-    <div className={cn("w-full flex flex-col relative", className)}>
+    <div aria-busy={loading} className={cn("w-full flex flex-col relative", className)}>
       {/* UNIFIED PREMIUM CARD WRAPPER */}
       <div className={cn(
         "w-full rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden flex flex-col transition-all",
@@ -448,11 +448,9 @@ export default function Table<T extends Record<string, any>>({
         </div>
 
         {/* Subtle Non-Blocking Loading Shimmer Line */}
-        {loading && (
-          <div className="h-0.5 w-full bg-surface-alt overflow-hidden shrink-0" role="progressbar" aria-label="Loading table data">
-            <div className="h-full w-full bg-primary-500 skeleton-shimmer animate-pulse" />
-          </div>
-        )}
+        <div className="h-0.5 w-full overflow-hidden shrink-0">
+          {loading && <div className="h-full bg-primary-500 skeleton-shimmer animate-pulse" role="progressbar" aria-label="Loading table data" />}
+        </div>
 
 
         {error && <Alert variant="error" title="Unable to load results" className="m-3" action={onRetry ? <Button variant="outline" size="sm" onClick={onRetry} loading={loading}>Try again</Button> : undefined}>{error}</Alert>}
@@ -475,7 +473,7 @@ export default function Table<T extends Record<string, any>>({
 
         {/* 2. TABLE GRID AREA — Desktop table, Mobile card view */}
         {mobileCardView && (
-          <div className={cn("md:hidden p-3 space-y-2.5 transition-opacity duration-200", loading && currentData.length > 0 && "opacity-60 pointer-events-none")}>
+          <div className={cn("md:hidden p-3 space-y-2.5 transition-opacity duration-200", loading && currentData.length > 0 && "opacity-80")}>
             {loading && currentData.length === 0 ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="p-3.5 rounded-xl border border-border/60 bg-surface-alt/30 space-y-2.5">
@@ -636,7 +634,7 @@ export default function Table<T extends Record<string, any>>({
             <tbody
               className={cn(
                 "divide-y divide-border/60 transition-opacity duration-200",
-                loading && currentData.length > 0 && "opacity-55 pointer-events-none",
+                loading && currentData.length > 0 && "opacity-80",
                 variant === "striped" && "[&>tr:nth-child(even)]:bg-surface-alt/30"
               )}
             >

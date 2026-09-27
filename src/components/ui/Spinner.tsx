@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, memo } from "react";
+import { memo } from "react";
 import { cn } from "./utils";
 
 export type SpinnerSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
@@ -95,7 +95,6 @@ const Spinner = memo(function Spinner({
   trackClassName = "",
   center = false,
 }: SpinnerProps) {
-  const uniqueId = useId().replace(/:/g, "_");
   const cfg = sizeConfig[size] || sizeConfig.md;
 
   const renderContent = () => {
@@ -146,50 +145,36 @@ const Spinner = memo(function Spinner({
       );
     }
 
-    // ── Signature Default Variant: Clean Ekavyu Quantum Ring (Unique, Minimal & Fluid) ──
-    const gradId = `spinner-grad-${uniqueId}`;
-
+    // One clear ring for buttons, cards, dialogs and page content.
     return (
       <div className={cn("relative flex items-center justify-center shrink-0", cfg.container, color)} aria-hidden="true">
         <svg
-          className="w-full h-full origin-center shrink-0 transform-gpu overflow-visible animate-spin-smooth"
-          viewBox="0 0 44 44"
+          className="w-full h-full shrink-0 animate-spin motion-reduce:animate-none"
+          viewBox="0 0 24 24"
           fill="none"
         >
-          <defs>
-            <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="currentColor" stopOpacity="1" />
-              <stop offset="60%" stopColor="currentColor" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="currentColor" stopOpacity="0.04" />
-            </linearGradient>
-          </defs>
-
           {/* Clean Subtle Background Track */}
           <circle
-            cx="22"
-            cy="22"
-            r="17"
+            cx="12"
+            cy="12"
+            r="10"
             stroke="currentColor"
             strokeWidth={cfg.strokeWidth}
             className={cn("opacity-15 dark:opacity-20", trackClassName)}
           />
 
-          {/* Fluid Tapered Arc */}
+          {/* Rotating arc */}
           <circle
-            cx="22"
-            cy="22"
-            r="17"
-            stroke={`url(#${gradId})`}
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
             strokeWidth={cfg.strokeWidth}
             strokeLinecap="round"
-            className="animate-spinner-dash origin-center"
+            strokeDasharray="16 47"
           />
         </svg>
 
-        {/* Subtle Central Luminous Beacon Dot (on md sizes and above) */}
-        {size !== "xs" && size !== "sm" && (
-          <span className="absolute h-1 w-1 rounded-full bg-current animate-pulse-beacon  opacity-80" />
-        )}
       </div>
     );
   };
@@ -207,7 +192,7 @@ const Spinner = memo(function Spinner({
       {renderContent()}
 
       {label ? (
-        <div className="flex flex-col items-center text-center gap-0.5 animate-fade-in">
+        <div className="flex flex-col items-center text-center gap-0.5">
           <span
             className={cn(
               "font-medium tracking-tight text-text-secondary dark:text-text-secondary select-none",
@@ -259,19 +244,20 @@ export const PageSpinner = memo(function PageSpinner({
         "fixed inset-0 z-50 flex items-center justify-center bg-background/70 dark:bg-black/60  animate-fade-in p-4",
         className
       )}
-      role="dialog"
-      aria-modal="true"
+      role="status"
+      aria-live="polite"
       aria-label={label}
     >
-      <div className="relative bg-surface dark:bg-surface  border border-border/80 rounded-2xl shadow-lg   p-6 sm:p-8 flex flex-col items-center justify-center max-w-xs sm:max-w-sm w-full text-center transform-gpu overflow-hidden">
-
-        <Spinner
-          size={size}
-          variant={variant}
-          color={color}
-          label={label}
-          secondaryText={description}
-        />
+      <div className="flex flex-col items-center justify-center max-w-sm w-full text-center p-6">
+        <div aria-hidden="true">
+          <Spinner
+            size={size}
+            variant={variant}
+            color={color}
+            label={label}
+            secondaryText={description}
+          />
+        </div>
       </div>
     </div>
   );

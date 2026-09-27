@@ -381,7 +381,7 @@ export default function ClinicsPage() {
           4. CONTENT: ACTIVE TAB vs ARCHIVED TAB
          ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "active" ? (
-        (loading || clinicsLoading) ? (
+        (loading || clinicsLoading) && clinics.length === 0 ? (
           <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
             <CardContent className="p-0"><SkeletonTable /></CardContent>
           </Card>
@@ -473,7 +473,7 @@ export default function ClinicsPage() {
             <Table
               searchable
               searchPlaceholder="Search locations by name, city, or address..."
-              loading={false}
+              loading={loading || clinicsLoading || isRefreshing}
               mobileCardView
               columns={[
                 {
@@ -672,7 +672,7 @@ export default function ClinicsPage() {
         </Card>
       )) : (
         /* ── Archived Locations View ── */
-        loadingArchived ? (
+        loadingArchived && archivedClinics.length === 0 ? (
           <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
             <CardContent className="p-0"><SkeletonTable /></CardContent>
           </Card>
@@ -690,7 +690,7 @@ export default function ClinicsPage() {
               <Table
                 searchable
                 searchPlaceholder="Search archived locations..."
-                loading={false}
+                loading={loadingArchived}
                 mobileCardView
                 columns={[
                   {

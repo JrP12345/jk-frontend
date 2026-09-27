@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
 import PasskeySignIn from "@/components/auth/PasskeySignIn";
+import { detectPatientOtpTarget, patientOtpDestination, type PatientOtpTarget } from "@/lib/patientLogin";
+import { NavigationPending } from "@/components/ui/RouteProgress";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, Modal, useToast, ModeSwitcher, EkavyuLogo, cn } from "@/components/ui";
 import { AlertTriangle, Smartphone, Mail, Lock, KeyRound, Eye, EyeOff, ArrowLeft, ArrowRight, ShieldCheck, CheckCircle2, Clock, RotateCcw, Sparkles } from "lucide-react";
 
@@ -13,12 +15,13 @@ const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export default function LoginPage() {
   const [authTab, setAuthTab] = useState<"mobile" | "email">("mobile");
-  const [patientOtpMode, setPatientOtpMode] = useState<"mobile" | "email">("mobile");
-  const [phone, setPhone] = useState("");
-  const [patientEmail, setPatientEmail] = useState("");
+  const [patientIdentifier, setPatientIdentifier] = useState("");
+  const [patientIdentifierError, setPatientIdentifierError] = useState("");
+  const [otpTarget, setOtpTarget] = useState<PatientOtpTarget | null>(null);
   const [phoneOtp, setPhoneOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpAction, setOtpAction] = useState<"sending" | "verifying" | null>(null);
+  const otpLoading = otpAction !== null;
   const [resendTimer, setResendTimer] = useState(0);
 
   const [email, setEmail] = useState("");
@@ -94,32 +97,23 @@ export default function LoginPage() {
 
   const handleRequestPatientOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (patientOtpMode === "mobile") {
-      if (!phone || phone.length < 10) {
-        toast({ title: "Validation Error", description: "Please enter a valid 10-digit mobile phone number", variant: "error" });
-        triggerShake();
-        return;
-      }
-    } else {
-      if (!patientEmail || !EMAIL_REGEX.test(patientEmail)) {
-        toast({ title: "Validation Error", description: "Please enter a valid email address", variant: "error" });
-        triggerShake();
-        return;
-      }
+    if (otpLoading) return;
+    const target = otpSent ? otpTarget : detectPatientOtpTarget(patientIdentifier);
+    if (!target) {
+      setPatientIdentifierError("Enter a valid email address or 10-digit mobile number.");
+      triggerShake();
+      return;
     }
-
-    setOtpLoading(true);
+    setPatientIdentifierError("");
+    setOtpAction("sending");
     try {
-      const payload = patientOtpMode === "mobile"
-        ? { phone, purpose: "authentication" }
-        : { email: patientEmail.trim().toLowerCase(), purpose: "authentication" };
-
-      const res = await api.post("/auth/otp/request", payload);
+      const res = await api.post("/auth/otp/request", { ...target, purpose: "authentication" });
+      setOtpTarget(target);
       setOtpSent(true);
       setResendTimer(30);
-      const destination = patientOtpMode === "mobile" ? `+91 ${phone}` : patientEmail;
+      const destination = patientOtpDestination(target);
       toast({
-        title: patientOtpMode === "mobile" ? "OTP Dispatched! 📱" : "OTP Dispatched! ✉️",
+        title: "Verification code sent",
         description: res.data?.data?.devOtp
           ? `[DEV MODE] Your OTP code is: ${res.data.data.devOtp}`
           : `Verification OTP has been sent to ${destination}`,
@@ -134,25 +128,22 @@ export default function LoginPage() {
         variant: "error",
       });
     } finally {
-      setOtpLoading(false);
+      setOtpAction(null);
     }
   };
 
   const handleVerifyPatientOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phoneOtp || phoneOtp.length < 6) {
+    if (otpLoading || !otpTarget) return;
+    if (!/^\d{6}$/.test(phoneOtp)) {
       toast({ title: "Validation Error", description: "Enter 6-digit OTP code", variant: "error" });
       triggerShake();
       return;
     }
 
-    setOtpLoading(true);
+    setOtpAction("verifying");
     try {
-      const payload = patientOtpMode === "mobile"
-        ? { phone, otp: phoneOtp, purpose: "authentication" }
-        : { email: patientEmail.trim().toLowerCase(), otp: phoneOtp, purpose: "authentication" };
-
-      const res = await api.post("/auth/otp/verify", payload);
+      const res = await api.post("/auth/otp/verify", { ...otpTarget, otp: phoneOtp, purpose: "authentication" });
       login(res.data.data.user);
       toast({
         title: "Welcome!",
@@ -168,7 +159,7 @@ export default function LoginPage() {
         variant: "error",
       });
     } finally {
-      setOtpLoading(false);
+      setOtpAction(null);
     }
   };
 
@@ -288,6 +279,7 @@ export default function LoginPage() {
           href="/browse"
           className="text-xs font-semibold text-text-secondary hover:text-text flex items-center gap-2 bg-surface/80 hover:bg-surface  px-3.5 py-2 rounded-full border border-border/80 hover:border-primary-500/30 transition-all shadow-2xs hover:shadow-xs group min-h-[40px] sm:min-h-0"
         >
+          <NavigationPending />
           <ArrowLeft className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.25} />
           <span>Browse Clinics</span>
         </Link>
@@ -341,11 +333,13 @@ export default function LoginPage() {
                     aria-selected={authTab === "mobile"}
                     aria-controls="panel-mobile"
                     type="button"
+                    disabled={otpLoading}
                     onClick={() => {
                       startTransition(() => {
                         setAuthTab("mobile");
                         setOtpSent(false);
                         setPhoneOtp("");
+                        setOtpTarget(null);
                       });
                     }}
                     className={cn(
@@ -370,6 +364,7 @@ export default function LoginPage() {
                     aria-selected={authTab === "email"}
                     aria-controls="panel-email"
                     type="button"
+                    disabled={otpLoading}
                     onClick={() => {
                       startTransition(() => {
                         setAuthTab("email");
@@ -397,68 +392,28 @@ export default function LoginPage() {
               {authTab === "mobile" ? (
                 /* Patient OTP Form */
                 !otpSent ? (
-                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleRequestPatientOtp} className="space-y-4 animate-fade-in">
-                    {/* Patient Mode Selector: Mobile OTP vs Email OTP */}
-                    <div className="flex p-1 bg-surface-alt/80 rounded-xl border border-border/60 gap-1 mb-2">
-                      <button
-                        type="button"
-                        onClick={() => { setPatientOtpMode("mobile"); setPhoneOtp(""); }}
-                        className={cn(
-                          "flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer",
-                          patientOtpMode === "mobile"
-                            ? "bg-surface text-accent dark:text-accent shadow-2xs font-bold border border-border/40"
-                            : "text-text-muted hover:text-text"
-                        )}
-                      >
-                        <Smartphone className="w-3.5 h-3.5" />
-                        <span>Mobile Phone</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setPatientOtpMode("email"); setPhoneOtp(""); }}
-                        className={cn(
-                          "flex-1 py-1.5 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer",
-                          patientOtpMode === "email"
-                            ? "bg-surface text-accent dark:text-accent shadow-2xs font-bold border border-border/40"
-                            : "text-text-muted hover:text-text"
-                        )}
-                      >
-                        <Mail className="w-3.5 h-3.5" />
-                        <span>Email Address</span>
-                      </button>
-                    </div>
-
-                    {patientOtpMode === "mobile" ? (
-                      <Input
-                        label="Mobile Phone Number *"
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="9876543210"
-                        icon={<Smartphone className="w-4 h-4 text-text-muted" strokeWidth={2} />}
-                        prefix="+91"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                        autoComplete="tel"
-                        required
-                      />
-                    ) : (
-                      <Input
-                        label="Patient Email Address *"
-                        type="email"
-                        inputMode="email"
-                        placeholder="patient@example.com"
-                        icon={<Mail className="w-4 h-4 text-text-muted" strokeWidth={2} />}
-                        value={patientEmail}
-                        onChange={(e) => setPatientEmail(e.target.value.trim())}
-                        autoComplete="email"
-                        required
-                      />
-                    )}
+                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleRequestPatientOtp} noValidate className="space-y-4 animate-fade-in">
+                    <Input
+                      label="Email or mobile number"
+                      type="text"
+                      placeholder="Email address or 10-digit mobile number"
+                      icon={patientIdentifier.includes("@") ? <Mail className="w-4 h-4 text-text-muted" /> : <Smartphone className="w-4 h-4 text-text-muted" />}
+                      value={patientIdentifier}
+                      onChange={(e) => { setPatientIdentifier(e.target.value); setPatientIdentifierError(""); }}
+                      error={patientIdentifierError}
+                      hint="We'll send a verification code to your email or phone."
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      disabled={otpLoading}
+                      required
+                    />
 
                     <Button
                       type="submit"
                       fullWidth
                       loading={otpLoading}
+                      loadingText="Sending code…"
                       size="lg"
                       className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
                     >
@@ -475,16 +430,17 @@ export default function LoginPage() {
                         <div className="flex flex-col min-w-0">
                           <span className="text-[11px] text-text-muted font-medium">OTP dispatched to</span>
                           <span className="font-bold text-text text-xs tracking-wide truncate">
-                            {patientOtpMode === "mobile" ? `+91 ${phone}` : patientEmail}
+                            {otpTarget ? patientOtpDestination(otpTarget) : ""}
                           </span>
                         </div>
                       </div>
                       <button
                         type="button"
-                        onClick={() => { setOtpSent(false); setPhoneOtp(""); }}
+                        disabled={otpLoading}
+                        onClick={() => { setOtpSent(false); setPhoneOtp(""); setOtpTarget(null); setResendTimer(0); }}
                         className="text-xs font-semibold text-accent dark:text-accent hover:underline cursor-pointer px-2.5 py-1 rounded-lg hover:bg-primary-500/10 transition-colors shrink-0"
                       >
-                        Change {patientOtpMode === "mobile" ? "Number" : "Email"}
+                        Change
                       </button>
                     </div>
 
@@ -496,6 +452,7 @@ export default function LoginPage() {
                       icon={<KeyRound className="w-4 h-4 text-text-muted" strokeWidth={2} />}
                       className="tracking-[0.4em] font-mono text-center text-lg sm:text-base font-bold placeholder:tracking-normal placeholder:font-sans"
                       value={phoneOtp}
+                      disabled={otpLoading}
                       onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                       autoComplete="one-time-code"
                       required
@@ -527,6 +484,7 @@ export default function LoginPage() {
                       type="submit"
                       fullWidth
                       loading={otpLoading}
+                      loadingText={otpAction === "sending" ? "Sending code…" : "Verifying…"}
                       size="lg"
                       className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
                     >
@@ -610,6 +568,7 @@ export default function LoginPage() {
                       type="submit"
                       fullWidth
                       loading={loading}
+                      loadingText="Signing in…"
                       size="lg"
                       className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
                     >
@@ -624,6 +583,7 @@ export default function LoginPage() {
               <div className="mt-6 pt-4 border-t border-border/60 text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-xs text-text-secondary">
                 <span>New to Ekavyu Health?</span>
                 <Link href="/register" className="font-bold text-accent dark:text-accent hover:underline flex items-center gap-1">
+                  <NavigationPending />
                   <span>Create Patient Account</span>
                   <ArrowRight className="w-3 h-3 inline" strokeWidth={2} />
                 </Link>
@@ -674,6 +634,7 @@ export default function LoginPage() {
                     type="submit"
                     fullWidth
                     loading={resetLoading}
+                    loadingText="Sending link…"
                     size="md"
                     className="rounded-xl font-bold min-h-[44px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
                   >
@@ -719,7 +680,8 @@ export default function LoginPage() {
           <form
             onSubmit={async (e) => {
               e.preventDefault();
-              setOtpLoading(true);
+              if (twoFactorLoading) return;
+              setTwoFactorLoading(true);
               try {
                 const res = await api.post("/auth/login/verify-2fa", {
                   twoFactorToken,
@@ -750,7 +712,7 @@ export default function LoginPage() {
                   setTwoFactorToken("");
                 }
               } finally {
-                setOtpLoading(false);
+                setTwoFactorLoading(false);
               }
             }}
             className="space-y-4"
@@ -765,12 +727,14 @@ export default function LoginPage() {
               className="tracking-[0.4em] font-mono text-center font-bold text-lg placeholder:tracking-normal placeholder:font-sans"
               autoComplete="one-time-code"
               value={otpCode}
+              disabled={twoFactorLoading}
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
               required
             />
             <Button
               type="submit"
-              loading={otpLoading}
+              loading={twoFactorLoading}
+              loadingText="Verifying…"
               fullWidth
               size="lg"
               className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"

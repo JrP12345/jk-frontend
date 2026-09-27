@@ -4,7 +4,7 @@ import React from "react";
 import Spinner, { PageSpinner } from "../components/ui/Spinner";
 
 describe("Spinner Component Tests", () => {
-  it("renders default orbital spinner with status role", () => {
+  it("renders the standard spinner with status role", () => {
     render(<Spinner />);
     const status = screen.getByRole("status");
     expect(status).toBeInTheDocument();
@@ -47,15 +47,15 @@ describe("Spinner Component Tests", () => {
 });
 
 describe("PageSpinner Component Tests", () => {
-  it("renders page spinner with dialog role and backdrop blur", () => {
+  it("announces page loading without declaring a modal dialog", () => {
     render(
       <PageSpinner
         label="Connecting to secure consultation..."
         description="Establishing WebRTC peer connection"
       />
     );
-    const dialog = screen.getByRole("dialog");
-    expect(dialog).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Connecting to secure consultation..." })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByText("Connecting to secure consultation...")).toBeInTheDocument();
     expect(screen.getByText("Establishing WebRTC peer connection")).toBeInTheDocument();
   });

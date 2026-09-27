@@ -71,6 +71,8 @@ export default function StaffPage() {
   const [customStaff, setCustomStaff] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingAssignment, setPendingAssignment] = useState<any>(null);
+  const [retryingAssignment, setRetryingAssignment] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -483,7 +485,7 @@ export default function StaffPage() {
           try {
             const docFeeType = finalData.feeType || "fixed";
             const docFees = docFeeType === "free" ? 0 : (Number(finalData.fees) || (docFeeType === "post_consultation" ? 0 : 500));
-            await api.post("/onboarding/doctors/assignments", {
+            const assignment = {
               doctorId: res.data.data.id,
               clinicId: finalData.clinicId,
               fees: docFees,
@@ -491,9 +493,15 @@ export default function StaffPage() {
               appointmentDuration: Number(finalData.appointmentDuration) || 15,
               workingHours: DEFAULT_WORKING_HOURS,
               bookingMode: "sequential_queue",
-            });
+            };
+            setPendingAssignment(assignment);
+            await api.post("/onboarding/doctors/assignments", assignment);
+            setPendingAssignment(null);
           } catch (assignErr) {
-            console.warn("Auto-assignment failed or skipped:", assignErr);
+            toast({ title: "Doctor account created; clinic assignment failed", description: "Retry the clinic assignment below. Do not register the doctor again.", variant: "error" });
+            setIsModalOpen(false);
+            void fetchStaff();
+            return;
           }
         }
         toast({ title: "Success", description: `${modalType === "doctor" ? "Doctor" : "Receptionist"} registered successfully!`, variant: "success" });
@@ -706,6 +714,12 @@ export default function StaffPage() {
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+      {pendingAssignment && <Alert variant="error" title="Doctor needs clinic assignment" action={<Button variant="outline" size="sm" loading={retryingAssignment} onClick={async () => {
+        setRetryingAssignment(true);
+        try { await api.post("/onboarding/doctors/assignments", pendingAssignment); setPendingAssignment(null); toast({ title: "Doctor assigned", description: "The existing doctor account is now assigned to the clinic.", variant: "success" }); void fetchStaff(); }
+        catch (err: any) { toast({ title: "Assignment failed", description: err.response?.data?.message || "Please retry the clinic assignment.", variant: "error" }); }
+        finally { setRetryingAssignment(false); }
+      }}>Retry assignment</Button>}>The account exists, but booking setup is incomplete. Fee: {pendingAssignment.fees}; duration: {pendingAssignment.appointmentDuration} minutes; mode: sequential queue.</Alert>}
       {loadError && <Alert variant="error" title="Unable to load staff" action={<Button variant="outline" size="sm" onClick={fetchStaff}>Try again</Button>}>{loadError}</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
@@ -964,7 +978,7 @@ export default function StaffPage() {
                         },
                       ]}
                       data={filteredStaff}
-                      loading={loading}
+                      loading={loading || isRefreshing}
                       emptyMessage="No staff members match the selected filter."
                       renderMobileCard={(row: StaffMember) => (
                         <div

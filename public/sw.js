@@ -1,5 +1,5 @@
 // Ekavyu Progressive Web App (PWA) Service Worker
-const CACHE_NAME = 'ekavyu-cache-v6';
+const CACHE_NAME = 'ekavyu-cache-v8';
 const STATIC_ASSETS = [
   '/',
   '/browse',
@@ -8,10 +8,14 @@ const STATIC_ASSETS = [
   '/app-icon-512.png',
   '/app-icon-light-192.png',
   '/ekavyu-leaf.png',
+  '/ekavyu-leaf.png?v=website-1',
   '/favicon-16.png',
   '/favicon-32.png',
   '/app-icon-180.png',
   '/app-icon-maskable-512.png',
+  '/app-icon-192.png?v=ekavyu-leaf-2',
+  '/app-icon-512.png?v=ekavyu-leaf-2',
+  '/app-icon-maskable-512.png?v=ekavyu-leaf-2',
 ];
 
 self.addEventListener('install', (event) => {

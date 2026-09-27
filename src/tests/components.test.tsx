@@ -61,13 +61,19 @@ describe("Table Component Tests", () => {
 });
 
 describe("Button Loading State Tests", () => {
+  it("keeps the accessible action name when loading a compound label with an arrow", () => {
+    render(<Button fullWidth loading><span>Verify &amp; Sign In</span><svg aria-hidden="true" /></Button>);
+    const button = screen.getByRole("button", { name: "Verify & Sign In" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-busy", "true");
+  });
   it("renders button with loading spinner and disabled state without losing text", () => {
     render(<Button loading={true}>Confirm Appointment</Button>);
     const button = screen.getByRole("button");
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
-    expect(screen.getByText("Confirm Appointment")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm Appointment" })).toBeInTheDocument();
+    expect(screen.getByRole("status", { hidden: true })).toBeInTheDocument();
   });
 
   it("renders loadingText when provided", () => {

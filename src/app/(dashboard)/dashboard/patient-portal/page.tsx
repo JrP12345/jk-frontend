@@ -60,6 +60,8 @@ export default function PatientPortalPage() {
 
   // Prescriptions & Refills state
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [refillError, setRefillError] = useState<string | null>(null);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
   const [refillRequests, setRefillRequests] = useState<any[]>([]);
   const [selectedPrescription, setSelectedPrescription] = useState<any | null>(null);
   const [refillReason, setRefillReason] = useState("");
@@ -211,8 +213,7 @@ export default function PatientPortalPage() {
       await fetchFamilyMembers();
 
       // Fetch refill requests
-      const refillRes = await api.get("/prescriptions/refills");
-      setRefillRequests(refillRes.data.data || []);
+      await fetchRefills();
     } catch (err: any) {
       setLoadError("Your health records could not be loaded. Please try again.");
       console.error("Failed to fetch patient portal data:", err);
@@ -226,13 +227,22 @@ export default function PatientPortalPage() {
     }
   };
 
+  const fetchRefills = async () => {
+    try {
+      const res = await api.get("/prescriptions/refills");
+      setRefillRequests(res.data.data || []);
+      setRefillError(null);
+    } catch { setRefillError("Refill requests could not be loaded. Your other health records are still available."); }
+  };
+
   const fetchTimeline = async (patientId: string) => {
     try {
       setTimelineLoading(true);
       const res = await api.get(`/patients/${patientId}/timeline`);
       setTimelineEvents(res.data.data?.events || []);
+      setTimelineError(null);
     } catch (err) {
-      console.error("Failed to fetch timeline:", err);
+      setTimelineError("Clinical history could not be refreshed. Retry to check for the latest records.");
     } finally {
       setTimelineLoading(false);
     }
@@ -632,7 +642,7 @@ export default function PatientPortalPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 bg-surface-alt border border-border/80 rounded-xl">
                 <div className="text-xs font-bold text-accent uppercase tracking-wider">Clinical Notes</div>
-                <div className="text-2xl font-bold text-text mt-1">{timelineEvents.filter((e: any) => e.eventType?.includes("ENCOUNTER")).length || 2} Recorded</div>
+                <div className="text-2xl font-bold text-text mt-1">{timelineEvents.filter((e: any) => e.eventType?.includes("ENCOUNTER")).length} Recorded</div>
                 <p className="text-xs text-text-muted mt-1">SOAP notes & physician encounter summaries</p>
               </div>
 
@@ -659,7 +669,8 @@ export default function PatientPortalPage() {
             <CardTitle className="text-base font-bold">Prescription Refill Requests</CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
-            {refillRequests.length === 0 ? (
+            {refillError && <Alert variant="error" title="Unable to load refill requests" action={<Button variant="outline" size="sm" onClick={fetchRefills}>Retry</Button>}>{refillError}</Alert>}
+            {refillRequests.length === 0 && !refillError ? (
               <div className="py-12 text-center text-text-muted">
                 <p className="font-semibold text-sm">No refill requests submitted</p>
                 <p className="text-xs text-text-muted mt-1">
@@ -716,11 +727,12 @@ export default function PatientPortalPage() {
             <CardTitle className="text-base font-bold">Longitudinal Health Timeline</CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
+            {timelineError && <Alert variant="error" title="Unable to load clinical history" action={<Button variant="outline" size="sm" onClick={() => { if (patient?.id) void fetchTimeline(patient.id); }}>Retry</Button>}>{timelineError}</Alert>}
             {timelineLoading ? (
               <div className="py-8 flex justify-center">
                 <Spinner label="Loading timeline records..." />
               </div>
-            ) : timelineEvents.length === 0 ? (
+            ) : timelineEvents.length === 0 && !timelineError ? (
               <div className="py-12 text-center text-text-muted">
                 <p className="font-semibold text-sm">No clinical timeline events recorded</p>
                 <p className="text-xs text-text-muted mt-1">

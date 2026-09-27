@@ -6,7 +6,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { hasRoutePermission } from "@/lib/routePermissions";
-import { getModuleKeyForRoute } from "@/lib/routeModules";
+import { getDisabledRouteModule, requiresTenantModules } from "@/lib/routeModules";
 import dynamic from "next/dynamic";
 import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import { useModuleStore } from "@/store/moduleStore";
@@ -65,7 +65,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Fetch module toggle states once user is loaded
   useEffect(() => {
-    if (user && !modulesLoaded && user.role !== "patient") {
+    if (requiresTenantModules(user) && !modulesLoaded) {
       fetchModules();
     }
   }, [user, modulesLoaded, fetchModules]);
@@ -92,10 +92,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [pathname, user, isLoading, router, toast]);
 
   useEffect(() => {
-    if (!user || user.role === "patient" || !modulesLoaded) return;
+    if (!modulesLoaded) return;
 
-    const moduleKey = getModuleKeyForRoute(pathname);
-    if (moduleKey && !isModuleEnabled(moduleKey)) {
+    if (getDisabledRouteModule(pathname, user, isModuleEnabled)) {
       toast({
         title: "Module Disabled",
         description: "This module is not enabled for your organization.",
@@ -242,8 +241,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const hasPermission = hasRoutePermission(item.href, user.role, user.permissions);
         if (!hasPermission) return false;
 
-        // Module toggle filter: filter out disabled modules (applies to all roles except patient)
-        if (user.role !== "patient" && item.moduleKey) {
+        // Platform root and portal users do not use tenant module toggles.
+        if (requiresTenantModules(user) && item.moduleKey) {
           if (!isModuleEnabled(item.moduleKey)) return false;
         }
 

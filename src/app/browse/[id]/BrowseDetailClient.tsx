@@ -1,5 +1,7 @@
 "use client";
 
+import { appointmentPaymentLabel, appointmentBookingLabel } from "@/lib/appointmentPresentation";
+
 import { getPrintBrandStyles } from "@/lib/printBrand";
 
 import { useEffect, useState, useMemo, useRef, startTransition } from "react";
@@ -426,6 +428,7 @@ export default function BrowseDetailClient({
 
   // Printable Ticket Modal State
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
+  const [retryingPaymentSetup, setRetryingPaymentSetup] = useState(false);
   const [createdTicket, setCreatedTicket] = useState<any>(null);
 
   // Slot & Booking Mode Info
@@ -853,6 +856,7 @@ export default function BrowseDetailClient({
         doctorId: selectedDoctor!.id,
         appointmentTime: mergedBookingTime,
         appointmentType: "online",
+        payAtClinic: paymentMode !== "online",
         notes: bookingNotes,
         followUpForAppointmentId: followUpForAppointmentId || undefined,
       });
@@ -862,11 +866,13 @@ export default function BrowseDetailClient({
       const isPostConsultation = selectedDoctor?.feeType === "post_consultation";
       const isFree = selectedDoctor?.feeType === "free";
 
-      setBookingProgressMessage("Generating your confirmed token slip...");
+      setBookingProgressMessage("Generating your appointment token slip...");
 
       setCreatedTicket({
         appointmentId: appt._id || appt.id,
         trackerToken: appt.trackerToken,
+        status: appt.status,
+        paymentStatus: appt.paymentStatus,
         tokenNumber: token,
         patientName: isGuest ? guestForm.name : user?.name || "Patient",
         patientPhone: isGuest ? guestForm.phone : (user as any)?.phone || "",
@@ -877,7 +883,7 @@ export default function BrowseDetailClient({
         specialization: selectedDoctor?.specialization,
         clinicName: clinic?.name,
         clinicAddress: clinic?.address && clinic.address.trim() !== "." ? clinic.address : clinic?.city,
-        fees: isPostConsultation ? "Decided post-consultation" : isFree ? "Free" : selectedDoctor?.fees,
+        fees: isPostConsultation ? "Decided post-consultation" : isFree ? "Free" : appt.paymentAmount ?? selectedDoctor?.fees,
         paymentMode: isPostConsultation ? "pay_at_clinic" : isFree ? "free" : paymentMode,
       });
 
@@ -899,20 +905,22 @@ export default function BrowseDetailClient({
 
       // Settle background payment preference without delaying user confirmation
       if (isPostConsultation || (!isFree && selectedDoctor?.fees && selectedDoctor.fees > 0 && paymentMode !== "online")) {
-        api.post("/appointment-payments/pay-at-clinic", { appointmentId: appt._id || appt.id }).catch(() => {});
+        api.post("/appointment-payments/pay-at-clinic", { appointmentId: appt._id || appt.id })
+          .then((response) => setCreatedTicket((ticket: any) => ticket?.appointmentId === (appt._id || appt.id) ? { ...ticket, status: response.data.data.status, paymentStatus: response.data.data.paymentStatus } : ticket))
+          .catch(() => setCreatedTicket((ticket: any) => ticket?.appointmentId === (appt._id || appt.id) ? { ...ticket, paymentError: "Your appointment was saved, but the payment preference could not be updated. Contact clinic reception for payment instructions; your private tracker retains the visit details." } : ticket));
       } else if (!isFree && selectedDoctor?.fees && selectedDoctor.fees > 0 && paymentMode === "online") {
         api.post("/appointment-payments/create-order", { appointmentId: appt._id || appt.id })
           .then((orderRes) => {
             const orderData = orderRes.data?.data;
             if (orderData) {
               toast({
-                title: "Online Payment Order Created",
-                description: `Order #${orderData?.razorpayOrderId || "Created"}. Fee: ${formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")}`,
+                title: "Online payment pending",
+                description: "Your appointment is saved. Payment is still pending; contact reception for verified payment instructions.",
                 variant: "success",
               });
             }
           })
-          .catch(() => {});
+          .catch(() => setCreatedTicket((ticket: any) => ticket?.appointmentId === (appt._id || appt.id) ? { ...ticket, paymentError: "Your appointment was saved, but online payment could not start. Contact clinic reception for payment instructions; your private tracker retains the visit details." } : ticket));
       }
     } catch (err: any) {
       toast({
@@ -925,6 +933,21 @@ export default function BrowseDetailClient({
       setBookingLoading(false);
       setBookingProgressMessage("");
     }
+  };
+
+  const retryTicketPaymentSetup = async () => {
+    if (!createdTicket?.appointmentId || retryingPaymentSetup) return;
+    const ticket = createdTicket;
+    setRetryingPaymentSetup(true);
+    try {
+      const path = ticket.paymentMode === "online" ? "/appointment-payments/create-order" : "/appointment-payments/pay-at-clinic";
+      const res = await api.post(path, { appointmentId: ticket.appointmentId });
+      setCreatedTicket((current: any) => current?.appointmentId === ticket.appointmentId ? {
+        ...current, paymentError: null,
+        ...(ticket.paymentMode !== "online" ? { status: res.data.data.status, paymentStatus: res.data.data.paymentStatus } : {}),
+      } : current);
+    } catch { setCreatedTicket((current: any) => current?.appointmentId === ticket.appointmentId ? { ...current, paymentError: "Payment setup could not be retried. Contact reception; your appointment is still saved." } : current); }
+    finally { setRetryingPaymentSetup(false); }
   };
 
   const handlePrintSlip = () => {
@@ -978,7 +1001,7 @@ export default function BrowseDetailClient({
             </div>
             <div class="details-row">
               <span class="label">Consultation Fee:</span>
-              <span class="value">${typeof createdTicket.fees === "string" ? createdTicket.fees : formatCurrency(createdTicket.fees, clinic?.currency || "INR")} (${createdTicket.paymentMode === "online" ? "Online Paid" : createdTicket.paymentMode === "free" ? "Complimentary" : "Pay at Reception"})</span>
+              <span class="value">${typeof createdTicket.fees === "string" ? createdTicket.fees : formatCurrency(createdTicket.fees, clinic?.currency || "INR")} (${appointmentPaymentLabel(createdTicket.paymentStatus)})</span>
             </div>
             <div class="footer">
               ${createdTicket.appointmentId ? `
@@ -2079,7 +2102,7 @@ export default function BrowseDetailClient({
       <Modal
         open={ticketModalOpen}
         onClose={() => setTicketModalOpen(false)}
-        title={"Appointment Confirmed"}
+        title={appointmentBookingLabel(createdTicket?.status)}
         size="sm"
       >
         <div className="text-center space-y-4 py-1">
@@ -2094,6 +2117,8 @@ export default function BrowseDetailClient({
               <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mt-0.5">{"Appointment Token"}</p>
             </div>
 
+            {createdTicket?.status === "pending_payment" && <p role="status" className="mb-4 text-sm text-text-muted">Payment is required before confirmation. Contact clinic reception for verified payment instructions. Your private tracker shows the visit details.</p>}
+            {createdTicket?.paymentError && <div role="alert" className="mb-4 text-sm text-error"><p>{createdTicket.paymentError}</p><Button variant="outline" size="sm" loading={retryingPaymentSetup} onClick={retryTicketPaymentSetup}>Retry payment setup</Button></div>}
             {createdTicket && (
               <div className="pt-3 border-t border-border text-xs text-text-secondary space-y-1.5 text-left">
                 <div className="flex justify-between">
@@ -2118,7 +2143,7 @@ export default function BrowseDetailClient({
                   <div className="flex justify-between">
                     <span>{"Fee:"}</span>
                     <strong className="text-success-text dark:text-success-text">
-                      {typeof createdTicket.fees === "string" ? createdTicket.fees : formatCurrency(createdTicket.fees, clinic?.currency || "INR")} ({createdTicket.paymentMode === "online" ? "Online Paid" : createdTicket.paymentMode === "free" ? "Free" : "Pay at Reception"})
+                      {typeof createdTicket.fees === "string" ? createdTicket.fees : formatCurrency(createdTicket.fees, clinic?.currency || "INR")} ({appointmentPaymentLabel(createdTicket.paymentStatus)})
                     </strong>
                   </div>
                 )}

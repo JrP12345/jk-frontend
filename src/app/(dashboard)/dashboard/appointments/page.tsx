@@ -2,6 +2,7 @@
 
 import { getPrintBrandStyles } from "@/lib/printBrand";
 
+import { useLatestRead } from "@/hooks/useLatestRead";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
@@ -84,6 +85,11 @@ export default function AppointmentsPage() {
   const canManageAppointments = hasAnyPermission(user, "MANAGE_APPOINTMENTS");
   const { toast } = useToast();
 
+  const beginAppointmentsRead = useLatestRead();
+  const [listPage, setListPage] = useState(1);
+  const [listSearch, setListSearch] = useState("");
+  const [totalAppointments, setTotalAppointments] = useState(0);
+  const [listPages, setListPages] = useState(1);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -472,10 +478,11 @@ export default function AppointmentsPage() {
   };
 
   const fetchAppointments = async () => {
+    const request = beginAppointmentsRead();
     try {
       setLoadError(null);
       setIsRefreshing(true);
-      const queryParams = [];
+      const queryParams = [`page=${listPage}`, "limit=50", `search=${encodeURIComponent(listSearch)}`];
       if (filterClinic) queryParams.push(`clinicId=${filterClinic}`);
       if (filterDoctor) queryParams.push(`doctorId=${filterDoctor}`);
       if (filterStatus) queryParams.push(`status=${filterStatus}`);
@@ -490,9 +497,15 @@ export default function AppointmentsPage() {
       }
 
       const queryString = queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
-      const res = await api.get(`/appointments${queryString}`);
+      const res = await api.get(`/appointments${queryString}`, { signal: request.signal });
+      if (!request.isCurrent()) return;
+      const pages = Math.max(1, Number(res.headers["x-total-pages"]) || 1);
+      setListPages(pages);
+      setTotalAppointments(Number(res.headers["x-total-count"]) || 0);
+      if (listPage > pages) { setListPage(pages); return; }
       setAppointments(res.data.data || []);
     } catch {
+      if (!request.isCurrent()) return;
       setLoadError("Appointments could not be loaded. Check your connection and try again.");
       toast({
         title: "Error",
@@ -500,6 +513,7 @@ export default function AppointmentsPage() {
         variant: "error",
       });
     } finally {
+      if (!request.isCurrent()) return;
       setLoading(false);
       setIsRefreshing(false);
     }
@@ -515,9 +529,14 @@ export default function AppointmentsPage() {
     }
   };
 
+  useEffect(() => { setListPage(1); setAppointments([]); }, [filterClinic, filterDoctor, filterDate, filterStatus, listSearch]);
   useEffect(() => {
-    fetchAppointments();
-  }, [filterClinic, filterDoctor, filterDate, filterStatus]);
+    const refresh = () => { if (document.visibilityState === "visible") void fetchAppointments(); };
+    const initial = window.setTimeout(refresh, 250);
+    const timer = window.setInterval(refresh, 15000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { window.clearTimeout(initial); window.clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
+  }, [filterClinic, filterDoctor, filterDate, filterStatus, listPage, listSearch]);
 
   useEffect(() => {
     if (user) {
@@ -1007,6 +1026,12 @@ export default function AppointmentsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           3. MAIN APPOINTMENTS ROSTER (TABLE OR CALENDAR)
          ────────────────────────────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <Input aria-label="Search all appointments" placeholder="Search by patient, doctor, or token..." value={listSearch} onChange={e => setListSearch(e.target.value)} />
+        <span className="text-sm text-text-muted">{totalAppointments} matching appointments; counts and exports below cover this page. Page {listPage} of {listPages}</span>
+        <Button variant="outline" size="sm" disabled={listPage <= 1 || isRefreshing} onClick={() => setListPage(p => p - 1)}>Previous</Button>
+        <Button variant="outline" size="sm" disabled={listPage >= listPages || isRefreshing} onClick={() => setListPage(p => p + 1)}>Next</Button>
+      </div>
       {viewLayout === "calendar" ? (
         <AppointmentCalendarView
           appointments={appointments as any}
@@ -1018,7 +1043,9 @@ export default function AppointmentsPage() {
             <Table
 
               data={appointments || []}
-              exportFilename="appointments_list"
+              exportFilename="appointments_page"
+              searchable={false}
+              pagination={false}
               searchPlaceholder="Search by patient, doctor, or token..."
               loading={loading}
               mobileCardView

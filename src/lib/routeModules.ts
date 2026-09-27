@@ -1,4 +1,20 @@
 /** Maps dashboard routes to module keys for route-level module guard checks. */
+export function requiresTenantModules(user: { role: string; impersonatedBy?: { id: string } | null } | null): boolean {
+  if (!user || user.role === "patient" || user.role === "family_member") return false;
+  // Use the effective session role; a root impersonating staff has tenant limits.
+  return user.role !== "root" || Boolean(user.impersonatedBy?.id);
+}
+
+export function getDisabledRouteModule(
+  pathname: string,
+  user: Parameters<typeof requiresTenantModules>[0],
+  isModuleEnabled: (moduleKey: string) => boolean,
+): string | undefined {
+  if (!requiresTenantModules(user)) return undefined;
+  const key = getModuleKeyForRoute(pathname);
+  return key && !isModuleEnabled(key) ? key : undefined;
+}
+
 export const ROUTE_MODULE_MAP: Array<{ prefix: string; moduleKey: string }> = [
   // P1 — Clinic Essentials (always-on modules included for direct-URL guard parity)
   { prefix: "/dashboard", moduleKey: "dashboard" },

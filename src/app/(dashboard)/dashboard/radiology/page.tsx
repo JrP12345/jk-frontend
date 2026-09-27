@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { useLatestRead } from "@/hooks/useLatestRead";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import { Card, Table, Button, Modal, Input, Select, Textarea, useToast, Badge, StatCard, cn } from "@/components/ui";
@@ -28,6 +29,8 @@ export default function RadiologyPage() {
   const [studies, setStudies] = useState<ImagingStudyItem[]>([]);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const startRead = useLatestRead();
 
   const [selectedModality, setSelectedModality] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -54,34 +57,42 @@ export default function RadiologyPage() {
   }, [activeClinicId]);
 
   const fetchData = async () => {
+    const request = startRead();
     setLoading(true);
+    setLoadError(null);
     try {
       if (user?.role === "patient") {
-        const studiesRes = await api.get(selectedClinicId ? `/radiology/studies?clinicId=${selectedClinicId}` : "/radiology/studies");
+        const studiesRes = await api.get(selectedClinicId ? `/radiology/studies?clinicId=${selectedClinicId}` : "/radiology/studies", { signal: request.signal });
+        if (!request.isCurrent()) return;
+        if (!Array.isArray(studiesRes.data?.data)) throw new Error("Invalid studies response");
         setStudies(studiesRes.data?.data || []);
       } else {
         const [studiesRes, patientsRes] = await Promise.all([
-          api.get(selectedClinicId ? `/radiology/studies?clinicId=${selectedClinicId}` : "/radiology/studies"),
-          api.get("/patients"),
+          api.get(selectedClinicId ? `/radiology/studies?clinicId=${selectedClinicId}` : "/radiology/studies", { signal: request.signal }),
+          api.get("/patients", { signal: request.signal }),
         ]);
 
-        setStudies(studiesRes.data?.data || []);
+        if (!request.isCurrent()) return;
+        if (!Array.isArray(studiesRes.data?.data) || !Array.isArray(patientsRes.data?.data)) throw new Error("Invalid radiology response");
+        setStudies(studiesRes.data.data);
         setPatients(patientsRes.data?.data || []);
       }
     } catch (err: any) {
+      if (!request.isCurrent()) return;
+      setLoadError("Imaging studies could not be loaded. Check your connection and try again.");
       toast({
         title: "Failed to Fetch Radiology Data",
         description: err.response?.data?.message || "Could not retrieve DICOM imaging studies",
         variant: "error",
       });
     } finally {
-      setLoading(false);
+      if (request.isCurrent()) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchData();
-  }, [selectedClinicId]);
+  }, [selectedClinicId, user?.role]);
 
   // Order Imaging Study Submit
   const handleOrderSubmit = async (e: React.FormEvent) => {
@@ -336,6 +347,8 @@ export default function RadiologyPage() {
       {/* Main Studies Table Card */}
       <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
         <Table
+          error={loadError}
+          onRetry={fetchData}
           loading={loading}
           mobileCardView
           searchPlaceholder="Filter radiology studies..."

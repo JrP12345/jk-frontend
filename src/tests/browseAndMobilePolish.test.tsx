@@ -11,6 +11,8 @@ vi.mock("../lib/geo/locationDetector", () => ({ detectUserLocation: async () => 
 
 beforeEach(() => {
   vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  // jsdom does not implement the browser scrolling API used by Select.
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, writable: true, value: vi.fn() });
 });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -31,22 +33,60 @@ describe("Mobile calendar and browse loading", () => {
     const cell = first.parentElement!.parentElement!;
     expect(Array.from(cell.parentElement!.children).indexOf(cell)).toBe(13);
   });
-  it("sorts seeded clinics without another request", async () => {
-    const request = vi.spyOn(api, "get");
+  it("offers only rating and fee sorts and requests fee ranking across the directory", async () => {
     const clinics = [{ id: "b", name: "Zeta Clinic", city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "", minFee: 500 }, { id: "a", name: "Alpha Clinic", city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "", minFee: 100 }];
+    const request = vi.spyOn(api, "get").mockResolvedValue({ data: { data: [clinics[1], clinics[0]] } });
     render(<BrowseClient initialClinics={clinics} initialLoaded />);
     fireEvent.click(screen.getByRole("combobox", { name: "Sort clinics by" }));
-    fireEvent.click(await screen.findByRole("option", { name: /name/i }));
+    expect(await screen.findByRole("option", { name: "Rating (High to Low)" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /featured|name|city/i })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("option", { name: "Fee (Low to High)" }));
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["Alpha Clinic", "Zeta Clinic"]);
-    expect(request).not.toHaveBeenCalled();
+    await waitFor(() => expect(request).toHaveBeenCalledWith("/public/clinics?sort=fee_low", expect.anything()));
+  });
+  it("uses actual specialties and keeps full-directory cities/care choices after empty filtering", async () => {
+    const request = vi.spyOn(api, "get").mockResolvedValue({ data: { data: [] } });
+    render(<BrowseClient initialLoaded initialClinics={[{ id: "a", name: "Existing Clinic", city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "", specialties: ["General Physician / Consultant"] }]} initialFilters={{ cities: ["Surat", "Valsad"], specialties: ["Cardiology", "General Physician / Consultant"] }} />);
+    expect(screen.queryByRole("button", { name: "Pediatrics" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cardiology" }));
+    await waitFor(() => expect(request).toHaveBeenCalledWith("/public/clinics?specialization=Cardiology&sort=rating", expect.anything()));
+    expect(await screen.findByText("No Healthcare Facilities Found")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "General Physician / Consultant" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("combobox", { name: "Filter by location" }));
+    expect(await screen.findByRole("option", { name: "Valsad" })).toBeInTheDocument();
+  });
+  it("defaults to real ratings with unrated clinics last", () => {
+    const base = { city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "" };
+    render(<BrowseClient initialLoaded initialClinics={[
+      { ...base, id: "none", name: "Unrated", rating: null },
+      { ...base, id: "low", name: "Lower Rated", rating: 3 },
+      { ...base, id: "high", name: "Higher Rated", rating: 4.8 },
+    ]} />);
+    expect(screen.getAllByRole("link").map(link => link.textContent)).toEqual(["Higher Rated", "Lower Rated", "Unrated"]);
   });
   it("offers retry after a failed load instead of reporting an empty clinic directory", async () => {
     vi.spyOn(api, "get").mockRejectedValueOnce(new Error("Offline")).mockResolvedValueOnce({ data: { data: [] } });
     render(<BrowseClient />);
     expect(await screen.findByText("We couldn't load clinics. Please try again.")).toBeInTheDocument();
+    expect(screen.queryByText("No Healthcare Facilities Found")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.queryByText("We couldn't load clinics. Please try again.")).not.toBeInTheDocument());
     expect(await screen.findByText("No Healthcare Facilities Found")).toBeInTheDocument();
+  });
+  it("rejects a malformed response instead of displaying a successful empty result", async () => {
+    vi.spyOn(api, "get").mockResolvedValue({ data: { data: { unexpected: true } } });
+    render(<BrowseClient />);
+    expect(await screen.findByText("We couldn't load clinics. Please try again.")).toBeInTheDocument();
+    expect(screen.queryByText("No Healthcare Facilities Found")).not.toBeInTheDocument();
+  });
+  it("keeps previous clinics visible when a filtered refresh fails", async () => {
+    vi.spyOn(api, "get").mockRejectedValue(new Error("Offline"));
+    render(<BrowseClient initialLoaded initialClinics={[{ id: "a", name: "Existing Clinic", city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "" }]} />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Search by doctor, clinic name, or specialty" }), { target: { value: "new query" } });
+    expect(await screen.findByText("We couldn't load clinics. Please try again.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Existing Clinic" })).toBeInTheDocument();
+    expect(screen.getByText("Previous clinics shown. Results could not be updated.")).toBeInTheDocument();
+    expect(screen.queryByText("No Healthcare Facilities Found")).not.toBeInTheDocument();
   });
   it("uses the local day rather than the UTC date for today's boundaries", () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 26, 0, 15));

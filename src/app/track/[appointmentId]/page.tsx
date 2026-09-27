@@ -1,5 +1,6 @@
 "use client";
 
+import { useLatestRead } from "@/hooks/useLatestRead";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -152,6 +153,8 @@ export default function PublicLiveQueueTracker() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
+  const beginTrackerRead = useLatestRead();
+  const [stale, setStale] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
@@ -284,6 +287,7 @@ export default function PublicLiveQueueTracker() {
 
   const fetchTrackerData = useCallback(async (isBackground = false) => {
     if (!appointmentId) return;
+    const request = beginTrackerRead();
     try {
       if (!isBackground) setRefreshing(true);
       const headers: Record<string, string> = {
@@ -295,13 +299,17 @@ export default function PublicLiveQueueTracker() {
 
       const res = await api.get(`/public/track/${appointmentId}`, {
         headers,
+        signal: request.signal,
         validateStatus: (status) => (status >= 200 && status < 300) || status === 304,
       });
 
+      if (!request.isCurrent()) return;
+      setStale(false);
       if (res.status === 304) {
         // Step 5.2: State unchanged; preserve local view and reset failure count
         consecutiveFailuresRef.current = 0;
         setLastUpdated(new Date());
+        setError(null);
         return;
       }
 
@@ -314,15 +322,16 @@ export default function PublicLiveQueueTracker() {
         consecutiveFailuresRef.current = 0;
       }
     } catch (err: any) {
+      if (!request.isCurrent()) return;
+      setStale(true);
       consecutiveFailuresRef.current = Math.min(5, consecutiveFailuresRef.current + 1);
       if (!isBackground) {
         setError(err.response?.data?.message || "Unable to load live queue tracking. Link may be invalid or expired.");
       }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (request.isCurrent()) { setLoading(false); setRefreshing(false); }
     }
-  }, [appointmentId, getTrackerHeaders]);
+  }, [appointmentId, getTrackerHeaders, beginTrackerRead]);
 
   // Step 5.2: WebSocket as primary delivery; slow jittered reconciliation poll; pause in hidden tabs; back off on errors
   useEffect(() => {
@@ -592,7 +601,7 @@ export default function PublicLiveQueueTracker() {
     );
   }
 
-  if (error || !data) {
+  if (!data) {
     return (
       <div className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-4">
         <Card className="max-w-md w-full text-center p-6 border border-border/80 shadow-sm rounded-3xl">
@@ -694,13 +703,14 @@ export default function PublicLiveQueueTracker() {
             </button>
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-success/10 border border-success/20 text-[10px] font-semibold text-success-text dark:text-success-text">
               <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping" />
-              Live
+              {stale ? "Reconnecting" : "Updated"}
             </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto px-4 pt-4 space-y-4">
+        {stale && <p role="alert" className="p-3 rounded-xl border border-warning text-sm">Updates are unavailable. Showing the last received queue information{lastUpdated ? ` from ${lastUpdated.toLocaleTimeString()}` : ""}. Check with reception before relying on this ETA.</p>}
         {/* Doctor Availability Warning Banner if override active */}
         {doctorUnavailable && (
           <div className="p-4 rounded-2xl bg-warning/10 border border-warning/30 text-warning-text dark:text-warning-text text-xs flex items-start gap-3 animate-fade-in shadow-xs">
@@ -726,7 +736,7 @@ export default function PublicLiveQueueTracker() {
                 <div className="flex items-center gap-2">
                   <h3 className="font-extrabold text-base">You Are in Standby</h3>
                   <Badge variant="warning" size="sm" className="font-bold">
-                    Stepped Out
+                    {data.consultationPhase === "initial_pending_investigation" ? "Awaiting investigations" : "Stepped out / on hold"}
                   </Badge>
                 </div>
                 <p className="text-xs text-warning-text/90 dark:text-warning-text/90 leading-relaxed">
@@ -738,7 +748,7 @@ export default function PublicLiveQueueTracker() {
                     Your Token #{data.tokenNumber} is preserved safely!
                   </p>
                   <p className="text-[11px] text-text-muted">
-                    When you return to the clinic, simply notify the reception desk or attend the counter. You will be prioritized as <strong>Next Up</strong> immediately behind the current consultation.
+                    {data.consultationPhase === "initial_pending_investigation" ? "Complete the requested investigations and tell reception when your reports are ready. The doctor will arrange report review." : "Tell reception when you return. Staff will confirm your place in the queue before calling you."}
                   </p>
                 </div>
 
@@ -1393,7 +1403,7 @@ export default function PublicLiveQueueTracker() {
                   }
                   className="px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-xl capitalize"
                 >
-                  {data.status === "standby" ? "Standby / Stepped Out" : data.status.replace("-", " ")}
+                  {data.status === "standby" ? (data.consultationPhase === "initial_pending_investigation" ? "Awaiting investigations" : "Stepped out / on hold") : data.status.replace("-", " ")}
                 </Badge>
               </div>
 

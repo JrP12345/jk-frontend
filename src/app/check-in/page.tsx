@@ -1,19 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useAuthStore } from "@/store/authStore";
+import { hasAnyPermission } from "@/lib/permissions";
+import { useClinicStore } from "@/store/clinicStore";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Button, Input, Card, CardContent, useToast, ModeSwitcher, cn } from "@/components/ui";
+import { Button, Input, Card, CardContent, useToast, ModeSwitcher, Select, cn } from "@/components/ui";
 import api from "@/lib/api";
 import { Printer, Phone, Hash, CheckCircle2, ArrowRight, Stethoscope, Clock } from "lucide-react";
 
 export default function PublicSelfCheckInKiosk() {
   const { toast } = useToast();
+  const { user } = useAuthStore();
+  const { clinics, activeClinicId, fetchClinics } = useClinicStore();
+  useEffect(() => { if (hasAnyPermission(user, "MANAGE_QUEUE")) void fetchClinics(); }, [user, fetchClinics]);
+  const [candidates, setCandidates] = useState<any[]>([]);
 
   const [mode, setMode] = useState<"token" | "phone">("token");
   const [inputToken, setInputToken] = useState("");
   const [inputAppointmentId, setInputAppointmentId] = useState("");
   const [inputPhone, setInputPhone] = useState("");
-  const [inputClinicId, setInputClinicId] = useState("");
+  const [inputClinicId, setInputClinicId] = useState(activeClinicId || "");
   const [submitting, setSubmitting] = useState(false);
   const [checkInResult, setCheckInResult] = useState<any | null>(null);
 
@@ -66,20 +73,29 @@ export default function PublicSelfCheckInKiosk() {
     setCheckInResult(null);
 
     try {
-      // Find today's appointments for this phone number
-      const apptsRes = await api.get(`/appointments?search=${encodeURIComponent(inputPhone.trim())}`);
-      const list = apptsRes.data?.data || apptsRes.data || [];
-      const todayAppt = list.find((a: any) => a.status === "confirmed" || a.status === "pending" || a.status === "checked-in");
-
-      if (!todayAppt) {
-        toast({
-          title: "Appointment Not Found",
-          description: "No active appointment found for this phone number today. Please visit the reception desk to register.",
-          variant: "warning",
-        });
-        return;
+      if (!inputClinicId.trim()) throw new Error("Select the clinic before looking up a patient");
+      const now = new Date();
+      const date = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+      const query = `search=${encodeURIComponent(inputPhone.trim())}&clinicId=${encodeURIComponent(inputClinicId.trim())}&date=${date}&limit=100`;
+      const apptsRes = await api.get(`/appointments?${query}`);
+      const list = [...(apptsRes.data?.data || [])];
+      const pages = Number(apptsRes.headers["x-total-pages"]) || 1;
+      for (let page = 2; page <= pages; page++) {
+        const res = await api.get(`/appointments?${query}&page=${page}`);
+        list.push(...(res.data?.data || []));
       }
+      const eligible = list.filter((a: any) => ["pending", "confirmed", "checked-in", "in-consultation"].includes(a.status));
+      setCandidates(eligible);
+      if (!eligible.length) toast({ title: "No eligible visit today", description: "Check the phone number and clinic, or register at reception.", variant: "warning" });
+      return;
+    } catch (err: any) {
+      toast({ title: "Lookup failed", description: err.response?.data?.message || err.message || "Unable to find today's appointments.", variant: "error" });
+    } finally { setSubmitting(false); }
+  };
 
+  const checkInSelectedVisit = async (todayAppt: any) => {
+    setSubmitting(true);
+    try {
       const appointmentClinicId =
         typeof todayAppt.clinicId === "string"
           ? todayAppt.clinicId
@@ -90,7 +106,7 @@ export default function PublicSelfCheckInKiosk() {
 
       // Check-in via appointment id
       const checkInRes = await api.post("/check-in/qr", {
-        appointmentId: todayAppt.id,
+        appointmentId: todayAppt.id || todayAppt._id,
         tokenNumber: todayAppt.tokenNumber,
         clinicId: appointmentClinicId,
       });
@@ -178,6 +194,8 @@ export default function PublicSelfCheckInKiosk() {
     `);
     printWindow.document.close();
   };
+
+  if (!hasAnyPermission(user, "MANAGE_QUEUE")) return <main className="p-6 max-w-lg mx-auto"><Card><CardContent><h1 className="text-xl font-bold">Staff reception kiosk</h1><p className="my-4">Sign in with a staff account authorized to manage this clinic's queue. Patients can check arrival using their private appointment tracker.</p><Link href="/login">Staff sign in</Link></CardContent></Card></main>;
 
   return (
     <div className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-3 sm:p-6 py-8 sm:py-12 animate-fade-in font-sans">
@@ -285,6 +303,7 @@ export default function PublicSelfCheckInKiosk() {
                   </form>
                 ) : (
                   <form onSubmit={handleCheckInByPhone} className="space-y-6">
+                    <Select label="Clinic" placeholder="Select the appointment clinic" value={inputClinicId} options={clinics.map(c => ({ value: c.id, label: c.name }))} onChange={e => { setInputClinicId(e.target.value); setCandidates([]); }} required />
                     <div className="text-center space-y-2">
                       <label className="text-xs font-bold uppercase tracking-wider text-text-muted">
                         Enter Patient Mobile Number
@@ -294,11 +313,11 @@ export default function PublicSelfCheckInKiosk() {
                         placeholder="e.g. 9876543210"
                         className="text-center text-3xl font-black tracking-wider h-20 rounded-2xl border-2 border-primary-500/40 focus:border-primary-500 shadow-inner"
                         value={inputPhone}
-                        onChange={(e) => setInputPhone(e.target.value)}
+                        onChange={(e) => { setInputPhone(e.target.value); setCandidates([]); }}
                         autoFocus
                         required
                       />
-                      <p className="text-[11px] text-text-muted">We will verify your confirmed appointment automatically</p>
+                      <p className="text-[11px] text-text-muted">Select the correct visit from today's appointments for this clinic.</p>
                     </div>
 
                     <Button
@@ -307,9 +326,10 @@ export default function PublicSelfCheckInKiosk() {
                       className="w-full h-14 text-base sm:text-lg font-bold rounded-2xl shadow-lg cursor-pointer"
                       loading={submitting}
                     >
-                      <span>Lookup & Check In</span>
+                      <span>Find today's appointments</span>
                       <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
+                    {candidates.map(a => <Button key={a.id || a._id} type="button" variant="outline" disabled={submitting} className="w-full whitespace-normal" onClick={() => checkInSelectedVisit(a)}>Token #{a.tokenNumber} ? {a.patientId?.userId?.name || a.patientId?.name || "Patient"} ? Dr. {a.doctorId?.name || "Doctor"} ? {new Date(a.appointmentTime).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})} ? {a.status}</Button>)}
                   </form>
                 )}
               </CardContent>
