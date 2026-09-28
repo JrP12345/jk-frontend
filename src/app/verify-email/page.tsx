@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 import api from "@/lib/api";
+import { userFacingError } from "@/lib/userFacingError";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Button, ModeSwitcher, EkavyuLogo, Spinner } from "@/components/ui";
 import { CheckCircle2, AlertTriangle, MailCheck, ArrowRight, Home } from "lucide-react";
 
@@ -32,11 +33,7 @@ function VerifyEmailContent() {
       } catch (err: any) {
         if (isMounted) {
           setStatus("error");
-          setErrorMessage(
-            err.response?.data?.message ||
-              err.response?.data?.error ||
-              "This verification link is invalid or has expired. Please log in to request a fresh verification link."
-          );
+          setErrorMessage(userFacingError(err.response?.data?.message || err.response?.data?.error, "This verification link is invalid or has expired. Sign in to request a new link."));
         }
       }
     }
@@ -55,7 +52,7 @@ function VerifyEmailContent() {
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
       </div>
       <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50">
-        <ModeSwitcher />
+        <ModeSwitcher variant="icon" />
       </div>
 
       <div className="w-full max-w-md relative z-10">

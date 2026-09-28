@@ -2,6 +2,7 @@ import { create } from "zustand";
 import api from "@/lib/api";
 import { useClinicStore } from "./clinicStore";
 import { aiSDK } from "@/lib/aiSDK";
+import { clearRecentTracker } from "./trackerStore";
 
 export type Role = "root" | "admin" | "doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier" | "patient" | "family_member";
 
@@ -89,6 +90,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
+    clearRecentTracker();
     try {
       await api.post("/auth/logout");
     } catch (err) {

@@ -1,6 +1,9 @@
 "use client";
 
-import { getPrintBrandStyles } from "@/lib/printBrand";
+import PrintDialogActions from "@/components/ui/PrintDialogActions";
+
+
+import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
 
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useState, useEffect } from "react";
@@ -11,7 +14,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import { Alert, Card, CardContent, Table, Button, Modal, Input, DatePicker, Select, Textarea, useToast, Spinner, Badge, ConfirmDialog, Stepper, Dropdown, Checkbox, cn } from "@/components/ui";
 import dynamic from "next/dynamic";
-import { RotateCw, Plus, LayoutList, Calendar, Search, Ticket, FileText, MoreHorizontal, Stethoscope, MapPin, User, Clock, UserPlus, ArrowRight, ArrowLeft, Printer, CheckCircle2, XCircle, CalendarClock, Phone, Building2, Mail, CalendarOff } from "lucide-react";
+import { RotateCw, Plus, LayoutList, Calendar, Search, Ticket, FileText, MoreHorizontal, Stethoscope, MapPin, User, Clock, UserPlus, ArrowRight, ArrowLeft, CheckCircle2, XCircle, CalendarClock, Phone, Building2, Mail, CalendarOff } from "lucide-react";
 
 const AppointmentCalendarView = dynamic(
   () => import("@/components/clinical/AppointmentCalendarView").then((mod) => mod.AppointmentCalendarView),
@@ -406,11 +409,9 @@ export default function AppointmentsPage() {
     }
   };
 
-  const handlePrintSlip = (ticketData: any) => {
+  const handlePrintSlip = async (ticketData: any) => {
     if (!ticketData) return;
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-    printWindow.document.write(`
+    await printHtml(`
       <html>
         <head>
           <title>Appointment Token Slip - #${ticketData.tokenNumber}</title>
@@ -468,13 +469,9 @@ export default function AppointmentsPage() {
               Please present this slip at the reception upon arrival.
             </div>
           </div>
-          <script>
-            window.onload = () => { window.print(); window.close(); };
-          </script>
         </body>
       </html>
     `);
-    printWindow.document.close();
   };
 
   const fetchAppointments = async () => {
@@ -938,8 +935,8 @@ export default function AppointmentsPage() {
               onClick={fetchAppointments}
               disabled={isRefreshing}
               className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
-            >
-              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
+             loading={isRefreshing}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
             </Button>
 
@@ -1372,7 +1369,7 @@ export default function AppointmentsPage() {
         title="Schedule Clinical Appointment"
         description="Book a patient consultation, select practitioner time slot, and reserve queue token."
         size="lg"
-        loading={submitting}
+        busy={submitting}
         loadingText="Reserving appointment slot & issuing token..."
       >
         <div className="space-y-5">
@@ -1752,9 +1749,9 @@ export default function AppointmentsPage() {
         }}
         onConfirm={handleUpdateStatus}
         title="Change Appointment Status?"
-        description={`Are you sure you want to mark this appointment status as "${confirmStatus}"?`}
+        description={`Mark this appointment as ${confirmStatus}? Staff and the patient will see the updated status.`}
         variant={confirmStatus === "cancelled" || confirmStatus === "no-show" ? "danger" : "primary"}
-        confirmLabel="Update Status"
+        confirmLabel={confirmStatus === "cancelled" ? "Cancel appointment" : confirmStatus === "no-show" ? "Mark no-show" : "Update status"}
       />
 
       {/* ──────────────────────────────────────────────────────────────────────────
@@ -1765,6 +1762,7 @@ export default function AppointmentsPage() {
         onClose={() => setTicketModalOpen(false)}
         title="Appointment Token Slip"
         size="sm"
+        footer={<PrintDialogActions documentName="token slip" onPrint={() => handlePrintSlip(createdTicket)} onClose={() => setTicketModalOpen(false)} disabled={!createdTicket} closeLabel="Done" />}
       >
         {createdTicket && (
           <div className="space-y-4 py-1">
@@ -1815,25 +1813,7 @@ export default function AppointmentsPage() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-border/60">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full font-semibold rounded-xl min-h-[44px] justify-center"
-                onClick={() => handlePrintSlip(createdTicket)}
-              >
-                <Printer className="w-3.5 h-3.5 mr-1.5" />
-                Print Slip
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                className="w-full font-semibold rounded-xl shadow-xs min-h-[44px] justify-center"
-                onClick={() => setTicketModalOpen(false)}
-              >
-                Done
-              </Button>
-            </div>
+
           </div>
         )}
       </Modal>
@@ -1888,6 +1868,138 @@ export default function AppointmentsPage() {
         }}
         title="Clinical Consultation Record"
         size="xl"
+        footer={<PrintDialogActions documentName="prescription" onPrint={async () => {
+                  if (!activeRecord) return;
+
+                  const clinicName = activeRecord.clinicId?.name || "Healthcare Facility";
+                  const clinicAddress =
+                    [activeRecord.clinicId?.address, activeRecord.clinicId?.city].filter(Boolean).join(", ") ||
+                    "Main Facility Campus";
+                  const patientName = activeRecord.patientId?.userId?.name || "Patient";
+                  const rawDoctorName = activeRecord.doctorId?.name || "Practitioner";
+                  const cleanDoctorName = rawDoctorName.replace(/^dr\.?\s+/i, "");
+                  const doctorFormatted = `Dr. ${cleanDoctorName}`;
+                  const doctorSpec = activeRecord.doctorId?.specialization || "General Medicine";
+                  const apptDate = new Date(activeRecord.appointmentTime).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  });
+                  const tokenNo = activeRecord.tokenNumber || "1";
+                  const symptoms = activeRecord.symptoms || "No symptoms recorded.";
+                  const diagnosis = activeRecord.diagnosis || "No diagnosis recorded.";
+                  const rxItems = (activeRecord.prescriptions || [])
+                    .map(
+                      (m: any) => `
+                    <tr>
+                      <td style="padding: 8px 12px; font-weight: 700; color: var(--print-text); border-bottom: 1px solid var(--print-border);">${m.name}</td>
+                      <td style="padding: 8px 12px; color: var(--print-secondary); border-bottom: 1px solid var(--print-border);">${m.dosage}</td>
+                      <td style="padding: 8px 12px; color: var(--print-secondary); border-bottom: 1px solid var(--print-border);">${m.duration}</td>
+                    </tr>
+                  `
+                    )
+                    .join("");
+
+                  await printHtml(`
+                    <!DOCTYPE html>
+                    <html>
+                      <head>
+                        <title>Prescription Slip - Token #${tokenNo}</title>
+                        <style>${getPrintBrandStyles()}
+                          @page { size: A4 portrait; margin: 12mm; }
+                          * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                          body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: var(--print-text); background: #ffffff; margin: 0; padding: 10px; line-height: 1.4; font-size: 12px; }
+                          .header-bar { border-bottom: 3px solid var(--print-accent); padding-bottom: 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-start; }
+                          .clinic-title { font-size: 20px; font-weight: 800; color: var(--print-accent); margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+                          .clinic-sub { font-size: 11px; color: var(--print-muted); margin-top: 3px; }
+                          .token-badge { background: var(--print-accent); color: #ffffff; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 12px; display: inline-block; }
+                          .meta-box { background: var(--print-background); border: 1px solid var(--print-border); border-radius: 8px; padding: 12px; margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; }
+                          .meta-label { font-weight: 600; color: var(--print-muted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
+                          .meta-value { font-weight: 700; color: var(--print-text); margin-top: 1px; }
+                          .rx-header { font-size: 28px; font-weight: 900; color: var(--print-accent); font-style: italic; margin-bottom: 6px; font-family: Georgia, serif; }
+                          .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--print-accent); border-bottom: 1.5px solid var(--print-surface-muted); padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; letter-spacing: 0.5px; }
+                          .section-body { font-size: 13px; color: var(--print-secondary); margin-bottom: 12px; background: #ffffff; }
+                          table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1px solid var(--print-border); border-radius: 6px; overflow: hidden; }
+                          th { background: var(--print-surface-muted); color: var(--print-secondary); font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--print-input-border); }
+                          .signature-box { margin-top: 40px; display: flex; justify-content: flex-end; }
+                          .sig-line { border-top: 1.5px solid var(--print-muted); width: 200px; text-align: center; padding-top: 4px; font-size: 11px; font-weight: 600; color: var(--print-secondary); }
+                          .footer-bar { margin-top: 30px; border-top: 1px solid var(--print-border); padding-top: 10px; text-align: center; font-size: 10px; color: var(--print-muted); }
+                        </style>
+                      </head>
+                      <body>
+                        <div class="header-bar">
+                          <div>
+                            <h1 class="clinic-title">${clinicName}</h1>
+                            <div class="clinic-sub">${clinicAddress}</div>
+                          </div>
+                          <div>
+                            <span class="token-badge">Token #${tokenNo}</span>
+                          </div>
+                        </div>
+
+                        <div class="meta-box">
+                          <div>
+                            <div class="meta-label">Patient Name</div>
+                            <div class="meta-value">${patientName}</div>
+                          </div>
+                          <div>
+                            <div class="meta-label">Attending Doctor</div>
+                            <div class="meta-value">${doctorFormatted} <span style="font-weight: 400; color: var(--print-muted);">(${doctorSpec})</span></div>
+                          </div>
+                          <div>
+                            <div class="meta-label">Consultation Date</div>
+                            <div class="meta-value">${apptDate}</div>
+                          </div>
+                          <div>
+                            <div class="meta-label">Medical Record Status</div>
+                            <div class="meta-value" style="color: var(--print-success);">Verified EHR Record</div>
+                          </div>
+                        </div>
+
+                        <div class="section-title">Chief Complaints / Presenting Symptoms</div>
+                        <div class="section-body">${symptoms}</div>
+
+                        <div class="section-title">Diagnosis & Clinical Assessment</div>
+                        <div class="section-body"><strong>${diagnosis}</strong></div>
+
+                        <div class="rx-header">Rx</div>
+                        ${
+                          rxItems.length > 0
+                            ? `
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Medication Name</th>
+                                <th>Dosage / Instructions</th>
+                                <th>Duration</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              ${rxItems}
+                            </tbody>
+                          </table>
+                        `
+                            : `<p style="font-size: 12px; color: var(--print-muted); font-style: italic;">No medications prescribed.</p>`
+                        }
+
+                        <div class="signature-box">
+                          <div class="sig-line">
+                            ${doctorFormatted}<br/>
+                            <span style="font-size: 10px; font-weight: 400; color: var(--print-muted);">Authorized Signatory</span>
+                          </div>
+                        </div>
+
+                        <div class="footer-bar">
+                          Official Electronic Medical Prescription &bull; Ekavyu EMR
+                        </div>
+                      </body>
+                    </html>
+                  `);
+
+                }} onClose={() => {
+          setRecordModalOpen(false);
+          setActiveRecord(null);
+        }} disabled={!activeRecord} />}
       >
         {activeRecord && (
           <div className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
@@ -1986,179 +2098,7 @@ export default function AppointmentsPage() {
               </div>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2 border-t border-border/60">
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-[44px] w-full sm:w-auto justify-center"
-                onClick={() => {
-                  setRecordModalOpen(false);
-                  setActiveRecord(null);
-                }}
-              >
-                Close
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
-                onClick={() => {
-                  if (!activeRecord) return;
 
-                  const clinicName = activeRecord.clinicId?.name || "Healthcare Facility";
-                  const clinicAddress =
-                    [activeRecord.clinicId?.address, activeRecord.clinicId?.city].filter(Boolean).join(", ") ||
-                    "Main Facility Campus";
-                  const patientName = activeRecord.patientId?.userId?.name || "Patient";
-                  const rawDoctorName = activeRecord.doctorId?.name || "Practitioner";
-                  const cleanDoctorName = rawDoctorName.replace(/^dr\.?\s+/i, "");
-                  const doctorFormatted = `Dr. ${cleanDoctorName}`;
-                  const doctorSpec = activeRecord.doctorId?.specialization || "General Medicine";
-                  const apptDate = new Date(activeRecord.appointmentTime).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  });
-                  const tokenNo = activeRecord.tokenNumber || "1";
-                  const symptoms = activeRecord.symptoms || "No symptoms recorded.";
-                  const diagnosis = activeRecord.diagnosis || "No diagnosis recorded.";
-                  const rxItems = (activeRecord.prescriptions || [])
-                    .map(
-                      (m: any) => `
-                    <tr>
-                      <td style="padding: 8px 12px; font-weight: 700; color: var(--print-text); border-bottom: 1px solid var(--print-border);">${m.name}</td>
-                      <td style="padding: 8px 12px; color: var(--print-secondary); border-bottom: 1px solid var(--print-border);">${m.dosage}</td>
-                      <td style="padding: 8px 12px; color: var(--print-secondary); border-bottom: 1px solid var(--print-border);">${m.duration}</td>
-                    </tr>
-                  `
-                    )
-                    .join("");
-
-                  const printFrame = document.createElement("iframe");
-                  printFrame.style.position = "fixed";
-                  printFrame.style.right = "0";
-                  printFrame.style.bottom = "0";
-                  printFrame.style.width = "0";
-                  printFrame.style.height = "0";
-                  printFrame.style.border = "0";
-                  document.body.appendChild(printFrame);
-
-                  const frameDoc = printFrame.contentWindow?.document;
-                  if (!frameDoc) return;
-
-                  frameDoc.open();
-                  frameDoc.write(`
-                    <!DOCTYPE html>
-                    <html>
-                      <head>
-                        <title>Prescription Slip - Token #${tokenNo}</title>
-                        <style>${getPrintBrandStyles()}
-                          @page { size: A4 portrait; margin: 12mm; }
-                          * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                          body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: var(--print-text); background: #ffffff; margin: 0; padding: 10px; line-height: 1.4; font-size: 12px; }
-                          .header-bar { border-bottom: 3px solid var(--print-accent); padding-bottom: 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-start; }
-                          .clinic-title { font-size: 20px; font-weight: 800; color: var(--print-accent); margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
-                          .clinic-sub { font-size: 11px; color: var(--print-muted); margin-top: 3px; }
-                          .token-badge { background: var(--print-accent); color: #ffffff; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 12px; display: inline-block; }
-                          .meta-box { background: var(--print-background); border: 1px solid var(--print-border); border-radius: 8px; padding: 12px; margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; }
-                          .meta-label { font-weight: 600; color: var(--print-muted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
-                          .meta-value { font-weight: 700; color: var(--print-text); margin-top: 1px; }
-                          .rx-header { font-size: 28px; font-weight: 900; color: var(--print-accent); font-style: italic; margin-bottom: 6px; font-family: Georgia, serif; }
-                          .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--print-accent); border-bottom: 1.5px solid var(--print-surface-muted); padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; letter-spacing: 0.5px; }
-                          .section-body { font-size: 13px; color: var(--print-secondary); margin-bottom: 12px; background: #ffffff; }
-                          table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1px solid var(--print-border); border-radius: 6px; overflow: hidden; }
-                          th { background: var(--print-surface-muted); color: var(--print-secondary); font-weight: 700; font-size: 11px; text-transform: uppercase; text-align: left; padding: 8px 12px; border-bottom: 2px solid var(--print-input-border); }
-                          .signature-box { margin-top: 40px; display: flex; justify-content: flex-end; }
-                          .sig-line { border-top: 1.5px solid var(--print-muted); width: 200px; text-align: center; padding-top: 4px; font-size: 11px; font-weight: 600; color: var(--print-secondary); }
-                          .footer-bar { margin-top: 30px; border-top: 1px solid var(--print-border); padding-top: 10px; text-align: center; font-size: 10px; color: var(--print-muted); }
-                        </style>
-                      </head>
-                      <body>
-                        <div class="header-bar">
-                          <div>
-                            <h1 class="clinic-title">${clinicName}</h1>
-                            <div class="clinic-sub">${clinicAddress}</div>
-                          </div>
-                          <div>
-                            <span class="token-badge">Token #${tokenNo}</span>
-                          </div>
-                        </div>
-
-                        <div class="meta-box">
-                          <div>
-                            <div class="meta-label">Patient Name</div>
-                            <div class="meta-value">${patientName}</div>
-                          </div>
-                          <div>
-                            <div class="meta-label">Attending Doctor</div>
-                            <div class="meta-value">${doctorFormatted} <span style="font-weight: 400; color: var(--print-muted);">(${doctorSpec})</span></div>
-                          </div>
-                          <div>
-                            <div class="meta-label">Consultation Date</div>
-                            <div class="meta-value">${apptDate}</div>
-                          </div>
-                          <div>
-                            <div class="meta-label">Medical Record Status</div>
-                            <div class="meta-value" style="color: var(--print-success);">Verified EHR Record</div>
-                          </div>
-                        </div>
-
-                        <div class="section-title">Chief Complaints / Presenting Symptoms</div>
-                        <div class="section-body">${symptoms}</div>
-
-                        <div class="section-title">Diagnosis & Clinical Assessment</div>
-                        <div class="section-body"><strong>${diagnosis}</strong></div>
-
-                        <div class="rx-header">Rx</div>
-                        ${
-                          rxItems.length > 0
-                            ? `
-                          <table>
-                            <thead>
-                              <tr>
-                                <th>Medication Name</th>
-                                <th>Dosage / Instructions</th>
-                                <th>Duration</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              ${rxItems}
-                            </tbody>
-                          </table>
-                        `
-                            : `<p style="font-size: 12px; color: var(--print-muted); font-style: italic;">No medications prescribed.</p>`
-                        }
-
-                        <div class="signature-box">
-                          <div class="sig-line">
-                            ${doctorFormatted}<br/>
-                            <span style="font-size: 10px; font-weight: 400; color: var(--print-muted);">Authorized Signatory</span>
-                          </div>
-                        </div>
-
-                        <div class="footer-bar">
-                          Official Electronic Medical Prescription &bull; Ekavyu EMR
-                        </div>
-                      </body>
-                    </html>
-                  `);
-                  frameDoc.close();
-
-                  setTimeout(() => {
-                    printFrame.contentWindow?.focus();
-                    printFrame.contentWindow?.print();
-                    setTimeout(() => {
-                      if (document.body.contains(printFrame)) {
-                        document.body.removeChild(printFrame);
-                      }
-                    }, 1000);
-                  }, 250);
-                }}
-              >
-                <Printer className="w-3.5 h-3.5 mr-1.5" />
-                Print Prescription Slip
-              </Button>
-            </div>
           </div>
         )}
       </Modal>

@@ -7,6 +7,10 @@ Use Node.js 24. Run `npm ci`, copy `.env.example` to `.env.local`, configure the
 backend API URL, then run `npm run dev`. The default port is 3000.
 
 Checks: `npm test`, `npm run lint`, `npm run check:payments`, `npm run build`.
+
+For normal coding, use the [risk-based verification workflow](docs/verification-workflow.md)
+to select affected checks; CI retains the complete quality gate.
+
 The supplied logo is `public/image.png`; regenerate exports with
 `npm run brand:assets`. The Dockerfile serves the standalone production build.
 `NEXT_PUBLIC_API_URL` must be supplied at build time.

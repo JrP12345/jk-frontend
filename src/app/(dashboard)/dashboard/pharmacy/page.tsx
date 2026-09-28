@@ -434,14 +434,14 @@ export default function PharmacyPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Pharmacy Desk & Inventory
+                Pharmacy & inventory
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
                 Dispensary Operations
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Dispense practitioner prescriptions, log medicine batches, and track inventory stock levels.
+              Dispense prescriptions and track medicine batches and stock.
             </p>
           </div>
 
@@ -452,8 +452,8 @@ export default function PharmacyPage() {
               onClick={fetchData}
               disabled={isRefreshing}
               className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
-            >
-              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
+             loading={isRefreshing}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
             </Button>
 
@@ -510,7 +510,7 @@ export default function PharmacyPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           3. SEGMENTED TABS NAVIGATION BAR
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full touch-pan-x">
+      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full touch-manipulation">
         <button
           type="button"
           onClick={() => setActiveTab("inventory")}
@@ -1047,7 +1047,7 @@ export default function PharmacyPage() {
             <Button type="button" variant="outline" size="sm" onClick={() => setIsMedModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" form="med-stock-form" variant="primary" size="sm" disabled={submittingMed} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
+            <Button type="submit" form="med-stock-form" variant="primary" size="sm" disabled={submittingMed} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]" loading={submittingMed}>
               {submittingMed ? "Saving..." : "Save Medicine Stock"}
             </Button>
           </div>

@@ -124,12 +124,13 @@ export const BarChart = memo(function BarChart({
         <svg
           ref={svgRef}
           viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-          className="w-full h-auto overflow-visible cursor-pointer touch-none"
+          className="w-full h-auto overflow-visible cursor-pointer [touch-action:pan-y_pinch-zoom]"
           onMouseMove={(e) => handlePointerPos(e.clientX)}
           onMouseLeave={() => setHoverIndex(null)}
           onTouchStart={(e) => e.touches.length > 0 && handlePointerPos(e.touches[0].clientX)}
           onTouchMove={(e) => e.touches.length > 0 && handlePointerPos(e.touches[0].clientX)}
           onTouchEnd={() => setHoverIndex(null)}
+          onTouchCancel={() => setHoverIndex(null)}
         >
           {/* Grid lines */}
           {showGrid && (

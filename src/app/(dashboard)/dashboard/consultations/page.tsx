@@ -142,7 +142,7 @@ export default function ConsultationsPage() {
       const newApptId = apptRes.data?.data?.id || apptRes.data?.data?._id || apptRes.data?.id;
 
       toast({
-        title: "Encounter Initialized",
+        title: "Consultation started",
         description: "Opening Clinical Consultation Workspace...",
         variant: "success",
       });
@@ -193,14 +193,14 @@ export default function ConsultationsPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Doctor Consultations & OPD Queue
+                Consultations & queue
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
                 Clinical Desk
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Real-time outpatient patient queue, walk-in consultation launcher, and SOAP clinical documentation.
+              Manage waiting patients, start consultations, and record clinical notes.
             </p>
           </div>
 
@@ -211,8 +211,8 @@ export default function ConsultationsPage() {
               onClick={fetchData}
               disabled={isRefreshing}
               className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
-            >
-              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
+             loading={isRefreshing}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
             </Button>
 
@@ -444,7 +444,7 @@ export default function ConsultationsPage() {
         open={isWalkInModalOpen}
         onClose={() => setIsWalkInModalOpen(false)}
         title="Start Walk-in Consultation"
-        description="Initialize an immediate outpatient encounter workspace for a walk-in patient."
+        description="Start a consultation for a walk-in patient."
       >
         <form onSubmit={handleStartWalkIn} className="space-y-4 pt-1">
           <Select

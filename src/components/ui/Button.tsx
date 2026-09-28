@@ -1,6 +1,6 @@
 "use client";
 
-import { type ButtonHTMLAttributes, type ReactNode, forwardRef, memo } from "react";
+import { type ButtonHTMLAttributes, type ReactNode, forwardRef, memo, useState, useRef, useLayoutEffect, useImperativeHandle } from "react";
 import { vibrateFeedback } from "@/lib/haptics";
 import { cn } from "./utils";
 import { InlineLoader } from "./Spinner";
@@ -69,7 +69,7 @@ const Button = memo(
       {
         variant = "primary",
         size = "md",
-        loading = false,
+        loading: controlledLoading = false,
         loadingText,
         icon,
         iconRight,
@@ -83,13 +83,24 @@ const Button = memo(
       },
       ref
     ) => {
+      const [pending, setPending] = useState(false);
+      const pendingRef = useRef(false);
+      const elementRef = useRef<HTMLButtonElement>(null);
+      const widthRef = useRef(0);
+      const mountedRef = useRef(true);
+      useImperativeHandle(ref, () => elementRef.current!, []);
+      useLayoutEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+      const loading = controlledLoading || pending;
+      useLayoutEffect(() => {
+        if (!loading && elementRef.current) widthRef.current = elementRef.current.getBoundingClientRect().width;
+      });
       const isBasicallyDisabled = disabled || loading;
       const spinnerSize = size === "xs" ? "xs" : "sm";
 
       return (
         <button
           data-touch-control
-          ref={ref}
+          ref={elementRef}
           type={type}
           disabled={isBasicallyDisabled}
           aria-busy={loading ? "true" : undefined}
@@ -105,8 +116,20 @@ const Button = memo(
             className
           )}
           {...rest}
+          style={{ ...rest.style, ...(loading && widthRef.current ? { width: widthRef.current, maxWidth: "100%" } : {}) }}
           aria-label={rest["aria-label"] || (loading ? loadingText : undefined)}
-          onClick={(event) => { vibrateFeedback("selection"); onClick?.(event); }}
+          onClick={(event) => {
+            if (isBasicallyDisabled || pendingRef.current) return;
+            vibrateFeedback("selection");
+            const result: unknown = onClick?.(event);
+            // Async click actions share feedback even without caller-managed state.
+            if (result && typeof (result as PromiseLike<unknown>).then === "function") {
+              pendingRef.current = true;
+              setPending(true);
+              const release = () => { pendingRef.current = false; if (mountedRef.current) setPending(false); };
+              Promise.resolve(result).then(release, release);
+            }
+          }}
         >
           <span className={cn("inline-flex min-w-0 items-center gap-[inherit]", loading && "invisible")} aria-hidden={loading || undefined}>
           {icon ? (
@@ -135,7 +158,7 @@ const Button = memo(
               <InlineLoader
                 size={spinnerSize}
                 color="text-current"
-                label={loadingText || children}
+                label={<span className="[&_svg]:hidden [&_[data-button-icon]]:hidden">{loadingText || children}</span>}
                 inheritTypography
                 className="max-w-full"
               />

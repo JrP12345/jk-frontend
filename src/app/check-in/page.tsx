@@ -1,5 +1,9 @@
 "use client";
 
+import PrintButton from "@/components/ui/PrintButton";
+
+import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
+
 import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useClinicStore } from "@/store/clinicStore";
@@ -7,7 +11,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button, Input, Card, CardContent, useToast, ModeSwitcher, Select, cn } from "@/components/ui";
 import api from "@/lib/api";
-import { Printer, Phone, Hash, CheckCircle2, ArrowRight, Stethoscope, Clock } from "lucide-react";
+import { Phone, Hash, CheckCircle2, ArrowRight, Stethoscope, Clock } from "lucide-react";
 
 export default function PublicSelfCheckInKiosk() {
   const { toast } = useToast();
@@ -27,7 +31,7 @@ export default function PublicSelfCheckInKiosk() {
   const handleCheckInByToken = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputToken.trim() || !inputAppointmentId.trim() || !inputClinicId.trim()) {
-      toast({ title: "Validation Error", description: "Appointment ID, clinic ID, and queue token are required", variant: "error" });
+      toast({ title: "Check-in details needed", description: "Enter the appointment, clinic, and queue token to continue.", variant: "error" });
       return;
     }
 
@@ -48,7 +52,7 @@ export default function PublicSelfCheckInKiosk() {
 
       toast({
         title: "Self Check-In Complete ✓",
-        description: res.data?.message || `Checked in successfully. Your queue token is #${data?.tokenNumber}`,
+        description: `Queue token #${data?.tokenNumber} is ready.`,
         variant: "success",
       });
     } catch (err: any) {
@@ -65,7 +69,7 @@ export default function PublicSelfCheckInKiosk() {
   const handleCheckInByPhone = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputPhone.trim() || inputPhone.trim().length < 8) {
-      toast({ title: "Validation Error", description: "Please enter a valid 10-digit mobile phone number", variant: "error" });
+      toast({ title: "Check the phone number", description: "Enter a valid 10-digit mobile number.", variant: "error" });
       return;
     }
 
@@ -89,7 +93,7 @@ export default function PublicSelfCheckInKiosk() {
       if (!eligible.length) toast({ title: "No eligible visit today", description: "Check the phone number and clinic, or register at reception.", variant: "warning" });
       return;
     } catch (err: any) {
-      toast({ title: "Lookup failed", description: err.response?.data?.message || err.message || "Unable to find today's appointments.", variant: "error" });
+      toast({ title: "Appointments unavailable", description: err.response?.data?.message || err.message || "Could not find today's appointments. Please try again.", variant: "error" });
     } finally { setSubmitting(false); }
   };
 
@@ -146,16 +150,13 @@ export default function PublicSelfCheckInKiosk() {
     }
   };
 
-  const handlePrintSlip = () => {
+  const handlePrintSlip = async () => {
     if (!checkInResult) return;
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-
-    printWindow.document.write(`
+    await printHtml(`
       <html>
         <head>
           <title>Queue Token Slip - #${checkInResult.tokenNumber}</title>
-          <style>
+          <style>${getPrintBrandStyles()}
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #fff; }
             .slip { width: 300px; padding: 24px; border: 2px solid #000; text-align: center; border-radius: 8px; }
             .title { font-size: 16px; font-weight: 900; margin: 0; letter-spacing: -0.5px; }
@@ -186,13 +187,9 @@ export default function PublicSelfCheckInKiosk() {
             <div class="info-row"><span class="info-label">Date:</span><span class="info-val">${new Date().toLocaleDateString()}</span></div>
             <div class="footer">Please watch the TV Waiting Room display. Your token will be called shortly.</div>
           </div>
-          <script>
-            window.onload = () => { window.print(); window.close(); };
-          </script>
         </body>
       </html>
     `);
-    printWindow.document.close();
   };
 
   if (!hasAnyPermission(user, "MANAGE_QUEUE")) return <main className="p-6 max-w-lg mx-auto"><Card><CardContent><h1 className="text-xl font-bold">Staff reception kiosk</h1><p className="my-4">Sign in with a staff account authorized to manage this clinic's queue. Patients can check arrival using their private appointment tracker.</p><Link href="/login">Staff sign in</Link></CardContent></Card></main>;
@@ -208,7 +205,7 @@ export default function PublicSelfCheckInKiosk() {
           >
             ← Browse Clinics
           </Link>
-          <ModeSwitcher />
+          <ModeSwitcher variant="icon" />
         </div>
 
         {/* Kiosk Branding Header */}
@@ -364,15 +361,13 @@ export default function PublicSelfCheckInKiosk() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <Button
+                <PrintButton
                   variant="outline"
                   size="lg"
                   className="rounded-2xl font-bold cursor-pointer gap-2"
-                  onClick={handlePrintSlip}
+                  onPrint={handlePrintSlip} documentName="token slip"
                 >
-                  <Printer className="w-4 h-4" />
-                  <span>Print Token Slip</span>
-                </Button>
+              </PrintButton>
 
                 <Button
                   variant="primary"

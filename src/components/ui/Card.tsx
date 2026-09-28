@@ -13,6 +13,7 @@ export interface CardProps {
   variant?: CardVariant;
   hover?: boolean;
   className?: string;
+  contentClassName?: string;
   onClick?: () => void;
   role?: "button" | "group";
   loading?: boolean;
@@ -39,12 +40,16 @@ const Card = memo(function Card({
   variant = "default",
   hover = false,
   className = "",
+  contentClassName,
   onClick,
   role = onClick ? "button" : undefined,
   loading = false,
   loadingText,
 }: CardProps) {
   const hasHoverEffect = hover || !!onClick;
+  const hasBasePadding = /(?:^|\s)p-/.test(className);
+  const hasResponsivePadding = /(?:^|\s)(?:[a-z0-9-]+:)+p-/.test(className);
+  const defaultPadding = hasBasePadding ? "" : hasResponsivePadding ? paddings[padding].split(" ")[0] : paddings[padding];
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (onClick && e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
@@ -62,7 +67,7 @@ const Card = memo(function Card({
       className={cn(
         "relative overflow-hidden rounded-2xl transform-gpu transition-all duration-250 ease-smooth group",
         variants[variant],
-        paddings[padding],
+        defaultPadding,
         onClick &&
           "cursor-pointer active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
         hasHoverEffect && "hover:shadow-sm hover:border-accent/50",
@@ -70,7 +75,7 @@ const Card = memo(function Card({
       )}
     >
       {/* Card Content */}
-      <div className={cn("relative z-10 w-full h-full flex flex-col transition-opacity duration-200", loading && "opacity-40 pointer-events-none")}>
+      <div className={cn("relative z-10 w-full h-full flex flex-col transition-opacity duration-200", loading && "opacity-40 pointer-events-none", contentClassName)}>
         {children}
       </div>
 

@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { NavigationPending } from "@/components/ui/RouteProgress";
-import { LayoutDashboard, Calendar, Clock, Users, FileText, Receipt, Building2, Menu, Bell, Settings } from "lucide-react";
+import { LayoutDashboard, Calendar, Clock, Users, FileText, Receipt, Building2, Menu, FlaskConical, Pill } from "lucide-react";
 import { cn } from "@/components/ui/utils";
 
 interface MobileBottomNavProps {
@@ -68,13 +68,36 @@ export function MobileBottomNav({
           { label: "Clinicians", href: "/dashboard/staff", icon: Users },
           { label: "Branches", href: "/dashboard/clinics", icon: Building2 },
         ];
-      default:
+      case "nurse":
         return [
           { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
-          { label: "Schedule", href: "/dashboard/appointments", icon: Calendar },
-          { label: "Alerts", href: "/dashboard/notifications", icon: Bell },
-          { label: "Settings", href: "/dashboard/settings", icon: Settings },
+          { label: "Queue", href: "/dashboard/queue", icon: Clock },
+          { label: "Patients", href: "/dashboard/patients", icon: Users },
+          { label: "Visits", href: "/dashboard/appointments", icon: Calendar },
         ];
+      case "lab_tech":
+        return [
+          { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+          { label: "Lab", href: "/dashboard/laboratory", icon: FlaskConical },
+          { label: "Patients", href: "/dashboard/patients", icon: Users },
+          { label: "Visits", href: "/dashboard/appointments", icon: Calendar },
+        ];
+      case "pharmacist":
+        return [
+          { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+          { label: "Pharmacy", href: "/dashboard/pharmacy", icon: Pill },
+          { label: "Billing", href: "/dashboard/billing", icon: Receipt },
+          { label: "Patients", href: "/dashboard/patients", icon: Users },
+        ];
+      case "cashier":
+        return [
+          { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+          { label: "Billing", href: "/dashboard/billing", icon: Receipt },
+          { label: "Patients", href: "/dashboard/patients", icon: Users },
+          { label: "Bookings", href: "/dashboard/appointments", icon: Calendar },
+        ];
+      default:
+        return [{ label: "Overview", href: "/dashboard", icon: LayoutDashboard }];
     }
   };
 

@@ -39,10 +39,14 @@ const ConfirmDialog = memo(function ConfirmDialog({
       open={open}
       onClose={onClose}
       size="sm"
-      loading={loading}
+      busy={loading}
       title={title}
       ariaDescribedBy={description ? "confirm-dialog-desc" : undefined}
       showCloseButton={!loading}
+      footer={<>
+        <Button variant="outline" onClick={onClose} disabled={loading} size="sm">{cancelLabel}</Button>
+        <Button variant={variant === "danger" ? "danger" : "primary"} onClick={onConfirm} loading={loading} size="sm">{confirmLabel}</Button>
+      </>}
     >
       <div className="space-y-3.5 select-none">
         {/* Header Icon + Title & Description in tight alignment */}
@@ -71,38 +75,14 @@ const ConfirmDialog = memo(function ConfirmDialog({
           </div>
 
           <div className="flex-1 min-w-0 pt-0.5">
-            <h3 id="modal-title" className="text-sm sm:text-base font-semibold text-text tracking-tight">{title}</h3>
             {description && <p id="confirm-dialog-desc" className="text-xs text-text-secondary mt-1 leading-relaxed">{description}</p>}
             {children && <div className="mt-2 text-xs text-text">{children}</div>}
           </div>
         </div>
 
-        {/* Tight Inline Action Buttons */}
-        <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border/60">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={loading}
-            size="sm"
-            className="text-xs font-medium rounded-xl cursor-pointer"
-          >
-            {cancelLabel}
-          </Button>
-          <Button
-            variant={variant === "danger" ? "danger" : "primary"}
-            onClick={onConfirm}
-            loading={loading}
-            size="sm"
-            className="text-xs font-medium rounded-xl shadow-xs cursor-pointer"
-          >
-            {confirmLabel}
-          </Button>
-        </div>
       </div>
     </Modal>
   );
 });
 
 export default ConfirmDialog;
-
-

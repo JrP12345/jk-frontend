@@ -273,14 +273,14 @@ export default function RootAdminMonitorPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight text-text">
-                  Live Supervision & Traffic
+                  Live activity
                 </h1>
                 <Badge variant="primary" size="sm" dot pulse className="text-[10px] font-bold uppercase tracking-wider">
                   Real-Time
                 </Badge>
               </div>
               <p className="text-xs text-text-muted mt-0.5">
-                Monitor active user logins, enforce single-session root security, and inspect daily traffic across clinics.
+                Review active sessions and activity across clinics.
               </p>
             </div>
           </div>

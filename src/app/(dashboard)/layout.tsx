@@ -1,11 +1,13 @@
 "use client";
 
 import { useAuthStore } from "@/store/authStore";
-import { Sidebar, Button, Spinner, Dropdown, ModeSwitcher, Avatar, useToast, EkavyuLogo, EkavyuIcon, Select, Badge, cn } from "@/components/ui";
+import { Sidebar, Button, Spinner, Dropdown, Avatar, useToast, EkavyuLogo, EkavyuIcon, Select, Badge, cn, ModeSwitcher } from "@/components/ui";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { hasRoutePermission } from "@/lib/routePermissions";
+import { orderNavigation } from "@/lib/navigationOrder";
 import { getDisabledRouteModule, requiresTenantModules } from "@/lib/routeModules";
 import dynamic from "next/dynamic";
 import { useOverlayFocus } from "@/hooks/useOverlayFocus";
@@ -35,6 +37,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const drawerGesture = useSwipeGesture({ axis: "x", direction: "left", enabled: mobileMenuOpen, mediaQuery: "(max-width: 1023px)", onSwipe: () => setMobileMenuOpen(false) });
   const [isExiting, setIsExiting] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   useOverlayFocus(mobileMenuOpen, drawerRef, () => setMobileMenuOpen(false));
@@ -152,8 +155,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setIsExiting(true);
       await stopImpersonation();
       toast({
-        title: "Impersonation Ended",
-        description: "Returned safely to Root Superadmin Console.",
+        title: "Returned to platform account",
+        description: "You are using your administrator account again.",
         variant: "info",
       });
       router.push("/dashboard");
@@ -162,15 +165,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const currentUser = useAuthStore.getState().user;
       if (currentUser?.role === "root" || !(currentUser?.impersonatedBy && currentUser.impersonatedBy.id)) {
         toast({
-          title: "Session Restored",
-          description: "Active Root Superadmin session verified.",
+          title: "Platform account restored",
+          description: "You are using your administrator account again.",
           variant: "info",
         });
         router.push("/dashboard");
       } else {
         toast({
-          title: "Exit Failed",
-          description: err.response?.data?.message || "Failed to exit impersonation session",
+          title: "Could not return to platform account",
+          description: err.response?.data?.message || "Please try again.",
           variant: "error",
         });
       }
@@ -187,21 +190,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { section: "My Health Care", label: "My Appointments", href: "/dashboard/appointments", icon: <Calendar className="w-5 h-5" /> },
     { section: "My Health Care", label: "Patient Portal & Records", href: "/dashboard/patient-portal", icon: <User className="w-5 h-5" /> },
     { section: "My Health Care", label: "My Bills & Invoices", href: "/dashboard/bills", icon: <CreditCard className="w-5 h-5" /> },
-    { section: "My Health Care", label: "Notifications", href: "/dashboard/notifications", icon: <Bell className="w-5 h-5" /> },
+    { section: "Account & Settings", label: "Notifications", href: "/dashboard/notifications", icon: <Bell className="w-5 h-5" /> },
   ] : isRootAdmin ? [
     // Platform Root Superadmin Navigation (Free of tenant clinical clutter)
     { section: "Platform Console", label: "Platform Overview", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-    { section: "Tenant Management", label: "Organizations", href: "/dashboard/organizations", icon: <Building2 className="w-5 h-5" /> },
-    { section: "Tenant Management", label: "Users & Impersonate", href: "/dashboard/admin/users", icon: <Users className="w-5 h-5" /> },
-    { section: "Live Supervision", label: "Live Sessions & Traffic", href: "/dashboard/admin/monitor", icon: <Activity className="w-5 h-5" /> },
-    { section: "Billing & Revenue", label: "SaaS Plans & Console", href: "/dashboard/admin/billing", icon: <CreditCard className="w-5 h-5" /> },
-    { section: "Security & Auditing", label: "System Audit Logs", href: "/dashboard/audit", icon: <FileText className="w-5 h-5" /> },
-    { section: "Security & Auditing", label: "Platform Settings", href: "/dashboard/settings", icon: <Settings className="w-5 h-5" /> },
+    { section: "Organization management", label: "Organizations", href: "/dashboard/organizations", icon: <Building2 className="w-5 h-5" /> },
+    { section: "Organization management", label: "Users & access", href: "/dashboard/admin/users", icon: <Users className="w-5 h-5" /> },
+    { section: "Live supervision", label: "Live activity", href: "/dashboard/admin/monitor", icon: <Activity className="w-5 h-5" /> },
+    { section: "Billing & revenue", label: "Plans & subscriptions", href: "/dashboard/admin/billing", icon: <CreditCard className="w-5 h-5" /> },
+    { section: "Security & auditing", label: "Audit log", href: "/dashboard/audit", icon: <FileText className="w-5 h-5" /> },
+    { section: "Security & auditing", label: "Platform settings", href: "/dashboard/settings", icon: <Settings className="w-5 h-5" /> },
+    { section: "Utilities", label: "Notifications", href: "/dashboard/notifications", icon: <Bell className="w-5 h-5" /> },
   ] : [
     // 1. Core Workspace
     { section: "Core Workspace", label: "Overview", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" />, moduleKey: "dashboard" },
-    { section: "Core Workspace", label: "Notifications", href: "/dashboard/notifications", icon: <Bell className="w-5 h-5" />, moduleKey: "notifications" },
-    { section: "Core Workspace", label: "Analytics", href: "/dashboard/analytics", icon: <BarChart3 className="w-5 h-5" />, moduleKey: "analytics" },
+    { section: "Reporting", label: "Analytics", href: "/dashboard/analytics", icon: <BarChart3 className="w-5 h-5" />, moduleKey: "analytics" },
 
     // 2. Outpatient Care (OPD)
     { section: "Outpatient (OPD)", label: "Queue Desk", href: "/dashboard/queue", icon: <Users className="w-5 h-5" />, moduleKey: "queue" },
@@ -225,12 +228,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { section: "Administration & Facilities", label: "Team", href: "/dashboard/staff", icon: <Users className="w-5 h-5" />, moduleKey: "staff" },
     { section: "Administration & Facilities", label: "Shift Roster", href: "/dashboard/shifts", icon: <Clock className="w-5 h-5" />, moduleKey: "shifts" },
     { section: "Administration & Facilities", label: "Patient Feedback", href: "/dashboard/feedback", icon: <MessageSquare className="w-5 h-5" />, moduleKey: "feedback" },
-    { section: "Administration & Facilities", label: "System Settings", href: "/dashboard/settings", icon: <Settings className="w-5 h-5" />, moduleKey: "settings" }
+    { section: "Account & Settings", label: "Notifications", href: "/dashboard/notifications", icon: <Bell className="w-5 h-5" />, moduleKey: "notifications" },
+    { section: "Account & Settings", label: "System Settings", href: "/dashboard/settings", icon: <Settings className="w-5 h-5" />, moduleKey: "settings" }
   ];
 
   const filteredNavItems = (isLoading || !user)
     ? []
-    : allNavItems.filter((item) => {
+    : orderNavigation(allNavItems.filter((item) => {
         // Overview and Notifications are always visible to authenticated users
         if (item.href === "/dashboard" || item.href === "/browse" || item.href === "/dashboard/notifications") return true;
 
@@ -247,14 +251,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         return true;
-      });
+      }), user.role);
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background relative">
       {/* Mobile Backdrop Overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/60  z-[45] lg:hidden transition-opacity duration-300"
+          className="overlay-backdrop fixed inset-0 z-[45] lg:hidden transition-opacity duration-300"
           onClick={() => setMobileMenuOpen(false)}
           aria-hidden="true"
         />
@@ -264,6 +268,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div
         ref={drawerRef}
         id="dashboard-navigation"
+        {...drawerGesture.handlers}
+        style={{ translate: drawerGesture.offset ? `${drawerGesture.offset}px 0` : undefined, transition: drawerGesture.dragging ? "none" : undefined, touchAction: "pan-y pinch-zoom" }}
         role={mobileMenuOpen ? "dialog" : undefined}
         aria-modal={mobileMenuOpen || undefined}
         aria-label="Workspace navigation"
@@ -287,7 +293,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-hover lg:hidden transition-colors cursor-pointer"
+                  className="min-h-11 min-w-11 flex items-center justify-center rounded-lg text-text-muted hover:text-text hover:bg-surface-hover lg:hidden transition-colors cursor-pointer"
                   aria-label="Close menu drawer"
                 >
                   <X className="w-5 h-5" />
@@ -347,7 +353,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <OfflineStatusBanner />
 
         {/* Top Navbar */}
-        <header className="min-h-16 flex-wrap gap-y-2 py-2 md:py-0 border-b border-border/80 bg-surface/90  flex items-center justify-between px-3 sm:px-4 md:px-6 shrink-0 z-40 relative shadow-2xs">
+        <header data-app-header className="min-h-16 flex-wrap gap-y-2 py-2 md:py-0 border-b border-border/80 bg-surface/90  flex items-center justify-between px-3 sm:px-4 md:px-6 shrink-0 z-40 relative shadow-2xs">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {/* Mobile Hamburger Toggle Button */}
             <button
@@ -390,15 +396,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             )}
             <NotificationBell />
-            <div className="hidden lg:block">
-            </div>
-            {/* ModeSwitcher: sleek icon on mobile, segmented on tablet/desktop */}
-            <div className="block lg:hidden">
-              <ModeSwitcher variant="icon" />
-            </div>
-            <div className="hidden lg:block">
-              <ModeSwitcher variant="segmented" />
-            </div>
+            <ModeSwitcher variant="icon" />
             <div className="w-px h-6 bg-border mx-0.5 sm:mx-1 md:mx-2 hidden xl:block" />
             {user ? (
               <Dropdown
@@ -434,6 +432,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   }
                 ]}
                 align="right"
+                width="w-64"
               />
             ) : (
               <div className="flex items-center gap-2 p-1 rounded-full text-xs text-text-muted">

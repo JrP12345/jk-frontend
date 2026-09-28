@@ -1,7 +1,6 @@
 // Run from the frontend repository: npm run brand:assets
 // Preserve the supplied artwork; only resize and place it on icon canvases.
 import path from 'node:path';
-import { copyFile } from 'node:fs/promises';
 import sharp from 'sharp';
 const publicDir = path.join(import.meta.dirname, '../public');
 const source = path.join(publicDir, 'image.png');
@@ -44,21 +43,16 @@ async function main() {
   // Only OS/browser icons use the tightly fitted artwork below.
   await sharp(source).resize(512, 512, { fit: 'contain', background: '#00000000' }).png()
     .toFile(path.join(publicDir, 'ekavyu-leaf.png'));
-  // Old cached clients may still request these neutral public asset URLs.
-  for (const name of ['logo-d.png', 'logo-w.png']) {
-    await copyFile(path.join(publicDir, 'ekavyu-leaf.png'), path.join(publicDir, name));
-  }
   for (const size of [16, 32]) {
     await sharp(markSource).resize(size, size, { fit: 'contain', background: '#00000000' }).png()
       .toFile(path.join(publicDir, `favicon-${size}.png`));
   }
   for (const size of [192, 512]) {
-    await appIcon(markSource, `app-icon-${size}.png`, size, '#00000000');
+    await appIcon(markSource, `app-icon-${size}.png`, size, '#F7F7F2', 0.78);
   }
-  await appIcon(markSource, 'app-icon-180.png', 180, '#0E2A28', 0.84);
-  await appIcon(markSource, 'app-icon-light-192.png', 192, '#F7F7F2');
+  await appIcon(markSource, 'app-icon-180.png', 180, '#F7F7F2', 0.78);
   // Fit the actual leaf silhouette inside the maskable safe circle, with margin.
-  await appIcon(markSource, 'app-icon-maskable-512.png', 512, '#0E2A28', Math.min(0.92, 0.39 / radius));
+  await appIcon(markSource, 'app-icon-maskable-512.png', 512, '#F7F7F2', Math.min(0.78, 0.39 / radius));
   console.log('Generated Ekavyu UI, favicon, Apple and PWA assets from public/image.png.');
 }
 

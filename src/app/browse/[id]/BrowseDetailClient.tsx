@@ -1,10 +1,16 @@
 "use client";
 
+import PrintButton from "@/components/ui/PrintButton";
+
+import { rememberTracker } from "@/store/trackerStore";
+
 import { appointmentPaymentLabel, appointmentBookingLabel } from "@/lib/appointmentPresentation";
 
-import { getPrintBrandStyles } from "@/lib/printBrand";
+import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
 
-import { useEffect, useState, useMemo, useRef, startTransition } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { useOverlayFocus } from "@/hooks/useOverlayFocus";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
@@ -13,7 +19,7 @@ import { localDateKey } from "@/lib/date";
 import { useAuthStore } from "@/store/authStore";
 import { Card, CardContent, CardHeader, CardTitle, Button, Modal, Input, useToast, Badge, Breadcrumbs } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
-import { AlertCircle, MapPin, Phone, Clock, ShieldCheck, Building2, Calendar, ExternalLink, Printer, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, Star, UserCheck, User, Smartphone, Share2, Mail, FileText, CalendarOff, Camera, X, ChevronLeft, MessageSquare } from "lucide-react";
+import { AlertCircle, MapPin, Phone, Clock, ShieldCheck, Building2, Calendar, ExternalLink, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, Star, UserCheck, User, Smartphone, Share2, Mail, FileText, CalendarOff, Camera, X, ChevronLeft, MessageSquare } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
 
@@ -386,6 +392,9 @@ export default function BrowseDetailClient({
   const [clinicError, setClinicError] = useState(false);
   const [clinicRetry, setClinicRetry] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const galleryGesture = useSwipeGesture({ axis: "x", enabled: lightboxIndex !== null && (clinic?.images?.length || 0) > 1, onSwipe: direction => setLightboxIndex(index => index === null ? null : (index + (direction === "left" ? 1 : -1) + (clinic?.images?.length || 1)) % (clinic?.images?.length || 1)) });
+  const lightboxRef = useRef<HTMLDivElement>(null);
+  useOverlayFocus(lightboxIndex !== null, lightboxRef, () => setLightboxIndex(null));
   const { user, isAuthenticated, login } = useAuthStore();
   const router = useRouter();
   const { toast } = useToast();
@@ -412,6 +421,10 @@ export default function BrowseDetailClient({
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingProgressMessage, setBookingProgressMessage] = useState<string>("");
+  const bookingSubmitRef = useRef(false);
+  const availabilityRequest = useRef<AbortController | null>(null);
+  const [availabilityState, setAvailabilityState] = useState<"checking" | "ready" | "error">("checking");
+  useEffect(() => () => availabilityRequest.current?.abort(), []);
   const hasAutoOpenedBookingRef = useRef(false);
 
   // Time & Notes inputs
@@ -523,7 +536,7 @@ export default function BrowseDetailClient({
       }
 
       if (schedule.isWorkingDay) {
-        const dateString = testDate.toISOString().split("T")[0];
+        const dateString = localDateKey(testDate);
         const dayShort = testDate.toLocaleDateString("en-US", { weekday: "short" });
         const dateNum = testDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
@@ -622,44 +635,33 @@ export default function BrowseDetailClient({
     };
   };
 
-  const loadSlotsForDate = (dateStr: string, doc: Doctor) => {
-    startTransition(() => {
-      setSelectedDate(dateStr);
-      setSelectedTime("");
-    });
+  const loadSlotsForDate = async (dateStr: string, doc: Doctor) => {
+    availabilityRequest.current?.abort();
+    const request = new AbortController();
+    availabilityRequest.current = request;
+    setSelectedDate(dateStr);
+    setSelectedTime("");
     selectedDateRef.current = dateStr;
-
-    const cacheKey = `${doc.id}_${dateStr}`;
-    let slotInfo = slotsCache.current[cacheKey];
-    if (!slotInfo) {
-      slotInfo = generateLocalSlotsForDate(doc, dateStr);
-      slotsCache.current[cacheKey] = slotInfo;
-    }
-
-    startTransition(() => {
-      setDoctorSlotInfo(slotInfo);
-    });
-
-    // Quiet background fetch for server-authoritative booked slot statuses (zero UI freeze or flicker)
-    if (!slotInfo._serverLoaded) {
-      api.get(`/public/doctors/${doc.id}/slots?clinicId=${id}&date=${dateStr}`)
-        .then((res) => {
-          const serverData = res.data?.data;
-          if (serverData) {
-            serverData._serverLoaded = true;
-            slotsCache.current[cacheKey] = serverData;
-            if (selectedDateRef.current === dateStr) {
-              startTransition(() => {
-                setDoctorSlotInfo(serverData);
-              });
-            }
-          }
-        })
-        .catch(() => {});
+    const cacheKey = doc.id + "_" + dateStr;
+    const preview = slotsCache.current[cacheKey] || generateLocalSlotsForDate(doc, dateStr);
+    setDoctorSlotInfo(preview);
+    setAvailabilityState("checking");
+    try {
+      const res = await api.get(`/public/doctors/${doc.id}/slots?clinicId=${id}&date=${dateStr}`, { signal: request.signal });
+      if (request.signal.aborted) return;
+      const data = res.data?.data;
+      if (!data || typeof data.isWorkingDay !== "boolean") throw new Error("Invalid availability response");
+      if (!Array.isArray(data.slots) || data.slots.some((slot: SlotItem) => !slot || typeof slot.time !== "string" || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(slot.time) || typeof slot.available !== "boolean")) throw new Error("Invalid availability slots");
+      data._serverLoaded = true;
+      slotsCache.current[cacheKey] = data;
+      setDoctorSlotInfo(data);
+      setAvailabilityState("ready");
+    } catch {
+      if (!request.signal.aborted) setAvailabilityState("error");
     }
   };
 
-  const handleOpenBooking = async (doc: Doctor) => {
+  const handleOpenBooking = (doc: Doctor) => {
     setSelectedDoctor(doc);
     setBookingStep(1);
     setIsBookingOpen(true);
@@ -675,7 +677,7 @@ export default function BrowseDetailClient({
     for (let i = 0; i <= 14; i++) {
       const testDate = new Date();
       testDate.setDate(now.getDate() + i);
-      const testDateStr = testDate.toISOString().split("T")[0];
+      const testDateStr = localDateKey(testDate);
       const isHoliday = doc.upcomingHolidays?.some(h => h.date === testDateStr);
       if (isHoliday) {
         continue;
@@ -699,7 +701,7 @@ export default function BrowseDetailClient({
     setSelectedDate(initialDate);
     selectedDateRef.current = initialDate;
 
-    // Instant local slots for immediate 0ms interactive display
+    // Preview the schedule while the server checks actual availability.
     const initialSlotInfo = slotsCache.current[`${doc.id}_${initialDate}`] || generateLocalSlotsForDate(doc, initialDate);
     slotsCache.current[`${doc.id}_${initialDate}`] = initialSlotInfo;
     setDoctorSlotInfo(initialSlotInfo);
@@ -708,29 +710,14 @@ export default function BrowseDetailClient({
     for (let i = 0; i < 7; i++) {
       const d = new Date();
       d.setDate(now.getDate() + i);
-      const dStr = d.toISOString().split("T")[0];
+      const dStr = localDateKey(d);
       const cKey = `${doc.id}_${dStr}`;
       if (!slotsCache.current[cKey]) {
         slotsCache.current[cKey] = generateLocalSlotsForDate(doc, dStr);
       }
     }
 
-    // Silent background fetch for server confirmation
-    try {
-      const res = await api.get(`/public/doctors/${doc.id}/slots?clinicId=${id}&date=${initialDate}`);
-      const data = res.data?.data;
-      if (data) {
-        data._serverLoaded = true;
-        slotsCache.current[`${doc.id}_${initialDate}`] = data;
-        if (selectedDateRef.current === initialDate) {
-          startTransition(() => {
-            setDoctorSlotInfo(data);
-          });
-        }
-      }
-    } catch {
-      // Retain instant local slots
-    }
+    void loadSlotsForDate(initialDate, doc);
   };
 
   // Generate slots locally or from API response
@@ -741,7 +728,7 @@ export default function BrowseDetailClient({
       return [];
     }
 
-    if (doctorSlotInfo?.slots && Array.isArray(doctorSlotInfo.slots) && doctorSlotInfo.slots.length > 0) {
+    if (Array.isArray(doctorSlotInfo?.slots)) {
       const now = new Date();
       const isToday = selectedDate === localDateKey(now);
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -796,6 +783,11 @@ export default function BrowseDetailClient({
     };
   }, [selectedDate, selectedDoctor]);
 
+  const queueIsFull = availabilityState === "ready" && doctorSlotInfo?.bookingMode === "sequential_queue"
+    && Number(doctorSlotInfo.maxDailyTokens) > 0
+    && Number(doctorSlotInfo.tokensToday) >= Number(doctorSlotInfo.maxDailyTokens);
+  const availabilityBlocked = availabilityState !== "ready" || doctorSlotInfo?.isWorkingDay === false || doctorSlotInfo?.isHoliday || queueIsFull;
+
   const handleBookAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
     const todayStr = localDateKey();
@@ -814,16 +806,18 @@ export default function BrowseDetailClient({
       return;
     }
 
+    if (bookingSubmitRef.current || availabilityBlocked) return;
+    bookingSubmitRef.current = true;
     setBookingLoading(true);
-    setBookingProgressMessage("Initializing your booking...");
+    setBookingProgressMessage("Confirming appointment…");
     const timeToUse =
       selectedTime ||
       doctorSlotInfo?.dayStartTime ||
       selectedDaySchedule?.intervals?.[0]?.start ||
       "09:00";
-    const mergedBookingTime = new Date(`${selectedDate}T${timeToUse}`).toISOString();
 
     try {
+      const mergedBookingTime = new Date(`${selectedDate}T${timeToUse}`).toISOString();
       // Public booking is deliberately OTP-free. The resulting session is
       // limited to creating this appointment and cannot access patient records.
       if (isGuest) {
@@ -842,15 +836,15 @@ export default function BrowseDetailClient({
           return;
         }
 
-        setBookingProgressMessage("Securing guest booking session...");
-        const bookingSessionRes = await api.post("/public/booking-session", {
+
+        await api.post("/public/booking-session", {
           phone: guestForm.phone,
           name: guestForm.name,
           email: guestForm.email || undefined,
         });
       }
 
-      setBookingProgressMessage("Reserving consultation token & slot...");
+
       const res = await api.post("/appointments", {
         clinicId: id,
         doctorId: selectedDoctor!.id,
@@ -862,11 +856,12 @@ export default function BrowseDetailClient({
       });
       const appt = res.data.data;
       const token = appt.tokenNumber;
+      rememberTracker(appt._id || appt.id, appt.trackerToken, user?.id || null, mergedBookingTime);
 
       const isPostConsultation = selectedDoctor?.feeType === "post_consultation";
       const isFree = selectedDoctor?.feeType === "free";
 
-      setBookingProgressMessage("Generating your appointment token slip...");
+
 
       setCreatedTicket({
         appointmentId: appt._id || appt.id,
@@ -879,6 +874,7 @@ export default function BrowseDetailClient({
         appointmentTime: mergedBookingTime,
         selectedDate,
         selectedTime: timeToUse,
+        bookingMode: doctorSlotInfo?.bookingMode,
         doctorName: selectedDoctor?.name,
         specialization: selectedDoctor?.specialization,
         clinicName: clinic?.name,
@@ -897,7 +893,7 @@ export default function BrowseDetailClient({
         window.history.replaceState(null, "", url.pathname + (url.search ? url.search : ""));
       }
 
-      // Immediately close booking modal and open ticket modal!
+      // Keep the same dialog mounted as the confirmed ticket replaces the form.
       setIsBookingOpen(false);
       resetBookingForm();
       setTicketModalOpen(true);
@@ -930,6 +926,7 @@ export default function BrowseDetailClient({
         duration: 4000,
       });
     } finally {
+      bookingSubmitRef.current = false;
       setBookingLoading(false);
       setBookingProgressMessage("");
     }
@@ -950,11 +947,9 @@ export default function BrowseDetailClient({
     finally { setRetryingPaymentSetup(false); }
   };
 
-  const handlePrintSlip = () => {
+  const handlePrintSlip = async () => {
     if (!createdTicket) return;
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-    printWindow.document.write(`
+    await printHtml(`
       <html>
         <head>
           <title>Appointment Token Slip - #${createdTicket.tokenNumber}</title>
@@ -997,7 +992,7 @@ export default function BrowseDetailClient({
             </div>
             <div class="details-row">
               <span class="label">Time / Mode:</span>
-              <span class="value">${doctorSlotInfo?.bookingMode === "sequential_queue" ? "Clinic Queue Token" : format12Hour(createdTicket.selectedTime)}</span>
+              <span class="value">${createdTicket.bookingMode === "sequential_queue" ? "Clinic Queue Token" : format12Hour(createdTicket.selectedTime)}</span>
             </div>
             <div class="details-row">
               <span class="label">Consultation Fee:</span>
@@ -1012,11 +1007,9 @@ export default function BrowseDetailClient({
               Please arrive 10 minutes prior to your consultation time. Present this token at reception.
             </div>
           </div>
-          <script>window.onload = () => { window.print(); window.close(); };</script>
         </body>
       </html>
     `);
-    printWindow.document.close();
   };
 
   if (clinicError) {
@@ -1540,17 +1533,26 @@ export default function BrowseDetailClient({
 
       {/* Refined 2-Step Progressive Booking Modal */}
       <Modal
-        open={isBookingOpen}
-        onClose={() => setIsBookingOpen(false)}
+        open={isBookingOpen || ticketModalOpen}
+        onClose={() => { if (!bookingSubmitRef.current) { setIsBookingOpen(false); setTicketModalOpen(false); availabilityRequest.current?.abort(); } }}
         title={
-          bookingStep === 1
+          ticketModalOpen ? appointmentBookingLabel(createdTicket?.status) : bookingStep === 1
             ? "Select Date & Time"
             : "Patient Details"
         }
-        size="lg"
-        loading={bookingLoading}
-        loadingText={bookingProgressMessage || "Confirming appointment booking..."}
+        size="xl"
+        presentation="sheet"
+        busy={bookingLoading}
+        footerClassName="!flex-row"
+        footer={ticketModalOpen ? <div className="flex gap-2 justify-end w-full"><PrintButton documentName="token slip" onPrint={handlePrintSlip} disabled={!createdTicket} /><Button variant="outline" onClick={() => setTicketModalOpen(false)}>Done</Button></div> : bookingStep === 1 ? <>
+          <Button variant="ghost" onClick={() => setIsBookingOpen(false)}>Cancel</Button>
+          <Button disabled={availabilityBlocked || !selectedDate || (!selectedTime && doctorSlotInfo?.bookingMode !== "sequential_queue")} onClick={() => setBookingStep(2)} iconRight={<ArrowRight className="w-4 h-4" />}>Continue to Details</Button>
+        </> : <>
+          <Button variant="outline" disabled={bookingLoading} onClick={() => setBookingStep(1)} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
+          <Button type="submit" form="public-booking-form" loading={bookingLoading} loadingText={bookingProgressMessage || "Confirming appointment…"} icon={<CheckCircle2 className="w-4 h-4" />}>Confirm Appointment</Button>
+        </>}
       >
+        {!ticketModalOpen && <>
         {/* Step Progress Bar */}
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex-1 space-y-1">
@@ -1565,7 +1567,8 @@ export default function BrowseDetailClient({
           </div>
         </div>
 
-        <form onSubmit={handleBookAppointment} className="space-y-3 sm:space-y-4">
+        <form id="public-booking-form" onSubmit={handleBookAppointment}>
+          <fieldset disabled={bookingLoading} className="min-w-0 space-y-3">
           {/* STEP 1: Date & Time Slot / Queue Selection */}
           {bookingStep === 1 && (
             <div className="space-y-3">
@@ -1604,6 +1607,10 @@ export default function BrowseDetailClient({
                 </div>
               )}
 
+              <div role={availabilityState === "error" ? "alert" : "status"} className="min-h-6 text-xs text-text-secondary flex items-center justify-between gap-2">
+                <span>{availabilityState === "checking" ? "Checking available appointments…" : availabilityState === "error" ? "Availability could not be checked. Please try again." : "Availability updated"}</span>
+                {availabilityState === "error" && <Button variant="outline" size="sm" onClick={() => selectedDoctor && loadSlotsForDate(selectedDate, selectedDoctor)}>Try again</Button>}
+              </div>
               {/* Date Selection Ribbon */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
@@ -1710,6 +1717,7 @@ export default function BrowseDetailClient({
                   }
 
                   if (doctorSlotInfo?.bookingMode === "sequential_queue") {
+                    if (queueIsFull) return <div className="p-6 min-h-[200px] flex flex-col items-center justify-center text-center gap-2 bg-surface-alt border border-border rounded-2xl"><h4 className="text-sm font-bold text-text">All tokens are booked</h4><p className="text-xs text-text-secondary">Please choose another date for your consultation.</p></div>;
                     return (
                       <div key={`queue-${selectedDate}`} className="p-3 bg-surface-alt rounded-2xl border border-border space-y-2.5 animate-fade-in">
                     <div className="flex items-center justify-between">
@@ -1724,13 +1732,13 @@ export default function BrowseDetailClient({
 
                     <div className="grid grid-cols-2 gap-2">
                       <div className="bg-surface p-2.5 rounded-xl border border-border text-center">
-                        <span className="text-[9px] text-text-muted uppercase font-semibold block">{"Your Token Number"}</span>
-                        <span className="text-xl font-black text-text">#{doctorSlotInfo.nextToken || 1}</span>
+                        <span className="text-[9px] text-text-muted uppercase font-semibold block">{"Estimated Token"}</span>
+                        <span className="text-xl font-black text-text">{availabilityState === "ready" && doctorSlotInfo.nextToken ? `#${doctorSlotInfo.nextToken}` : "—"}</span>
                       </div>
                       <div className="bg-surface p-2.5 rounded-xl border border-border text-center">
                         <span className="text-[9px] text-text-muted uppercase font-semibold block">{"Estimated Wait"}</span>
                         <span className="text-xl font-black text-text-secondary">
-                          ~{Math.max(0, ((doctorSlotInfo.nextToken || 1) - 1) * (doctorSlotInfo.appointmentDuration || 15))} {"mins"}
+                          {availabilityState === "ready" && doctorSlotInfo.nextToken ? `~${Math.max(0, (doctorSlotInfo.nextToken - 1) * (doctorSlotInfo.appointmentDuration || 15))} mins` : "—"}
                         </span>
                       </div>
                     </div>
@@ -1774,7 +1782,7 @@ export default function BrowseDetailClient({
                                     <button
                                       key={s.time}
                                       type="button"
-                                      disabled={!isAvailable}
+                                      disabled={!isAvailable || availabilityState !== "ready"}
                                       onClick={() => isAvailable && setSelectedTime(s.time)}
                                       className={`py-2 px-1 rounded-xl text-xs font-semibold text-center transition-all min-h-[40px] flex items-center justify-center ${
                                         !isAvailable
@@ -1806,7 +1814,7 @@ export default function BrowseDetailClient({
                                     <button
                                       key={s.time}
                                       type="button"
-                                      disabled={!isAvailable}
+                                      disabled={!isAvailable || availabilityState !== "ready"}
                                       onClick={() => isAvailable && setSelectedTime(s.time)}
                                       className={`py-2 px-1 rounded-xl text-xs font-semibold text-center transition-all min-h-[40px] flex items-center justify-center ${
                                         !isAvailable
@@ -1838,7 +1846,7 @@ export default function BrowseDetailClient({
                                     <button
                                       key={s.time}
                                       type="button"
-                                      disabled={!isAvailable}
+                                      disabled={!isAvailable || availabilityState !== "ready"}
                                       onClick={() => isAvailable && setSelectedTime(s.time)}
                                       className={`py-2 px-1 rounded-xl text-xs font-semibold text-center transition-all min-h-[40px] flex items-center justify-center ${
                                         !isAvailable
@@ -1862,34 +1870,13 @@ export default function BrowseDetailClient({
                 })()}
               </div>
 
-              {/* Step 1 Actions Footer */}
-              <div className="sticky bottom-0 -mx-4 -mb-3 sm:-mx-5 sm:-mb-5 px-4 sm:px-5 py-2.5 bg-surface/95  border-t border-border/50 flex items-center justify-between gap-2 z-10">
-                <Button variant="ghost" size="sm" onClick={() => setIsBookingOpen(false)} className="text-xs font-semibold text-text-muted min-h-[42px] px-3">
-                  {"Cancel"}
-                </Button>
-                {(() => {
-                  const isCurrentDateHoliday = doctorSlotInfo?.isHoliday || upcomingDays.find((d) => d.dateString === selectedDate)?.isHoliday;
-                  return (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      type="button"
-                      disabled={isCurrentDateHoliday || !selectedDate || (!selectedTime && doctorSlotInfo?.bookingMode !== "sequential_queue")}
-                      onClick={() => setBookingStep(2)}
-                      className="font-bold px-4 py-2 rounded-xl shadow-xs min-h-[42px] flex-1 sm:flex-initial flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <span>{isCurrentDateHoliday ? "Doctor on Holiday" : "Continue to Details"}</span>
-                      {!isCurrentDateHoliday && <ArrowRight className="w-3.5 h-3.5" strokeWidth={2} />}
-                    </Button>
-                  );
-                })()}
-              </div>
+
             </div>
           )}
 
           {/* STEP 2: Patient Info & Confirmation */}
           {bookingStep === 2 && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Selected Slot Summary Bar */}
               <div className="p-3 bg-surface-alt rounded-2xl border border-border flex items-center justify-between gap-3 text-xs">
                 <div className="space-y-0.5 min-w-0">
@@ -1925,7 +1912,7 @@ export default function BrowseDetailClient({
                 </label>
 
                 {isGuest ? (
-                  <div className="bg-surface-alt p-4 rounded-2xl border border-border space-y-3">
+                  <div className="bg-surface-alt p-3 rounded-2xl border border-border space-y-3">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-semibold text-text">
                         {"Quick Booking"}
@@ -2024,7 +2011,7 @@ export default function BrowseDetailClient({
                     <button
                       type="button"
                       onClick={() => setPaymentMode("pay_at_clinic")}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer min-h-[56px] ${
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer min-h-[56px] ${
                         paymentMode === "pay_at_clinic"
                           ? "bg-primary-600/10 border-primary-600 text-accent font-bold shadow-xs ring-1 ring-focus-ring"
                           : "bg-surface border-border text-text hover:border-border"
@@ -2040,7 +2027,7 @@ export default function BrowseDetailClient({
                     <button
                       type="button"
                       onClick={() => setPaymentMode("online")}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer min-h-[56px] ${
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer min-h-[56px] ${
                         paymentMode === "online"
                           ? "bg-primary-600/10 border-primary-600 text-accent font-bold shadow-xs ring-1 ring-focus-ring"
                           : "bg-surface border-border text-text hover:border-border"
@@ -2067,44 +2054,13 @@ export default function BrowseDetailClient({
                 />
               </div>
 
-              {/* Active Booking Loading Feedback */}
-              {bookingLoading && (
-                <div className="p-3 bg-accent-subtle dark:bg-primary-950/40 border border-primary-200 dark:border-primary-800 rounded-xl flex items-center gap-2.5 text-xs text-accent dark:text-accent animate-pulse">
-                  <div className="w-4 h-4 rounded-full border-2 border-primary-600 border-t-transparent animate-spin shrink-0" />
-                  <span className="font-semibold">{bookingProgressMessage || "Securing your appointment, please wait..."}</span>
-                </div>
-              )}
 
-              {/* Step 2 Actions Footer */}
-              <div className="sticky bottom-0 -mx-4 -mb-3 sm:-mx-5 sm:-mb-5 px-4 sm:px-5 py-2.5 bg-surface/95  border-t border-border/50 flex items-center justify-between gap-2 z-10">
-                <Button variant="outline" size="sm" type="button" disabled={bookingLoading} onClick={() => setBookingStep(1)} className="min-h-[42px] px-3.5 flex items-center justify-center gap-1 text-xs">
-                  <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.75} />
-                  <span>{"Back"}</span>
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  type="submit"
-                  loading={bookingLoading}
-                  disabled={bookingLoading}
-                  className="font-bold px-4 py-2 rounded-xl shadow-xs min-h-[42px] flex-1 sm:flex-initial flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <span>{bookingLoading ? (bookingProgressMessage || "Confirming...") : "Confirm Appointment"}</span>
-                  {!bookingLoading && <CheckCircle2 className="w-4 h-4" strokeWidth={2} />}
-                </Button>
-              </div>
             </div>
           )}
+          </fieldset>
         </form>
-      </Modal>
-
-      {/* Ticket Slip Confirmation Modal */}
-      <Modal
-        open={ticketModalOpen}
-        onClose={() => setTicketModalOpen(false)}
-        title={appointmentBookingLabel(createdTicket?.status)}
-        size="sm"
-      >
+        </>}
+        {ticketModalOpen &&
         <div className="text-center space-y-4 py-1">
           <div className="p-5 bg-surface-alt border border-border rounded-2xl space-y-3">
             <div className="w-12 h-12 mx-auto rounded-2xl bg-surface border border-border text-success-text flex items-center justify-center shadow-xs">
@@ -2136,7 +2092,7 @@ export default function BrowseDetailClient({
                 <div className="flex justify-between">
                   <span>{"Time / Mode:"}</span>
                   <strong className="text-text">
-                    {doctorSlotInfo?.bookingMode === "sequential_queue" ? "Clinic Queue Token" : format12Hour(createdTicket.selectedTime)}
+                    {createdTicket.bookingMode === "sequential_queue" ? "Clinic Queue Token" : format12Hour(createdTicket.selectedTime)}
                   </strong>
                 </div>
                 {createdTicket.fees !== undefined && (
@@ -2205,15 +2161,6 @@ export default function BrowseDetailClient({
           <div className="space-y-2">
             <div className="flex flex-col sm:flex-row gap-2">
               <Button
-                variant="outline"
-                size="sm"
-                className="w-full min-h-[44px] flex items-center justify-center gap-1.5"
-                onClick={handlePrintSlip}
-              >
-                <Printer className="w-3.5 h-3.5" strokeWidth={1.75} />
-                <span>{"Print Slip"}</span>
-              </Button>
-              <Button
                 variant="primary"
                 size="sm"
                 className="w-full font-bold min-h-[44px] flex items-center justify-center gap-1.5"
@@ -2226,21 +2173,16 @@ export default function BrowseDetailClient({
                 <span>{"My Appointments"}</span>
               </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full text-xs text-text-muted min-h-[40px] flex items-center justify-center"
-              onClick={() => setTicketModalOpen(false)}
-            >
-              {"Done"}
-            </Button>
           </div>
-        </div>
+        </div>}
       </Modal>
 
       {/* Photo Gallery Lightbox Modal */}
       {lightboxIndex !== null && clinic.images && clinic.images.length > 0 && (
         <div
+          ref={lightboxRef}
+          id="clinic-photo-gallery"
+          tabIndex={-1}
           role="dialog"
           aria-modal="true"
           aria-label="Photo gallery"
@@ -2257,12 +2199,14 @@ export default function BrowseDetailClient({
           </button>
 
           <div
-            className="relative max-w-4xl max-h-[80vh] w-full flex items-center justify-center"
+            {...galleryGesture.handlers}
+            className="relative max-w-4xl max-h-[80vh] w-full flex items-center justify-center [touch-action:pan-y_pinch-zoom]"
             onClick={(e) => e.stopPropagation()}
           >
             <img
               src={clinic.images[lightboxIndex]}
               alt={`Facility showcase ${lightboxIndex + 1}`}
+              draggable={false}
               className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-lg border border-white/10"
             />
 

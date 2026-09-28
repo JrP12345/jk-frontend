@@ -917,7 +917,7 @@ export default function SettingsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. SEGMENTED TAB NAVIGATION BAR
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-pan-x scrollbar-none w-full md:w-fit max-w-full">
+      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-manipulation scrollbar-none w-full md:w-fit max-w-full">
         {TABS.filter((tab) => !tab.rootOnly || isRoot).map((tab) => {
           const isActive = activeTab === tab.id;
           return (

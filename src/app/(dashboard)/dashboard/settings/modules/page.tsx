@@ -151,10 +151,10 @@ export default function ModulesSettingsPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Module Manager & Capability Flags
+                Services and modules
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Feature Governance
+                Organization settings
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">

@@ -45,7 +45,7 @@ export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode }
         <Input label="Meta app secret" type="password" autoComplete="new-password" value={appSecret} placeholder={data?.connection.hasAppSecret ? "Saved — leave blank to keep" : "Paste app secret"} onChange={e => setAppSecret(e.target.value)} />
       </div>
       <Toggle checked={enabled ?? data?.connection.enabled ?? false} onChange={setEnabled} label="Enable shared gateway" />
-      <Button onClick={() => mutation.mutate("save")} disabled={mutation.isPending}>Save platform credentials</Button>
+      <Button onClick={() => mutation.mutate("save")} disabled={mutation.isPending} loading={mutation.isPending && mutation.variables === "save"}>Save platform credentials</Button>
     </div>}
     {(platform || mode === "dedicated") && <>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -54,8 +54,8 @@ export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode }
       </div>
       <p className="text-xs text-text-muted">Save your credentials first, then test the connection and sync templates. Configure this HTTPS callback in Meta and subscribe to messages and template updates.</p>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" disabled={mutation.isPending} onClick={() => mutation.mutate("test")}>Test connection</Button>
-        <Button variant="outline" disabled={mutation.isPending} onClick={() => mutation.mutate("templates/sync")}>Sync templates</Button>
+        <Button variant="outline" disabled={mutation.isPending} loading={mutation.isPending && mutation.variables === "test"} onClick={() => mutation.mutate("test")}>Test connection</Button>
+        <Button variant="outline" disabled={mutation.isPending} loading={mutation.isPending && mutation.variables === "templates/sync"} onClick={() => mutation.mutate("templates/sync")}>Sync templates</Button>
       </div>
     </>}
     {!!data?.issues?.length && <ul className="list-disc space-y-1 pl-5 text-xs text-text-muted">{data.issues.map((issue: string) => <li key={issue}>{issue}</li>)}</ul>}

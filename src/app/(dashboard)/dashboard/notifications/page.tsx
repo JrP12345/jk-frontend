@@ -12,7 +12,8 @@ import { Button, Input, Select, Textarea, Badge, Card, Table, Pagination, Dropdo
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
-import { Bell, Sparkles, CheckCheck, Send, Search, Pin, PinOff, Check, Eye, Trash2, MoreHorizontal, Clock, ExternalLink, Mail, Stethoscope, ShieldAlert, Receipt, Settings, CheckSquare, Users, Building2, ArrowRight, CheckCircle2 } from "lucide-react";
+import { notificationCategoryLabel } from "@/lib/notificationPresentation";
+import { Bell, Sparkles, CheckCheck, Send, Search, Pin, PinOff, Check, Eye, Trash2, MoreHorizontal, Clock, ExternalLink, Mail, Stethoscope, ShieldAlert, Receipt, Settings, CheckSquare, Users, Building2, ArrowRight } from "lucide-react";
 
 export default function NotificationsInboxPage() {
   const router = useRouter();
@@ -79,13 +80,13 @@ export default function NotificationsInboxPage() {
       setIsTestLoading(true);
       await notificationService.triggerTestNotification({
         category: category || "system",
-        title: "Infrastructure Real-Time Event Test",
-        message: "Live event ingested via EventBus → Persisted in DB → Broadcast via SSE!",
+        title: "Test notification",
+        message: "This is a test of your notification delivery settings.",
         severity: "info",
       });
       toast({
-        title: "Test Event Dispatched",
-        description: "Real-time notification emitted successfully.",
+        title: "Test notification sent",
+        description: "Check your inbox for the test notification.",
         variant: "success",
       });
       await new Promise((r) => setTimeout(r, 150));
@@ -93,8 +94,8 @@ export default function NotificationsInboxPage() {
     } catch (err) {
       console.error(err);
       toast({
-        title: "Trigger Failed",
-        description: "Could not emit test notification.",
+        title: "Test notification could not be sent",
+        description: "Please try again.",
         variant: "error",
       });
     } finally {
@@ -104,9 +105,17 @@ export default function NotificationsInboxPage() {
 
   const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!sendInApp && !sendEmail) {
+      toast({ title: "Choose a delivery method", description: "Select in-app notification, email, or both.", variant: "error" });
+      return;
+    }
+    if (recipientScope === "user" && !targetUserId) {
+      toast({ title: "Choose a recipient", description: "Select the person who should receive this notification.", variant: "error" });
+      return;
+    }
     if (!formTitle.trim() || !formMessage.trim()) {
       toast({
-        title: "Validation Error",
+        title: "Title and message required",
         description: "Please enter both a title and a message.",
         variant: "error",
       });
@@ -115,7 +124,7 @@ export default function NotificationsInboxPage() {
 
     try {
       setIsSending(true);
-      const res = await notificationService.sendNotification({
+      await notificationService.sendNotification({
         recipientScope,
         targetUserId: recipientScope === "user" ? targetUserId : undefined,
         category: formCategory,
@@ -131,8 +140,8 @@ export default function NotificationsInboxPage() {
       });
 
       toast({
-        title: "Notification Sent",
-        description: res.message || "Notification dispatched successfully across selected channels.",
+        title: "Notification sent",
+        description: "The notification was sent through the selected channels.",
         variant: "success",
       });
 
@@ -146,7 +155,7 @@ export default function NotificationsInboxPage() {
     } catch (err: any) {
       console.error(err);
       toast({
-        title: "Dispatch Failed",
+        title: "Notification could not be sent",
         description: err?.response?.data?.message || "Failed to send notification.",
         variant: "error",
       });
@@ -233,7 +242,7 @@ export default function NotificationsInboxPage() {
       ),
     },
     {
-      header: "Category & Priority",
+      header: "Category & priority",
       key: "category",
       width: "170px",
       render: (row) => (
@@ -245,7 +254,7 @@ export default function NotificationsInboxPage() {
               className="uppercase font-bold text-[10px] tracking-wide inline-flex items-center gap-1"
             >
               {getCategoryIcon(row.category)}
-              <span>{row.category}</span>
+              <span>{notificationCategoryLabel(row.category)}</span>
             </Badge>
             {row.pinned && (
               <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-warning-text dark:text-warning-text bg-warning/15 border border-warning/30 px-1.5 py-0.5 rounded-md">
@@ -266,10 +275,10 @@ export default function NotificationsInboxPage() {
       ),
     },
     {
-      header: "Notification Detail",
+      header: "Notification",
       key: "detail",
       render: (row) => (
-        <div className="space-y-1 min-w-[260px]">
+        <div className="space-y-1 min-w-0 w-full">
           <div className="flex items-center gap-2 flex-wrap">
             <p
               className={`text-xs sm:text-sm text-text cursor-pointer hover:text-accent dark:hover:text-accent transition-colors ${
@@ -282,7 +291,7 @@ export default function NotificationsInboxPage() {
             {row.actionUrl && (
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-accent dark:text-accent bg-primary-500/10 px-1.5 py-0.5 rounded border border-primary-500/20">
                 <ExternalLink className="w-2.5 h-2.5" />
-                Action Link
+                Open related page
               </span>
             )}
           </div>
@@ -291,7 +300,7 @@ export default function NotificationsInboxPage() {
       ),
     },
     {
-      header: "Received Time",
+      header: "Received",
       key: "time",
       width: "140px",
       render: (row) => (
@@ -323,7 +332,7 @@ export default function NotificationsInboxPage() {
             }
             items={[
               {
-                label: row.pinned ? "Unpin Alert" : "Pin Alert",
+                label: row.pinned ? "Unpin notification" : "Pin notification",
                 icon: row.pinned ? <PinOff className="w-4 h-4 text-text-muted" /> : <Pin className="w-4 h-4 text-warning-text" />,
                 onClick: () => togglePinNotification(row.id),
               },
@@ -343,7 +352,7 @@ export default function NotificationsInboxPage() {
               },
               { divider: true, label: "" },
               {
-                label: "Delete Alert",
+                label: "Delete notification",
                 icon: <Trash2 className="w-4 h-4 text-danger" />,
                 danger: true,
                 onClick: () => setDeletingIds([row.id]),
@@ -400,21 +409,23 @@ export default function NotificationsInboxPage() {
               )}
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Real-time communication hub, multi-channel dispatch, and automated alerts.
+              Review updates and send notifications to your team.
             </p>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap shrink-0 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTestTrigger}
-              loading={isTestLoading}
-              icon={<Sparkles className="h-3.5 w-3.5 text-text-secondary" />}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
-            >
-              Trigger Test Event
-            </Button>
+            {canSendNotifications && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTestTrigger}
+                loading={isTestLoading}
+                icon={<Sparkles className="h-3.5 w-3.5 text-text-secondary" />}
+                className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
+              >
+                Send test notification
+              </Button>
+            )}
 
             {unreadCount > 0 && (
               <Button
@@ -424,7 +435,7 @@ export default function NotificationsInboxPage() {
                 className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <CheckCheck className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
-                Mark All Read
+                Mark all read
               </Button>
             )}
 
@@ -436,7 +447,7 @@ export default function NotificationsInboxPage() {
                 className="rounded-xl text-xs font-semibold shadow-xs flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <Send className="h-3.5 w-3.5 mr-1.5" />
-                Compose Alert
+                New notification
               </Button>
             )}
           </div>
@@ -452,7 +463,7 @@ export default function NotificationsInboxPage() {
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
             <input
               type="text"
-              placeholder="Search notifications by title, keywords, or message content..."
+              placeholder="Search notifications"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 transition-all"
@@ -473,14 +484,15 @@ export default function NotificationsInboxPage() {
                 }
               }}
               options={[
-                { value: "", label: "All Categories & Statuses" },
-                { value: "unread", label: `Unread Only (${unreadCount})` },
-                { value: "patient", label: "Healthcare / Patient" },
-                { value: "task", label: "Tasks & Workflows" },
-                { value: "security", label: "Security & Access" },
-                { value: "system", label: "System Maintenance" },
-                { value: "billing", label: "Billing & Financial" },
-                { value: "team", label: "Team & Staff" },
+                { value: "", label: "All notifications" },
+                { value: "unread", label: `Unread (${unreadCount})` },
+                { value: "auth", label: "Account activity" },
+                { value: "patient", label: "Patient care" },
+                { value: "task", label: "Tasks" },
+                { value: "security", label: "Security" },
+                { value: "system", label: "System" },
+                { value: "billing", label: "Billing" },
+                { value: "team", label: "Team" },
                 { value: "organization", label: "Organization" },
               ]}
             />
@@ -528,7 +540,7 @@ export default function NotificationsInboxPage() {
                       className="uppercase font-bold text-[10px] tracking-wide inline-flex items-center gap-1"
                     >
                       {getCategoryIcon(row.category)}
-                      <span>{row.category}</span>
+                      <span>{notificationCategoryLabel(row.category)}</span>
                     </Badge>
                     {row.pinned && (
                       <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-warning-text dark:text-warning-text bg-warning/15 border border-warning/30 px-1.5 py-0.2 rounded-md">
@@ -562,7 +574,7 @@ export default function NotificationsInboxPage() {
                     className="flex-1 font-semibold text-xs rounded-xl min-h-[36px] justify-center"
                   >
                     <Eye className="w-3.5 h-3.5 mr-1 text-text-muted" />
-                    View Alert
+                    View notification
                   </Button>
 
                   {isUnread && (
@@ -593,13 +605,13 @@ export default function NotificationsInboxPage() {
                     }
                     items={[
                       {
-                        label: row.pinned ? "Unpin Alert" : "Pin Alert",
+                        label: row.pinned ? "Unpin notification" : "Pin notification",
                         icon: row.pinned ? <PinOff className="w-4 h-4 text-text-muted" /> : <Pin className="w-4 h-4 text-warning-text" />,
                         onClick: () => togglePinNotification(row.id),
                       },
                       { divider: true, label: "" },
                       {
-                        label: "Delete Alert",
+                        label: "Delete notification",
                         icon: <Trash2 className="w-4 h-4 text-danger" />,
                         danger: true,
                         onClick: () => setDeletingIds([row.id]),
@@ -630,15 +642,15 @@ export default function NotificationsInboxPage() {
       <Modal
         open={isSendModalOpen}
         onClose={() => setIsSendModalOpen(false)}
-        title="Compose Multi-Channel Alert"
-        description="Dispatch formatted notification across In-App Inbox and Email delivery channels."
+        title="New notification"
+        description="Choose who should receive it and how to send it."
         size="lg"
       >
         <form onSubmit={handleSendNotification} className="space-y-4 pt-1">
           {/* Delivery Channels Selector */}
           <div className="bg-surface-alt p-3.5 rounded-2xl border border-border/80 space-y-2">
             <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
-              Delivery Channels
+              Send by
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label
@@ -657,8 +669,8 @@ export default function NotificationsInboxPage() {
                     <Bell className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-text">In-App Inbox</p>
-                    <p className="text-[10px] text-text-muted">Real-time web notification & bell badge</p>
+                    <p className="text-xs font-bold text-text">In-app notification</p>
+                    <p className="text-[10px] text-text-muted">Appears in the recipient’s inbox</p>
                   </div>
                 </div>
                 <input
@@ -685,8 +697,8 @@ export default function NotificationsInboxPage() {
                     <Mail className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-text">Email Dispatch</p>
-                    <p className="text-[10px] text-text-muted">Direct email alert to recipient inbox</p>
+                    <p className="text-xs font-bold text-text">Email</p>
+                    <p className="text-[10px] text-text-muted">Sent to the recipient’s email address</p>
                   </div>
                 </div>
                 <input
@@ -702,28 +714,28 @@ export default function NotificationsInboxPage() {
           {/* Row 1: Recipient Audience & User / Category */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-semibold text-text mb-1">Recipient Scope *</label>
+                <label className="block text-xs font-semibold text-text mb-1">Recipients *</label>
               <Select
                 value={recipientScope}
                 onChange={(e) => setRecipientScope(e.target.value)}
                 options={[
-                  { value: "all", label: "Broadcast to All Members" },
-                  { value: "user", label: "Specific User / Staff" },
-                  { value: "admin", label: "Admins Only" },
-                  { value: "doctor", label: "Doctors Only" },
-                  { value: "staff", label: "Receptionists & Staff Only" },
+                  { value: "all", label: "All members" },
+                  { value: "user", label: "One person" },
+                  { value: "admin", label: "Administrators" },
+                  { value: "doctor", label: "Doctors" },
+                  { value: "staff", label: "Receptionists and staff" },
                 ]}
               />
             </div>
 
             {recipientScope === "user" ? (
               <div>
-                <label className="block text-xs font-semibold text-text mb-1">Select User *</label>
+                <label className="block text-xs font-semibold text-text mb-1">Person *</label>
                 <Select
                   value={targetUserId}
                   onChange={(e) => setTargetUserId(e.target.value)}
                   options={[
-                    { value: "", label: "-- Choose Recipient Profile --" },
+                    { value: "", label: "Choose a person" },
                     ...orgUsers.map((u) => ({
                       value: u.id,
                       label: `${u.name} (${u.email}) — ${u.role}`,
@@ -738,13 +750,13 @@ export default function NotificationsInboxPage() {
                   value={formCategory}
                   onChange={(e) => setFormCategory(e.target.value)}
                   options={[
-                    { value: "system", label: "System Maintenance" },
-                    { value: "patient", label: "Patient / Clinical Care" },
-                    { value: "task", label: "Task / Workflow Assignment" },
-                    { value: "security", label: "Security & Access Event" },
-                    { value: "billing", label: "Billing & Financial Invoicing" },
-                    { value: "team", label: "Team & Staff Announcement" },
-                    { value: "organization", label: "Organization Policy" },
+                  { value: "system", label: "System" },
+                  { value: "patient", label: "Patient care" },
+                  { value: "task", label: "Tasks" },
+                  { value: "security", label: "Security" },
+                  { value: "billing", label: "Billing" },
+                  { value: "team", label: "Team" },
+                  { value: "organization", label: "Organization" },
                   ]}
                 />
               </div>
@@ -760,49 +772,49 @@ export default function NotificationsInboxPage() {
                   value={formCategory}
                   onChange={(e) => setFormCategory(e.target.value)}
                   options={[
-                    { value: "system", label: "System Maintenance" },
-                    { value: "patient", label: "Patient / Clinical Care" },
-                    { value: "task", label: "Task / Workflow Assignment" },
-                    { value: "security", label: "Security & Access Event" },
-                    { value: "billing", label: "Billing & Financial Invoicing" },
-                    { value: "team", label: "Team & Staff Announcement" },
-                    { value: "organization", label: "Organization Policy" },
+                    { value: "system", label: "System" },
+                    { value: "patient", label: "Patient care" },
+                    { value: "task", label: "Tasks" },
+                    { value: "security", label: "Security" },
+                    { value: "billing", label: "Billing" },
+                    { value: "team", label: "Team" },
+                    { value: "organization", label: "Organization" },
                   ]}
                 />
               </div>
             )}
             <div>
-              <label className="block text-xs font-semibold text-text mb-1">Severity Level</label>
+              <label className="block text-xs font-semibold text-text mb-1">Notice type</label>
               <Select
                 value={formSeverity}
                 onChange={(e) => setFormSeverity(e.target.value)}
                 options={[
-                  { value: "info", label: "Info (Informational)" },
-                  { value: "success", label: "Success (Positive confirmation)" },
-                  { value: "warning", label: "Warning (Requires attention)" },
-                  { value: "error", label: "Error / Critical (Immediate action)" },
+                  { value: "info", label: "Information" },
+                  { value: "success", label: "Confirmation" },
+                  { value: "warning", label: "Needs attention" },
+                  { value: "error", label: "Urgent issue" },
                 ]}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-text mb-1">Priority Level</label>
+              <label className="block text-xs font-semibold text-text mb-1">Priority</label>
               <Select
                 value={formPriority}
                 onChange={(e) => setFormPriority(e.target.value)}
                 options={[
-                  { value: "low", label: "Low Priority" },
-                  { value: "medium", label: "Medium (Standard)" },
-                  { value: "high", label: "High Priority" },
-                  { value: "urgent", label: "Urgent (Priority Dispatch)" },
+                  { value: "low", label: "Low" },
+                  { value: "medium", label: "Standard" },
+                  { value: "high", label: "High" },
+                  { value: "urgent", label: "Urgent" },
                 ]}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-text mb-1">Notification Title *</label>
+            <label className="block text-xs font-semibold text-text mb-1">Title *</label>
             <Input
-              placeholder="e.g. Daily Patient Roster Ready / System Maintenance Window"
+              placeholder="What is this notification about?"
               value={formTitle}
               onChange={(e) => setFormTitle(e.target.value)}
               required
@@ -810,9 +822,9 @@ export default function NotificationsInboxPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-text mb-1">Notification Message *</label>
+            <label className="block text-xs font-semibold text-text mb-1">Message *</label>
             <Textarea
-              placeholder="Enter comprehensive message details, instructions, or action summary..."
+              placeholder="Write a clear message for recipients"
               value={formMessage}
               onChange={(e) => setFormMessage(e.target.value)}
               rows={3}
@@ -822,10 +834,10 @@ export default function NotificationsInboxPage() {
 
           <div>
             <label className="block text-xs font-semibold text-text mb-1">
-              Action Link Destination (Optional)
+              Related page (optional)
             </label>
             <Input
-              placeholder="e.g. /dashboard/appointments or /dashboard/queue"
+              placeholder="e.g. /dashboard/appointments"
               value={formActionUrl}
               onChange={(e) => setFormActionUrl(e.target.value)}
             />
@@ -849,7 +861,7 @@ export default function NotificationsInboxPage() {
               icon={<Send className="w-3.5 h-3.5" />}
               className="font-semibold rounded-xl shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px]"
             >
-              Dispatch Notification
+              Send notification
             </Button>
           </div>
         </form>
@@ -861,7 +873,7 @@ export default function NotificationsInboxPage() {
       <Modal
         open={!!viewingNotification}
         onClose={() => setViewingNotification(null)}
-        title="Notification Overview"
+        title="Notification details"
         size="md"
       >
         {viewingNotification && (
@@ -875,7 +887,7 @@ export default function NotificationsInboxPage() {
                   className="uppercase font-bold text-[10px] tracking-wide inline-flex items-center gap-1"
                 >
                   {getCategoryIcon(viewingNotification.category)}
-                  {viewingNotification.category}
+                  {notificationCategoryLabel(viewingNotification.category)}
                 </Badge>
                 <Badge variant="outline" size="sm" className="uppercase font-semibold text-[9px]">
                   {viewingNotification.severity}
@@ -900,17 +912,6 @@ export default function NotificationsInboxPage() {
               </p>
             </div>
 
-            {/* Delivery & Read Status */}
-            <div className="flex items-center justify-between pt-1 text-[11px] text-text-muted border-t border-border/60">
-              <span className="font-medium">
-                Delivery Channels: <strong className="text-text">In-App &bull; Email</strong>
-              </span>
-              <div className="flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-success-text" />
-                <span className="text-text-secondary font-medium">Delivered & Marked as Read</span>
-              </div>
-            </div>
-
             {viewingNotification.actionUrl && (
               <div className="pt-2 flex justify-end">
                 <Button
@@ -923,7 +924,7 @@ export default function NotificationsInboxPage() {
                   }}
                   className="font-semibold rounded-xl shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
                 >
-                  Open Destination Link
+                  Open related page
                   <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                 </Button>
               </div>

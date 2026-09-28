@@ -4,6 +4,19 @@ import { useEffect, useRef, type RefObject } from "react";
 import { lockScroll, unlockScroll } from "@/lib/scrollLock";
 
 const overlays: HTMLElement[] = [];
+const backgroundInert = new Map<HTMLElement, boolean>();
+let backgroundObserver: MutationObserver | undefined;
+
+function syncBackground() {
+  const top = overlays.at(-1);
+  for (const [element, original] of backgroundInert) element.inert = original;
+  if (!top) { backgroundInert.clear(); backgroundObserver?.disconnect(); backgroundObserver = undefined; return; }
+  for (const element of Array.from(document.body.children)) {
+    if (!(element instanceof HTMLElement) || element.contains(top) || element.hasAttribute("data-overlay-live") || element.hasAttribute("data-print-frame") || element.dataset.overlayOwner === top.id) continue;
+    if (!backgroundInert.has(element)) backgroundInert.set(element, element.inert);
+    element.inert = true;
+  }
+}
 const selector = 'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Share focus ownership between dialogs, navigation drawers and their portaled controls. */
@@ -22,6 +35,11 @@ export function useOverlayFocus(
     const previous = document.activeElement as HTMLElement | null;
     overlays.push(overlay);
     if (scrollLock) lockScroll();
+    syncBackground();
+    if (!backgroundObserver) {
+      backgroundObserver = new MutationObserver(syncBackground);
+      backgroundObserver.observe(document.body, { childList: true });
+    }
 
     const ownedPopups = () => Array.from(document.querySelectorAll<HTMLElement>("[data-overlay-owner]"))
       .filter((popup) => popup.dataset.overlayOwner === overlay.id && popup.dataset.exiting !== "true");
@@ -69,8 +87,9 @@ export function useOverlayFocus(
       const index = overlays.indexOf(overlay);
       const wasTop = overlays.at(-1) === overlay;
       if (index >= 0) overlays.splice(index, 1);
+      syncBackground();
       if (scrollLock) unlockScroll();
-      if (wasTop && previous?.isConnected) previous.focus();
+      if (wasTop && previous?.isConnected) previous.focus({ preventScroll: true });
     };
   }, [open, ref, scrollLock]);
 }

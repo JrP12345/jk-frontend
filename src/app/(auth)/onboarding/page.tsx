@@ -326,7 +326,7 @@ function OnboardingInner() {
       </div>
 
       <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 sm:right-6 z-20">
-        <ModeSwitcher />
+        <ModeSwitcher variant="icon" />
       </div>
 
       <div className="w-full max-w-xl relative z-10 animate-fade-up">
@@ -586,7 +586,7 @@ function OnboardingInner() {
                         loading={isGeneratingQR}
                         className="text-xs text-accent dark:text-accent gap-1"
                       >
-                        <RefreshCw className={cn("w-3 h-3", isGeneratingQR && "animate-spin")} />
+                        <RefreshCw className="w-3 h-3" />
                         Regenerate QR Code
                       </Button>
                     </div>

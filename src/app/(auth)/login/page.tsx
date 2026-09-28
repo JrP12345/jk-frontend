@@ -115,16 +115,16 @@ export default function LoginPage() {
       toast({
         title: "Verification code sent",
         description: res.data?.data?.devOtp
-          ? `[DEV MODE] Your OTP code is: ${res.data.data.devOtp}`
-          : `Verification OTP has been sent to ${destination}`,
+          ? `Your verification code is ${res.data.data.devOtp}.`
+          : `A verification code was sent to ${destination}.`,
         variant: "success",
         duration: 8000,
       });
     } catch (err: any) {
       triggerShake();
       toast({
-        title: "OTP Dispatch Failed",
-        description: err.response?.data?.message || "Failed to send OTP",
+        title: "Verification code could not be sent",
+        description: err.response?.data?.message || "Please try again.",
         variant: "error",
       });
     } finally {
@@ -286,7 +286,7 @@ export default function LoginPage() {
       </div>
 
       <div className="absolute top-[max(1.25rem,env(safe-area-inset-top))] right-4 sm:right-8 z-20">
-        <ModeSwitcher />
+        <ModeSwitcher variant="icon" />
       </div>
 
       <div className="w-full max-w-md relative z-10 animate-fade-up">
@@ -468,7 +468,7 @@ export default function LoginPage() {
                           Resend in {resendTimer}s
                         </span>
                       ) : (
-                        <button
+                        <Button variant="ghost" size="sm"
                           type="button"
                           onClick={handleRequestPatientOtp}
                           disabled={otpLoading}
@@ -476,7 +476,7 @@ export default function LoginPage() {
                         >
                           <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
                           <span>Resend OTP</span>
-                        </button>
+                        </Button>
                       )}
                     </div>
 
@@ -675,6 +675,9 @@ export default function LoginPage() {
           open={isTwoFactorModalOpen}
           onClose={() => setIsTwoFactorModalOpen(false)}
           title="Two-Factor Authentication"
+          size="sm"
+          presentation="dialog"
+          busy={twoFactorLoading}
           description="Enter the 6-digit verification code from your authenticator app"
         >
           <form

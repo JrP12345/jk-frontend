@@ -5,6 +5,8 @@ export { cn } from "./utils";
 export { ThemeProvider, useTheme, ModeSwitcher, CelestialSun, CelestialMoon } from "./ThemeProvider";
 
 export { default as Button } from "./Button";
+export { default as PrintButton } from "./PrintButton";
+export { default as PrintDialogActions } from "./PrintDialogActions";
 export { default as Input } from "./Input";
 export { default as DatePicker } from "./DatePicker";
 export { default as Textarea } from "./Textarea";

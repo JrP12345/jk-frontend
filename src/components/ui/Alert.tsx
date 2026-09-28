@@ -2,6 +2,7 @@
 
 import { type ReactNode, memo } from "react";
 import { cn } from "./utils";
+import { userFacingError } from "@/lib/userFacingError";
 
 export type AlertVariant = "info" | "success" | "warning" | "error";
 
@@ -75,7 +76,7 @@ const Alert = memo(function Alert({
       <span className="shrink-0 mt-0.5">{icon || style.icon}</span>
       <div className="flex-1 min-w-0 pr-1">
         {title && <p className="font-semibold mb-0.5 text-text tracking-tight">{title}</p>}
-        <div className="opacity-90 leading-relaxed">{children}</div>
+        <div className="opacity-90 leading-relaxed">{variant === "error" && typeof children === "string" ? userFacingError(children, "Please try again. If the problem continues, contact support.") : children}</div>
         {action && <div className="mt-2.5 flex items-center gap-2">{action}</div>}
       </div>
       {dismissible && (
@@ -95,6 +96,5 @@ const Alert = memo(function Alert({
 });
 
 export default Alert;
-
 
 

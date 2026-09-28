@@ -2,12 +2,14 @@
 
 import { type ReactNode, createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useToastPosition } from "@/hooks/useToastPosition";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { cn } from "./utils";
 import { vibrateFeedback } from "@/lib/haptics";
 import { userFacingError } from "@/lib/userFacingError";
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Ekavyu Healthcare OS — Production-Grade Top-Center 3D Stacked Toast Notification Engine
+   Ekavyu notifications — accessible messages below application navigation
    ───────────────────────────────────────────────────────────────────────────── */
 
 export type ToastVariant = "default" | "success" | "error" | "warning" | "info";
@@ -22,6 +24,7 @@ export interface Toast {
 }
 
 export interface ToastContextValue {
+  hasActiveToasts: boolean;
   toast: (options: Omit<Toast, "id" | "duration" | "timestamp"> & { id?: string; duration?: number; variant?: ToastVariant }) => void;
   dismiss: (id: string) => void;
   clearAll: () => void;
@@ -40,154 +43,66 @@ export function useToast() {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [mounted, setMounted] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-
+  const [expanded, setExpanded] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [pageHidden, setPageHidden] = useState(false);
+  const regionRef = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
+  const position = useToastPosition(toasts.length > 0);
   useEffect(() => setMounted(true), []);
-
-  const addToast = useCallback(
-    (options: Omit<Toast, "id" | "duration" | "timestamp"> & { id?: string; duration?: number; variant?: ToastVariant }) => {
-      const now = Date.now();
-      const id = options.id || `toast-${now}-${Math.random().toString(36).substring(2, 7)}`;
-      const variant = options.variant || "default";
-      if (variant === "error") {
-        options = { ...options,
-          title: userFacingError(options.title, "Unable to complete the action"),
-          description: options.description === undefined ? undefined : userFacingError(options.description, "Please try again. If the problem continues, contact support."),
-        };
-      }
-      if (variant === "success" || variant === "error") vibrateFeedback(variant);
-      const duration = options.duration || 4500;
-
-      setToasts((prev) => {
-        // Prevent duplicate toast cards with identical description or title within a 3.5-second window
-        if (options.description || options.title) {
-          const duplicate = prev.find(
-            (t) =>
-              (options.description && t.description === options.description && now - t.timestamp < 3500) ||
-              (options.title && t.title === options.title && now - t.timestamp < 3500)
-          );
-          if (duplicate) {
-            return prev.map((t) =>
-              t.id === duplicate.id ? { ...t, ...options, duration, timestamp: now } : t
-            );
-          }
-        }
-
-        if (options.id && prev.some((t) => t.id === options.id)) {
-          return prev.map((t) => (t.id === options.id ? { ...t, ...options, duration, timestamp: now } : t));
-        }
-        const updated = [...prev, { ...options, id, variant, duration, timestamp: now } as Toast];
-        return updated.slice(-3);
-      });
-    },
-    []
-  );
-
-  const dismiss = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+  useEffect(() => {
+    const update = () => setPageHidden(document.hidden);
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
   }, []);
+  useEffect(() => {
+    if (toasts.length < 2) setExpanded(false);
+    if (!toasts.length) { setPaused(false); previousFocus.current?.focus({ preventScroll: true }); previousFocus.current = null; }
+  }, [toasts.length]);
 
-  const clearAll = useCallback(() => {
-    setToasts([]);
+  const addToast = useCallback((options: Omit<Toast, "id" | "duration" | "timestamp"> & { id?: string; duration?: number; variant?: ToastVariant }) => {
+    const now = Date.now();
+    const id = options.id || "toast-" + now + "-" + Math.random().toString(36).slice(2, 7);
+    const variant = options.variant || "default";
+    options = { ...options,
+      title: userFacingError(options.title, variant === "error" ? "Unable to complete the action" : "Notification"),
+      description: options.description === undefined ? undefined : userFacingError(options.description, variant === "error" ? "Please try again. If the problem continues, contact support." : "Open the related page for details."),
+    };
+    if (variant === "success" || variant === "error") vibrateFeedback(variant);
+    const duration = options.duration || 4500;
+    setToasts(previous => {
+      const duplicate = previous.find(item => (options.id && item.id === options.id) || (now - item.timestamp < 3500 && ((options.description && item.description === options.description) || (options.title && item.title === options.title))));
+      const item = { ...options, id: duplicate?.id || id, variant, duration, timestamp: now } as Toast;
+      return duplicate ? [...previous.filter(old => old.id !== duplicate.id), item] : [...previous, item].slice(-3);
+    });
   }, []);
-
-  const totalToasts = toasts.length;
-  const isStacked = totalToasts > 1;
-
-  return (
-    <ToastContext.Provider value={{ toast: addToast, dismiss, clearAll }}>
-      {children}
-      {mounted &&
-        createPortal(
-          <div
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            className="fixed top-[max(1rem,env(safe-area-inset-top))] right-3 sm:right-6 z-[9999] p-3 -m-3 flex flex-col items-end w-[92vw] sm:w-[390px] max-w-full pointer-events-none select-none"
-          >
-            {/* Expanded Header Clear All Action */}
-            {isHovered && isStacked && (
-              <div className="w-full flex justify-between items-center px-2 mb-2 pointer-events-auto animate-fade-in text-[11px] font-semibold text-text-muted">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
-                  {totalToasts} notifications in stack
-                </span>
-                <button
-                  type="button"
-                  onClick={clearAll}
-                  className="px-2 py-0.5 rounded-md hover:bg-surface-hover text-text-secondary hover:text-text cursor-pointer transition-colors border border-border/60"
-                >
-                  Clear all
-                </button>
-              </div>
-            )}
-
-            {/* Stable Top-Center Stack Container */}
-            <div 
-              className="relative w-full transition-all duration-350 ease-[cubic-bezier(0.32,0.72,0,1)]"
-              style={{
-                height: isHovered 
-                  ? `${toasts.length * 76}px` 
-                  : `${64 + (Math.min(totalToasts - 1, 2) * 14) + (isStacked ? 22 : 0)}px`
-              }}
-            >
-              {toasts.map((t, index) => {
-                const depth = totalToasts - 1 - index; // 0 = front/newest, 1 = behind, 2 = behind
-                const isVisible = isHovered || depth < 3;
-
-                // Precision Sonner-Grade Layered Stack Physics:
-                // Collapsed: depth 0 = 0px, depth 1 = 14px, depth 2 = 28px (visible bottom lip & stepped elevation)
-                // Expanded (Hover): depth 0 = 0px, depth 1 = 76px, depth 2 = 152px, depth 3 = 228px
-                const translateY = isHovered ? depth * 76 : depth * 14;
-                const scale = isHovered ? 1 : Math.max(0.88, 1 - depth * 0.045);
-                const opacity = isVisible ? (isHovered ? 1 : Math.max(0.65, 1 - depth * 0.2)) : 0;
-                const brightness = isHovered ? 1 : Math.max(0.82, 1 - depth * 0.08);
-
-                return (
-                  <div
-                    key={t.id}
-                    className="absolute top-0 left-0 right-0 w-full pointer-events-auto transition-all duration-350 ease-[cubic-bezier(0.32,0.72,0,1)] transform-gpu"
-                    style={{
-                      transform: `translate3d(0, ${translateY}px, 0) scale(${scale})`,
-                      opacity: opacity,
-                      filter: `brightness(${brightness})`,
-                      zIndex: 100 - depth,
-                      transformOrigin: "top center",
-                    }}
-                  >
-                    <ToastItem {...t} onDismiss={() => dismiss(t.id)} isHoveredStack={isHovered} />
-                  </div>
-                );
-              })}
-
-              {/* Floating Multi-Stack Indicator Pill (shows when multiple toasts exist & collapsed) */}
-              {isStacked && !isHovered && (
-                <div
-                  className="absolute left-1/2 -translate-x-1/2 pointer-events-auto transition-all duration-350 ease-[cubic-bezier(0.32,0.72,0,1)]"
-                  style={{
-                    transform: `translate3d(-50%, ${Math.min(totalToasts - 1, 2) * 14 + 58}px, 0)`,
-                    zIndex: 110,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setIsHovered(true)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-tight bg-surface dark:bg-surface-alt text-text-secondary border border-border/80 shadow-md  hover:bg-surface-hover hover:text-text cursor-pointer transition-all hover:scale-105"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
-                    <span>+{totalToasts - 1} more</span>
-                    <span className="text-text-muted text-[9px] font-normal">• hover to view</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>,
-          document.body
-        )}
-    </ToastContext.Provider>
-  );
+  const dismiss = useCallback((id: string) => setToasts(previous => previous.filter(item => item.id !== id)), []);
+  const clearAll = useCallback(() => setToasts([]), []);
+  const newest = toasts.at(-1);
+  return <ToastContext.Provider value={{ toast: addToast, dismiss, clearAll, hasActiveToasts: toasts.length > 0 }}>
+    {children}
+    {mounted && createPortal(<>
+      <div data-overlay-live className="sr-only" role="status" aria-live="polite" aria-atomic="true">{newest ? newest.title + (newest.description ? ". " + newest.description : "") : ""}</div>
+      {newest && <div ref={regionRef} data-overlay-live role="region" aria-label="Notifications" style={position}
+        onMouseEnter={() => setPaused(true)} onMouseLeave={() => { if (!regionRef.current?.contains(document.activeElement)) setPaused(false); }}
+        onFocusCapture={event => { setPaused(true); if (!regionRef.current?.contains(event.relatedTarget as Node)) previousFocus.current = event.relatedTarget as HTMLElement | null; }}
+        onBlurCapture={event => { if (!regionRef.current?.contains(event.relatedTarget as Node)) { setPaused(false); previousFocus.current = null; } }}
+        className="toast-region fixed left-1/2 -translate-x-1/2 z-[9999] flex flex-col w-[calc(100vw-2rem)] max-w-[390px] pointer-events-none">
+        <div id="transient-notification-list" className="flex flex-col gap-2 min-h-0 p-3 -m-3 overflow-y-auto overscroll-contain pointer-events-auto">
+          {[...toasts].reverse().map((item, index) => <div key={item.id} hidden={!expanded && index > 0}><ToastItem {...item} onDismiss={() => dismiss(item.id)} isHoveredStack={paused || expanded || pageHidden || index > 0} /></div>)}
+        </div>
+        {toasts.length > 1 && <div className="flex items-center justify-center gap-2 mt-2 shrink-0 pointer-events-auto">
+          <button type="button" aria-expanded={expanded} aria-controls="transient-notification-list" onClick={() => setExpanded(value => !value)}
+            className="min-h-11 px-3 rounded-xl text-xs font-medium bg-surface text-text-secondary border border-border shadow-sm cursor-pointer hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+            {expanded ? "Show latest" : "Show " + (toasts.length - 1) + " more"}
+          </button>
+          {expanded && <button type="button" onClick={clearAll} className="min-h-11 px-3 rounded-xl text-xs font-medium bg-surface text-text-secondary border border-border shadow-sm cursor-pointer hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Clear all</button>}
+        </div>}
+      </div>}
+    </>, document.body)}
+  </ToastContext.Provider>;
 }
-
-/* ── Status Icons ──────────────────────────────────────────────────────────── */
 
 const icons: Record<ToastVariant, ReactNode> = {
   default: (
@@ -245,153 +160,39 @@ const progressColors: Record<ToastVariant, string> = {
 
 /* ── Toast Item Component ──────────────────────────────────────────────────── */
 
-interface ToastItemProps extends Toast {
-  onDismiss: () => void;
-  isHoveredStack: boolean;
-}
+interface ToastItemProps extends Toast { onDismiss: () => void; isHoveredStack: boolean; }
 
-function ToastItem({ id, title, description, variant, duration, onDismiss, isHoveredStack }: ToastItemProps) {
+function ToastItem({ title, description, variant, duration, timestamp, onDismiss, isHoveredStack }: ToastItemProps) {
   const [exiting, setExiting] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-
-  const startPosRef = useRef({ x: 0, y: 0 });
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const isPaused = paused || isHoveredStack;
-
-  // Auto Dismiss Timer with pause support
+  const gesture = useSwipeGesture({ axis: "x", enabled: !exiting, threshold: 90, onSwipe: () => setExiting(true) });
+  const remaining = useRef(duration);
+  const dismissRef = useRef(onDismiss);
+  useEffect(() => { dismissRef.current = onDismiss; }, [onDismiss]);
+  useEffect(() => { remaining.current = duration; setExiting(false); }, [timestamp, duration]);
   useEffect(() => {
-    if (isPaused) return;
-    timerRef.current = setTimeout(() => {
-      setExiting(true);
-      setTimeout(onDismiss, 200);
-    }, duration);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [duration, onDismiss, isPaused]);
-
-  // Window Drag Listeners
+    if (isHoveredStack || gesture.dragging || exiting) return;
+    const started = Date.now();
+    const timer = setTimeout(() => setExiting(true), remaining.current);
+    return () => { clearTimeout(timer); remaining.current = Math.max(0, remaining.current - (Date.now() - started)); };
+  }, [isHoveredStack, gesture.dragging, exiting, timestamp, duration]);
   useEffect(() => {
-    if (!isDragging) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const dx = e.clientX - startPosRef.current.x;
-      const dy = Math.min(0, e.clientY - startPosRef.current.y); // only allow dragging up
-      setDragOffset({ x: dx, y: dy });
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      if (Math.abs(dragOffset.x) > 90 || dragOffset.y < -35) {
-        setExiting(true);
-        setTimeout(onDismiss, 160);
-      } else {
-        setDragOffset({ x: 0, y: 0 });
-      }
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isDragging, dragOffset, onDismiss]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return;
-    startPosRef.current = { x: e.clientX, y: e.clientY };
-    setIsDragging(true);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    startPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    setIsDragging(true);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
-    const dx = e.touches[0].clientX - startPosRef.current.x;
-    const dy = Math.min(0, e.touches[0].clientY - startPosRef.current.y);
-    setDragOffset({ x: dx, y: dy });
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-    if (Math.abs(dragOffset.x) > 90 || dragOffset.y < -35) {
-      setExiting(true);
-      setTimeout(onDismiss, 160);
-    } else {
-      setDragOffset({ x: 0, y: 0 });
-    }
-  };
-
-  const triggerDismiss = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExiting(true);
-    setTimeout(onDismiss, 180);
-  };
-
-  const hasDrag = dragOffset.x !== 0 || dragOffset.y !== 0;
-
-  return (
-    <div
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onMouseDown={handleMouseDown}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      className={cn(
-        "relative flex items-start gap-3 border rounded-2xl p-3 px-3.5 min-h-[58px]    bg-surface dark:bg-surface cursor-grab active:cursor-grabbing select-none overflow-hidden transform-gpu transition-all duration-200 ",
-        variantBorders[variant],
-        exiting ? "animate-toast-exit opacity-0 scale-95 -translate-y-4" : "animate-toast-enter"
-      )}
-      style={{
-        transform: hasDrag ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)` : undefined,
-        opacity: hasDrag ? Math.max(0, 1 - Math.hypot(dragOffset.x, dragOffset.y) / 200) : undefined,
-        transition: isDragging ? "none" : undefined,
-      }}
-      role="status"
-      aria-live="polite"
-    >
-      {/* Icon */}
-      {icons[variant]}
-
-      {/* Content */}
-      <div className="flex-1 min-w-0 pt-0.5">
-        <p className="text-xs font-bold text-text tracking-tight leading-snug">{title}</p>
-        {description && <p className="text-[11px] text-text-secondary mt-0.5 leading-relaxed">{description}</p>}
-      </div>
-
-      {/* Dismiss Button */}
-      <button
-        type="button"
-        onClick={triggerDismiss}
-        onMouseDown={(e) => e.stopPropagation()}
-        className="shrink-0 p-1 rounded-lg cursor-pointer text-text-muted hover:text-text hover:bg-surface-hover transition-colors focus-visible:outline-none"
-        aria-label="Dismiss notification"
-      >
-        <svg className="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth={2.5}>
-          <path d="M3 3l8 8M11 3l-8 8" strokeLinecap="round" />
-        </svg>
-      </button>
-
-      {/* Progress Countdown Bar */}
-      <div
-        className={cn(
-          "absolute bottom-0 left-0 h-0.5 rounded-b-2xl opacity-70 animate-toast-progress",
-          progressColors[variant]
-        )}
-        style={{
-          animationDuration: `${duration}ms`,
-          animationPlayState: isPaused ? "paused" : "running",
-        }}
-      />
+    if (!exiting) return;
+    const timer = setTimeout(() => dismissRef.current(), 180);
+    return () => clearTimeout(timer);
+  }, [exiting]);
+  return <div role="group" aria-label={title}
+    {...gesture.handlers}
+    className={cn("relative flex items-start gap-3 border rounded-2xl p-3 bg-surface-elevated shadow-xl ring-1 ring-border/50 overflow-hidden [touch-action:pan-y_pinch-zoom] transition-all duration-200", variantBorders[variant], exiting ? "animate-toast-exit opacity-0" : "animate-toast-enter")}
+    style={{ translate: gesture.offset ? `${gesture.offset}px 0` : undefined, transition: gesture.dragging ? "none" : undefined }}>
+    {icons[variant]}
+    <div className="flex-1 min-w-0 pt-0.5 break-words">
+      <p className="text-sm font-semibold text-text leading-snug">{title}</p>
+      {description && <p className="text-xs text-text-secondary mt-1 leading-relaxed">{description}</p>}
     </div>
-  );
+    <button type="button" disabled={exiting} onClick={() => setExiting(true)} aria-label="Dismiss notification"
+      className="shrink-0 w-11 h-11 -mt-1 -mr-1 flex items-center justify-center rounded-xl text-text-muted hover:text-text hover:bg-surface-hover cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+      <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2}><path d="M4 4l8 8M12 4l-8 8" /></svg>
+    </button>
+    <div aria-hidden="true" className={cn("absolute bottom-0 left-0 h-0.5 opacity-60 animate-toast-progress", progressColors[variant])} style={{ animationDuration: duration + "ms", animationPlayState: isHoveredStack ? "paused" : "running" }} />
+  </div>;
 }

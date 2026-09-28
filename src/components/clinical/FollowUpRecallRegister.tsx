@@ -106,8 +106,8 @@ export function FollowUpRecallRegister({
       });
 
       toast({
-        title: "WhatsApp Recall Dispatched! 🚀",
-        description: res.data?.message || `Follow-up review ping sent to ${item.patient.name}.`,
+        title: "WhatsApp reminder sent",
+        description: `A follow-up reminder was sent to ${item.patient.name}.`,
         variant: "success",
       });
 
@@ -125,7 +125,7 @@ export function FollowUpRecallRegister({
       );
     } catch (err: any) {
       toast({
-        title: "Recall Failed",
+        title: "Reminder could not be sent",
         description: err.response?.data?.message || "Could not send WhatsApp reminder.",
         variant: "error",
       });
@@ -139,15 +139,15 @@ export function FollowUpRecallRegister({
       setCheckingInId(item.id);
       await api.post(`/appointments/${item.id}/check-in`);
       toast({
-        title: "Patient Checked In! ✓",
-        description: `${item.patient.name} (Token #${item.tokenNumber}) added to today's active consultation queue.`,
+        title: "Patient checked in",
+        description: `${item.patient.name} was added to today's queue with token #${item.tokenNumber}.`,
         variant: "success",
       });
       await fetchFollowUps();
       if (onCheckInSuccess) onCheckInSuccess();
     } catch (err: any) {
       toast({
-        title: "Check-In Error",
+        title: "Patient could not be checked in",
         description: err.response?.data?.message || "Could not check in patient.",
         variant: "error",
       });
@@ -425,7 +425,7 @@ export function FollowUpRecallRegister({
                         title="Send personalized WhatsApp recall message with direct live wait tracker"
                       >
                         <Send className="w-3.5 h-3.5" />
-                        Send WhatsApp Recall
+                        Send WhatsApp reminder
                       </Button>
                     )}
                   </div>

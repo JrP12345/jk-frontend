@@ -399,8 +399,8 @@ export default function PatientsDirectoryPage() {
               onClick={fetchPatients}
               disabled={isRefreshing}
               className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
-            >
-              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
+             loading={isRefreshing}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
             </Button>
 
@@ -474,7 +474,7 @@ export default function PatientsDirectoryPage() {
               size="sm"
               disabled={loading}
               className="font-semibold rounded-xl shrink-0 shadow-xs min-h-[40px] px-4"
-            >
+             loading={loading}>
               Search
             </Button>
           </div>

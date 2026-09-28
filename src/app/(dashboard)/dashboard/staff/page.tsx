@@ -771,8 +771,8 @@ export default function StaffPage() {
               onClick={loadData}
               disabled={isRefreshing}
               className="w-full sm:w-auto min-h-[40px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors justify-center order-2 sm:order-1"
-            >
-              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
+             loading={isRefreshing}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
             </Button>
           </div>
@@ -810,7 +810,7 @@ export default function StaffPage() {
             content: (
               <div className="space-y-4 pt-1">
                 {/* Role Filter Bar */}
-                <div className="flex items-center gap-1.5 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto [scrollbar-width:none] touch-pan-x w-full sm:w-fit max-w-full">
+                <div className="flex items-center gap-1.5 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto [scrollbar-width:none] touch-manipulation w-full sm:w-fit max-w-full">
                   <span className="text-[11px] font-bold text-text-muted px-2.5 shrink-0">Filter:</span>
                   {roleFilterTabs.map((filter) => {
                     const isSelected = selectedRoleFilter === filter.key;

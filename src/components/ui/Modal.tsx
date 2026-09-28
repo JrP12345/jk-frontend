@@ -1,9 +1,11 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState, useId } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState, useId } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "./utils";
 import { useOverlayFocus } from "@/hooks/useOverlayFocus";
+import { useOverlayViewport } from "@/hooks/useOverlayViewport";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import Spinner from "./Spinner";
 
 /* ────────────────────────────────────────────────
@@ -27,15 +29,31 @@ export interface ModalProps {
   footer?: ReactNode;
   closeOnOverlay?: boolean;
   className?: string;
+  viewportClassName?: string;
+  viewportStyle?: CSSProperties;
   bodyClassName?: string;
+  contentClassName?: string;
   headerClassName?: string;
   footerClassName?: string;
   loading?: boolean;
+  /** Submission feedback belongs to the action button. */
+  busy?: boolean;
+  presentation?: "dialog" | "sheet";
+  placement?: "center" | "top";
   loadingText?: string;
   showCloseButton?: boolean;
 }
 
 const sizeStyles: Record<ModalSize, string> = {
+  sm: "max-w-sm",
+  md: "max-w-md",
+  lg: "max-w-lg",
+  xl: "max-w-2xl",
+  "2xl": "max-w-4xl",
+  full: "max-w-[calc(100vw-2rem)]",
+};
+
+const sheetSizeStyles: Record<ModalSize, string> = {
   sm: "md:max-w-sm",
   md: "md:max-w-md",
   lg: "md:max-w-lg",
@@ -59,10 +77,16 @@ export default function Modal({
   footer,
   closeOnOverlay = true,
   className = "",
+  viewportClassName = "",
+  viewportStyle,
   bodyClassName = "",
+  contentClassName = "",
   headerClassName = "",
   footerClassName = "",
   loading = false,
+  busy = false,
+  presentation = "dialog",
+  placement = "center",
   loadingText,
   showCloseButton = true,
 }: ModalProps) {
@@ -74,7 +98,10 @@ export default function Modal({
   const id = useId();
   const titleId = `${id}-title`;
   const descriptionId = `${id}-description`;
-  useOverlayFocus(open && render && mounted, modalRef, () => { if (!loading) onClose(); });
+  const blocked = loading || busy;
+  const sheetGesture = useSwipeGesture({ axis: "y", direction: "down", enabled: open && presentation === "sheet" && !blocked, onSwipe: onClose });
+  const viewport = useOverlayViewport(render);
+  useOverlayFocus(render && mounted, modalRef, () => { if (!blocked) onClose(); });
 
   useEffect(() => {
     setMounted(true);
@@ -100,14 +127,14 @@ export default function Modal({
   const hasHeader = Boolean(header || title || description);
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+    <div style={{ ...viewport, ...viewportStyle }} className={cn("fixed inset-0 z-[1000] flex justify-center", presentation === "sheet" ? "p-0 md:p-4" : "p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]", placement === "top" ? "items-start" : presentation === "sheet" ? "items-end md:items-center" : "items-center", viewportClassName)}>
       {/* Overlay Backdrop */}
       <div
         className={cn(
-          "absolute inset-0 bg-black/60  cursor-pointer transition-all duration-200",
+          "overlay-backdrop absolute inset-0 cursor-pointer transition-all duration-200",
           isExiting ? "animate-backdrop-out" : "animate-backdrop-in"
         )}
-        onClick={closeOnOverlay && !loading ? onClose : undefined}
+        onClick={closeOnOverlay && !blocked ? onClose : undefined}
         aria-hidden="true"
       />
 
@@ -117,26 +144,33 @@ export default function Modal({
         id={id}
         role="dialog"
         aria-modal="true"
+        aria-busy={blocked || undefined}
         tabIndex={-1}
         aria-labelledby={ariaLabelledBy || (title && !header ? titleId : undefined)}
         aria-describedby={ariaDescribedBy || (description && !header ? descriptionId : undefined)}
         aria-label={ariaLabel || (!ariaLabelledBy && (!title || header) ? title || "Dialog" : undefined)}
+        style={{ translate: sheetGesture.offset ? `0 ${sheetGesture.offset}px` : undefined, transition: sheetGesture.dragging ? "none" : "translate 180ms ease" }}
         className={cn(
-          "relative w-full bg-surface  rounded-t-3xl md:rounded-2xl shadow-lg border border-border/80 ring-1 ring-border/50 flex flex-col focus:outline-none overflow-hidden max-h-[92dvh] md:max-h-[90dvh] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0 transform-gpu ",
-          isExiting ? "animate-sheet-out" : "animate-sheet-in",
-          sizeStyles[size],
+          "relative w-full bg-surface shadow-lg border border-border/80 ring-1 ring-border/50 flex flex-col focus:outline-none overflow-hidden md:max-h-[min(90dvh,100%)] transform-gpu",
+          presentation === "sheet"
+            ? "rounded-t-3xl md:rounded-2xl max-h-[min(92dvh,100%)] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0"
+            : "rounded-2xl max-h-full",
+          presentation === "sheet"
+            ? isExiting ? "animate-sheet-out" : "animate-sheet-in"
+            : isExiting ? "animate-dialog-out" : "animate-dialog-in",
+          presentation === "sheet" ? sheetSizeStyles[size] : sizeStyles[size],
           className
         )}
       >
         {/* Mobile Sheet Drag Handle */}
-        <div className="w-full flex items-center justify-center pt-2.5 pb-0.5 md:hidden shrink-0">
+        {presentation === "sheet" && <div {...sheetGesture.handlers} aria-hidden="true" className="w-full h-8 flex items-center justify-center md:hidden shrink-0 [touch-action:pan-x_pinch-zoom]">
           <div className="w-10 h-1 rounded-full bg-border" />
-        </div>
+        </div>}
 
         {/* Sticky Header Section */}
         {hasHeader && (
           <div className={cn(
-            "px-4 md:px-6 pt-2.5 md:pt-4 pb-3 md:pb-3.5 shrink-0 border-b border-border/70 bg-surface-alt/40  relative pr-12",
+            "px-4 md:px-6 pt-4 pb-3 md:pb-3.5 shrink-0 border-b border-border/70 bg-surface-alt/40 relative pr-14",
             headerClassName
           )}>
             {header ? (
@@ -161,7 +195,7 @@ export default function Modal({
         {/* Scrollable Content Body */}
         <div
           className={cn(
-            "overflow-y-auto flex-1 min-h-0 touch-scroll relative p-4 md:p-5",
+            "overflow-y-auto overscroll-contain flex-1 min-h-0 touch-scroll relative p-4 md:p-5",
             bodyClassName
           )}
         >
@@ -174,7 +208,7 @@ export default function Modal({
               <Spinner size="md" label={loadingText || "Loading..."} />
             </div>
           )}
-          <div className={cn("w-full transition-opacity duration-200", loading && "opacity-30 pointer-events-none")}>
+          <div inert={loading || undefined} className={cn("w-full transition-opacity duration-200", loading && "opacity-30 pointer-events-none", contentClassName)}>
             {children}
           </div>
         </div>
@@ -194,7 +228,7 @@ export default function Modal({
           <button
             type="button"
             onClick={onClose}
-            disabled={loading}
+            disabled={blocked}
             className="absolute top-2 right-2 md:top-3 md:right-3 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-xl cursor-pointer text-text-muted hover:text-text hover:bg-surface-hover active:scale-95 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring z-20 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label="Close modal"
           >
@@ -250,5 +284,3 @@ export function ModalFooter({
     </div>
   );
 }
-
-

@@ -1,42 +1,19 @@
 "use client";
 
-import { useState, useRef, useEffect, useId } from "react";
-import { createPortal } from "react-dom";
-import { useOverlayFocus } from "@/hooks/useOverlayFocus";
-import { popoverPosition } from "@/lib/popoverPosition";
+import { useState, useId } from "react";
+import Modal from "@/components/ui/Modal";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { useToastPosition } from "@/hooks/useToastPosition";
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const { unreadCount } = useNotifications();
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
   const id = useId();
-  const [coords, setCoords] = useState<ReturnType<typeof popoverPosition> | null>(null);
-  useOverlayFocus(isOpen && !!coords, panelRef, () => setIsOpen(false), false);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const update = () => { if (dropdownRef.current) setCoords(popoverPosition(dropdownRef.current.getBoundingClientRect(), 384, 520, "right")); };
-    update();
-    window.addEventListener("resize", update);
-    window.visualViewport?.addEventListener("resize", update);
-    return () => { window.removeEventListener("resize", update); window.visualViewport?.removeEventListener("resize", update); };
-  }, [isOpen]);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) && !panelRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const position = useToastPosition(isOpen);
 
   return (
-    <div className="relative z-[999]" ref={dropdownRef}>
+    <div className="relative">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -67,11 +44,21 @@ export function NotificationBell() {
         )}
       </button>
 
-      {isOpen && coords && createPortal(
-        <div ref={panelRef} id={id} role="dialog" aria-label="Notifications" tabIndex={-1} style={{ position: "fixed", top: coords.top, bottom: coords.bottom, left: coords.left, width: coords.width, maxHeight: coords.maxHeight, zIndex: 99999 }} className="flex flex-col">
-          <NotificationDropdown onClose={() => setIsOpen(false)} />
-        </div>, document.body
-      )}
+      <Modal
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="Notifications"
+        size="sm"
+        placement="top"
+        className="notification-dialog"
+        viewportClassName="notification-dialog-viewport"
+        viewportStyle={position}
+        headerClassName="!bg-surface !py-4"
+        bodyClassName="!p-0 !overflow-hidden flex flex-col"
+        contentClassName="flex flex-col flex-auto min-h-0"
+      >
+        <div id={id} className="flex flex-col flex-auto min-h-0"><NotificationDropdown onClose={() => setIsOpen(false)} /></div>
+      </Modal>
     </div>
   );
 }

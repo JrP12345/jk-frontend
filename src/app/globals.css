@@ -158,15 +158,11 @@
 @keyframes toast-enter {
   0% {
     opacity: 0;
-    transform: translateY(-24px) scale(0.92);
-  }
-  60% {
-    opacity: 1;
-    transform: translateY(4px) scale(1.02);
+    transform: translateY(-6px);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
@@ -182,7 +178,7 @@
 }
 
 .animate-toast-enter {
-  animation: toast-enter 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+  animation: toast-enter 0.2s ease-out forwards;
 }
 
 .animate-toast-exit {
@@ -996,107 +992,36 @@ body {
 
 /* ── Global Print Stylesheet ─────────────────── */
 @media print {
-  body {
-    background: #ffffff !important;
-    color: #000000 !important;
-    font-size: 12pt !important;
+  @page { size: A4; margin: 10mm; }
+  html, body {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: var(--print-text) !important;
+    font-size: 12pt;
   }
-  aside, nav, header, footer, button, .no-print, [role="navigation"] {
+  aside, nav, header, footer, button, .no-print, [role="navigation"], .fixed {
     display: none !important;
   }
   main, .print-area {
-    margin: 0 !important;
-    padding: 0 !important;
     width: 100% !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    border: none !important;
-  }
-  table {
-    width: 100% !important;
-    border-collapse: collapse !important;
-  }
-  th, td {
-    border: 1px solid var(--print-border) !important;
-    padding: 8px !important;
-    color: #000000 !important;
-  }
-}
-
-/* ── Specific Prescription Modal Print Handler ─────────────────── */
-@media print {
-  @page {
-    size: A4;
-    margin: 10mm;
-  }
-  html, body {
-    background: #ffffff !important;
-    color: #000000 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-  }
-  
-  aside, nav, header, footer, button, .no-print, [role="navigation"] {
-    display: none !important;
-  }
-
-  /* Reset modal overlay vertical centering when printing */
-  div[role="dialog"], .fixed, .min-h-screen, .items-center {
-    position: static !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
     border: none !important;
-    overflow: visible !important;
-    display: block !important;
   }
-
-  #printable-prescription {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #ffffff !important;
-    color: #000000 !important;
-    border: none !important;
-    box-shadow: none !important;
-  }
-
-  #printable-prescription * {
-    color: #000000 !important;
-  }
-
-  #printable-prescription .rx-meta-box {
-    background: var(--print-background) !important;
-    border: 1px solid var(--print-border) !important;
-  }
-
-  #printable-prescription table {
-    width: 100% !important;
-    border: 1px solid var(--print-border) !important;
-    border-collapse: collapse !important;
-  }
-
-  #printable-prescription th {
-    background: var(--print-surface-muted) !important;
-    border-bottom: 2px solid var(--print-input-border) !important;
-    padding: 8px 12px !important;
-  }
-
-  #printable-prescription td {
-    border-bottom: 1px solid var(--print-border) !important;
-    padding: 8px 12px !important;
-  }
+  table { width: 100% !important; border-collapse: collapse !important; }
+  th, td { border: 1px solid var(--print-border) !important; padding: 8px !important; color: var(--print-text) !important; }
+  th { background: var(--print-surface-muted) !important; }
+  tr, img { break-inside: avoid; }
+  h1, h2, h3 { break-after: avoid; }
 }
+
 
 /* ────────────────────────────────────────────────
    Mobile-First Touch & Usability Enhancements
@@ -1187,6 +1112,32 @@ button, a, input, select, textarea {
 
 /* Shared touch sizing without enlarging dense calendar grids. */
 .touch-target { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
+
+/* A single quiet backdrop for dialogs and navigation overlays. */
+.overlay-backdrop {
+  background: rgb(5 24 23 / 58%);
+  -webkit-backdrop-filter: blur(8px) saturate(115%);
+  backdrop-filter: blur(8px) saturate(115%);
+}
+
+/* Transient messages clear navigation and the visible viewport edges. */
+.toast-region,
+.install-banner-region {
+  --toast-top: max(calc(env(safe-area-inset-top) + 0.75rem), var(--toast-header-offset, 1rem), var(--toast-visible-top, 1rem));
+  top: var(--toast-top);
+  max-height: max(0px, calc(var(--toast-viewport-bottom, 100dvh) - var(--toast-top) - env(safe-area-inset-bottom) - 1rem));
+}
+/* Notification previews stay compact; the full inbox lives on its own page. */
+.notification-dialog-viewport {
+  --notification-top: max(5rem, var(--toast-header-offset, 5rem), calc(env(safe-area-inset-top) + 1rem));
+  padding-top: var(--notification-top);
+}
+.notification-dialog {
+  max-height: min(28rem, calc(var(--toast-viewport-bottom, 100dvh) - var(--notification-top, 5rem) - 1rem));
+}
+.notification-preview-list {
+  max-height: min(17rem, 35dvh);
+}
 @media (min-width: 768px) and (pointer: fine) { .touch-target { min-height: 32px; min-width: 32px; } }
 @media (pointer: coarse) { button[data-touch-control], input[data-touch-control], select[data-touch-control] { min-height: 44px; } }
 

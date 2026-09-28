@@ -83,6 +83,20 @@ describe("Button Loading State Tests", () => {
 });
 
 describe("Card Loading Overlay Tests", () => {
+  it("lets an explicitly sized card replace the shared default padding", () => {
+    const { container } = render(<Card className="p-8 sm:p-12">Preview</Card>);
+    const card = container.firstElementChild;
+    expect(card).toHaveClass("p-8", "sm:p-12");
+    expect(card).not.toHaveClass("p-4", "sm:p-5");
+  });
+
+  it("keeps mobile padding when only a wider-screen override is supplied", () => {
+    const { container } = render(<Card className="sm:p-8">Preview</Card>);
+    const card = container.firstElementChild;
+    expect(card).toHaveClass("p-4", "sm:p-8");
+    expect(card).not.toHaveClass("sm:p-5");
+  });
+
   it("renders card loading overlay while keeping content mounted", () => {
     render(
       <Card loading={true} loadingText="Updating analytics...">

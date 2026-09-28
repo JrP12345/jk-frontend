@@ -8,6 +8,7 @@ import { EncounterWorkspace } from "@/components/clinical/EncounterWorkspace";
 import type { PatientHeaderData } from "@/components/clinical/PatientHeader";
 import { Alert, Button, Skeleton, SkeletonCard } from "@/components/ui";
 import { RotateCw, ArrowLeft } from "lucide-react";
+import { userFacingError } from "@/lib/userFacingError";
 
 interface ConsultationClientWorkspaceProps {
   appointmentId: string;
@@ -114,7 +115,7 @@ export function ConsultationClientWorkspace({
         }
       } catch (err: any) {
         if (isMounted) {
-          setError(err.response?.data?.message || err.message || "Failed to initialize consultation workspace");
+          setError(userFacingError(err.response?.data?.message || err.message, "This consultation could not be opened. Please try again."));
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -130,7 +131,7 @@ export function ConsultationClientWorkspace({
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Initializing clinical encounter workspace">
+      <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading consultation">
         {/* Patient Header Banner Skeleton */}
         <div className="p-4 sm:p-5 bg-surface border border-border/80 rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
@@ -173,8 +174,8 @@ export function ConsultationClientWorkspace({
   if (error || !encounterId || !patientData) {
     return (
       <div className="p-8 max-w-2xl mx-auto space-y-4">
-        <Alert variant="error" title="Workspace Initialization Error">
-          {error || "Unable to start active encounter session. Please try again or return to queue."}
+        <Alert variant="error" title="Consultation could not be opened">
+          {error || "Please try again or return to the queue."}
         </Alert>
         <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
           <Button

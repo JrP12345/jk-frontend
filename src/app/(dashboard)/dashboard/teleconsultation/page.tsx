@@ -436,14 +436,14 @@ export default function TeleconsultationPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Teleconsultation & Virtual Care
+                Video consultations
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Virtual Care Desk
+                Virtual care
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Real-time virtual waiting room, WebRTC video consultation workspace, live vitals, and instant prescribing.
+              Manage video visits, review patient details, and write prescriptions.
             </p>
           </div>
 
@@ -454,8 +454,8 @@ export default function TeleconsultationPage() {
               onClick={fetchData}
               disabled={loading}
               className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
-            >
-              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
+             loading={loading}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh Desk
             </Button>
 
@@ -507,7 +507,7 @@ export default function TeleconsultationPage() {
          ────────────────────────────────────────────────────────────────────────── */}
       <div className="p-3.5 sm:p-4 bg-surface rounded-2xl border border-border/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Status Pills */}
-        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-pan-x scrollbar-none w-full md:w-fit max-w-full">
+        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-manipulation scrollbar-none w-full md:w-fit max-w-full">
           {[
             { key: "all", label: "All Telehealth Visits", count: totalVirtual },
             { key: "checked-in", label: "Waiting Room", count: waitingCount },
@@ -1008,7 +1008,7 @@ export default function TeleconsultationPage() {
       <Modal
         isOpen={isLaunchModalOpen}
         onClose={() => setIsLaunchModalOpen(false)}
-        title="📹 Provision Teleconsultation Room"
+        title="Start video consultation"
         size="md"
         footer={
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 w-full">
@@ -1016,7 +1016,7 @@ export default function TeleconsultationPage() {
               Cancel
             </Button>
             <Button type="submit" form="launch-session-form" variant="primary" size="sm" loading={launchingSession} className="bg-primary hover:bg-primary text-brand-mist w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
-              Provision Room
+              Create video room
             </Button>
           </div>
         }

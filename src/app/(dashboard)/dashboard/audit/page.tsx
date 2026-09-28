@@ -223,7 +223,7 @@ export default function AuditLogsPage() {
       if (action === "VIP_OVERRIDE") {
         return (
           <span className="text-xs text-text-secondary">
-            Manual queue reorder (VIP Shift) applied. Doctor ID: <span className="font-mono text-text">{details.doctorId}</span>. Date: <span className="text-text">{details.date}</span>.
+            Queue order adjusted for a priority visit. Doctor: <span className="font-mono text-text">{details.doctorId}</span>. Date: <span className="text-text">{details.date}</span>.
           </span>
         );
       }
@@ -236,10 +236,21 @@ export default function AuditLogsPage() {
         );
       }
 
+      const fields = typeof details === "object" && !Array.isArray(details)
+        ? Object.entries(details as Record<string, unknown>)
+          .filter(([key, value]) => value != null && ["string", "number", "boolean"].includes(typeof value) && !/password|secret|token|stack|header|payload|response|raw|metadata/i.test(key) && !/^[\[{]/.test(String(value)))
+          .slice(0, 4)
+        : [];
+      if (!fields.length) return <span className="text-xs text-text-muted">Activity details recorded</span>;
       return (
-        <pre className="text-[10px] max-w-xs font-mono text-text-secondary overflow-x-auto bg-surface-alt p-1 rounded">
-          {JSON.stringify(details, null, 2)}
-        </pre>
+        <dl className="grid gap-1 text-xs text-text-secondary max-w-xs">
+          {fields.map(([key, value]) => (
+            <div key={key} className="flex gap-1.5 min-w-0">
+              <dt className="font-medium text-text shrink-0">{key.replace(/Id$/, "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]/g, " ")}:</dt>
+              <dd className="truncate" title={String(value)}>{String(value)}</dd>
+            </div>
+          ))}
+        </dl>
       );
     } catch (e) {
       return <span className="text-xs text-text-muted">Could not parse details</span>;
@@ -256,14 +267,14 @@ export default function AuditLogsPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Audit Trail & Compliance Logs
+                Audit log
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
                 Security & Compliance
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Track clinical mutations, security access events, VIP overrides, and administrative modifications.
+              Review changes to clinical records, account access, queue priority, and settings.
             </p>
           </div>
 
@@ -288,8 +299,8 @@ export default function AuditLogsPage() {
               onClick={() => fetchLogs()}
               disabled={loading}
               className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
-            >
-              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
+             loading={loading}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh Logs
             </Button>
           </div>

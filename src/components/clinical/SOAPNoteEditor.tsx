@@ -1,5 +1,8 @@
 "use client";
 
+import PrintButton from "@/components/ui/PrintButton";
+import { printHtml } from "@/lib/printBrand";
+
 import { useUnsavedClinicalChanges } from "@/hooks/useUnsavedClinicalChanges";
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
@@ -7,7 +10,7 @@ import { SOAPService } from "@/services/soap.service";
 import { Modal, Button, Badge, Spinner, Textarea, Select, Dropdown } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "./UnifiedDocumentModal";
 import { PreviousVisitsSidebar } from "./PreviousVisitsSidebar";
-import { Sparkles, Printer, History, Save, Lock, CheckCircle2, Edit3, FileSpreadsheet, ChevronDown } from "lucide-react";
+import { Sparkles, History, Save, Lock, CheckCircle2, Edit3, FileSpreadsheet, ChevronDown } from "lucide-react";
 
 interface SOAPNoteEditorProps {
   patientId: string;
@@ -272,8 +275,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
 
   const handleOpenPrintModal = () => {
     if (encounterId) {
-      window.open(`/api/v1/encounters/${encounterId}/prescription/print`, "_blank");
-      return;
+      return api.get<string>(`/encounters/${encounterId}/prescription/print`, { responseType: "text" }).then(response => printHtml(response.data));
     }
     setUnifiedDoc({
       documentType: "prescription",
@@ -536,7 +538,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                 disabled={generatingAI}
                 onClick={handleGenerateAISOAP}
                 className="font-semibold rounded-xl shadow-xs min-h-[38px]"
-              >
+               loading={generatingAI}>
                 <Sparkles className="w-3.5 h-3.5 mr-1.5" />
                 <span>{generatingAI ? "Generating AI SOAP..." : "AI Auto-Draft SOAP"}</span>
               </Button>
@@ -568,15 +570,13 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
             </>
           )}
 
-          <Button
+          <PrintButton
             size="sm"
             variant="outline"
-            onClick={handleOpenPrintModal}
-            className="rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs min-h-[38px]"
+            onPrint={handleOpenPrintModal}
+            className="rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs min-h-[38px]" documentName="prescription" preview={!encounterId}
           >
-            <Printer className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
-            Print Rx PDF
-          </Button>
+              </PrintButton>
           <Button
             size="sm"
             variant="outline"
@@ -601,7 +601,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                 onClick={handleSaveDraft}
                 disabled={loading || signing}
                 className="font-semibold rounded-xl shadow-xs min-h-[38px]"
-              >
+               loading={loading}>
                 <Save className="w-3.5 h-3.5 mr-1.5" />
                 {loading ? "Saving..." : "Save Draft SOAP"}
               </Button>
@@ -613,7 +613,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
                   onClick={handleSignNote}
                   disabled={signing || loading}
                   className="font-semibold rounded-xl shadow-xs min-h-[38px]"
-                >
+                 loading={signing}>
                   <Lock className="w-3.5 h-3.5 mr-1.5" />
                   {signing ? "Signing..." : "Sign & Lock Note"}
                 </Button>
@@ -932,7 +932,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
       </Modal>
 
       {/* Amend Note Modal */}
-      <Modal isOpen={amendOpen} onClose={() => setAmendOpen(false)} title="Amend Signed Clinical Note" loading={submittingAmend}>
+      <Modal isOpen={amendOpen} onClose={() => setAmendOpen(false)} title="Amend Signed Clinical Note" busy={submittingAmend}>
         <form onSubmit={handleAmendSubmit} className="space-y-4">
           <Textarea
             label="Reason for Amendment *"

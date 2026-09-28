@@ -1,9 +1,13 @@
 "use client";
 
+import { rememberTrackerLink } from "@/store/trackerStore";
+import { useAuthStore } from "@/store/authStore";
+
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { userFacingError } from "@/lib/userFacingError";
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, useToast, ModeSwitcher, cn } from "@/components/ui";
 import { Stethoscope, MapPin, Users, Clock, CheckCircle2, AlertCircle, Sparkles, Phone, ShieldCheck, ChevronRight, ArrowRight, UserCheck, RefreshCw, Building2 } from "lucide-react";
 
@@ -95,14 +99,13 @@ export default function JoinClinicQueuePage() {
             setSelectedDoctorId(firstAvailable.doctorId);
           }
         } else {
-          setError(res.data?.message || "Clinic facility could not be found.");
+          setError(userFacingError(res.data?.message, "This clinic could not be found."));
         }
       } catch (err: any) {
         console.error("Failed to load clinic details:", err);
         if (isMounted) {
           setError(
-            err.response?.data?.message ||
-              "Unable to load clinic details. Please scan the QR poster again or contact the front desk."
+            userFacingError(err.response?.data?.message, "Clinic details could not be loaded. Scan the QR code again or ask reception for help.")
           );
         }
       } finally {
@@ -161,6 +164,7 @@ export default function JoinClinicQueuePage() {
 
       if (res.data?.success && res.data.data) {
         const data = res.data.data;
+        rememberTrackerLink(data.trackingUrl || `/track/${data.appointmentId}${data.trackerToken ? `?t=${encodeURIComponent(data.trackerToken)}` : ""}`, useAuthStore.getState().user?.id || null);
         setSuccessResult({
           appointmentId: data.appointmentId,
           tokenNumber: data.tokenNumber,
@@ -187,10 +191,7 @@ export default function JoinClinicQueuePage() {
       }
     } catch (err: any) {
       console.error("Queue join error:", err);
-      const message =
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to join queue. Please check with the front desk.";
+      const message = userFacingError(err.response?.data?.message || err.message, "Could not join the queue. Please ask reception for help.");
       toast({
         title: "Unable to Join Queue",
         description: message,
@@ -341,7 +342,7 @@ export default function JoinClinicQueuePage() {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <ModeSwitcher />
+            <ModeSwitcher variant="icon" />
           </div>
         </div>
       </header>

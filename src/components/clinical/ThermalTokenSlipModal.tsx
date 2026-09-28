@@ -1,10 +1,13 @@
 "use client";
 
+import PrintDialogActions from "@/components/ui/PrintDialogActions";
+
 import React, { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import Modal from "@/components/ui/Modal";
 import { Button, cn } from "@/components/ui";
-import { Printer, Scissors } from "lucide-react";
+import { Scissors } from "lucide-react";
+import { printElement } from "@/lib/printBrand";
 
 export interface ThermalTokenSlipData {
   appointmentId: string;
@@ -34,6 +37,8 @@ export default function ThermalTokenSlipModal({
 }: ThermalTokenSlipModalProps) {
   const [paperWidth, setPaperWidth] = useState<"80mm" | "58mm">("80mm");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [qrError, setQrError] = useState(false);
+  const [qrRetry, setQrRetry] = useState(0);
   const slipRef = useRef<HTMLDivElement>(null);
 
   const trackingUrl = typeof window !== "undefined" && tokenData?.appointmentId
@@ -41,6 +46,8 @@ export default function ThermalTokenSlipModal({
     : "";
 
   useEffect(() => {
+    let active = true;
+    setQrDataUrl(""); setQrError(false);
     if (trackingUrl) {
       QRCode.toDataURL(trackingUrl, {
         width: 320,
@@ -51,15 +58,16 @@ export default function ThermalTokenSlipModal({
         },
         errorCorrectionLevel: "M",
       })
-        .then((url) => setQrDataUrl(url))
-        .catch((err) => console.error("Thermal QR generation failed:", err));
+        .then((url) => { if (active) setQrDataUrl(url); })
+        .catch(() => { if (active) setQrError(true); });
     }
-  }, [trackingUrl]);
+    return () => { active = false; };
+  }, [trackingUrl, open, qrRetry]);
 
   if (!tokenData) return null;
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    await printElement(slipRef.current, { title: "Appointment token slip", paper: paperWidth, css: "body * { color: black !important; }" });
   };
 
   const formattedDate = tokenData.date || new Date().toLocaleDateString("en-US", {
@@ -76,18 +84,20 @@ export default function ThermalTokenSlipModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Print Official Thermal Token Slip"
+      title="Token slip preview"
       description="Compatible with standard 58mm and 80mm POS receipt printers. High-contrast layout designed for thermal heat printing."
       size="md"
-      footer={
-        <div className="flex items-center justify-between w-full">
-          {/* Width Selection Segmented Control */}
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-alt border border-border/70 text-xs">
+      footer={<PrintDialogActions documentName="token slip" onPrint={handlePrint} onClose={onClose} disabled={!qrDataUrl || qrError} />}
+    >
+      <div className="space-y-3">
+        {qrError && <div role="alert" className="text-xs text-danger-text flex items-center justify-between gap-2"><span>The tracking code could not load.</span><Button variant="outline" size="sm" onClick={() => setQrRetry(value => value + 1)}>Try again</Button></div>}
+        {!qrError && !qrDataUrl && <p role="status" className="text-xs text-text-secondary">Preparing tracking code…</p>}
+        <div role="group" aria-label="Paper width" className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-surface-alt border border-border/70 text-xs">
             <button
               type="button"
-              onClick={() => setPaperWidth("80mm")}
+              onClick={() => setPaperWidth("80mm")} aria-pressed={paperWidth === "80mm"}
               className={cn(
-                "px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer",
+                "min-h-11 px-3 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer",
                 paperWidth === "80mm"
                   ? "bg-surface text-text shadow-xs border border-border/80"
                   : "text-text-muted hover:text-text"
@@ -97,9 +107,9 @@ export default function ThermalTokenSlipModal({
             </button>
             <button
               type="button"
-              onClick={() => setPaperWidth("58mm")}
+              onClick={() => setPaperWidth("58mm")} aria-pressed={paperWidth === "58mm"}
               className={cn(
-                "px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer",
+                "min-h-11 px-3 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer",
                 paperWidth === "58mm"
                   ? "bg-surface text-text shadow-xs border border-border/80"
                   : "text-text-muted hover:text-text"
@@ -108,37 +118,14 @@ export default function ThermalTokenSlipModal({
               58mm (Compact)
             </button>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={onClose}
-              className="rounded-xl font-semibold cursor-pointer text-xs"
-            >
-              Close
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handlePrint}
-              className="rounded-xl font-bold gap-1.5 cursor-pointer shadow-xs bg-surface hover:bg-surface-alt text-text text-xs"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              Print Slip ({paperWidth})
-            </Button>
-          </div>
-        </div>
-      }
-    >
-      <div className="flex flex-col items-center py-2">
+          <div className="flex flex-col items-center py-2">
         {/* Thermal Slip Preview Frame */}
         <div
           ref={slipRef}
           id="thermal-token-slip-print"
           data-width={paperWidth}
           className={cn(
-            "bg-white text-black p-4 rounded-xl border border-border shadow-md font-mono text-center transition-all",
+            "bg-white text-black max-w-full p-4 rounded-xl border border-border shadow-md font-mono text-center transition-all",
             paperWidth === "80mm" ? "w-[320px]" : "w-[240px]"
           )}
           style={{ fontFamily: "'Courier New', Courier, monospace" }}
@@ -248,41 +235,8 @@ export default function ThermalTokenSlipModal({
         </div>
       </div>
 
-      {/* Dedicated Thermal Printing CSS Rules */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #thermal-token-slip-print,
-          #thermal-token-slip-print * {
-            visibility: visible;
-          }
-          #thermal-token-slip-print {
-            position: fixed;
-            left: 0;
-            top: 0;
-            margin: 0 !important;
-            padding: 8px !important;
-            border: none !important;
-            box-shadow: none !important;
-            background: #ffffff !important;
-            color: #000000 !important;
-          }
-          #thermal-token-slip-print[data-width="80mm"] {
-            width: 76mm !important;
-            max-width: 76mm !important;
-          }
-          #thermal-token-slip-print[data-width="58mm"] {
-            width: 52mm !important;
-            max-width: 52mm !important;
-          }
-          @page {
-            size: auto;
-            margin: 0;
-          }
-        }
-      `}</style>
+
+      </div>
     </Modal>
   );
 }

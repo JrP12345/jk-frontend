@@ -1,12 +1,16 @@
 "use client";
 
-import { getPrintBrandStyles } from "@/lib/printBrand";
+import PrintDialogActions from "@/components/ui/PrintDialogActions";
+
+import PrintButton from "@/components/ui/PrintButton";
+
+import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { Table, Button, Modal, useToast, Badge, cn } from "@/components/ui";
-import { RotateCw, Printer, CreditCard } from "lucide-react";
+import { RotateCw, CreditCard } from "lucide-react";
 
 interface InvoiceItem {
   description: string;
@@ -101,10 +105,8 @@ export default function PatientBillsPage() {
     setReceiptOpen(true);
   };
 
-  const triggerPrint = (inv: Invoice) => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-    printWindow.document.write(`
+  const triggerPrint = async (inv: Invoice) => {
+    await printHtml(`
       <html>
         <head>
           <title>Payment Receipt - ${inv.invoiceNumber}</title>
@@ -156,13 +158,9 @@ export default function PatientBillsPage() {
               </span>
             </div>
           </div>
-          <script>
-            window.onload = () => { window.print(); window.close(); };
-          </script>
         </body>
       </html>
     `);
-    printWindow.document.close();
   };
 
   return (
@@ -193,8 +191,8 @@ export default function PatientBillsPage() {
               onClick={fetchPatientBills}
               disabled={loading}
               className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
-            >
-              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
+             loading={loading}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
             </Button>
           </div>
@@ -245,7 +243,8 @@ export default function PatientBillsPage() {
                     {row.status === "partially_paid" ? "Pay Balance" : "Pay Online"}
                   </Button>
                 ) : (
-                  <Button size="xs" variant="outline" className="min-h-[36px] px-3.5 font-bold cursor-pointer" onClick={() => handleOpenReceipt(row)}>View Receipt</Button>
+                  <PrintButton size="xs" variant="outline" className="min-h-[36px] px-3.5 font-bold cursor-pointer" onPrint={() => handleOpenReceipt(row)} documentName="receipt" preview>
+              </PrintButton>
                 )}
               </div>
             )}
@@ -314,15 +313,13 @@ export default function PatientBillsPage() {
                       {row.status === "partially_paid" ? `Pay Balance (₹${balance})` : `Pay Online (₹${row.totalAmount})`}
                     </Button>
                   ) : (
-                    <Button
+                    <PrintButton
                       size="sm"
                       variant="outline"
                       className="w-full min-h-[44px] font-bold text-xs rounded-xl justify-center cursor-pointer"
-                      onClick={() => handleOpenReceipt(row)}
+                      onPrint={() => handleOpenReceipt(row)} documentName="receipt" preview
                     >
-                      <Printer className="w-4 h-4 mr-1.5" />
-                      View & Print Receipt
-                    </Button>
+              </PrintButton>
                   )}
                 </div>
               </div>
@@ -407,7 +404,8 @@ export default function PatientBillsPage() {
       </Modal>
 
       {/* View Paid Receipt Modal */}
-      <Modal open={receiptOpen} onClose={() => { setReceiptOpen(false); setReceiptInvoice(null); }} title="Receipt Summary" size="md">
+      <Modal open={receiptOpen} onClose={() => { setReceiptOpen(false); setReceiptInvoice(null); }} title="Receipt Summary" size="md"
+        footer={<PrintDialogActions documentName="receipt" onPrint={() => triggerPrint(receiptInvoice!)} onClose={() => { setReceiptOpen(false); setReceiptInvoice(null); }} disabled={!receiptInvoice} />}>
         {receiptInvoice && (
           <div className="space-y-6">
             <div className="border border-border rounded-xl p-5 bg-surface-alt font-mono text-sm space-y-4">
@@ -460,10 +458,7 @@ export default function PatientBillsPage() {
               </div>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 border-t border-border pt-4">
-              <Button variant="outline" onClick={() => { setReceiptOpen(false); setReceiptInvoice(null); }} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">Close</Button>
-              <Button onClick={() => triggerPrint(receiptInvoice)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">Print Receipt</Button>
-            </div>
+
           </div>
         )}
       </Modal>

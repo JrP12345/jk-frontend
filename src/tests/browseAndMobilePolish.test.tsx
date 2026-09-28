@@ -50,7 +50,7 @@ describe("Mobile calendar and browse loading", () => {
     expect(screen.queryByRole("button", { name: "Pediatrics" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Cardiology" }));
     await waitFor(() => expect(request).toHaveBeenCalledWith("/public/clinics?specialization=Cardiology&sort=rating", expect.anything()));
-    expect(await screen.findByText("No Healthcare Facilities Found")).toBeInTheDocument();
+    expect(await screen.findByText("No clinics found")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "General Physician / Consultant" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("combobox", { name: "Filter by location" }));
     expect(await screen.findByRole("option", { name: "Valsad" })).toBeInTheDocument();
@@ -67,26 +67,27 @@ describe("Mobile calendar and browse loading", () => {
   it("offers retry after a failed load instead of reporting an empty clinic directory", async () => {
     vi.spyOn(api, "get").mockRejectedValueOnce(new Error("Offline")).mockResolvedValueOnce({ data: { data: [] } });
     render(<BrowseClient />);
-    expect(await screen.findByText("We couldn't load clinics. Please try again.")).toBeInTheDocument();
-    expect(screen.queryByText("No Healthcare Facilities Found")).not.toBeInTheDocument();
+    expect(await screen.findByText("We couldn't load clinics")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Sort clinics by" })).not.toBeInTheDocument();
+    expect(screen.queryByText("No clinics found")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    await waitFor(() => expect(screen.queryByText("We couldn't load clinics. Please try again.")).not.toBeInTheDocument());
-    expect(await screen.findByText("No Healthcare Facilities Found")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("We couldn't load clinics")).not.toBeInTheDocument());
+    expect(await screen.findByText("No clinics found")).toBeInTheDocument();
   });
   it("rejects a malformed response instead of displaying a successful empty result", async () => {
     vi.spyOn(api, "get").mockResolvedValue({ data: { data: { unexpected: true } } });
     render(<BrowseClient />);
-    expect(await screen.findByText("We couldn't load clinics. Please try again.")).toBeInTheDocument();
-    expect(screen.queryByText("No Healthcare Facilities Found")).not.toBeInTheDocument();
+    expect(await screen.findByText("We couldn't load clinics")).toBeInTheDocument();
+    expect(screen.queryByText("No clinics found")).not.toBeInTheDocument();
   });
   it("keeps previous clinics visible when a filtered refresh fails", async () => {
     vi.spyOn(api, "get").mockRejectedValue(new Error("Offline"));
     render(<BrowseClient initialLoaded initialClinics={[{ id: "a", name: "Existing Clinic", city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "" }]} />);
     fireEvent.change(screen.getByRole("textbox", { name: "Search by doctor, clinic name, or specialty" }), { target: { value: "new query" } });
-    expect(await screen.findByText("We couldn't load clinics. Please try again.")).toBeInTheDocument();
+    expect(await screen.findByText("Unable to update results")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Existing Clinic" })).toBeInTheDocument();
     expect(screen.getByText("Previous clinics shown. Results could not be updated.")).toBeInTheDocument();
-    expect(screen.queryByText("No Healthcare Facilities Found")).not.toBeInTheDocument();
+    expect(screen.queryByText("No clinics found")).not.toBeInTheDocument();
   });
   it("uses the local day rather than the UTC date for today's boundaries", () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 26, 0, 15));

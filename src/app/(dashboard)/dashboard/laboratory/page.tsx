@@ -1,6 +1,10 @@
 "use client";
 
-import { getPrintBrandStyles } from "@/lib/printBrand";
+import PrintDialogActions from "@/components/ui/PrintDialogActions";
+
+import PrintButton from "@/components/ui/PrintButton";
+
+import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
@@ -380,12 +384,10 @@ export default function LaboratoryPage() {
     setIsPrintOpen(true);
   };
 
-  const executePrint = () => {
+  const executePrint = async () => {
     const printContent = document.getElementById("printable-lab-slip");
     if (!printContent) return;
-    const winPrint = window.open("", "", "left=0,top=0,width=800,height=900,toolbar=0,scrollbars=0,status=0");
-    if (!winPrint) return;
-    winPrint.document.write(`
+    await printHtml(`
       <html>
         <head>
           <title>Diagnostic Laboratory Report</title>
@@ -411,13 +413,9 @@ export default function LaboratoryPage() {
         </head>
         <body>
           ${printContent.innerHTML}
-          <script>
-            window.onload = function() { window.print(); window.close(); }
-          </script>
         </body>
       </html>
     `);
-    winPrint.document.close();
   };
 
   // Stats Calculations
@@ -436,14 +434,14 @@ export default function LaboratoryPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Diagnostics Laboratory
+                Laboratory
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Diagnostics Worklist
+                Test worklist
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Track diagnostic specimen collection, sample processing, automated normal ranges, and pathology pricing.
+              Track samples, review test results, and manage laboratory prices.
             </p>
           </div>
 
@@ -456,8 +454,8 @@ export default function LaboratoryPage() {
                   onClick={fetchData}
                   disabled={loading}
                   className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
-                >
-                  <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
+                 loading={loading}>
+                  <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
                   Refresh
                 </Button>
 
@@ -532,7 +530,7 @@ export default function LaboratoryPage() {
 
       {/* Tabs Menu (Staff Only) */}
       {user && user.role !== "patient" && (
-        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full touch-pan-x">
+        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full touch-manipulation">
           <button
             type="button"
             onClick={() => setActiveTab("worklist")}
@@ -667,9 +665,8 @@ export default function LaboratoryPage() {
                           </Button>
                         )}
                         {order.status === "result-uploaded" && (
-                          <Button variant="ghost" size="sm" onClick={() => handlePrintReport(order)} className="w-full sm:w-auto min-h-[36px]">
-                            Print Report
-                          </Button>
+                          <PrintButton variant="ghost" size="sm" onPrint={() => handlePrintReport(order)} className="w-full sm:w-auto min-h-[36px]" documentName="report" preview>
+              </PrintButton>
                         )}
                       </div>
                     )
@@ -760,14 +757,13 @@ export default function LaboratoryPage() {
                             </Button>
                           )}
                           {order.status === "result-uploaded" && (
-                            <Button
+                            <PrintButton
                               variant="outline"
                               size="sm"
-                              onClick={() => handlePrintReport(order)}
-                              className="w-full font-semibold text-xs rounded-xl min-h-[42px] justify-center"
+                              onPrint={() => handlePrintReport(order)}
+                              className="w-full font-semibold text-xs rounded-xl min-h-[42px] justify-center" documentName="report" preview
                             >
-                              Print Verified Report
-                            </Button>
+              </PrintButton>
                           )}
                         </div>
                       </div>
@@ -951,9 +947,8 @@ export default function LaboratoryPage() {
                     ),
                     normal: <span className="text-sm font-mono text-text-muted">{order.testId?.normalRange}</span>,
                     action: order.status === "result-uploaded" ? (
-                      <Button variant="outline" size="sm" onClick={() => handlePrintReport(order)}>
-                        View & Print Report
-                      </Button>
+                      <PrintButton variant="outline" size="sm" onPrint={() => handlePrintReport(order)} documentName="report" preview>
+              </PrintButton>
                     ) : (
                       <span className="text-xs text-text-muted">Awaiting results</span>
                     )
@@ -1002,14 +997,13 @@ export default function LaboratoryPage() {
                         </div>
 
                         {order.status === "result-uploaded" && (
-                          <Button
+                          <PrintButton
                             variant="primary"
                             size="sm"
-                            onClick={() => handlePrintReport(order)}
-                            className="w-full font-bold text-xs rounded-xl min-h-[42px] justify-center shadow-xs"
+                            onPrint={() => handlePrintReport(order)}
+                            className="w-full font-bold text-xs rounded-xl min-h-[42px] justify-center shadow-xs" documentName="report" preview
                           >
-                            View & Print Diagnostic Report
-                          </Button>
+              </PrintButton>
                         )}
                       </div>
                     );
@@ -1030,7 +1024,7 @@ export default function LaboratoryPage() {
             <Button type="button" variant="ghost" onClick={() => setIsOrderOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" form="order-lab-form" disabled={submittingOrder} className="w-full sm:w-auto min-h-[44px]">
+            <Button type="submit" form="order-lab-form" disabled={submittingOrder} className="w-full sm:w-auto min-h-[44px]" loading={submittingOrder}>
               {submittingOrder ? "Placing Order..." : "Confirm & Bill Test"}
             </Button>
           </div>
@@ -1113,7 +1107,7 @@ export default function LaboratoryPage() {
             <Button type="button" variant="ghost" onClick={() => setIsTestModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" form="lab-test-form" disabled={submittingTest} className="w-full sm:w-auto min-h-[44px]">
+            <Button type="submit" form="lab-test-form" disabled={submittingTest} className="w-full sm:w-auto min-h-[44px]" loading={submittingTest}>
               {submittingTest ? "Saving..." : "Save Test Configuration"}
             </Button>
           </div>
@@ -1228,7 +1222,7 @@ export default function LaboratoryPage() {
               <Button type="button" variant="ghost" onClick={() => setIsResultOpen(false)} className="w-full sm:w-auto min-h-[44px]">
                 Cancel
               </Button>
-              <Button type="submit" form="lab-result-form" disabled={submittingResult} className="w-full sm:w-auto min-h-[44px]">
+              <Button type="submit" form="lab-result-form" disabled={submittingResult} className="w-full sm:w-auto min-h-[44px]" loading={submittingResult}>
                 {submittingResult ? "Saving..." : "Submit Findings"}
               </Button>
             </div>
@@ -1307,6 +1301,7 @@ export default function LaboratoryPage() {
         onClose={() => setIsPrintOpen(false)}
         title="Laboratory Diagnosis Certificate"
         size="lg"
+        footer={<PrintDialogActions documentName="report" onPrint={executePrint} onClose={() => setIsPrintOpen(false)} disabled={!printOrder} />}
       >
         {printOrder && (
           <div className="space-y-5 font-sans">
@@ -1389,14 +1384,7 @@ export default function LaboratoryPage() {
               </div>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
-              <Button variant="ghost" onClick={() => setIsPrintOpen(false)} className="w-full sm:w-auto min-h-[44px]">
-                Close
-              </Button>
-              <Button variant="primary" onClick={executePrint} className="w-full sm:w-auto min-h-[44px]">
-                Print Report Slip
-              </Button>
-            </div>
+
           </div>
         )}
       </Modal>

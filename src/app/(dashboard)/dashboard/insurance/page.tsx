@@ -428,14 +428,14 @@ export default function InsurancePage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Insurance Desk & Claims Adjudication
+                Insurance claims
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                TPA Operations
+                Claims
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Manage cashless pre-authorizations, query letters, final reimbursement claims, and TPA adjudication payouts.
+              Manage cashless approvals, insurer requests, claims, and payouts.
             </p>
           </div>
 
@@ -446,8 +446,8 @@ export default function InsurancePage() {
               onClick={fetchData}
               disabled={loading}
               className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors cursor-pointer"
-            >
-              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
+             loading={loading}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh Desk
             </Button>
 
@@ -479,7 +479,7 @@ export default function InsurancePage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. SEGMENTED TABS SWITCHER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-pan-x w-fit max-w-full">
+      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-manipulation w-fit max-w-full">
         <button
           type="button"
           onClick={() => {
@@ -586,7 +586,7 @@ export default function InsurancePage() {
       <div className="p-3.5 sm:p-4 bg-surface rounded-2xl border border-border/80 shadow-xs space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {activeTab === "preAuth" ? (
-            <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-pan-x w-fit max-w-full">
+            <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-manipulation w-fit max-w-full">
               <span className="text-[11px] font-bold text-text-muted px-2.5 shrink-0">TPA Partner:</span>
               {[
                 { key: "all", label: "All TPAs" },
@@ -627,7 +627,7 @@ export default function InsurancePage() {
         </div>
 
         {/* Status Filter Bar */}
-        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-pan-x w-fit max-w-full">
+        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-manipulation w-fit max-w-full">
           <span className="text-[11px] font-bold text-text-muted px-2.5 shrink-0">Status:</span>
           {(activeTab === "preAuth"
             ? [

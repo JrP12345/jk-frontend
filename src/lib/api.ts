@@ -107,7 +107,8 @@ api.interceptors.response.use(
         lower.includes("subscription") ||
         lower.includes("upgrade");
 
-      if (!isQuotaOrLimitError) {
+      // Chat handles context, permissions and retry in its own dialog.
+      if (!isQuotaOrLimitError && !requestPath?.startsWith("/ai/chat/")) {
         window.dispatchEvent(new CustomEvent("auth-forbidden", {
           detail: { message: rawMsg, error: data.error, url: originalRequest?.url },
         }));

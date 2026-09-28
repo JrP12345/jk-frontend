@@ -1,5 +1,7 @@
 "use client";
 
+import PrintButton from "@/components/ui/PrintButton";
+
 import { confirmLeavingClinicalDraft } from "@/hooks/useUnsavedClinicalChanges";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useState, useEffect } from "react";
@@ -53,7 +55,7 @@ const ClinicalDocumentGeneratorModal = dynamic(
 );
 
 import { playChimeSound, CHIME_OPTIONS, ChimeType, announcePatientToken, VoiceAnnounceLanguage } from "@/utils/audioChimes";
-import { Megaphone, Volume2, RotateCw, Users, UserCheck, Stethoscope, Ticket, Clock, ChevronUp, ChevronDown, CheckCircle2, Activity, Printer, UserX, XCircle, Plus, Trash2, Sparkles, Check, Play, CalendarClock, Phone, FileText, AlertTriangle, Zap, QrCode, PauseCircle, Banknote, FlaskConical, History, Send, ShieldCheck } from "lucide-react";
+import { Megaphone, Volume2, RotateCw, Users, UserCheck, Stethoscope, Ticket, Clock, ChevronUp, ChevronDown, CheckCircle2, Activity, UserX, XCircle, Plus, Trash2, Sparkles, Check, Play, CalendarClock, Phone, FileText, AlertTriangle, Zap, QrCode, PauseCircle, Banknote, FlaskConical, History, Send, ShieldCheck } from "lucide-react";
 import { PatientTimeline } from "@/components/ehr/PatientTimeline";
 import { InCabinInvestigationViewerModal } from "@/components/clinical/InCabinInvestigationViewerModal";
 import { DrugAllergyAlert } from "@/components/clinical/DrugAllergyAlert";
@@ -367,7 +369,7 @@ export default function QueuePage() {
         channel: resendRxChannel,
       });
       toast({
-        title: "Prescription Dispatched! 📄",
+        title: "Prescription sent",
         description: res.data?.message || `Digital e-Prescription sent via ${resendRxChannel.toUpperCase()}`,
         variant: "success",
       });
@@ -375,8 +377,8 @@ export default function QueuePage() {
       setResendRxAppt(null);
     } catch (err: any) {
       toast({
-        title: "Dispatch Failed",
-        description: err.response?.data?.message || "Failed to dispatch digital prescription",
+        title: "Prescription could not be sent",
+        description: err.response?.data?.message || "Please try again.",
         variant: "error",
       });
     } finally {
@@ -788,7 +790,7 @@ export default function QueuePage() {
       });
 
       toast({
-        title: "Tracker Dispatched! 🚀",
+        title: "Tracking link sent",
         description: res.data?.message || `Live tracking link successfully sent via ${resendChannel.toUpperCase()}`,
         variant: "success",
       });
@@ -796,8 +798,8 @@ export default function QueuePage() {
       setResendTrackerAppt(null);
     } catch (err: any) {
       toast({
-        title: "Dispatch Failed",
-        description: err.response?.data?.message || "Failed to dispatch queue tracking link",
+        title: "Tracking link could not be sent",
+        description: err.response?.data?.message || "Please try again.",
         variant: "error",
       });
     } finally {
@@ -839,7 +841,7 @@ export default function QueuePage() {
       const count = res.data?.data?.notifiedCount ?? 0;
       toast({
         title: "WhatsApp Delay Alerts Sent",
-        description: `Dispatched proactive delay notifications with revised arrival times to ${count} patient(s).`,
+        description: `Updated arrival times were sent to ${count} ${count === 1 ? "patient" : "patients"}.`,
         variant: "success",
       });
       await fetchDelayStatus();
@@ -1667,14 +1669,14 @@ export default function QueuePage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Outpatient Queue Desk
+                Patient queue
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Live Stream
+                Live updates
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Live token streaming, patient check-ins, VIP queue reordering, and consultation workflows.
+              Check in patients, manage waiting order, and call the next visit.
             </p>
           </div>
 
@@ -1740,10 +1742,13 @@ export default function QueuePage() {
                 Availability
               </Button>
 
-              <Button
+              <PrintButton
                 variant="outline"
                 size="sm"
-                onClick={() => {
+                documentName="poster"
+                preview
+                disabled={!selectedClinic || selectedClinic === "all"}
+                onPrint={() => {
                   const currentClinic = clinics.find((c) => (c.id || c._id) === selectedClinic);
                   setQrPosterClinic(currentClinic || { id: selectedClinic, name: "Our Clinic" });
                   setQrPosterOpen(true);
@@ -1751,9 +1756,7 @@ export default function QueuePage() {
                 className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
                 title="Print A4 QR poster for clinic waiting room entrance"
               >
-                <QrCode className="w-3.5 h-3.5 mr-1.5 text-accent" />
-                QR Poster
-              </Button>
+              </PrintButton>
 
               <Button
                 variant="outline"
@@ -1787,7 +1790,7 @@ export default function QueuePage() {
                 loading={loadingQueue}
                 className="font-semibold rounded-xl hover:bg-surface-hover whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
               >
-                <RotateCw className={cn("w-3.5 h-3.5 mr-1.5 text-text-secondary", loadingQueue && "animate-spin")} />
+                <RotateCw className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
                 Refresh
               </Button>
             </div>
@@ -1954,7 +1957,7 @@ export default function QueuePage() {
             onClick={handleRemoveOverride}
             disabled={savingOverride}
             className="text-xs rounded-xl font-semibold"
-          >
+           loading={savingOverride}>
             Revert to Normal Schedule
           </Button>
         </div>
@@ -2923,20 +2926,18 @@ export default function QueuePage() {
                         <div className="flex items-center gap-1.5 shrink-0">
                           {appt.status === "completed" && (
                             <>
-                              <button
+                              <PrintButton
                                 type="button"
-                                onClick={() => handlePrintAppointmentPrescription(appt)}
+                                onPrint={() => handlePrintAppointmentPrescription(appt)}
                                 className="px-2.5 py-1 text-[11px] font-bold rounded-xl border border-primary-500/30 text-accent dark:text-accent hover:bg-primary-500/10 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                                title="Print Official Prescription (Rx)"
+                                title="Print Official Prescription (Rx)" documentName="prescription" preview
                               >
-                                <FileText className="w-3.5 h-3.5" />
-                                Print Rx
-                              </button>
+              </PrintButton>
                               <button
                                 type="button"
                                 onClick={() => openResendRxModal(appt)}
                                 className="px-2.5 py-1 text-[11px] font-bold rounded-xl border border-success/30 text-success-text dark:text-success-text hover:bg-success/10 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                                title="Dispatch Digital e-Prescription via WhatsApp / SMS"
+                                title="Send prescription by WhatsApp or SMS"
                               >
                                 <Send className="w-3.5 h-3.5" />
                                 Send Rx
@@ -2961,15 +2962,13 @@ export default function QueuePage() {
                               </button>
                             </>
                           )}
-                          <button
+                          <PrintButton
                             type="button"
-                            onClick={() => handlePrintTokenSlip(appt)}
+                            onPrint={() => handlePrintTokenSlip(appt)}
                             className="px-2 py-1 text-[11px] font-medium rounded-xl border border-border text-text-muted hover:text-text hover:bg-surface-hover transition-colors inline-flex items-center gap-1 cursor-pointer"
-                            title="Re-print Token Slip"
+                            title="Re-print Token Slip" documentName="token slip" preview
                           >
-                            <Printer className="w-3 h-3" />
-                            Slip
-                          </button>
+              </PrintButton>
                           {appt.status === "completed" && (
                             <div className="w-7 h-7 rounded-xl bg-success/10 text-success-text dark:text-success-text border border-success/20 flex items-center justify-center shrink-0">
                               <Check className="w-4 h-4" />
@@ -3392,7 +3391,7 @@ export default function QueuePage() {
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="dispatchWhatsAppRx"
-                  label="Dispatch Digital e-Prescription via WhatsApp"
+                  label="Send prescription by WhatsApp"
                   checked={dispatchWhatsAppRx}
                   onChange={(e) => setDispatchWhatsAppRx(e.target.checked)}
                 />
@@ -3755,7 +3754,7 @@ export default function QueuePage() {
                 onClick={handleRemoveOverride}
                 disabled={savingOverride}
                 className="text-xs text-danger-text hover:text-danger-text hover:bg-danger/10 font-semibold"
-              >
+               loading={savingOverride}>
                 Revert to Standard
               </Button>
             ) : <div />}
@@ -3993,7 +3992,7 @@ export default function QueuePage() {
             <div>
               <p className="font-bold text-sm">Live Token Tracking Link</p>
               <p className="mt-0.5 leading-relaxed">
-                Dispatches real-time web tracker URL (<code>/track/{resendTrackerAppt?.id}</code>) to the patient or attendee phone with live token status and doctor cabin information.
+                Sends a link to the patient or attendee so they can follow their place in the queue.
               </p>
             </div>
           </div>
@@ -4012,7 +4011,7 @@ export default function QueuePage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="font-semibold text-text">Dispatch Channel</label>
+            <label className="font-semibold text-text">Send by</label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -4421,7 +4420,7 @@ export default function QueuePage() {
             setResendRxAppt(null);
           }
         }}
-        title="Dispatch Digital e-Prescription (Rx)"
+        title="Send prescription"
         description={
           resendRxAppt
             ? `Send official electronic prescription with medicines, dosage schedule, and direct printable PDF to ${
@@ -4507,7 +4506,7 @@ export default function QueuePage() {
               className="bg-success hover:bg-success text-background font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
             >
               <Send className="w-3.5 h-3.5" />
-              Dispatch Digital Rx Now
+              Send prescription
             </Button>
           </div>
         </div>

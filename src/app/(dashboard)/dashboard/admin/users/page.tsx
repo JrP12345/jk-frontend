@@ -333,8 +333,8 @@ export default function PlatformUsersPage() {
     return (
       <EmptyState
         icon={<Shield className="w-8 h-8 text-accent" />}
-        title="Superadmin Access Required"
-        description="Only platform Root administrators have authority to access multi-tenant directory and impersonate users."
+        title="Platform administrator access required"
+        description="Only platform administrators can manage users across organizations."
         action={
           <Button variant="primary" size="sm" onClick={() => router.push("/dashboard")}>
             Return to Dashboard
@@ -359,18 +359,18 @@ export default function PlatformUsersPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Platform Users & Impersonation Hub
+                Platform users & access
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Superadmin Console
+                Platform administration
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted max-w-2xl">
-              Scalable multi-tenant organization & branch hierarchy with zero-password instant user impersonation.
+              Manage users and organizations, and access an account when authorized to help its owner.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
@@ -379,9 +379,9 @@ export default function PlatformUsersPage() {
                 if (activeTab === "directory") fetchUsers();
               }}
               disabled={loadingHierarchy || loadingUsers}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-[36px]"
-            >
-              <RotateCw className={`h-3.5 w-3.5 mr-1.5 text-text-secondary ${loadingHierarchy ? "animate-spin" : ""}`} />
+              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-11 sm:min-h-9 w-full sm:w-auto justify-center"
+             loading={loadingHierarchy}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary " />
               Refresh
             </Button>
           </div>
@@ -391,28 +391,28 @@ export default function PlatformUsersPage() {
       {/* 2. STATCARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Tenant Organizations"
+          title="Organizations"
           value={summary.totalOrganizations}
           icon={<Building2 className="w-5 h-5 text-accent" />}
-          description="Active multi-tenant clients"
+          description="Registered organizations"
         />
         <StatCard
-          title="Clinic Branches"
+          title="Clinic locations"
           value={summary.totalBranches}
           icon={<Layers className="w-5 h-5 text-success-text" />}
-          description="Physical health facilities"
+          description="Registered clinic locations"
         />
         <StatCard
-          title="Total Personnel"
+          title="Users"
           value={summary.totalMembers}
           icon={<Users className="w-5 h-5 text-accent" />}
-          description="Doctors, staff & receptionists"
+          description="Doctors, staff, and receptionists"
         />
         <StatCard
-          title="Platform Superadmins"
+          title="Platform administrators"
           value={summary.totalPlatformAdmins}
           icon={<Shield className="w-5 h-5 text-accent" />}
-          description="Root system operators"
+          description="Users with platform-wide access"
         />
       </div>
 
@@ -424,13 +424,13 @@ export default function PlatformUsersPage() {
         tabs={[
           {
             id: "hierarchy",
-            label: "Organization & Branch Hierarchy",
+            label: "Organizations & clinics",
             icon: <Building2 className="w-4 h-4 mr-1.5" />,
             badge: summary.totalOrganizations,
           },
           {
             id: "directory",
-            label: "Global Directory & Search",
+            label: "User directory",
             icon: <Users className="w-4 h-4 mr-1.5" />,
             badge: users.length ? users.length : undefined,
           },
@@ -446,7 +446,7 @@ export default function PlatformUsersPage() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface p-3.5 rounded-2xl border border-border">
             <div className="flex items-center gap-2 text-xs font-semibold text-text-secondary">
               <Building2 className="w-4 h-4 text-accent" />
-              <span>Select Tenant Scope:</span>
+              <span>Filter by organization</span>
             </div>
             <div className="w-full sm:w-80">
               <Select
@@ -459,15 +459,15 @@ export default function PlatformUsersPage() {
           </div>
 
           {loadingHierarchy ? (
-            <div className="space-y-4 animate-fade-in" aria-busy="true" aria-label="Loading multi-tenant hierarchy">
+            <div className="space-y-4 animate-fade-in" aria-busy="true" aria-label="Loading organizations">
               <SkeletonCard />
               <SkeletonCard />
             </div>
           ) : filteredOrganizations.length === 0 ? (
             <EmptyState
               icon={<Building2 className="w-8 h-8 text-accent" />}
-              title="No Organizations Found"
-              description="No tenant organizations registered yet or none match your filter."
+              title="No organizations found"
+              description="Try another filter or add an organization."
             />
           ) : (
             <div className="space-y-6">

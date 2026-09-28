@@ -71,18 +71,18 @@ export default function RegisterPage() {
       setOtpSent(true);
       setResendTimer(30);
       toast({
-        title: "OTP Dispatched! 📱",
+        title: "Verification code sent",
         description: res.data?.data?.devOtp
-          ? `[DEV MODE] OTP Code: ${res.data.data.devOtp}`
-          : `Verification OTP sent to ${formData.phone}`,
+          ? `Your verification code is ${res.data.data.devOtp}.`
+          : `A verification code was sent to ${formData.phone}.`,
         variant: "success",
         duration: 8000,
       });
     } catch (err: any) {
       triggerShake();
       toast({
-        title: "OTP Request Failed",
-        description: err.response?.data?.message || "Failed to send OTP",
+        title: "Verification code could not be sent",
+        description: err.response?.data?.message || "Please try again.",
         variant: "error",
       });
     } finally {
@@ -93,7 +93,7 @@ export default function RegisterPage() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otpCode || otpCode.length < 6) {
-      toast({ title: "Validation Error", description: "Enter 6-digit OTP code", variant: "error" });
+      toast({ title: "Enter the verification code", description: "Use the six-digit code sent to your phone.", variant: "error" });
       triggerShake();
       return;
     }
@@ -113,7 +113,7 @@ export default function RegisterPage() {
       if (res.data?.success) {
         login(res.data.data.user);
         toast({
-          title: "Registration Successful",
+          title: "Account created",
           description: `Welcome to Ekavyu Healthcare, ${res.data.data.user.name}!`,
           variant: "success",
         });
@@ -122,8 +122,8 @@ export default function RegisterPage() {
     } catch (err: any) {
       triggerShake();
       toast({
-        title: "Verification Failed",
-        description: err.response?.data?.message || "Invalid OTP code",
+        title: "Code could not be verified",
+        description: err.response?.data?.message || "Check the code and try again.",
         variant: "error",
       });
     } finally {
@@ -150,7 +150,7 @@ export default function RegisterPage() {
       </div>
 
       <div className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 sm:right-6 z-20">
-        <ModeSwitcher />
+        <ModeSwitcher variant="icon" />
       </div>
 
       <div className="w-full max-w-lg relative z-10 animate-fade-up my-8">
@@ -275,14 +275,14 @@ export default function RegisterPage() {
                   {resendTimer > 0 ? (
                     <span className="text-text-muted font-medium">Resend in {resendTimer}s</span>
                   ) : (
-                    <button
+                    <Button variant="ghost" size="sm"
                       type="button"
                       onClick={handleRequestOtp}
                       disabled={loading}
                       className="text-accent font-semibold hover:underline cursor-pointer"
                     >
                       Resend OTP
-                    </button>
+                    </Button>
                   )}
                 </div>
               </CardContent>

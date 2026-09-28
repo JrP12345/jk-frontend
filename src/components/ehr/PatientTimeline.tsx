@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
+import { userFacingError } from "@/lib/userFacingError";
 import PatientHistoryAccess from "./PatientHistoryAccess";
 import { Modal, Badge, Button, cn } from "@/components/ui";
 import { Stethoscope, FlaskConical, Building2, CreditCard, FileText, Sparkles, Search } from "lucide-react";
@@ -110,7 +111,7 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
       setNextCursor(res.data?.data?.nextCursor || null);
       setHasMore(res.data?.data?.hasMore || false);
     } catch (err: any) {
-      if (!controller.signal.aborted) { setEvents([]); setError(err.response?.data?.message || err.message || "An unexpected error occurred"); }
+      if (!controller.signal.aborted) { setEvents([]); setError(userFacingError(err.response?.data?.message || err.message, "Patient history could not be loaded. Please try again.")); }
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
@@ -293,13 +294,13 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
 
       {hasMore && (
         <div className="text-center pt-4">
-          <button
+          <Button variant="ghost" size="sm"
             onClick={() => fetchTimeline(nextCursor || undefined, true)}
             disabled={loading}
             className="px-4 py-2 bg-surface-alt border border-border/80 text-xs font-semibold text-text rounded-xl hover:bg-surface-hover transition-all cursor-pointer shadow-xs"
           >
             {loading ? "Loading..." : "Load Older Records"}
-          </button>
+          </Button>
         </div>
       )}
       {/* AI Plain-Language Report Explainer Modal */}

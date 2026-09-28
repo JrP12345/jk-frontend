@@ -62,8 +62,8 @@ export function PharmacyAlertsCenter({
       setExpiringBatches(res.data?.data || []);
     } catch (err: any) {
       toast({
-        title: "Failed to Fetch Expiration Watchlist",
-        description: err.response?.data?.message || "Could not retrieve expiring medicine batches",
+        title: "Expiry alerts could not be loaded",
+        description: err.response?.data?.message || "Please try again.",
         variant: "error",
       });
     } finally {
@@ -95,9 +95,9 @@ export function PharmacyAlertsCenter({
       {/* Top Header Banner & Threshold Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 rounded-2xl border border-border/80 shadow-xs">
         <div>
-          <h2 className="text-lg font-bold text-text">Pharmacy Low Stock & Expiration Alert Center</h2>
+          <h2 className="text-lg font-bold text-text">Stock and expiry alerts</h2>
           <p className="text-xs text-text-muted mt-0.5">
-            Real-time surveillance of depleted medicine inventory, FEFO batch expirations, and reorder warnings.
+            Review low stock and medicine batches nearing expiry.
           </p>
         </div>
 
@@ -107,15 +107,15 @@ export function PharmacyAlertsCenter({
             value={daysThreshold.toString()}
             onChange={(e) => setDaysThreshold(parseInt(e.target.value, 10))}
             options={[
-              { value: "30", label: "30 Days Threshold" },
-              { value: "60", label: "60 Days Threshold" },
-              { value: "90", label: "90 Days Threshold" },
+              { value: "30", label: "Next 30 days" },
+              { value: "60", label: "Next 60 days" },
+              { value: "90", label: "Next 90 days" },
             ]}
             className="flex-1 sm:w-44 text-xs font-semibold"
           />
 
           <Button size="xs" variant="primary" onClick={fetchExpiringBatches} className="flex-1 sm:flex-initial rounded-xl font-bold min-h-[38px]">
-            Refresh Alerts
+            Refresh alerts
           </Button>
         </div>
       </div>
@@ -126,12 +126,12 @@ export function PharmacyAlertsCenter({
         <div className="p-4 rounded-2xl bg-warning/10 border border-warning/30 flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-warning-text dark:text-warning-text block uppercase tracking-wider">
-              Low Stock Warnings
+              Low stock
             </span>
             <span className="text-2xl font-black text-warning-text dark:text-warning-text">
               {lowStockMedicines.length} Medicines
             </span>
-            <p className="text-[11px] text-text-muted mt-0.5">Stock &le; Reorder Threshold</p>
+            <p className="text-[11px] text-text-muted mt-0.5">At or below reorder level</p>
           </div>
           <span className="text-3xl">🟠</span>
         </div>
@@ -145,7 +145,7 @@ export function PharmacyAlertsCenter({
             <span className="text-2xl font-black text-accent dark:text-accent">
               {expiringSoonBatches.length} Batches
             </span>
-            <p className="text-[11px] text-text-muted mt-0.5">FEFO Action Required</p>
+            <p className="text-[11px] text-text-muted mt-0.5">Use these batches before they expire</p>
           </div>
           <span className="text-3xl">🟡</span>
         </div>

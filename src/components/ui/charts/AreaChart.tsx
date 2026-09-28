@@ -166,12 +166,13 @@ export const AreaChart = memo(function AreaChart({
         <svg
           ref={svgRef}
           viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-          className="w-full h-auto overflow-visible cursor-crosshair touch-none"
+          className="w-full h-auto overflow-visible cursor-crosshair [touch-action:pan-y_pinch-zoom]"
           onMouseMove={handleMouseMove}
           onMouseLeave={() => setHoverIndex(null)}
           onTouchStart={handleTouchMove}
           onTouchMove={handleTouchMove}
           onTouchEnd={() => setHoverIndex(null)}
+          onTouchCancel={() => setHoverIndex(null)}
         >
           <defs>
             {seriesPaths.map(({ series: s, color }, idx) => (

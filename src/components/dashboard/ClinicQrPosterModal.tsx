@@ -1,12 +1,14 @@
 "use client";
 
-import { getPrintBrandStyles } from "@/lib/printBrand";
+import PrintDialogActions from "@/components/ui/PrintDialogActions";
+
+import { printElement, PrintPreparationError } from "@/lib/printBrand";
 
 import React, { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import Modal from "@/components/ui/Modal";
 import { Button, useToast } from "@/components/ui";
-import { Printer, Sparkles, ShieldCheck, Copy } from "lucide-react";
+import { Sparkles, ShieldCheck, Copy } from "lucide-react";
 
 interface ClinicQrPosterModalProps {
   open: boolean;
@@ -31,7 +33,6 @@ export default function ClinicQrPosterModal({
   const { toast } = useToast();
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [copied, setCopied] = useState(false);
-  const [printing, setPrinting] = useState(false);
   const [qrError, setQrError] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
 
@@ -63,19 +64,8 @@ export default function ClinicQrPosterModal({
   if (!clinic) return null;
 
   const handlePrint = async () => {
-    if (!posterRef.current || !qrDataUrl || printing) return;
-    setPrinting(true);
-    const frame = document.createElement("iframe");
-    frame.setAttribute("aria-hidden", "true");
-    frame.style.cssText = "position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0";
-    frame.title = "Clinic QR poster print";
-    document.body.appendChild(frame);
-    try {
-      const doc = frame.contentDocument!;
-      doc.title = `${clinic.name} - Queue QR Poster`;
-      const style = doc.createElement("style");
-      style.nonce = document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce || "";
-      style.textContent = `${getPrintBrandStyles()}@page { size: A4 portrait; margin: 15mm; }
+    if (!qrDataUrl) throw new PrintPreparationError("not-ready");
+    await printElement(posterRef.current, { title: `${clinic.name} - Queue QR Poster`, css: `@page { size: A4 portrait; margin: 15mm; }
         * { box-sizing: border-box; } body { margin: 0; font-family: Arial, sans-serif; color: var(--print-text); background: white; text-align: center; }
         #clinic-qr-poster-print { width: 180mm; margin: auto; padding: 8mm; break-inside: avoid; }
         #clinic-qr-poster-print > div { margin-bottom: 7mm; }
@@ -83,19 +73,7 @@ export default function ClinicQrPosterModal({
         p { font-size: 11pt; line-height: 1.5; margin: 2mm 0; } svg { display: none; }
         img { display: block; width: 85mm; height: 85mm; margin: 5mm auto; }
         .grid { display: flex; justify-content: space-around; gap: 6mm; } .grid > div { flex: 1; }
-        .absolute { display: none; }`;
-      doc.head.appendChild(style);
-      doc.body.appendChild(posterRef.current.cloneNode(true));
-      await Promise.all(Array.from(doc.images).map((img) => img.decode()));
-      frame.contentWindow?.focus();
-      frame.contentWindow?.print();
-      setTimeout(() => frame.remove(), 60_000);
-    } catch {
-      frame.remove();
-      toast({ title: "Could not print poster", description: "Please try again.", variant: "error" });
-    } finally {
-      setPrinting(false);
-    }
+        .absolute { display: none; }` });
   };
 
   const handleCopyLink = async () => {
@@ -113,45 +91,7 @@ export default function ClinicQrPosterModal({
       title="Clinic Queue QR Poster (A4 Standee)"
       description="Print and display this QR poster at your front desk, reception, or entrance. Patients scan it with their phone camera to self-register and get a live queue token."
       size="xl"
-      footer={
-        <div className="flex flex-wrap items-center justify-between gap-3 w-full">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleCopyLink}
-              className="rounded-xl font-semibold gap-1.5 cursor-pointer text-xs"
-            >
-              <Copy className="w-3.5 h-3.5" />
-              {copied ? "Link Copied! ✓" : "Copy Join Link"}
-            </Button>
-            <span className="text-[11px] text-text-muted hidden sm:inline">
-              Recommended: Print in High Quality (Color)
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={onClose}
-              className="rounded-xl font-semibold cursor-pointer text-xs"
-            >
-              Close
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handlePrint}
-              loading={printing}
-              disabled={!qrDataUrl || qrError}
-              className="rounded-xl font-bold gap-1.5 cursor-pointer shadow-xs bg-primary-600 hover:bg-primary-700 text-brand-mist text-xs"
-            >
-              <Printer className="w-4 h-4" />
-              Print Poster (A4 Standee)
-            </Button>
-          </div>
-        </div>
-      }
+      footer={<PrintDialogActions documentName="poster" onPrint={handlePrint} onClose={onClose} disabled={!qrDataUrl || qrError} extraActions={<Button variant="outline" size="sm" onClick={handleCopyLink} icon={<Copy aria-hidden />}>{copied ? "Link copied" : "Copy join link"}</Button>} />}
     >
       <div className="space-y-4">
         {/* Printable Poster Container */}

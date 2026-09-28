@@ -216,14 +216,14 @@ export default function PatientExperienceFeedbackPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Patient Experience & CSAT Feedback
+                Patient feedback
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Accreditation Governance
+                Patient experience
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Real-time patient satisfaction tracking, 5-Star CSAT indices, Net Promoter Score (NPS) governance, and aspect-level care quality ratings.
+              Review patient ratings and feedback to identify areas for improvement.
             </p>
           </div>
 
@@ -551,7 +551,7 @@ export default function PatientExperienceFeedbackPage() {
               disabled={submitting}
               variant="primary"
               className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] text-xs rounded-xl font-semibold"
-            >
+             loading={submitting}>
               {submitting ? "Submitting..." : "Save Patient Feedback"}
             </Button>
           </div>

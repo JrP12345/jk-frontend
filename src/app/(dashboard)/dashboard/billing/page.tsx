@@ -1,6 +1,10 @@
 "use client";
 
-import { getPrintBrandStyles } from "@/lib/printBrand";
+import PrintDialogActions from "@/components/ui/PrintDialogActions";
+
+import PrintButton from "@/components/ui/PrintButton";
+
+import { getPrintBrandStyles, printElement, printHtml } from "@/lib/printBrand";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -742,10 +746,8 @@ export default function BillingPage() {
     setReceiptOpen(true);
   };
 
-  const triggerBrowserPrint = (ticketData: Invoice) => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-    printWindow.document.write(`
+  const triggerBrowserPrint = async (ticketData: Invoice) => {
+    await printHtml(`
       <html>
         <head>
           <title>Cash Receipt - ${ticketData.invoiceNumber}</title>
@@ -816,13 +818,9 @@ export default function BillingPage() {
               }
             </div>
           </div>
-          <script>
-            window.onload = () => { window.print(); window.close(); };
-          </script>
         </body>
       </html>
     `);
-    printWindow.document.close();
   };
 
   const filteredInvoices = invoices.filter((inv) => {
@@ -922,10 +920,10 @@ export default function BillingPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Invoices & Revenue Billing
+                Billing & invoices
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Revenue Desk
+                Billing
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
@@ -952,8 +950,8 @@ export default function BillingPage() {
                 onClick={fetchInvoices}
                 disabled={isRefreshing}
                 className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-[38px] sm:min-h-[36px] shrink-0"
-              >
-                <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", isRefreshing && "animate-spin")} />
+               loading={isRefreshing}>
+                <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
                 Refresh
               </Button>
 
@@ -1204,15 +1202,13 @@ export default function BillingPage() {
                         ).toLocaleString("en-IN")}
                       </Button>
                     ) : (
-                      <Button
+                      <PrintButton
                         size="xs"
                         variant="outline"
-                        onClick={() => handleOpenPrintInvoice(row)}
-                        className="shrink-0 font-semibold rounded-lg min-h-[36px]"
+                        onPrint={() => handleOpenPrintInvoice(row)}
+                        className="shrink-0 font-semibold rounded-lg min-h-[36px]" documentName="invoice" preview
                       >
-                        <FileText className="w-3.5 h-3.5 mr-1" />
-                        PDF
-                      </Button>
+              </PrintButton>
                     )}
                     <Dropdown
                       align="right"
@@ -1249,13 +1245,13 @@ export default function BillingPage() {
                             ]
                           : []),
                         {
-                          label: "View & Print Receipt",
+                          label: "Preview receipt",
                           icon: <Printer className="w-4 h-4 text-text-muted" />,
                           onClick: () => handlePrintReceipt(row),
                         },
                         {
-                          label: "Print Official PDF",
-                          icon: <FileText className="w-4 h-4 text-text-muted" />,
+                          label: "Preview invoice",
+                          icon: <Printer className="w-4 h-4 text-text-muted" />,
                           onClick: () => handleOpenPrintInvoice(row),
                         },
                       ]}
@@ -1353,26 +1349,22 @@ export default function BillingPage() {
                         <span>Pay ₹{dueAmount.toLocaleString("en-IN")}</span>
                       </Button>
                     ) : (
-                      <Button
+                      <PrintButton
                         size="sm"
                         variant="outline"
-                        onClick={() => handlePrintReceipt(row)}
-                        className="w-full font-semibold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5"
+                        onPrint={() => handlePrintReceipt(row)}
+                        className="w-full font-semibold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5" documentName="receipt" preview
                       >
-                        <Printer className="w-4 h-4 text-success-text" />
-                        <span>Receipt</span>
-                      </Button>
+              </PrintButton>
                     )}
 
-                    <Button
+                    <PrintButton
                       size="sm"
                       variant="outline"
-                      onClick={() => handleOpenPrintInvoice(row)}
-                      className="w-full font-semibold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5"
+                      onPrint={() => handleOpenPrintInvoice(row)}
+                      className="w-full font-semibold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5" documentName="invoice" preview
                     >
-                      <FileText className="w-4 h-4 text-text-muted" />
-                      <span>Official PDF</span>
-                    </Button>
+              </PrintButton>
                   </div>
                 </div>
               );
@@ -1718,6 +1710,10 @@ export default function BillingPage() {
         }}
         title="Cash Payment Receipt"
         size="md"
+        footer={<PrintDialogActions documentName="receipt" onPrint={() => triggerBrowserPrint(receiptInvoice!)} onClose={() => {
+          setReceiptOpen(false);
+          setReceiptInvoice(null);
+        }} disabled={!receiptInvoice} />}
       >
         {receiptInvoice && (
           <div className="space-y-4 py-1">
@@ -1797,23 +1793,7 @@ export default function BillingPage() {
               </div>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 border-t border-border/60 pt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setReceiptOpen(false);
-                  setReceiptInvoice(null);
-                }}
-                className="w-full sm:w-auto min-h-[44px]"
-              >
-                Close
-              </Button>
-              <Button size="sm" variant="primary" onClick={() => triggerBrowserPrint(receiptInvoice)} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
-                <Printer className="w-3.5 h-3.5 mr-1.5" />
-                Print Receipt
-              </Button>
-            </div>
+
           </div>
         )}
       </Modal>
@@ -1915,10 +1895,14 @@ export default function BillingPage() {
         title="Cashier Desk Till Reconciliation & Z-Report"
         description="End-of-shift physical cash drawer balancing, digital collections audit, and official financial handover certification."
         size="md"
+        footer={<PrintDialogActions documentName="daily report" disabled={!zReportSlip} onPrint={async () => { const element = document.getElementById("z-report-print"); await printElement(element); }} onClose={() => {
+          setIsTillModalOpen(false);
+          setZReportSlip(null);
+        }} />}
       >
         {zReportSlip ? (
           <div className="space-y-4 pt-1">
-            <div className="p-4 rounded-2xl bg-surface border border-border/80 space-y-3 font-mono text-xs">
+            <div id="z-report-print" className="p-4 rounded-2xl bg-surface border border-border/80 space-y-3 font-mono text-xs">
               <div className="text-center border-b border-dashed border-border/80 pb-3">
                 <h3 className="font-bold text-sm tracking-wide uppercase text-text">
                   {clinics.find((c) => c.id === tillClinicId)?.name || "Ekavyu HEALTH CLINIC"}
@@ -2024,27 +2008,7 @@ export default function BillingPage() {
               </div>
             </div>
 
-            <div className="flex justify-between gap-2 border-t border-border/60 pt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setIsTillModalOpen(false);
-                  setZReportSlip(null);
-                }}
-              >
-                Done / Close
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => window.print()}
-                className="font-bold shadow-xs bg-warning hover:bg-warning text-background"
-              >
-                <Printer className="w-3.5 h-3.5 mr-1.5" />
-                Print Z-Report Slip
-              </Button>
-            </div>
+
           </div>
         ) : (
           <form onSubmit={handleCloseTill} className="space-y-4 pt-1">

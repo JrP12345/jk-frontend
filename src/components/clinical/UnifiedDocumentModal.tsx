@@ -1,10 +1,11 @@
 "use client";
 
-import { getPrintBrandStyles } from "@/lib/printBrand";
+import PrintDialogActions from "@/components/ui/PrintDialogActions";
+
+import { getPrintBrandStyles, printHtml, PrintPreparationError } from "@/lib/printBrand";
 
 import React, { useRef, useState, useEffect } from "react";
 import Modal from "../ui/Modal";
-import Button from "../ui/Button";
 import { PrescriptionSealingBadge } from "./PrescriptionSealingBadge";
 
 export type DocumentType =
@@ -114,14 +115,11 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
   const isPrescription = document.documentType === "prescription";
   const isPreprinted = letterheadMode === "preprinted_stationery" && isPrescription;
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     const printContent = printRef.current?.innerHTML;
-    if (!printContent) return;
+    if (!printContent) throw new PrintPreparationError("not-ready");
 
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-
-    printWindow.document.write(`
+    await printHtml(`
       <!DOCTYPE html>
       <html>
         <head>
@@ -242,45 +240,42 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
         </body>
       </html>
     `);
-
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={`Preview Official ${document.title}`} size="lg">
+    <Modal open={open} onClose={onClose} title={`Preview ${document.title}`} size="lg"
+      footer={<PrintDialogActions documentName={document.documentType.replace(/_/g, " ")} onPrint={handlePrint} onClose={onClose} />}>
       <div className="space-y-4">
         {/* Letterhead Print Mode Toolbar (for Prescriptions) */}
         {isPrescription && (
           <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-surface-alt rounded-xl border border-border/80 text-xs">
             <div className="flex items-center gap-2">
               <span className="font-bold text-text">Letterhead Mode:</span>
-              <div className="inline-flex rounded-lg border border-border p-0.5 bg-surface">
+              <div className="flex flex-wrap gap-1 rounded-lg border border-border p-0.5 bg-surface">
                 <button
                   type="button"
                   onClick={() => setLetterheadMode("plain_a4")}
-                  className={`px-3 py-1 rounded-md font-bold text-xs transition-all cursor-pointer ${
+                  aria-pressed={letterheadMode === "plain_a4"}
+                  className={`min-h-11 px-3 py-2 rounded-md font-bold text-xs transition-all cursor-pointer ${
                     letterheadMode === "plain_a4"
                       ? "bg-primary-600 text-brand-mist shadow-2xs"
                       : "text-text-muted hover:text-text"
                   }`}
                 >
-                  📄 Plain A4 (Full Digital Header)
+                  Plain A4
                 </button>
                 <button
                   type="button"
                   onClick={() => setLetterheadMode("preprinted_stationery")}
-                  className={`px-3 py-1 rounded-md font-bold text-xs transition-all cursor-pointer ${
+                  aria-pressed={letterheadMode === "preprinted_stationery"}
+                  className={`min-h-11 px-3 py-2 rounded-md font-bold text-xs transition-all cursor-pointer ${
                     letterheadMode === "preprinted_stationery"
                       ? "bg-warning text-background shadow-2xs"
                       : "text-text-muted hover:text-text"
                   }`}
                   title="Leaves top 65mm blank to feed directly into physical doctor/clinic letterhead pads"
                 >
-                  📋 Pre-Printed Clinic Pad (Offset 65mm)
+                  Preprinted clinic pad
                 </button>
               </div>
             </div>
@@ -854,14 +849,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
         </div>
 
         {/* Modal Action Footer */}
-        <div className="flex justify-end gap-2 pt-2 border-t border-border">
-          <Button variant="outline" size="sm" onClick={onClose}>
-            Close
-          </Button>
-          <Button variant="primary" size="sm" onClick={handlePrint}>
-            🖨️ Print / Save PDF
-          </Button>
-        </div>
+
       </div>
     </Modal>
   );

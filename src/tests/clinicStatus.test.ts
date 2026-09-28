@@ -2,6 +2,13 @@ import { describe, it, expect } from "vitest";
 import { parseTimeToMinutes, formatMinutesTo12Hour, getClinicOperationalStatus } from "../lib/timing/clinicStatus";
 
 describe("Clinic Operational Status Engine", () => {
+  it("does not infer opening hours from an unpublished or invalid schedule", () => {
+    for (const timings of [undefined, "", "{}", "not a schedule"]) {
+      const status = getClinicOperationalStatus(timings, new Date(2026, 8, 28, 10));
+      expect(status.status).toBe("unspecified");
+      expect(status.isOpen).toBe(false);
+    }
+  });
   describe("parseTimeToMinutes", () => {
     it("parses 24-hour time strings correctly", () => {
       expect(parseTimeToMinutes("00:00")).toBe(0);

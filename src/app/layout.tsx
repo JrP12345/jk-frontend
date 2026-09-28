@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -20,20 +20,26 @@ export const metadata: Metadata = {
     title: "Ekavyu — Healthcare Platform",
     description: brandDescription,
   },
-  manifest: "/manifest.json",
+  manifest: "/manifest.json?v=brand-3",
   icons: {
     icon: [
-      { url: "/favicon-32.png?v=ekavyu-leaf-2", sizes: "32x32", type: "image/png" },
-      { url: "/app-icon-512.png?v=ekavyu-leaf-2", sizes: "512x512", type: "image/png" },
+      { url: "/favicon-32.png?v=brand-3", sizes: "32x32", type: "image/png" },
     ],
-    shortcut: [{ url: "/favicon-16.png?v=ekavyu-leaf-2", sizes: "16x16", type: "image/png" }],
-    apple: [{ url: "/app-icon-180.png?v=ekavyu-leaf-2", sizes: "180x180", type: "image/png" }],
+    shortcut: [{ url: "/favicon-16.png?v=brand-3", sizes: "16x16", type: "image/png" }],
+    apple: [{ url: "/app-icon-180.png?v=brand-3", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Ekavyu",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0F6F66",
 };
 
 export default async function RootLayout({
@@ -51,10 +57,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#0F6F66" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
         <script
           nonce={nonce}
           dangerouslySetInnerHTML={{

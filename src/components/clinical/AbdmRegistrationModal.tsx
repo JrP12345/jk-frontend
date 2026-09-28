@@ -1,9 +1,12 @@
 "use client";
 
+import PrintButton from "@/components/ui/PrintButton";
+import { printElement } from "@/lib/printBrand";
+
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Input, Select, Badge, useToast } from "@/components/ui";
 import api from "@/lib/api";
-import { ShieldCheck, QrCode, Search, CheckCircle2, Printer, Smartphone, CreditCard, UserCheck, Sparkles, Zap, FileCode, Share2, Copy, Check, Download, Layers } from "lucide-react";
+import { ShieldCheck, QrCode, Search, CheckCircle2, Smartphone, CreditCard, UserCheck, Sparkles, Zap, FileCode, Share2, Copy, Check, Download, Layers } from "lucide-react";
 
 interface AbdmProfile {
   abhaNumber: string;
@@ -125,7 +128,7 @@ export function AbdmRegistrationModal({
       setTxnId(data?.txnId || "TXN-DEMO");
       setOtp("123456"); // Pre-fill test OTP for frictionless testing
       toast({
-        title: "Aadhaar OTP Dispatched 📲",
+        title: "Aadhaar verification code sent",
         description: data?.message || "OTP sent to mobile linked with Aadhaar.",
         variant: "success",
       });
@@ -599,7 +602,7 @@ export function AbdmRegistrationModal({
 
         {/* TAB 3: COUNTER SCAN & SHARE STANDEE */}
         {activeTab === "standee" && (
-          <div className="p-4 rounded-2xl bg-surface border border-border space-y-4 text-center">
+          <div id="abdm-standee-print" className="p-4 rounded-2xl bg-surface border border-border space-y-4 text-center">
             <div className="space-y-1">
               <h4 className="font-bold text-sm text-text">Clinic Reception Counter Scan & Share Standee</h4>
               <p className="text-xs text-text-muted">
@@ -615,16 +618,14 @@ export function AbdmRegistrationModal({
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
-              <Button
+              <PrintButton
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => window.print()}
-                className="rounded-xl text-xs font-semibold"
+                onPrint={async () => { const element = document.getElementById("abdm-standee-print"); await printElement(element); }}
+                className="rounded-xl text-xs font-semibold" documentName="poster"
               >
-                <Printer className="w-3.5 h-3.5 mr-1" />
-                Print Acrylic Standee Poster (A4)
-              </Button>
+              </PrintButton>
               <Button
                 type="button"
                 size="sm"
@@ -649,7 +650,7 @@ export function AbdmRegistrationModal({
                   <Badge variant="success" size="sm" className="font-bold text-[10px]">
                     NHA ABDM Milestone 3 (M3)
                   </Badge>
-                  <h4 className="font-bold text-sm text-text">Care-Context Linking & HL7 FHIR R4 Health Exchange</h4>
+                  <h4 className="font-bold text-sm text-text">Connected health records</h4>
                 </div>
                 <p className="text-xs text-text-muted">
                   Explore linked ABDM Care-Contexts, preview official NRCES FHIR R4 Prescription & Diagnostic bundles, or simulate HIU consent-based record fetching from other hospitals.
@@ -684,7 +685,7 @@ export function AbdmRegistrationModal({
                             linkedAt: new Date().toISOString(),
                           },
                         ]);
-                        toast({ title: "ABDM Profile Loaded", description: "Linked Care Contexts retrieved.", variant: "success" });
+                        toast({ title: "Patient profile loaded", description: "Connected health records are available.", variant: "success" });
                       }
                     } catch (err: any) {
                       toast({ title: "Lookup Failed", description: err.response?.data?.message || "Patient not found.", variant: "error" });
@@ -787,7 +788,7 @@ export function AbdmRegistrationModal({
                         const extRes = await api.get(`/abdm/hiu/health-data/${reqId}`);
                         setM3ExternalRecords(extRes.data?.data);
                         toast({
-                          title: "ABDM Consent Granted & Records Retrieved! 🏥",
+                          title: "Health records received",
                           description: "External records from AIIMS and Apollo successfully loaded.",
                           variant: "success",
                         });
@@ -805,29 +806,34 @@ export function AbdmRegistrationModal({
                     className="bg-primary hover:bg-primary text-brand-mist font-bold rounded-xl text-xs shadow-xs cursor-pointer"
                   >
                     <Share2 className="w-3.5 h-3.5 mr-1" />
-                    Request External Health Records (HIU)
+                    Request health records
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* FHIR R4 Bundle Preview Inspector */}
+            {/* Structured record export */}
             {m3FhirBundle && (
               <div className="p-3.5 rounded-2xl bg-surface border-2 border-success/30 space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <FileCode className="w-4 h-4 text-success-text" />
-                    <span className="font-bold text-xs text-text">HL7 FHIR R4 JSON Bundle (NRCES Compliant)</span>
+                    <span className="font-bold text-xs text-text">Health record data is ready</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(JSON.stringify(m3FhirBundle, null, 2));
-                        setM3Copied(true);
-                        setTimeout(() => setM3Copied(false), 2000);
+                      onClick={async () => {
+                        try {
+                          if (!navigator.clipboard) throw new Error("Clipboard unavailable");
+                          await navigator.clipboard.writeText(JSON.stringify(m3FhirBundle, null, 2));
+                          setM3Copied(true);
+                          setTimeout(() => setM3Copied(false), 2000);
+                        } catch {
+                          toast({ title: "Health record data could not be copied", description: "Try downloading the file instead.", variant: "error" });
+                        }
                       }}
                       className="text-[11px] rounded-xl font-semibold cursor-pointer"
                     >
@@ -837,7 +843,7 @@ export function AbdmRegistrationModal({
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3 h-3 mr-1" /> Copy JSON
+                          <Copy className="w-3 h-3 mr-1" /> Copy data
                         </>
                       )}
                     </Button>
@@ -852,16 +858,15 @@ export function AbdmRegistrationModal({
                         a.href = url;
                         a.download = `FHIR_R4_Bundle_${m3FhirBundle.id || "export"}.json`;
                         a.click();
+                        URL.revokeObjectURL(url);
                       }}
                       className="text-[11px] rounded-xl font-semibold cursor-pointer"
                     >
-                      <Download className="w-3 h-3 mr-1" /> Download
+                      <Download className="w-3 h-3 mr-1" /> Download data
                     </Button>
                   </div>
                 </div>
-                <pre className="p-3 bg-surface text-success-text font-mono text-[10px] rounded-xl max-h-52 overflow-y-auto overflow-x-auto leading-relaxed">
-                  {JSON.stringify(m3FhirBundle, null, 2)}
-                </pre>
+                <p className="text-xs text-text-secondary leading-relaxed">Copy or download the structured file to share it with a compatible health records service.</p>
               </div>
             )}
 

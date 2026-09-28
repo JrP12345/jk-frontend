@@ -436,7 +436,7 @@ export default function PatientPortalPage() {
       </div>
 
       {/* Portal Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-full md:w-fit max-w-full touch-pan-x scrollbar-none">
+      <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-full md:w-fit max-w-full touch-manipulation scrollbar-none">
         {[
           { key: "profile", label: "Medical Profile" },
           { key: "family", label: `My Family (${familyMembers.length})` },
@@ -610,7 +610,7 @@ export default function PatientPortalPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <span>Longitudinal Medical Records & Document Bundle</span>
+              <span>Medical records</span>
               <Button
                 size="sm"
                 className="w-full sm:w-auto min-h-[38px]"
@@ -625,19 +625,19 @@ export default function PatientPortalPage() {
                     a.download = `medical_records_${user?.name?.replace(/\s+/g, "_") || "patient"}.json`;
                     a.click();
                     URL.revokeObjectURL(url);
-                    toast({ title: "Downloaded! 📄", description: "Medical records bundle exported successfully", variant: "success" });
+                    toast({ title: "Records downloaded", description: "Your health records data file is ready.", variant: "success" });
                   } catch (err: any) {
-                    toast({ title: "Export Failed", description: err.response?.data?.message || "Failed to download medical records", variant: "error" });
+                    toast({ title: "Records could not be downloaded", description: err.response?.data?.message || "Please try again.", variant: "error" });
                   }
                 }}
               >
-                📥 Download JSON Bundle
+                Download records
               </Button>
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-2 space-y-4">
             <p className="text-xs text-text-muted">
-              Download your complete official health history, including consultation clinical notes, electronic prescriptions, and diagnostic lab test reports.
+              Download a data file containing your consultation notes, prescriptions, and lab reports.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 bg-surface-alt border border-border/80 rounded-xl">

@@ -213,14 +213,14 @@ export default function RadiologyPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Radiology PACS & Imaging
+                Imaging & radiology
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Imaging & PACS
+                Imaging
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Web DICOM viewer, multi-modality diagnostic review, radiation exposure tracking, and radiology sign-offs.
+              Review imaging studies, record findings, and complete radiology sign-offs.
             </p>
           </div>
 
@@ -231,8 +231,8 @@ export default function RadiologyPage() {
               onClick={fetchData}
               disabled={loading}
               className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
-            >
-              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
+             loading={loading}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
             </Button>
 
@@ -283,7 +283,7 @@ export default function RadiologyPage() {
       <div className="p-3.5 sm:p-4 bg-surface rounded-2xl border border-border/80 shadow-xs space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Modality Selector Pills */}
-          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full touch-pan-x">
+          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full touch-manipulation">
             <span className="text-[11px] font-bold text-text-muted px-2.5 shrink-0">Modality:</span>
             {[
               { key: "all", label: "All Modalities" },
@@ -318,7 +318,7 @@ export default function RadiologyPage() {
         </div>
 
         {/* Status Filter Bar */}
-        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full touch-pan-x">
+        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full touch-manipulation">
           <span className="text-[11px] font-bold text-text-muted px-2.5 shrink-0">Status:</span>
           {[
             { key: "all", label: "All Statuses" },

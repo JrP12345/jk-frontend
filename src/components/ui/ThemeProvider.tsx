@@ -72,13 +72,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Use native GPU-accelerated View Transitions API for buttery smooth 60fps crossfade
-    if ("startViewTransition" in document) {
+    const animate = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (animate && "startViewTransition" in document) {
       (document as any).startViewTransition(() => {
         updateDOM();
       });
     } else {
-      root.classList.add("theme-transitioning");
+      if (animate) root.classList.add("theme-transitioning");
       updateDOM();
       window.setTimeout(() => {
         root.classList.remove("theme-transitioning");
@@ -221,16 +221,17 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
   // Segmented Variant (Linear / Raycast Style Dual Capsule)
   if (variant === "segmented") {
     return (
-      <div
+      <button
+        type="button"
+        onClick={toggleMode}
         className={cn(
           "group relative inline-flex items-center h-8.5 p-0.5 rounded-full cursor-pointer select-none",
           "bg-surface hover:bg-surface  border border-border/80 hover:border-border shadow-2xs transition-all duration-300",
           "focus-within:ring-2 focus-within:ring-focus-ring",
           className
         )}
-        onClick={toggleMode}
-        role="group"
-        aria-label="Theme mode toggle"
+        title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       >
         {/* Sliding magnetic thumb */}
         <span
@@ -243,16 +244,9 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
           )}
         />
 
-        {/* Sun Button */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleMode();
-          }}
-          title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-          aria-pressed={!isDark}
+        {/* Both icons are part of one toggle, including its selected side. */}
+        <span
+          aria-hidden="true"
           className={cn(
             "relative z-10 flex items-center justify-center h-7.5 w-7.5 rounded-full cursor-pointer transition-all duration-300",
             !isDark
@@ -261,18 +255,11 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
           )}
         >
           <CelestialSun className="w-4 h-4" rotating={!isDark} />
-        </button>
+        </span>
 
-        {/* Moon Button */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleMode();
-          }}
-          title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-          aria-pressed={isDark}
+        {/* Moon indicator */}
+        <span
+          aria-hidden="true"
           className={cn(
             "relative z-10 flex items-center justify-center h-7.5 w-7.5 rounded-full cursor-pointer transition-all duration-300",
             isDark
@@ -281,8 +268,8 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
           )}
         >
           <CelestialMoon className="w-4 h-4" />
-        </button>
-      </div>
+        </span>
+      </button>
     );
   }
 

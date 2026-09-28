@@ -205,14 +205,14 @@ export default function ServiceCatalogPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Hospital Service Catalog & Rate Cards
+                Services & pricing
               </h1>
               <Badge variant="primary" size="sm" className="font-semibold">
-                Rate Master
+                Service rates
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Master fee schedule, HSN/SAC codes, and GST rates for automated encounter & OPD/IPD billing.
+              Manage service prices and tax details used on patient bills.
             </p>
           </div>
 

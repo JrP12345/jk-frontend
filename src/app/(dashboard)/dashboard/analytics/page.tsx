@@ -118,14 +118,14 @@ export default function AnalyticsPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Executive BI & Analytics
+                Analytics overview
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Executive Analytics
+                Performance
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Comparative multi-clinic revenue analytics, active bed census utilization, and referral performance metrics.
+              Compare revenue, bed use, and referrals across clinics.
             </p>
           </div>
 
@@ -136,9 +136,9 @@ export default function AnalyticsPage() {
               onClick={fetchAnalytics}
               disabled={loading}
               className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
-            >
-              <RotateCw className={cn("h-3.5 w-3.5 mr-1.5 text-text-secondary", loading && "animate-spin")} />
-              Refresh BI Feed
+             loading={loading}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
+              Refresh analytics
             </Button>
           </div>
         </div>

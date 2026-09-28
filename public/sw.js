@@ -1,21 +1,16 @@
 // Ekavyu Progressive Web App (PWA) Service Worker
-const CACHE_NAME = 'ekavyu-cache-v8';
+const CACHE_NAME = 'ekavyu-cache-v9';
 const STATIC_ASSETS = [
   '/',
   '/browse',
-  '/manifest.json',
-  '/app-icon-192.png',
-  '/app-icon-512.png',
-  '/app-icon-light-192.png',
-  '/ekavyu-leaf.png',
+  '/manifest.json?v=brand-3',
   '/ekavyu-leaf.png?v=website-1',
-  '/favicon-16.png',
-  '/favicon-32.png',
-  '/app-icon-180.png',
-  '/app-icon-maskable-512.png',
-  '/app-icon-192.png?v=ekavyu-leaf-2',
-  '/app-icon-512.png?v=ekavyu-leaf-2',
-  '/app-icon-maskable-512.png?v=ekavyu-leaf-2',
+  '/favicon-16.png?v=brand-3',
+  '/favicon-32.png?v=brand-3',
+  '/app-icon-180.png?v=brand-3',
+  '/app-icon-192.png?v=brand-3',
+  '/app-icon-512.png?v=brand-3',
+  '/app-icon-maskable-512.png?v=brand-3',
 ];
 
 self.addEventListener('install', (event) => {
@@ -34,7 +29,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME)
+          .filter((name) => /^(ekavyu|ananta|jk)-cache-/.test(name) && name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       );
     }).then(() => self.clients.claim())
@@ -47,6 +42,23 @@ self.addEventListener('fetch', (event) => {
 
   // Skip non-GET requests and WebSocket connections
   if (request.method !== 'GET' || url.protocol.startsWith('ws')) {
+    return;
+  }
+
+  if (url.origin !== self.location.origin) return;
+
+  // Installation metadata and brand images must refresh before serving old art.
+  if (url.pathname === '/manifest.json' || /^\/(?:app-icon[^/]*|favicon[^/]*|ekavyu-leaf|logo-[dw])\.png$/.test(url.pathname)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const response = await fetch(request, { cache: 'reload' });
+        if (response.ok) await cache.put(request, response.clone());
+        return response;
+      } catch {
+        return (await cache.match(request)) || Response.error();
+      }
+    })());
     return;
   }
 

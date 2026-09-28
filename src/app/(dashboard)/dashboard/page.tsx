@@ -293,7 +293,7 @@ export default function DashboardOverview() {
 
     const columns: Column<any>[] = [
       {
-        header: "Tenant Organization",
+        header: "Organization",
         accessor: (org) => (
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-accent font-bold flex items-center justify-center text-xs shrink-0 border border-primary-500/20">
@@ -307,7 +307,7 @@ export default function DashboardOverview() {
         ),
       },
       {
-        header: "SaaS Plan",
+        header: "Plan",
         accessor: (org) => (
           <Badge
             variant={
@@ -383,14 +383,14 @@ export default function DashboardOverview() {
             <div className="space-y-1">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                  Platform Superadmin Console
+                  Platform overview
                 </h1>
                 <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                  Root Operator
+                  Platform admin
                 </Badge>
               </div>
               <p className="text-xs sm:text-sm text-text-muted max-w-2xl">
-                Multi-tenant health metrics, SaaS subscriptions, and zero-password user impersonation hub.
+                Review organizations, subscriptions, and users across the platform.
               </p>
             </div>
 
@@ -401,8 +401,8 @@ export default function DashboardOverview() {
                 onClick={fetchPlatformOverview}
                 disabled={loadingHierarchy}
                 className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-[40px] sm:min-h-[36px] justify-center"
-              >
-                <RotateCw className={`h-3.5 w-3.5 mr-1.5 text-text-secondary ${loadingHierarchy ? "animate-spin" : ""}`} />
+               loading={loadingHierarchy}>
+                <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary " />
                 Refresh
               </Button>
               <Button
@@ -412,7 +412,7 @@ export default function DashboardOverview() {
                 className="rounded-xl text-xs font-semibold shadow-xs min-h-[40px] sm:min-h-[36px] justify-center"
               >
                 <Users className="h-3.5 w-3.5 mr-1" />
-                Users & Impersonate
+                Users & access
               </Button>
             </div>
           </div>
@@ -421,49 +421,50 @@ export default function DashboardOverview() {
         {/* 2. PLATFORM STATCARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Tenant Organizations"
+            title="Organizations"
             value={summary.totalOrganizations}
             icon={<Building2 className="w-5 h-5 text-accent" />}
             description="Registered medical institutions"
             onClick={() => router.push("/dashboard/organizations")}
           />
           <StatCard
-            title="Clinic Branches"
+            title="Clinic locations"
             value={summary.totalBranches}
             icon={<Layers className="w-5 h-5 text-success-text" />}
-            description="Active multi-branch facilities"
+            description="Registered clinic locations"
           />
           <StatCard
-            title="Registered Users"
+            title="Users"
             value={summary.totalMembers}
             icon={<Users className="w-5 h-5 text-accent" />}
-            description="Doctors, staff & admins"
+            description="Doctors, staff, and administrators"
             onClick={() => router.push("/dashboard/admin/users")}
           />
           <StatCard
-            title="Security & Isolation"
-            value="100%"
+            title="Audit log"
+            value="Open"
             icon={<Shield className="w-5 h-5 text-accent" />}
-            description="Tenant data isolation active"
+            description="Review platform activity"
+            onClick={() => router.push("/dashboard/audit")}
           />
         </div>
 
         {/* 3. TENANT ORGANIZATIONS HUB */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-text">Tenant Organizations</h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-base font-bold text-text">Organizations</h2>
               <p className="text-xs text-text-muted">
-                Explore platform tenants, inspect branch capacity, and directly login as any organization owner.
+                Review clinic locations, staff, and organization access.
               </p>
             </div>
             <Button
               variant="outline"
               size="xs"
               onClick={() => router.push("/dashboard/organizations")}
-              className="text-xs rounded-xl"
+              className="text-xs rounded-xl w-full sm:w-auto justify-center"
             >
-              View All Tenants <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              View organizations <ArrowRight className="w-3.5 h-3.5 ml-1" />
             </Button>
           </div>
 
@@ -539,7 +540,7 @@ export default function DashboardOverview() {
                   </div>
                 </div>
               )}
-              emptyMessage="No tenant organizations registered on the platform yet."
+              emptyMessage="No organizations have been added yet."
             />
           </div>
         </div>
@@ -556,10 +557,10 @@ export default function DashboardOverview() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-text group-hover:text-accent transition-colors">
-                  Users Directory & Impersonate
+                  Users & access
                 </h3>
                 <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                  Log in as any doctor, receptionist, or staff member in 1 click without needing their credentials.
+                  Find users and, when authorized, view their account to help resolve an issue.
                 </p>
               </div>
             </div>
@@ -567,7 +568,7 @@ export default function DashboardOverview() {
 
           <Card
             className="p-4 cursor-pointer hover:border-primary-500/40 transition-all group"
-            onClick={() => router.push("/dashboard/plans")}
+            onClick={() => router.push("/dashboard/admin/billing")}
           >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center text-success-text group-hover:scale-105 transition-transform">
@@ -575,10 +576,10 @@ export default function DashboardOverview() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-text group-hover:text-success-text transition-colors">
-                  SaaS Plans & Capacity Limits
+                  Plans & subscriptions
                 </h3>
                 <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                  Configure subscription pricing, clinic branch quotas, and doctor limits for Starter, Pro, and Enterprise.
+                  Manage subscription pricing and limits for clinics and doctors.
                 </p>
               </div>
             </div>
@@ -654,8 +655,8 @@ export default function DashboardOverview() {
               onClick={fetchDashboardData}
               disabled={isRefreshing}
               className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors flex-1 sm:flex-initial justify-center min-h-[44px] sm:min-h-[36px]"
-            >
-              <RotateCw className={`h-3.5 w-3.5 mr-1.5 text-text-secondary ${isRefreshing ? "animate-spin" : ""}`} />
+             loading={isRefreshing}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary " />
               Refresh
             </Button>
 

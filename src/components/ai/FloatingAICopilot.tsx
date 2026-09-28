@@ -2,7 +2,10 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useOverlayFocus } from "@/hooks/useOverlayFocus";
+import { Alert, Button, Modal } from "@/components/ui";
+import { useClinicStore } from "@/store/clinicStore";
+import { hasAnyPermission } from "@/lib/permissions";
+import { userFacingError } from "@/lib/userFacingError";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
 
@@ -110,8 +113,17 @@ export function FloatingAICopilot() {
   const { user } = useAuthStore();
 
   const [isOpen, setIsOpen] = useState(false);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useOverlayFocus(isOpen, dialogRef, () => setIsOpen(false));
+  const { activeClinicId } = useClinicStore();
+  const permitted = hasAnyPermission(user, "MANAGE_CLINICAL_NOTES", "MANAGE_EHR", "VIEW_EHR");
+  const hasContext = Boolean(user?.organization_id || (user?.role === "root" && activeClinicId));
+  const contextVersion = useRef(0);
+  const sessionBusy = useRef(false);
+  const sendBusy = useRef(false);
+  const requestController = useRef<AbortController | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
+  const chatUrl = (path: string) => user?.role === "root" && !user.organization_id && activeClinicId ? path + "?clinicId=" + encodeURIComponent(activeClinicId) : path;
+  const reportError = (error: any) => setChatError(error.response?.status === 403 ? userFacingError(error.response?.data?.message, "AI assistance is unavailable for your account. Contact your organization administrator.") : "AI assistance could not connect. Check your connection and try again.");
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Session State
@@ -119,6 +131,7 @@ export function FloatingAICopilot() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState("");
 
   const [inputQuery, setInputQuery] = useState("");
   const [isThinking, setIsThinking] = useState(false);
@@ -134,93 +147,95 @@ export function FloatingAICopilot() {
   }, [messages, isThinking]);
 
   useEffect(() => {
-    if (isOpen && user?.id) {
-      loadSessions();
-    }
-  }, [isOpen, user?.id]);
+    contextVersion.current++;
+    requestController.current?.abort();
+    requestController.current = new AbortController();
+    sessionBusy.current = false;
+    sendBusy.current = false;
+    setSessions([]);
+    setMessages([]);
+    setActiveSessionId(null);
+    setChatError(null);
+    setIsThinking(false);
+    setIsLoadingSession(false);
+    setShowSessionSelector(false);
+    setInputQuery("");
+    if (isOpen && permitted && hasContext) void loadSessions();
+    return () => { contextVersion.current++; requestController.current?.abort(); recognitionRef.current?.stop(); };
+  }, [isOpen, user?.id, user?.organization_id, activeClinicId, permitted, hasContext]);
 
-  const loadSessions = async () => {
-    try {
-      setIsLoadingSession(true);
-      const res = await api.get("/ai/chat/sessions");
-      const sessionList = res.data?.data || [];
-      setSessions(sessionList);
+  const createSession = async (version: number): Promise<string | null> => {
+    const res = await api.post(chatUrl("/ai/chat/sessions"), { initialTitle: "New Clinical Session" }, { signal: requestController.current?.signal });
+    if (version !== contextVersion.current) return null;
+    const session = res.data?.data;
+    const sessionId = session?.id || session?._id;
+    if (!sessionId) throw new Error("Invalid chat response");
+    setActiveSessionId(sessionId);
+    setMessages(session.messages || []);
+    setSessions(prev => [{ id: sessionId, title: session.title || "New Session", updatedAt: new Date().toISOString() }, ...prev]);
+    setShowSessionSelector(false);
+    return sessionId;
+  };
 
-      if (sessionList.length > 0) {
-        const firstSessionId = sessionList[0].id || sessionList[0]._id;
-        await loadSessionMessages(firstSessionId);
-      } else {
-        await handleNewChatSession();
-      }
-    } catch (err) {
-      console.warn("[Copilot] Initializing fresh session", err);
-      await handleNewChatSession();
-    } finally {
-      setIsLoadingSession(false);
+  const readSession = async (sessionId: string, version: number) => {
+    const res = await api.get(chatUrl(`/ai/chat/sessions/${sessionId}`), { signal: requestController.current?.signal });
+    if (version !== contextVersion.current) return;
+    setActiveSessionId(sessionId);
+    setMessages(res.data?.data?.messages || []);
+  };
+
+  const sessionAction = async (action: (version: number) => Promise<unknown>) => {
+    if (sessionBusy.current || sendBusy.current || !hasContext || !permitted) return;
+    const version = contextVersion.current;
+    sessionBusy.current = true;
+    setIsLoadingSession(true);
+    setChatError(null);
+    try { await action(version); }
+    catch (error) { if (version === contextVersion.current) reportError(error); }
+    finally {
+      if (version === contextVersion.current) { sessionBusy.current = false; setIsLoadingSession(false); }
     }
   };
 
-  const loadSessionMessages = async (sessionId: string) => {
-    try {
-      setIsLoadingSession(true);
-      setActiveSessionId(sessionId);
-      const res = await api.get(`/ai/chat/sessions/${sessionId}`);
-      const sessionData = res.data?.data || res.data;
-      if (sessionData && Array.isArray(sessionData.messages)) {
-        setMessages(sessionData.messages);
-      }
-    } catch (err) {
-      console.error("[Copilot] Error loading session messages:", err);
-    } finally {
-      setIsLoadingSession(false);
-    }
-  };
+  const loadSessions = () => sessionAction(async version => {
+    const res = await api.get(chatUrl("/ai/chat/sessions"), { signal: requestController.current?.signal });
+    if (version !== contextVersion.current) return;
+    const list = res.data?.data;
+    if (!Array.isArray(list)) throw new Error("Invalid chat response");
+    const normalized = list.map(session => ({ ...session, id: session.id || session._id }));
+    setSessions(normalized);
+    if (normalized.length) await readSession(normalized[0].id, version);
+    else await createSession(version);
+  });
 
-  const handleNewChatSession = async () => {
-    try {
-      setIsLoadingSession(true);
-      const res = await api.post("/ai/chat/sessions", { initialTitle: "New Clinical Session" });
-      const newSession = res.data?.data || res.data;
-      const newId = newSession.id || newSession._id;
-
-      setActiveSessionId(newId);
-      setMessages(newSession.messages || []);
-      setSessions((prev) => [{ id: newId, title: newSession.title || "New Session", updatedAt: new Date().toISOString() }, ...prev]);
-      setShowSessionSelector(false);
-    } catch (err) {
-      console.error("[Copilot] Error creating chat session:", err);
-    } finally {
-      setIsLoadingSession(false);
-    }
-  };
-
+  const loadSessionMessages = (sessionId: string) => sessionAction(version => readSession(sessionId, version));
+  const handleNewChatSession = () => sessionAction(version => createSession(version));
   const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      await api.delete(`/ai/chat/sessions/${sessionId}`);
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-      if (activeSessionId === sessionId) {
-        const remaining = sessions.filter((s) => s.id !== sessionId);
-        if (remaining.length > 0) {
-          await loadSessionMessages(remaining[0].id);
-        } else {
-          await handleNewChatSession();
+    await sessionAction(async version => {
+      setArchivingId(sessionId);
+      try {
+        await api.delete(chatUrl(`/ai/chat/sessions/${sessionId}`), { signal: requestController.current?.signal });
+        if (version !== contextVersion.current) return;
+        const remaining = sessions.filter(session => session.id !== sessionId);
+        setSessions(remaining);
+        if (activeSessionId === sessionId) {
+          if (remaining.length) await readSession(remaining[0].id, version);
+          else await createSession(version);
         }
-      }
-    } catch (err) {
-      console.error("[Copilot] Error archiving session:", err);
+      } finally { if (version === contextVersion.current) setArchivingId(null); }
+    });
+  };
+
+  const copyMessageText = async (msgId: string, text: string, forChart = false) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(forChart ? `chart-${msgId}` : msgId);
+      setActionMessage(forChart ? "Copied. Paste this into the patient's chart when ready." : "Message copied.");
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      setActionMessage("Could not copy the message. Check clipboard access and try again.");
     }
-  };
-
-  const copyMessageText = (msgId: string, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(msgId);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const insertIntoEHRChart = (text: string) => {
-    navigator.clipboard.writeText(text);
-    alert("Clinical AI note copied to clipboard. Ready to paste into EHR chart.");
   };
 
   const toggleVoiceMode = () => {
@@ -228,7 +243,7 @@ export function FloatingAICopilot() {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in this browser.");
+      setActionMessage("Voice input is unavailable in this browser. You can type your message instead.");
       return;
     }
 
@@ -256,56 +271,27 @@ export function FloatingAICopilot() {
   };
 
   const handleSendMessage = async (e?: React.FormEvent, customQuery?: string) => {
-    if (e) e.preventDefault();
-    const queryToSend = customQuery || inputQuery;
-    if (!queryToSend.trim()) return;
-
-    if (!activeSessionId) {
-      await handleNewChatSession();
-    }
-
-    const currentSessionId = activeSessionId;
-    if (!currentSessionId) return;
-
-    const userMsg: Message = {
-      id: `usr_${Date.now()}`,
-      sender: "user",
-      text: queryToSend,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
-    setInputQuery("");
+    e?.preventDefault();
+    const query = (customQuery || inputQuery).trim();
+    if (!query || sendBusy.current || sessionBusy.current || !hasContext || !permitted) return;
+    const version = contextVersion.current;
+    sendBusy.current = true;
+    setChatError(null);
     setIsThinking(true);
-
     try {
-      const res = await api.post(`/ai/chat/sessions/${currentSessionId}/messages`, {
-        query: queryToSend,
-        currentRoute: pathname,
-      });
-
-      const resData = res.data?.data || res.data;
-      if (resData && Array.isArray(resData.allMessages)) {
-        setMessages(resData.allMessages);
-      }
-
-      if (resData.title) {
-        setSessions((prev) =>
-          prev.map((s) => (s.id === currentSessionId ? { ...s, title: resData.title } : s))
-        );
-      }
-    } catch (err: any) {
-      const errorMsg: Message = {
-        id: `ai_${Date.now()}`,
-        sender: "ai",
-        text: "I encountered an issue connecting to the AI service. Please try again.",
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        citations: ["System Connection Probe"],
-      };
-      setMessages((prev) => [...prev, errorMsg]);
-    } finally {
-      setIsThinking(false);
-    }
+      // React state updates are asynchronous; use the newly created ID directly.
+      const sessionId = activeSessionId || await createSession(version);
+      if (!sessionId || version !== contextVersion.current) return;
+      setMessages(prev => [...prev, { id: "usr_" + Date.now(), sender: "user", text: query, timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
+      setInputQuery("");
+      const res = await api.post(chatUrl(`/ai/chat/sessions/${sessionId}/messages`), { query, currentRoute: pathname }, { signal: requestController.current?.signal, timeout: 60000 });
+      if (version !== contextVersion.current) return;
+      const data = res.data?.data;
+      if (!Array.isArray(data?.allMessages)) throw new Error("Invalid chat response");
+      setMessages(data.allMessages);
+      if (data.title) setSessions(prev => prev.map(session => session.id === sessionId ? { ...session, title: data.title } : session));
+    } catch (error) { if (version === contextVersion.current) { reportError(error); setInputQuery(query); } }
+    finally { if (version === contextVersion.current) { sendBusy.current = false; setIsThinking(false); } }
   };
 
   const handleRegenerate = () => {
@@ -317,6 +303,8 @@ export function FloatingAICopilot() {
 
   const isStaff = user?.role && ["root", "admin", "doctor", "nurse", "receptionist"].includes(user.role);
   const activeSessionTitle = sessions.find((s) => s.id === activeSessionId)?.title || "Clinical Session";
+
+  if (!permitted) return null;
 
   return (
     <>
@@ -333,7 +321,7 @@ export function FloatingAICopilot() {
             title={isOpen ? "Close AI Copilot" : "Open Ekavyu AI Copilot"}
             aria-label="Toggle AI Copilot"
             aria-expanded={isOpen}
-            aria-controls={isOpen ? "ai-copilot-dialog" : undefined}
+            aria-haspopup="dialog"
           >
             {isOpen ? (
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -346,26 +334,9 @@ export function FloatingAICopilot() {
         </div>
       </div>
 
-      {/* Floating Popover Copilot Window — Mobile Bottom Sheet + Desktop Floating Window */}
+      {/* Shared responsive dialog with a fixed header and composer. */}
       {isOpen && (
-        <div
-          ref={dialogRef}
-          id="ai-copilot-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Ekavyu AI Copilot"
-          tabIndex={-1}
-          className={`fixed z-50 bg-surface/98  border border-border/80 shadow-lg  flex flex-col transition-all duration-300 ease-spring animate-popover-in ${
-            isExpanded
-              ? "inset-0 md:inset-6 md:left-auto md:w-[640px] md:h-[calc(100dvh-3rem)] rounded-none md:rounded-2xl"
-              : "inset-x-0 bottom-0 rounded-t-3xl sm:rounded-2xl md:inset-auto md:bottom-20 md:right-6 md:w-[420px] max-h-[85dvh] md:max-h-[82dvh] h-[85dvh] md:h-[580px] pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-0"
-          }`}
-        >
-          {/* Mobile Sheet Drag Handle */}
-          <div className="w-full flex items-center justify-center pt-2.5 pb-0.5 sm:hidden shrink-0">
-            <div className="w-10 h-1.5 rounded-full bg-border" />
-          </div>
-
+        <Modal open={isOpen} onClose={() => setIsOpen(false)} ariaLabel="Ekavyu AI Copilot" size={isExpanded ? "2xl" : "lg"} showCloseButton={false} bodyClassName="!p-0 !overflow-hidden flex flex-col" contentClassName="flex flex-col flex-1 min-h-0" className={isExpanded ? "h-[min(48rem,100%)]" : "h-[min(38rem,100%)]"}>
           {/* Header Bar */}
           <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between shrink-0 bg-surface-alt/30 rounded-t-3xl sm:rounded-t-2xl">
             <div className="flex items-center gap-2 min-w-0">
@@ -382,15 +353,16 @@ export function FloatingAICopilot() {
 
             <div className="flex items-center gap-1 shrink-0">
               {/* New Chat Button */}
-              <button
-                onClick={handleNewChatSession}
+              <Button variant="ghost" size="sm"
+                disabled={isThinking || isLoadingSession || !hasContext}
+                onClick={() => handleNewChatSession()}
                 title="New Chat Session"
                 className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
-              </button>
+              </Button>
 
               {/* Expand / Minimize Toggle */}
               <button
@@ -458,7 +430,7 @@ export function FloatingAICopilot() {
                   >
                     {s.title}
                   </button>
-                  <button
+                  <Button variant="ghost" size="xs" loading={archivingId === s.id} disabled={isThinking || isLoadingSession}
                     type="button"
                     onClick={(e) => handleDeleteSession(s.id, e)}
                     title="Archive chat"
@@ -468,18 +440,19 @@ export function FloatingAICopilot() {
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
           )}
 
+          {!hasContext && <div className="p-4"><Alert variant="info" title="Choose an organization">Select a healthcare organization before starting a clinical AI conversation.</Alert><Button variant="outline" className="mt-3" onClick={() => { setIsOpen(false); router.push("/dashboard/organizations"); }}>Choose organization</Button></div>}
+          {chatError && <div className="p-3"><Alert variant="error" title="AI assistance unavailable" action={!activeSessionId ? <Button variant="outline" size="sm" onClick={() => loadSessions()} loading={isLoadingSession}>Try again</Button> : undefined}>{chatError}</Alert></div>}
           {/* Chat Stream */}
-          <div className="flex-1 overflow-y-auto p-3.5 space-y-3 min-h-0">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3.5 space-y-3 min-h-0">
             {isLoadingSession ? (
               <div className="flex items-center justify-center h-28 text-xs text-text-muted">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping mr-2" />
-                <span>Loading session...</span>
+<div role="status" className="space-y-3 w-full p-3"><span className="sr-only">Loading conversation</span><div className="h-12 rounded-xl bg-surface-alt animate-pulse motion-reduce:animate-none" /><div className="h-16 w-4/5 rounded-xl bg-surface-alt animate-pulse motion-reduce:animate-none" /></div>
               </div>
             ) : (
               messages.map((msg) => (
@@ -509,13 +482,13 @@ export function FloatingAICopilot() {
 
                         {isStaff && (
                           <button
-                            onClick={() => insertIntoEHRChart(msg.text)}
+                            onClick={() => copyMessageText(msg.id, msg.text, true)}
                             className="text-accent hover:underline transition-colors flex items-center gap-1 cursor-pointer font-medium"
                           >
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            <span>Insert to EHR</span>
+                            <span>{copiedId === `chart-${msg.id}` ? "Copied for chart" : "Copy for chart"}</span>
                           </button>
                         )}
                       </div>
@@ -562,15 +535,15 @@ export function FloatingAICopilot() {
 
             {/* Thinking Indicator */}
             {isThinking && (
-              <div className="flex items-center gap-2 text-xs bg-surface-alt/40 px-3 py-2 rounded-xl text-text-muted w-fit animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-                <span>Thinking...</span>
+              <div role="status" className="text-xs bg-surface-alt/40 px-3 py-2 rounded-xl text-text-muted w-fit">
+                <span>Preparing your response…</span>
               </div>
             )}
             <div ref={chatEndRef} />
           </div>
 
           {/* Quick Suggestions Chips */}
+          <fieldset disabled={isThinking || isLoadingSession || !hasContext || !activeSessionId} className="min-w-0">
           <div className="px-3 py-1.5 border-t border-border/40 flex gap-1 overflow-x-auto text-[11px] no-scrollbar shrink-0">
             {isStaff ? (
               <>
@@ -617,8 +590,10 @@ export function FloatingAICopilot() {
             )}
           </div>
 
+          </fieldset>
           {/* Unified Input Box (Pill Container) */}
           <div className="p-3 border-t border-border/40 shrink-0 bg-surface">
+            {actionMessage && <p role="status" className="text-xs text-text-secondary pb-2">{actionMessage}</p>}
             <form
               onSubmit={(e) => handleSendMessage(e)}
               className="bg-surface-alt rounded-xl border border-border/60 flex items-center px-2 py-1 focus-within:border-primary/60 transition-colors"
@@ -638,38 +613,18 @@ export function FloatingAICopilot() {
 
               <input
                 type="text"
+                aria-label="Message to AI Copilot"
+                disabled={isLoadingSession || !hasContext || !activeSessionId}
                 value={inputQuery}
                 onChange={(e) => setInputQuery(e.target.value)}
                 placeholder={isVoiceActive ? "Listening..." : "Ask Ekavyu AI..."}
-                className="flex-1 bg-transparent text-base sm:text-xs text-text placeholder:text-text-muted focus:outline-none px-2 py-1.5"
+                className="min-w-0 flex-1 bg-transparent text-base sm:text-xs text-text placeholder:text-text-muted focus:outline-none px-2 py-1.5"
               />
 
-              {isThinking ? (
-                <button
-                  type="button"
-                  onClick={() => setIsThinking(false)}
-                  className="p-1.5 text-danger hover:bg-danger/10 rounded-lg transition-colors cursor-pointer shrink-0"
-                  title="Stop generation"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="6" y="6" width="12" height="12" rx="2" />
-                  </svg>
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={!inputQuery.trim()}
-                  className="p-1.5 text-accent disabled:text-text-muted/40 hover:bg-primary/10 rounded-lg transition-colors cursor-pointer shrink-0"
-                  title="Send message"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </button>
-              )}
+              <Button type="submit" variant="ghost" size="sm" loading={isThinking} disabled={!inputQuery.trim() || isLoadingSession || !hasContext || !activeSessionId} aria-label={isThinking ? "Sending message" : "Send message"} icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>} />
             </form>
           </div>
-        </div>
+        </Modal>
       )}
     </>
   );

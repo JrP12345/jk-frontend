@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["lucide-react", "@tanstack/react-query", "zustand", "axios"],
   },
   reactCompiler: false,
+  async redirects() {
+    return ["/logo-d.png", "/logo-w.png", "/app-icon-light-192.png"].map(source => ({
+      source, destination: "/app-icon-192.png?v=brand-3", permanent: false,
+    }));
+  },
   async rewrites() {
     const backendUrl =
       process.env.BACKEND_INTERNAL_URL ||
@@ -32,6 +37,8 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      { source: "/manifest.json", headers: [{ key: "Cache-Control", value: "public, max-age=0, must-revalidate" }] },
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] },
       {
         source: "/:path*",
         headers: [

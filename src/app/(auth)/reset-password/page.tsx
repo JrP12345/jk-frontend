@@ -110,7 +110,7 @@ function ResetPasswordForm() {
       </div>
 
       <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
-        <ModeSwitcher />
+        <ModeSwitcher variant="icon" />
       </div>
 
       <div className="w-full max-w-md relative z-10 animate-fade-up">

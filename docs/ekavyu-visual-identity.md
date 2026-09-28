@@ -90,8 +90,9 @@ their Ekavyu copy was migrated in the preceding brand-name task.
 The supplied `image.png` is retained unchanged as the source. Run
 `npm run brand:assets` from the frontend repository to regenerate
 the transparent 512px UI mark, 16/32px favicons, 180px Apple icon, 192/512px PWA
-icons and light 192px icon. A separate opaque 512px maskable icon places the
-entire source canvas inside the safe circle. Exports only resize and composite
+icons. All OS icons use an opaque brand mist canvas with consistent padding.
+A separate 512px maskable icon fits the visible leaf within the safe circle.
+Exports only resize and composite
 the supplied artwork; no tracing, AI generation, recoloring or board cropping
 is used. The existing installed app ID and shortcut URLs remain compatible.
 
@@ -99,9 +100,11 @@ is used. The existing installed app ID and shortcut URLs remain compatible.
 compact navigation uses the symbol alone. Spacious registration, password-reset
 and email-verification views display the tagline; login retains its tagline
 badge. The install banner uses the leaf. Favicons have a new version query and
-the service-worker cache is `ekavyu-cache-v6`. Legacy public URLs `logo-d.png` /
-`logo-w.png` now serve the supplied leaf, preserving older cached clients without
-retaining the previous artwork. Current UI uses `ekavyu-leaf.png` directly.
+the service-worker cache is `ekavyu-cache-v9`. Install assets use the `brand-3`
+version and refresh from the network before using an offline fallback. Legacy
+URLs `logo-d.png`, `logo-w.png`, and `app-icon-light-192.png` redirect to the
+canonical application icon; their duplicate files have been removed. Current
+UI uses `ekavyu-leaf.png` directly. Root metadata owns manifest/icon tags once.
 
 ## Changed files and validation
 

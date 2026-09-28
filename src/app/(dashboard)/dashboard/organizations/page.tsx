@@ -381,7 +381,7 @@ export default function OrganizationsPage() {
       });
 
       toast({
-        title: "Organization Provisioned",
+        title: "Organization created",
         description: `${formData.orgName} (${formData.plan.toUpperCase()} Tier) created successfully.`,
         variant: "success",
       });
@@ -719,7 +719,7 @@ export default function OrganizationsPage() {
                   onClick: () => handleLoginAsOrgAdmin(org),
                 },
                 {
-                  label: "Members & Impersonate",
+                  label: "Members & access",
                   icon: <Users className="w-4 h-4 text-accent" />,
                   onClick: () => handleOpenMembersModal(org),
                 },
@@ -756,9 +756,9 @@ export default function OrganizationsPage() {
           <Shield className="w-6 h-6 text-accent" />
         </div>
         <div>
-          <h2 className="text-base font-bold text-text">Root Super-Admin Access Required</h2>
+          <h2 className="text-base font-bold text-text">Platform administrator access required</h2>
           <p className="text-xs text-text-muted mt-1 leading-relaxed">
-            Only platform super-administrators can view and manage multi-tenant organizations across the system.
+            Only platform administrators can manage organizations.
           </p>
         </div>
         <Button
@@ -783,14 +783,14 @@ export default function OrganizationsPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Organizations & Tenants
+                Organizations
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Root Super Admin
+                Platform admin
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Multi-tenant healthcare organizations, subscription quotas, and active workspace contexts.
+              Manage healthcare organizations, their subscriptions, and clinic access.
             </p>
           </div>
 
@@ -801,8 +801,8 @@ export default function OrganizationsPage() {
               onClick={fetchOrganizations}
               disabled={isRefreshing}
               className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors justify-center"
-            >
-              <RotateCw className={`h-3.5 w-3.5 mr-1.5 text-text-secondary ${isRefreshing ? "animate-spin" : ""}`} />
+             loading={isRefreshing}>
+              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary " />
               Refresh
             </Button>
 
@@ -858,7 +858,7 @@ export default function OrganizationsPage() {
       <Card className="p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Segmented Filter Tabs */}
-          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto no-scrollbar touch-pan-x w-fit max-w-full">
+          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto no-scrollbar touch-manipulation w-fit max-w-full">
             {[
               { id: "all", label: "All", count: stats.total },
               { id: "active", label: "Active", count: stats.active },
@@ -1009,7 +1009,7 @@ export default function OrganizationsPage() {
                         onClick: () => handleLoginAsOrgAdmin(org),
                       },
                       {
-                        label: "Members & Impersonate",
+                        label: "Members & access",
                         icon: <Users className="w-4 h-4 text-accent" />,
                         onClick: () => handleOpenMembersModal(org),
                       },
@@ -1046,7 +1046,7 @@ export default function OrganizationsPage() {
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Provision Tenant Organization"
+        title="Add organization"
         description="Set up an organization workspace, subscription tier, and primary administrator."
         size="lg"
       >
@@ -1350,7 +1350,7 @@ export default function OrganizationsPage() {
                   loading={submitting}
                   className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
                 >
-                  Provision Workspace
+                  Create organization
                 </Button>
               </div>
             </div>
@@ -1365,7 +1365,7 @@ export default function OrganizationsPage() {
       <Modal
         open={isSummaryModalOpen}
         onClose={() => setIsSummaryModalOpen(false)}
-        title="Workspace Provisioned Successfully"
+        title="Organization created"
         description="Save or securely transmit the administrator login credentials below."
       >
         <div className="space-y-4 pt-1">
@@ -1377,7 +1377,7 @@ export default function OrganizationsPage() {
                     {createdCredentialsSummary.orgName}
                   </p>
                   <Badge variant="success" size="sm" className="text-[10px] font-bold uppercase">
-                    Provisioned
+                    Created
                   </Badge>
                 </div>
                 <p className="text-xs text-text-secondary">
@@ -1587,7 +1587,7 @@ export default function OrganizationsPage() {
       <Modal
         open={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        title="Delete Tenant Organization"
+        title="Delete organization"
         description="Are you sure you want to delete this organization? All linked clinics, appointments, and staff records will be removed."
       >
         <div className="space-y-4 pt-1">
@@ -1623,7 +1623,7 @@ export default function OrganizationsPage() {
         open={!!membersModalOrg}
         onClose={() => setMembersModalOrg(null)}
         title={membersModalOrg ? `Members of ${membersModalOrg.name}` : "Organization Members"}
-        description="View registered doctors, administrators, and staff in this organization. Impersonate any account to view the platform directly in their place."
+        description="View this organization’s staff and, when authorized, access an account to help its owner."
         size="lg"
       >
         <div className="space-y-4 pt-1">

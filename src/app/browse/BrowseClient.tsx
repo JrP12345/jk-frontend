@@ -6,16 +6,18 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { Alert, Button, Input, Select, Badge, Card, EmptyState } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
-import { Search, MapPin, Clock, X, ChevronRight, ShieldCheck, Building2, Users, CreditCard, Camera, Star } from "lucide-react";
+import ClinicCardSkeletons from "@/components/ui/ClinicCardSkeletons";
+import { Search, MapPin, X, ChevronRight, ShieldCheck, Building2, Users, CreditCard, Camera, Star } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
+import { parseWeeklySchedule } from "@/lib/timing/clinicStatus";
 import { detectUserLocation, findMatchingClinicCity, DetectedLocation } from "@/lib/geo/locationDetector";
 
 interface DoctorSummary {
   id: string;
   name: string;
   specialization: string;
-  fees: number;
+  fees?: number;
 }
 
 export interface Clinic {
@@ -46,11 +48,38 @@ export interface ClinicFilters {
   specialties: string[];
 }
 
+function ClinicImage({ src, name }: { src: string | undefined; name: string }) {
+  const [failedSrc, setFailedSrc] = useState<string>();
+  return src && failedSrc !== src ? <img src={src} alt={name} width={48} height={48} loading="lazy" decoding="async" onError={() => setFailedSrc(src)} className="w-full h-full object-cover rounded-xl" /> : <Building2 aria-label="Clinic image unavailable" className="w-5 h-5 text-text-muted" strokeWidth={1.75} />;
+}
+
 function filtersFromClinics(clinics: Clinic[]): ClinicFilters {
   return {
     cities: Array.from(new Set(clinics.map(c => c.city).filter(Boolean))).sort(),
-    specialties: Array.from(new Set(clinics.flatMap(c => c.specialties || c.doctorsSummary?.map(d => d.specialization) || []).map(s => s.trim()).filter(Boolean))).sort(),
+    specialties: Array.from(new Set(clinics.flatMap(c => c.specialties?.length ? c.specialties : c.doctorsSummary?.map(d => d.specialization) || []).map(s => s.trim()).filter(s => s && s !== "Specialty not listed"))).sort(),
   };
+}
+
+/** Keep incomplete directory records readable without inventing availability. */
+export function normalizeClinics(input: unknown): Clinic[] {
+  if (!Array.isArray(input)) return [];
+  const string = (value: unknown) => typeof value === "string" ? value.trim() : "";
+  const strings = (value: unknown) => Array.isArray(value) ? value.map(string).filter(Boolean) : [];
+  const number = (value: unknown) => (typeof value === "number" || (typeof value === "string" && value.trim() !== "")) && Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : undefined;
+  const seen = new Set<string>();
+  return input.flatMap(raw => {
+    if (!raw || typeof raw !== "object") return [];
+    const id = string(raw.id || raw._id);
+    if (!id || seen.has(id)) return [];
+    seen.add(id);
+    return [{ ...raw, id, name: string(raw.name) || "Healthcare facility", city: string(raw.city), address: string(raw.address), phone: string(raw.phone), email: string(raw.email), description: string(raw.description), image_url: string(raw.image_url), logo_url: string(raw.logo_url), organizationName: string(raw.organizationName), currency: /^[A-Z]{3}$/.test(string(raw.currency).toUpperCase()) ? string(raw.currency).toUpperCase() : "INR", timings: typeof raw.timings === "object" && raw.timings ? JSON.stringify(raw.timings) : string(raw.timings), images: strings(raw.images), facilities: strings(raw.facilities), specialties: strings(raw.specialties), doctorCount: number(raw.doctorCount), minFee: number(raw.minFee), rating: number(raw.rating), reviewsCount: number(raw.reviewsCount), doctorsSummary: Array.isArray(raw.doctorsSummary) ? raw.doctorsSummary.filter((doc: DoctorSummary) => doc && string(doc.id) && string(doc.name)).map((doc: DoctorSummary) => ({ ...doc, name: string(doc.name), specialization: string(doc.specialization) || "Specialty not listed", fees: number(doc.fees) })) : [] }];
+  });
+}
+
+function normalizeFilters(filters: ClinicFilters | undefined, clinics: Clinic[]): ClinicFilters {
+  const fallback = filtersFromClinics(clinics);
+  const values = (input: unknown, defaults: string[]) => Array.isArray(input) ? Array.from(new Set(input.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).map(value => value.trim()))).sort() : defaults;
+  return { cities: values(filters?.cities, fallback.cities), specialties: values(filters?.specialties, fallback.specialties) };
 }
 
 const SORT_OPTIONS = [
@@ -58,55 +87,19 @@ const SORT_OPTIONS = [
   { value: "fee_low", label: "Lowest fee" },
 ];
 
-function format12HourTime(timeStr: string): string {
-  if (!timeStr) return "";
-  const clean = timeStr.trim();
-  const match = clean.match(/^(\d{1,2}):(\d{2})/);
-  if (!match) return timeStr;
-  const h = parseInt(match[1], 10);
-  const m = parseInt(match[2], 10);
-  if (isNaN(h)) return timeStr;
-  const ampm = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
-}
-
-function formatTimings(timingsStr: string | null | undefined): string {
-  if (!timingsStr) return "Mon–Sat: 9:00 AM – 6:00 PM";
-  try {
-    const trimmed = timingsStr.trim();
-    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-      const parts = trimmed.split(/[-–—to]/i).map((s) => s.trim()).filter(Boolean);
-      if (parts.length >= 2) {
-        return `${format12HourTime(parts[0])} – ${format12HourTime(parts[1])}`;
-      }
-      return trimmed;
-    }
-    const data = JSON.parse(trimmed);
-    const days = Object.keys(data);
-    for (const day of days) {
-      if (data[day] && data[day].length > 0) {
-        const firstSlot = data[day][0];
-        return `${format12HourTime(firstSlot.start)} – ${format12HourTime(firstSlot.end)}`;
-      }
-    }
-    return "Mon–Sat: 9:00 AM – 6:00 PM";
-  } catch {
-    return timingsStr || "Mon–Sat: 9:00 AM – 6:00 PM";
-  }
-}
-
 export default function BrowseClient({
   initialClinics = [],
   initialLoaded = false,
   initialFilters,
+  loadingOnly = false,
 }: {
   initialClinics?: Clinic[];
   initialLoaded?: boolean;
   initialFilters?: ClinicFilters;
+  loadingOnly?: boolean;
 } = {}) {
   const router = useRouter();
-  const [clinics, setClinics] = useState<Clinic[]>(initialClinics);
+  const [clinics, setClinics] = useState<Clinic[]>(() => normalizeClinics(initialClinics));
   const [loading, setLoading] = useState(!initialLoaded && initialClinics.length === 0);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(initialLoaded || initialClinics.length > 0);
@@ -117,17 +110,16 @@ export default function BrowseClient({
   const [selectedCity, setSelectedCity] = useState("");
   const [sortBy, setSortBy] = useState("rating");
   const [detectedLocation, setDetectedLocation] = useState<DetectedLocation | null>(null);
-  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
-  const [filters, setFilters] = useState<ClinicFilters>(() => initialFilters || filtersFromClinics(initialClinics));
+  const [filters, setFilters] = useState<ClinicFilters>(() => normalizeFilters(initialFilters, normalizeClinics(initialClinics)));
   const allCities = filters.cities;
   const quickSpecialties = [{ value: "", label: "All Care" }, ...filters.specialties.map(value => ({ value, label: value }))];
 
   // Auto location detection on initial load
   useEffect(() => {
+    if (loadingOnly) return;
     let isMounted = true;
     const initLocation = async () => {
       try {
-        setIsDetectingLocation(true);
         const loc = await detectUserLocation();
         if (!isMounted) return;
 
@@ -137,8 +129,6 @@ export default function BrowseClient({
         }
       } catch (err) {
         console.error("Auto location error:", err);
-      } finally {
-        if (isMounted) setIsDetectingLocation(false);
       }
     };
 
@@ -146,7 +136,7 @@ export default function BrowseClient({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loadingOnly]);
 
   // Auto-select city if user hasn't explicitly chosen one and a matching clinic city exists
   useEffect(() => {
@@ -172,6 +162,7 @@ export default function BrowseClient({
 
   const isInitialMount = useRef(true);
   useEffect(() => {
+    if (loadingOnly) return;
     if (isInitialMount.current) {
       isInitialMount.current = false;
       if (initialLoaded || initialClinics.length > 0) return;
@@ -189,13 +180,14 @@ export default function BrowseClient({
       const res = await api.get(`/public/clinics${params.toString() ? `?${params}` : ""}`, { signal: controller.signal });
       if (controller.signal.aborted) return;
       if (!Array.isArray(res.data.data)) throw new Error("Invalid clinic response");
-      const data: Clinic[] = res.data.data;
+      const data = normalizeClinics(res.data.data);
+      if (res.data.data.length && !data.length) throw new Error("Invalid clinic records");
 
       // Full-directory metadata remains available when results are filtered or empty.
       // Older servers fall back to actual clinic data rather than invented choices.
       setFilters((prev) => {
         const supplied = res.data.filters;
-        if (supplied && Array.isArray(supplied.cities) && Array.isArray(supplied.specialties)) return supplied;
+        if (supplied && Array.isArray(supplied.cities) && Array.isArray(supplied.specialties)) return normalizeFilters(supplied, data);
         const found = filtersFromClinics(data);
         return {
           cities: Array.from(new Set([...prev.cities, ...found.cities])).sort(),
@@ -213,7 +205,7 @@ export default function BrowseClient({
     };
     void fetchClinics();
     return () => controller.abort();
-  }, [debouncedSearch, selectedCity, selectedSpecialty, retryKey, sortBy]);
+  }, [debouncedSearch, selectedCity, selectedSpecialty, retryKey, sortBy, loadingOnly]);
 
   const sortedClinics = useMemo(() => [...clinics].sort((a, b) => {
         if (sortBy === "fee_low") {
@@ -273,12 +265,12 @@ export default function BrowseClient({
       {/* Hero Header Section - Clean Modern Healthcare Design */}
       <section className="relative pt-20 sm:pt-24 pb-4 sm:pb-8 overflow-hidden brand-wash border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
-          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-text tracking-tight mb-1.5 sm:mb-2 leading-tight" suppressHydrationWarning>
+          <h1 className="text-[1.75rem] sm:text-4xl lg:text-5xl font-bold text-text tracking-tight mb-2 leading-tight max-w-3xl mx-auto text-balance" suppressHydrationWarning>
             {"Find and book"}{" "}
             <span className="text-accent" suppressHydrationWarning>{"verified medical care"}</span>
           </h1>
-          <p className="text-text-secondary text-xs sm:text-sm max-w-lg mx-auto mb-4 sm:mb-6 leading-relaxed hidden xs:block" suppressHydrationWarning>
-            {"Search verified clinics, view consulting doctors, and schedule your appointment with transparent fees."}
+          <p className="text-text-secondary text-sm max-w-lg mx-auto mb-4 sm:mb-6 leading-relaxed" suppressHydrationWarning>
+            {"Compare clinics and doctors, then book a visit that suits you."}
           </p>
 
           {/* Unified Streamlined Search Console: Search + City Selector */}
@@ -288,9 +280,10 @@ export default function BrowseClient({
               <div className="flex-1 min-w-0">
                 <Input
                   variant="flush"
+                  disabled={loadingOnly}
                   size="sm"
                   icon={<Search className="w-4 h-4 text-text-muted" strokeWidth={1.75} />}
-                  placeholder={"Search doctor, clinic name, or specialty..."}
+                  placeholder={"Search clinics, doctors or specialties"}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onClear={() => setSearchQuery("")}
@@ -305,6 +298,7 @@ export default function BrowseClient({
                 <Select
                   icon={<MapPin className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />}
                   value={selectedCity}
+                  disabled={loadingOnly}
                   onChange={(e) => handleCitySelect(e.target.value)}
                   options={[
                     { value: "", label: "All Cities" },
@@ -319,7 +313,7 @@ export default function BrowseClient({
             </div>
 
             {/* Specialty 1-Tap Quick Filter Pills Carousel */}
-            <div className="mt-3 sm:mt-4 pt-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-snap-x py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+            {quickSpecialties.length > 1 && <div className="mt-3 sm:mt-4 pt-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-snap-x py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
               <span className="text-[11px] font-semibold text-text-muted shrink-0 mr-1 hidden sm:inline-block">
                 {"Care:"}
               </span>
@@ -341,7 +335,7 @@ export default function BrowseClient({
                   </button>
                 );
               })}
-            </div>
+            </div>}
 
             {/* Active Filter Badges */}
             {hasActiveFilters && (
@@ -399,11 +393,10 @@ export default function BrowseClient({
 
       {/* Main Listing Section */}
       <main aria-busy={loading} className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-20">
-        {fetchError && <Alert variant="error" title="Unable to load clinics" className="mb-4" action={<Button size="sm" loading={loading} onClick={() => setRetryKey((key) => key + 1)}>Try again</Button>}>{fetchError}</Alert>}
+        {fetchError && clinics.length > 0 && <Alert variant="error" title="Unable to update results" className="mb-4" action={<Button size="sm" loading={loading} onClick={() => setRetryKey((key) => key + 1)}>Try again</Button>}>Showing the last available clinics. Try again to refresh the list.</Alert>}
         {/* Minimalist Compact Results & Sort Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6 text-xs">
-          <div className="flex flex-wrap items-center gap-2">
-            <p role="status" className="font-semibold text-text-secondary min-h-5">
+        {(!fetchError || clinics.length > 0) && <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border/60 pb-3 mb-4 sm:mb-6 text-xs">
+            <p role="status" className="order-1 font-semibold text-text-secondary min-h-5 min-w-0">
               {loading ? (
                 clinics.length ? "Updating results. Showing previous clinics." : "Finding clinics..."
               ) : fetchError ? (
@@ -411,9 +404,7 @@ export default function BrowseClient({
               ) : (
                 <span>
                   <strong className="text-text font-bold">{clinics.length}</strong>{" "}
-                  {clinics.length === 1
-                    ? "clinic available"
-                    : "clinics available"}
+                  {clinics.length === 1 ? "clinic" : "clinics"}<span className="hidden sm:inline"> available</span>
                   {hasActiveFilters && (
                     <span className="text-text-muted font-normal ml-1">
                       {"(filtered)"}
@@ -423,9 +414,9 @@ export default function BrowseClient({
               )}
             </p>
 
-            {/* Location Indicator Pill */}
+            {/* Location is secondary context on narrow screens. */}
             {detectedLocation && (detectedLocation.city || detectedLocation.state) && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-500/10 text-accent dark:text-accent border border-primary-500/20 text-[11px] font-medium">
+              <span className="order-3 sm:order-2 w-full sm:w-auto inline-flex items-center gap-1.5 text-accent text-[11px] font-medium">
                 <MapPin className="w-3 h-3 text-accent shrink-0" />
                 <span>
                   {"Near"}{" "}
@@ -444,53 +435,33 @@ export default function BrowseClient({
                 ) : null}
               </span>
             )}
-          </div>
 
-          <div className="w-36 max-w-full shrink-0">
+          <div className="order-2 sm:order-3 ml-auto flex items-center gap-2 shrink-0">
+            <span className="text-xs sm:text-sm font-medium text-text-secondary whitespace-nowrap">Sort by</span>
             <Select
               value={sortBy}
+              disabled={loadingOnly}
               onChange={(e) => setSortBy(e.target.value)}
               options={localizedSortOptions}
               size="sm"
-              className="text-xs rounded-xl"
+              fullWidth={false}
+              containerClassName="w-28 min-[380px]:w-32 sm:w-40 min-w-0 shrink-0"
+              className="rounded-xl"
               aria-label="Sort clinics by"
             />
           </div>
-        </div>
+        </div>}
 
         {/* Clinics Listing Cards */}
         {loading && clinics.length === 0 ? (
-          /* Geometry-matched Skeletons */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Card key={i} className="p-4 sm:p-5 rounded-2xl border border-border bg-surface flex flex-col justify-between h-[360px] animate-pulse">
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-surface-alt shrink-0" />
-                    <div className="space-y-1.5 flex-1 min-w-0">
-                      <div className="h-4 bg-surface-alt rounded-md w-3/4" />
-                      <div className="h-3 bg-surface-alt rounded-md w-1/2" />
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="h-6 bg-surface-alt rounded-lg w-24" />
-                    <div className="h-6 bg-surface-alt rounded-lg w-20" />
-                  </div>
-                  <div className="h-14 bg-surface-alt rounded-xl w-full" />
-                </div>
-                <div className="pt-3 border-t border-border/40 space-y-2">
-                  <div className="h-3 bg-surface-alt rounded-md w-2/3" />
-                  <div className="h-10 bg-surface-alt rounded-xl w-full" />
-                </div>
-              </Card>
-            ))}
-          </div>
+          <ClinicCardSkeletons />
         ) : clinics.length === 0 && hasLoaded && !fetchError ? (
-          <Card className="p-8 sm:p-12 text-center border-dashed rounded-3xl bg-surface">
+          <Card className="p-4 sm:p-8 text-center border-dashed rounded-3xl bg-surface">
             <EmptyState
-              title={"No Healthcare Facilities Found"}
+              className="py-6 sm:py-8"
+              title={"No clinics found"}
               description={hasActiveFilters ? "No clinics match your current search criteria. Try choosing another city or clearing your filters." : "There are no clinics available to browse yet. Please check again later."}
-              action={
+              action={hasActiveFilters ?
                 <Button
                   variant="primary"
                   size="sm"
@@ -498,23 +469,25 @@ export default function BrowseClient({
                   className="rounded-xl font-bold px-5 min-h-[44px] flex items-center justify-center"
                 >
                   {"Reset all filters"}
-                </Button>
+                </Button> : undefined
               }
             />
           </Card>
-        ) : clinics.length === 0 ? null : (
+        ) : clinics.length === 0 ? <Card className="min-h-[220px] flex items-center justify-center p-4 sm:p-8 rounded-2xl border border-border bg-surface"><EmptyState className="py-5 sm:py-7" title="We couldn't load clinics" description="Check your connection and try again to see available care." action={<Button size="sm" loading={loading} onClick={() => setRetryKey((key) => key + 1)}>Try again</Button>} /></Card> : (
           /* Modern Healthcare Clinic Card Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {sortedClinics.map((clinic) => {
               const hasSingleDoctor = clinic.doctorCount === 1 && clinic.doctorsSummary && clinic.doctorsSummary.length === 1;
               const singleDoctor = hasSingleDoctor ? clinic.doctorsSummary![0] : null;
+              const hasClinicHours = parseWeeklySchedule(clinic.timings).hasExplicitSchedule;
 
               return (
                 <Card
                   key={clinic.id}
                   role="group"
                   onClick={() => router.push(`/browse/${clinic.id}`)}
-                  className="group cursor-pointer hover:shadow-lg hover:border-primary-500/40 hover:-translate-y-0.5 transition-all duration-200 p-4 sm:p-5 rounded-2xl border border-border bg-surface flex flex-col justify-between"
+                  className="group cursor-pointer hover:shadow-lg hover:border-primary-500/40 hover:-translate-y-0.5 transition-all duration-200 p-4 sm:p-5 rounded-2xl border border-border bg-surface flex flex-col sm:min-h-[340px]"
+                  contentClassName="flex-1 justify-between gap-3"
                 >
                   <div>
                     {/* Card Header: Avatar, Name & Verified Badge */}
@@ -522,7 +495,7 @@ export default function BrowseClient({
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-12 h-12 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs group-hover:border-primary-500/30 transition-colors overflow-hidden">
                           {clinic.logo_url || clinic.image_url ? (
-                            <img src={clinic.logo_url || clinic.image_url} alt={clinic.name} className="w-full h-full object-cover rounded-xl" />
+                            <ClinicImage src={clinic.logo_url || clinic.image_url} name={clinic.name} />
                           ) : (
                             <Building2 className="w-5 h-5 text-text-muted group-hover:text-accent transition-colors" strokeWidth={1.75} />
                           )}
@@ -530,7 +503,7 @@ export default function BrowseClient({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             <h3
-                              className="text-sm sm:text-base font-bold text-text group-hover:text-accent transition-colors truncate"
+                              className="text-base font-bold text-text group-hover:text-accent transition-colors truncate"
                               title={clinic.name}
                             >
                               <Link href={`/browse/${clinic.id}`} onClick={(event) => event.stopPropagation()} className="block truncate focus-visible:outline-none focus-visible:underline">{clinic.name}</Link>
@@ -542,9 +515,8 @@ export default function BrowseClient({
                             </p>
                           )}
                           <p className="text-xs text-text-muted flex flex-wrap items-center gap-1.5 mt-0.5">
-                            <span className="truncate">{clinic.city}</span>
-                            <span>•</span>
-                            <ClinicStatusBadge timings={clinic.timings} compact className="max-w-full flex-wrap" />
+                            <span className="truncate">{clinic.city || "Location not listed"}</span>
+                            {hasClinicHours && <><span aria-hidden="true">•</span><ClinicStatusBadge timings={clinic.timings} compact className="max-w-full flex-wrap" /></>}
                           </p>
                         </div>
                       </div>
@@ -556,7 +528,7 @@ export default function BrowseClient({
                           title="Verified Healthcare Facility"
                         >
                           <ShieldCheck className="w-3 h-3 text-accent" strokeWidth={1.75} />
-                          <span className="hidden xs:inline">{"Verified"}</span>
+                          <span className="sr-only sm:not-sr-only">{"Verified"}</span>
                         </span>
                         {clinic.images && clinic.images.length > 0 && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-medium text-text-muted bg-surface-alt/70 border border-border/60 px-1.5 py-0.5 rounded">
@@ -578,7 +550,7 @@ export default function BrowseClient({
                                   ? "Doctor"
                                   : "Doctors"
                               }`
-                            : "Doctors Available"}
+                            : clinic.doctorCount === 0 ? "No doctors listed" : "Doctor details pending"}
                         </span>
                       </span>
 
@@ -606,11 +578,11 @@ export default function BrowseClient({
                             {"Practicing Specialist"}
                           </span>
                           <span className="text-[11px] font-bold text-success-text dark:text-success-text">
-                            {formatCurrency(singleDoctor.fees, clinic.currency || "INR")}
+                            {singleDoctor.fees == null ? "Fee not listed" : formatCurrency(singleDoctor.fees, clinic.currency || "INR")}
                           </span>
                         </div>
-                        <p className="font-bold text-text truncate">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
-                        <p className="text-[11px] text-text-secondary truncate">{singleDoctor.specialization}</p>
+                        <p className="text-sm font-semibold text-text truncate">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
+                        <p className="text-xs text-text-secondary leading-relaxed">{singleDoctor.specialization}</p>
                       </div>
                     ) : clinic.doctorsSummary && clinic.doctorsSummary.length > 1 ? (
                       <div className="bg-surface-alt p-2.5 sm:p-3 rounded-xl border border-border text-xs mb-3 space-y-1.5">
@@ -670,19 +642,15 @@ export default function BrowseClient({
                   </div>
 
                   <div>
-                    {/* Address & Timings Footer in 12-Hour AM/PM format */}
-                    <div className="space-y-1 text-xs text-text-secondary border-t border-border/60 pt-2.5 mb-3">
-                      {clinic.address && clinic.address.trim() !== "." && (
+                    {/* Keep the card footer focused on useful location details. */}
+                    {clinic.address && clinic.address.trim() !== "." && (
+                      <div className="text-xs text-text-secondary border-t border-border/60 pt-2.5 mb-3">
                         <div className="flex items-center gap-1.5 truncate">
                           <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
                           <span className="truncate">{clinic.address}</span>
                         </div>
-                      )}
-                      <div className="flex items-center gap-1.5 text-text-muted">
-                        <Clock className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
-                        <span className="truncate">{formatTimings(clinic.timings)}</span>
                       </div>
-                    </div>
+                    )}
 
                     {/* Actions Bar */}
                     <div className="flex items-center gap-2">

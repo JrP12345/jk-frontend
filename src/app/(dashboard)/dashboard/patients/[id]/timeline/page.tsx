@@ -11,9 +11,9 @@ export default async function PatientTimelinePage({ params }: PageProps) {
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-text dark:text-text">Longitudinal Patient EHR Timeline</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-text">Patient history</h1>
         <p className="text-sm text-text-muted dark:text-text-muted mt-1">
-          Comprehensive, chronological medical health record covering outpatient consultations, diagnostics, admissions, and financial transactions.
+          Consultations, test results, admissions, and bills in date order.
         </p>
       </div>
 

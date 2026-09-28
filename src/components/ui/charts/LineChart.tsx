@@ -163,12 +163,13 @@ export const LineChart = memo(function LineChart({
         <svg
           ref={svgRef}
           viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-          className="w-full h-auto overflow-visible cursor-crosshair touch-none"
+          className="w-full h-auto overflow-visible cursor-crosshair [touch-action:pan-y_pinch-zoom]"
           onMouseMove={(e) => handlePointerPos(e.clientX)}
           onMouseLeave={() => setHoverIndex(null)}
           onTouchStart={(e) => e.touches.length > 0 && handlePointerPos(e.touches[0].clientX)}
           onTouchMove={(e) => e.touches.length > 0 && handlePointerPos(e.touches[0].clientX)}
           onTouchEnd={() => setHoverIndex(null)}
+          onTouchCancel={() => setHoverIndex(null)}
         >
           {/* Reference Normal Range Shaded Band */}
           {referenceBand && (

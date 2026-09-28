@@ -86,7 +86,7 @@ export default function AdminBillingPage() {
     } catch (err: any) {
       toast({
         title: "Error Loading Admin Data",
-        description: err.response?.data?.message || "Failed to load SaaS admin records.",
+        description: err.response?.data?.message || "Plans and subscriptions could not be loaded.",
         variant: "error",
       });
     } finally {
@@ -224,14 +224,14 @@ export default function AdminBillingPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Commercial Plans & Platform Subscriptions
+                Plans & subscriptions
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Root Super Admin
+                Platform admin
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Commercial plan tiers, resource limits, Razorpay platform gateway, and organization subscription overrides.
+              Manage plan prices, usage limits, payment settings, and organization subscriptions.
             </p>
           </div>
 
@@ -282,7 +282,7 @@ export default function AdminBillingPage() {
               }}
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
-              Create SaaS Plan
+              Create plan
             </Button>
           </div>
         </div>
@@ -295,13 +295,13 @@ export default function AdminBillingPage() {
         <StatCard
           label="Total Organizations"
           value={subscriptions.length.toString()}
-          description="Registered tenant accounts"
+          description="Registered organizations"
           icon={<Building2 className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
           label="Active Subscriptions"
           value={totalActiveSubs.toString()}
-          description="Paid active commercial plans"
+          description="Organizations with an active paid plan"
           icon={<CreditCard className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
@@ -313,7 +313,7 @@ export default function AdminBillingPage() {
         <StatCard
           label="Configured Plans"
           value={plans.length.toString()}
-          description="Live commercial tier plans"
+          description="Available subscription plans"
           icon={<Layers className="w-5 h-5 text-text-secondary" />}
         />
       </div>
@@ -322,7 +322,7 @@ export default function AdminBillingPage() {
           3. SEGMENTED TAB NAVIGATION & SEARCH
          ────────────────────────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface p-3 rounded-2xl border border-border/80 shadow-xs">
-        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-pan-x w-fit max-w-full">
+        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-manipulation w-fit max-w-full">
           <button
             type="button"
             onClick={() => setActiveTab("plans")}
@@ -334,7 +334,7 @@ export default function AdminBillingPage() {
             )}
           >
             <Layers className={cn("w-3.5 h-3.5", activeTab === "plans" ? "text-accent" : "text-text-muted")} />
-            <span>Commercial SaaS Plans</span>
+            <span>Plans</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
               {plans.length}
             </span>
@@ -613,7 +613,7 @@ export default function AdminBillingPage() {
                   Razorpay Platform Payment Gateway
                 </CardTitle>
                 <CardDescription className="text-xs text-text-muted mt-0.5">
-                  Configure your SaaS platform's merchant credentials for automated subscription checkouts and webhook events.
+                  Configure payment credentials for subscription checkout and payment updates.
                 </CardDescription>
               </div>
               <Button
@@ -682,7 +682,7 @@ export default function AdminBillingPage() {
               <div className="p-3.5 bg-primary-500/[0.04] border border-primary-500/20 rounded-2xl text-xs text-text-muted leading-relaxed flex items-start gap-2.5">
                 <Shield className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-text font-semibold">Root Governance Notice:</strong> These credentials represent your SaaS platform payment merchant keys. All tenant customer subscriptions checkout through this primary platform gateway.
+                  <strong className="text-text font-semibold">Platform payment account:</strong> Subscription payments for all organizations use these credentials. Update them only when changing the payment account.
                 </div>
               </div>
             </CardContent>
@@ -737,7 +737,7 @@ export default function AdminBillingPage() {
         <Modal
           open={planModalOpen}
           onClose={() => setPlanModalOpen(false)}
-          title={editingPlan.id ? "Edit SaaS Commercial Plan" : "Create New SaaS Plan"}
+          title={editingPlan.id ? "Edit plan" : "Create plan"}
           size="lg"
         >
           <form onSubmit={handleSavePlan} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">

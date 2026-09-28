@@ -14,7 +14,7 @@ export default function NotFound() {
         <Link href="/" className="flex items-center gap-2">
           <EkavyuLogo size="md" />
         </Link>
-        <ModeSwitcher />
+        <ModeSwitcher variant="icon" />
       </header>
 
       {/* Main 404 Centerpiece */}

@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Kiosk from "@/app/check-in/page";
+import { ToastProvider } from "@/components/ui/Toast";
 
 const fixture = vi.hoisted(() => ({
   get: vi.fn(), post: vi.fn(), toast: vi.fn(), fetchClinics: vi.fn(),
@@ -24,7 +25,7 @@ describe("Staff kiosk visit selection", () => {
       { id: "second", tokenNumber: 2, status: "confirmed", clinicId: "clinic", doctorId: { name: "Two" }, patientId: { name: "Alex Two" }, appointmentTime: new Date().toISOString() },
     ] } });
     fixture.post.mockResolvedValue({ data: { data: { patientName: "Alex Two", tokenNumber: 2, doctorName: "Two", clinicName: "Fixture clinic", status: "checked-in" } } });
-    render(<Kiosk />);
+    render(<ToastProvider><Kiosk /></ToastProvider>);
     fireEvent.click(screen.getByRole("button", { name: "By Phone Number" }));
     fireEvent.change(screen.getByPlaceholderText("e.g. 9876543210"), { target: { value: "9876543210" } });
     fireEvent.click(screen.getByRole("button", { name: /Find today/ }));
@@ -37,7 +38,7 @@ describe("Staff kiosk visit selection", () => {
 
   it("shows staff sign-in guidance instead of a working kiosk form to anonymous patients", () => {
     fixture.user = null;
-    render(<Kiosk />);
+    render(<ToastProvider><Kiosk /></ToastProvider>);
     expect(screen.getByRole("link", { name: "Staff sign in" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "By Phone Number" })).not.toBeInTheDocument();
     expect(fixture.get).not.toHaveBeenCalled();

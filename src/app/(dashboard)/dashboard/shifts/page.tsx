@@ -211,14 +211,14 @@ export default function NursingShiftRosterPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Staff Shifts & Duty Rostering
+                Staff shifts
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Staff Duty Roster
+                Duty roster
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Ward staffing coverage, clinical handover notes, nurse-to-patient ratios & shift check-ins.
+              Plan staff coverage, handovers, patient ratios, and shift check-ins.
             </p>
           </div>
 

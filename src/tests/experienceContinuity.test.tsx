@@ -5,6 +5,13 @@ import { userFacingError } from "@/lib/userFacingError";
 import Button from "@/components/ui/Button";
 import Table from "@/components/ui/Table";
 import RouteProgress from "@/components/ui/RouteProgress";
+import Alert from "@/components/ui/Alert";
+import { ToastProvider, useToast } from "@/components/ui/Toast";
+
+function ServerNotice() {
+  const { toast } = useToast();
+  return <button onClick={() => toast({ title: "Appointment saved", description: "clinicId is required", variant: "success" })}>Show notice</button>;
+}
 
 afterEach(() => vi.useRealTimers());
 
@@ -66,8 +73,17 @@ describe("Experience continuity", () => {
   it("keeps actionable validation and hides technical error details", () => {
     expect(userFacingError("Please enter a valid phone number.")).toBe("Please enter a valid phone number.");
     expect(userFacingError("Validation Error")).toBe("Validation Error");
-    for (const technical of ["E11000 duplicate key collection patients", '{"stack":"private"}', "TypeError at load (/opt/src/index.ts:10:3)", "<html>Bad Gateway</html>", { stack: "internal" }]) {
+    for (const technical of ["E11000 duplicate key collection patients", '{"stack":"private"}', "TypeError at load (/opt/src/index.ts:10:3)", "<html>Bad Gateway</html>", "Request failed with status code 500", "Network Error", "clinicId is required", "Internal Server Error", { stack: "internal" }]) {
       expect(userFacingError(technical, "Please try again.")).toBe("Please try again.");
     }
+  });
+
+  it("keeps raw service details out of inline errors and success notifications", () => {
+    render(<ToastProvider><Alert variant="error" title="Could not load appointments">Request failed with status code 500</Alert><ServerNotice /></ToastProvider>);
+    expect(screen.queryByText(/status code 500/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Please try again. If the problem continues, contact support.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show notice" }));
+    expect(screen.queryByText(/clinicId/)).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Notifications" })).toHaveTextContent("Open the related page for details.");
   });
 });

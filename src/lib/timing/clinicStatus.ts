@@ -359,6 +359,19 @@ export function getClinicOperationalStatus(
     };
   }
 
+  // Parser defaults are useful for editing, but are not published clinic hours.
+  if (!hasExplicitSchedule) {
+    return {
+      status: "unspecified",
+      defaultLabel: "Hours unavailable",
+      secondaryText: "Contact the clinic for opening hours",
+      dotColorClass: "bg-text-muted",
+      textColorClass: "text-text-secondary",
+      badgeBgClass: "bg-surface-alt/90 text-text-secondary border-border/80",
+      isOpen: false,
+    };
+  }
+
   const currentDayIndex = referenceDate.getDay(); // 0 = Sunday, 1 = Monday, ...
   const currentDayName = DAYS_OF_WEEK[currentDayIndex];
   const currentMinutes = referenceDate.getHours() * 60 + referenceDate.getMinutes();

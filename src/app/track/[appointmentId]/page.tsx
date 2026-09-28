@@ -1,12 +1,18 @@
 "use client";
 
+import PrintButton from "@/components/ui/PrintButton";
+import { printHtml } from "@/lib/printBrand";
+
 import { useLatestRead } from "@/hooks/useLatestRead";
+import { rememberTracker, getStoredTrackerToken, clearRecentTracker } from "@/store/trackerStore";
+import { useAuthStore } from "@/store/authStore";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api, { getApiUrl } from "@/lib/api";
-import { Card, Button, Badge, Skeleton, Modal, useToast, cn, EkavyuIcon } from "@/components/ui";
-import { Clock, Users, CheckCircle2, AlertCircle, Stethoscope, MapPin, RotateCw, Calendar, Sparkles, ShieldCheck, BellRing, Phone, Printer, Receipt, CreditCard, Pill, Volume2, VolumeX, QrCode, Smartphone, Copy } from "lucide-react";
+import { userFacingError } from "@/lib/userFacingError";
+import { Card, Button, Badge, Skeleton, Modal, useToast, cn, EkavyuIcon, ModeSwitcher } from "@/components/ui";
+import { Clock, Users, CheckCircle2, AlertCircle, Stethoscope, MapPin, RotateCw, Calendar, Sparkles, ShieldCheck, BellRing, Phone, Receipt, CreditCard, Pill, Volume2, VolumeX, QrCode, Smartphone, Copy } from "lucide-react";
 import QRCode from "qrcode";
 
 interface PrescribedMedicine {
@@ -143,7 +149,7 @@ export default function PublicLiveQueueTracker() {
     if (typeof window === "undefined") return {};
     const token =
       new URLSearchParams(window.location.search).get("t") ||
-      window.sessionStorage.getItem(`tracker-capability:${appointmentId}`);
+      getStoredTrackerToken(appointmentId);
     return token ? { "x-tracker-token": token } : {};
   }, [appointmentId]);
   const router = useRouter();
@@ -185,7 +191,8 @@ export default function PublicLiveQueueTracker() {
     const token = new URLSearchParams(window.location.search).get("t");
     if (!token) return;
 
-    window.sessionStorage.setItem(`tracker-capability:${appointmentId}`, token);
+    try { window.sessionStorage.setItem(`tracker-capability:${appointmentId}`, token); } catch { /* The URL still carries the capability. */ }
+    rememberTracker(appointmentId, token, useAuthStore.getState().user?.id || null);
     const cleanUrl = `${window.location.pathname}${window.location.hash}`;
     window.history.replaceState(window.history.state, "", cleanUrl);
   }, [appointmentId]);
@@ -317,6 +324,8 @@ export default function PublicLiveQueueTracker() {
         const etag = (res.headers?.etag || res.headers?.["etag"]) as string | undefined;
         if (etag) lastEtagRef.current = etag;
         setData(res.data.data);
+        if (["completed", "cancelled", "canceled", "no-show"].includes(res.data.data.status)) clearRecentTracker(appointmentId);
+        else rememberTracker(appointmentId, getTrackerHeaders()["x-tracker-token"], useAuthStore.getState().user?.id || null, res.data.data.appointmentTime);
         setError(null);
         setLastUpdated(new Date());
         consecutiveFailuresRef.current = 0;
@@ -324,9 +333,16 @@ export default function PublicLiveQueueTracker() {
     } catch (err: any) {
       if (!request.isCurrent()) return;
       setStale(true);
+      if ([401, 403, 404, 410].includes(err.response?.status)) clearRecentTracker(appointmentId);
       consecutiveFailuresRef.current = Math.min(5, consecutiveFailuresRef.current + 1);
       if (!isBackground) {
-        setError(err.response?.data?.message || "Unable to load live queue tracking. Link may be invalid or expired.");
+        const status = err.response?.status;
+        const fallback = status === 404 || status === 410
+          ? "This tracking link is no longer active. Contact the clinic if you still need help."
+          : status === 401 || status === 403
+            ? "This tracking link cannot be opened. Use the link sent by your clinic."
+            : "We could not connect to live tracking. Check your connection and try again.";
+        setError(userFacingError(err.response?.data?.message, fallback));
       }
     } finally {
       if (request.isCurrent()) { setLoading(false); setRefreshing(false); }
@@ -545,13 +561,14 @@ export default function PublicLiveQueueTracker() {
     const base = getApiUrl().replace(/\/+$/, "");
     const token = typeof window === "undefined"
       ? null
-      : new URLSearchParams(window.location.search).get("t") || window.sessionStorage.getItem(`tracker-capability:${appointmentId}`);
-    return `${base}/public/track/${appointmentId}/prescription/print?autoPrint=1${token ? `&trackerToken=${encodeURIComponent(token)}` : ""}`;
+      : new URLSearchParams(window.location.search).get("t") || getStoredTrackerToken(appointmentId);
+    return `${base}/public/track/${appointmentId}/prescription/print${token ? `?trackerToken=${encodeURIComponent(token)}` : ""}`;
   };
 
-  const handleDownloadPrescription = () => {
+  const handleDownloadPrescription = async () => {
     const url = getPrintPrescriptionUrl();
-    window.open(url, "_blank");
+    const response = await api.get<string>(url, { responseType: "text" });
+    await printHtml(response.data);
   };
 
   if (loading) {
@@ -603,24 +620,34 @@ export default function PublicLiveQueueTracker() {
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center p-6 border border-border/80 shadow-sm rounded-3xl">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-danger-500/10 text-danger-text flex items-center justify-center mb-4">
-            <AlertCircle className="w-7 h-7" />
-          </div>
-          <h1 className="text-xl font-bold text-text mb-2">Tracking Unavailable</h1>
-          <p className="text-xs text-text-muted mb-6 leading-relaxed">
-            {error || "We could not find an active appointment corresponding to this tracking link."}
-          </p>
-          <div className="flex gap-3 justify-center">
-            <Button variant="outline" size="sm" onClick={() => fetchTrackerData(false)}>
-              <RotateCw className="w-3.5 h-3.5 mr-1.5" /> Try Again
-            </Button>
-            <Link href="/browse">
-              <Button size="sm">Browse Clinics</Button>
+      <div className="min-h-dvh bg-surface-alt text-text flex flex-col">
+        <header data-app-header className="bg-surface border-b border-border/70 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <div className="max-w-lg mx-auto flex items-center justify-between gap-3">
+            <Link href="/browse" aria-label="Browse clinics" className="inline-flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+              <EkavyuIcon className="h-8 w-8" />
+              <span className="text-sm font-bold text-text">Ekavyu</span>
             </Link>
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline text-xs font-medium text-text-secondary">Live tracker</span>
+              <ModeSwitcher variant="icon" />
+            </div>
           </div>
-        </Card>
+        </header>
+        <main className="w-full max-w-lg mx-auto flex-1 px-4 pt-8 pb-[max(2rem,env(safe-area-inset-bottom))] sm:pt-16">
+          <Card className="w-full p-5 sm:p-7 border border-border/80 shadow-sm rounded-2xl" contentClassName="items-start text-left">
+            <div className="w-11 h-11 rounded-xl bg-warning/10 text-warning-text flex items-center justify-center mb-4">
+              <AlertCircle className="w-5 h-5" aria-hidden="true" />
+            </div>
+            <h1 className="text-lg sm:text-xl font-bold text-text mb-2">Tracking unavailable</h1>
+            <p className="text-sm text-text-secondary mb-5 leading-relaxed">
+              {error || "We could not find an appointment for this tracking link."}
+            </p>
+            <div className="w-full flex flex-col sm:flex-row gap-2.5">
+              <Button variant="primary" size="sm" loading={refreshing} icon={<RotateCw className="w-4 h-4" />} onClick={() => fetchTrackerData(false)} className="w-full sm:w-auto min-h-11 justify-center">Try again</Button>
+              <Link href="/browse" className="inline-flex items-center justify-center w-full sm:w-auto min-h-11 px-4 rounded-xl border border-border bg-surface text-sm font-medium text-text hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Browse clinics</Link>
+            </div>
+          </Card>
+        </main>
       </div>
     );
   }
@@ -661,17 +688,18 @@ export default function PublicLiveQueueTracker() {
   return (
     <div className="min-h-screen bg-surface-alt text-text font-sans antialiased pb-16">
       {/* Top Floating App Bar */}
-      <header className="sticky top-0 z-40 bg-surface/90  border-b border-border/70 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <header data-app-header className="sticky top-0 z-40 bg-surface/90  border-b border-border/70 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="max-w-lg mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+          <Link href="/browse" aria-label="Return to clinics" className="flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
             <EkavyuIcon className="h-8 w-8 shadow-xs" />
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-text">Ekavyu</span>
-              <span className="text-[10px] text-text-muted block -mt-0.5">Live Patient Tracker</span>
+              <span className="text-[10px] text-text-muted hidden sm:block -mt-0.5">Live Patient Tracker</span>
             </div>
-          </div>
+          </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <ModeSwitcher variant="icon" />
             {/* Audio chime toggle */}
             <button
               type="button"
@@ -691,18 +719,19 @@ export default function PublicLiveQueueTracker() {
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
 
-            <button
+            <Button variant="ghost" size="sm"
               type="button"
               onClick={() => fetchTrackerData(false)}
               disabled={refreshing}
               className="p-2.5 rounded-xl bg-surface border border-border/70 hover:bg-surface-alt transition-colors text-text-muted hover:text-text cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               title="Refresh Queue"
               aria-label="Refresh Queue Data"
-            >
-              <RotateCw className={cn("w-4 h-4", refreshing && "animate-spin text-accent")} />
-            </button>
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-success/10 border border-success/20 text-[10px] font-semibold text-success-text dark:text-success-text">
-              <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping" />
+             loading={refreshing}>
+              <RotateCw className="w-4 h-4" />
+            </Button>
+            <span aria-label={stale ? "Reconnecting" : "Tracking updated"} title={stale ? "Reconnecting" : "Tracking updated"} className={`sm:hidden h-2 w-2 rounded-full shrink-0 ${stale ? "bg-warning" : "bg-success"}`} />
+            <div className={cn("hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[10px] font-semibold", stale ? "bg-warning/10 border-warning/20 text-warning-text" : "bg-success/10 border-success/20 text-success-text")}>
+              <span className={cn("w-1.5 h-1.5 rounded-full", stale ? "bg-warning" : "bg-success")} />
               {stale ? "Reconnecting" : "Updated"}
             </div>
           </div>
@@ -1086,15 +1115,13 @@ export default function PublicLiveQueueTracker() {
                 </div>
 
                 {/* Download / Print Prescription Action Button */}
-                <Button
+                <PrintButton
                   variant="outline"
                   size="xs"
-                  onClick={handleDownloadPrescription}
-                  className="rounded-xl border-primary-500/30 text-accent hover:bg-primary-500/10 font-bold flex items-center gap-1.5"
+                  onPrint={handleDownloadPrescription}
+                  className="rounded-xl border-primary-500/30 text-accent hover:bg-primary-500/10 font-bold flex items-center gap-1.5" documentName="prescription"
                 >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print / PDF</span>
-                </Button>
+              </PrintButton>
               </div>
 
               {/* Diagnoses if present */}

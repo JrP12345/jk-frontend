@@ -25,7 +25,8 @@ export function usePWA() {
     // Register Service Worker
     if ("serviceWorker" in navigator && process.env.NODE_ENV !== "development") {
       navigator.serviceWorker
-        .register("/sw.js")
+        .register("/sw.js", { updateViaCache: "none" })
+        .then(registration => registration.update())
         .catch(() => {});
     }
 
