@@ -15,12 +15,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 import { vibrateFeedback } from "@/lib/haptics";
-import { localDateKey } from "@/lib/date";
+import { clinicDateKey, clinicClockMinutes, addCalendarDays, clinicLocalTimeToIso } from "@/lib/clinicTime";
 import { useAuthStore } from "@/store/authStore";
 import { Card, CardContent, CardHeader, CardTitle, Button, Modal, Input, useToast, Badge, Breadcrumbs } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import { AlertCircle, MapPin, Phone, Clock, ShieldCheck, Building2, Calendar, ExternalLink, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, Star, UserCheck, User, Smartphone, Share2, Mail, FileText, CalendarOff, Camera, X, ChevronLeft, MessageSquare } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
+import { detectPatientOtpTarget } from "@/lib/patientLogin";
 import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
 
 interface Doctor {
@@ -30,6 +31,7 @@ interface Doctor {
   qualification: string;
   experience_years: number;
   fees: number;
+  appointmentDuration?: number;
   feeType?: "fixed" | "post_consultation" | "free";
   timings: string;
   working_days: string;
@@ -54,12 +56,17 @@ export interface ClinicDetail {
   name: string;
   city: string;
   address: string;
+  latitude?: number | null;
+  longitude?: number | null;
   phone: string;
   email: string;
   description: string;
   image_url: string;
   logo_url?: string;
   currency?: string;
+  countryCode?: string;
+  timezone?: string;
+  onlineBookingAvailable?: boolean;
   images?: string[];
   organization?: {
     id: string;
@@ -511,11 +518,13 @@ export default function BrowseDetailClient({
     const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
     const list = [];
     const current = new Date();
+    const clinicTimezone = clinic?.timezone || "Asia/Kolkata";
+    const todayKey = clinicDateKey(current, clinicTimezone);
 
     for (let i = 0; i <= 14; i++) {
-      const testDate = new Date();
-      testDate.setDate(current.getDate() + i);
-      const dayIndex = testDate.getDay();
+      const dateString = addCalendarDays(todayKey, i);
+      const testDate = new Date(`${dateString}T12:00:00Z`);
+      const dayIndex = testDate.getUTCDay();
       const dayName = daysOfWeek[dayIndex];
 
       const schedule = parseDoctorWorkingSchedule(timingsStr, dayName);
@@ -524,7 +533,7 @@ export default function BrowseDetailClient({
 
       // If today, check if shift end time has already passed
       if (isToday && schedule.intervals.length > 0) {
-        const currentMinutes = current.getHours() * 60 + current.getMinutes();
+        const currentMinutes = clinicClockMinutes(current, clinicTimezone);
         const lastInterval = schedule.intervals[schedule.intervals.length - 1];
         const [endH, endM] = lastInterval.end.split(":").map(Number);
         const endMinutes = (endH || 0) * 60 + (endM || 0);
@@ -536,9 +545,8 @@ export default function BrowseDetailClient({
       }
 
       if (schedule.isWorkingDay) {
-        const dateString = localDateKey(testDate);
-        const dayShort = testDate.toLocaleDateString("en-US", { weekday: "short" });
-        const dateNum = testDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const dayShort = testDate.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+        const dateNum = testDate.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
         const holidayMatch = selectedDoctor?.upcomingHolidays?.find((h) => h.date === dateString);
         const isHoliday = !!holidayMatch;
@@ -562,7 +570,7 @@ export default function BrowseDetailClient({
     }
 
     return list;
-  }, [selectedDoctor]);
+  }, [selectedDoctor, clinic?.timezone]);
 
   // Synchronous client-side slot generator for instant 0ms date switching
   const generateLocalSlotsForDate = (doc: Doctor, dateStr: string) => {
@@ -590,23 +598,24 @@ export default function BrowseDetailClient({
     }
 
     const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-    const targetDate = new Date(dateStr + "T12:00:00");
-    const dayName = daysOfWeek[targetDate.getDay()];
+    const targetDate = new Date(dateStr + "T12:00:00Z");
+    const dayName = daysOfWeek[targetDate.getUTCDay()];
     const schedule = parseDoctorWorkingSchedule(doc.workingHours || doc.timings, dayName);
 
     if (!schedule.isWorkingDay || schedule.intervals.length === 0) {
       return {
         isWorkingDay: false,
         slots: [],
-        appointmentDuration: 15,
+        appointmentDuration: doc.appointmentDuration || 15,
         bookingMode: "time_slot",
       };
     }
 
     const now = new Date();
-    const isToday = dateStr === localDateKey(now);
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const duration = 15;
+    const clinicTimezone = clinic?.timezone || "Asia/Kolkata";
+    const isToday = dateStr === clinicDateKey(now, clinicTimezone);
+    const currentMinutes = clinicClockMinutes(now, clinicTimezone);
+    const duration = doc.appointmentDuration && doc.appointmentDuration > 0 ? doc.appointmentDuration : 15;
     const slots: Array<{ time: string; available: boolean }> = [];
 
     for (const interval of schedule.intervals) {
@@ -662,6 +671,7 @@ export default function BrowseDetailClient({
   };
 
   const handleOpenBooking = (doc: Doctor) => {
+    if (clinic?.onlineBookingAvailable === false) return;
     setSelectedDoctor(doc);
     setBookingStep(1);
     setIsBookingOpen(true);
@@ -671,23 +681,24 @@ export default function BrowseDetailClient({
     const timingsStr = doc.workingHours || doc.timings;
     const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
     const now = new Date();
-    let initialDate = localDateKey(now);
+    const clinicTimezone = clinic?.timezone || "Asia/Kolkata";
+    const todayKey = clinicDateKey(now, clinicTimezone);
+    let initialDate = todayKey;
 
     // Find the first valid upcoming day (skipping holidays)
     for (let i = 0; i <= 14; i++) {
-      const testDate = new Date();
-      testDate.setDate(now.getDate() + i);
-      const testDateStr = localDateKey(testDate);
+      const testDateStr = addCalendarDays(todayKey, i);
+      const testDate = new Date(`${testDateStr}T12:00:00Z`);
       const isHoliday = doc.upcomingHolidays?.some(h => h.date === testDateStr);
       if (isHoliday) {
         continue;
       }
 
-      const dayName = daysOfWeek[testDate.getDay()];
+      const dayName = daysOfWeek[testDate.getUTCDay()];
       const schedule = parseDoctorWorkingSchedule(timingsStr, dayName);
       if (schedule.isWorkingDay) {
         if (i === 0 && schedule.intervals.length > 0) {
-          const currentMinutes = now.getHours() * 60 + now.getMinutes();
+          const currentMinutes = clinicClockMinutes(now, clinicTimezone);
           const [endH, endM] = schedule.intervals[schedule.intervals.length - 1].end.split(":").map(Number);
           if (currentMinutes >= (endH * 60 + (endM || 0))) {
             continue;
@@ -708,9 +719,7 @@ export default function BrowseDetailClient({
 
     // Pre-populate upcoming days in cache for instant tab switching
     for (let i = 0; i < 7; i++) {
-      const d = new Date();
-      d.setDate(now.getDate() + i);
-      const dStr = localDateKey(d);
+      const dStr = addCalendarDays(todayKey, i);
       const cKey = `${doc.id}_${dStr}`;
       if (!slotsCache.current[cKey]) {
         slotsCache.current[cKey] = generateLocalSlotsForDate(doc, dStr);
@@ -730,8 +739,9 @@ export default function BrowseDetailClient({
 
     if (Array.isArray(doctorSlotInfo?.slots)) {
       const now = new Date();
-      const isToday = selectedDate === localDateKey(now);
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const clinicTimezone = clinic?.timezone || "Asia/Kolkata";
+      const isToday = selectedDate === clinicDateKey(now, clinicTimezone);
+      const currentMinutes = clinicClockMinutes(now, clinicTimezone);
 
       return doctorSlotInfo.slots
         .filter((s: any) => {
@@ -749,7 +759,7 @@ export default function BrowseDetailClient({
     const local = generateLocalSlotsForDate(selectedDoctor, selectedDate);
     if (!local.isWorkingDay || !local.slots) return [];
     return local.slots;
-  }, [selectedDoctor, selectedDate, doctorSlotInfo]);
+  }, [selectedDoctor, selectedDate, doctorSlotInfo, clinic?.timezone]);
 
   // Categorize slots into Morning, Afternoon, Evening
   const categorizedSlots = useMemo<{ morning: SlotItem[]; afternoon: SlotItem[]; evening: SlotItem[] }>(() => {
@@ -776,7 +786,7 @@ export default function BrowseDetailClient({
     if (!selectedDate || !selectedDoctor) return null;
     const targetDate = new Date(selectedDate);
     const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const dayName = daysOfWeek[targetDate.getDay()];
+    const dayName = daysOfWeek[targetDate.getUTCDay()];
     return {
       dayName,
       ...parseDoctorWorkingSchedule(selectedDoctor.workingHours || selectedDoctor.timings, dayName),
@@ -790,7 +800,11 @@ export default function BrowseDetailClient({
 
   const handleBookAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
-    const todayStr = localDateKey();
+    if (clinic?.onlineBookingAvailable === false) {
+      toast({ title: "Online booking unavailable", description: "Please contact the clinic directly.", variant: "info" });
+      return;
+    }
+    const todayStr = clinicDateKey(new Date(), clinic?.timezone || "Asia/Kolkata");
     if (selectedDate === todayStr && selectedDoctor?.isOnlineBookingClosed) {
       toast({
         title: "Same-Day Online Booking Closed",
@@ -817,20 +831,23 @@ export default function BrowseDetailClient({
       "09:00";
 
     try {
-      const mergedBookingTime = new Date(`${selectedDate}T${timeToUse}`).toISOString();
+      if (paymentMode === "online" && (clinic?.countryCode && clinic.countryCode !== "IN" || clinic?.currency && clinic.currency !== "INR")) {
+        throw new Error("Online checkout is unavailable for this clinic. Choose payment at reception.");
+      }
+      const mergedBookingTime = clinicLocalTimeToIso(selectedDate, timeToUse, clinic?.timezone || "Asia/Kolkata");
       // Public booking is deliberately OTP-free. The resulting session is
       // limited to creating this appointment and cannot access patient records.
       if (isGuest) {
         if (!guestForm.name || !guestForm.phone) {
-          toast({ title: "Validation Error", description: "Patient name and 10-digit mobile phone number are required.", variant: "error" });
+          toast({ title: "Validation Error", description: "Patient name and mobile phone number are required.", variant: "error" });
           setBookingLoading(false);
           setBookingProgressMessage("");
           return;
         }
 
-        const phoneDigits = guestForm.phone.replace(/\D/g, "");
-        if (phoneDigits.length < 10) {
-          toast({ title: "Validation Error", description: "Please enter a valid 10-digit mobile number.", variant: "error" });
+        const guestPhoneTarget = detectPatientOtpTarget(guestForm.phone);
+        if (!guestPhoneTarget?.phone || (clinic?.countryCode && clinic.countryCode !== "IN" && !guestForm.phone.trim().startsWith("+"))) {
+          toast({ title: "Validation Error", description: "Enter an Indian 10-digit number or an international number with +country code.", variant: "error" });
           setBookingLoading(false);
           setBookingProgressMessage("");
           return;
@@ -838,7 +855,7 @@ export default function BrowseDetailClient({
 
 
         await api.post("/public/booking-session", {
-          phone: guestForm.phone,
+          phone: guestPhoneTarget.phone,
           name: guestForm.name,
           email: guestForm.email || undefined,
         });
@@ -1058,7 +1075,17 @@ export default function BrowseDetailClient({
 
   if (!clinic) return null;
 
-  const mapsQuery = encodeURIComponent(`${clinic.name}, ${clinic.address || clinic.city}`);
+  const hasCoordinates = typeof clinic.latitude === "number" && Number.isFinite(clinic.latitude) && clinic.latitude >= -90 && clinic.latitude <= 90
+    && typeof clinic.longitude === "number" && Number.isFinite(clinic.longitude) && clinic.longitude >= -180 && clinic.longitude <= 180;
+  const streetAddress = clinic.address?.trim();
+  const destination = hasCoordinates
+    ? `${clinic.latitude},${clinic.longitude}`
+    : streetAddress && streetAddress !== "."
+      ? [streetAddress, clinic.city?.trim()].filter(Boolean).join(", ")
+      : null;
+  const directionsUrl = destination
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`
+    : null;
   const hasSingleDoctor = clinic.doctors.length === 1;
   const singleDoctor = hasSingleDoctor ? clinic.doctors[0] : null;
 
@@ -1180,16 +1207,18 @@ export default function BrowseDetailClient({
                   <Share2 className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
                   <span className="hidden sm:inline">{"Share"}</span>
                 </button>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-surface hover:bg-surface-hover text-text text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px]"
-                >
-                  <MapPin className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
-                  <span>{"Directions"}</span>
-                  <ExternalLink className="w-3 h-3 text-text-muted" strokeWidth={1.75} />
-                </a>
+                {directionsUrl && (
+                  <a
+                    href={directionsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-surface hover:bg-surface-hover text-text text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px]"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
+                    <span>{"Get Directions"}</span>
+                    <ExternalLink className="w-3 h-3 text-text-muted" strokeWidth={1.75} />
+                  </a>
+                )}
                 {clinic.phone && (
                   <>
                     <a
@@ -1243,6 +1272,12 @@ export default function BrowseDetailClient({
       </div>
 
       {/* Main Content Layout - Specialists First on Mobile for Rapid Access */}
+      {clinic.onlineBookingAvailable === false && <div role="status" className="max-w-6xl mx-auto px-4 sm:px-6 pt-5">
+        <div className="rounded-2xl border border-border bg-surface p-4 text-sm text-text-secondary">
+          <p className="font-semibold text-text">Online booking is temporarily unavailable.</p>
+          <p className="mt-1">Please contact the clinic directly.{clinic.phone && <> <a className="font-medium text-accent underline" href={`tel:${clinic.phone.replace(/\s+/g, "")}`}>Call {clinic.phone}</a></>}</p>
+        </div>
+      </div>}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-24 lg:pb-12 flex flex-col lg:grid lg:grid-cols-3 gap-6">
         {/* Right Column: Specialists Practitioner Cards (Renders First on Mobile) */}
         <div className="order-1 lg:order-2 lg:col-span-2 space-y-4 sm:space-y-5">
@@ -1352,9 +1387,12 @@ export default function BrowseDetailClient({
                       size="sm"
                       className="w-full font-bold rounded-xl shadow-xs min-h-[44px] flex items-center justify-center gap-1.5 group/btn cursor-pointer"
                       onClick={() => handleOpenBooking(doc)}
+                      disabled={clinic.onlineBookingAvailable === false}
                     >
                       <span>
-                        {doc.isAvailable === false
+                        {clinic.onlineBookingAvailable === false
+                          ? "Online booking unavailable"
+                          : doc.isAvailable === false
                           ? "Schedule Upcoming Date"
                           : doc.isOnlineBookingClosed
                           ? "Schedule Next Available Date"
@@ -1514,7 +1552,7 @@ export default function BrowseDetailClient({
       </div>
 
       {/* Sticky Mobile Bottom Booking Bar (For single-doctor clinics) */}
-      {hasSingleDoctor && singleDoctor && (
+      {hasSingleDoctor && singleDoctor && clinic.onlineBookingAvailable !== false && (
         <div className="fixed bottom-0 left-0 right-0 pt-3 pl-16 pr-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface/95  border-t border-border z-40 lg:hidden shadow-lg flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-text truncate">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
@@ -1595,7 +1633,7 @@ export default function BrowseDetailClient({
               </div>
 
               {/* Online Booking Backlog Buffer Banner */}
-              {selectedDate === localDateKey() && selectedDoctor?.isOnlineBookingClosed && (
+              {selectedDate === clinicDateKey(new Date(), clinic?.timezone || "Asia/Kolkata") && selectedDoctor?.isOnlineBookingClosed && (
                 <div className="p-2.5 rounded-xl bg-warning/10 border border-warning/30 text-warning-text dark:text-warning-text text-xs flex items-start gap-2">
                   <AlertCircle className="w-3.5 h-3.5 text-warning-text shrink-0 mt-0.5" strokeWidth={1.75} />
                   <div className="space-y-0.5 text-[11px]">
@@ -1936,9 +1974,8 @@ export default function BrowseDetailClient({
                         label={"Mobile Phone Number *"}
                         type="tel"
                         inputMode="tel"
-                        placeholder="9876543210"
+                        placeholder={clinic?.countryCode && clinic.countryCode !== "IN" ? "+country code and number" : "9876543210 or +country code"}
                         icon={<Smartphone className="w-3.5 h-3.5" strokeWidth={1.75} />}
-                        prefix="+91"
                         value={guestForm.phone}
                         onChange={(e) => setGuestForm({ ...guestForm, phone: e.target.value })}
                         required
@@ -2024,7 +2061,7 @@ export default function BrowseDetailClient({
                       <span className="text-[10px] text-text-muted block mt-1 pl-6">{"Pay"} {formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} {"at the desk upon arrival"}</span>
                     </button>
 
-                    <button
+                    {(!clinic?.countryCode || clinic.countryCode === "IN") && (!clinic?.currency || clinic.currency === "INR") && <button
                       type="button"
                       onClick={() => setPaymentMode("online")}
                       className={`p-3 rounded-xl border text-left transition-all cursor-pointer min-h-[56px] ${
@@ -2038,7 +2075,7 @@ export default function BrowseDetailClient({
                         <span className="text-xs font-bold">{"Pay Online Now"}</span>
                       </div>
                       <span className="text-[10px] text-text-muted block mt-1 pl-6">{"Pay"} {formatCurrency(selectedDoctor.fees, clinic?.currency || "INR")} {"via UPI / Card"}</span>
-                    </button>
+                    </button>}
                   </div>
                 </div>
               ) : null}
@@ -2061,10 +2098,11 @@ export default function BrowseDetailClient({
         </form>
         </>}
         {ticketModalOpen &&
-        <div className="text-center space-y-4 py-1">
-          <div className="p-5 bg-surface-alt border border-border rounded-2xl space-y-3">
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-surface border border-border text-success-text flex items-center justify-center shadow-xs">
-              <CheckCircle2 className="w-6 h-6 text-success-text" strokeWidth={2} />
+        <div className="booking-confirmation text-center space-y-4 py-1">
+          <p role="status" className="sr-only">{appointmentBookingLabel(createdTicket?.status)}</p>
+          <div className="p-5 bg-surface-alt/70 border border-border/70 rounded-2xl space-y-3">
+            <div aria-hidden="true" className={`booking-confirmation-mark w-14 h-14 mx-auto rounded-full flex items-center justify-center ${createdTicket?.status === "confirmed" ? "bg-success-subtle text-success-text" : "bg-surface text-text-secondary border border-border"}`}>
+              {createdTicket?.status === "confirmed" ? <CheckCircle2 className="w-7 h-7" strokeWidth={1.75} /> : <Clock className="w-6 h-6" strokeWidth={1.75} />}
             </div>
             <div>
               <span className="text-3xl font-black text-text block">
@@ -2073,10 +2111,10 @@ export default function BrowseDetailClient({
               <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mt-0.5">{"Appointment Token"}</p>
             </div>
 
-            {createdTicket?.status === "pending_payment" && <p role="status" className="mb-4 text-sm text-text-muted">Payment is required before confirmation. Contact clinic reception for verified payment instructions. Your private tracker shows the visit details.</p>}
+            {createdTicket?.status === "pending_payment" && <p className="mb-4 text-sm text-text-muted">Payment is required before confirmation. Contact clinic reception for verified payment instructions. Your private tracker shows the visit details.</p>}
             {createdTicket?.paymentError && <div role="alert" className="mb-4 text-sm text-error"><p>{createdTicket.paymentError}</p><Button variant="outline" size="sm" loading={retryingPaymentSetup} onClick={retryTicketPaymentSetup}>Retry payment setup</Button></div>}
             {createdTicket && (
-              <div className="pt-3 border-t border-border text-xs text-text-secondary space-y-1.5 text-left">
+              <div className="booking-confirmation-details pt-4 border-t border-border/70 text-sm text-text-secondary space-y-2.5 text-left [&>div]:gap-4 [&>div>span]:shrink-0 [&_strong]:text-right [&_strong]:break-words [&_strong]:min-w-0">
                 <div className="flex justify-between">
                   <span>{"Patient:"}</span>
                   <strong className="text-text">{createdTicket.patientName}</strong>
@@ -2085,6 +2123,10 @@ export default function BrowseDetailClient({
                   <span>{"Doctor:"}</span>
                   <strong className="text-text">Dr. {createdTicket.doctorName}</strong>
                 </div>
+                {createdTicket.clinicName && <div className="flex justify-between">
+                  <span>{"Clinic:"}</span>
+                  <strong className="text-text">{createdTicket.clinicName}</strong>
+                </div>}
                 <div className="flex justify-between">
                   <span>{"Date:"}</span>
                   <strong className="text-text">{createdTicket.selectedDate}</strong>

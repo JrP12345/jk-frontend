@@ -15,10 +15,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # NEXT_PUBLIC_* vars are baked into the client bundle at build time
-ARG NEXT_PUBLIC_API_URL=http://localhost:5000/api
+ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NODE_ENV=production
 
+RUN node scripts/check-production-api-url.mjs
 RUN npm run build
 
 # ─── Stage 3: Production runner ───────────────────────────────────────────

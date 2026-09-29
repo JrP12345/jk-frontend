@@ -8,12 +8,14 @@ export function useNotifications() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
 
-  // ─── Query Unread Count (100% SSE Event Driven — Zero Polling) ────
+  // Live events update the count; a visible-tab refresh repairs missed events.
   const { data: unreadCount = 0, refetch: refetchCount } = useQuery({
     queryKey: ["notifications", "unread-count"],
     queryFn: () => notificationService.getUnreadCount(),
     enabled: !!user,
-    refetchInterval: false, // Zero polling — 100% pure SSE real-time push streaming
+    refetchInterval: 60_000, // Repair missed events while the tab is visible.
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 
 // ─── Mutations with Optimistic UI Updates ───────────────────────────

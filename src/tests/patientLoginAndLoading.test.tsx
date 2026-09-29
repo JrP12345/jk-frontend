@@ -53,7 +53,7 @@ describe("Patient identifier sign in", () => {
     render(<LoginPage />);
     fireEvent.change(screen.getByRole("textbox", { name: "Email or mobile number" }), { target: { value: identifier } });
     fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
-    expect(screen.getByText("Enter a valid email address or 10-digit mobile number.")).toBeInTheDocument();
+    expect(screen.getByText("Enter an email, Indian 10-digit number, or international number with +country code.")).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
   });
 

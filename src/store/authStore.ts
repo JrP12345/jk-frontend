@@ -26,6 +26,7 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isLoggingOut: boolean;
   
   // Actions
   checkAuth: () => Promise<void>;
@@ -36,14 +37,17 @@ interface AuthState {
   stopImpersonation: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true, // Initially true so we don't flash login page on load
+  isLoggingOut: false,
 
   checkAuth: async () => {
+    if (get().isLoggingOut) return;
     try {
       const res = await api.get("/auth/me");
+      if (get().isLoggingOut) return;
       const user = res.data.data.user;
       if (user && (user.role as string) === "guest") {
         if (typeof window !== "undefined") {
@@ -64,6 +68,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
       set({ user, isAuthenticated: true, isLoading: false });
     } catch (error) {
+      if (get().isLoggingOut) return;
       if (typeof window !== "undefined" && !document.cookie.split("; ").includes("ananta_session=guest")) {
         document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       }
@@ -86,17 +91,23 @@ export const useAuthStore = create<AuthState>((set) => ({
         localStorage.removeItem("ananta_active_clinic_id");
       }
     }
-    set({ user, isAuthenticated: true, isLoading: false });
+      set({ user, isAuthenticated: true, isLoading: false, isLoggingOut: false });
   },
 
   logout: async () => {
+    if (get().isLoggingOut) return;
+    set({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: true });
     clearRecentTracker();
+    aiSDK.cancelAllStreams();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("auth-logout"));
+      try { localStorage.setItem("ananta_logout_at", String(Date.now())); } catch { /* Storage may be unavailable; this tab still signs out. */ }
+    }
     try {
-      await api.post("/auth/logout");
+      await api.post("/auth/logout", {}, { timeout: 3000 });
     } catch (err) {
       // ignore
     } finally {
-      aiSDK.cancelAllStreams();
       if (typeof window !== "undefined") {
         document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         // Clear sensitive client caches during logout (Finding: Step 2.8)
@@ -108,7 +119,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         }
         sessionStorage.clear();
       }
-      set({ user: null, isAuthenticated: false });
+      set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },
 
@@ -199,6 +210,11 @@ if (typeof window !== "undefined") {
     if (e.key === "ananta_active_org_id") {
       // Re-verify auth when organization changes across tabs
       useAuthStore.getState().checkAuth();
+    }
+    if (e.key === "ananta_logout_at") {
+      useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: true });
+      window.dispatchEvent(new Event("auth-logout"));
+      window.location.replace("/login?logout=1");
     }
   });
 

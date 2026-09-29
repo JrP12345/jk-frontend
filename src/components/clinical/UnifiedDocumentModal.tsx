@@ -3,6 +3,7 @@
 import PrintDialogActions from "@/components/ui/PrintDialogActions";
 
 import { getPrintBrandStyles, printHtml, PrintPreparationError } from "@/lib/printBrand";
+import { formatCurrency } from "@/lib/currency";
 
 import React, { useRef, useState, useEffect } from "react";
 import Modal from "../ui/Modal";
@@ -22,6 +23,7 @@ export interface UnifiedDocumentData {
   documentType: DocumentType;
   title: string;
   clinicName: string;
+  currency?: string;
   clinicAddress?: string;
   clinicPhone?: string;
   clinicEmail?: string;
@@ -516,8 +518,8 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                     <tr key={idx}>
                       <td style={{ fontWeight: 500 }}>{item.description}</td>
                       <td style={{ textAlign: "center" }}>{item.quantity}</td>
-                      <td style={{ textAlign: "right" }}>₹{item.amount}</td>
-                      <td style={{ textAlign: "right", fontWeight: "bold" }}>₹{item.amount * item.quantity}</td>
+                      <td style={{ textAlign: "right" }}>{formatCurrency(item.amount, document.currency)}</td>
+                      <td style={{ textAlign: "right", fontWeight: "bold" }}>{formatCurrency(item.amount * item.quantity, document.currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -528,21 +530,21 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                   <div className="w-56 space-y-1 text-xs text-right">
                     <div className="flex justify-between">
                       <span className="text-text-secondary">Subtotal:</span>
-                      <span className="font-semibold">₹{document.invoiceTotals.subtotal}</span>
+                      <span className="font-semibold">{formatCurrency(document.invoiceTotals.subtotal, document.currency)}</span>
                     </div>
                     {document.invoiceTotals.discount > 0 && (
                       <div className="flex justify-between text-success-text">
                         <span>Discount:</span>
-                        <span>- ₹{document.invoiceTotals.discount}</span>
+                        <span>- {formatCurrency(document.invoiceTotals.discount, document.currency)}</span>
                       </div>
                     )}
                     <div className="flex justify-between">
                       <span className="text-text-secondary">Tax:</span>
-                      <span>₹{document.invoiceTotals.tax}</span>
+                      <span>{formatCurrency(document.invoiceTotals.tax, document.currency)}</span>
                     </div>
                     <div className="flex justify-between font-bold text-sm text-text border-t border-border pt-1">
                       <span>Total Amount:</span>
-                      <span>₹{document.invoiceTotals.total}</span>
+                      <span>{formatCurrency(document.invoiceTotals.total, document.currency)}</span>
                     </div>
                   </div>
                 </div>

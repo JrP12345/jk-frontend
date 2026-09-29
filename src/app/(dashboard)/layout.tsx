@@ -32,7 +32,7 @@ interface NavItem {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout, stopImpersonation, checkAuth, isLoading } = useAuthStore();
+  const { user, logout, stopImpersonation, checkAuth, isLoading, isLoggingOut } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -140,14 +140,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [router, toast]);
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!isLoading && !isLoggingOut && !user) {
       router.replace("/login");
     }
-  }, [isLoading, user, router]);
+  }, [isLoading, isLoggingOut, user, router]);
 
   const handleLogout = async () => {
     await logout();
-    router.push("/login?logout=1");
+    router.replace("/login?logout=1");
   };
 
   const handleExitImpersonation = async () => {
@@ -253,6 +253,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return true;
       }), user.role);
 
+  const clinicSelector = user && user.role !== "patient" && !isRootAdmin && headerClinics.length > 0 ? <Select
+    size="sm"
+    aria-label="Active clinic"
+    options={[
+      ...(headerClinics.length > 1 || hasAnyPermission(user, "MANAGE_CLINICS", "VIEW_CLINICS") ? [{ value: "all", label: "All Clinics" }] : []),
+      ...headerClinics.map((clinic) => ({ value: clinic.id, label: clinic.name })),
+    ]}
+    value={activeClinicId || headerClinics[0]?.id || "all"}
+    onChange={(event) => setActiveClinic(event.target.value)}
+  /> : null;
+
+  if (isLoggingOut) return <div role="status" aria-live="polite" className="min-h-dvh flex items-center justify-center bg-background text-text-secondary text-sm">Signing out…</div>;
+
   return (
     <div className="flex h-dvh overflow-hidden bg-background relative">
       {/* Mobile Backdrop Overlay */}
@@ -288,6 +301,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             sidebarCollapsed && !mobileMenuOpen ? (
               <EkavyuIcon className="h-8 w-8" />
             ) : (
+              <div className="w-full">
               <div className="flex items-center justify-between w-full">
                 <EkavyuLogo size="md" />
                 <button
@@ -299,13 +313,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <X className="w-5 h-5" />
                 </button>
               </div>
+              {clinicSelector && <div className="lg:hidden mt-3">{clinicSelector}</div>}
+              </div>
             )
           }
           items={filteredNavItems.map(item => ({
             ...item,
             active: pathname === item.href
           }))}
-          footer={
+          footer={<div className="w-full">
+            <div className="lg:hidden flex items-center justify-between gap-3 px-3 py-2 text-sm text-text-secondary"><span>Appearance</span><ModeSwitcher variant="icon" /></div>
             <button
               type="button"
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -317,7 +334,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
               </span>
             </button>
-          }
+          </div>}
         />
       </div>
 
@@ -353,7 +370,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <OfflineStatusBanner />
 
         {/* Top Navbar */}
-        <header data-app-header className="min-h-16 flex-wrap gap-y-2 py-2 md:py-0 border-b border-border/80 bg-surface/90  flex items-center justify-between px-3 sm:px-4 md:px-6 shrink-0 z-40 relative shadow-2xs">
+        <header data-app-header className="h-[calc(4rem+env(safe-area-inset-top))] min-h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] gap-2 border-b border-border/80 bg-surface/90 flex items-center justify-between px-3 sm:px-4 md:px-6 shrink-0 z-40 relative shadow-2xs">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {/* Mobile Hamburger Toggle Button */}
             <button
@@ -377,26 +394,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </p>
           </div>
 
-          <div className="contents md:flex md:items-center md:gap-2 xl:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2 xl:gap-4 min-w-0 shrink-0">
             {/* Only show Clinic selector when in operational clinic/tenant workspace */}
-            {user && user.role !== "patient" && !isRootAdmin && headerClinics.length > 0 && (
-              <div className="order-last w-full md:order-none md:w-48 xl:w-64 shrink-0">
-                <Select
-                  size="sm"
-                  aria-label="Active clinic"
-                  options={[
-                    ...(headerClinics.length > 1 || hasAnyPermission(user, "MANAGE_CLINICS", "VIEW_CLINICS")
-                      ? [{ value: "all", label: "All Clinics" }]
-                      : []),
-                    ...headerClinics.map((c) => ({ value: c.id, label: c.name })),
-                  ]}
-                  value={activeClinicId || (headerClinics[0] ? headerClinics[0].id : "all")}
-                  onChange={(e) => setActiveClinic(e.target.value)}
-                />
-              </div>
-            )}
+            {clinicSelector && <div className="hidden lg:block lg:w-48 xl:w-64 shrink-0">{clinicSelector}</div>}
             <NotificationBell />
-            <ModeSwitcher variant="icon" />
+            <div className="hidden lg:block"><ModeSwitcher variant="icon" /></div>
             <div className="w-px h-6 bg-border mx-0.5 sm:mx-1 md:mx-2 hidden xl:block" />
             {user ? (
               <Dropdown

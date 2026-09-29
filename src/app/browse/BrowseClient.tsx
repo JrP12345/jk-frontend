@@ -50,7 +50,12 @@ export interface ClinicFilters {
 
 function ClinicImage({ src, name }: { src: string | undefined; name: string }) {
   const [failedSrc, setFailedSrc] = useState<string>();
-  return src && failedSrc !== src ? <img src={src} alt={name} width={48} height={48} loading="lazy" decoding="async" onError={() => setFailedSrc(src)} className="w-full h-full object-cover rounded-xl" /> : <Building2 aria-label="Clinic image unavailable" className="w-5 h-5 text-text-muted" strokeWidth={1.75} />;
+  return src && failedSrc !== src ? (
+    <div className="relative w-full h-full">
+      <Building2 aria-hidden="true" className="absolute inset-0 m-auto w-5 h-5 text-text-muted" strokeWidth={1.75} />
+      <img src={src} alt={name} width={48} height={48} loading="lazy" decoding="async" onError={() => setFailedSrc(src)} className="relative w-full h-full object-cover rounded-xl" />
+    </div>
+  ) : <Building2 aria-label="Clinic image unavailable" className="w-5 h-5 text-text-muted" strokeWidth={1.75} />;
 }
 
 function filtersFromClinics(clinics: Clinic[]): ClinicFilters {
@@ -263,7 +268,7 @@ export default function BrowseClient({
       <MarketplaceNavbar />
 
       {/* Hero Header Section - Clean Modern Healthcare Design */}
-      <section className="relative pt-20 sm:pt-24 pb-4 sm:pb-8 overflow-hidden brand-wash border-b border-border/50">
+      <section className="relative pt-20 sm:pt-24 pb-4 sm:pb-6 brand-wash border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
           <h1 className="text-[1.75rem] sm:text-4xl lg:text-5xl font-bold text-text tracking-tight mb-2 leading-tight max-w-3xl mx-auto text-balance" suppressHydrationWarning>
             {"Find and book"}{" "}
@@ -275,7 +280,7 @@ export default function BrowseClient({
 
           {/* Unified Streamlined Search Console: Search + City Selector */}
           <div className="max-w-3xl mx-auto">
-            <div className="bg-surface rounded-2xl md:rounded-full border border-border shadow-xs p-1.5 focus-within:ring-2 focus-within:ring-focus-ring focus-within:border-primary-500/60 transition-[border-color,box-shadow] duration-200 flex flex-col md:flex-row items-stretch md:items-center gap-1.5 sm:gap-2">
+            <div className="glass-surface rounded-2xl p-1.5 focus-within:ring-2 focus-within:ring-focus-ring/40 transition-[border-color,box-shadow] duration-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-1 sm:gap-2">
               {/* Keyword Search Input with Inside Icon */}
               <div className="flex-1 min-w-0">
                 <Input
@@ -294,7 +299,7 @@ export default function BrowseClient({
               </div>
 
               {/* Location Select Dropdown with Inside Icon */}
-              <div className="w-full md:w-56 shrink-0 border-t md:border-t-0 md:border-l border-border/70 pt-1.5 md:pt-0 md:pl-2">
+              <div className="w-full sm:w-48 shrink-0 border-t sm:border-t-0 sm:border-l border-border/70 pt-1 sm:pt-0 sm:pl-2">
                 <Select
                   icon={<MapPin className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />}
                   value={selectedCity}
@@ -313,7 +318,7 @@ export default function BrowseClient({
             </div>
 
             {/* Specialty 1-Tap Quick Filter Pills Carousel */}
-            {quickSpecialties.length > 1 && <div className="mt-3 sm:mt-4 pt-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-snap-x py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+            {quickSpecialties.length > 1 && <div role="group" aria-label="Filter by specialty" className="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
               <span className="text-[11px] font-semibold text-text-muted shrink-0 mr-1 hidden sm:inline-block">
                 {"Care:"}
               </span>
@@ -325,10 +330,10 @@ export default function BrowseClient({
                     type="button"
                     onClick={() => setSelectedSpecialty(isActive && qs.value !== "" ? "" : qs.value)}
                     aria-pressed={isActive}
-                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer min-h-[36px] flex items-center justify-center ${
+                    className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer min-h-11 flex items-center justify-center ${
                       isActive
                         ? "bg-primary-500/15 text-accent dark:text-accent font-bold ring-1 ring-focus-ring"
-                        : "bg-surface hover:bg-surface-hover text-text-secondary hover:text-text border border-border"
+                        : "hover:bg-surface-hover text-text-secondary hover:text-text"
                     }`}
                   >
                     <span>{qs.label}</span>
@@ -486,7 +491,7 @@ export default function BrowseClient({
                   key={clinic.id}
                   role="group"
                   onClick={() => router.push(`/browse/${clinic.id}`)}
-                  className="group cursor-pointer hover:shadow-lg hover:border-primary-500/40 hover:-translate-y-0.5 transition-all duration-200 p-4 sm:p-5 rounded-2xl border border-border bg-surface flex flex-col sm:min-h-[340px]"
+                  className="group cursor-pointer hover:shadow-sm hover:border-accent/40 p-4 sm:p-5 rounded-2xl border border-border bg-surface flex flex-col min-h-[340px]"
                   contentClassName="flex-1 justify-between gap-3"
                 >
                   <div>
@@ -503,10 +508,10 @@ export default function BrowseClient({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             <h3
-                              className="text-base font-bold text-text group-hover:text-accent transition-colors truncate"
+                              className="text-base font-semibold text-text group-hover:text-accent transition-colors min-w-0"
                               title={clinic.name}
                             >
-                              <Link href={`/browse/${clinic.id}`} onClick={(event) => event.stopPropagation()} className="block truncate focus-visible:outline-none focus-visible:underline">{clinic.name}</Link>
+                              <Link href={`/browse/${clinic.id}`} onClick={(event) => event.stopPropagation()} className="block line-clamp-2 break-words focus-visible:outline-none focus-visible:underline">{clinic.name}</Link>
                             </h3>
                           </div>
                           {clinic.organizationName && clinic.organizationName !== clinic.name && (
@@ -524,14 +529,14 @@ export default function BrowseClient({
                       {/* Verified & Photo Gallery Badges */}
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <span
-                          className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-text-secondary bg-surface-alt border border-border px-2 py-0.5 rounded-md"
+                          className="inline-flex items-center gap-1 text-[10px] font-medium text-text-secondary"
                           title="Verified Healthcare Facility"
                         >
                           <ShieldCheck className="w-3 h-3 text-accent" strokeWidth={1.75} />
                           <span className="sr-only sm:not-sr-only">{"Verified"}</span>
                         </span>
                         {clinic.images && clinic.images.length > 0 && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-text-muted bg-surface-alt/70 border border-border/60 px-1.5 py-0.5 rounded">
+                          <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-medium text-text-muted">
                             <Camera className="w-2.5 h-2.5 text-accent" />
                             <span>{clinic.images.length} {"photos"}</span>
                           </span>
@@ -540,8 +545,8 @@ export default function BrowseClient({
                     </div>
 
                     {/* Doctor Count & Fee Highlights Pill Row */}
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3">
-                      <span className="text-[11px] font-semibold bg-surface-alt text-text px-2.5 py-1 rounded-lg border border-border flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 text-xs">
+                      <span className="font-medium text-text-secondary flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
                         <span>
                           {clinic.doctorCount
@@ -554,8 +559,8 @@ export default function BrowseClient({
                         </span>
                       </span>
 
-                      {clinic.minFee !== undefined && clinic.minFee !== null && (
-                        <span className="text-[11px] font-semibold bg-surface-alt text-text px-2.5 py-1 rounded-lg border border-border flex items-center gap-1">
+                      {!(hasSingleDoctor && singleDoctor?.fees != null) && !(clinic.doctorsSummary && clinic.doctorsSummary.length > 1) && clinic.minFee !== undefined && clinic.minFee !== null && (
+                        <span className="font-medium text-text flex items-center gap-1">
                           <CreditCard className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
                           <span>
                             {"From"} {formatCurrency(clinic.minFee, clinic.currency || "INR")}
@@ -563,7 +568,7 @@ export default function BrowseClient({
                         </span>
                       )}
                       {clinic.rating != null && (clinic.reviewsCount || 0) > 0 && (
-                        <span className="text-[11px] font-semibold bg-surface-alt text-text px-2.5 py-1 rounded-lg border border-border flex items-center gap-1" aria-label={`${clinic.rating.toFixed(1)} out of 5 from ${clinic.reviewsCount} reviews`}>
+                        <span className="font-semibold text-text flex items-center gap-1" aria-label={`${clinic.rating.toFixed(1)} out of 5 from ${clinic.reviewsCount} reviews`}>
                           <Star className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} aria-hidden="true" />
                           {clinic.rating.toFixed(1)} <span className="text-text-muted">({clinic.reviewsCount})</span>
                         </span>
@@ -572,22 +577,22 @@ export default function BrowseClient({
 
                     {/* Single Doctor Highlight or Multi-Doctor Preview */}
                     {hasSingleDoctor && singleDoctor ? (
-                      <div className="bg-surface-alt p-2.5 sm:p-3 rounded-xl border border-border text-xs mb-3 space-y-0.5 sm:space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">
+                      <div className="bg-surface-alt/70 p-3 rounded-xl text-xs mb-3 space-y-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-[11px] font-medium text-text-muted">
                             {"Practicing Specialist"}
                           </span>
                           <span className="text-[11px] font-bold text-success-text dark:text-success-text">
                             {singleDoctor.fees == null ? "Fee not listed" : formatCurrency(singleDoctor.fees, clinic.currency || "INR")}
                           </span>
                         </div>
-                        <p className="text-sm font-semibold text-text truncate">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
+                        <p className="text-sm font-semibold text-text break-words">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
                         <p className="text-xs text-text-secondary leading-relaxed">{singleDoctor.specialization}</p>
                       </div>
                     ) : clinic.doctorsSummary && clinic.doctorsSummary.length > 1 ? (
-                      <div className="bg-surface-alt p-2.5 sm:p-3 rounded-xl border border-border text-xs mb-3 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider">
+                      <div className="bg-surface-alt/70 p-3 rounded-xl text-xs mb-3 space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-[11px] font-medium text-text-muted">
                             {clinic.doctorsSummary.length} {"Consulting Doctors"}
                           </span>
                           {clinic.minFee !== undefined && clinic.minFee !== null && (
@@ -598,11 +603,11 @@ export default function BrowseClient({
                         </div>
                         <div className="space-y-1">
                           {clinic.doctorsSummary.slice(0, 2).map((doc) => (
-                            <div key={doc.id} className="flex items-center justify-between gap-1 text-[11px]">
-                              <span className="font-semibold text-text truncate">
+                            <div key={doc.id} className="space-y-0.5 text-xs">
+                              <span className="block font-medium text-text break-words">
                                 Dr. {doc.name.replace(/^Dr\.?\s*/i, "")}
                               </span>
-                              <span className="text-text-muted text-[10px] shrink-0 font-medium">
+                              <span className="block text-text-secondary text-[11px] break-words">
                                 {doc.specialization}
                               </span>
                             </div>
@@ -623,11 +628,11 @@ export default function BrowseClient({
 
                     {/* Facilities / Specialty Tags */}
                     {clinic.facilities && clinic.facilities.length > 0 && (
-                      <div className="hidden xs:flex flex-wrap gap-1.5 mb-3">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3">
                         {clinic.facilities.slice(0, 3).map((fac, idx) => (
                           <span
                             key={idx}
-                            className="text-[10px] font-medium bg-surface text-text-muted px-2 py-0.5 rounded-md border border-border"
+                            className="text-[11px] text-text-muted"
                           >
                             {fac}
                           </span>

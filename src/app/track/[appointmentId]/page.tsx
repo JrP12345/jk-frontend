@@ -2,6 +2,8 @@
 
 import PrintButton from "@/components/ui/PrintButton";
 import { printHtml } from "@/lib/printBrand";
+import { formatCurrency } from "@/lib/currency";
+import { addCalendarDays, clinicDateKey } from "@/lib/clinicTime";
 
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { rememberTracker, getStoredTrackerToken, clearRecentTracker } from "@/store/trackerStore";
@@ -12,7 +14,7 @@ import Link from "next/link";
 import api, { getApiUrl } from "@/lib/api";
 import { userFacingError } from "@/lib/userFacingError";
 import { Card, Button, Badge, Skeleton, Modal, useToast, cn, EkavyuIcon, ModeSwitcher } from "@/components/ui";
-import { Clock, Users, CheckCircle2, AlertCircle, Stethoscope, MapPin, RotateCw, Calendar, Sparkles, ShieldCheck, BellRing, Phone, Receipt, CreditCard, Pill, Volume2, VolumeX, QrCode, Smartphone, Copy } from "lucide-react";
+import { Clock, Users, CheckCircle2, AlertCircle, Stethoscope, MapPin, RotateCw, Calendar, Sparkles, ShieldCheck, BellRing, Phone, Receipt, CreditCard, Pill, Volume2, VolumeX, Smartphone, Copy } from "lucide-react";
 import QRCode from "qrcode";
 
 interface PrescribedMedicine {
@@ -49,6 +51,7 @@ interface BillingItem {
 interface BillingSummary {
   invoiceId: string;
   invoiceNumber: string;
+  currency?: string;
   totalAmount: number;
   amountPaid: number;
   balanceDue: number;
@@ -62,6 +65,7 @@ interface TrackerData {
   appointmentId: string;
   tokenNumber: number;
   status: "pending" | "confirmed" | "checked-in" | "in-consultation" | "completed" | "cancelled" | "no-show" | "disruption_triage" | "standby";
+  reviewState?: "overdue" | "unresolved" | null;
   parkedAt?: string | null;
   parkedReason?: string | null;
   patientReturned?: boolean;
@@ -88,6 +92,7 @@ interface TrackerData {
     phone: string;
     upiVpa?: string;
     merchantName?: string;
+    timezone?: string;
   };
   currentlyServingToken: number | null;
   peopleAhead: number;
@@ -172,19 +177,19 @@ export default function PublicLiveQueueTracker() {
 
   // Payment Modal State
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | "online">("upi");
   const [trackerQrDataUrl, setTrackerQrDataUrl] = useState<string>("");
   const [copiedUpi, setCopiedUpi] = useState(false);
 
-  const trackerVpa = data?.clinic?.upiVpa?.trim() || "ananta.health@icici";
-  const trackerMerchant = data?.clinic?.merchantName?.trim() || data?.clinic?.name || "Ekavyu Health Clinic";
+  const trackerVpa = data?.clinic?.upiVpa?.trim() || "";
+  const trackerMerchant = data?.clinic?.merchantName?.trim() || data?.clinic?.name || "";
   const trackerDueAmt = data?.billing?.balanceDue || 0;
   const trackerInvoiceNum = data?.billing?.invoiceNumber || "INV-OPD";
-  const trackerUpiPayload = `upi://pay?pa=${encodeURIComponent(trackerVpa)}&pn=${encodeURIComponent(
+  const canUseTrackerUpi = data?.billing?.currency === "INR" && Boolean(trackerVpa);
+  const trackerUpiPayload = canUseTrackerUpi ? `upi://pay?pa=${encodeURIComponent(trackerVpa)}&pn=${encodeURIComponent(
     trackerMerchant
   )}&am=${trackerDueAmt.toFixed(2)}&tr=${encodeURIComponent(trackerInvoiceNum)}&tn=${encodeURIComponent(
     `Token #${data?.tokenNumber || "OPD"} ${data?.patientName || "Patient"} Visit Settlement`
-  )}&cu=INR`;
+  )}&cu=INR` : "";
 
   useEffect(() => {
     if (typeof window === "undefined" || !appointmentId) return;
@@ -198,7 +203,7 @@ export default function PublicLiveQueueTracker() {
   }, [appointmentId]);
 
   useEffect(() => {
-    if (isPayModalOpen && paymentMethod === "upi" && trackerDueAmt > 0) {
+    if (isPayModalOpen && canUseTrackerUpi && trackerDueAmt > 0) {
       QRCode.toDataURL(trackerUpiPayload, {
         width: 220,
         margin: 2,
@@ -207,7 +212,7 @@ export default function PublicLiveQueueTracker() {
         .then((url) => setTrackerQrDataUrl(url))
         .catch((err) => console.error("Tracker QR generation error:", err));
     }
-  }, [isPayModalOpen, paymentMethod, trackerUpiPayload, trackerDueAmt]);
+  }, [isPayModalOpen, canUseTrackerUpi, trackerUpiPayload, trackerDueAmt]);
 
   // Disruption Self-Service Action State
   const [isDisruptionModalOpen, setIsDisruptionModalOpen] = useState(false);
@@ -217,6 +222,8 @@ export default function PublicLiveQueueTracker() {
     tomorrow.setDate(tomorrow.getDate() + 1);
     return tomorrow.toISOString().slice(0, 10);
   });
+  const clinicTomorrow = addCalendarDays(clinicDateKey(new Date(), data?.clinic?.timezone || "Asia/Kolkata"), 1);
+  const effectiveRescheduleDate = rescheduleTargetDate >= clinicTomorrow ? rescheduleTargetDate : clinicTomorrow;
   const [isSubmittingDisruption, setIsSubmittingDisruption] = useState(false);
 
   // Standby "I'm Back" Notification State
@@ -269,7 +276,7 @@ export default function PublicLiveQueueTracker() {
       await api.post("/doctor-overrides/patient-action", {
         appointmentId,
         action: disruptionActionType,
-        targetDate: disruptionActionType === "reschedule" ? rescheduleTargetDate : undefined,
+        targetDate: disruptionActionType === "reschedule" ? effectiveRescheduleDate : undefined,
         reason: "Patient selected choice via live tracker",
       });
       toast({
@@ -919,7 +926,7 @@ export default function PublicLiveQueueTracker() {
         )}
 
         {/* In-Consultation Live Banner: Call Patient In */}
-        {isInConsultation && (
+        {isInConsultation && !data.reviewState && (
           <div className="p-5 rounded-3xl bg-primary   text-brand-mist shadow-lg animate-bounce-subtle">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
@@ -935,6 +942,11 @@ export default function PublicLiveQueueTracker() {
             </p>
           </div>
         )}
+
+        {data.reviewState && !isCancelled && <div role="status" className="rounded-2xl border border-warning/30 bg-warning-subtle p-4 text-sm text-text-secondary">
+          <p className="font-semibold text-text">{data.reviewState === "unresolved" ? "Your visit needs a status update" : "Your scheduled time has passed"}</p>
+          <p className="mt-1">The recorded appointment status has not changed. Please contact the clinic to confirm what happens next.{data.clinic.phone && <> <a className="font-medium text-accent underline" href={`tel:${data.clinic.phone.replace(/\s+/g, "")}`}>Call clinic</a></>}</p>
+        </div>}
 
         {/* Cancellation Notice Banner */}
         {isCancelled && (
@@ -1331,7 +1343,7 @@ export default function PublicLiveQueueTracker() {
                           <span className="text-text-muted truncate max-w-[240px]">
                             {item.description} {item.quantity > 1 ? `(x${item.quantity})` : ""}
                           </span>
-                          <span className="font-semibold text-text shrink-0">₹{item.total.toFixed(2)}</span>
+                          <span className="font-semibold text-text shrink-0">{formatCurrency(item.total, data.billing?.currency)}</span>
                         </div>
                       ))}
                     </div>
@@ -1342,12 +1354,12 @@ export default function PublicLiveQueueTracker() {
                 <div className="pt-2 border-t border-border/60 space-y-1.5 text-xs">
                   <div className="flex justify-between text-text-muted">
                     <span>Invoice Total</span>
-                    <span className="font-bold text-text">₹{data.billing.totalAmount.toFixed(2)}</span>
+                    <span className="font-bold text-text">{formatCurrency(data.billing.totalAmount, data.billing.currency)}</span>
                   </div>
                   <div className="flex justify-between text-text-muted">
                     <span>Amount Paid</span>
                     <span className="font-semibold text-success-text dark:text-success-text">
-                      ₹{data.billing.amountPaid.toFixed(2)}
+                      {formatCurrency(data.billing.amountPaid, data.billing.currency)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm font-black pt-1 border-t border-border/40">
@@ -1359,13 +1371,13 @@ export default function PublicLiveQueueTracker() {
                           : "text-success-text dark:text-success-text"
                       }
                     >
-                      ₹{data.billing.balanceDue.toFixed(2)}
+                      {formatCurrency(data.billing.balanceDue, data.billing.currency)}
                     </span>
                   </div>
                 </div>
 
                 {/* Action: Pay Now (if unpaid) or Paid Receipt */}
-                {data.billing.balanceDue > 0 ? (
+                {data.billing.balanceDue > 0 && canUseTrackerUpi ? (
                   <div className="pt-2">
                     <Button
                       variant="primary"
@@ -1374,12 +1386,14 @@ export default function PublicLiveQueueTracker() {
                       onClick={() => setIsPayModalOpen(true)}
                     >
                       <CreditCard className="w-4 h-4" />
-                      <span>Pay Now (₹{data.billing.balanceDue.toFixed(2)})</span>
+                      <span>Pay via UPI ({formatCurrency(data.billing.balanceDue, data.billing.currency)})</span>
                     </Button>
                     <p className="text-[10px] text-center text-text-muted mt-2">
-                      Secure payment via UPI, Debit/Credit Card, or Net Banking
+                      Reception will verify the payment and update this invoice.
                     </p>
                   </div>
+                ) : data.billing.balanceDue > 0 ? (
+                  <p className="text-xs text-text-muted pt-2">Payment options for this clinic are available at reception.</p>
                 ) : (
                   <div className="p-3 rounded-2xl bg-success/10 border border-success/20 flex items-center justify-between text-xs text-success-text dark:text-success-text">
                     <span className="flex items-center gap-1.5 font-bold">
@@ -1611,7 +1625,7 @@ export default function PublicLiveQueueTracker() {
             <div>
               <span className="text-[10px] uppercase font-bold text-text-muted block">Amount Due</span>
               <div className="text-2xl font-black text-text mt-0.5">
-                ₹{data.billing?.balanceDue.toFixed(2)}
+                {formatCurrency(data.billing?.balanceDue, data.billing?.currency)}
               </div>
             </div>
             <Badge variant="warning" className="text-xs font-bold rounded-lg">
@@ -1619,56 +1633,7 @@ export default function PublicLiveQueueTracker() {
             </Badge>
           </div>
 
-          {/* Payment Method Selector */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-text block">Select Payment Method</label>
-
-            <div className="grid grid-cols-3 gap-2.5">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("upi")}
-                className={cn(
-                  "p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5",
-                  paymentMethod === "upi"
-                    ? "bg-primary-500/10 border-primary-500 text-accent dark:text-accent font-bold shadow-xs"
-                    : "bg-surface border-border/80 text-text-muted hover:border-border hover:text-text"
-                )}
-              >
-                <Smartphone className="w-5 h-5" />
-                <span className="text-xs">UPI / QR</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("card")}
-                className={cn(
-                  "p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5",
-                  paymentMethod === "card"
-                    ? "bg-primary-500/10 border-primary-500 text-accent dark:text-accent font-bold shadow-xs"
-                    : "bg-surface border-border/80 text-text-muted hover:border-border hover:text-text"
-                )}
-              >
-                <CreditCard className="w-5 h-5" />
-                <span className="text-xs">Card</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("online")}
-                className={cn(
-                  "p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1.5",
-                  paymentMethod === "online"
-                    ? "bg-primary-500/10 border-primary-500 text-accent dark:text-accent font-bold shadow-xs"
-                    : "bg-surface border-border/80 text-text-muted hover:border-border hover:text-text"
-                )}
-              >
-                <QrCode className="w-5 h-5" />
-                <span className="text-xs">Net Banking</span>
-              </button>
-            </div>
-          </div>
-
-          {paymentMethod === "upi" && (
+          {canUseTrackerUpi && (
             <div className="p-4 bg-surface-alt rounded-2xl border border-border/80 text-center space-y-3">
               {/* 1-Tap Mobile Intent Deep Link */}
               <a
@@ -1770,8 +1735,8 @@ export default function PublicLiveQueueTracker() {
                 <label className="text-xs font-semibold text-text">Select Date</label>
                 <input
                   type="date"
-                  value={rescheduleTargetDate}
-                  min={new Date().toISOString().slice(0, 10)}
+                  value={effectiveRescheduleDate}
+                  min={clinicTomorrow}
                   onChange={(e) => setRescheduleTargetDate(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-border bg-surface text-text text-sm focus:outline-hidden focus:ring-2 focus:ring-focus-ring"
                 />

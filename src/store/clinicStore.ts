@@ -5,6 +5,8 @@ export interface ClinicInfo {
   id: string;
   name: string;
   city: string;
+  timezone?: string;
+  effectiveTimezone?: string;
   address?: string;
   phone?: string;
   email?: string;

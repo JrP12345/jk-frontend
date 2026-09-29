@@ -418,8 +418,8 @@ export default function QueuePage() {
   const [endOpdSummary, setEndOpdSummary] = useState<any | null>(null);
   const [isLoadingEndOpdSummary, setIsLoadingEndOpdSummary] = useState(false);
   const [isSubmittingEndOpd, setIsSubmittingEndOpd] = useState(false);
-  const [standbyReconcileAction, setStandbyReconcileAction] = useState<"mark_no_show" | "cancel_refund">("mark_no_show");
-  const [waitingReconcileAction, setWaitingReconcileAction] = useState<"cancel_refund" | "keep_unresolved">("cancel_refund");
+  const [standbyReconcileAction, setStandbyReconcileAction] = useState<"keep_unresolved" | "cancel_refund">("keep_unresolved");
+  const [waitingReconcileAction, setWaitingReconcileAction] = useState<"cancel_refund" | "keep_unresolved">("keep_unresolved");
 
   // Investigation Modal State
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
@@ -1485,8 +1485,8 @@ export default function QueuePage() {
         clinicEmail: activeClinicObj?.email,
         doctorName: doctorData?.userId?.name || doctorData?.name || user?.name || "Attending Physician",
         doctorSpecialization: doctorData?.specialization || "General Medicine",
-        doctorRegistrationNumber: doctorData?.registrationNumber || "MCI/NMC-REG-PENDING",
-        doctorQualification: doctorData?.qualifications || "MBBS",
+        doctorRegistrationNumber: doctorData?.registrationNumber || "",
+        doctorQualification: doctorData?.qualifications || "",
         doctorSignatureUrl: doctorData?.digitalSignatureUrl,
         letterheadMode: (doctorData?.letterheadDefaultMode as any) || "plain_a4",
         patientName,
@@ -1547,8 +1547,8 @@ export default function QueuePage() {
       clinicEmail: activeClinicObj?.email,
       doctorName: doctorData?.userId?.name || doctorData?.name || user?.name || "Attending Physician",
       doctorSpecialization: doctorData?.specialization || "General Medicine",
-      doctorRegistrationNumber: doctorData?.registrationNumber || "MCI/NMC-REG-PENDING",
-      doctorQualification: doctorData?.qualifications || "MBBS",
+      doctorRegistrationNumber: doctorData?.registrationNumber || "",
+      doctorQualification: doctorData?.qualifications || "",
       doctorSignatureUrl: doctorData?.digitalSignatureUrl,
       letterheadMode: (doctorData?.letterheadDefaultMode as any) || "plain_a4",
       patientName,
@@ -3576,11 +3576,13 @@ export default function QueuePage() {
           setClinicalDocGenOpen(false);
           setSelectedDocGenPatient(null);
         }}
-        clinicName={clinics.find((c) => (c.id || c._id) === selectedClinic)?.name || "Our Clinic"}
+        clinicName={clinics.find((c) => (c.id || c._id) === selectedClinic)?.name || ""}
         clinicAddress={clinics.find((c) => (c.id || c._id) === selectedClinic)?.address}
         clinicPhone={clinics.find((c) => (c.id || c._id) === selectedClinic)?.phone}
         defaultDoctorName={doctors.find((d) => (d.id || d._id) === selectedDoctor)?.name}
         defaultDoctorSpecialization={doctors.find((d) => (d.id || d._id) === selectedDoctor)?.specialty}
+        defaultDoctorRegistrationNumber={doctors.find((d) => (d.id || d._id) === selectedDoctor)?.registrationNumber}
+        defaultDoctorQualification={doctors.find((d) => (d.id || d._id) === selectedDoctor)?.qualifications}
         patient={selectedDocGenPatient}
       />
 
@@ -4225,25 +4227,27 @@ export default function QueuePage() {
                 </div>
               </div>
 
+              {(endOpdSummary?.counts?.inConsultation ?? 0) > 0 && <p role="status" className="text-xs text-warning-text">Consultations still in progress will remain open for clinician review after closing this shift.</p>}
+
               {/* Standby Reconciliation Policy */}
               <div className="p-4 rounded-2xl border border-border bg-surface-alt space-y-2.5">
                 <h4 className="text-xs font-bold text-text">
                   1. Standby Patients ({endOpdSummary?.counts?.standby ?? 0} stranded)
                 </h4>
                 <p className="text-[11px] text-text-muted">
-                  Patients who stepped out for lab tests or personal breaks and never returned to the clinic.
+                  Patients who stepped out need individual follow-up before their outcome is recorded.
                 </p>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-1">
                   <label className="flex items-center gap-2 text-xs cursor-pointer font-medium">
                     <input
                       type="radio"
                       name="standbyAction"
-                      value="mark_no_show"
-                      checked={standbyReconcileAction === "mark_no_show"}
-                      onChange={() => setStandbyReconcileAction("mark_no_show")}
+                      value="keep_unresolved"
+                      checked={standbyReconcileAction === "keep_unresolved"}
+                      onChange={() => setStandbyReconcileAction("keep_unresolved")}
                       className="accent-primary-600"
                     />
-                    <span>Mark as No-Show (Abandoned)</span>
+                    <span>Keep unresolved for individual review</span>
                   </label>
                   <label className="flex items-center gap-2 text-xs cursor-pointer font-medium">
                     <input
@@ -4254,7 +4258,7 @@ export default function QueuePage() {
                       onChange={() => setStandbyReconcileAction("cancel_refund")}
                       className="accent-primary-600"
                     />
-                    <span>Cancel & Auto-Refund</span>
+                    <span>Cancel appointments; review invoices separately</span>
                   </label>
                 </div>
               </div>
@@ -4277,7 +4281,7 @@ export default function QueuePage() {
                       onChange={() => setWaitingReconcileAction("cancel_refund")}
                       className="accent-primary-600"
                     />
-                    <span>Cancel & Auto-Refund Invoices (Recommended)</span>
+                    <span>Cancel appointments; review invoices separately</span>
                   </label>
                   <label className="flex items-center gap-2 text-xs cursor-pointer font-medium">
                     <input
@@ -4288,7 +4292,7 @@ export default function QueuePage() {
                       onChange={() => setWaitingReconcileAction("keep_unresolved")}
                       className="accent-primary-600"
                     />
-                    <span>Leave as Pending</span>
+                    <span>Keep unresolved for individual review</span>
                   </label>
                 </div>
               </div>

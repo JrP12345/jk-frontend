@@ -5,12 +5,14 @@ import Modal from "@/components/ui/Modal";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { useToastPosition } from "@/hooks/useToastPosition";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const { unreadCount } = useNotifications();
   const id = useId();
   const position = useToastPosition(isOpen);
+  const previewGesture = useSwipeGesture({ axis: "x", direction: "left", enabled: isOpen, threshold: 64, allowButtonTargets: true, onSwipe: () => setIsOpen(false) });
 
   return (
     <div className="relative">
@@ -57,7 +59,7 @@ export function NotificationBell() {
         bodyClassName="!p-0 !overflow-hidden flex flex-col"
         contentClassName="flex flex-col flex-auto min-h-0"
       >
-        <div id={id} className="flex flex-col flex-auto min-h-0"><NotificationDropdown onClose={() => setIsOpen(false)} /></div>
+        <div id={id} {...previewGesture.handlers} style={{ translate: previewGesture.offset ? `${previewGesture.offset}px 0` : undefined, transition: previewGesture.dragging ? "none" : "translate 180ms ease" }} className="flex flex-col flex-auto min-h-0 [touch-action:pan-y_pinch-zoom]"><NotificationDropdown onClose={() => setIsOpen(false)} /></div>
       </Modal>
     </div>
   );

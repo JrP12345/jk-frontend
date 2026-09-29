@@ -164,7 +164,7 @@ interface ToastItemProps extends Toast { onDismiss: () => void; isHoveredStack: 
 
 function ToastItem({ title, description, variant, duration, timestamp, onDismiss, isHoveredStack }: ToastItemProps) {
   const [exiting, setExiting] = useState(false);
-  const gesture = useSwipeGesture({ axis: "x", enabled: !exiting, threshold: 90, onSwipe: () => setExiting(true) });
+  const gesture = useSwipeGesture({ axis: "x", enabled: !exiting, threshold: 64, onSwipe: () => setExiting(true) });
   const remaining = useRef(duration);
   const dismissRef = useRef(onDismiss);
   useEffect(() => { dismissRef.current = onDismiss; }, [onDismiss]);

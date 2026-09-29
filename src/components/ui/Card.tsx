@@ -28,10 +28,10 @@ const paddings: Record<CardPadding, string> = {
 };
 
 const variants: Record<CardVariant, string> = {
-  default: "bg-surface border border-border/80 shadow-xs hover:border-border transition-all duration-200",
+  default: "bg-surface border border-border/80 shadow-xs hover:border-border duration-200",
   outline: "bg-transparent border border-border/70",
   flat: "bg-surface-alt border border-border/40",
-  glass: "bg-surface-elevated border border-border shadow-sm",
+  glass: "glass-surface",
 };
 
 const Card = memo(function Card({
@@ -65,7 +65,7 @@ const Card = memo(function Card({
       role={role}
       tabIndex={onClick && role === "button" ? 0 : undefined}
       className={cn(
-        "relative overflow-hidden rounded-2xl transform-gpu transition-all duration-250 ease-smooth group",
+        "relative overflow-hidden rounded-2xl transition-[color,background-color,border-color,box-shadow,transform] duration-250 ease-smooth group",
         variants[variant],
         defaultPadding,
         onClick &&

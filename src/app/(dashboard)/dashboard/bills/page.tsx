@@ -5,6 +5,7 @@ import PrintDialogActions from "@/components/ui/PrintDialogActions";
 import PrintButton from "@/components/ui/PrintButton";
 
 import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
+import { formatCurrency } from "@/lib/currency";
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
@@ -21,6 +22,7 @@ interface InvoiceItem {
 interface Invoice {
   id: string;
   invoiceNumber: string;
+  currency?: string;
   patientId: { id: string; userId: { name: string; email: string; phone: string } };
   clinicId: { id: string; name: string; city: string; address: string };
   doctorId: { id: string; name: string; specialization: string };
@@ -73,6 +75,10 @@ export default function PatientBillsPage() {
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeInvoice) return;
+    if (activeInvoice.currency && activeInvoice.currency !== "INR") {
+      toast({ title: "Payment at reception", description: "Online payment is not configured for this invoice currency.", variant: "warning" });
+      return;
+    }
 
     try {
       setSubmittingPayment(true);
@@ -86,7 +92,7 @@ export default function PatientBillsPage() {
       
       toast({ 
         title: "Payment Successful", 
-        description: `Your payment of ₹${activeInvoice.totalAmount} for Invoice #${activeInvoice.invoiceNumber} was processed successfully.`, 
+        description: `Your payment of ${formatCurrency(activeInvoice.totalAmount, activeInvoice.currency)} for Invoice #${activeInvoice.invoiceNumber} was processed successfully.`,
         variant: "success",
         duration: 5000
       });
@@ -140,16 +146,16 @@ export default function PatientBillsPage() {
               </thead>
               <tbody>
                 ${inv.items.map(item => `
-                  <tr><td>${item.description}</td><td style="text-align:right;">${item.quantity}</td><td style="text-align:right;">₹${item.amount * item.quantity}</td></tr>
+                  <tr><td>${item.description}</td><td style="text-align:right;">${item.quantity}</td><td style="text-align:right;">${formatCurrency(item.amount * item.quantity, inv.currency)}</td></tr>
                 `).join("")}
               </tbody>
             </table>
             <div class="border-dashed"></div>
-            <div class="flex-between"><span>Subtotal:</span><span>₹${inv.subtotal}</span></div>
-            <div class="flex-between"><span>Tax:</span><span>₹${inv.tax}</span></div>
-            <div class="flex-between"><span>Discount:</span><span>-₹${inv.discount}</span></div>
+            <div class="flex-between"><span>Subtotal:</span><span>${formatCurrency(inv.subtotal, inv.currency)}</span></div>
+            <div class="flex-between"><span>Tax:</span><span>${formatCurrency(inv.tax, inv.currency)}</span></div>
+            <div class="flex-between"><span>Discount:</span><span>-${formatCurrency(inv.discount, inv.currency)}</span></div>
             <div class="flex-between bold" style="font-size:14px; margin-top:8px;">
-              <span>Total Amount:</span><span>₹${inv.totalAmount}</span>
+              <span>Total Amount:</span><span>${formatCurrency(inv.totalAmount, inv.currency)}</span>
             </div>
             <div class="border-dashed"></div>
             <div class="center">
@@ -212,10 +218,10 @@ export default function PatientBillsPage() {
               const balance = row.balanceDue !== undefined ? row.balanceDue : (row.status === "paid" ? 0 : row.totalAmount);
               return (
                 <div className="space-y-0.5">
-                  <span className="font-semibold text-text">₹{row.totalAmount}</span>
+                  <span className="font-semibold text-text">{formatCurrency(row.totalAmount, row.currency)}</span>
                   {row.status === "partially_paid" && (
                     <span className="block text-[10px] text-warning-text dark:text-warning-text font-bold">
-                      Bal: ₹{balance}
+                      Bal: {formatCurrency(balance, row.currency)}
                     </span>
                   )}
                 </div>
@@ -235,17 +241,17 @@ export default function PatientBillsPage() {
             )},
             { key: "actions", header: "Actions", render: (row: Invoice) => (
               <div className="flex gap-2">
-                {row.status === "unpaid" || row.status === "partially_paid" ? (
+                {(row.status === "unpaid" || row.status === "partially_paid") && (!row.currency || row.currency === "INR") ? (
                   <Button size="xs" variant="primary" className="min-h-[36px] px-3.5 font-bold cursor-pointer" onClick={() => {
                     setActiveInvoice(row);
                     setCheckoutOpen(true);
                   }}>
                     {row.status === "partially_paid" ? "Pay Balance" : "Pay Online"}
                   </Button>
-                ) : (
+                ) : row.status === "paid" ? (
                   <PrintButton size="xs" variant="outline" className="min-h-[36px] px-3.5 font-bold cursor-pointer" onPrint={() => handleOpenReceipt(row)} documentName="receipt" preview>
               </PrintButton>
-                )}
+                ) : <span className="text-xs text-text-muted">Pay at clinic</span>}
               </div>
             )}
           ]}
@@ -287,19 +293,19 @@ export default function PatientBillsPage() {
                   <div className="col-span-2 pt-1 border-t border-border/40 flex items-center justify-between">
                     <div>
                       <span className="text-text-muted text-[10px] uppercase font-bold block">Total Amount</span>
-                      <span className="font-bold text-sm text-text mt-0.5 block">₹{row.totalAmount}</span>
+                      <span className="font-bold text-sm text-text mt-0.5 block">{formatCurrency(row.totalAmount, row.currency)}</span>
                     </div>
                     {row.status === "partially_paid" && (
                       <div className="text-right">
                         <span className="text-warning-text dark:text-warning-text text-[10px] uppercase font-bold block">Balance Due</span>
-                        <span className="font-bold text-sm text-warning-text dark:text-warning-text mt-0.5 block">₹{balance}</span>
+                        <span className="font-bold text-sm text-warning-text dark:text-warning-text mt-0.5 block">{formatCurrency(balance, row.currency)}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
                 <div className="pt-1">
-                  {isUnpaid ? (
+                  {isUnpaid && (!row.currency || row.currency === "INR") ? (
                     <Button
                       size="sm"
                       variant="primary"
@@ -310,9 +316,9 @@ export default function PatientBillsPage() {
                       }}
                     >
                       <CreditCard className="w-4 h-4 mr-1.5" />
-                      {row.status === "partially_paid" ? `Pay Balance (₹${balance})` : `Pay Online (₹${row.totalAmount})`}
+                      {row.status === "partially_paid" ? `Pay Balance (${formatCurrency(balance, row.currency)})` : `Pay Online (${formatCurrency(row.totalAmount, row.currency)})`}
                     </Button>
-                  ) : (
+                  ) : row.status === "paid" ? (
                     <PrintButton
                       size="sm"
                       variant="outline"
@@ -320,7 +326,7 @@ export default function PatientBillsPage() {
                       onPrint={() => handleOpenReceipt(row)} documentName="receipt" preview
                     >
               </PrintButton>
-                  )}
+                  ) : <p className="text-xs text-text-muted text-center">Pay at clinic reception</p>}
                 </div>
               </div>
             );
@@ -340,9 +346,9 @@ export default function PatientBillsPage() {
               </span>
             </div>
             <p className="text-xs text-text-secondary font-medium pt-1">Invoice #{activeInvoice?.invoiceNumber} • Dr. {activeInvoice?.doctorId?.name}</p>
-            <p className="text-3xl font-black text-text tracking-tight pt-0.5">₹{activeInvoice?.balanceDue ?? activeInvoice?.totalAmount}</p>
+            <p className="text-3xl font-black text-text tracking-tight pt-0.5">{formatCurrency(activeInvoice?.balanceDue ?? activeInvoice?.totalAmount, activeInvoice?.currency)}</p>
             {activeInvoice?.balanceDue !== undefined && activeInvoice.balanceDue < activeInvoice.totalAmount && (
-              <p className="text-[11px] text-text-muted">Total Bill: ₹{activeInvoice.totalAmount} (₹{activeInvoice.amountPaid ?? (activeInvoice.totalAmount - activeInvoice.balanceDue)} previously paid)</p>
+              <p className="text-[11px] text-text-muted">Total Bill: {formatCurrency(activeInvoice.totalAmount, activeInvoice.currency)} ({formatCurrency(activeInvoice.amountPaid ?? (activeInvoice.totalAmount - activeInvoice.balanceDue), activeInvoice.currency)} previously paid)</p>
             )}
           </div>
 
@@ -397,7 +403,7 @@ export default function PatientBillsPage() {
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 border-t border-border/80 pt-4 mt-6">
             <Button variant="outline" type="button" onClick={() => { setCheckoutOpen(false); setActiveInvoice(null); }} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">Cancel</Button>
             <Button type="submit" loading={submittingPayment} variant="primary" className="font-bold w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
-              {submittingPayment ? "Processing..." : `Pay ₹${activeInvoice?.totalAmount}`}
+              {submittingPayment ? "Processing..." : `Pay ${formatCurrency(activeInvoice?.balanceDue ?? activeInvoice?.totalAmount, activeInvoice?.currency)}`}
             </Button>
           </div>
         </form>
@@ -433,18 +439,18 @@ export default function PatientBillsPage() {
                   <div key={idx} className="flex justify-between text-xs py-0.5">
                     <span className="truncate max-w-[200px]">{item.description}</span>
                     <span className="w-12 text-right">{item.quantity}</span>
-                    <span className="w-20 text-right">₹{item.amount * item.quantity}</span>
+                    <span className="w-20 text-right">{formatCurrency(item.amount * item.quantity, receiptInvoice.currency)}</span>
                   </div>
                 ))}
               </div>
 
               {/* Summary */}
               <div className="border-t border-border/80 border-dashed pt-3 space-y-1.5 text-xs text-right">
-                <div className="flex justify-between"><span>Subtotal:</span><span>₹{receiptInvoice.subtotal}</span></div>
-                <div className="flex justify-between"><span>Tax Charges:</span><span>₹{receiptInvoice.tax}</span></div>
-                <div className="flex justify-between"><span>Discounts:</span><span>-₹{receiptInvoice.discount}</span></div>
+                <div className="flex justify-between"><span>Subtotal:</span><span>{formatCurrency(receiptInvoice.subtotal, receiptInvoice.currency)}</span></div>
+                <div className="flex justify-between"><span>Tax Charges:</span><span>{formatCurrency(receiptInvoice.tax, receiptInvoice.currency)}</span></div>
+                <div className="flex justify-between"><span>Discounts:</span><span>-{formatCurrency(receiptInvoice.discount, receiptInvoice.currency)}</span></div>
                 <div className="flex justify-between font-extrabold text-sm border-t border-border/60 pt-1.5 text-text">
-                  <span>Total Amount Paid:</span><span>₹{receiptInvoice.totalAmount}</span>
+                  <span>Total Amount Paid:</span><span>{formatCurrency(receiptInvoice.totalAmount, receiptInvoice.currency)}</span>
                 </div>
               </div>
 

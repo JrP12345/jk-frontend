@@ -24,6 +24,7 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      isLoggingOut: false,
     });
     useModuleStore.setState({
       modules: [],
@@ -31,6 +32,27 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
       isLoading: false,
       error: null,
     });
+  });
+
+  it("hides authenticated state immediately and sends one logout request even if it fails", async () => {
+    let rejectLogout!: (error: Error) => void;
+    const post = vi.spyOn(api, "post").mockImplementationOnce(() => new Promise((_, reject) => { rejectLogout = reject; }));
+    const get = vi.spyOn(api, "get");
+    const cleared = vi.fn();
+    window.addEventListener("auth-logout", cleared, { once: true });
+    useAuthStore.getState().login({ id: "doctor-1", name: "Doctor", email: "doctor@example.com", role: "doctor" });
+
+    const logout = useAuthStore.getState().logout();
+    expect(useAuthStore.getState()).toMatchObject({ user: null, isAuthenticated: false, isLoggingOut: true });
+    expect(cleared).toHaveBeenCalledOnce();
+    await useAuthStore.getState().logout();
+    await useAuthStore.getState().checkAuth();
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(get).not.toHaveBeenCalled();
+
+    rejectLogout(new Error("Network unavailable"));
+    await logout;
+    expect(useAuthStore.getState()).toMatchObject({ user: null, isAuthenticated: false, isLoggingOut: true });
   });
 
   it("authenticates user and populates role correctly", async () => {
@@ -173,4 +195,3 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
     expect(hasRoutePermission("/dashboard/patient-portal", state.user!.role, state.user!.permissions)).toBe(true);
   });
 });
-

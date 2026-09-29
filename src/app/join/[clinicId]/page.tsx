@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { detectPatientOtpTarget } from "@/lib/patientLogin";
 import { userFacingError } from "@/lib/userFacingError";
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, useToast, ModeSwitcher, cn } from "@/components/ui";
 import { Stethoscope, MapPin, Users, Clock, CheckCircle2, AlertCircle, Sparkles, Phone, ShieldCheck, ChevronRight, ArrowRight, UserCheck, RefreshCw, Building2 } from "lucide-react";
@@ -132,11 +133,11 @@ export default function JoinClinicQueuePage() {
       return;
     }
 
-    const cleanPhone = phone.replace(/\D/g, "");
-    if (cleanPhone.length < 10) {
+    const phoneTarget = detectPatientOtpTarget(phone);
+    if (!phoneTarget?.phone) {
       toast({
         title: "Valid Mobile Required",
-        description: "Please enter a valid 10-digit mobile number.",
+        description: "Enter an Indian 10-digit number or an international number with +country code.",
         variant: "error",
       });
       return;
@@ -157,7 +158,7 @@ export default function JoinClinicQueuePage() {
         clinicId,
         doctorId: selectedDoctorId,
         name: name.trim(),
-        phone: cleanPhone,
+        phone: phone.trim().startsWith("+") ? phone.trim() : phoneTarget.phone,
         gender,
         notes: notes.trim() || undefined,
       });
@@ -417,10 +418,10 @@ export default function JoinClinicQueuePage() {
                   <input
                     type="tel"
                     required
-                    placeholder="10-digit mobile number"
+                    placeholder="Phone (+country code outside India)"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    maxLength={14}
+                    maxLength={24}
                     className="w-full pl-9 pr-3.5 py-2.5 text-sm rounded-xl border border-border dark:border-border bg-surface dark:bg-surface text-text dark:text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition"
                   />
                 </div>

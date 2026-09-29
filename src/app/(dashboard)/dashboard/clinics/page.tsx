@@ -17,6 +17,7 @@ interface Clinic {
   name: string;
   city: string;
   address?: string;
+  timezone?: string;
   phone?: string;
   email?: string;
   description?: string;
@@ -893,6 +894,13 @@ export default function ClinicsPage() {
               value={formData.address || ""}
               onChange={(e) => handleFieldChange("address", e.target.value)}
               placeholder="e.g. 742 Evergreen Terrace, Suite 100"
+            />
+            <Input
+              label="Branch timezone (optional)"
+              value={formData.timezone || ""}
+              onChange={(e) => handleFieldChange("timezone", e.target.value)}
+              placeholder="e.g. America/Toronto; blank uses organization timezone"
+              hint="Use an IANA timezone for branches in another time zone."
             />
 
             <Input

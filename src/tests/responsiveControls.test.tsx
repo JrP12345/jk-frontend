@@ -166,7 +166,7 @@ describe("responsive controls", () => {
 
   it("offers mobile column filtering, sorting, and secondary row details", async () => {
     render(<Table columns={[{ key: "name", header: "Name", filterable: true, sortable: true }, { key: "notes", header: "Notes", mobileVisible: false }]} data={[{ id: "a", name: "Alpha", notes: "Follow up" }, { id: "z", name: "Zeta", notes: "Review" }]} />);
-    fireEvent.click(screen.getByRole("button", { name: "Toggle column filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show column filters" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Name" }), { target: { value: "Alpha" } });
     expect(screen.getByText("Showing 1 to 1 of 1")).toBeInTheDocument();
     expect(screen.getByText("More details")).toBeInTheDocument();
@@ -193,6 +193,17 @@ describe("responsive controls", () => {
     render(<MobileBottomNav user={{ role: "root" }} pathname="/dashboard" onOpenMenu={vi.fn()} isMenuOpen={false} />);
     expect(screen.getByRole("link", { name: "Tenants" })).toHaveAttribute("href", "/dashboard/organizations");
     expect(screen.queryByRole("link", { name: "Schedule" })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["patient", "Home", "/dashboard"],
+    ["doctor", "Queue", "/dashboard/queue"],
+    ["receptionist", "Bookings", "/dashboard/appointments"],
+    ["admin", "Schedule", "/dashboard/appointments"],
+  ])("keeps the %s mobile destination available", (role, label, href) => {
+    render(<MobileBottomNav user={{ role }} pathname="/dashboard" onOpenMenu={vi.fn()} isMenuOpen={false} />);
+    expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
+    expect(screen.getByRole("button", { name: "Open Full Navigation Menu" })).toBeInTheDocument();
   });
 
   it("bounds a wide popup at 320px and opens above when there is more space", () => {

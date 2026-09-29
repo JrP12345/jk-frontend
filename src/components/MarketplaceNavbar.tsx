@@ -12,7 +12,7 @@ import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { Menu, X } from "lucide-react";
 
 export default function MarketplaceNavbar() {
-  const { user, logout, isAuthenticated, isLoading } = useAuthStore();
+  const { user, logout, isAuthenticated, isLoading, isLoggingOut } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -24,7 +24,7 @@ export default function MarketplaceNavbar() {
   const handleLogout = async () => {
     setIsMobileMenuOpen(false);
     await logout();
-    router.push("/login");
+    router.replace("/login?logout=1");
   };
 
   const toggleMobileMenu = () => {
@@ -34,7 +34,7 @@ export default function MarketplaceNavbar() {
   return (
     <header data-app-header className="fixed top-0 left-0 right-0 h-16 border-b border-border/70 shadow-xs z-50 transition-all duration-300">
       {/* Blur the background layer so fixed mobile overlays remain viewport-sized. */}
-      <div aria-hidden="true" className="absolute inset-0 -z-10 pointer-events-none bg-surface supports-[backdrop-filter]:bg-surface/80 supports-[backdrop-filter]:backdrop-blur-xl supports-[backdrop-filter]:backdrop-saturate-150" />
+      <div aria-hidden="true" className="glass-surface glass-navigation absolute inset-0 -z-10 pointer-events-none" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between gap-2">
         {/* Brand/Logo */}
         <Link href="/browse" className="shrink-0">
@@ -47,7 +47,7 @@ export default function MarketplaceNavbar() {
           {/* Desktop Navigation Items */}
           <div className="hidden md:flex items-center gap-3">
             <ModeSwitcher variant="icon" />
-            {isLoading ? (
+            {isLoading || isLoggingOut ? (
               <div className="w-24 h-9 rounded-xl bg-surface-alt/60 animate-pulse border border-border/40" />
             ) : isRealUser && user ? (
               <div className="flex items-center gap-3">
@@ -89,7 +89,7 @@ export default function MarketplaceNavbar() {
           {/* Guests have one destination, so keep it visible without a menu. */}
           <div className="flex items-center gap-1.5 md:hidden">
             {!isMobileMenuOpen && <div role="group" aria-label="Mobile appearance"><ModeSwitcher variant="icon" /></div>}
-            {isLoading ? <div className="h-11 w-16 rounded-xl bg-surface-alt/60 animate-pulse" /> : isRealUser ? <button
+            {isLoading || isLoggingOut ? <span role="status" className="text-xs text-text-secondary">Signing out…</span> : isRealUser ? <button
               type="button"
               onClick={toggleMobileMenu}
               aria-expanded={isMobileMenuOpen}

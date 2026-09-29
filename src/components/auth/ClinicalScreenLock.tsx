@@ -97,7 +97,7 @@ export function ClinicalScreenLock() {
   const handleSignOut = async () => {
     await logout();
     setIsLocked(false);
-    router.push("/login");
+    router.replace("/login?logout=1");
   };
 
   return (

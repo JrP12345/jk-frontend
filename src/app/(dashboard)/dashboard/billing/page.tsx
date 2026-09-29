@@ -12,6 +12,7 @@ import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
+import { formatCurrency } from "@/lib/currency";
 import { Card, CardContent, Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, Dropdown, ChartContainer, AreaChart, DonutChart, cn } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
 import { RotateCw, Plus, FileText, IndianRupee, Receipt, CreditCard, CheckCircle2, Printer, Search, MoreHorizontal, Banknote, AlertTriangle, AlertCircle, Phone, Building2, Stethoscope, Trash2 } from "lucide-react";
@@ -25,6 +26,7 @@ interface InvoiceItem {
 interface Invoice {
   id: string;
   invoiceNumber: string;
+  currency?: string;
   patientId: { id: string; userId: { name: string; email: string; phone: string } };
   clinicId: { id: string; name: string; city: string; address: string };
   doctorId: { id: string; name: string; specialization: string };
@@ -240,6 +242,7 @@ export default function BillingPage() {
       const patientName = appt?.patientId?.userId?.name || appt?.patientId?.name || "Patient";
       const invoiceDoc: UnifiedDocumentData = {
         documentType: "invoice",
+        currency: invoiceData?.currency || "INR",
         title: "Tax Invoice & OPD Settlement Receipt",
         clinicName: appt?.clinicId?.name || "Medical Clinic",
         clinicAddress: appt?.clinicId?.address || "",
@@ -387,7 +390,7 @@ export default function BillingPage() {
     if (roundCurrency(partialAmount) > currentBalance) {
       toast({
         title: "Validation Error",
-        description: `Payment amount cannot exceed remaining balance of ₹${currentBalance}`,
+        description: `Payment amount cannot exceed remaining balance of ${formatCurrency(currentBalance, partialTargetInvoice.currency)}`,
         variant: "error",
       });
       return;
@@ -445,6 +448,7 @@ export default function BillingPage() {
       }),
       referenceNumber: inv.invoiceNumber,
       invoiceItems: inv.items || [],
+      currency: inv.currency || "INR",
       invoiceTotals: {
         subtotal: inv.subtotal,
         tax: inv.tax,
@@ -792,7 +796,7 @@ export default function BillingPage() {
                   <tr>
                     <td>${item.description}</td>
                     <td style="text-align:right;">${item.quantity}</td>
-                    <td style="text-align:right;">₹${item.amount * item.quantity}</td>
+                    <td style="text-align:right;">${formatCurrency(item.amount * item.quantity, ticketData.currency)}</td>
                   </tr>
                 `
                   )
@@ -800,11 +804,11 @@ export default function BillingPage() {
               </tbody>
             </table>
             <div class="border-dashed"></div>
-            <div class="flex-between"><span>Subtotal:</span><span>₹${ticketData.subtotal}</span></div>
-            <div class="flex-between"><span>Tax:</span><span>₹${ticketData.tax}</span></div>
-            <div class="flex-between"><span>Discount:</span><span>-₹${ticketData.discount}</span></div>
+            <div class="flex-between"><span>Subtotal:</span><span>${formatCurrency(ticketData.subtotal, ticketData.currency)}</span></div>
+            <div class="flex-between"><span>Tax:</span><span>${formatCurrency(ticketData.tax, ticketData.currency)}</span></div>
+            <div class="flex-between"><span>Discount:</span><span>-${formatCurrency(ticketData.discount, ticketData.currency)}</span></div>
             <div class="flex-between bold" style="font-size:14px; margin-top:8px;">
-              <span>Total Amount:</span><span>₹${ticketData.totalAmount}</span>
+              <span>Total Amount:</span><span>${formatCurrency(ticketData.totalAmount, ticketData.currency)}</span>
             </div>
             <div class="border-dashed"></div>
             <div class="center">
@@ -1151,15 +1155,14 @@ export default function BillingPage() {
                 render: (row: Invoice) => (
                   <div className="space-y-0.5">
                     <span className="font-bold text-text text-xs sm:text-sm">
-                      ₹{row.totalAmount.toLocaleString("en-IN")}
+                      {formatCurrency(row.totalAmount, row.currency)}
                     </span>
                     {row.status !== "paid" && (
                       <span className="text-xs font-bold text-danger-text block">
-                        Due: ₹
-                        {(row.balanceDue !== undefined
+                        Due: {formatCurrency((row.balanceDue !== undefined
                           ? row.balanceDue
                           : row.totalAmount - (row.amountPaid || 0)
-                        ).toLocaleString("en-IN")}
+                        ), row.currency)}
                       </span>
                     )}
                   </div>
@@ -1195,11 +1198,10 @@ export default function BillingPage() {
                         className="shrink-0 font-semibold rounded-lg shadow-xs min-h-[36px]"
                       >
                         <CreditCard className="w-3.5 h-3.5 mr-1" />
-                        Pay ₹
-                        {(row.balanceDue !== undefined
+                        Pay {formatCurrency((row.balanceDue !== undefined
                           ? row.balanceDue
                           : row.totalAmount - (row.amountPaid || 0)
-                        ).toLocaleString("en-IN")}
+                        ), row.currency)}
                       </Button>
                     ) : (
                       <PrintButton
@@ -1323,14 +1325,14 @@ export default function BillingPage() {
                       <div>
                         <span className="text-[10px] text-text-muted block">Total Billed</span>
                         <span className="font-bold text-text text-sm">
-                          ₹{row.totalAmount.toLocaleString("en-IN")}
+                          {formatCurrency(row.totalAmount, row.currency)}
                         </span>
                       </div>
                       {!isPaid && (
                         <div className="text-right">
                           <span className="text-[10px] text-danger-text font-bold block">Balance Due</span>
                           <span className="font-bold text-danger-text text-sm">
-                            ₹{dueAmount.toLocaleString("en-IN")}
+                            {formatCurrency(dueAmount, row.currency)}
                           </span>
                         </div>
                       )}
@@ -1346,7 +1348,7 @@ export default function BillingPage() {
                         className="w-full font-bold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
                       >
                         <CreditCard className="w-4 h-4" />
-                        <span>Pay ₹{dueAmount.toLocaleString("en-IN")}</span>
+                        <span>Pay {formatCurrency(dueAmount, row.currency)}</span>
                       </Button>
                     ) : (
                       <PrintButton
@@ -1661,7 +1663,7 @@ export default function BillingPage() {
             <p className="text-sm font-bold text-text pt-1">
               Total Amount Due:{" "}
               <span className="text-accent dark:text-accent font-mono">
-                ₹{activeInvoice?.totalAmount.toLocaleString("en-IN")}
+                {formatCurrency(activeInvoice?.totalAmount, activeInvoice?.currency)}
               </span>
             </p>
           </div>
@@ -1756,7 +1758,7 @@ export default function BillingPage() {
                   <div key={idx} className="flex justify-between text-xs py-0.5">
                     <span className="truncate max-w-[200px]">{item.description}</span>
                     <span className="w-12 text-right">{item.quantity}</span>
-                    <span className="w-20 text-right">₹{(item.amount * item.quantity).toLocaleString("en-IN")}</span>
+                    <span className="w-20 text-right">{formatCurrency(item.amount * item.quantity, receiptInvoice.currency)}</span>
                   </div>
                 ))}
               </div>
@@ -1765,19 +1767,19 @@ export default function BillingPage() {
               <div className="border-t border-border/60 border-dashed pt-2.5 space-y-1 text-right">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>₹{receiptInvoice.subtotal.toLocaleString("en-IN")}</span>
+                  <span>{formatCurrency(receiptInvoice.subtotal, receiptInvoice.currency)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax:</span>
-                  <span>₹{receiptInvoice.tax.toLocaleString("en-IN")}</span>
+                  <span>{formatCurrency(receiptInvoice.tax, receiptInvoice.currency)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Discount:</span>
-                  <span>-₹{receiptInvoice.discount.toLocaleString("en-IN")}</span>
+                  <span>-{formatCurrency(receiptInvoice.discount, receiptInvoice.currency)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-sm border-t border-border/60 pt-1.5 text-text">
                   <span>Total Paid:</span>
-                  <span>₹{receiptInvoice.totalAmount.toLocaleString("en-IN")}</span>
+                  <span>{formatCurrency(receiptInvoice.totalAmount, receiptInvoice.currency)}</span>
                 </div>
               </div>
 
@@ -1820,23 +1822,22 @@ export default function BillingPage() {
           <div className="p-3.5 bg-surface-alt rounded-2xl border border-border/80 text-xs space-y-1">
             <p className="font-bold text-text">Patient: {partialTargetInvoice?.patientId?.userId?.name}</p>
             <p className="text-text-muted">
-              Total Invoice Amount: ₹{partialTargetInvoice?.totalAmount.toLocaleString("en-IN")}
+              Total Invoice Amount: {formatCurrency(partialTargetInvoice?.totalAmount, partialTargetInvoice?.currency)}
             </p>
             <p className="text-text-muted">
-              Previously Settled: ₹{(partialTargetInvoice?.amountPaid || 0).toLocaleString("en-IN")}
+              Previously Settled: {formatCurrency(partialTargetInvoice?.amountPaid, partialTargetInvoice?.currency)}
             </p>
             <p className="font-bold text-danger-text pt-1">
-              Remaining Balance Due: ₹
-              {(partialTargetInvoice?.balanceDue !== undefined
+              Remaining Balance Due: {formatCurrency((partialTargetInvoice?.balanceDue !== undefined
                 ? partialTargetInvoice.balanceDue
                 : (partialTargetInvoice?.totalAmount || 0) - (partialTargetInvoice?.amountPaid || 0)
-              ).toLocaleString("en-IN")}
+              ), partialTargetInvoice?.currency)}
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
-              label="Installment Payment Amount (₹) *"
+              label={`Installment Payment Amount (${partialTargetInvoice?.currency || "INR"}) *`}
               type="number"
               min="1"
               step="0.01"

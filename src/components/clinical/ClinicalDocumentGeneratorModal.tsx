@@ -36,14 +36,14 @@ type DocCategory = "referral" | "leave" | "fitness";
 export function ClinicalDocumentGeneratorModal({
   open,
   onClose,
-  clinicName = "City Health Clinic",
-  clinicAddress = "42 Health Ave, Connaught Place, New Delhi",
-  clinicPhone = "+91 98765 43210",
-  clinicEmail = "care@cityhealth.in",
-  defaultDoctorName = "Dr. Sameer Verma",
-  defaultDoctorSpecialization = "Consultant Physician",
-  defaultDoctorRegistrationNumber = "DMC-48291/2015",
-  defaultDoctorQualification = "MBBS, MD (General Medicine)",
+  clinicName = "",
+  clinicAddress = "",
+  clinicPhone = "",
+  clinicEmail = "",
+  defaultDoctorName = "",
+  defaultDoctorSpecialization = "",
+  defaultDoctorRegistrationNumber = "",
+  defaultDoctorQualification = "",
   defaultDoctorSignatureUrl,
   patient,
   onDocumentGenerated,
@@ -62,25 +62,17 @@ export function ClinicalDocumentGeneratorModal({
   const [patientPhone, setPatientPhone] = useState("");
 
   // Referral State
-  const [refHospital, setRefHospital] = useState("AIIMS Hospital / Department of Cardiology");
-  const [refDept, setRefDept] = useState("Cardiology / Critical Care");
-  const [refUrgency, setRefUrgency] = useState<"Routine" | "Urgent" | "Emergency / Immediate">("Urgent");
-  const [refDiagnosis, setRefDiagnosis] = useState("Acute Coronary Syndrome / Unstable Angina");
-  const [refSummary, setRefSummary] = useState(
-    "Patient presented with severe retrosternal chest pain radiating to the left arm for the past 2 hours. Accompanied by diaphoresis and shortness of breath."
-  );
-  const [refInvestigations, setRefInvestigations] = useState(
-    "ECG: ST depression in V4-V6 with T-wave inversion. Troponin T: Positive (bedside strip). Random Blood Sugar: 168 mg/dL."
-  );
-  const [refTreatmentGiven, setRefTreatmentGiven] = useState(
-    "Tab. Aspirin 300mg stat chewed, Tab. Clopidogrel 300mg stat, Sublingual Nitroglycerin 0.4mg administered with partial relief, IV access secured with NS 100ml/hr."
-  );
-  const [refReason, setReason] = useState(
-    "For emergency coronary angiography, primary PCI, and continuous cardiac telemetry monitoring."
-  );
+  const [refHospital, setRefHospital] = useState("");
+  const [refDept, setRefDept] = useState("");
+  const [refUrgency, setRefUrgency] = useState<"Routine" | "Urgent" | "Emergency / Immediate">("Routine");
+  const [refDiagnosis, setRefDiagnosis] = useState("");
+  const [refSummary, setRefSummary] = useState("");
+  const [refInvestigations, setRefInvestigations] = useState("");
+  const [refTreatmentGiven, setRefTreatmentGiven] = useState("");
+  const [refReason, setReason] = useState("");
 
   // Sick Leave State
-  const [leaveDiagnosis, setLeaveDiagnosis] = useState("Acute Viral Gastroenteritis with Dehydration");
+  const [leaveDiagnosis, setLeaveDiagnosis] = useState("");
   const [leaveDays, setLeaveDays] = useState(3);
   const todayStr = new Date().toISOString().split("T")[0];
   const [leaveStart, setLeaveStart] = useState(todayStr);
@@ -90,30 +82,32 @@ export function ClinicalDocumentGeneratorModal({
   const [leaveResume, setLeaveResume] = useState(
     new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0]
   );
-  const [leavePurpose, setLeavePurpose] = useState("Official Leave of Absence from Office / Employer");
-  const [leaveRemarks, setLeaveRemarks] = useState(
-    "Advised complete bed rest, adequate hydration with oral rehydration solution (ORS), and bland diet."
-  );
+  const [leavePurpose, setLeavePurpose] = useState("");
+  const [leaveRemarks, setLeaveRemarks] = useState("");
 
   // Fitness Certificate State
-  const [fitnessPurpose, setFitnessPurpose] = useState("Pre-Employment Physical Assessment");
-  const [fitnessBp, setFitnessBp] = useState("120/80");
-  const [fitnessPulse, setFitnessPulse] = useState("74");
-  const [fitnessVisionL, setFitnessVisionL] = useState("6/6");
-  const [fitnessVisionR, setFitnessVisionR] = useState("6/6");
-  const [fitnessMark1, setFitnessMark1] = useState("Small black mole on right clavicle");
-  const [fitnessMark2, setFitnessMark2] = useState("Linear scar 2cm on left forearm");
-  const [fitnessSystemic, setFitnessSystemic] = useState(
-    "CVS: S1, S2 audible, no murmurs. RS: Bilateral normal vesicular sounds. Abdomen: Soft, non-tender. CNS: Grossly intact."
-  );
-  const [isFit, setIsFit] = useState(true);
-  const [fitnessDeclaration, setFitnessDeclaration] = useState(
-    "I consider the candidate to be in sound physical and mental health, free from any communicable disease or constitutional infirmity, and physically fit for normal duties."
-  );
+  const [fitnessPurpose, setFitnessPurpose] = useState("");
+  const [fitnessBp, setFitnessBp] = useState("");
+  const [fitnessPulse, setFitnessPulse] = useState("");
+  const [fitnessVisionL, setFitnessVisionL] = useState("");
+  const [fitnessVisionR, setFitnessVisionR] = useState("");
+  const [fitnessMark1, setFitnessMark1] = useState("");
+  const [fitnessMark2, setFitnessMark2] = useState("");
+  const [fitnessSystemic, setFitnessSystemic] = useState("");
+  const [isFit, setIsFit] = useState(false);
+  const [fitnessDeclaration, setFitnessDeclaration] = useState("");
 
   // Preview Modal state
   const [previewDoc, setPreviewDoc] = useState<UnifiedDocumentData | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setDocName(defaultDoctorName);
+    setDocSpecialty(defaultDoctorSpecialization);
+    setDocRegNo(defaultDoctorRegistrationNumber);
+    setDocQual(defaultDoctorQualification);
+  }, [open, defaultDoctorName, defaultDoctorSpecialization, defaultDoctorRegistrationNumber, defaultDoctorQualification]);
 
   // Sync patient info from props
   useEffect(() => {
@@ -142,12 +136,28 @@ export function ClinicalDocumentGeneratorModal({
   };
 
   const handleGenerate = () => {
+    if (!clinicName.trim() || !docName.trim() || !docRegNo.trim()) {
+      toast({ title: "Document details required", description: "Select a clinic and enter the doctor's name and registration number.", variant: "error" });
+      return;
+    }
     if (!patientName.trim()) {
       toast({
         title: "Patient Name Required",
         description: "Please specify patient name before generating certificate.",
         variant: "error",
       });
+      return;
+    }
+    if (category === "referral" && (![refHospital, refDiagnosis, refSummary, refReason].every(value => value.trim()))) {
+      toast({ title: "Referral details required", description: "Enter the destination, diagnosis, clinical summary, and reason for referral.", variant: "error" });
+      return;
+    }
+    if (category === "leave" && !leaveDiagnosis.trim()) {
+      toast({ title: "Diagnosis required", description: "Enter the documented diagnosis before issuing a leave certificate.", variant: "error" });
+      return;
+    }
+    if (category === "fitness" && (!fitnessPurpose.trim() || !fitnessDeclaration.trim())) {
+      toast({ title: "Fitness assessment required", description: "Enter the assessment purpose and clinician's declaration.", variant: "error" });
       return;
     }
 
@@ -167,7 +177,7 @@ export function ClinicalDocumentGeneratorModal({
       patientAgeGender,
       patientPhone,
       patientId: patient?._id,
-      date: new Date().toLocaleDateString("en-IN", {
+      date: new Date().toLocaleDateString(undefined, {
         day: "2-digit",
         month: "short",
         year: "numeric",
@@ -286,6 +296,11 @@ export function ClinicalDocumentGeneratorModal({
           {/* Quick Doctor & Patient Strip */}
           <div className="p-3 bg-surface-alt/70 border border-border/80 rounded-xl space-y-2 text-xs">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <Input label="Doctor name" value={docName} onChange={(e) => setDocName(e.target.value)} />
+              <Input label="Registration number" value={docRegNo} onChange={(e) => setDocRegNo(e.target.value)} />
+              <Input label="Qualification (optional)" value={docQual} onChange={(e) => setDocQual(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <Input
                 label="Patient Name"
                 value={patientName}
@@ -311,7 +326,7 @@ export function ClinicalDocumentGeneratorModal({
                 <span className="font-semibold text-text">{docName}</span> ({docQual})
               </div>
               <div className="text-right">
-                <span className="text-text-muted">NMC / State Reg No: </span>
+                <span className="text-text-muted">Registration number: </span>
                 <span className="font-mono font-bold text-accent">{docRegNo}</span>
               </div>
             </div>

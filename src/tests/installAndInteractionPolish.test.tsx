@@ -106,6 +106,24 @@ describe("Shared action and overlay behavior", () => {
 describe("Browse and booking continuity", () => {
   const clinic: ClinicDetail = { id: "clinic", name: "Test Clinic", city: "Surat", address: "Test street", phone: "", email: "", description: "Care", image_url: "", timings: "09:00-17:00", doctors: [{ id: "doctor", name: "Test Doctor", specialization: "General Physician", qualification: "MBBS", experience_years: 5, fees: 0, feeType: "free", timings: "09:00-17:00", working_days: "Monday-Saturday", description: "", image_url: "", bookingMode: "sequential_queue" }] };
 
+  it("opens directions to recorded coordinates when both are valid", () => {
+    render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={{ ...clinic, latitude: 21.17, longitude: 72.83 }} /></ToastProvider></ThemeProvider>);
+    const link = screen.getByRole("link", { name: "Get Directions" });
+    expect(new URL(link.getAttribute("href")!).searchParams.get("destination")).toBe("21.17,72.83");
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("uses the recorded address and city when coordinates are unavailable", () => {
+    render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={{ ...clinic, latitude: 91, longitude: 72.83 }} /></ToastProvider></ThemeProvider>);
+    const link = screen.getByRole("link", { name: "Get Directions" });
+    expect(new URL(link.getAttribute("href")!).searchParams.get("destination")).toBe("Test street, Surat");
+  });
+
+  it("does not offer directions when only the city is recorded", () => {
+    render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={{ ...clinic, address: "." }} /></ToastProvider></ThemeProvider>);
+    expect(screen.queryByRole("link", { name: "Get Directions" })).not.toBeInTheDocument();
+  });
+
   it("renders partial records and replaces failed images without pretending that missing fees are free", () => {
     render(<BrowseClient initialLoaded initialClinics={[{ id: "partial", name: "Partial Clinic", rating: "4.8", reviewsCount: "2", logo_url: "/broken.png", doctorCount: 1, doctorsSummary: [{ id: "doc", name: "Doctor" }], facilities: [null, "Parking"], specialties: [null] }] as never} />);
     expect(screen.getByRole("link", { name: "Partial Clinic" })).toBeInTheDocument();
@@ -124,7 +142,11 @@ describe("Browse and booking continuity", () => {
     expect(request).not.toHaveBeenCalled();
   });
 
-  it("checks availability, confirms once, and transitions to success within the same dialog", async () => {
+  it.each([
+    ["confirmed", "Appointment confirmed"],
+    ["pending", "Booking pending confirmation"],
+    ["pending_payment", "Booking awaiting payment"],
+  ])("checks availability, submits once, and shows %s within the same dialog", async (status, label) => {
     let available!: (value: unknown) => void;
     vi.spyOn(api, "get").mockImplementation(() => new Promise(resolve => { available = resolve; }));
     let confirmed!: (value: unknown) => void;
@@ -141,10 +163,14 @@ describe("Browse and booking continuity", () => {
     expect(post).toHaveBeenCalledOnce();
     expect(within(dialog).getAllByRole("status")).toHaveLength(1);
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
-    await act(async () => confirmed({ data: { data: { id: "appointment", status: "confirmed", tokenNumber: 5, paymentStatus: "paid" } } }));
+    await act(async () => confirmed({ data: { data: { id: "appointment", status, tokenNumber: 5, paymentStatus: "paid" } } }));
     expect(screen.getByRole("dialog")).toBe(dialog);
     expect(within(dialog).getByText("#5")).toBeInTheDocument();
     expect(within(dialog).getByText("Clinic Queue Token")).toBeInTheDocument();
+    expect(within(dialog).getByRole("status")).toHaveTextContent(label);
+    expect(within(dialog).getByText("Test Clinic")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Done" })).toBeEnabled();
+    expect(within(dialog).getByRole("link", { name: "Open Live Tracker" })).toBeInTheDocument();
     expect(post).toHaveBeenCalledOnce();
   });
 

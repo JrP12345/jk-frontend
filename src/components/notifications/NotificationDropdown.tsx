@@ -23,6 +23,7 @@ export function NotificationDropdown({ onClose }: { onClose: () => void }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["notifications", "dropdown", filter],
     queryFn: () => notificationService.getNotifications({ limit: 10, unreadOnly: filter === "unread" }),
+    refetchOnWindowFocus: true,
   });
   const notifications = data?.notifications || [];
   const unreadCount = data?.unreadCount || 0;

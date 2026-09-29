@@ -10,10 +10,11 @@ interface SwipeOptions {
   enabled?: boolean;
   threshold?: number;
   mediaQuery?: string;
+  allowButtonTargets?: boolean;
 }
 
 /** Opt-in touch gestures; leave scrolling, browser edges, forms and mouse input alone. */
-export function useSwipeGesture({ axis, onSwipe, direction, enabled = true, threshold = 72, mediaQuery = "(max-width: 767px)" }: SwipeOptions) {
+export function useSwipeGesture({ axis, onSwipe, direction, enabled = true, threshold = 72, mediaQuery = "(max-width: 767px)", allowButtonTargets = false }: SwipeOptions) {
   const start = useRef<{ id: number; x: number; y: number; claimed: boolean; offset: number } | null>(null);
   const suppressClickUntil = useRef(0);
   const [offset, setOffset] = useState(0);
@@ -45,7 +46,8 @@ export function useSwipeGesture({ axis, onSwipe, direction, enabled = true, thre
         if (event.isPrimary === false) { reset(); return; }
         if (!allowed() || event.pointerType !== "touch" || event.clientX < 20 || event.clientX > window.innerWidth - 20) return;
         const target = event.target as HTMLElement;
-        if (target.closest('button, input, textarea, select, [role="combobox"], [contenteditable="true"], [data-gesture-ignore]')) return;
+        if (target.closest('input, textarea, select, [role="combobox"], [contenteditable="true"], [data-gesture-ignore]')) return;
+        if (!allowButtonTargets && target.closest("button")) return;
         // A nested horizontal scroller owns its swipe, even inside a drawer.
         for (let node: HTMLElement | null = target; node && node !== event.currentTarget; node = node.parentElement) {
           if (node.scrollWidth > node.clientWidth && /auto|scroll/.test(getComputedStyle(node).overflowX)) return;

@@ -8,6 +8,7 @@ import { useLatestRead } from "@/hooks/useLatestRead";
 import { Card, Button, Badge, Table, Column, Spinner, Modal, Input, Select, Checkbox, Dropdown, StatCard, useToast, cn } from "@/components/ui";
 import ImageUpload from "@/components/ui/ImageUpload";
 import { useR2Upload } from "@/hooks/useR2Upload";
+import { COUNTRY_SETTINGS, countryOptions, isCountryCode, timezoneOptions } from "@/lib/countrySettings";
 import { Building2, ShieldCheck, Crown, RotateCw, Plus, Search, ArrowRight, ArrowLeft, MoreHorizontal, Edit3, Trash2, KeyRound, Copy, Check, MapPin, Shield, Eye, EyeOff, Users, Power, Zap, Sparkles } from "lucide-react";
 
 interface Organization {
@@ -28,6 +29,7 @@ interface Organization {
   maxStaff?: number;
   taxId?: string;
   licenseNumber?: string;
+  countryCode?: string;
   currency?: string;
   timezone?: string;
   createdAt: string;
@@ -58,9 +60,9 @@ export default function OrganizationsPage() {
     orgPhone: "",
     orgEmail: "",
     plan: "starter" as "starter" | "pro" | "enterprise",
-    trialDays: 15,
     taxId: "",
     licenseNumber: "",
+    countryCode: "IN",
     currency: "INR",
     timezone: "Asia/Kolkata",
     adminName: "",
@@ -94,6 +96,7 @@ export default function OrganizationsPage() {
     plan: "starter" | "pro" | "enterprise";
     taxId: string;
     licenseNumber: string;
+    countryCode: string;
     currency: string;
     timezone: string;
     logo_url: File | string | null;
@@ -107,6 +110,7 @@ export default function OrganizationsPage() {
     plan: "starter",
     taxId: "",
     licenseNumber: "",
+    countryCode: "",
     currency: "INR",
     timezone: "Asia/Kolkata",
     logo_url: null,
@@ -346,6 +350,11 @@ export default function OrganizationsPage() {
       return;
     }
 
+    if (!formData.timezone) {
+      toast({ title: "Timezone Required", description: "Choose the organization's operating timezone.", variant: "warning" });
+      return;
+    }
+
     setSubmitting(true);
     try {
       await api.post("/onboarding/organization", {
@@ -355,12 +364,9 @@ export default function OrganizationsPage() {
         org_phone: formData.orgPhone.trim() ? formData.orgPhone.trim() : undefined,
         org_email: formData.orgEmail.trim() ? formData.orgEmail.trim() : undefined,
         plan: formData.plan,
-        maxClinics: formData.plan === "enterprise" ? 99 : formData.plan === "pro" ? 5 : 1,
-        maxDoctors: formData.plan === "enterprise" ? 999 : formData.plan === "pro" ? 15 : 2,
-        maxStaff: formData.plan === "enterprise" ? 999 : formData.plan === "pro" ? 25 : 5,
-        trialDays: formData.trialDays || 15,
         taxId: formData.taxId.trim() || undefined,
         licenseNumber: formData.licenseNumber.trim() || undefined,
+        countryCode: formData.countryCode,
         currency: formData.currency,
         timezone: formData.timezone,
         admin_name: formData.adminName.trim(),
@@ -396,9 +402,9 @@ export default function OrganizationsPage() {
         orgPhone: "",
         orgEmail: "",
         plan: "starter",
-        trialDays: 15,
         taxId: "",
         licenseNumber: "",
+        countryCode: "IN",
         currency: "INR",
         timezone: "Asia/Kolkata",
         adminName: "",
@@ -444,6 +450,7 @@ export default function OrganizationsPage() {
       plan: (org.plan as any) || "starter",
       taxId: org.taxId || "",
       licenseNumber: org.licenseNumber || "",
+      countryCode: org.countryCode || "",
       currency: org.currency || "INR",
       timezone: org.timezone || "Asia/Kolkata",
       logo_url: org.logo_url || null,
@@ -462,6 +469,11 @@ export default function OrganizationsPage() {
         description: "City appears to be a phone number. Please enter a valid city name.",
         variant: "warning",
       });
+      return;
+    }
+
+    if (editFormData.countryCode && !editFormData.timezone) {
+      toast({ title: "Timezone Required", description: "Choose the organization's operating timezone.", variant: "warning" });
       return;
     }
 
@@ -489,11 +501,9 @@ export default function OrganizationsPage() {
         phone: editFormData.phone || undefined,
         email: editFormData.email || undefined,
         plan: editFormData.plan,
-        maxClinics: editFormData.plan === "enterprise" ? 99 : editFormData.plan === "pro" ? 5 : 1,
-        maxDoctors: editFormData.plan === "enterprise" ? 999 : editFormData.plan === "pro" ? 15 : 2,
-        maxStaff: editFormData.plan === "enterprise" ? 999 : editFormData.plan === "pro" ? 25 : 5,
         taxId: editFormData.taxId || undefined,
         licenseNumber: editFormData.licenseNumber || undefined,
+        countryCode: editFormData.countryCode || undefined,
         currency: editFormData.currency,
         timezone: editFormData.timezone,
         logo_url: typeof finalLogoUrl === "string" ? finalLogoUrl : undefined,
@@ -1131,21 +1141,6 @@ export default function OrganizationsPage() {
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-surface-alt border border-border/80 space-y-1">
-                <Input
-                  label="Free Trial Duration (Days) *"
-                  type="number"
-                  min={1}
-                  max={365}
-                  placeholder="15"
-                  value={formData.trialDays || 15}
-                  onChange={(e) => setFormData({ ...formData, trialDays: Number(e.target.value) || 15 })}
-                />
-                <p className="text-[10px] text-text-muted">
-                  Root Admin Override: Configure initial trial period for this tenant.
-                </p>
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <Input
                   label="Contact Phone Number"
@@ -1200,12 +1195,25 @@ export default function OrganizationsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <Select
+                  label="Country"
+                  value={formData.countryCode}
+                  onChange={(e) => {
+                    const countryCode = e.target.value;
+                    if (!isCountryCode(countryCode)) return;
+                    const setting = COUNTRY_SETTINGS[countryCode];
+                    setFormData({ ...formData, countryCode, currency: setting.currency, timezone: setting.defaultTimezone || "" });
+                  }}
+                  options={countryOptions}
+                />
+                <Select
                   label="Currency"
                   value={formData.currency}
-                  onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                  onChange={() => undefined}
+                  disabled
                   options={[
                     { value: "INR", label: "INR (₹)" },
                     { value: "USD", label: "USD ($)" },
+                    { value: "CAD", label: "CAD ($)" },
                     { value: "EUR", label: "EUR (€)" },
                     { value: "GBP", label: "GBP (£)" },
                     { value: "AED", label: "AED (د.إ)" },
@@ -1216,12 +1224,7 @@ export default function OrganizationsPage() {
                   label="Operating Timezone"
                   value={formData.timezone}
                   onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                  options={[
-                    { value: "Asia/Kolkata", label: "Asia/Kolkata (IST +5:30)" },
-                    { value: "America/New_York", label: "America/New_York (EST -5:00)" },
-                    { value: "Europe/London", label: "Europe/London (GMT +0:00)" },
-                    { value: "Asia/Dubai", label: "Asia/Dubai (GST +4:00)" },
-                  ]}
+                  options={timezoneOptions(formData.countryCode)}
                 />
               </div>
             </div>
@@ -1544,12 +1547,26 @@ export default function OrganizationsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <Select
+                label="Country"
+                value={editFormData.countryCode}
+                onChange={(e) => {
+                  const countryCode = e.target.value;
+                  if (!isCountryCode(countryCode)) return;
+                  const setting = COUNTRY_SETTINGS[countryCode];
+                  setEditFormData({ ...editFormData, countryCode, currency: setting.currency, timezone: setting.defaultTimezone || "" });
+                }}
+                options={editFormData.countryCode ? countryOptions : [{ value: "", label: "Legacy organization (select country)" }, ...countryOptions]}
+                disabled={Boolean(editingOrg?.countryCode)}
+              />
+              <Select
                 label="Currency"
                 value={editFormData.currency}
                 onChange={(e) => setEditFormData({ ...editFormData, currency: e.target.value })}
+                disabled={Boolean(editFormData.countryCode)}
                 options={[
                   { value: "INR", label: "INR (₹)" },
                   { value: "USD", label: "USD ($)" },
+                  { value: "CAD", label: "CAD ($)" },
                   { value: "EUR", label: "EUR (€)" },
                   { value: "GBP", label: "GBP (£)" },
                   { value: "AED", label: "AED (د.إ)" },
@@ -1559,11 +1576,11 @@ export default function OrganizationsPage() {
                 label="Operating Timezone"
                 value={editFormData.timezone}
                 onChange={(e) => setEditFormData({ ...editFormData, timezone: e.target.value })}
-                options={[
-                  { value: "Asia/Kolkata", label: "Asia/Kolkata (IST +5:30)" },
-                  { value: "America/New_York", label: "America/New_York (EST -5:00)" },
-                  { value: "Europe/London", label: "Europe/London (GMT +0:00)" },
-                  { value: "Asia/Dubai", label: "Asia/Dubai (GST +4:00)" },
+                options={editFormData.countryCode ? timezoneOptions(editFormData.countryCode, editFormData.timezone) : [
+                  { value: "Asia/Kolkata", label: "Asia/Kolkata" },
+                  { value: "America/New_York", label: "America/New_York" },
+                  { value: "Europe/London", label: "Europe/London" },
+                  { value: "Asia/Dubai", label: "Asia/Dubai" },
                 ]}
               />
             </div>

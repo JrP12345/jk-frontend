@@ -100,7 +100,7 @@ export default function LoginPage() {
     if (otpLoading) return;
     const target = otpSent ? otpTarget : detectPatientOtpTarget(patientIdentifier);
     if (!target) {
-      setPatientIdentifierError("Enter a valid email address or 10-digit mobile number.");
+      setPatientIdentifierError("Enter an email, Indian 10-digit number, or international number with +country code.");
       triggerShake();
       return;
     }
@@ -396,7 +396,7 @@ export default function LoginPage() {
                     <Input
                       label="Email or mobile number"
                       type="text"
-                      placeholder="Email address or 10-digit mobile number"
+                      placeholder="Email or phone (+country code outside India)"
                       icon={patientIdentifier.includes("@") ? <Mail className="w-4 h-4 text-text-muted" /> : <Smartphone className="w-4 h-4 text-text-muted" />}
                       value={patientIdentifier}
                       onChange={(e) => { setPatientIdentifier(e.target.value); setPatientIdentifierError(""); }}

@@ -32,6 +32,12 @@ export function Providers({
     checkAuth();
   }, [checkAuth]);
 
+  useEffect(() => {
+    const clearUserQueries = () => queryClient.clear();
+    window.addEventListener("auth-logout", clearUserQueries);
+    return () => window.removeEventListener("auth-logout", clearUserQueries);
+  }, [queryClient]);
+
   // Route transition recovery: ensure scroll is never stuck across SPA navigations
   useEffect(() => {
     // If no active dialog element exists on the new page, ensure scroll lock is cleared

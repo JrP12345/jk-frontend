@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
+import { detectPatientOtpTarget } from "@/lib/patientLogin";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, Select, useToast, ModeSwitcher, EkavyuLogo, cn } from "@/components/ui";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -42,7 +43,8 @@ export default function RegisterPage() {
   const validateDetails = () => {
     const errs: Record<string, string> = {};
     if (!formData.name.trim()) errs.name = "Full name is required";
-    if (!formData.phone.trim() || formData.phone.trim().length < 10) errs.phone = "Valid mobile phone number is required";
+    const phoneTarget = detectPatientOtpTarget(formData.phone);
+    if (!phoneTarget || !phoneTarget.phone) errs.phone = "Enter an Indian 10-digit number or an international number with +country code";
     if (formData.email && !EMAIL_REGEX.test(formData.email)) errs.email = "Invalid email format";
 
     setErrors(errs);
@@ -64,7 +66,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const res = await api.post("/auth/otp/request", {
-        phone: formData.phone,
+        phone: detectPatientOtpTarget(formData.phone)?.phone,
         purpose: "authentication",
       });
 
@@ -101,7 +103,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const res = await api.post("/auth/otp/verify", {
-        phone: formData.phone,
+        phone: detectPatientOtpTarget(formData.phone)?.phone,
         otp: otpCode,
         name: formData.name.trim(),
         gender: formData.gender,

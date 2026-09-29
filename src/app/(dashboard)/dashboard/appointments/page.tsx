@@ -12,6 +12,7 @@ import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
+import { clinicDateKey, clinicLocalDateTimeInput, clinicLocalTimeToIso } from "@/lib/clinicTime";
 import { Alert, Card, CardContent, Table, Button, Modal, Input, DatePicker, Select, Textarea, useToast, Spinner, Badge, ConfirmDialog, Stepper, Dropdown, Checkbox, cn } from "@/components/ui";
 import dynamic from "next/dynamic";
 import { RotateCw, Plus, LayoutList, Calendar, Search, Ticket, FileText, MoreHorizontal, Stethoscope, MapPin, User, Clock, UserPlus, ArrowRight, ArrowLeft, CheckCircle2, XCircle, CalendarClock, Phone, Building2, Mail, CalendarOff } from "lucide-react";
@@ -77,6 +78,7 @@ interface Appointment {
   appointmentTime: string;
   appointmentType: string;
   status: string;
+  reviewState?: "overdue" | "unresolved" | null;
   tokenNumber: number;
   notes: string;
 }
@@ -85,6 +87,7 @@ export default function AppointmentsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { clinics, fetchClinics, activeClinicId } = useClinicStore();
+  const timezoneForClinic = (clinicId: string) => clinics.find(clinic => clinic.id === clinicId)?.effectiveTimezone || "Asia/Kolkata";
   const canManageAppointments = hasAnyPermission(user, "MANAGE_APPOINTMENTS");
   const { toast } = useToast();
 
@@ -112,6 +115,7 @@ export default function AppointmentsPage() {
   const [filterDoctor, setFilterDoctor] = useState("");
   const [filterDate, setFilterDate] = useState(user?.role === "patient" ? "" : getTodayISO());
   const [filterStatus, setFilterStatus] = useState("");
+  const [reviewOnly, setReviewOnly] = useState(false);
 
   useEffect(() => {
     setFilterClinic(activeClinicId || "");
@@ -290,7 +294,8 @@ export default function AppointmentsPage() {
 
   const handleOpenRescheduleModal = (appt: Appointment) => {
     setRescheduleTargetAppt(appt);
-    setRescheduleTime(appt.appointmentTime ? new Date(appt.appointmentTime).toISOString().slice(0, 16) : "");
+    const clinicId = (appt.clinicId as any)?.id || (appt.clinicId as any)?._id || "";
+    setRescheduleTime(appt.appointmentTime ? clinicLocalDateTimeInput(new Date(appt.appointmentTime), timezoneForClinic(clinicId)) : "");
     setRescheduleReason("");
     setBookingDoctorId((appt.doctorId as any)?.id || (appt.doctorId as any)?._id || "");
     setBookingClinicId((appt.clinicId as any)?.id || (appt.clinicId as any)?._id || "");
@@ -310,7 +315,7 @@ export default function AppointmentsPage() {
     setSubmittingReschedule(true);
     try {
       const res = await api.patch(`/appointments/${rescheduleTargetAppt.id}/reschedule`, {
-        newTime: rescheduleTime,
+        newTime: clinicLocalTimeToIso(rescheduleTime.slice(0, 10), rescheduleTime.slice(11, 16), timezoneForClinic((rescheduleTargetAppt.clinicId as any)?.id || (rescheduleTargetAppt.clinicId as any)?._id || "")),
         reason: rescheduleReason,
         ...(currentLockId ? { lockId: currentLockId } : {}),
       });
@@ -483,6 +488,7 @@ export default function AppointmentsPage() {
       if (filterClinic) queryParams.push(`clinicId=${filterClinic}`);
       if (filterDoctor) queryParams.push(`doctorId=${filterDoctor}`);
       if (filterStatus) queryParams.push(`status=${filterStatus}`);
+      if (reviewOnly && user && !["patient", "family_member"].includes(user.role)) queryParams.push("reviewOnly=1");
       if (filterDate) {
         if (filterDate.includes(" to ")) {
           const [start, end] = filterDate.split(" to ");
@@ -526,14 +532,14 @@ export default function AppointmentsPage() {
     }
   };
 
-  useEffect(() => { setListPage(1); setAppointments([]); }, [filterClinic, filterDoctor, filterDate, filterStatus, listSearch]);
+  useEffect(() => { setListPage(1); setAppointments([]); }, [filterClinic, filterDoctor, filterDate, filterStatus, listSearch, reviewOnly]);
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === "visible") void fetchAppointments(); };
     const initial = window.setTimeout(refresh, 250);
     const timer = window.setInterval(refresh, 15000);
     document.addEventListener("visibilitychange", refresh);
     return () => { window.clearTimeout(initial); window.clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
-  }, [filterClinic, filterDoctor, filterDate, filterStatus, listPage, listSearch]);
+  }, [filterClinic, filterDoctor, filterDate, filterStatus, listPage, listSearch, reviewOnly]);
 
   useEffect(() => {
     if (user) {
@@ -611,7 +617,7 @@ export default function AppointmentsPage() {
       const bookingData: any = {
         clinicId: bookingClinicId,
         doctorId: bookingDoctorId,
-        appointmentTime: bookingTime,
+        appointmentTime: clinicLocalTimeToIso(bookingTime.slice(0, 10), bookingTime.slice(11, 16), timezoneForClinic(bookingClinicId)),
         appointmentType: bookingType,
         notes: bookingNotes,
         ...(currentLockId ? { lockId: currentLockId } : {}),
@@ -700,10 +706,11 @@ export default function AppointmentsPage() {
 
   const handleSlotClick = async (slot: SlotInfo) => {
     if (!slot.available || slot.lockedByOther) return;
-    const fullSlotISO = `${selectedSlotDate}T${slot.time}:00`;
+    const fullSlotLocal = `${selectedSlotDate}T${slot.time}`;
+    const fullSlotISO = clinicLocalTimeToIso(selectedSlotDate, slot.time, timezoneForClinic(bookingClinicId));
 
     if (lockedSlotTime === fullSlotISO && currentLockId) {
-      setBookingTime(fullSlotISO);
+      setBookingTime(fullSlotLocal);
       return;
     }
 
@@ -719,7 +726,7 @@ export default function AppointmentsPage() {
       const lockData = res.data?.data;
       setCurrentLockId(lockData?.lockId || null);
       setLockedSlotTime(fullSlotISO);
-      setBookingTime(fullSlotISO);
+      setBookingTime(fullSlotLocal);
     } catch (err: any) {
       const msg = err.response?.data?.message || "Could not reserve this slot";
       toast({ title: "Slot Unavailable", description: msg, variant: "error" });
@@ -968,7 +975,7 @@ export default function AppointmentsPage() {
       {/* Live Patient Queue Tracker (if active appointment today) */}
       {user.role === "patient" && (() => {
         const activeAppt = appointments.find((a: any) =>
-          ["pending", "confirmed", "checked-in", "in-consultation"].includes(a.status)
+          ["pending", "confirmed", "checked-in", "in-consultation"].includes(a.status) && a.reviewState !== "unresolved"
         );
         if (!activeAppt) return null;
         const clinicObj = activeAppt.clinicId as any;
@@ -988,6 +995,16 @@ export default function AppointmentsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. VIEW LAYOUT SWITCHER BAR
          ────────────────────────────────────────────────────────────────────────── */}
+      {user && !["patient", "family_member"].includes(user.role) && <div className="flex flex-wrap items-center gap-3">
+        <Button size="sm" variant={reviewOnly ? "primary" : "outline"} aria-pressed={reviewOnly} onClick={() => {
+          const next = !reviewOnly;
+          setReviewOnly(next);
+          setFilterDate(next ? "" : getTodayISO());
+          setFilterStatus("");
+          if (next) setViewLayout("table");
+        }}>Needs review</Button>
+        {reviewOnly && <p className="text-xs text-text-secondary">Overdue and unresolved visits keep their recorded status until staff resolves them.</p>}
+      </div>}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface p-3 sm:p-4 rounded-2xl border border-border/80 shadow-xs">
         <span className="text-xs font-bold text-text-muted uppercase tracking-wider">Schedule View Mode</span>
         <div className="grid grid-cols-2 sm:flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 w-full sm:w-fit">
@@ -1056,7 +1073,7 @@ export default function AppointmentsPage() {
                         mode="range"
                         placeholder="Filter Date..."
                         value={filterDate}
-                        onChange={(val) => setFilterDate(typeof val === "string" ? val : val.target.value)}
+                        onChange={(val) => { setReviewOnly(false); setFilterDate(typeof val === "string" ? val : val.target.value); }}
                       />
                     </div>
                     {doctors.length > 1 && (
@@ -1083,7 +1100,7 @@ export default function AppointmentsPage() {
                         icon={<CheckCircle2 className="w-3.5 h-3.5 text-text-muted" />}
                         placeholder="All Statuses"
                         value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
+                        onChange={(e) => { setReviewOnly(false); setFilterStatus(e.target.value); }}
                         options={[
                           { value: "", label: "All Statuses" },
                           { value: "pending", label: "Pending" },
@@ -1129,6 +1146,9 @@ export default function AppointmentsPage() {
                     >
                       {row.status.replace("-", " ")}
                     </Badge>
+                    {row.reviewState && <span className="block text-[11px] text-warning-text">
+                      {user?.role === "patient" ? "Please contact the clinic" : row.reviewState === "unresolved" ? "Unresolved · review needed" : "Overdue · verify attendance"}
+                    </span>}
                   </div>
 
                   {/* Doctor & Patient Information */}
@@ -1299,6 +1319,7 @@ export default function AppointmentsPage() {
                   header: "Status",
                   sortable: true,
                   render: (row: Appointment) => (
+                    <div className="space-y-1">
                     <Badge
                       variant={getStatusBadgeVariant(row.status)}
                       size="sm"
@@ -1307,6 +1328,10 @@ export default function AppointmentsPage() {
                     >
                       {row.status.replace("-", " ")}
                     </Badge>
+                    {row.reviewState && <p className="text-[11px] text-warning-text">
+                      {user?.role === "patient" ? "Please contact the clinic" : row.reviewState === "unresolved" ? "Unresolved · review needed" : "Overdue · verify attendance"}
+                    </p>}
+                    </div>
                   ),
                 },
                 {
@@ -1526,7 +1551,10 @@ export default function AppointmentsPage() {
                     icon={<Building2 className="w-4 h-4 text-text-muted" />}
                     label="Choose Clinic Location *"
                     value={bookingClinicId}
-                    onChange={(e) => setBookingClinicId(e.target.value)}
+                    onChange={(e) => {
+                      setBookingClinicId(e.target.value);
+                      setSelectedSlotDate(clinicDateKey(new Date(), timezoneForClinic(e.target.value)));
+                    }}
                     options={[{ value: "", label: "Select clinic facility..." }, ...clinics.map((c) => ({ value: c.id, label: c.name }))]}
                     required
                   />
@@ -1644,10 +1672,10 @@ export default function AppointmentsPage() {
                       {availableSlots
                         .filter((s) => s.available)
                         .map((slot) => {
-                          const fullSlotISO = `${selectedSlotDate}T${slot.time}:00`;
-                          const isSelected = bookingTime === fullSlotISO;
+                          const fullSlotLocal = `${selectedSlotDate}T${slot.time}`;
+                          const isSelected = bookingTime === fullSlotLocal;
                           const isHeldByOther = slot.lockedByOther;
-                          const isMyLock = lockedSlotTime === fullSlotISO && currentLockId;
+                          const isMyLock = isSelected && currentLockId;
 
                           return (
                             <button
