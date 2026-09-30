@@ -136,6 +136,8 @@ export default function BillingSettingsPage({
         setDowngradeModalOpen(true);
         return;
       }
+      toast({ title: "Plan check failed", description: err.response?.data?.message || "Could not validate this plan change.", variant: "error" });
+      return;
     }
 
     const price = billingCycle === "annual" ? plan.annualPrice : plan.monthlyPrice;
@@ -198,11 +200,15 @@ export default function BillingSettingsPage({
         order_id: order.orderId,
         handler: async (response: any) => {
           try {
-            await billingService.verifyPayment({
+            const verification = await billingService.verifyPayment({
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
-            });
+            }, selectedOrgId);
+            if (!verification.success) {
+              toast({ title: "Payment processing", description: "Payment is awaiting capture. Your plan will update when the gateway confirms it.", variant: "default" });
+              return;
+            }
             toast({
               title: "Subscription Activated",
               description: `Your ${plan.name} plan is now active. A confirmation invoice has been sent to your email.`,
@@ -294,9 +300,13 @@ export default function BillingSettingsPage({
   const currentPlan = subscription?.planId as any;
   const limits = usageInfo?.limits || currentPlan?.limits || {};
   const usage = usageInfo?.usage || { clinicsCount: 0, doctorsCount: 0, staffCount: 0, patientsCount: 0 };
-  const isTrial = subscription?.status === "trialing";
-  const trialEnds = subscription?.trialEndsAt ? new Date(subscription.trialEndsAt) : null;
-  const daysLeftInTrial = trialEnds ? Math.max(0, Math.ceil((trialEnds.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
+  const summary = subscription?.summary;
+  const isTrial = summary?.basis === "trial";
+  const statusLabel = summary?.status?.replaceAll("_", " ") || "Unavailable";
+  const displayedPrice = billingCycle === "annual" ? currentPlan?.annualPrice : currentPlan?.monthlyPrice;
+  const formatDate = (value: string | null | undefined) => value
+    ? new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    : "Not available";
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased">
@@ -328,28 +338,39 @@ export default function BillingSettingsPage({
             <div className="space-y-2">
               <div className="flex items-center gap-2.5">
                 <Badge variant="primary" size="md" className="font-bold uppercase tracking-wider">
-                  {currentPlan?.name || "Starter Plan"}
+                  {summary?.planName || currentPlan?.name || "Plan unavailable"}
                 </Badge>
                 <Badge
-                  variant={isTrial ? "warning" : "success"}
+                  variant={summary?.status === "active" ? "success" : "warning"}
                   size="md"
                   className="font-bold uppercase tracking-wider"
                 >
-                  {subscription?.status || "Active"}
+                  {statusLabel}
                 </Badge>
               </div>
 
               <h2 className="text-2xl font-bold text-text">
-                ₹{currentPlan?.monthlyPrice ? currentPlan.monthlyPrice.toLocaleString("en-IN") : "1,999"}{" "}
-                <span className="text-xs font-normal text-text-muted">/ month</span>
+                {typeof displayedPrice === "number" ? `₹${displayedPrice.toLocaleString("en-IN")}` : "Price unavailable"}{" "}
+                <span className="text-xs font-normal text-text-muted">/ {billingCycle === "annual" ? "year" : "month"}</span>
               </h2>
 
-              {isTrial && (
+              {summary?.daysRemaining !== null && summary?.daysRemaining !== undefined && summary.bookingAvailable && (
                 <p className="text-xs text-warning-text dark:text-warning-text font-medium flex items-center gap-1.5">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <strong>{daysLeftInTrial} Days Remaining</strong> on your 15-day Free Trial. Upgrade now to ensure uninterrupted service.
+                  <strong>{summary.daysRemaining} days remaining</strong> {isTrial ? "in your trial" : "in this billing period"}.
+                </p>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 text-xs">
+                <div><p className="text-text-muted">Access type</p><p className="font-semibold capitalize text-text">{summary?.basis || "Unknown"}</p></div>
+                <div><p className="text-text-muted">Started</p><p className="font-semibold text-text">{formatDate(summary?.startedAt)}</p></div>
+                <div><p className="text-text-muted">Expires</p><p className="font-semibold text-text">{formatDate(summary?.expiresAt)}</p></div>
+                <div><p className="text-text-muted">Next action</p><p className="font-semibold capitalize text-text">{summary?.nextAction?.replaceAll("_", " ") || "Review"}</p></div>
+              </div>
+              {summary?.paymentStatus && (
+                <p className="text-xs text-text-secondary">
+                  Latest payment: <span className="font-semibold capitalize">{summary.paymentStatus === "created" ? "pending" : summary.paymentStatus}</span>
                 </p>
               )}
             </div>

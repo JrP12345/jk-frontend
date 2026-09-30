@@ -7,7 +7,7 @@ import api from "@/lib/api";
 import { Alert, Button, Input, Select, Badge, Card, EmptyState } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import ClinicCardSkeletons from "@/components/ui/ClinicCardSkeletons";
-import { Search, MapPin, X, ChevronRight, ShieldCheck, Building2, Users, CreditCard, Camera, Star } from "lucide-react";
+import { Search, MapPin, X, ChevronRight, Building2, Users, CreditCard, Camera, Star } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
 import { parseWeeklySchedule } from "@/lib/timing/clinicStatus";
@@ -91,16 +91,20 @@ const SORT_OPTIONS = [
   { value: "rating", label: "Top rated" },
   { value: "fee_low", label: "Lowest fee" },
 ];
+const DISCOVERY_KEY = "ekavyu_browse_discovery";
+type DiscoveryState = { search: string; city: string; specialty: string; sort: string; scrollY: number };
 
 export default function BrowseClient({
   initialClinics = [],
   initialLoaded = false,
   initialFilters,
+  initialNextCursor = null,
   loadingOnly = false,
 }: {
   initialClinics?: Clinic[];
   initialLoaded?: boolean;
   initialFilters?: ClinicFilters;
+  initialNextCursor?: string | null;
   loadingOnly?: boolean;
 } = {}) {
   const router = useRouter();
@@ -114,10 +118,55 @@ export default function BrowseClient({
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
   const [sortBy, setSortBy] = useState("rating");
+  const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(false);
+  const [restored, setRestored] = useState(false);
+  const restoreScroll = useRef<number | null>(null);
+  const restoredFilters = useRef(false);
+  const restoringResults = useRef(false);
+  const moreRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => moreRequest.current?.abort(), []);
   const [detectedLocation, setDetectedLocation] = useState<DetectedLocation | null>(null);
   const [filters, setFilters] = useState<ClinicFilters>(() => normalizeFilters(initialFilters, normalizeClinics(initialClinics)));
   const allCities = filters.cities;
   const quickSpecialties = [{ value: "", label: "All Care" }, ...filters.specialties.map(value => ({ value, label: value }))];
+
+  useEffect(() => {
+    if (loadingOnly) return;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(DISCOVERY_KEY) || "null") as DiscoveryState | null;
+      if (saved) {
+        sessionStorage.removeItem(DISCOVERY_KEY);
+        const search = typeof saved.search === "string" ? saved.search : "";
+        const city = typeof saved.city === "string" ? saved.city : "";
+        const specialty = typeof saved.specialty === "string" ? saved.specialty : "";
+        const sort = SORT_OPTIONS.some(option => option.value === saved.sort) ? saved.sort : "rating";
+        restoredFilters.current = Boolean(search || city || specialty || sort !== "rating");
+        restoringResults.current = restoredFilters.current;
+        setSearchQuery(search);
+        setDebouncedSearch(search);
+        setSelectedCity(city);
+        setSelectedSpecialty(specialty);
+        setSortBy(sort);
+        restoreScroll.current = Number.isFinite(saved.scrollY) && saved.scrollY > 0 ? saved.scrollY : null;
+      }
+    } catch { /* Browsing still works if storage is unavailable. */ }
+    setRestored(true);
+  }, [loadingOnly]);
+
+  useEffect(() => {
+    if (!restored || loading || restoringResults.current || restoreScroll.current === null || !clinics.length) return;
+    const position = restoreScroll.current;
+    restoreScroll.current = null;
+    requestAnimationFrame(() => window.scrollTo({ top: position, behavior: "instant" }));
+  }, [restored, loading, clinics.length]);
+
+  const rememberPosition = () => {
+    try {
+      sessionStorage.setItem(DISCOVERY_KEY, JSON.stringify({ search: searchQuery, city: selectedCity, specialty: selectedSpecialty, sort: sortBy, scrollY: window.scrollY }));
+    } catch { /* Optional continuity. */ }
+  };
 
   // Auto location detection on initial load
   useEffect(() => {
@@ -145,7 +194,7 @@ export default function BrowseClient({
 
   // Auto-select city if user hasn't explicitly chosen one and a matching clinic city exists
   useEffect(() => {
-    if (!detectedLocation?.city || allCities.length === 0) return;
+    if (!restored || !detectedLocation?.city || allCities.length === 0) return;
     try {
       const userChoice = sessionStorage.getItem("ananta_user_city_choice");
       if (userChoice) return;
@@ -155,7 +204,7 @@ export default function BrowseClient({
         setSelectedCity(matched);
       }
     } catch {}
-  }, [detectedLocation, allCities, selectedCity]);
+  }, [detectedLocation, allCities, selectedCity, restored]);
 
   // 300ms Search Debounce
   useEffect(() => {
@@ -167,11 +216,13 @@ export default function BrowseClient({
 
   const isInitialMount = useRef(true);
   useEffect(() => {
-    if (loadingOnly) return;
+    if (loadingOnly || !restored) return;
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      if (initialLoaded || initialClinics.length > 0) return;
+      if (!restoredFilters.current && (initialLoaded || initialClinics.length > 0)) return;
     }
+    moreRequest.current?.abort();
+    setLoadingMore(false);
     const controller = new AbortController();
     const fetchClinics = async () => {
     try {
@@ -201,16 +252,46 @@ export default function BrowseClient({
       });
 
       setClinics(data);
+      setNextCursor(res.headers?.["x-next-cursor"] || null);
+      setLoadMoreError(false);
       setHasLoaded(true);
-    } catch (err) {
+    } catch {
       if (!controller.signal.aborted) setFetchError("We couldn't load clinics. Please try again.");
     } finally {
-      if (!controller.signal.aborted) setLoading(false);
+      if (!controller.signal.aborted) {
+        restoringResults.current = false;
+        setLoading(false);
+      }
     }
     };
     void fetchClinics();
     return () => controller.abort();
-  }, [debouncedSearch, selectedCity, selectedSpecialty, retryKey, sortBy, loadingOnly]);
+  }, [debouncedSearch, selectedCity, selectedSpecialty, retryKey, sortBy, loadingOnly, restored]);
+
+  const loadMore = async () => {
+    if (!nextCursor || loadingMore || loading || searchQuery !== debouncedSearch) return;
+    const controller = new AbortController();
+    moreRequest.current = controller;
+    setLoadingMore(true);
+    setLoadMoreError(false);
+    try {
+      const params = new URLSearchParams({ sort: sortBy, cursor: nextCursor });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (selectedCity) params.set("city", selectedCity);
+      if (selectedSpecialty) params.set("specialization", selectedSpecialty);
+      const res = await api.get(`/public/clinics?${params}`, { signal: controller.signal });
+      if (controller.signal.aborted) return;
+      const raw = Array.isArray(res.data.data) ? res.data.data : res.data.data?.items;
+      if (!Array.isArray(raw)) throw new Error("Invalid clinic response");
+      const page = normalizeClinics(raw);
+      setClinics(current => [...current, ...page.filter(item => !current.some(existing => existing.id === item.id))]);
+      setNextCursor(res.data.data?.nextCursor || res.headers?.["x-next-cursor"] || null);
+    } catch {
+      if (!controller.signal.aborted) setLoadMoreError(true);
+    } finally {
+      if (!controller.signal.aborted) setLoadingMore(false);
+    }
+  };
 
   const sortedClinics = useMemo(() => [...clinics].sort((a, b) => {
         if (sortBy === "fee_low") {
@@ -225,6 +306,7 @@ export default function BrowseClient({
 
   const handleBookingAction = (e: React.MouseEvent, clinic: Clinic) => {
     e.stopPropagation();
+    rememberPosition();
     if (clinic.doctorCount === 1 && clinic.doctorsSummary && clinic.doctorsSummary.length === 1) {
       const doc = clinic.doctorsSummary[0];
       router.push(`/browse/${clinic.id}?doctorId=${doc.id}&openBooking=true`);
@@ -272,7 +354,7 @@ export default function BrowseClient({
         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
           <h1 className="text-[1.75rem] sm:text-4xl lg:text-5xl font-bold text-text tracking-tight mb-2 leading-tight max-w-3xl mx-auto text-balance" suppressHydrationWarning>
             {"Find and book"}{" "}
-            <span className="text-accent" suppressHydrationWarning>{"verified medical care"}</span>
+            <span className="text-accent" suppressHydrationWarning>{"care that fits your needs"}</span>
           </h1>
           <p className="text-text-secondary text-sm max-w-lg mx-auto mb-4 sm:mb-6 leading-relaxed" suppressHydrationWarning>
             {"Compare clinics and doctors, then book a visit that suits you."}
@@ -353,7 +435,7 @@ export default function BrowseClient({
                     <span className="truncate max-w-[140px]">"{debouncedSearch}"</span>
                     <button
                       onClick={() => setSearchQuery("")}
-                      className="hover:text-danger-text ml-1 cursor-pointer p-0.5 rounded-full"
+                      className="hover:text-danger-text ml-1 cursor-pointer p-2 rounded-full min-h-11 min-w-11 inline-flex items-center justify-center"
                       aria-label="Remove search filter"
                     >
                       <X className="w-3 h-3" strokeWidth={1.75} />
@@ -365,7 +447,7 @@ export default function BrowseClient({
                     <span>{selectedCity}</span>
                     <button
                       onClick={() => handleCitySelect("")}
-                      className="hover:text-danger-text ml-1 cursor-pointer p-0.5 rounded-full"
+                      className="hover:text-danger-text ml-1 cursor-pointer p-2 rounded-full min-h-11 min-w-11 inline-flex items-center justify-center"
                       aria-label="Remove city filter"
                     >
                       <X className="w-3 h-3" strokeWidth={1.75} />
@@ -377,7 +459,7 @@ export default function BrowseClient({
                     <span>{selectedSpecialty}</span>
                     <button
                       onClick={() => setSelectedSpecialty("")}
-                      className="hover:text-danger-text ml-1 cursor-pointer p-0.5 rounded-full"
+                      className="hover:text-danger-text ml-1 cursor-pointer p-2 rounded-full min-h-11 min-w-11 inline-flex items-center justify-center"
                       aria-label="Remove specialty filter"
                     >
                       <X className="w-3 h-3" strokeWidth={1.75} />
@@ -409,7 +491,7 @@ export default function BrowseClient({
               ) : (
                 <span>
                   <strong className="text-text font-bold">{clinics.length}</strong>{" "}
-                  {clinics.length === 1 ? "clinic" : "clinics"}<span className="hidden sm:inline"> available</span>
+                  {clinics.length === 1 ? "clinic" : "clinics"}{nextCursor ? " shown" : <span className="hidden sm:inline"> available</span>}
                   {hasActiveFilters && (
                     <span className="text-text-muted font-normal ml-1">
                       {"(filtered)"}
@@ -490,12 +572,12 @@ export default function BrowseClient({
                 <Card
                   key={clinic.id}
                   role="group"
-                  onClick={() => router.push(`/browse/${clinic.id}`)}
-                  className="group cursor-pointer hover:shadow-sm hover:border-accent/40 p-4 sm:p-5 rounded-2xl border border-border bg-surface flex flex-col min-h-[340px]"
+                  onClick={() => { rememberPosition(); router.push(`/browse/${clinic.id}`); }}
+                  className="group cursor-pointer hover:shadow-sm hover:border-accent/40 p-4 sm:p-5 rounded-2xl border border-border bg-surface flex flex-col min-h-[300px]"
                   contentClassName="flex-1 justify-between gap-3"
                 >
                   <div>
-                    {/* Card Header: Avatar, Name & Verified Badge */}
+                    {/* Clinic identity */}
                     <div className="flex items-start justify-between gap-2.5 mb-3">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-12 h-12 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs group-hover:border-primary-500/30 transition-colors overflow-hidden">
@@ -511,7 +593,7 @@ export default function BrowseClient({
                               className="text-base font-semibold text-text group-hover:text-accent transition-colors min-w-0"
                               title={clinic.name}
                             >
-                              <Link href={`/browse/${clinic.id}`} onClick={(event) => event.stopPropagation()} className="block line-clamp-2 break-words focus-visible:outline-none focus-visible:underline">{clinic.name}</Link>
+                              <Link href={`/browse/${clinic.id}`} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block line-clamp-2 break-words focus-visible:outline-none focus-visible:underline">{clinic.name}</Link>
                             </h3>
                           </div>
                           {clinic.organizationName && clinic.organizationName !== clinic.name && (
@@ -526,15 +608,7 @@ export default function BrowseClient({
                         </div>
                       </div>
 
-                      {/* Verified & Photo Gallery Badges */}
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        <span
-                          className="inline-flex items-center gap-1 text-[10px] font-medium text-text-secondary"
-                          title="Verified Healthcare Facility"
-                        >
-                          <ShieldCheck className="w-3 h-3 text-accent" strokeWidth={1.75} />
-                          <span className="sr-only sm:not-sr-only">{"Verified"}</span>
-                        </span>
                         {clinic.images && clinic.images.length > 0 && (
                           <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-medium text-text-muted">
                             <Camera className="w-2.5 h-2.5 text-accent" />
@@ -577,7 +651,7 @@ export default function BrowseClient({
 
                     {/* Single Doctor Highlight or Multi-Doctor Preview */}
                     {hasSingleDoctor && singleDoctor ? (
-                      <div className="bg-surface-alt/70 p-3 rounded-xl text-xs mb-3 space-y-1">
+                      <Link href={`/doctor/${encodeURIComponent(singleDoctor.id)}?clinicId=${encodeURIComponent(clinic.id)}`} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block bg-surface-alt/70 p-3 rounded-xl text-xs mb-3 space-y-1 hover:bg-primary-500/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="text-[11px] font-medium text-text-muted">
                             {"Practicing Specialist"}
@@ -588,7 +662,7 @@ export default function BrowseClient({
                         </div>
                         <p className="text-sm font-semibold text-text break-words">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
                         <p className="text-xs text-text-secondary leading-relaxed">{singleDoctor.specialization}</p>
-                      </div>
+                      </Link>
                     ) : clinic.doctorsSummary && clinic.doctorsSummary.length > 1 ? (
                       <div className="bg-surface-alt/70 p-3 rounded-xl text-xs mb-3 space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -603,14 +677,14 @@ export default function BrowseClient({
                         </div>
                         <div className="space-y-1">
                           {clinic.doctorsSummary.slice(0, 2).map((doc) => (
-                            <div key={doc.id} className="space-y-0.5 text-xs">
+                            <Link key={doc.id} href={`/doctor/${encodeURIComponent(doc.id)}?clinicId=${encodeURIComponent(clinic.id)}`} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block space-y-0.5 rounded-lg text-xs hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
                               <span className="block font-medium text-text break-words">
                                 Dr. {doc.name.replace(/^Dr\.?\s*/i, "")}
                               </span>
                               <span className="block text-text-secondary text-[11px] break-words">
                                 {doc.specialization}
                               </span>
-                            </div>
+                            </Link>
                           ))}
                           {clinic.doctorsSummary.length > 2 && (
                             <p className="text-[10px] text-accent font-semibold pt-0.5">
@@ -621,8 +695,7 @@ export default function BrowseClient({
                       </div>
                     ) : (
                       <p className="text-xs text-text-muted line-clamp-2 leading-relaxed mb-3">
-                        {clinic.description ||
-                          "Verified healthcare facility providing doctor consultations and specialized healthcare services."}
+                        {clinic.description || "Doctor and clinic details are available on the profile."}
                       </p>
                     )}
 
@@ -681,6 +754,10 @@ export default function BrowseClient({
             })}
           </div>
         )}
+        {nextCursor && !loading && searchQuery === debouncedSearch && !fetchError && <div className="mt-6 flex flex-col items-center gap-2">
+          <Button variant="outline" onClick={loadMore} loading={loadingMore} className="min-h-11 min-w-40">Load more clinics</Button>
+          {loadMoreError && <p role="alert" className="text-sm text-danger-text">More clinics could not be loaded. Please try again.</p>}
+        </div>}
       </main>
     </div>
   );

@@ -19,7 +19,7 @@ import { clinicDateKey, clinicClockMinutes, addCalendarDays, clinicLocalTimeToIs
 import { useAuthStore } from "@/store/authStore";
 import { Card, CardContent, CardHeader, CardTitle, Button, Modal, Input, useToast, Badge, Breadcrumbs } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
-import { AlertCircle, MapPin, Phone, Clock, ShieldCheck, Building2, Calendar, ExternalLink, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, Star, UserCheck, User, Smartphone, Share2, Mail, FileText, CalendarOff, Camera, X, ChevronLeft, MessageSquare } from "lucide-react";
+import { AlertCircle, MapPin, Phone, Clock, Building2, Calendar, ExternalLink, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, Star, UserCheck, User, Smartphone, Share2, Mail, FileText, CalendarOff, Camera, X, ChevronLeft, MessageSquare } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { detectPatientOtpTarget } from "@/lib/patientLogin";
 import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
@@ -61,6 +61,7 @@ export interface ClinicDetail {
   phone: string;
   email: string;
   description: string;
+  brandColor?: string;
   image_url: string;
   logo_url?: string;
   currency?: string;
@@ -102,6 +103,12 @@ function format12Hour(time24: string): string {
   const ampm = h >= 12 ? "PM" : "AM";
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
+}
+
+function doctorFeeLabel(doc: Doctor, currency: string) {
+  if (doc.feeType === "free") return "Free";
+  if (doc.feeType === "post_consultation") return doc.fees > 0 ? `From ${formatCurrency(doc.fees, currency)}` : "Set after consultation";
+  return Number.isFinite(doc.fees) && doc.fees > 0 ? formatCurrency(doc.fees, currency) : "Ask clinic for fee";
 }
 
 // ─── Helper: Parse Doctor Working Schedule for any day ─────────────
@@ -238,19 +245,7 @@ export default function BrowseDetailClient({
       return (
         <div className="space-y-2">
           {!compact && <ClinicStatusBadge timings={timingsStr} pill />}
-          <div className="flex justify-between items-center text-xs bg-surface-alt p-2 rounded-xl border border-border">
-            <span className="font-semibold text-text-secondary flex items-center gap-1.5">
-              <span>Mon – Sat</span>
-              {todayDayIndex >= 1 && todayDayIndex <= 6 && (
-                <span className="text-[9px] uppercase tracking-wider bg-success-subtle dark:bg-success/60 text-success-text dark:text-success-text font-bold px-1.5 py-0.5 rounded">
-                  Today
-                </span>
-              )}
-            </span>
-            <span className="text-text bg-surface py-0.5 px-2.5 rounded-lg text-[11px] font-semibold border border-border">
-              9:00 AM – 5:00 PM
-            </span>
-          </div>
+          <p className="text-xs text-text-secondary">Opening hours have not been listed. Contact the clinic to confirm them.</p>
         </div>
       );
     }
@@ -258,23 +253,10 @@ export default function BrowseDetailClient({
     try {
       const trimmed = timingsStr.trim();
       if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-        const isToday = isTodayInLabel("Mon – Sat");
         return (
           <div className="space-y-2">
             {!compact && <ClinicStatusBadge timings={timingsStr} pill />}
-            <div className={`flex justify-between items-center text-xs p-2.5 rounded-xl border ${isToday ? "bg-success-subtle/60 dark:bg-success/20 border-success dark:border-success" : "bg-surface-alt border-border"}`}>
-              <span className="font-semibold text-text-secondary flex items-center gap-1.5">
-                <span>Mon – Sat</span>
-                {isToday && (
-                  <span className="text-[9px] uppercase tracking-wider bg-success-subtle dark:bg-success/60 text-success-text dark:text-success-text font-bold px-1.5 py-0.5 rounded">
-                    Today
-                  </span>
-                )}
-              </span>
-              <span className="text-text bg-surface py-0.5 px-2.5 rounded-lg text-[11px] font-semibold border border-border">
-                {timingsStr}
-              </span>
-            </div>
+            <p className="rounded-xl border border-border bg-surface-alt p-2.5 text-xs text-text-secondary">{timingsStr}</p>
           </div>
         );
       }
@@ -285,7 +267,7 @@ export default function BrowseDetailClient({
         return (
           <div className="space-y-2">
             {!compact && <ClinicStatusBadge timings={timingsStr} pill />}
-            <span className="text-xs text-text-secondary">{timingsStr}</span>
+            <span className="text-xs text-text-secondary">Opening hours have not been listed. Contact the clinic to confirm them.</span>
           </div>
         );
       }
@@ -363,40 +345,41 @@ export default function BrowseDetailClient({
   };
 
   const getHeaderTimingSummary = (timingsStr: string | null | undefined): string => {
-    if (!timingsStr) return "Mon–Sat: 9:00 AM – 5:00 PM";
+    if (!timingsStr) return "Hours not listed";
     try {
       const trimmed = timingsStr.trim();
       if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
         const parts = trimmed.split(/[-–—to]/i).map((s) => s.trim()).filter(Boolean);
         if (parts.length >= 2) {
-          return `Mon–Sat: ${format12Hour(parts[0])} – ${format12Hour(parts[1])}`;
+          return `Hours: ${format12Hour(parts[0])} – ${format12Hour(parts[1])}`;
         }
         return timingsStr;
       }
       const data = JSON.parse(trimmed);
       const days = Object.keys(data);
-      if (days.length === 0) return "Mon–Sat: 9:00 AM – 5:00 PM";
+      if (days.length === 0) return "Hours not listed";
 
       for (const d of ["monday", "all", "daily"]) {
         const lowerKey = days.find((k) => k.toLowerCase() === d);
         if (lowerKey && Array.isArray(data[lowerKey]) && data[lowerKey].length > 0) {
           const slot = data[lowerKey][0];
-          return `Mon–Sat: ${format12Hour(slot.start)} – ${format12Hour(slot.end)}`;
+          const dayLabel = d === "monday" ? "Mon" : "Daily";
+          return `${dayLabel}: ${format12Hour(slot.start)} – ${format12Hour(slot.end)}`;
         }
       }
       const firstSlots = data[days[0]];
       if (Array.isArray(firstSlots) && firstSlots.length > 0) {
         return `${format12Hour(firstSlots[0].start)} – ${format12Hour(firstSlots[firstSlots.length - 1].end)}`;
       }
-      return "Mon–Sat: 9:00 AM – 5:00 PM";
+      return "Hours not listed";
     } catch {
-      return "Mon–Sat: 9:00 AM – 5:00 PM";
+      return "Hours not listed";
     }
   };
 
   const [clinic, setClinic] = useState<ClinicDetail | null>(initialClinic);
   const [loading, setLoading] = useState(!initialClinic);
-  const [clinicError, setClinicError] = useState(false);
+  const [clinicError, setClinicError] = useState<"not_found" | "load_failed" | null>(null);
   const [clinicRetry, setClinicRetry] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const galleryGesture = useSwipeGesture({ axis: "x", enabled: lightboxIndex !== null && (clinic?.images?.length || 0) > 1, onSwipe: direction => setLightboxIndex(index => index === null ? null : (index + (direction === "left" ? 1 : -1) + (clinic?.images?.length || 1)) % (clinic?.images?.length || 1)) });
@@ -432,7 +415,7 @@ export default function BrowseDetailClient({
   const availabilityRequest = useRef<AbortController | null>(null);
   const [availabilityState, setAvailabilityState] = useState<"checking" | "ready" | "error">("checking");
   useEffect(() => () => availabilityRequest.current?.abort(), []);
-  const hasAutoOpenedBookingRef = useRef(false);
+  const autoOpenedBookingKeyRef = useRef<string | null>(null);
 
   // Time & Notes inputs
   const [bookingNotes, setBookingNotes] = useState("");
@@ -471,13 +454,13 @@ export default function BrowseDetailClient({
   useEffect(() => {
     if (initialClinic?.id === id && clinicRetry === 0) { setClinic(initialClinic); setLoading(false); return; }
     const controller = new AbortController();
-    setLoading(true); setClinicError(false);
+    setLoading(true); setClinicError(null);
     const fetchClinic = async () => {
       try {
         const res = await api.get(`/public/clinics/${id}`, { signal: controller.signal });
         if (!controller.signal.aborted) setClinic(res.data.data);
-      } catch {
-        if (!controller.signal.aborted) setClinicError(true);
+      } catch (error: any) {
+        if (!controller.signal.aborted) setClinicError(error?.response?.status === 404 || error?.response?.status === 400 ? "not_found" : "load_failed");
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -488,7 +471,7 @@ export default function BrowseDetailClient({
 
   // Handle deep-link / auto-open booking (from single-doctor browse card or follow-up)
   useEffect(() => {
-    if (!clinic) return;
+    if (!clinic || clinic.id !== id) return;
 
     const doctorId = searchParams.get("doctorId");
     const followUp = searchParams.get("followUp");
@@ -496,11 +479,11 @@ export default function BrowseDetailClient({
     const openBooking = searchParams.get("openBooking");
 
     if (doctorId && (followUp === "true" || openBooking === "true")) {
-      if (hasAutoOpenedBookingRef.current) return;
-      hasAutoOpenedBookingRef.current = true;
-
+      const bookingKey = `${id}:${doctorId}:${followUp}:${prevApptId || ""}`;
+      if (autoOpenedBookingKeyRef.current === bookingKey) return;
       const doc = clinic.doctors.find((d) => d.id === doctorId);
       if (doc) {
+        autoOpenedBookingKeyRef.current = bookingKey;
         handleOpenBooking(doc);
         if (followUp === "true") {
           setBookingNotes("Follow-up appointment for clinical recommendation.");
@@ -1030,10 +1013,10 @@ export default function BrowseDetailClient({
   };
 
   if (clinicError) {
-    return <div className="min-h-screen bg-surface-alt text-text"><MarketplaceNavbar /><main className="max-w-lg mx-auto px-4 pt-28"><Card><CardContent className="p-6 space-y-4"><h1 className="text-lg font-semibold">We couldn't load this clinic</h1><p className="text-sm text-text-muted">Check your connection and try again.</p><div className="flex flex-wrap gap-3"><Button onClick={() => setClinicRetry((value) => value + 1)}>Try again</Button><Link href="/browse" className="text-sm text-accent py-2">Browse clinics</Link></div></CardContent></Card></main></div>;
+    return <div className="min-h-screen bg-surface-alt text-text"><MarketplaceNavbar /><main className="max-w-lg mx-auto px-4 pt-28"><Card><CardContent className="p-6 space-y-4"><h1 className="text-lg font-semibold">{clinicError === "not_found" ? "Clinic page unavailable" : "We couldn't load this clinic"}</h1><p className="text-sm text-text-muted">{clinicError === "not_found" ? "This clinic link may have changed or the clinic is no longer listed." : "Check your connection and try again."}</p><div className="flex flex-wrap gap-3">{clinicError === "load_failed" && <Button onClick={() => setClinicRetry((value) => value + 1)}>Try again</Button>}<Link href="/browse" className="text-sm text-accent py-2">Browse clinics</Link></div></CardContent></Card></main></div>;
   }
 
-  if (loading) {
+  if (loading || (clinic && clinic.id !== id)) {
     return (
       <div className="min-h-screen bg-surface-alt font-sans text-text antialiased">
         <MarketplaceNavbar />
@@ -1115,28 +1098,20 @@ export default function BrowseDetailClient({
 
       {/* Clinic Header Showcase Banner - Clean Healthcare Design Standard */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6">
-        <div className="bg-surface border border-border rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs">
+        <div className="bg-surface border border-border rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs" style={{ borderTop: `4px solid ${clinic.brandColor || "#0F6F66"}` }}>
           {/* Visual Cover Header */}
-          <div className="h-32 xs:h-40 sm:h-56 w-full relative bg-surface-alt overflow-hidden">
+          <div className={`${clinic.image_url ? "h-32 xs:h-40 sm:h-56" : "h-20 sm:h-28"} w-full relative bg-surface-alt overflow-hidden`}>
             {clinic.image_url ? (
               <img src={clinic.image_url} alt={clinic.name} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-surface    p-4 text-center border-b border-border/40">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-surface border border-border flex items-center justify-center mb-1.5 sm:mb-2.5 shadow-2xs">
-                  <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-text-muted" strokeWidth={1.75} />
-                </div>
-                <span className="text-sm sm:text-base font-bold text-text">{clinic.name}</span>
-                <span className="text-[11px] sm:text-xs text-text-muted mt-0.5">{"Accredited Healthcare Facility"}</span>
+              <div className="w-full h-full flex items-center justify-center bg-surface border-b border-border/40">
+                <Building2 className="w-8 h-8 text-text-muted" strokeWidth={1.75} aria-hidden="true" />
               </div>
             )}
             <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex flex-wrap gap-1.5 sm:gap-2">
               <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-text bg-surface/90  border border-border px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-xs">
                 <MapPin className="w-3 h-3 text-text-muted" strokeWidth={1.75} />
                 <span>{clinic.city}</span>
-              </span>
-              <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-text-secondary bg-surface/90  border border-border px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-xs">
-                <ShieldCheck className="w-3.5 h-3.5 text-accent" strokeWidth={1.75} />
-                <span>{"Verified Facility"}</span>
               </span>
             </div>
 
@@ -1155,8 +1130,8 @@ export default function BrowseDetailClient({
 
           {/* Title & Clinical Contact Bar */}
           <div className="p-4 sm:p-6 border-t border-border/40 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3.5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex min-w-0 items-center gap-3.5">
                 {(clinic.logo_url || clinic.organization?.logo_url) && (
                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-surface border-2 border-surface shadow-md overflow-hidden shrink-0 -mt-8 sm:-mt-12 z-10 relative">
                     <img
@@ -1168,7 +1143,7 @@ export default function BrowseDetailClient({
                 )}
                 <div className="space-y-0.5 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-xl sm:text-3xl font-extrabold text-text tracking-tight truncate">{clinic.name}</h1>
+                    <h1 className="text-xl sm:text-3xl font-extrabold text-text tracking-tight break-words">{clinic.name}</h1>
                     <ClinicStatusBadge timings={clinic.timings} pill />
                   </div>
                   {clinic.organization?.name && clinic.organization.name !== clinic.name && (
@@ -1180,7 +1155,7 @@ export default function BrowseDetailClient({
               </div>
 
               {/* Quick Action Buttons Bar */}
-              <div className="flex items-center gap-2 pt-1 sm:pt-0">
+              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap xl:shrink-0 xl:flex-nowrap">
                 <button
                   type="button"
                   onClick={() => {
@@ -1200,19 +1175,19 @@ export default function BrowseDetailClient({
                       });
                     }
                   }}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-surface hover:bg-surface-hover text-text text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px] cursor-pointer"
+                  className="inline-flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-text shadow-2xs hover:bg-surface-hover cursor-pointer"
                   title="Share Clinic Profile"
                   aria-label="Share Clinic Profile"
                 >
                   <Share2 className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
-                  <span className="hidden sm:inline">{"Share"}</span>
+                  <span>{"Share"}</span>
                 </button>
                 {directionsUrl && (
                   <a
                     href={directionsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-surface hover:bg-surface-hover text-text text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px]"
+                    className="inline-flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-text shadow-2xs hover:bg-surface-hover"
                   >
                     <MapPin className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
                     <span>{"Get Directions"}</span>
@@ -1225,16 +1200,16 @@ export default function BrowseDetailClient({
                       href={`https://wa.me/${clinic.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello, I would like to inquire about appointments and doctors at ${clinic.name}.`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-success/30 bg-success/10 hover:bg-success/20 text-success-text dark:text-success-text text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px] transition-colors"
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-xs font-semibold text-success-text shadow-2xs transition-colors hover:bg-success/20 dark:text-success-text"
                       title="Chat on WhatsApp"
                       aria-label="Chat on WhatsApp"
                     >
                       <MessageSquare className="w-3.5 h-3.5 text-success-text" strokeWidth={1.75} />
-                      <span className="hidden sm:inline">{"WhatsApp"}</span>
+                      <span>{"WhatsApp"}</span>
                     </a>
                     <a
                       href={`tel:${clinic.phone.replace(/\s+/g, "")}`}
-                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-brand-mist text-xs font-semibold shadow-2xs min-h-[44px] sm:min-h-[36px]"
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-primary-600 px-3 py-2 text-xs font-semibold text-brand-mist shadow-2xs hover:bg-primary-700"
                     >
                       <Phone className="w-3.5 h-3.5" strokeWidth={1.75} />
                       <span>{"Call Clinic"}</span>
@@ -1284,7 +1259,7 @@ export default function BrowseDetailClient({
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <h2 className="text-lg sm:text-xl font-bold text-text flex items-center gap-2">
-                <span>{"Available Doctors"}</span>
+                <span>Available Doctors</span>
                 <Badge variant="neutral" className="text-xs font-semibold">
                   {clinic.doctors.length}
                 </Badge>
@@ -1295,7 +1270,11 @@ export default function BrowseDetailClient({
 
           {clinic.doctors.length === 0 ? (
             <Card className="p-8 text-center text-text-muted text-xs border-dashed rounded-2xl bg-surface">
-              {"No specialists registered at this healthcare location currently."}
+              <p>No doctors are listed for online booking at this clinic right now.</p>
+              <div className="mt-3 flex flex-wrap justify-center gap-3">
+                {clinic.phone && <a href={`tel:${clinic.phone.replace(/\s+/g, "")}`} className="font-semibold text-accent underline min-h-11 inline-flex items-center">Call clinic</a>}
+                <Link href="/browse" className="font-semibold text-accent underline min-h-11 inline-flex items-center">Browse other clinics</Link>
+              </div>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
@@ -1306,7 +1285,7 @@ export default function BrowseDetailClient({
                 >
                   <div className="space-y-3.5">
                     {/* Header Avatar & Details */}
-                    <div className="flex items-start gap-3">
+                    <Link href={`/doctor/${encodeURIComponent(doc.id)}?clinicId=${encodeURIComponent(id)}`} className="flex items-start gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" aria-label={`View Dr. ${doc.name.replace(/^Dr\.?\s*/i, "")}'s profile`}>
                       <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
                         {doc.image_url ? (
                           <img src={doc.image_url} alt={doc.name} className="w-full h-full object-cover rounded-xl" />
@@ -1317,38 +1296,28 @@ export default function BrowseDetailClient({
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1">
-                          <h3 className="text-sm sm:text-base font-bold text-text group-hover:text-accent transition-colors truncate">
+                          <h3 className="text-sm sm:text-base font-bold text-text group-hover:text-accent transition-colors break-words">
                             Dr. {doc.name.replace(/^Dr\.?\s*/i, "")}
                           </h3>
-                          <span className="text-xs font-semibold text-text-secondary flex items-center gap-1 shrink-0">
+                          {doc.rating != null && (doc.reviewsCount || 0) > 0 && <span className="text-xs font-semibold text-text-secondary flex items-center gap-1 shrink-0" aria-label={`${doc.rating} out of 5 from ${doc.reviewsCount} reviews`}>
                             <Star className="w-3 h-3 text-warning-text fill-warning" strokeWidth={1.75} />
-                            <span>{doc.rating || 5.0}</span>
-                          </span>
+                            <span>{doc.rating.toFixed(1)}</span>
+                          </span>}
                         </div>
-                        <p className="text-xs font-semibold text-accent dark:text-accent mt-0.5 truncate">{doc.specialization}</p>
-                        <p className="text-[11px] text-text-muted truncate mt-0.5">{doc.qualification || "Consulting Specialist"}</p>
+                        <p className="text-xs font-semibold text-accent dark:text-accent mt-0.5 break-words">{doc.specialization || "Specialty not listed"}</p>
+                        {doc.qualification && <p className="text-[11px] text-text-muted break-words mt-0.5">{doc.qualification}</p>}
                       </div>
-                    </div>
+                    </Link>
 
                     {/* Experience & Fees Row */}
                     <div className="grid grid-cols-2 gap-2 bg-surface-alt p-2.5 rounded-xl border border-border text-xs">
                       <div>
                         <span className="text-[10px] text-text-muted block font-medium uppercase tracking-wider">{"Experience"}</span>
-                        <span className="font-semibold text-text">{doc.experience_years ? `${doc.experience_years}+ ${"Years"}` : "Experienced"}</span>
+                        <span className="font-semibold text-text">{doc.experience_years ? `${doc.experience_years}+ ${"Years"}` : "Not listed"}</span>
                       </div>
                       <div>
                         <span className="text-[10px] text-text-muted block font-medium uppercase tracking-wider">{"Consultation Fee"}</span>
-                        {doc.feeType === "post_consultation" ? (
-                          <span className="font-semibold text-warning-text dark:text-warning-text">
-                            {doc.fees && doc.fees > 0 ? `${"From"} ${formatCurrency(doc.fees, clinic.currency || "INR")}` : "Post-Consultation"}
-                          </span>
-                        ) : doc.feeType === "free" ? (
-                          <span className="font-semibold text-success-text dark:text-success-text">{"Free"}</span>
-                        ) : (
-                          <span className="font-semibold text-success-text dark:text-success-text">
-                            {formatCurrency(doc.fees, clinic.currency || "INR")}
-                          </span>
-                        )}
+                        <span className="font-semibold text-text">{doctorFeeLabel(doc, clinic.currency || "INR")}</span>
                       </div>
                     </div>
 
@@ -1385,6 +1354,7 @@ export default function BrowseDetailClient({
                     <Button
                       variant="primary"
                       size="sm"
+                      style={clinic.brandColor ? { backgroundColor: clinic.brandColor } : undefined}
                       className="w-full font-bold rounded-xl shadow-xs min-h-[44px] flex items-center justify-center gap-1.5 group/btn cursor-pointer"
                       onClick={() => handleOpenBooking(doc)}
                       disabled={clinic.onlineBookingAvailable === false}
@@ -1400,6 +1370,9 @@ export default function BrowseDetailClient({
                       </span>
                       <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" strokeWidth={2} />
                     </Button>
+                    <Link href={`/doctor/${encodeURIComponent(doc.id)}?clinicId=${encodeURIComponent(id)}`} className="mt-2 inline-flex min-h-11 w-full items-center justify-center text-xs font-semibold text-accent underline-offset-2 hover:underline">
+                      View & share doctor profile
+                    </Link>
                   </div>
                 </Card>
               ))}
@@ -1418,7 +1391,7 @@ export default function BrowseDetailClient({
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
               <p className="text-xs text-text-secondary leading-relaxed">
-                {clinic.description || "Verified healthcare facility providing doctor consultations and specialized healthcare services."}
+                {clinic.description || "View doctors, clinic hours and contact details here before booking."}
               </p>
 
               <div>
@@ -1481,25 +1454,6 @@ export default function BrowseDetailClient({
                     {clinic.organization.description}
                   </p>
                 )}
-                {/* Clinical Standards Badges */}
-                <div className="pt-2 border-t border-border/40 grid grid-cols-2 gap-1.5 text-[10px] text-text-secondary font-medium">
-                  <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-surface-alt">
-                    <ShieldCheck className="w-3.5 h-3.5 text-success-text shrink-0" />
-                    <span>{"Verified Clinic"}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-surface-alt">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-accent shrink-0" />
-                    <span>{"Digital Records"}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-surface-alt">
-                    <CreditCard className="w-3.5 h-3.5 text-accent shrink-0" />
-                    <span>{"Cashless Support"}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-surface-alt">
-                    <Clock className="w-3.5 h-3.5 text-warning-text shrink-0" />
-                    <span>{"Live Queue Tokens"}</span>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           )}
@@ -1552,11 +1506,11 @@ export default function BrowseDetailClient({
       </div>
 
       {/* Sticky Mobile Bottom Booking Bar (For single-doctor clinics) */}
-      {hasSingleDoctor && singleDoctor && clinic.onlineBookingAvailable !== false && (
-        <div className="fixed bottom-0 left-0 right-0 pt-3 pl-16 pr-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface/95  border-t border-border z-40 lg:hidden shadow-lg flex items-center justify-between gap-3">
+      {hasSingleDoctor && singleDoctor && clinic.onlineBookingAvailable !== false && !isBookingOpen && !ticketModalOpen && (
+        <div className="fixed bottom-0 left-0 right-0 pt-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface/95 border-t border-border z-40 lg:hidden shadow-lg flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-text truncate">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
-            <p className="text-[11px] text-success-text dark:text-success-text font-semibold">{formatCurrency(singleDoctor.fees, clinic.currency || "INR")} {"Consultation Fee"}</p>
+            <p className="text-[11px] text-text-secondary font-semibold">{doctorFeeLabel(singleDoctor, clinic.currency || "INR")} · Consultation fee</p>
           </div>
           <Button
             variant="primary"
@@ -1621,13 +1575,13 @@ export default function BrowseDetailClient({
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-bold text-text text-xs sm:text-sm truncate">Dr. {selectedDoctor?.name.replace(/^Dr\.?\s*/i, "")}</p>
-                    <p className="text-[11px] text-accent dark:text-accent font-semibold truncate">{selectedDoctor?.specialization}</p>
+                    <p className="font-bold text-text text-xs sm:text-sm break-words">Dr. {selectedDoctor?.name.replace(/^Dr\.?\s*/i, "")}</p>
+                    <p className="text-[11px] text-accent dark:text-accent font-semibold break-words">{selectedDoctor?.specialization}</p>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
                   <span className="text-xs sm:text-sm font-black text-success-text dark:text-success-text bg-surface px-2 py-0.5 rounded-lg border border-border">
-                    {formatCurrency(selectedDoctor?.fees || 0, clinic?.currency || "INR")}
+                    {selectedDoctor && doctorFeeLabel(selectedDoctor, clinic?.currency || "INR")}
                   </span>
                 </div>
               </div>
@@ -1822,7 +1776,7 @@ export default function BrowseDetailClient({
                                       type="button"
                                       disabled={!isAvailable || availabilityState !== "ready"}
                                       onClick={() => isAvailable && setSelectedTime(s.time)}
-                                      className={`py-2 px-1 rounded-xl text-xs font-semibold text-center transition-all min-h-[40px] flex items-center justify-center ${
+                                      className={`py-2 px-1 rounded-xl text-xs font-semibold text-center transition-all min-h-11 flex items-center justify-center ${
                                         !isAvailable
                                           ? "bg-surface-alt/60 text-text-muted/50 border border-dashed border-border/70 line-through cursor-not-allowed"
                                           : isSelected
@@ -1854,7 +1808,7 @@ export default function BrowseDetailClient({
                                       type="button"
                                       disabled={!isAvailable || availabilityState !== "ready"}
                                       onClick={() => isAvailable && setSelectedTime(s.time)}
-                                      className={`py-2 px-1 rounded-xl text-xs font-semibold text-center transition-all min-h-[40px] flex items-center justify-center ${
+                                      className={`py-2 px-1 rounded-xl text-xs font-semibold text-center transition-all min-h-11 flex items-center justify-center ${
                                         !isAvailable
                                           ? "bg-surface-alt/60 text-text-muted/50 border border-dashed border-border/70 line-through cursor-not-allowed"
                                           : isSelected
@@ -1886,7 +1840,7 @@ export default function BrowseDetailClient({
                                       type="button"
                                       disabled={!isAvailable || availabilityState !== "ready"}
                                       onClick={() => isAvailable && setSelectedTime(s.time)}
-                                      className={`py-2 px-1 rounded-xl text-xs font-semibold text-center transition-all min-h-[40px] flex items-center justify-center ${
+                                      className={`py-2 px-1 rounded-xl text-xs font-semibold text-center transition-all min-h-11 flex items-center justify-center ${
                                         !isAvailable
                                           ? "bg-surface-alt/60 text-text-muted/50 border border-dashed border-border/70 line-through cursor-not-allowed"
                                           : isSelected
@@ -1931,7 +1885,7 @@ export default function BrowseDetailClient({
                         : "Post-Consultation")
                       : selectedDoctor?.feeType === "free"
                       ? "Free"
-                      : `${formatCurrency(selectedDoctor?.fees || 0, clinic?.currency || "INR")}`}
+                      : selectedDoctor ? doctorFeeLabel(selectedDoctor, clinic?.currency || "INR") : ""}
                   </p>
                 </div>
                 <button
@@ -2105,6 +2059,10 @@ export default function BrowseDetailClient({
               {createdTicket?.status === "confirmed" ? <CheckCircle2 className="w-7 h-7" strokeWidth={1.75} /> : <Clock className="w-6 h-6" strokeWidth={1.75} />}
             </div>
             <div>
+              <h2 className="text-xl font-bold text-text">Appointment booked</h2>
+              <p className="text-sm text-text-secondary">{appointmentBookingLabel(createdTicket?.status)}. Keep your private tracker link for updates.</p>
+            </div>
+            <div>
               <span className="text-3xl font-black text-text block">
                 #{createdTicket?.tokenNumber}
               </span>
@@ -2188,7 +2146,7 @@ export default function BrowseDetailClient({
                   onClick={() => {
                     const trackingUrl = `${window.location.origin}/track/${createdTicket.appointmentId}${createdTicket.trackerToken ? `?t=${encodeURIComponent(createdTicket.trackerToken)}` : ""}`;
                     navigator.clipboard.writeText(trackingUrl);
-                    toast({ title: "Link Copied", description: "Clinic profile link copied to clipboard", variant: "success" });
+                    toast({ title: "Private link copied", description: "Anyone with this link can view this appointment's tracker. Share it only with people you trust.", variant: "success" });
                   }}
                   title={"Copy Link"}
                 >
@@ -2202,7 +2160,12 @@ export default function BrowseDetailClient({
           {/* Action Buttons Hub */}
           <div className="space-y-2">
             <div className="flex flex-col sm:flex-row gap-2">
-              <Button
+              {isGuest ? <Button
+                variant="outline"
+                size="sm"
+                className="w-full font-bold min-h-[44px]"
+                onClick={() => { setTicketModalOpen(false); router.push("/login"); }}
+              >Verify your phone to manage appointments</Button> : <Button
                 variant="primary"
                 size="sm"
                 className="w-full font-bold min-h-[44px] flex items-center justify-center gap-1.5"
@@ -2213,7 +2176,7 @@ export default function BrowseDetailClient({
               >
                 <Calendar className="w-3.5 h-3.5" strokeWidth={1.75} />
                 <span>{"My Appointments"}</span>
-              </Button>
+              </Button>}
             </div>
           </div>
         </div>}

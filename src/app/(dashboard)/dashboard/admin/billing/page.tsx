@@ -19,6 +19,9 @@ export default function AdminBillingPage() {
   const [extendingSubId, setExtendingSubId] = useState<string | null>(null);
   const [extraDays, setExtraDays] = useState(15);
   const [savingTrial, setSavingTrial] = useState(false);
+  const [manualGrantSub, setManualGrantSub] = useState<any | null>(null);
+  const [manualGrantReason, setManualGrantReason] = useState("");
+  const [savingManualGrant, setSavingManualGrant] = useState(false);
 
   // Razorpay Gateway Config Form (Root Admin Only)
   const [razorpayConfig, setRazorpayConfig] = useState({
@@ -561,27 +564,11 @@ export default function AdminBillingPage() {
                           <Button
                             variant="primary"
                             size="xs"
-                            onClick={async () => {
-                              try {
-                                await billingService.adminActivateSubscription(row.id);
-                                toast({
-                                  title: "Subscription Activated",
-                                  description: `Organization '${row.organizationId?.name}' upgraded to Active Paid status.`,
-                                  variant: "success",
-                                });
-                                loadAdminData();
-                              } catch (err: any) {
-                                toast({
-                                  title: "Error",
-                                  description: err.response?.data?.message || "Failed to activate subscription.",
-                                  variant: "error",
-                                });
-                              }
-                            }}
+                            onClick={() => { setManualGrantSub(row); setManualGrantReason(""); }}
                             className="font-semibold rounded-lg shadow-xs min-h-[32px] px-2.5"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                            Activate Paid
+                            Grant access
                           </Button>
                         )}
                         <Button
@@ -729,6 +716,28 @@ export default function AdminBillingPage() {
           </div>
         </Modal>
       )}
+
+      <Modal open={!!manualGrantSub} onClose={() => setManualGrantSub(null)} title="Grant manual subscription access" size="sm">
+        <div className="space-y-4 pt-1">
+          <p className="text-sm text-text-secondary">Grant {manualGrantSub?.organizationId?.name} access to {manualGrantSub?.planId?.name}. This is a Root override and does not record a payment.</p>
+          <Input label="Reason for manual grant" value={manualGrantReason} onChange={(event) => setManualGrantReason(event.target.value)} placeholder="Describe the approved exception" minLength={10} />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setManualGrantSub(null)}>Cancel</Button>
+            <Button disabled={manualGrantReason.trim().length < 10 || !manualGrantSub?.planId?.slug} loading={savingManualGrant} onClick={async () => {
+              if (!manualGrantSub?.planId?.slug) return;
+              setSavingManualGrant(true);
+              try {
+                await billingService.adminActivateSubscription(manualGrantSub.id, manualGrantSub.planId.slug, manualGrantSub.billingCycle || "monthly", manualGrantReason.trim());
+                toast({ title: "Access granted", description: "The manual entitlement is active and attributed to this Root account.", variant: "success" });
+                setManualGrantSub(null);
+                loadAdminData();
+              } catch (err: any) {
+                toast({ title: "Grant failed", description: err.response?.data?.message || "Could not grant subscription access.", variant: "error" });
+              } finally { setSavingManualGrant(false); }
+            }}>Grant access</Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* ──────────────────────────────────────────────────────────────────────────
           8. PLAN EDIT / CREATE MODAL

@@ -76,7 +76,7 @@ export default async function BrowseDetailPage({ params }: { params: Promise<{ i
   const initialClinic = await getClinic(id);
   return (
     <Suspense fallback={<DetailLoadingFallback />}>
-      <BrowseDetailClient id={id} initialClinic={initialClinic} />
+      <BrowseDetailClient key={id} id={id} initialClinic={initialClinic} />
     </Suspense>
   );
 }

@@ -853,6 +853,10 @@ export default function SettingsPage() {
   const [orgsLoading, setOrgsLoading] = useState<boolean>(isRoot);
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "billing") setActiveTab("billing");
+  }, []);
+
+  useEffect(() => {
     if (isRoot) {
       setOrgsLoading(true);
       api
@@ -861,7 +865,9 @@ export default function SettingsPage() {
           const orgList = res.data.data?.organizations || res.data.data || [];
           setOrganizations(orgList);
           if (orgList.length > 0) {
-            setSelectedOrgId((prev) => prev || orgList[0].id || orgList[0]._id);
+            const requestedOrgId = new URLSearchParams(window.location.search).get("organizationId");
+            const matchingOrg = orgList.find((org: any) => (org.id || org._id) === requestedOrgId);
+            setSelectedOrgId((prev) => matchingOrg?.id || matchingOrg?._id || prev || orgList[0].id || orgList[0]._id);
           }
         })
         .catch(() => {})

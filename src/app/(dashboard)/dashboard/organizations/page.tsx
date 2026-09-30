@@ -10,6 +10,7 @@ import ImageUpload from "@/components/ui/ImageUpload";
 import { useR2Upload } from "@/hooks/useR2Upload";
 import { COUNTRY_SETTINGS, countryOptions, isCountryCode, timezoneOptions } from "@/lib/countrySettings";
 import { Building2, ShieldCheck, Crown, RotateCw, Plus, Search, ArrowRight, ArrowLeft, MoreHorizontal, Edit3, Trash2, KeyRound, Copy, Check, MapPin, Shield, Eye, EyeOff, Users, Power, Zap, Sparkles } from "lucide-react";
+import type { SubscriptionSummary } from "@/services/billing.service";
 
 interface Organization {
   id: string;
@@ -33,7 +34,13 @@ interface Organization {
   currency?: string;
   timezone?: string;
   createdAt: string;
+  primaryAdmin?: { name: string; email: string | null } | null;
+  subscriptionSummary?: SubscriptionSummary;
 }
+
+const subscriptionDate = (value: string | null | undefined) => value
+  ? new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+  : "—";
 
 export default function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -46,6 +53,7 @@ export default function OrganizationsPage() {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "active" | "inactive" | "starter" | "pro" | "enterprise">("all");
+  const [subscriptionFilter, setSubscriptionFilter] = useState("all");
 
   // Create New Organization Modal State (2-Step Wizard)
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -184,9 +192,10 @@ export default function OrganizationsPage() {
         (org.email && org.email.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const isInactive = org.status === "inactive" || org.isActive === false;
-      const currentPlan = org.plan || "starter";
+      const currentPlan = org.subscriptionSummary?.planSlug || org.plan || "starter";
 
       if (!matchesSearch) return false;
+      if (subscriptionFilter !== "all" && org.subscriptionSummary?.status !== subscriptionFilter) return false;
 
       if (activeTab === "active") return !isInactive;
       if (activeTab === "inactive") return isInactive;
@@ -196,7 +205,7 @@ export default function OrganizationsPage() {
 
       return true;
     });
-  }, [organizations, searchQuery, activeTab]);
+  }, [organizations, searchQuery, activeTab, subscriptionFilter]);
 
   const handleEnterWorkspace = async (orgId: string, orgName: string) => {
     try {
@@ -500,7 +509,6 @@ export default function OrganizationsPage() {
         address: editFormData.address || undefined,
         phone: editFormData.phone || undefined,
         email: editFormData.email || undefined,
-        plan: editFormData.plan,
         taxId: editFormData.taxId || undefined,
         licenseNumber: editFormData.licenseNumber || undefined,
         countryCode: editFormData.countryCode || undefined,
@@ -634,7 +642,8 @@ export default function OrganizationsPage() {
                 )}
               </div>
               <div className="flex items-center gap-2 text-xs text-text-muted">
-                <span>{org.email || "No email listed"}</span>
+                <span>{org.primaryAdmin?.name || "Admin not listed"}</span>
+                <span>&bull; {org.email || org.primaryAdmin?.email || "No email listed"}</span>
                 {org.taxId && <span>&bull; Tax ID: {org.taxId}</span>}
               </div>
             </div>
@@ -643,9 +652,22 @@ export default function OrganizationsPage() {
       },
     },
     {
+      header: "Subscription",
+      accessor: (org) => {
+        const summary = org.subscriptionSummary;
+        return <div className="min-w-[160px] text-xs space-y-1">
+          <p className="font-semibold capitalize text-text">{summary?.status?.replaceAll("_", " ") || "Unavailable"} · {summary?.basis || "unknown"}</p>
+          <p className="text-text-muted">Started {subscriptionDate(summary?.startedAt)}</p>
+          <p className="text-text-muted">Expires {subscriptionDate(summary?.expiresAt)}{summary?.bookingAvailable && summary.daysRemaining !== null ? ` · ${summary.daysRemaining}d left` : ""}</p>
+          {summary?.paymentStatus && <p className="text-text-muted capitalize">Payment: {summary.paymentStatus === "created" ? "pending" : summary.paymentStatus}</p>}
+          {!summary?.bookingAvailable && <p className="text-warning-text">Online booking unavailable</p>}
+        </div>;
+      },
+    },
+    {
       header: "Plan & Capacity",
       accessor: (org) => {
-        const plan = org.plan || "starter";
+        const plan = org.subscriptionSummary?.planSlug || org.plan || "starter";
         const variant = plan === "enterprise" ? "primary" : plan === "pro" ? "info" : "secondary";
         return (
           <div className="space-y-1 min-w-[150px]">
@@ -732,6 +754,11 @@ export default function OrganizationsPage() {
                   label: "Members & access",
                   icon: <Users className="w-4 h-4 text-accent" />,
                   onClick: () => handleOpenMembersModal(org),
+                },
+                {
+                  label: "Billing & plan",
+                  icon: <Zap className="w-4 h-4 text-accent" />,
+                  onClick: () => router.push(`/dashboard/settings?tab=billing&organizationId=${org.id}`),
                 },
                 { divider: true, label: "" },
                 {
@@ -915,6 +942,19 @@ export default function OrganizationsPage() {
             />
           </div>
         </div>
+        <label className="flex items-center gap-2 text-xs text-text-secondary">Subscription status
+          <select value={subscriptionFilter} onChange={(event) => setSubscriptionFilter(event.target.value)} className="min-h-9 rounded-lg border border-border bg-surface-alt px-2 text-xs text-text">
+            <option value="all">All statuses</option>
+            <option value="trial">Trial</option>
+            <option value="active">Active</option>
+            <option value="expiring_soon">Expiring soon</option>
+            <option value="expired">Expired</option>
+            <option value="payment_pending">Payment pending</option>
+            <option value="payment_failed">Payment failed</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="disabled">Disabled</option>
+          </select>
+        </label>
       </Card>
 
       {/* ──────────────────────────────────────────────────────────────────────────
@@ -967,7 +1007,7 @@ export default function OrganizationsPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-text-muted mt-0.5 truncate">{org.email || "No email listed"}</p>
+                      <p className="text-xs text-text-muted mt-0.5 truncate">{org.primaryAdmin?.name || "Admin not listed"} · {org.email || org.primaryAdmin?.email || "No email listed"}</p>
                     </div>
                   </div>
                   <Badge
@@ -988,6 +1028,8 @@ export default function OrganizationsPage() {
                     {isInactive ? "Suspended" : "Active"}
                   </Badge>
                 </div>
+                <p className="text-xs text-text-secondary">{org.subscriptionSummary?.status?.replaceAll("_", " ") || "Subscription unavailable"} · Expires {subscriptionDate(org.subscriptionSummary?.expiresAt)}{org.subscriptionSummary?.bookingAvailable ? "" : " · Booking unavailable"}</p>
+                {org.subscriptionSummary?.paymentStatus && <p className="text-xs text-text-muted capitalize">Latest payment: {org.subscriptionSummary.paymentStatus === "created" ? "pending" : org.subscriptionSummary.paymentStatus}</p>}
 
                 <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
                   <Button
@@ -1023,6 +1065,7 @@ export default function OrganizationsPage() {
                         icon: <Users className="w-4 h-4 text-accent" />,
                         onClick: () => handleOpenMembersModal(org),
                       },
+                      { label: "Billing & plan", icon: <Zap className="w-4 h-4 text-accent" />, onClick: () => router.push(`/dashboard/settings?tab=billing&organizationId=${org.id}`) },
                       { divider: true, label: "" },
                       {
                         label: "Edit Details",
@@ -1438,7 +1481,7 @@ export default function OrganizationsPage() {
         open={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         title="Edit Organization Details"
-        description="Update subscription plan tier, facility name, or contact details."
+        description="Update facility name, branding, or contact details. Manage plans in Billing."
       >
         <form onSubmit={handleUpdateOrganization} className="flex flex-col max-h-[75vh]" autoComplete="off">
           <div className="overflow-y-auto flex-1 space-y-4 pr-1 pb-3 pt-1">
@@ -1464,32 +1507,6 @@ export default function OrganizationsPage() {
               autoComplete="off"
               required
             />
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-text">Subscription Plan Tier *</label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: "starter", title: "Starter", desc: "1 Clinic, 2 Docs" },
-                  { id: "pro", title: "Pro", desc: "5 Clinics, 15 Docs" },
-                  { id: "enterprise", title: "Enterprise", desc: "Unlimited" },
-                ].map((tier) => (
-                  <button
-                    type="button"
-                    key={tier.id}
-                    onClick={() => setEditFormData({ ...editFormData, plan: tier.id as any })}
-                    className={cn(
-                      "p-2.5 rounded-xl border text-left transition-all cursor-pointer select-none",
-                      editFormData.plan === tier.id
-                        ? "border-primary-500 bg-primary-500/10 text-accent dark:text-accent font-bold shadow-xs"
-                        : "border-border/80 hover:bg-surface-hover text-text-secondary"
-                    )}
-                  >
-                    <p className="text-xs font-bold capitalize">{tier.title}</p>
-                    <p className="text-[10px] opacity-80 mt-0.5">{tier.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <Input

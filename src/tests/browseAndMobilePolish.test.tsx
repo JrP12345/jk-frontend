@@ -5,7 +5,8 @@ import { localDateKey, todayRangeParams } from "../lib/date";
 import BrowseClient from "../app/browse/BrowseClient";
 import api from "../lib/api";
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+const routePush = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: routePush }) }));
 vi.mock("../components/MarketplaceNavbar", () => ({ default: () => null }));
 vi.mock("../lib/geo/locationDetector", () => ({ detectUserLocation: async () => null, findMatchingClinicCity: () => null }));
 
@@ -14,7 +15,7 @@ beforeEach(() => {
   // jsdom does not implement the browser scrolling API used by Select.
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, writable: true, value: vi.fn() });
 });
-afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); routePush.mockClear(); sessionStorage.clear(); });
 
 describe("Mobile calendar and browse loading", () => {
   it("opens a readable daily agenda on phones", () => {
@@ -63,6 +64,37 @@ describe("Mobile calendar and browse loading", () => {
       { ...base, id: "high", name: "Higher Rated", rating: 4.8 },
     ]} />);
     expect(screen.getAllByRole("link").map(link => link.textContent)).toEqual(["Higher Rated", "Lower Rated", "Unrated"]);
+  });
+  it("loads the next cursor page without replacing clinics already shown", async () => {
+    const base = { city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "" };
+    const request = vi.spyOn(api, "get").mockResolvedValue({ data: { data: { items: [{ ...base, id: "b", name: "Second Clinic" }], nextCursor: null } } });
+    render(<BrowseClient initialLoaded initialNextCursor="next-page" initialClinics={[{ ...base, id: "a", name: "First Clinic" }]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Load more clinics" }));
+    await waitFor(() => expect(request).toHaveBeenCalledWith("/public/clinics?sort=rating&cursor=next-page", expect.anything()));
+    expect(screen.getByRole("link", { name: "First Clinic" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Second Clinic" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Load more clinics" })).not.toBeInTheDocument();
+  });
+  it("restores discovery after opening a clinic and returning", async () => {
+    const clinic = { id: "a", name: "Surat Clinic", city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "" };
+    const request = vi.spyOn(api, "get").mockResolvedValue({ data: { data: [clinic] } });
+    const first = render(<BrowseClient initialLoaded initialClinics={[clinic]} />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Search by doctor, clinic name, or specialty" }), { target: { value: "heart" } });
+    fireEvent.click(screen.getByRole("group"));
+    first.unmount();
+    render(<BrowseClient initialLoaded initialClinics={[clinic]} />);
+    expect(screen.getByRole("textbox", { name: "Search by doctor, clinic name, or specialty" })).toHaveValue("heart");
+    await waitFor(() => expect(request).toHaveBeenCalledWith("/public/clinics?search=heart&sort=rating", expect.anything()));
+  });
+  it("opens a dedicated doctor profile while preserving the booking button", () => {
+    const clinic = { id: "clinic-1", name: "Surat Clinic", city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "", doctorCount: 1, doctorsSummary: [{ id: "doctor-1", name: "Rajesh", specialization: "General Medicine", fees: 300 }] };
+    render(<BrowseClient initialLoaded initialClinics={[clinic]} />);
+    const doctorLink = screen.getByRole("link", { name: /Rajesh/ });
+    expect(doctorLink).toHaveAttribute("href", "/doctor/doctor-1?clinicId=clinic-1");
+    doctorLink.addEventListener("click", (event) => event.preventDefault());
+    fireEvent.click(doctorLink);
+    expect(routePush).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /Book with Dr. Rajesh/ })).toBeInTheDocument();
   });
   it("offers retry after a failed load instead of reporting an empty clinic directory", async () => {
     vi.spyOn(api, "get").mockRejectedValueOnce(new Error("Offline")).mockResolvedValueOnce({ data: { data: [] } });

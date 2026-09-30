@@ -106,6 +106,15 @@ describe("Shared action and overlay behavior", () => {
 describe("Browse and booking continuity", () => {
   const clinic: ClinicDetail = { id: "clinic", name: "Test Clinic", city: "Surat", address: "Test street", phone: "", email: "", description: "Care", image_url: "", timings: "09:00-17:00", doctors: [{ id: "doctor", name: "Test Doctor", specialization: "General Physician", qualification: "MBBS", experience_years: 5, fees: 0, feeType: "free", timings: "09:00-17:00", working_days: "Monday-Saturday", description: "", image_url: "", bookingMode: "sequential_queue" }] };
 
+  it("shows honest fee and experience states without unsupported trust claims", () => {
+    const doctor = { ...clinic.doctors[0], fees: 0, feeType: "fixed" as const, qualification: "", experience_years: 0, rating: 5, reviewsCount: 0 };
+    render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={{ ...clinic, doctors: [doctor] }} /></ToastProvider></ThemeProvider>);
+    expect(screen.getAllByText("Ask clinic for fee").length).toBeGreaterThan(0);
+    expect(screen.getByText("Not listed")).toBeInTheDocument();
+    expect(screen.queryByText(/verified facility|accredited healthcare|cashless support/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/out of 5 from/i)).not.toBeInTheDocument();
+  });
+
   it("opens directions to recorded coordinates when both are valid", () => {
     render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={{ ...clinic, latitude: 21.17, longitude: 72.83 }} /></ToastProvider></ThemeProvider>);
     const link = screen.getByRole("link", { name: "Get Directions" });

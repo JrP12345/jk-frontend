@@ -7,7 +7,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import { hasAnyPermission, isRootUser } from "@/lib/permissions";
 import { useR2Upload } from "@/hooks/useR2Upload";
-import { RotateCw, Plus, Building2, MapPin, Phone, Mail, QrCode, MoreHorizontal, Edit3, Trash2, Archive, RotateCcw, Clock } from "lucide-react";
+import { RotateCw, Plus, Building2, MapPin, Phone, Mail, QrCode, MoreHorizontal, Edit3, Trash2, Archive, RotateCcw, Clock, Link2 } from "lucide-react";
 import ClinicQrPosterModal from "@/components/dashboard/ClinicQrPosterModal";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -21,6 +21,7 @@ interface Clinic {
   phone?: string;
   email?: string;
   description?: string;
+  brandColor?: string;
   image_url?: string;
   timings?: string;
   facilities?: string[];
@@ -42,6 +43,7 @@ export default function ClinicsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [qrClinic, setQrClinic] = useState<Clinic | null>(null);
+  const [websiteClinic, setWebsiteClinic] = useState<Clinic | null>(null);
   const [archivedClinics, setArchivedClinics] = useState<Clinic[]>([]);
   const [archivedError, setArchivedError] = useState<string | null>(null);
   const [loadingArchived, setLoadingArchived] = useState(false);
@@ -49,6 +51,16 @@ export default function ClinicsPage() {
   const [reactivatingId, setReactivatingId] = useState<string | null>(null);
   const { toast } = useToast();
   const { uploadFile } = useR2Upload();
+  const websiteUrl = websiteClinic && typeof window !== "undefined" ? `${window.location.origin}/browse/${websiteClinic.id}` : "";
+  const buttonSnippet = websiteUrl ? `<a href="${websiteUrl}" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#0F6F66;color:#fff;text-decoration:none;font:600 16px system-ui,sans-serif">Book Appointment</a>` : "";
+  const copyWebsiteText = async (value: string, title: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast({ title, description: "Ready to paste into your clinic website.", variant: "success" });
+    } catch {
+      toast({ title: "Could not copy", description: "Select and copy the text manually.", variant: "error" });
+    }
+  };
 
   // Load organizations list for Root Super-Admin selection
   useEffect(() => {
@@ -158,7 +170,7 @@ export default function ClinicsPage() {
   const openModal = () => {
     setEditingId(null);
     const defaultOrgId = organizations.length > 0 ? organizations[0].id || organizations[0]._id : "";
-    setFormData({ facilities: [], organizationId: defaultOrgId, upiVpa: "", merchantName: "" });
+    setFormData({ facilities: [], organizationId: defaultOrgId, upiVpa: "", merchantName: "", brandColor: "#0F6F66" });
     setClinicErrors({});
     setIsModalOpen(true);
   };
@@ -170,6 +182,7 @@ export default function ClinicsPage() {
       facilities: row.facilities || [],
       upiVpa: row.upiVpa || "",
       merchantName: row.merchantName || "",
+      brandColor: row.brandColor || "#0F6F66",
     });
     setClinicErrors({});
     setIsModalOpen(true);
@@ -439,6 +452,9 @@ export default function ClinicsPage() {
                   <QrCode className="w-3.5 h-3.5 mr-1 text-accent" />
                   QR Poster
                 </Button>
+                <Button size="sm" variant="outline" onClick={() => setWebsiteClinic(clinics[0] as Clinic)} className="rounded-xl text-xs font-semibold min-h-[44px] sm:min-h-[36px]">
+                  <Link2 className="w-3.5 h-3.5 mr-1" /> Website booking
+                </Button>
                 {canManageClinics && (
                   <Button
                     size="sm"
@@ -567,6 +583,7 @@ export default function ClinicsPage() {
                               icon: <QrCode className="w-4 h-4 text-accent" />,
                               onClick: () => setQrClinic(row),
                             },
+                            { label: "Website booking link", icon: <Link2 className="w-4 h-4 text-accent" />, onClick: () => setWebsiteClinic(row) },
                             {
                               label: "Edit Location",
                               icon: <Edit3 className="w-4 h-4 text-text-muted" />,
@@ -666,6 +683,9 @@ export default function ClinicsPage() {
                       </Button>
                     </div>
                   )}
+                  <Button size="sm" variant="outline" onClick={() => setWebsiteClinic(row)} className="w-full min-h-[42px] rounded-xl text-xs font-semibold">
+                    Website booking link
+                  </Button>
                 </div>
               )}
             />
@@ -909,6 +929,14 @@ export default function ClinicsPage() {
               value={formData.description || ""}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
+            <label className="block text-xs font-semibold text-text">Booking page accent
+              <select value={formData.brandColor || "#0F6F66"} onChange={(event) => setFormData({ ...formData, brandColor: event.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-text">
+                <option value="#0F6F66">Teal</option>
+                <option value="#1D4ED8">Blue</option>
+                <option value="#6D28D9">Violet</option>
+                <option value="#9A3412">Terracotta</option>
+              </select>
+            </label>
           </div>
 
           {/* Section 2: Facilities & Operating Hours */}
@@ -1002,6 +1030,14 @@ export default function ClinicsPage() {
         onClose={() => setQrClinic(null)}
         clinic={qrClinic}
       />
+      <Modal open={!!websiteClinic} onClose={() => setWebsiteClinic(null)} title="Website booking" description="Connect your existing website to this clinic's hosted booking page.">
+        <div className="space-y-4 text-sm">
+          <p className="text-text-secondary">Add the link to any Book Appointment button on your website. Patients will complete booking on this clinic's hosted page.</p>
+          <div><label className="mb-1 block text-xs font-semibold text-text">Booking link</label><div className="flex gap-2"><input readOnly value={websiteUrl} className="min-w-0 flex-1 rounded-lg border border-border bg-surface-alt px-3 text-xs text-text" /><Button size="sm" onClick={() => copyWebsiteText(websiteUrl, "Link copied")}>Copy link</Button></div></div>
+          <div><label className="mb-1 block text-xs font-semibold text-text">Paste-in HTML button</label><textarea readOnly value={buttonSnippet} rows={4} className="w-full rounded-lg border border-border bg-surface-alt p-3 font-mono text-xs text-text" /><Button size="sm" variant="outline" onClick={() => copyWebsiteText(buttonSnippet, "Button code copied")}>Copy button code</Button></div>
+          <p className="text-xs text-text-muted">The link stays valid while this clinic is active and online booking is available. No script, iframe, or website rebuild is required.</p>
+        </div>
+      </Modal>
     </div>
   );
 }

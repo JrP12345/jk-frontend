@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-async function getInitialClinics(): Promise<{ clinics: Clinic[]; filters?: ClinicFilters } | null> {
+async function getInitialClinics(): Promise<{ clinics: Clinic[]; filters?: ClinicFilters; nextCursor: string | null } | null> {
   try {
     const backendUrl =
       process.env.BACKEND_INTERNAL_URL ||
@@ -21,7 +21,7 @@ async function getInitialClinics(): Promise<{ clinics: Clinic[]; filters?: Clini
     });
     if (!res.ok) return null;
     const json = await res.json();
-    return Array.isArray(json.data) ? { clinics: json.data, filters: json.filters } : null;
+    return Array.isArray(json.data) ? { clinics: json.data, filters: json.filters, nextCursor: res.headers.get("X-Next-Cursor") || null } : null;
   } catch {
     return null;
   }
@@ -29,5 +29,5 @@ async function getInitialClinics(): Promise<{ clinics: Clinic[]; filters?: Clini
 
 export default async function BrowsePage() {
   const initialClinics = await getInitialClinics();
-  return <BrowseClient initialClinics={initialClinics?.clinics || []} initialFilters={initialClinics?.filters} initialLoaded={initialClinics !== null} />;
+  return <BrowseClient initialClinics={initialClinics?.clinics || []} initialFilters={initialClinics?.filters} initialNextCursor={initialClinics?.nextCursor} initialLoaded={initialClinics !== null} />;
 }

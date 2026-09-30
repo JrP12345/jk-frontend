@@ -40,6 +40,20 @@ export interface SubscriptionInfo {
   currentPeriodStart: string;
   currentPeriodEnd: string;
   planId: SaaSPlan;
+  summary: SubscriptionSummary;
+}
+
+export interface SubscriptionSummary {
+  planName: string;
+  planSlug: string | null;
+  status: "trial" | "active" | "expiring_soon" | "expired" | "cancelled" | "payment_pending" | "payment_failed" | "disabled" | "unavailable";
+  basis: "trial" | "free" | "paid" | "manual" | "unknown";
+  startedAt: string | null;
+  expiresAt: string | null;
+  daysRemaining: number | null;
+  bookingAvailable: boolean;
+  paymentStatus: "created" | "captured" | "failed" | "refunded" | null;
+  nextAction: "review" | "resolve_payment" | "upgrade" | "renew" | "none";
 }
 
 export interface UsageInfo {
@@ -138,7 +152,7 @@ export const billingService = {
   },
 
   // Verify Payment
-  async verifyPayment(data: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }, organizationId?: string) {
+  async verifyPayment(data: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }, organizationId?: string): Promise<{ success: boolean; pending?: boolean; message: string }> {
     const res = await api.post("/billing/verify-payment", { ...data, ...(organizationId ? { organizationId } : {}) });
     return res.data.data;
   },
@@ -171,8 +185,8 @@ export const billingService = {
     return res.data.data;
   },
 
-  async adminActivateSubscription(subscriptionId: string, planSlug: string = "starter", billingCycle: "monthly" | "annual" = "monthly") {
-    const res = await api.post(`/admin/billing/subscriptions/${subscriptionId}/activate`, { planSlug, billingCycle });
+  async adminActivateSubscription(subscriptionId: string, planSlug: string, billingCycle: "monthly" | "annual", reason: string) {
+    const res = await api.post(`/admin/billing/subscriptions/${subscriptionId}/activate`, { planSlug, billingCycle, reason });
     return res.data.data;
   },
 
