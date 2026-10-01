@@ -28,6 +28,10 @@ export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
   value?: string;
   onChange?: (e: { target: { name?: string; value: string } }) => void;
   containerClassName?: string;
+  compactOnMobile?: boolean;
+  iconOnly?: boolean;
+  minMenuWidth?: number;
+  align?: "left" | "right";
 }
 
 const triggerSizes: Record<SelectSize, string> = {
@@ -71,6 +75,10 @@ const Select = memo(
         onChange,
         id: propId,
         "aria-describedby": ariaDescribedByProp,
+        compactOnMobile,
+        iconOnly,
+        minMenuWidth,
+        align,
         ...rest
       },
       ref
@@ -125,9 +133,11 @@ const Select = memo(
         if (buttonRef.current) {
           const rect = buttonRef.current.getBoundingClientRect();
           setOwner(buttonRef.current.closest('[role="dialog"]')?.id || undefined);
-          setCoords(popoverPosition(rect, rect.width, 280));
+          const computedWidth = Math.max(rect.width, minMenuWidth || (compactOnMobile || iconOnly ? 210 : rect.width));
+          const autoAlign = align || (rect.left + computedWidth > (window.visualViewport?.width || window.innerWidth) - 16 ? "right" : "left");
+          setCoords(popoverPosition(rect, computedWidth, 280, autoAlign));
         }
-      }, []);
+      }, [align, compactOnMobile, iconOnly, minMenuWidth]);
 
       const handleToggle = () => {
         if (disabled) return;
@@ -294,8 +304,8 @@ const Select = memo(
             ))}
           </select>
 
-          <div className="relative flex items-center w-full">
-            {icon && (
+          <div className={cn("relative flex items-center", fullWidth && "w-full")}>
+            {icon && !compactOnMobile && !iconOnly && (
               <span
                 className={cn(
                   "absolute left-3 top-1/2 -translate-y-1/2 z-10 text-text-muted shrink-0 pointer-events-none",
@@ -325,33 +335,74 @@ const Select = memo(
               onClick={handleToggle}
               onKeyDown={handleKeyDown}
               className={cn(
-                "flex items-center justify-between w-full font-normal text-text text-left transform-gpu transition-all duration-200 ease-smooth focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt cursor-pointer",
-                triggerSizes[size],
+                "font-normal text-text text-left transform-gpu transition-all duration-200 ease-smooth focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt cursor-pointer relative",
+                iconOnly
+                  ? "w-9 h-9 min-w-[36px] min-h-[36px] p-0 flex items-center justify-center rounded-xl"
+                  : compactOnMobile
+                  ? "w-9 min-w-[36px] h-9 min-h-[36px] p-0 flex items-center justify-center rounded-xl sm:w-auto sm:min-w-0 sm:h-9 sm:px-3 sm:py-1.5 sm:gap-2 sm:justify-between sm:rounded-xl"
+                  : cn("flex items-center justify-between w-full", triggerSizes[size]),
                 variantStyles[variant],
-                icon && (size === "sm" ? "pl-9" : size === "lg" ? "pl-11" : "pl-10"),
+                !iconOnly && !compactOnMobile && icon && (size === "sm" ? "pl-9" : size === "lg" ? "pl-11" : "pl-10"),
                 visibleError && variant !== "flush" && "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:border-danger-500",
                 isOpen && variant !== "flush" && "border-primary-500 ring-2 ring-focus-ring",
                 className
               )}
             >
-              <span className={cn("truncate flex-1 min-w-0 text-left", !activeOption && "text-text-muted")}>
-                {activeOption ? activeOption.label : placeholder}
-              </span>
-              <svg
-                className={cn(
-                  "h-4 w-4 text-text-muted shrink-0 transition-transform duration-200 ease-smooth ml-auto",
-                  isOpen && "rotate-180"
-                )}
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-                  clipRule="evenodd"
-                />
-              </svg>
+              {iconOnly ? (
+                <>
+                  <span className="flex items-center justify-center shrink-0">{icon}</span>
+                  {activeOption && activeOption.value !== "" && activeOption.value !== "rating" && (
+                    <span className="w-2 h-2 rounded-full bg-accent absolute top-1.5 right-1.5 ring-2 ring-surface" aria-hidden="true" />
+                  )}
+                </>
+              ) : compactOnMobile ? (
+                <>
+                  <span className="sm:hidden flex items-center justify-center shrink-0">{icon}</span>
+                  {activeOption && activeOption.value !== "" && activeOption.value !== "rating" && (
+                    <span className="sm:hidden w-2 h-2 rounded-full bg-accent absolute top-1.5 right-1.5 ring-2 ring-surface" aria-hidden="true" />
+                  )}
+                  <span className="hidden sm:inline-flex items-center shrink-0">{icon}</span>
+                  <span className={cn("hidden sm:inline truncate flex-1 min-w-0 text-left text-xs font-medium", !activeOption && "text-text-muted")}>
+                    {activeOption ? activeOption.label : placeholder}
+                  </span>
+                  <svg
+                    className={cn(
+                      "hidden sm:block h-3.5 w-3.5 text-text-muted shrink-0 transition-transform duration-200 ease-smooth ml-1",
+                      isOpen && "rotate-180"
+                    )}
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </>
+              ) : (
+                <>
+                  <span className={cn("truncate flex-1 min-w-0 text-left", !activeOption && "text-text-muted")}>
+                    {activeOption ? activeOption.label : placeholder}
+                  </span>
+                  <svg
+                    className={cn(
+                      "h-4 w-4 text-text-muted shrink-0 transition-transform duration-200 ease-smooth ml-auto",
+                      isOpen && "rotate-180"
+                    )}
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </>
+              )}
             </button>
           </div>
 

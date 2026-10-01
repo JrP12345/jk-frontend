@@ -32,7 +32,7 @@ const sizes: Record<InputSize, string> = {
 const variantStyles: Record<InputVariant, string> = {
   default: "rounded-xl border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
   filled: "rounded-xl border border-transparent bg-surface-alt hover:bg-surface-hover focus-visible:bg-surface focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
-  flush: "rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:border-0 px-1 py-1 min-h-0",
+  flush: "rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:border-0 py-1 min-h-0",
   pill: "rounded-full border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
   inset: "rounded-xl border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
 };
