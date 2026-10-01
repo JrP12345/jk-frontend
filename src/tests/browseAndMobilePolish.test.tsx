@@ -48,11 +48,13 @@ describe("Mobile calendar and browse loading", () => {
   it("uses actual specialties and keeps full-directory cities/care choices after empty filtering", async () => {
     const request = vi.spyOn(api, "get").mockResolvedValue({ data: { data: [] } });
     render(<BrowseClient initialLoaded initialClinics={[{ id: "a", name: "Existing Clinic", city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "", specialties: ["General Physician / Consultant"] }]} initialFilters={{ cities: ["Surat", "Valsad"], specialties: ["Cardiology", "General Physician / Consultant"] }} />);
-    expect(screen.queryByRole("button", { name: "Pediatrics" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Cardiology" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Filter by specialty" }));
+    expect(screen.queryByRole("option", { name: "Pediatrics" })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("option", { name: "Cardiology" }));
     await waitFor(() => expect(request).toHaveBeenCalledWith("/public/clinics?specialization=Cardiology&sort=rating", expect.anything()));
     expect(await screen.findByText("No clinics found")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "General Physician / Consultant" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("combobox", { name: "Filter by specialty" }));
+    expect(screen.getByRole("option", { name: "General Physician / Consultant" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("combobox", { name: "Filter by location" }));
     expect(await screen.findByRole("option", { name: "Valsad" })).toBeInTheDocument();
   });
@@ -94,7 +96,18 @@ describe("Mobile calendar and browse loading", () => {
     doctorLink.addEventListener("click", (event) => event.preventDefault());
     fireEvent.click(doctorLink);
     expect(routePush).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: /Book with Dr. Rajesh/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Book Appointment" }));
+    expect(routePush).toHaveBeenCalledWith("/doctor/doctor-1?clinicId=clinic-1&openBooking=true");
+  });
+  it("routes paused and doctorless clinics to their contact page without promising an appointment", () => {
+    const base = { city: "Surat", address: "Clinic Road", phone: "9876543210", email: "", description: "", image_url: "", timings: "" };
+    render(<BrowseClient initialLoaded initialClinics={[
+      { ...base, id: "paused", name: "Paused Clinic", doctorCount: 1, bookingStatus: "contact_clinic", onlineBookingAvailable: false, doctorsSummary: [{ id: "doctor-1", name: "Rajesh", specialization: "Medicine", fees: 300 }] },
+      { ...base, id: "empty", name: "New Clinic", doctorCount: 0, bookingStatus: "no_doctors", onlineBookingAvailable: true, doctorsSummary: [] },
+    ]} />);
+    expect(screen.getByRole("link", { name: "Call clinic about appointments" })).toHaveAttribute("href", "tel:9876543210");
+    fireEvent.click(screen.getByRole("button", { name: "View clinic" }));
+    expect(routePush).toHaveBeenCalledWith("/browse/empty");
   });
   it("offers retry after a failed load instead of reporting an empty clinic directory", async () => {
     vi.spyOn(api, "get").mockRejectedValueOnce(new Error("Offline")).mockResolvedValueOnce({ data: { data: [] } });

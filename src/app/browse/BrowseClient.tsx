@@ -4,12 +4,13 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-import { Alert, Button, Input, Select, Badge, Card, EmptyState } from "@/components/ui";
+import { Alert, Button, Input, Select, Card, EmptyState } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import ClinicCardSkeletons from "@/components/ui/ClinicCardSkeletons";
-import { Search, MapPin, X, ChevronRight, Building2, Users, CreditCard, Camera, Star } from "lucide-react";
+import { Search, MapPin, ChevronRight, Building2, Users, CreditCard, Camera, Star, Stethoscope, ArrowUpDown } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
+import { getPublicBookingStatus, type PublicBookingStatus } from "@/lib/publicBooking";
 import { parseWeeklySchedule } from "@/lib/timing/clinicStatus";
 import { detectUserLocation, findMatchingClinicCity, DetectedLocation } from "@/lib/geo/locationDetector";
 
@@ -18,6 +19,7 @@ interface DoctorSummary {
   name: string;
   specialization: string;
   fees?: number;
+  feeType?: "fixed" | "free" | "post_consultation";
 }
 
 export interface Clinic {
@@ -41,11 +43,23 @@ export interface Clinic {
   reviewsCount?: number;
   specialties?: string[];
   doctorsSummary?: DoctorSummary[];
+  onlineBookingAvailable?: boolean;
+  bookingStatus?: PublicBookingStatus;
 }
 
 export interface ClinicFilters {
   cities: string[];
   specialties: string[];
+}
+
+function directoryDoctorFeeLabel(doctor: DoctorSummary, currency: string): string {
+  if (doctor.feeType === "free") return "Free";
+  if (doctor.feeType === "post_consultation") return doctor.fees && doctor.fees > 0 ? `From ${formatCurrency(doctor.fees, currency)}` : "Fee decided after consultation";
+  return doctor.fees && doctor.fees > 0 ? formatCurrency(doctor.fees, currency) : "Fee not listed";
+}
+
+function directoryMinimumFeeLabel(fee: number, currency: string): string {
+  return fee === 0 ? "Free consultation available" : `From ${formatCurrency(fee, currency)}`;
 }
 
 function ClinicImage({ src, name }: { src: string | undefined; name: string }) {
@@ -77,7 +91,7 @@ export function normalizeClinics(input: unknown): Clinic[] {
     const id = string(raw.id || raw._id);
     if (!id || seen.has(id)) return [];
     seen.add(id);
-    return [{ ...raw, id, name: string(raw.name) || "Healthcare facility", city: string(raw.city), address: string(raw.address), phone: string(raw.phone), email: string(raw.email), description: string(raw.description), image_url: string(raw.image_url), logo_url: string(raw.logo_url), organizationName: string(raw.organizationName), currency: /^[A-Z]{3}$/.test(string(raw.currency).toUpperCase()) ? string(raw.currency).toUpperCase() : "INR", timings: typeof raw.timings === "object" && raw.timings ? JSON.stringify(raw.timings) : string(raw.timings), images: strings(raw.images), facilities: strings(raw.facilities), specialties: strings(raw.specialties), doctorCount: number(raw.doctorCount), minFee: number(raw.minFee), rating: number(raw.rating), reviewsCount: number(raw.reviewsCount), doctorsSummary: Array.isArray(raw.doctorsSummary) ? raw.doctorsSummary.filter((doc: DoctorSummary) => doc && string(doc.id) && string(doc.name)).map((doc: DoctorSummary) => ({ ...doc, name: string(doc.name), specialization: string(doc.specialization) || "Specialty not listed", fees: number(doc.fees) })) : [] }];
+    return [{ ...raw, id, name: string(raw.name) || "Healthcare facility", city: string(raw.city), address: string(raw.address), phone: string(raw.phone), email: string(raw.email), description: string(raw.description), image_url: string(raw.image_url), logo_url: string(raw.logo_url), organizationName: string(raw.organizationName), currency: /^[A-Z]{3}$/.test(string(raw.currency).toUpperCase()) ? string(raw.currency).toUpperCase() : "INR", timings: typeof raw.timings === "object" && raw.timings ? JSON.stringify(raw.timings) : string(raw.timings), images: strings(raw.images), facilities: strings(raw.facilities), specialties: strings(raw.specialties), doctorCount: number(raw.doctorCount), minFee: number(raw.minFee), rating: number(raw.rating), reviewsCount: number(raw.reviewsCount), onlineBookingAvailable: typeof raw.onlineBookingAvailable === "boolean" ? raw.onlineBookingAvailable : undefined, bookingStatus: getPublicBookingStatus({ bookingStatus: raw.bookingStatus, onlineBookingAvailable: raw.onlineBookingAvailable, doctorCount: number(raw.doctorCount) }), doctorsSummary: Array.isArray(raw.doctorsSummary) ? raw.doctorsSummary.filter((doc: DoctorSummary) => doc && string(doc.id) && string(doc.name)).map((doc: DoctorSummary) => ({ ...doc, name: string(doc.name), specialization: string(doc.specialization) || "Specialty not listed", fees: number(doc.fees), feeType: doc.feeType })) : [] }];
   });
 }
 
@@ -307,9 +321,9 @@ export default function BrowseClient({
   const handleBookingAction = (e: React.MouseEvent, clinic: Clinic) => {
     e.stopPropagation();
     rememberPosition();
-    if (clinic.doctorCount === 1 && clinic.doctorsSummary && clinic.doctorsSummary.length === 1) {
+    if (getPublicBookingStatus(clinic) === "check_availability" && clinic.doctorCount === 1 && clinic.doctorsSummary && clinic.doctorsSummary.length === 1) {
       const doc = clinic.doctorsSummary[0];
-      router.push(`/browse/${clinic.id}?doctorId=${doc.id}&openBooking=true`);
+      router.push(`/doctor/${encodeURIComponent(doc.id)}?clinicId=${encodeURIComponent(clinic.id)}&openBooking=true`);
     } else {
       router.push(`/browse/${clinic.id}`);
     }
@@ -351,39 +365,39 @@ export default function BrowseClient({
 
       {/* Hero Header Section - Clean Modern Healthcare Design */}
       <section className="relative pt-20 sm:pt-24 pb-4 sm:pb-6 brand-wash border-b border-border/50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
-          <h1 className="text-[1.75rem] sm:text-4xl lg:text-5xl font-bold text-text tracking-tight mb-2 leading-tight max-w-3xl mx-auto text-balance" suppressHydrationWarning>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 relative z-10 text-center">
+          <h1 className="text-xl min-[400px]:text-2xl sm:text-3xl md:text-4xl lg:text-[2.6rem] font-bold text-text tracking-tight mb-2 leading-tight max-w-4xl mx-auto text-balance sm:whitespace-nowrap" suppressHydrationWarning>
             {"Find and book"}{" "}
             <span className="text-accent" suppressHydrationWarning>{"care that fits your needs"}</span>
           </h1>
-          <p className="text-text-secondary text-sm max-w-lg mx-auto mb-4 sm:mb-6 leading-relaxed" suppressHydrationWarning>
+          <p className="text-text-secondary text-xs sm:text-sm max-w-lg mx-auto mb-4 sm:mb-6 leading-relaxed" suppressHydrationWarning>
             {"Compare clinics and doctors, then book a visit that suits you."}
           </p>
 
           {/* Unified Streamlined Search Console: Search + City Selector */}
-          <div className="max-w-3xl mx-auto">
-            <div className="glass-surface rounded-2xl p-1.5 focus-within:ring-2 focus-within:ring-focus-ring/40 transition-[border-color,box-shadow] duration-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-1 sm:gap-2">
+          <div className="max-w-4xl mx-auto mt-1 sm:mt-2">
+            <div className="glass-surface rounded-2xl sm:rounded-full p-2 sm:p-2.5 focus-within:ring-2 focus-within:ring-focus-ring/40 focus-within:border-accent/50 transition-[border-color,box-shadow] duration-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2 shadow-md bg-surface/90 backdrop-blur-md">
               {/* Keyword Search Input with Inside Icon */}
               <div className="flex-1 min-w-0">
                 <Input
                   variant="flush"
                   disabled={loadingOnly}
-                  size="sm"
-                  icon={<Search className="w-4 h-4 text-text-muted" strokeWidth={1.75} />}
+                  size="md"
+                  icon={<Search className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-accent/80 shrink-0" strokeWidth={2} />}
                   placeholder={"Search clinics, doctors or specialties"}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onClear={() => setSearchQuery("")}
-                  className="text-sm font-normal py-2"
+                  className="text-sm sm:text-base font-normal py-2 sm:py-2.5 pl-10 sm:pl-11 pr-3 min-h-[46px] sm:min-h-[48px]"
                   containerClassName="w-full"
                   aria-label="Search by doctor, clinic name, or specialty"
                 />
               </div>
 
               {/* Location Select Dropdown with Inside Icon */}
-              <div className="w-full sm:w-48 shrink-0 border-t sm:border-t-0 sm:border-l border-border/70 pt-1 sm:pt-0 sm:pl-2">
+              <div className="w-full sm:w-52 md:w-60 shrink-0 border-t sm:border-t-0 sm:border-l border-border/70 pt-1.5 sm:pt-0 sm:pl-3">
                 <Select
-                  icon={<MapPin className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />}
+                  icon={<MapPin className="w-4 h-4 text-accent/80 shrink-0" strokeWidth={1.75} />}
                   value={selectedCity}
                   disabled={loadingOnly}
                   onChange={(e) => handleCitySelect(e.target.value)}
@@ -391,89 +405,13 @@ export default function BrowseClient({
                     { value: "", label: "All Cities" },
                     ...allCities.map((c) => ({ value: c, label: c })),
                   ]}
-                  size="sm"
+                  size="md"
                   variant="flush"
-                  className="rounded-xl md:rounded-full text-xs w-full min-h-[38px] sm:min-h-0 focus-visible:bg-surface-alt"
+                  className="rounded-xl sm:rounded-full text-xs sm:text-sm font-medium w-full min-h-[42px] sm:min-h-[46px] focus-visible:bg-surface-alt"
                   aria-label="Filter by location"
                 />
               </div>
             </div>
-
-            {/* Specialty 1-Tap Quick Filter Pills Carousel */}
-            {quickSpecialties.length > 1 && <div role="group" aria-label="Filter by specialty" className="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
-              <span className="text-[11px] font-semibold text-text-muted shrink-0 mr-1 hidden sm:inline-block">
-                {"Care:"}
-              </span>
-              {quickSpecialties.map((qs) => {
-                const isActive = selectedSpecialty === qs.value;
-                return (
-                  <button
-                    key={qs.value}
-                    type="button"
-                    onClick={() => setSelectedSpecialty(isActive && qs.value !== "" ? "" : qs.value)}
-                    aria-pressed={isActive}
-                    className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer min-h-11 flex items-center justify-center ${
-                      isActive
-                        ? "bg-primary-500/15 text-accent dark:text-accent font-bold ring-1 ring-focus-ring"
-                        : "hover:bg-surface-hover text-text-secondary hover:text-text"
-                    }`}
-                  >
-                    <span>{qs.label}</span>
-                  </button>
-                );
-              })}
-            </div>}
-
-            {/* Active Filter Badges */}
-            {hasActiveFilters && (
-              <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-2.5 sm:mt-3 pt-1">
-                <span className="text-[11px] font-semibold text-text-muted">
-                  {"Active:"}
-                </span>
-                {debouncedSearch && (
-                  <Badge variant="neutral" className="flex items-center gap-1.5 py-0.5 px-2.5 text-xs bg-surface border border-border">
-                    <span className="truncate max-w-[140px]">"{debouncedSearch}"</span>
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className="hover:text-danger-text ml-1 cursor-pointer p-2 rounded-full min-h-11 min-w-11 inline-flex items-center justify-center"
-                      aria-label="Remove search filter"
-                    >
-                      <X className="w-3 h-3" strokeWidth={1.75} />
-                    </button>
-                  </Badge>
-                )}
-                {selectedCity && (
-                  <Badge variant="neutral" className="flex items-center gap-1.5 py-0.5 px-2.5 text-xs bg-surface border border-border">
-                    <span>{selectedCity}</span>
-                    <button
-                      onClick={() => handleCitySelect("")}
-                      className="hover:text-danger-text ml-1 cursor-pointer p-2 rounded-full min-h-11 min-w-11 inline-flex items-center justify-center"
-                      aria-label="Remove city filter"
-                    >
-                      <X className="w-3 h-3" strokeWidth={1.75} />
-                    </button>
-                  </Badge>
-                )}
-                {selectedSpecialty && (
-                  <Badge variant="neutral" className="flex items-center gap-1.5 py-0.5 px-2.5 text-xs bg-surface border border-border">
-                    <span>{selectedSpecialty}</span>
-                    <button
-                      onClick={() => setSelectedSpecialty("")}
-                      className="hover:text-danger-text ml-1 cursor-pointer p-2 rounded-full min-h-11 min-w-11 inline-flex items-center justify-center"
-                      aria-label="Remove specialty filter"
-                    >
-                      <X className="w-3 h-3" strokeWidth={1.75} />
-                    </button>
-                  </Badge>
-                )}
-                <button
-                  onClick={resetAllFilters}
-                  className="text-[11px] font-bold text-accent hover:text-accent underline cursor-pointer ml-1 py-1"
-                >
-                  {"Reset all"}
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </section>
@@ -523,17 +461,31 @@ export default function BrowseClient({
               </span>
             )}
 
-          <div className="order-2 sm:order-3 ml-auto flex items-center gap-2 shrink-0">
-            <span className="text-xs sm:text-sm font-medium text-text-secondary whitespace-nowrap">Sort by</span>
+          <div className="order-2 sm:order-3 ml-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {quickSpecialties.length > 1 && (
+              <Select
+                icon={<Stethoscope className="w-3.5 h-3.5 text-accent shrink-0" strokeWidth={1.75} />}
+                value={selectedSpecialty}
+                disabled={loadingOnly}
+                onChange={(e) => setSelectedSpecialty(e.target.value)}
+                options={quickSpecialties}
+                size="sm"
+                fullWidth={false}
+                containerClassName="w-28 min-[400px]:w-32 sm:w-36 min-w-0 shrink-0"
+                className="rounded-xl font-medium"
+                aria-label="Filter by specialty"
+              />
+            )}
             <Select
+              icon={<ArrowUpDown className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />}
               value={sortBy}
               disabled={loadingOnly}
               onChange={(e) => setSortBy(e.target.value)}
               options={localizedSortOptions}
               size="sm"
               fullWidth={false}
-              containerClassName="w-28 min-[380px]:w-32 sm:w-40 min-w-0 shrink-0"
-              className="rounded-xl"
+              containerClassName="w-26 min-[400px]:w-28 sm:w-32 min-w-0 shrink-0"
+              className="rounded-xl font-medium"
               aria-label="Sort clinics by"
             />
           </div>
@@ -564,9 +516,14 @@ export default function BrowseClient({
           /* Modern Healthcare Clinic Card Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {sortedClinics.map((clinic) => {
+              const bookingStatus = getPublicBookingStatus(clinic);
               const hasSingleDoctor = clinic.doctorCount === 1 && clinic.doctorsSummary && clinic.doctorsSummary.length === 1;
               const singleDoctor = hasSingleDoctor ? clinic.doctorsSummary![0] : null;
               const hasClinicHours = parseWeeklySchedule(clinic.timings).hasExplicitSchedule;
+              const doctorMatches = debouncedSearch.trim().toLocaleLowerCase();
+              const previewDoctors = doctorMatches
+                ? [...(clinic.doctorsSummary || [])].sort((a, b) => Number(b.name.toLocaleLowerCase().includes(doctorMatches) || b.specialization.toLocaleLowerCase().includes(doctorMatches)) - Number(a.name.toLocaleLowerCase().includes(doctorMatches) || a.specialization.toLocaleLowerCase().includes(doctorMatches)))
+                : clinic.doctorsSummary || [];
 
               return (
                 <Card
@@ -637,7 +594,7 @@ export default function BrowseClient({
                         <span className="font-medium text-text flex items-center gap-1">
                           <CreditCard className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
                           <span>
-                            {"From"} {formatCurrency(clinic.minFee, clinic.currency || "INR")}
+                            {directoryMinimumFeeLabel(clinic.minFee, clinic.currency || "INR")}
                           </span>
                         </span>
                       )}
@@ -657,7 +614,7 @@ export default function BrowseClient({
                             {"Practicing Specialist"}
                           </span>
                           <span className="text-[11px] font-bold text-success-text dark:text-success-text">
-                            {singleDoctor.fees == null ? "Fee not listed" : formatCurrency(singleDoctor.fees, clinic.currency || "INR")}
+                            {directoryDoctorFeeLabel(singleDoctor, clinic.currency || "INR")}
                           </span>
                         </div>
                         <p className="text-sm font-semibold text-text break-words">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
@@ -671,12 +628,12 @@ export default function BrowseClient({
                           </span>
                           {clinic.minFee !== undefined && clinic.minFee !== null && (
                             <span className="text-[11px] font-bold text-success-text dark:text-success-text">
-                              {"From"} {formatCurrency(clinic.minFee, clinic.currency || "INR")}
+                              {directoryMinimumFeeLabel(clinic.minFee, clinic.currency || "INR")}
                             </span>
                           )}
                         </div>
                         <div className="space-y-1">
-                          {clinic.doctorsSummary.slice(0, 2).map((doc) => (
+                          {previewDoctors.slice(0, 2).map((doc) => (
                             <Link key={doc.id} href={`/doctor/${encodeURIComponent(doc.id)}?clinicId=${encodeURIComponent(clinic.id)}`} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block space-y-0.5 rounded-lg text-xs hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
                               <span className="block font-medium text-text break-words">
                                 Dr. {doc.name.replace(/^Dr\.?\s*/i, "")}
@@ -732,21 +689,21 @@ export default function BrowseClient({
 
                     {/* Actions Bar */}
                     <div className="flex items-center gap-2">
-                      <Button
+                      {bookingStatus === "contact_clinic" && clinic.phone ? <a href={`tel:${clinic.phone.replace(/\s+/g, "")}`} onClick={(event) => event.stopPropagation()} className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-3.5 text-sm font-bold text-brand-mist shadow-xs hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Call clinic about appointments</a> : <Button
                         variant="primary"
                         size="sm"
                         className="w-full font-bold rounded-xl shadow-xs min-h-[44px] flex items-center justify-center gap-1.5 group/btn cursor-pointer"
                         onClick={(e) => handleBookingAction(e, clinic)}
                       >
                         <span>
-                          {hasSingleDoctor && singleDoctor
-                            ? `${"Book with"} Dr. ${singleDoctor.name.replace(/^Dr\.?\s*/i, "")}`
-                            : `${"View Doctors & Book"} ${
-                                clinic.doctorCount ? `(${clinic.doctorCount})` : ""
-                              }`}
+                          {bookingStatus === "contact_clinic"
+                            ? "View contact options"
+                            : bookingStatus === "no_doctors"
+                            ? "View clinic"
+                            : "Book Appointment"}
                         </span>
-                        <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" strokeWidth={2} />
-                      </Button>
+                        <ChevronRight className="w-4 h-4 shrink-0 group-hover/btn:translate-x-0.5 transition-transform" strokeWidth={2} />
+                      </Button>}
                     </div>
                   </div>
                 </Card>

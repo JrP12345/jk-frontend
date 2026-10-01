@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import api from "@/lib/api";
+import type { ClinicDetail } from "@/app/browse/[id]/BrowseDetailClient";
+import { getPublicBookingStatus } from "@/lib/publicBooking";
+import { parseWeeklySchedule } from "@/lib/timing/clinicStatus";
 import { Alert, Card, CardContent, Table, Button, Modal, Input, useToast, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, SkeletonTable, Dropdown, StatCard, cn } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
@@ -44,6 +48,10 @@ export default function ClinicsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [qrClinic, setQrClinic] = useState<Clinic | null>(null);
   const [websiteClinic, setWebsiteClinic] = useState<Clinic | null>(null);
+  const [websitePublicResponse, setWebsitePublicResponse] = useState<{ clinicId: string; data: ClinicDetail } | null>(null);
+  const [websiteDetailLoadingFor, setWebsiteDetailLoadingFor] = useState<string | null>(null);
+  const [websiteDetailErrorFor, setWebsiteDetailErrorFor] = useState<string | null>(null);
+  const [websiteDetailRetry, setWebsiteDetailRetry] = useState(0);
   const [archivedClinics, setArchivedClinics] = useState<Clinic[]>([]);
   const [archivedError, setArchivedError] = useState<string | null>(null);
   const [loadingArchived, setLoadingArchived] = useState(false);
@@ -52,7 +60,44 @@ export default function ClinicsPage() {
   const { toast } = useToast();
   const { uploadFile } = useR2Upload();
   const websiteUrl = websiteClinic && typeof window !== "undefined" ? `${window.location.origin}/browse/${websiteClinic.id}` : "";
-  const buttonSnippet = websiteUrl ? `<a href="${websiteUrl}" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#0F6F66;color:#fff;text-decoration:none;font:600 16px system-ui,sans-serif">Book Appointment</a>` : "";
+  const websitePublicDetail = websitePublicResponse && websitePublicResponse.clinicId === websiteClinic?.id ? websitePublicResponse.data : null;
+  const websiteDetailLoading = websiteDetailLoadingFor === websiteClinic?.id;
+  const websiteDetailError = websiteDetailErrorFor === websiteClinic?.id;
+  const publicBookingStatus = websitePublicDetail ? getPublicBookingStatus({ ...websitePublicDetail, doctorCount: websitePublicDetail.doctors.length }) : null;
+  const websiteButtonLabel = publicBookingStatus === "check_availability" ? "Check appointments" : publicBookingStatus === "contact_clinic" ? "Contact clinic" : "View clinic";
+  const buttonSnippet = websiteUrl ? `<a href="${websiteUrl}" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#0F6F66;color:#fff;text-decoration:none;font:600 16px system-ui,sans-serif">${websiteButtonLabel}</a>` : "";
+  const websiteChecklist = websitePublicDetail ? [
+    { label: "At least one doctor is listed", complete: websitePublicDetail.doctors.length > 0 },
+    { label: "Online appointments are enabled", complete: publicBookingStatus === "check_availability" },
+    { label: "A contact number is listed", complete: Boolean(websitePublicDetail.phone || websitePublicDetail.organization?.phone) },
+    { label: "The clinic address is listed", complete: Boolean(websitePublicDetail.address || websitePublicDetail.organization?.address) },
+    { label: "Opening hours are listed", complete: parseWeeklySchedule(websitePublicDetail.timings).hasExplicitSchedule },
+    { label: "Consultation fees are clear", complete: websitePublicDetail.doctors.length > 0 && websitePublicDetail.doctors.every((doctor) => doctor.feeType === "free" || doctor.feeType === "post_consultation" || doctor.fees > 0) },
+  ] : [];
+
+  const openWebsiteBooking = (clinic: Clinic) => {
+    setWebsitePublicResponse(null);
+    setWebsiteDetailLoadingFor(clinic.id);
+    setWebsiteDetailErrorFor(null);
+    setWebsiteClinic(clinic);
+  };
+  const retryWebsiteDetail = () => {
+    if (!websiteClinic) return;
+    setWebsitePublicResponse(null);
+    setWebsiteDetailLoadingFor(websiteClinic.id);
+    setWebsiteDetailErrorFor(null);
+    setWebsiteDetailRetry((value) => value + 1);
+  };
+
+  useEffect(() => {
+    if (!websiteClinic) return;
+    const controller = new AbortController();
+    api.get(`/public/clinics/${encodeURIComponent(websiteClinic.id)}`, { signal: controller.signal })
+      .then((response) => { if (!controller.signal.aborted) { if (response.data?.data) setWebsitePublicResponse({ clinicId: websiteClinic.id, data: response.data.data }); else setWebsiteDetailErrorFor(websiteClinic.id); } })
+      .catch(() => { if (!controller.signal.aborted) setWebsiteDetailErrorFor(websiteClinic.id); })
+      .finally(() => { if (!controller.signal.aborted) setWebsiteDetailLoadingFor(null); });
+    return () => controller.abort();
+  }, [websiteClinic, websiteDetailRetry]);
   const copyWebsiteText = async (value: string, title: string) => {
     try {
       await navigator.clipboard.writeText(value);
@@ -452,7 +497,7 @@ export default function ClinicsPage() {
                   <QrCode className="w-3.5 h-3.5 mr-1 text-accent" />
                   QR Poster
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setWebsiteClinic(clinics[0] as Clinic)} className="rounded-xl text-xs font-semibold min-h-[44px] sm:min-h-[36px]">
+                <Button size="sm" variant="outline" onClick={() => openWebsiteBooking(clinics[0] as Clinic)} className="rounded-xl text-xs font-semibold min-h-[44px] sm:min-h-[36px]">
                   <Link2 className="w-3.5 h-3.5 mr-1" /> Website booking
                 </Button>
                 {canManageClinics && (
@@ -583,7 +628,7 @@ export default function ClinicsPage() {
                               icon: <QrCode className="w-4 h-4 text-accent" />,
                               onClick: () => setQrClinic(row),
                             },
-                            { label: "Website booking link", icon: <Link2 className="w-4 h-4 text-accent" />, onClick: () => setWebsiteClinic(row) },
+                            { label: "Website booking link", icon: <Link2 className="w-4 h-4 text-accent" />, onClick: () => openWebsiteBooking(row) },
                             {
                               label: "Edit Location",
                               icon: <Edit3 className="w-4 h-4 text-text-muted" />,
@@ -683,7 +728,7 @@ export default function ClinicsPage() {
                       </Button>
                     </div>
                   )}
-                  <Button size="sm" variant="outline" onClick={() => setWebsiteClinic(row)} className="w-full min-h-[42px] rounded-xl text-xs font-semibold">
+                  <Button size="sm" variant="outline" onClick={() => openWebsiteBooking(row)} className="w-full min-h-[42px] rounded-xl text-xs font-semibold">
                     Website booking link
                   </Button>
                 </div>
@@ -1032,10 +1077,20 @@ export default function ClinicsPage() {
       />
       <Modal open={!!websiteClinic} onClose={() => setWebsiteClinic(null)} title="Website booking" description="Connect your existing website to this clinic's hosted booking page.">
         <div className="space-y-4 text-sm">
-          <p className="text-text-secondary">Add the link to any Book Appointment button on your website. Patients will complete booking on this clinic's hosted page.</p>
+          <p className="text-text-secondary">Add this link to your website. Patients can view clinic information and check appointments when online booking is available.</p>
+          <div className="rounded-xl border border-border bg-surface-alt p-3" aria-live="polite">
+            <p className="font-semibold text-text">Public page readiness</p>
+            {websiteDetailLoading && <p className="mt-2 text-xs text-text-secondary">Checking the public page…</p>}
+            {websiteDetailError && <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-secondary"><span>Could not check the public page right now.</span><Button size="sm" variant="outline" onClick={retryWebsiteDetail}>Try again</Button></div>}
+            {websitePublicDetail && <>
+              <p className="mt-1 text-xs text-text-secondary">{publicBookingStatus === "check_availability" ? "Patients can check appointment times." : publicBookingStatus === "contact_clinic" ? "Patients can view the page and contact your clinic; online booking is paused." : "Patients can view the page, but no doctors are listed yet."}</p>
+              <ul className="mt-3 grid gap-1.5 text-xs sm:grid-cols-2">{websiteChecklist.map((item) => <li key={item.label} className="flex items-start gap-2"><span aria-hidden="true" className={item.complete ? "text-success-text" : "text-warning-text"}>{item.complete ? "✓" : "○"}</span><span>{item.label}</span></li>)}</ul>
+              {websiteChecklist.some((item) => !item.complete) && <div className="mt-3 flex flex-wrap gap-3"><Button size="sm" variant="outline" onClick={() => { if (websiteClinic) { openEditModal(websiteClinic); setWebsiteClinic(null); } }}>Edit clinic details</Button><Link href="/dashboard/staff" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent hover:underline">Manage doctors</Link></div>}
+            </>}
+          </div>
           <div><label className="mb-1 block text-xs font-semibold text-text">Booking link</label><div className="flex gap-2"><input readOnly value={websiteUrl} className="min-w-0 flex-1 rounded-lg border border-border bg-surface-alt px-3 text-xs text-text" /><Button size="sm" onClick={() => copyWebsiteText(websiteUrl, "Link copied")}>Copy link</Button></div></div>
           <div><label className="mb-1 block text-xs font-semibold text-text">Paste-in HTML button</label><textarea readOnly value={buttonSnippet} rows={4} className="w-full rounded-lg border border-border bg-surface-alt p-3 font-mono text-xs text-text" /><Button size="sm" variant="outline" onClick={() => copyWebsiteText(buttonSnippet, "Button code copied")}>Copy button code</Button></div>
-          <p className="text-xs text-text-muted">The link stays valid while this clinic is active and online booking is available. No script, iframe, or website rebuild is required.</p>
+          <p className="text-xs text-text-muted">The public page stays available while the clinic is active. If online appointments are paused, patients see contact options. No script, iframe, or website rebuild is required.</p>
         </div>
       </Modal>
     </div>

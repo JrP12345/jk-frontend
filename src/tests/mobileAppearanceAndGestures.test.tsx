@@ -67,6 +67,12 @@ describe("Appearance preferences", () => {
     expect(screen.getByText("Sign in").closest("a")).toHaveAttribute("href", "/login");
     expect(screen.queryByRole("button", { name: "Toggle Menu" })).not.toBeInTheDocument();
   });
+  it("uses the clinic identity for a linked booking page", () => {
+    render(<ThemeProvider><MarketplaceNavbar brand={{ name: "Surat Clinic", logoUrl: "/clinic-logo.png", href: "/browse/clinic-1" }} /></ThemeProvider>);
+    const identity = screen.getByRole("link", { name: /Surat Clinic.*Appointments powered by Ekavyu/ });
+    expect(identity).toHaveAttribute("href", "/browse/clinic-1");
+    expect(identity.querySelector("img")).toHaveAttribute("src", "/clinic-logo.png");
+  });
   it("keeps the account menu compact and supports swipe-up or Escape to close it", () => {
     useAuthStore.setState({ user: { id: "patient", name: "Patient", email: "patient@test.com", role: "patient", permissions: [] }, isAuthenticated: true, isLoading: false });
     render(<ThemeProvider><MarketplaceNavbar /></ThemeProvider>);

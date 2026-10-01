@@ -298,7 +298,7 @@ const Select = memo(
             {icon && (
               <span
                 className={cn(
-                  "absolute left-3 top-1/2 -translate-y-1/2 text-text-muted shrink-0 pointer-events-none",
+                  "absolute left-3 top-1/2 -translate-y-1/2 z-10 text-text-muted shrink-0 pointer-events-none",
                   iconSizes[size]
                 )}
               >

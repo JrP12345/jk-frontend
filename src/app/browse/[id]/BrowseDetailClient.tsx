@@ -9,6 +9,7 @@ import { appointmentPaymentLabel, appointmentBookingLabel } from "@/lib/appointm
 import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
 
 import { useEffect, useState, useMemo, useRef } from "react";
+import type { ReactNode } from "react";
 import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -16,10 +17,11 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { vibrateFeedback } from "@/lib/haptics";
 import { clinicDateKey, clinicClockMinutes, addCalendarDays, clinicLocalTimeToIso } from "@/lib/clinicTime";
+import { getPublicBookingStatus, type PublicBookingStatus } from "@/lib/publicBooking";
 import { useAuthStore } from "@/store/authStore";
-import { Card, CardContent, CardHeader, CardTitle, Button, Modal, Input, useToast, Badge, Breadcrumbs } from "@/components/ui";
+import { Card, CardContent, CardHeader, CardTitle, Button, Modal, Input, Select, useToast, Badge, Breadcrumbs } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
-import { AlertCircle, MapPin, Phone, Clock, Building2, Calendar, ExternalLink, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, Star, UserCheck, User, Smartphone, Share2, Mail, FileText, CalendarOff, Camera, X, ChevronLeft, MessageSquare } from "lucide-react";
+import { AlertCircle, MapPin, Phone, Clock, Building2, Calendar, ExternalLink, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, Star, UserCheck, User, Smartphone, Share2, Mail, FileText, CalendarOff, Camera, X, ChevronLeft, MessageSquare, Search } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { detectPatientOtpTarget } from "@/lib/patientLogin";
 import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
@@ -68,6 +70,7 @@ export interface ClinicDetail {
   countryCode?: string;
   timezone?: string;
   onlineBookingAvailable?: boolean;
+  bookingStatus?: PublicBookingStatus;
   images?: string[];
   organization?: {
     id: string;
@@ -91,6 +94,33 @@ interface SlotItem {
   time: string;
   available: boolean;
   isLocked?: boolean;
+}
+
+interface FamilyMember {
+  relationship?: string;
+  patient?: { id?: string; _id?: string; name?: string };
+}
+
+function BookingSurface({ inline, open, onClose, title, subtitle, footer, busy, children }: {
+  inline: boolean;
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  subtitle?: string;
+  footer: ReactNode;
+  busy: boolean;
+  children: ReactNode;
+}) {
+  if (inline) return <section aria-labelledby="booking-title" className="rounded-2xl border border-border bg-surface">
+    <header className="border-b border-border px-4 py-4 sm:px-6">
+      <p className="text-xs font-semibold uppercase tracking-wide text-accent">Online appointments</p>
+      <h2 id="booking-title" className="mt-1 text-xl font-bold text-text">{title}</h2>
+      {subtitle && <p className="mt-1 text-sm text-text-secondary">{subtitle}</p>}
+    </header>
+    <div className="px-4 py-5 sm:px-6">{children}</div>
+    <div className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 border-t border-border bg-surface px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">{footer}</div>
+  </section>;
+  return <Modal open={open} onClose={onClose} title={title} size="xl" presentation="sheet" busy={busy} footerClassName="!flex-row" footer={footer}>{children}</Modal>;
 }
 
 // ─── Helper: Format 24-hour time to 12-hour AM/PM ─────────────────
@@ -225,9 +255,15 @@ function parseDoctorWorkingSchedule(timingsStr: string | null | undefined, dayNa
 export default function BrowseDetailClient({
   id,
   initialClinic = null,
+  bookingDoctorId,
+  bookingOnly = false,
+  bookingName,
 }: {
   id: string;
   initialClinic?: ClinicDetail | null;
+  bookingDoctorId?: string;
+  bookingOnly?: boolean;
+  bookingName?: string;
 }) {
   const renderTimings = (timingsStr: string | null | undefined, compact = false) => {
     const todayDayIndex = new Date().getDay();
@@ -244,7 +280,6 @@ export default function BrowseDetailClient({
     if (!timingsStr) {
       return (
         <div className="space-y-2">
-          {!compact && <ClinicStatusBadge timings={timingsStr} pill />}
           <p className="text-xs text-text-secondary">Opening hours have not been listed. Contact the clinic to confirm them.</p>
         </div>
       );
@@ -255,7 +290,7 @@ export default function BrowseDetailClient({
       if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
         return (
           <div className="space-y-2">
-            {!compact && <ClinicStatusBadge timings={timingsStr} pill />}
+            {!compact && <ClinicStatusBadge timings={timingsStr} pill showSecondary={false} />}
             <p className="rounded-xl border border-border bg-surface-alt p-2.5 text-xs text-text-secondary">{timingsStr}</p>
           </div>
         );
@@ -266,7 +301,6 @@ export default function BrowseDetailClient({
       if (days.length === 0) {
         return (
           <div className="space-y-2">
-            {!compact && <ClinicStatusBadge timings={timingsStr} pill />}
             <span className="text-xs text-text-secondary">Opening hours have not been listed. Contact the clinic to confirm them.</span>
           </div>
         );
@@ -304,7 +338,7 @@ export default function BrowseDetailClient({
         <div className={`flex flex-col gap-1.5 ${compact ? "mt-2" : "mt-1"}`}>
           {!compact && (
             <div className="mb-1">
-              <ClinicStatusBadge timings={timingsStr} pill />
+              <ClinicStatusBadge timings={timingsStr} pill showSecondary={false} />
             </div>
           )}
           {groups.map((g, idx) => {
@@ -337,7 +371,7 @@ export default function BrowseDetailClient({
     } catch {
       return (
         <div className="space-y-2">
-          {!compact && <ClinicStatusBadge timings={timingsStr} pill />}
+          {!compact && <ClinicStatusBadge timings={timingsStr} pill showSecondary={false} />}
           <span className="text-xs text-text-secondary">{timingsStr}</span>
         </div>
       );
@@ -381,6 +415,9 @@ export default function BrowseDetailClient({
   const [loading, setLoading] = useState(!initialClinic);
   const [clinicError, setClinicError] = useState<"not_found" | "load_failed" | null>(null);
   const [clinicRetry, setClinicRetry] = useState(0);
+  const [doctorQuery, setDoctorQuery] = useState("");
+  const [clinicSpecialty, setClinicSpecialty] = useState("");
+  const [showAllDoctors, setShowAllDoctors] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const galleryGesture = useSwipeGesture({ axis: "x", enabled: lightboxIndex !== null && (clinic?.images?.length || 0) > 1, onSwipe: direction => setLightboxIndex(index => index === null ? null : (index + (direction === "left" ? 1 : -1) + (clinic?.images?.length || 1)) % (clinic?.images?.length || 1)) });
   const lightboxRef = useRef<HTMLDivElement>(null);
@@ -414,7 +451,10 @@ export default function BrowseDetailClient({
   const bookingSubmitRef = useRef(false);
   const availabilityRequest = useRef<AbortController | null>(null);
   const [availabilityState, setAvailabilityState] = useState<"checking" | "ready" | "error">("checking");
+  const [nextSearchState, setNextSearchState] = useState<"idle" | "checking" | "none" | "error">("idle");
+  const nextSearchRequest = useRef<AbortController | null>(null);
   useEffect(() => () => availabilityRequest.current?.abort(), []);
+  useEffect(() => () => nextSearchRequest.current?.abort(), []);
   const autoOpenedBookingKeyRef = useRef<string | null>(null);
 
   // Time & Notes inputs
@@ -424,6 +464,8 @@ export default function BrowseDetailClient({
   // Public booking state for visitors without an active patient session.
   const [isGuest, setIsGuest] = useState(false);
   const [guestForm, setGuestForm] = useState({ name: "", phone: "", email: "" });
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  const [selectedPatientId, setSelectedPatientId] = useState("");
 
   // Visual Slots Picker State
   const [selectedDate, setSelectedDate] = useState("");
@@ -444,12 +486,25 @@ export default function BrowseDetailClient({
     setBookingStep(1);
     setBookingNotes("");
     setGuestForm({ name: "", phone: "", email: "" });
+    setSelectedPatientId("");
     setSelectedDate("");
     setSelectedTime("");
     setFollowUpForAppointmentId(null);
     setDoctorSlotInfo(null);
+    setNextSearchState("idle");
     setPaymentMode("pay_at_clinic");
   };
+
+  useEffect(() => {
+    if (!isAuthenticated || !selectedDoctor || bookingStep !== 2) return;
+    const controller = new AbortController();
+    api.get("/family", { signal: controller.signal })
+      .then((response) => {
+        if (!controller.signal.aborted) setFamilyMembers(Array.isArray(response.data?.data) ? response.data.data : []);
+      })
+      .catch(() => { if (!controller.signal.aborted) setFamilyMembers([]); });
+    return () => controller.abort();
+  }, [isAuthenticated, selectedDoctor, bookingStep]);
 
   useEffect(() => {
     if (initialClinic?.id === id && clinicRetry === 0) { setClinic(initialClinic); setLoading(false); return; }
@@ -457,7 +512,7 @@ export default function BrowseDetailClient({
     setLoading(true); setClinicError(null);
     const fetchClinic = async () => {
       try {
-        const res = await api.get(`/public/clinics/${id}`, { signal: controller.signal });
+        const res = await api.get(`/public/clinics/${encodeURIComponent(id)}${bookingOnly && bookingDoctorId ? `?doctorId=${encodeURIComponent(bookingDoctorId)}` : ""}`, { signal: controller.signal });
         if (!controller.signal.aborted) setClinic(res.data.data);
       } catch (error: any) {
         if (!controller.signal.aborted) setClinicError(error?.response?.status === 404 || error?.response?.status === 400 ? "not_found" : "load_failed");
@@ -467,18 +522,18 @@ export default function BrowseDetailClient({
     };
     void fetchClinic();
     return () => controller.abort();
-  }, [id, initialClinic, clinicRetry]);
+  }, [id, initialClinic, clinicRetry, bookingOnly, bookingDoctorId]);
 
   // Handle deep-link / auto-open booking (from single-doctor browse card or follow-up)
   useEffect(() => {
     if (!clinic || clinic.id !== id) return;
 
-    const doctorId = searchParams.get("doctorId");
+    const doctorId = bookingDoctorId || searchParams.get("doctorId");
     const followUp = searchParams.get("followUp");
     const prevApptId = searchParams.get("prevAppointmentId");
     const openBooking = searchParams.get("openBooking");
 
-    if (doctorId && (followUp === "true" || openBooking === "true")) {
+    if (doctorId && (followUp === "true" || openBooking === "true" || bookingOnly)) {
       const bookingKey = `${id}:${doctorId}:${followUp}:${prevApptId || ""}`;
       if (autoOpenedBookingKeyRef.current === bookingKey) return;
       const doc = clinic.doctors.find((d) => d.id === doctorId);
@@ -493,7 +548,7 @@ export default function BrowseDetailClient({
         }
       }
     }
-  }, [clinic, searchParams]);
+  }, [clinic, searchParams, bookingDoctorId, bookingOnly]);
 
   // Generate next 7 upcoming working days
   const upcomingDays = useMemo(() => {
@@ -628,6 +683,8 @@ export default function BrowseDetailClient({
   };
 
   const loadSlotsForDate = async (dateStr: string, doc: Doctor) => {
+    nextSearchRequest.current?.abort();
+    setNextSearchState("idle");
     availabilityRequest.current?.abort();
     const request = new AbortController();
     availabilityRequest.current = request;
@@ -653,8 +710,41 @@ export default function BrowseDetailClient({
     }
   };
 
+  const findNextAvailable = async () => {
+    if (!selectedDoctor || !selectedDate || nextSearchState === "checking") return;
+    nextSearchRequest.current?.abort();
+    const request = new AbortController();
+    nextSearchRequest.current = request;
+    setNextSearchState("checking");
+    for (const day of upcomingDays.filter((candidate) => candidate.dateString > selectedDate && !candidate.isHoliday)) {
+      try {
+        const response = await api.get(`/public/doctors/${selectedDoctor.id}/slots?clinicId=${id}&date=${day.dateString}`, { signal: request.signal });
+        if (request.signal.aborted) return;
+        const result = response.data?.data;
+        if (!result || typeof result.isWorkingDay !== "boolean" || !Array.isArray(result.slots) || result.slots.some((slot: SlotItem) => !slot || typeof slot.time !== "string" || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(slot.time) || typeof slot.available !== "boolean")) throw new Error("Invalid availability response");
+        if (!result.isWorkingDay || result.isHoliday) continue;
+        const queueAvailable = result.bookingMode === "sequential_queue" && (result.maxDailyTokens == null || result.tokensToday < result.maxDailyTokens);
+        const nextSlot = result.bookingMode === "time_slot" ? result.slots.find((slot: SlotItem) => slot.available && !slot.isLocked) : null;
+        if (!queueAvailable && !nextSlot) continue;
+        result._serverLoaded = true;
+        slotsCache.current[`${selectedDoctor.id}_${day.dateString}`] = result;
+        selectedDateRef.current = day.dateString;
+        setSelectedDate(day.dateString);
+        setSelectedTime(nextSlot?.time || "");
+        setDoctorSlotInfo(result);
+        setAvailabilityState("ready");
+        setNextSearchState("idle");
+        return;
+      } catch {
+        if (!request.signal.aborted) setNextSearchState("error");
+        return;
+      }
+    }
+    if (!request.signal.aborted) setNextSearchState("none");
+  };
+
   const handleOpenBooking = (doc: Doctor) => {
-    if (clinic?.onlineBookingAvailable === false) return;
+    if (!clinic || getPublicBookingStatus({ ...clinic, doctorCount: clinic.doctors.length }) !== "check_availability") return;
     setSelectedDoctor(doc);
     setBookingStep(1);
     setIsBookingOpen(true);
@@ -734,7 +824,7 @@ export default function BrowseDetailClient({
         })
         .map((s: any) => ({
           time: s.time,
-          available: s.available ?? true,
+          available: (s.available ?? true) && !s.isLocked,
           isLocked: s.isLocked,
         }));
     }
@@ -848,6 +938,7 @@ export default function BrowseDetailClient({
       const res = await api.post("/appointments", {
         clinicId: id,
         doctorId: selectedDoctor!.id,
+        patientId: isGuest ? undefined : selectedPatientId || undefined,
         appointmentTime: mergedBookingTime,
         appointmentType: "online",
         payAtClinic: paymentMode !== "online",
@@ -869,7 +960,7 @@ export default function BrowseDetailClient({
         status: appt.status,
         paymentStatus: appt.paymentStatus,
         tokenNumber: token,
-        patientName: isGuest ? guestForm.name : user?.name || "Patient",
+        patientName: isGuest ? guestForm.name : familyMembers.find((member) => (member.patient?.id || member.patient?._id) === selectedPatientId)?.patient?.name || user?.name || "Patient",
         patientPhone: isGuest ? guestForm.phone : (user as any)?.phone || "",
         appointmentTime: mergedBookingTime,
         selectedDate,
@@ -890,10 +981,10 @@ export default function BrowseDetailClient({
         url.searchParams.delete("doctorId");
         url.searchParams.delete("followUp");
         url.searchParams.delete("prevAppointmentId");
-        window.history.replaceState(null, "", url.pathname + (url.search ? url.search : ""));
+        window.history.replaceState(null, "", url.pathname + url.search + url.hash);
       }
 
-      // Keep the same dialog mounted as the confirmed ticket replaces the form.
+      // Keep the booking surface mounted as the confirmed ticket replaces the form.
       setIsBookingOpen(false);
       resetBookingForm();
       setTicketModalOpen(true);
@@ -1013,10 +1104,12 @@ export default function BrowseDetailClient({
   };
 
   if (clinicError) {
+    if (bookingOnly) return <div role="alert" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">{clinicError === "not_found" ? "This practice location is no longer available." : "We couldn't load booking details."}{clinicError === "load_failed" && <Button className="ml-3" onClick={() => setClinicRetry((value) => value + 1)}>Try again</Button>}</div>;
     return <div className="min-h-screen bg-surface-alt text-text"><MarketplaceNavbar /><main className="max-w-lg mx-auto px-4 pt-28"><Card><CardContent className="p-6 space-y-4"><h1 className="text-lg font-semibold">{clinicError === "not_found" ? "Clinic page unavailable" : "We couldn't load this clinic"}</h1><p className="text-sm text-text-muted">{clinicError === "not_found" ? "This clinic link may have changed or the clinic is no longer listed." : "Check your connection and try again."}</p><div className="flex flex-wrap gap-3">{clinicError === "load_failed" && <Button onClick={() => setClinicRetry((value) => value + 1)}>Try again</Button>}<Link href="/browse" className="text-sm text-accent py-2">Browse clinics</Link></div></CardContent></Card></main></div>;
   }
 
   if (loading || (clinic && clinic.id !== id)) {
+    if (bookingOnly) return <div role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">Loading appointments at {bookingName || "this location"}…</div>;
     return (
       <div className="min-h-screen bg-surface-alt font-sans text-text antialiased">
         <MarketplaceNavbar />
@@ -1071,10 +1164,22 @@ export default function BrowseDetailClient({
     : null;
   const hasSingleDoctor = clinic.doctors.length === 1;
   const singleDoctor = hasSingleDoctor ? clinic.doctors[0] : null;
+  const bookingDoctor = bookingDoctorId ? clinic.doctors.find((doctor) => doctor.id === bookingDoctorId) : null;
+  const bookingStatus = getPublicBookingStatus({ ...clinic, doctorCount: clinic.doctors.length });
+  const selectableFamilyMembers = familyMembers.filter((member) => member.relationship !== "self" && (member.patient?.id || member.patient?._id) && member.patient?.name);
+  const clinicSpecialties = Array.from(new Set(clinic.doctors.map((doctor) => doctor.specialization?.trim()).filter((specialty): specialty is string => Boolean(specialty)))).sort();
+  const matchingDoctors = clinic.doctors.filter((doctor) => (!clinicSpecialty || doctor.specialization?.trim() === clinicSpecialty) && `${doctor.name} ${doctor.specialization}`.toLocaleLowerCase().includes(doctorQuery.trim().toLocaleLowerCase()));
+  const visibleDoctors = showAllDoctors || doctorQuery || clinicSpecialty ? matchingDoctors : matchingDoctors.slice(0, 12);
+  const hasCoverImage = Boolean(clinic.image_url && clinic.image_url !== clinic.logo_url);
+
+  if (bookingOnly && !bookingDoctor) return <div role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">This doctor is no longer listed at {clinic.name}. Choose another practice location or contact the clinic.</div>;
+  if (bookingOnly && bookingStatus === "contact_clinic") return <div role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary"><p className="font-semibold text-text">Online booking is unavailable at {clinic.name}.</p><p className="mt-2">{clinic.phone ? <>Please <a className="font-semibold text-accent underline" href={`tel:${clinic.phone.replace(/\s+/g, "")}`}>call {clinic.phone}</a> for help.</> : "Please contact the clinic for help."}</p></div>;
+  if (bookingOnly && !selectedDoctor && !ticketModalOpen) return <div role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">Preparing available appointments at {clinic.name}…</div>;
 
   return (
-    <div className="min-h-screen bg-surface-alt pt-16 pb-24 font-sans text-text antialiased">
-      <MarketplaceNavbar />
+    <div className={bookingOnly ? "" : "min-h-screen bg-surface-alt pt-16 pb-24 font-sans text-text antialiased"}>
+      {!bookingOnly && <>
+      <MarketplaceNavbar brand={{ name: clinic.organization?.name || clinic.name, logoUrl: clinic.organization?.logo_url || clinic.logo_url, href: `/browse/${clinic.id}` }} />
 
       {/* Navigation Breadcrumbs Bar */}
       <div className="bg-surface border-b border-border/40 px-4 sm:px-6 py-2.5 sm:py-3">
@@ -1100,7 +1205,7 @@ export default function BrowseDetailClient({
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6">
         <div className="bg-surface border border-border rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs" style={{ borderTop: `4px solid ${clinic.brandColor || "#0F6F66"}` }}>
           {/* Visual Cover Header */}
-          <div className={`${clinic.image_url ? "h-32 xs:h-40 sm:h-56" : "h-20 sm:h-28"} w-full relative bg-surface-alt overflow-hidden`}>
+          {hasCoverImage && <div className="h-32 xs:h-40 sm:h-56 w-full relative bg-surface-alt overflow-hidden">
             {clinic.image_url ? (
               <img src={clinic.image_url} alt={clinic.name} className="w-full h-full object-cover" />
             ) : (
@@ -1126,7 +1231,7 @@ export default function BrowseDetailClient({
                 <span>{"View"} {clinic.images.length} {"Photos"}</span>
               </button>
             )}
-          </div>
+          </div>}
 
           {/* Title & Clinical Contact Bar */}
           <div className="p-4 sm:p-6 border-t border-border/40 space-y-3">
@@ -1144,7 +1249,7 @@ export default function BrowseDetailClient({
                 <div className="space-y-0.5 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h1 className="text-xl sm:text-3xl font-extrabold text-text tracking-tight break-words">{clinic.name}</h1>
-                    <ClinicStatusBadge timings={clinic.timings} pill />
+                    {clinic.timings && <ClinicStatusBadge timings={clinic.timings} pill showSecondary={false} />}
                   </div>
                   {clinic.organization?.name && clinic.organization.name !== clinic.name && (
                     <p className="text-xs text-text-muted font-medium">
@@ -1232,6 +1337,8 @@ export default function BrowseDetailClient({
               </div>
             </div>
 
+            {clinic.description && <p className="max-w-3xl whitespace-pre-line text-sm leading-6 text-text-secondary">{clinic.description}</p>}
+
             {/* Facilities Tags */}
             {clinic.facilities && clinic.facilities.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
@@ -1247,7 +1354,7 @@ export default function BrowseDetailClient({
       </div>
 
       {/* Main Content Layout - Specialists First on Mobile for Rapid Access */}
-      {clinic.onlineBookingAvailable === false && <div role="status" className="max-w-6xl mx-auto px-4 sm:px-6 pt-5">
+      {bookingStatus === "contact_clinic" && <div role="status" className="max-w-6xl mx-auto px-4 sm:px-6 pt-5">
         <div className="rounded-2xl border border-border bg-surface p-4 text-sm text-text-secondary">
           <p className="font-semibold text-text">Online booking is temporarily unavailable.</p>
           <p className="mt-1">Please contact the clinic directly.{clinic.phone && <> <a className="font-medium text-accent underline" href={`tel:${clinic.phone.replace(/\s+/g, "")}`}>Call {clinic.phone}</a></>}</p>
@@ -1259,14 +1366,29 @@ export default function BrowseDetailClient({
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <h2 className="text-lg sm:text-xl font-bold text-text flex items-center gap-2">
-                <span>Available Doctors</span>
+                <span>Doctors at {clinic.name}</span>
                 <Badge variant="neutral" className="text-xs font-semibold">
                   {clinic.doctors.length}
                 </Badge>
               </h2>
-              <p className="text-xs text-text-muted">{"Select a doctor to book your consultation or clinic token"}</p>
+              <p className="text-xs text-text-muted">{bookingStatus === "check_availability" ? "Select a doctor to check dates and times." : "View doctors and contact the clinic about appointments."}</p>
             </div>
           </div>
+
+          {clinic.doctors.length > 8 && <Input
+            icon={<Search className="h-4 w-4" aria-hidden="true" />}
+            value={doctorQuery}
+            onChange={(event) => { setDoctorQuery(event.target.value); setShowAllDoctors(false); }}
+            placeholder="Search doctors or specialties"
+            aria-label="Search doctors at this clinic"
+          />}
+          {clinicSpecialties.length > 1 && <Select
+            label="Specialty"
+            value={clinicSpecialty}
+            onChange={(event) => { setClinicSpecialty(event.target.value); setShowAllDoctors(false); }}
+            options={[{ value: "", label: "All specialties" }, ...clinicSpecialties.map((specialty) => ({ value: specialty, label: specialty }))]}
+          />}
+          {(doctorQuery || clinicSpecialty) && <p role="status" className="text-xs text-text-secondary">Showing {matchingDoctors.length} {matchingDoctors.length === 1 ? "doctor" : "doctors"}</p>}
 
           {clinic.doctors.length === 0 ? (
             <Card className="p-8 text-center text-text-muted text-xs border-dashed rounded-2xl bg-surface">
@@ -1277,8 +1399,9 @@ export default function BrowseDetailClient({
               </div>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-              {clinic.doctors.map((doc) => (
+            <div className="space-y-4">
+            {matchingDoctors.length === 0 ? <p role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">No doctors match this search. Try a name or specialty.</p> : <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+              {visibleDoctors.map((doc) => (
                 <Card
                   key={doc.id}
                   className="group hover:shadow-md hover:border-primary-500/40 transition-all duration-150 p-4 sm:p-5 rounded-2xl border border-border bg-surface flex flex-col justify-between"
@@ -1357,16 +1480,16 @@ export default function BrowseDetailClient({
                       style={clinic.brandColor ? { backgroundColor: clinic.brandColor } : undefined}
                       className="w-full font-bold rounded-xl shadow-xs min-h-[44px] flex items-center justify-center gap-1.5 group/btn cursor-pointer"
                       onClick={() => handleOpenBooking(doc)}
-                      disabled={clinic.onlineBookingAvailable === false}
+                      disabled={bookingStatus !== "check_availability"}
                     >
                       <span>
-                        {clinic.onlineBookingAvailable === false
-                          ? "Online booking unavailable"
+                        {bookingStatus !== "check_availability"
+                          ? "Contact clinic for appointments"
                           : doc.isAvailable === false
                           ? "Schedule Upcoming Date"
                           : doc.isOnlineBookingClosed
                           ? "Schedule Next Available Date"
-                          : "Book Consultation"}
+                          : "Check appointments"}
                       </span>
                       <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" strokeWidth={2} />
                     </Button>
@@ -1376,6 +1499,8 @@ export default function BrowseDetailClient({
                   </div>
                 </Card>
               ))}
+            </div>}
+            {!showAllDoctors && !doctorQuery && !clinicSpecialty && matchingDoctors.length > visibleDoctors.length && <Button variant="outline" className="w-full min-h-11" onClick={() => setShowAllDoctors(true)}>Show all {matchingDoctors.length} doctors</Button>}
             </div>
           )}
         </div>
@@ -1386,14 +1511,10 @@ export default function BrowseDetailClient({
             <CardHeader className="pb-3 border-b border-border/40">
               <CardTitle className="text-base font-bold flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-text-muted" strokeWidth={1.75} />
-                <span>{"About Facility"}</span>
+                <span>Plan your visit</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
-              <p className="text-xs text-text-secondary leading-relaxed">
-                {clinic.description || "View doctors, clinic hours and contact details here before booking."}
-              </p>
-
               <div>
                 <h4 className="text-xs font-semibold text-text mb-2 uppercase tracking-wider flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
@@ -1506,7 +1627,7 @@ export default function BrowseDetailClient({
       </div>
 
       {/* Sticky Mobile Bottom Booking Bar (For single-doctor clinics) */}
-      {hasSingleDoctor && singleDoctor && clinic.onlineBookingAvailable !== false && !isBookingOpen && !ticketModalOpen && (
+      {hasSingleDoctor && singleDoctor && bookingStatus === "check_availability" && !isBookingOpen && !ticketModalOpen && (
         <div className="fixed bottom-0 left-0 right-0 pt-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface/95 border-t border-border z-40 lg:hidden shadow-lg flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-text truncate">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
@@ -1518,26 +1639,26 @@ export default function BrowseDetailClient({
             onClick={() => handleOpenBooking(singleDoctor)}
             className="font-bold px-5 rounded-xl shadow-xs min-h-[44px] shrink-0"
           >
-            {"Book Now"} →
+            {"Check times"} →
           </Button>
         </div>
       )}
+      </>}
 
-      {/* Refined 2-Step Progressive Booking Modal */}
-      <Modal
+      {/* The same booking steps render inline for doctor links and in a sheet for clinic visitors. */}
+      <BookingSurface
+        inline={bookingOnly}
         open={isBookingOpen || ticketModalOpen}
+        subtitle={bookingOnly ? `${clinic.name}${clinic.city ? ` · ${clinic.city}` : ""}` : undefined}
         onClose={() => { if (!bookingSubmitRef.current) { setIsBookingOpen(false); setTicketModalOpen(false); availabilityRequest.current?.abort(); } }}
         title={
           ticketModalOpen ? appointmentBookingLabel(createdTicket?.status) : bookingStep === 1
             ? "Select Date & Time"
             : "Patient Details"
         }
-        size="xl"
-        presentation="sheet"
         busy={bookingLoading}
-        footerClassName="!flex-row"
-        footer={ticketModalOpen ? <div className="flex gap-2 justify-end w-full"><PrintButton documentName="token slip" onPrint={handlePrintSlip} disabled={!createdTicket} /><Button variant="outline" onClick={() => setTicketModalOpen(false)}>Done</Button></div> : bookingStep === 1 ? <>
-          <Button variant="ghost" onClick={() => setIsBookingOpen(false)}>Cancel</Button>
+        footer={ticketModalOpen ? <div className="flex gap-2 justify-end w-full"><PrintButton documentName="token slip" onPrint={handlePrintSlip} disabled={!createdTicket} /><Button variant="outline" onClick={() => { setTicketModalOpen(false); if (bookingOnly && bookingDoctor) handleOpenBooking(bookingDoctor); }}>{bookingOnly ? "Book another appointment" : "Done"}</Button></div> : bookingStep === 1 ? <>
+          {!bookingOnly && <Button variant="ghost" onClick={() => setIsBookingOpen(false)}>Cancel</Button>}
           <Button disabled={availabilityBlocked || !selectedDate || (!selectedTime && doctorSlotInfo?.bookingMode !== "sequential_queue")} onClick={() => setBookingStep(2)} iconRight={<ArrowRight className="w-4 h-4" />}>Continue to Details</Button>
         </> : <>
           <Button variant="outline" disabled={bookingLoading} onClick={() => setBookingStep(1)} icon={<ArrowLeft className="w-4 h-4" />}>Back</Button>
@@ -1699,7 +1820,7 @@ export default function BrowseDetailClient({
                               }}
                               className="text-xs font-bold gap-1.5 shadow-xs border-warning/30 text-text hover:border-primary-500 cursor-pointer"
                             >
-                              <span>{"Book Next Available:"} {nextWorkingDay.label || nextWorkingDay.dateString}</span>
+                              <span>{"Check next date:"} {nextWorkingDay.label || nextWorkingDay.dateString}</span>
                               <ArrowRight className="w-3.5 h-3.5 text-accent" />
                             </Button>
                           </div>
@@ -1709,7 +1830,7 @@ export default function BrowseDetailClient({
                   }
 
                   if (doctorSlotInfo?.bookingMode === "sequential_queue") {
-                    if (queueIsFull) return <div className="p-6 min-h-[200px] flex flex-col items-center justify-center text-center gap-2 bg-surface-alt border border-border rounded-2xl"><h4 className="text-sm font-bold text-text">All tokens are booked</h4><p className="text-xs text-text-secondary">Please choose another date for your consultation.</p></div>;
+                    if (queueIsFull) return <div className="p-6 min-h-[200px] flex flex-col items-center justify-center text-center gap-2 bg-surface-alt border border-border rounded-2xl"><h4 className="text-sm font-bold text-text">All tokens are booked</h4><p className="text-xs text-text-secondary">Please choose another date for your consultation.</p>{upcomingDays.some((day) => day.dateString > selectedDate && !day.isHoliday) && <Button type="button" variant="outline" loading={nextSearchState === "checking"} onClick={findNextAvailable}>Find next available appointment</Button>}{nextSearchState === "none" && <p role="status" className="text-xs text-text-secondary">No available tokens were found in the next listed clinic days.</p>}{nextSearchState === "error" && <p role="alert" className="text-xs text-text-secondary">Could not check later dates. Please try again.</p>}{clinic.phone && <a href={`tel:${clinic.phone.replace(/\s+/g, "")}`} className="text-xs font-semibold text-accent underline">Call clinic for help</a>}</div>;
                     return (
                       <div key={`queue-${selectedDate}`} className="p-3 bg-surface-alt rounded-2xl border border-border space-y-2.5 animate-fade-in">
                     <div className="flex items-center justify-between">
@@ -1755,11 +1876,13 @@ export default function BrowseDetailClient({
                   </div>
 
                       {activeSlotsList.length === 0 ? (
-                        <div className="p-4 text-center bg-surface-alt rounded-2xl border border-border text-xs text-text-muted flex items-center justify-center min-h-[160px]">
-                          {"No available consultation slots on this date. Please pick another day above."}
+                        <div className="space-y-2 p-4 text-center bg-surface-alt rounded-2xl border border-border text-xs text-text-muted flex min-h-[160px] flex-col items-center justify-center">
+                          <p>No appointments are available on this date. Please choose another day.</p>
+                          {clinic.phone && <a href={`tel:${clinic.phone.replace(/\s+/g, "")}`} className="font-semibold text-accent underline">Call clinic for help</a>}
                         </div>
                       ) : (
                         <div className="space-y-2 bg-surface-alt p-2.5 rounded-2xl border border-border min-h-[160px] max-h-52 sm:max-h-64 overflow-y-auto touch-scroll">
+                          {availabilityState === "ready" && !activeSlotsList.some((slot) => slot.available && !slot.isLocked) && <p className="p-2 text-center text-xs text-text-secondary">All listed times are unavailable. Choose another day{clinic.phone ? <> or <a href={`tel:${clinic.phone.replace(/\s+/g, "")}`} className="font-semibold text-accent underline">call the clinic</a></> : null}.</p>}
                           {/* Morning Slots */}
                           {categorizedSlots.morning.length > 0 && (
                             <div className="space-y-1">
@@ -1857,6 +1980,9 @@ export default function BrowseDetailClient({
                           )}
                         </div>
                       )}
+                      {availabilityState === "ready" && !activeSlotsList.some((slot) => slot.available) && upcomingDays.some((day) => day.dateString > selectedDate && !day.isHoliday) && <Button type="button" variant="outline" className="w-full min-h-11" loading={nextSearchState === "checking"} onClick={findNextAvailable}>Find next available appointment</Button>}
+                      {nextSearchState === "none" && <p role="status" className="text-xs text-text-secondary">No appointments were found in the next listed clinic days.{clinic.phone && <> <a href={`tel:${clinic.phone.replace(/\s+/g, "")}`} className="font-semibold text-accent underline">Call the clinic</a> for help.</>}</p>}
+                      {nextSearchState === "error" && <p role="alert" className="text-xs text-text-secondary">We could not check later dates. Please try again or choose a date above.</p>}
                     </div>
                   ) : null;
                 })()}
@@ -1951,17 +2077,28 @@ export default function BrowseDetailClient({
                     </div>
                   </div>
                 ) : (
+                  <div className="space-y-3">
+                  {selectableFamilyMembers.length > 0 && <Select
+                    label="Who is this appointment for?"
+                    value={selectedPatientId}
+                    onChange={(event) => setSelectedPatientId(event.target.value)}
+                    options={[{ value: "", label: `Myself (${user?.name || "Patient"})` }, ...selectableFamilyMembers.flatMap((member) => {
+                      const patientId = member.patient?.id || member.patient?._id;
+                      return patientId && member.patient?.name ? [{ value: patientId, label: `${member.patient.name}${member.relationship ? ` (${member.relationship})` : ""}` }] : [];
+                    })]}
+                  />}
                   <div className="bg-surface-alt border border-border p-3.5 rounded-2xl flex items-center justify-between">
                     <div>
                       <p className="text-xs text-text font-semibold flex items-center gap-1.5">
                         <UserCheck className="w-4 h-4 text-accent" strokeWidth={1.75} />
-                        <span>{"Booking as:"} <strong className="text-text">{user?.name}</strong></span>
+                        <span>{"Signed in as:"} <strong className="text-text">{user?.name}</strong></span>
                       </p>
                       <p className="text-[11px] text-text-secondary mt-0.5">
                         {(user as any)?.phone || user?.email || "Authenticated Account"}
                       </p>
                     </div>
                     <Badge variant="neutral" className="text-[10px] font-semibold">{"Logged In"}</Badge>
+                  </div>
                   </div>
                 )}
               </div>
@@ -2180,7 +2317,7 @@ export default function BrowseDetailClient({
             </div>
           </div>
         </div>}
-      </Modal>
+      </BookingSurface>
 
       {/* Photo Gallery Lightbox Modal */}
       {lightboxIndex !== null && clinic.images && clinic.images.length > 0 && (

@@ -11,7 +11,7 @@ import { Button, Avatar, Dropdown, EkavyuLogo, ModeSwitcher } from "@/components
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { Menu, X } from "lucide-react";
 
-export default function MarketplaceNavbar() {
+export default function MarketplaceNavbar({ brand }: { brand?: { name: string; logoUrl?: string | null; href: string } }) {
   const { user, logout, isAuthenticated, isLoading, isLoggingOut } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -37,10 +37,17 @@ export default function MarketplaceNavbar() {
       <div aria-hidden="true" className="glass-surface glass-navigation absolute inset-0 -z-10 pointer-events-none" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between gap-2">
         {/* Brand/Logo */}
-        <Link href="/browse" className="shrink-0">
+        {brand ? <Link href={brand.href} className="flex min-w-0 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring sm:gap-3">
+          <NavigationPending />
+          {brand.logoUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={brand.logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg border border-border bg-surface object-contain sm:h-10 sm:w-10" />
+          ) : <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-500/10 text-base font-bold text-accent sm:h-10 sm:w-10">{brand.name.slice(0, 1)}</span>}
+          <span className="min-w-0"><span className="block max-w-[9rem] truncate text-sm font-bold text-text sm:max-w-[18rem]">{brand.name}</span><span className="block text-[10px] text-text-muted">Appointments powered by Ekavyu</span></span>
+        </Link> : <Link href="/browse" className="shrink-0">
           <NavigationPending />
           <EkavyuLogo size="md" />
-        </Link>
+        </Link>}
 
         <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
           <ResumeTrackerLink />

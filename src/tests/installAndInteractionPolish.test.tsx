@@ -161,7 +161,7 @@ describe("Browse and booking continuity", () => {
     let confirmed!: (value: unknown) => void;
     const post = vi.spyOn(api, "post").mockImplementation(() => new Promise(resolve => { confirmed = resolve; }));
     render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={clinic} /></ToastProvider></ThemeProvider>);
-    fireEvent.click(screen.getAllByRole("button", { name: "Book Consultation" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Check appointments" })[0]);
     const dialog = await screen.findByRole("dialog", { name: "Select Date & Time" });
     expect(document.body.style.position).toBe("fixed");
     expect(within(dialog).getByRole("button", { name: "Continue to Details" })).toBeDisabled();
@@ -186,7 +186,7 @@ describe("Browse and booking continuity", () => {
   it("leaves Continue disabled after availability fails and offers a local retry", async () => {
     vi.spyOn(api, "get").mockRejectedValue(new Error("Offline"));
     render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={clinic} /></ToastProvider></ThemeProvider>);
-    fireEvent.click(screen.getAllByRole("button", { name: "Book Consultation" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Check appointments" })[0]);
     const dialog = await screen.findByRole("dialog", { name: "Select Date & Time" });
     expect(await within(dialog).findByText("Availability could not be checked. Please try again.")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Continue to Details" })).toBeDisabled();
@@ -197,7 +197,7 @@ describe("Browse and booking continuity", () => {
     vi.spyOn(api, "get").mockResolvedValue({ data: { data: { isWorkingDay: true, bookingMode: "time_slot", slots: [] } } });
     const timedClinic = { ...clinic, doctors: clinic.doctors.map(doctor => ({ ...doctor, bookingMode: "time_slot" })) };
     render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={timedClinic} /></ToastProvider></ThemeProvider>);
-    fireEvent.click(screen.getAllByRole("button", { name: "Book Consultation" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Check appointments" })[0]);
     const dialog = await screen.findByRole("dialog", { name: "Select Date & Time" });
     await within(dialog).findByText("Availability updated");
     expect(within(dialog).getByRole("button", { name: "Continue to Details" })).toBeDisabled();
@@ -207,7 +207,7 @@ describe("Browse and booking continuity", () => {
   it("prevents continuing when the server reports that all queue tokens are booked", async () => {
     vi.spyOn(api, "get").mockResolvedValue({ data: { data: { isWorkingDay: true, bookingMode: "sequential_queue", slots: [], nextToken: 21, maxDailyTokens: 20, tokensToday: 20 } } });
     render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={clinic} /></ToastProvider></ThemeProvider>);
-    fireEvent.click(screen.getAllByRole("button", { name: "Book Consultation" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Check appointments" })[0]);
     const dialog = await screen.findByRole("dialog", { name: "Select Date & Time" });
     expect(await within(dialog).findByText("All tokens are booked")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Continue to Details" })).toBeDisabled();
