@@ -709,7 +709,7 @@ export default function PatientsDirectoryPage() {
         description="Enroll a new or walk-in patient into the medical directory with comprehensive demographics."
         size="lg"
       >
-        <form onSubmit={(e) => handleRegisterSubmit(e, false)} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
+        <form onSubmit={(e) => handleRegisterSubmit(e, false)} className="space-y-4 pt-1">
           {duplicateWarning && (
             <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-2xl space-y-2 animate-fade-in text-xs">
               <div className="flex items-center gap-2 font-bold text-warning-text dark:text-warning-text">

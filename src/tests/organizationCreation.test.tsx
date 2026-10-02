@@ -1,0 +1,152 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { OrganizationNotifications } from "@/components/organization/OrganizationConfiguration";
+import { notificationService } from "@/services/notificationService";
+vi.mock("@/app/(dashboard)/dashboard/settings/WhatsAppSettingsCard", () => ({ default: () => <div>Organization WhatsApp settings</div> }));
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import OrganizationsPage from "@/app/(dashboard)/dashboard/organizations/page";
+import { OrganizationDetails } from "@/components/organization/OrganizationDetails";
+import { OrganizationMembers } from "@/components/organization/OrganizationMembers";
+import { ToastProvider } from "@/components/ui";
+import { useAuthStore } from "@/store/authStore";
+import { hasRoutePermission } from "@/lib/routePermissions";
+import { saveWithBranding, type OrganizationRecord } from "@/services/organization.service";
+import api from "@/lib/api";
+const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router, useSearchParams: () => new URLSearchParams(window.location.search) }));
+const org: OrganizationRecord = { id: "org-1", name: "Test organization with a long name", city: "Mumbai", plan: "starter", status: "active", countryCode: "IN", timezone: "Asia/Kolkata", primaryAdmin: { name: "Primary Admin" }, subscriptionSummary: { status: "trial", expiresAt: "2026-11-01" } };
+const ref = "/api/public/organization-branding/012345678901234567890123";
+function mount(element: React.ReactElement) { return render(<ToastProvider>{element}</ToastProvider>); }
+describe("organization management", () => {
+  beforeEach(() => {
+    useAuthStore.setState({ user: { id: "root-1", name: "Root", email: "root@example.com", role: "root" }, isAuthenticated: true, isLoading: false });
+    vi.spyOn(api, "get").mockResolvedValue({ data: { data: [org] } });
+    vi.spyOn(api, "post").mockImplementation(async (path) => ({ data: { data: String(path).includes("branding/uploads") ? { id: "asset-1", reference: ref } : { organization: { id: org.id } }, success: true } }));
+    vi.spyOn(api, "put").mockResolvedValue({ data: { data: org } });
+    vi.spyOn(api, "delete").mockResolvedValue({ data: { success: true } });
+    vi.stubGlobal("URL", Object.assign(class extends URL {}, { createObjectURL: vi.fn(() => "blob:logo"), revokeObjectURL: vi.fn() }));
+    Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, writable: true, value: vi.fn() });
+  });
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView; router.push.mockReset(); router.replace.mockReset(); window.history.replaceState(null, "", "/"); });
+
+  it("opens from Root overview and persists the selected trial and uploaded logo reference", async () => {
+    window.history.replaceState(null, "", "/dashboard/organizations?create=1");
+    mount(<React.StrictMode><OrganizationsPage /></React.StrictMode>);
+    const dialog = await screen.findByRole("dialog", { name: "Add organization" });
+    fireEvent.change(within(dialog).getByLabelText(/Organization name/), { target: { value: "New Clinic" } });
+    fireEvent.change(within(dialog).getByLabelText(/City/), { target: { value: "Mumbai" } });
+    fireEvent.click(within(dialog).getByRole("combobox", { name: "Free trial duration" }));
+    fireEvent.click(screen.getByRole("option", { name: "Custom duration" }));
+    fireEvent.change(within(dialog).getByLabelText(/Custom trial days/), { target: { value: "23" } });
+    fireEvent.click(within(dialog).getByText("Branding and location options"));
+    fireEvent.change(dialog.querySelector('input[type="file"]')!, { target: { files: [new File(["logo"], "logo.png", { type: "image/png" })] } });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Configure administrator/ }));
+    fireEvent.change(within(dialog).getByLabelText(/Administrator name/), { target: { value: "Clinic Admin" } });
+    fireEvent.change(within(dialog).getByLabelText(/Administrator email/), { target: { value: "admin@clinic.example" } });
+    fireEvent.change(within(dialog).getByLabelText(/Administrator password/), { target: { value: "Password123!" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create organization" }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/onboarding/organization", expect.objectContaining({ org_name: "New Clinic", trialDays: 23, logo_url: ref }), { timeout: 60000 }));
+    expect(api.post).toHaveBeenCalledWith("/organizations/branding/uploads", expect.objectContaining({ contentType: "image/png", forCreation: true }), { timeout: 60000 });
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/dashboard/organizations?organizationId=org-1&section=overview", { scroll: false }));
+  });
+  it("shows a compact list and opens management without changing organization authentication context", async () => {
+    const switchOrg = vi.fn();
+    useAuthStore.setState({ switchOrg });
+    mount(<OrganizationsPage />);
+    const entry = await screen.findByRole("button", { name: /Test organization with a long name/ });
+    fireEvent.click(entry);
+    expect(screen.getByRole("navigation", { name: "Organization sections" })).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Organization sections" })).getByRole("button", { name: "Details & branding" })).toBeInTheDocument();
+    expect(switchOrg).not.toHaveBeenCalled();
+  });
+  it("gives an organization admin the same sections but restricts platform actions", async () => {
+    useAuthStore.setState({ user: { id: "admin-1", name: "Admin", email: "admin@test", role: "admin", organization_id: org.id } });
+    mount(<OrganizationsPage />);
+    await screen.findByRole("heading", { name: org.name });
+    expect(within(screen.getByRole("navigation", { name: "Organization sections" })).getByRole("button", { name: "Details & branding" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add organization" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Login as administrator" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Platform status and deletion")).not.toBeInTheDocument();
+    expect(hasRoutePermission("/dashboard/organizations", "admin")).toBe(true);
+    expect(hasRoutePermission("/dashboard/admin/users", "admin")).toBe(false);
+    expect(hasRoutePermission("/dashboard/organizations", "nurse", [])).toBe(false);
+  });
+  it("renders a saved image after remount and sends explicit removal and cleared contact fields", async () => {
+    const saved = { ...org, logo_url: ref, email: "old@example.test" };
+    const onSaved = vi.fn();
+    const view = mount(<OrganizationDetails organization={saved} onSaved={onSaved} />);
+    expect(view.container.querySelector('img')?.getAttribute("src")).toMatch(/\/api\/public\/organization-branding\//);
+    view.unmount();
+    const fresh = mount(<OrganizationDetails organization={{ ...saved }} onSaved={onSaved} />);
+    expect(fresh.container.querySelector('img')?.getAttribute("src")).toContain(ref);
+    fireEvent.click(screen.getByRole("button", { name: "Remove file" }));
+    fireEvent.change(screen.getByLabelText("Contact email"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/organizations/org-1", expect.objectContaining({ logo_url: null, email: null })));
+  });
+  it("retains Root capacity overrides and excludes them from organization-admin saves", async () => {
+    const organization = { ...org, maxClinics: 2, maxDoctors: 5, maxStaff: 10 };
+    const view = mount(<OrganizationDetails organization={organization} onSaved={vi.fn()} />);
+    expect(screen.getByText("Platform quota overrides")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Doctor limit"), { target: { value: "7" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/organizations/org-1", expect.objectContaining({ maxDoctors: 7 })));
+    view.unmount();
+    vi.mocked(api.put).mockClear();
+    useAuthStore.setState({ user: { id: "admin-1", name: "Admin", email: "admin@test", role: "admin", organization_id: org.id } });
+    mount(<OrganizationDetails organization={organization} onSaved={vi.fn()} />);
+    expect(screen.queryByText("Platform quota overrides")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(api.put).toHaveBeenCalled());
+    expect(vi.mocked(api.put).mock.calls[0][1]).not.toHaveProperty("maxDoctors");
+  });
+  it("keeps personal preferences outside organization configuration and scopes SMTP testing", async () => {
+    vi.spyOn(notificationService, "getSmtpConfig").mockResolvedValue({ host: "smtp.test", user: "mailer", pass: "", port: 587, secure: false, fromEmail: "mailer@test", fromName: "Team" });
+    const send = vi.spyOn(notificationService, "sendTestEmail").mockResolvedValue({ success: true, message: "Fixture sent" });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    mount(<QueryClientProvider client={client}><OrganizationNotifications selectedOrgId={org.id} isRoot organizationOnly /></QueryClientProvider>);
+    await screen.findByText("Outbound Email Gateway (SMTP)");
+    expect(screen.queryByText("Event Categories")).not.toBeInTheDocument();
+    expect(screen.queryByText("Delivery Channels")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send Test" })).toBeDisabled();
+    fireEvent.change(screen.getByPlaceholderText("Active organization member's email"), { target: { value: "member@test.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send Test" }));
+    await waitFor(() => expect(send).toHaveBeenCalledWith("member@test.com", org.id));
+    client.clear();
+  });
+  it("replaces images through branding upload and keeps the current reference until save succeeds", async () => {
+    const onSaved = vi.fn();
+    const view = mount(<OrganizationDetails organization={{ ...org, logo_url: "https://old.test/logo.png" }} onSaved={onSaved} />);
+    fireEvent.change(view.container.querySelector('input[type="file"]')!, { target: { files: [new File(["replacement"], "new.png", { type: "image/png" })] } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/organizations/org-1", expect.objectContaining({ logo_url: ref })));
+    expect(onSaved).toHaveBeenCalledOnce();
+  });
+  it("cleans staged uploads on partial upload failure and does not submit organization data", async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({ data: { data: { id: "stage-1", reference: ref } } }).mockRejectedValueOnce(new Error("R2 offline"));
+    const save = vi.fn();
+    await expect(saveWithBranding([new File(["a"], "a.png", { type: "image/png" }), new File(["b"], "b.png", { type: "image/png" })], org.id, save)).rejects.toThrow("R2 offline");
+    expect(save).not.toHaveBeenCalled();
+    expect(api.delete).toHaveBeenCalledWith("/organizations/branding/uploads/stage-1");
+  });
+  it("shows a retryable load error and an actionable empty list", async () => {
+    vi.mocked(api.get).mockRejectedValueOnce(new Error("Offline"));
+    mount(<OrganizationsPage />);
+    await screen.findByText("Unable to load organizations");
+    vi.mocked(api.get).mockResolvedValueOnce({ data: { data: [] } });
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await screen.findByText("No organizations yet");
+    expect(screen.getByRole("button", { name: "Add organization" })).toBeInTheDocument();
+  });
+  it("confirms login-as using the selected organization rather than an implicit membership", async () => {
+    const impersonate = vi.fn().mockResolvedValue(undefined);
+    useAuthStore.setState({ impersonate });
+    vi.mocked(api.get).mockResolvedValue({ data: { data: { members: [{ id: "member-1", name: "Member", email: "member@test", role: "nurse", isActive: true }] } } });
+    mount(<OrganizationMembers organizationId={org.id} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Login as" }));
+    expect(impersonate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(impersonate).toHaveBeenCalledWith({ userId: "member-1", organizationId: org.id }));
+  });
+});

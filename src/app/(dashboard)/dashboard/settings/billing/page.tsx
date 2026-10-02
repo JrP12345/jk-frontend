@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Badge, ProgressBar, Table, Modal, Skeleton, SkeletonStats, SkeletonForm, useToast } from "@/components/ui";
 import { billingService, SaaSPlan, SubscriptionInfo, UsageInfo, DowngradeValidationResult } from "@/services/billing.service";
@@ -26,12 +26,21 @@ export default function BillingSettingsPage({
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [paymentAttempts, setPaymentAttempts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Upgrade Modal & Checkout state
   const [selectedPlan, setSelectedPlan] = useState<SaaSPlan | null>(null);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
   const [isProcessing, setIsProcessing] = useState(false);
+  const checkoutBusy = useRef(false);
+  const checkoutIntent = useRef<{ key: string; id: string } | null>(null);
+  const statusPolls = useRef(0);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+  const [pendingCycle, setPendingCycle] = useState<"monthly" | "annual">("monthly");
+  const [verificationPending, setVerificationPending] = useState(false);
+  const [abandoning, setAbandoning] = useState(false);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
 
   // Downgrade resolution state
@@ -48,31 +57,32 @@ export default function BillingSettingsPage({
   const [savingBilling, setSavingBilling] = useState(false);
 
   const isRootAdmin = propIsRoot ?? user?.role === "root";
+  const effectiveOrgId = selectedOrgId || (isRootAdmin ? user?.organization_id : undefined);
 
-  useEffect(() => {
-    if (isRootAdmin && !selectedOrgId) {
-      return;
-    }
-    loadBillingData();
-  }, [selectedOrgId, isRootAdmin]);
+  const releaseCheckout = useCallback(() => {
+    checkoutBusy.current = false;
+    setIsProcessing(false);
+  }, []);
 
-  async function loadBillingData() {
-    if (isRootAdmin && !selectedOrgId) {
-      return;
-    }
+  const loadBillingData = useCallback(async () => {
+    if (isRootAdmin && !effectiveOrgId) return;
     setLoading(true);
     try {
-      const [plansData, subData, usageData, invoicesData] = await Promise.all([
+      const [plansData, subData, usageData, invoicesData, attemptsData, detailsData] = await Promise.all([
         billingService.getPlans(),
-        billingService.getSubscription(selectedOrgId),
-        billingService.getUsage(selectedOrgId),
-        billingService.getSaaSInvoices(selectedOrgId),
+        billingService.getSubscription(effectiveOrgId),
+        billingService.getUsage(effectiveOrgId),
+        billingService.getSaaSInvoices(effectiveOrgId),
+        billingService.getPaymentAttempts(effectiveOrgId),
+        billingService.getBillingDetails(effectiveOrgId),
       ]);
 
       setPlans(plansData);
       setSubscription(subData);
       setUsageInfo(usageData);
       setInvoices(invoicesData);
+      setPaymentAttempts(attemptsData);
+      setBillingForm(detailsData);
     } catch (err: any) {
       toast({
         title: "Unable to Load Billing Data",
@@ -82,7 +92,83 @@ export default function BillingSettingsPage({
     } finally {
       setLoading(false);
     }
+  }, [effectiveOrgId, isRootAdmin, toast]);
+
+  const refreshCheckoutStatus = useCallback(async (orderId?: string) => {
+    const result = await billingService.getCheckoutStatus(effectiveOrgId, orderId);
+    if (result.status === "captured") {
+      checkoutIntent.current = null;
+      setPendingOrderId(null);
+      setVerificationPending(false);
+      releaseCheckout();
+      await loadBillingData();
+    } else if (result.status === "captured_review") {
+      checkoutIntent.current = null;
+      setPendingOrderId(null);
+      setVerificationPending(false);
+      releaseCheckout();
+      await loadBillingData();
+      toast({ title: "Payment needs review", description: "Razorpay captured this payment after a later plan change. Support must resolve the plan or refund.", variant: "default" });
+    } else if (result.status === "created" && result.orderId) {
+      setPendingOrderId(result.orderId);
+      setPendingPlanId(result.planId || null);
+      setPendingCycle(result.billingCycle || "monthly");
+    } else {
+      setPendingOrderId(null);
+      setVerificationPending(false);
+      releaseCheckout();
+    }
+    return result;
+  }, [effectiveOrgId, loadBillingData, releaseCheckout, toast]);
+
+  async function abandonPendingCheckout() {
+    if (!pendingOrderId || abandoning) return;
+    setAbandoning(true);
+    try {
+      const result = await billingService.abandonCheckout(pendingOrderId, effectiveOrgId);
+      if (result.status === "captured" || result.status === "captured_review") {
+        await refreshCheckoutStatus(pendingOrderId);
+      } else {
+        setPendingOrderId(null);
+        setPendingPlanId(null);
+        setVerificationPending(false);
+        checkoutIntent.current = null;
+        releaseCheckout();
+        toast({ title: "Checkout closed", description: "You can select another plan now.", variant: "default" });
+      }
+    } catch {
+      toast({ title: "Could not close checkout", description: "Check payment status and try again.", variant: "error" });
+    } finally { setAbandoning(false); }
   }
+
+  useEffect(() => {
+    if (isRootAdmin && !effectiveOrgId) return;
+    let active = true;
+    billingService.getCheckoutStatus(effectiveOrgId).then((result) => {
+      if (!active) return;
+      if (result.status === "created" && result.orderId) {
+        setPendingOrderId(result.orderId);
+        setPendingPlanId(result.planId || null);
+        setPendingCycle(result.billingCycle || "monthly");
+      } else {
+        setPendingOrderId(null);
+      }
+    }).catch(() => {}).finally(() => { if (active) void loadBillingData(); });
+    return () => { active = false; };
+  }, [effectiveOrgId, isRootAdmin, loadBillingData]);
+
+  useEffect(() => {
+    if (!pendingOrderId || !verificationPending) return;
+    const timer = window.setInterval(() => {
+      statusPolls.current += 1;
+      if (statusPolls.current > 12) {
+        setVerificationPending(false);
+        return;
+      }
+      refreshCheckoutStatus(pendingOrderId).catch(() => {});
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [pendingOrderId, verificationPending, refreshCheckoutStatus]);
 
   async function handleDeactivateClinic(clinicId: string) {
     setDeactivatingClinicId(clinicId);
@@ -96,7 +182,7 @@ export default function BillingSettingsPage({
 
       // Re-validate feasibility with target plan if open
       if (selectedPlan) {
-        const recheck = await billingService.validatePlanDowngrade(selectedPlan.id, selectedOrgId);
+        const recheck = await billingService.validatePlanDowngrade(selectedPlan.id, effectiveOrgId);
         setDowngradeValidation(recheck);
         if (recheck.canDowngrade) {
           toast({
@@ -118,15 +204,19 @@ export default function BillingSettingsPage({
     }
   }
 
-  async function handleInitiateCheckout(plan: SaaSPlan) {
+  async function handleInitiateCheckout(plan: SaaSPlan, resume = false) {
+    if (checkoutBusy.current || (pendingOrderId && !resume)) return;
+    checkoutBusy.current = true;
+    setIsProcessing(true);
     setSelectedPlan(plan);
 
     // 1. Pre-flight check: validate if active resources fit within target plan
     try {
-      const validation = await billingService.validatePlanDowngrade(plan.id, selectedOrgId);
+      const validation = await billingService.validatePlanDowngrade(plan.id, effectiveOrgId);
       if (!validation.canDowngrade) {
         setDowngradeValidation(validation);
         setDowngradeModalOpen(true);
+        releaseCheckout();
         return;
       }
     } catch (err: any) {
@@ -134,22 +224,26 @@ export default function BillingSettingsPage({
         const violationData = err.response?.data?.data || err.response?.data;
         setDowngradeValidation(violationData);
         setDowngradeModalOpen(true);
+        releaseCheckout();
         return;
       }
       toast({ title: "Plan check failed", description: err.response?.data?.message || "Could not validate this plan change.", variant: "error" });
+      releaseCheckout();
       return;
     }
 
-    const price = billingCycle === "annual" ? plan.annualPrice : plan.monthlyPrice;
+    const cycle = resume ? pendingCycle : billingCycle;
+    const intentKey = `${effectiveOrgId || user?.organization_id}:${plan.id}:${cycle}`;
+    if (checkoutIntent.current?.key !== intentKey) checkoutIntent.current = { key: intentKey, id: crypto.randomUUID() };
+    const price = cycle === "annual" ? plan.annualPrice : plan.monthlyPrice;
 
     // 2. Direct switch for free plans (e.g. Starter at ₹0)
     if (price === 0) {
-      setIsProcessing(true);
       try {
-        await billingService.directSwitchPlan(plan.id, billingCycle, selectedOrgId);
+        await billingService.directSwitchPlan(plan.id, cycle, effectiveOrgId);
         toast({
           title: "Plan Changed Successfully",
-          description: `Your subscription has been switched to ${plan.name} (${billingCycle}).`,
+          description: `Your subscription has been switched to ${plan.name} (${cycle}).`,
           variant: "success",
         });
         setCheckoutModalOpen(false);
@@ -168,15 +262,25 @@ export default function BillingSettingsPage({
           });
         }
       } finally {
-        setIsProcessing(false);
+        releaseCheckout();
       }
       return;
     }
 
     // 3. Paid plan: Proceed to Razorpay checkout order creation
-    setIsProcessing(true);
+    let checkoutOpened = false;
     try {
-      const order = await billingService.createCheckoutOrder(plan.id, billingCycle, selectedOrgId);
+      const order = await billingService.createCheckoutOrder(plan.id, cycle, effectiveOrgId, checkoutIntent.current.id);
+      if (order.alreadyCompleted) {
+        checkoutIntent.current = null;
+        setPendingOrderId(null);
+        await loadBillingData();
+        toast({ title: "Payment already confirmed", description: "Your current subscription details have been refreshed.", variant: "success" });
+        return;
+      }
+      setPendingOrderId(order.orderId);
+      setPendingPlanId(plan.id);
+      setPendingCycle(cycle);
 
       // Load official Razorpay Checkout SDK
       const isLoaded = await loadRazorpayScript();
@@ -186,17 +290,16 @@ export default function BillingSettingsPage({
           description: "Could not connect to the secure payment gateway. Please check your internet connection.",
           variant: "error",
         });
-        setIsProcessing(false);
         return;
       }
 
       // Open Official Razorpay Checkout Window Modal
       const options = {
         key: order.keyId,
-        amount: order.amount * 100, // in paise
+        amount: Math.round(order.amount * 100), // in paise
         currency: order.currency,
         name: "Ekavyu Healthcare SaaS",
-        description: `${plan.name} Plan (${billingCycle}) Subscription`,
+        description: `${plan.name} Plan (${cycle}) Subscription`,
         order_id: order.orderId,
         handler: async (response: any) => {
           try {
@@ -204,27 +307,42 @@ export default function BillingSettingsPage({
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
-            }, selectedOrgId);
+            }, effectiveOrgId);
             if (!verification.success) {
+              if (verification.requiresReview) {
+                toast({ title: "Payment needs review", description: verification.message, variant: "default" });
+                setPendingOrderId(null);
+                checkoutIntent.current = null;
+                await loadBillingData();
+                return;
+              }
+              setPendingOrderId(order.orderId);
+              statusPolls.current = 0;
+              setVerificationPending(true);
               toast({ title: "Payment processing", description: "Payment is awaiting capture. Your plan will update when the gateway confirms it.", variant: "default" });
               return;
             }
+            setPendingOrderId(null);
+            checkoutIntent.current = null;
             toast({
-              title: "Subscription Activated",
-              description: `Your ${plan.name} plan is now active. A confirmation invoice has been sent to your email.`,
+              title: "Payment confirmed",
+              description: "Your current subscription and invoice details have been refreshed.",
               variant: "success",
             });
             setCheckoutModalOpen(false);
             setDowngradeModalOpen(false);
             loadBillingData();
-          } catch (err: any) {
+          } catch {
+            setPendingOrderId(order.orderId);
+            statusPolls.current = 0;
+            setVerificationPending(true);
             toast({
-              title: "Verification Failed",
-              description: err.response?.data?.message || "Could not verify transaction signature. Please contact support if your account was debited.",
-              variant: "error",
+              title: "Payment confirmation pending",
+              description: "We are checking the payment with Razorpay. Your plan will update after confirmation.",
+              variant: "default",
             });
           } finally {
-            setIsProcessing(false);
+            releaseCheckout();
           }
         },
         prefill: {
@@ -234,6 +352,7 @@ export default function BillingSettingsPage({
         theme: {
           color: "#0F6F66",
         },
+        modal: { ondismiss: () => { if (!verificationPending) releaseCheckout(); } },
       };
 
       const razorpayInstance = new (window as any).Razorpay(options);
@@ -243,9 +362,9 @@ export default function BillingSettingsPage({
           description: resp.error?.description || "Transaction failed at Razorpay gateway.",
           variant: "error",
         });
-        setIsProcessing(false);
       });
       razorpayInstance.open();
+      checkoutOpened = true;
     } catch (err: any) {
       if (err.response?.status === 409) {
         const violationData = err.response?.data?.data || err.response?.data;
@@ -259,24 +378,29 @@ export default function BillingSettingsPage({
         });
       }
     } finally {
-      setIsProcessing(false);
+      if (!checkoutOpened) releaseCheckout();
     }
   }
 
-  const handleSaveBillingInfo = (e: React.FormEvent) => {
+  const handleSaveBillingInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingBilling(true);
-    setTimeout(() => {
+    try {
+      const saved = await billingService.saveBillingDetails(billingForm, effectiveOrgId);
+      setBillingForm(saved);
+      toast({ title: "Billing Details Saved", description: "New SaaS invoices will use these details.", variant: "success" });
+    } catch (err: any) {
+      toast({ title: "Could not save billing details", description: err.response?.data?.message || "Please check the details and try again.", variant: "error" });
+    } finally {
       setSavingBilling(false);
-      toast({
-        title: "Billing Details Saved",
-        description: "Your GSTIN and invoice billing info have been updated.",
-        variant: "success",
-      });
-    }, 600);
+    }
   };
 
-  if (loading || (isRootAdmin && (!selectedOrgId || orgsLoading))) {
+  if (isRootAdmin && !effectiveOrgId && !orgsLoading) {
+    return <Card className="p-6 text-sm">Select an organization in <Link className="text-accent underline" href="/dashboard/settings?tab=billing">Organization Settings</Link> to manage its subscription.</Card>;
+  }
+
+  if (loading || (isRootAdmin && orgsLoading)) {
     return (
       <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading commercial subscription and plan limits">
         {/* Current Plan Overview Skeleton */}
@@ -310,6 +434,24 @@ export default function BillingSettingsPage({
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased">
+      {pendingOrderId && (
+        <Card className="p-4 border border-warning/40 bg-warning/10 text-sm">
+          <p role="status" className="font-semibold">{verificationPending ? "Checking payment confirmation…" : "Checkout is awaiting payment or confirmation."}</p>
+          <p className="mt-1 text-text-muted">Your existing plan stays active until Razorpay confirms payment. Order {pendingOrderId}.</p>
+          <div className="mt-3 flex gap-2">
+            <Button variant="secondary" size="xs" onClick={() => refreshCheckoutStatus(pendingOrderId).catch(() => {})}>Check payment status</Button>
+            {!verificationPending && pendingPlanId && plans.some((plan) => plan.id === pendingPlanId) && (
+              <Button variant="primary" size="xs" disabled={isProcessing} onClick={() => handleInitiateCheckout(plans.find((plan) => plan.id === pendingPlanId)!, true)}>Resume payment</Button>
+            )}
+            {!verificationPending && <Button variant="secondary" size="xs" disabled={abandoning || isProcessing} onClick={abandonPendingCheckout}>Choose another plan</Button>}
+          </div>
+        </Card>
+      )}
+      {subscription?.summary?.paymentStatus === "captured_review" && (
+        <Card className="p-4 border border-warning/40 bg-warning/10 text-sm" role="group">
+          A payment was captured after your plan changed. Its invoice is recorded and the payment needs support review before any entitlement adjustment.
+        </Card>
+      )}
       {/* Root Super-Admin Help Banner */}
       {isRootAdmin && (
         <Card className="border border-primary-500/40 bg-primary-500/10 p-4 rounded-xl">
@@ -446,7 +588,7 @@ export default function BillingSettingsPage({
         <CardHeader className="border-b border-border/60 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <CardTitle className="text-base font-bold text-text">Commercial SaaS Plans</CardTitle>
-            <CardDescription className="text-xs text-text-muted">Select or change your organization plan.</CardDescription>
+            <CardDescription className="text-xs text-text-muted">Plan changes start when payment is confirmed. Renewing the same paid plan extends its expiry. Changing plans starts a new period without credit for unused time. Prices shown exclude 18% GST.</CardDescription>
           </div>
           <div className="flex items-center gap-1 bg-surface-alt p-1 rounded-xl border border-border/60 w-fit">
             <button
@@ -472,6 +614,7 @@ export default function BillingSettingsPage({
             {plans.map((plan) => {
               const price = billingCycle === "annual" ? Math.round(plan.annualPrice / 12) : plan.monthlyPrice;
               const isCurrent = currentPlan?.slug === plan.slug;
+              const canRenew = isCurrent && (billingCycle === "annual" ? plan.annualPrice : plan.monthlyPrice) > 0;
 
               return (
                 <div
@@ -485,7 +628,7 @@ export default function BillingSettingsPage({
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <h4 className="text-lg font-bold text-text">{plan.name}</h4>
-                      {isCurrent && <Badge variant="primary" size="sm" className="font-bold">Active</Badge>}
+                      {isCurrent && <Badge variant="primary" size="sm" className="font-bold">Current</Badge>}
                     </div>
                     <p className="text-xs text-text-muted min-h-[36px]">{plan.description}</p>
                     <div className="text-2xl font-black text-text">
@@ -497,11 +640,11 @@ export default function BillingSettingsPage({
                   <Button
                     variant={isCurrent ? "secondary" : "primary"}
                     size="sm"
-                    disabled={isCurrent || isProcessing}
+                    disabled={(isCurrent && !canRenew) || isProcessing || !!pendingOrderId}
                     onClick={() => handleInitiateCheckout(plan)}
                     className="w-full font-bold rounded-xl cursor-pointer min-h-[44px] sm:min-h-[36px]"
                   >
-                    {isCurrent ? "Current Plan" : `Upgrade to ${plan.name}`}
+                    {isCurrent ? (canRenew ? (isTrial ? `Start ${plan.name}` : `Renew ${plan.name}`) : "Current Plan") : `Choose ${plan.name}`}
                   </Button>
                 </div>
               );
@@ -521,7 +664,7 @@ export default function BillingSettingsPage({
                   Tax information printed on your commercial SaaS invoices.
                 </CardDescription>
               </div>
-              <Button variant="primary" size="sm" loading={savingBilling} className="font-bold rounded-xl cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
+              <Button type="submit" variant="primary" size="sm" loading={savingBilling} className="font-bold rounded-xl cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 Save Details
               </Button>
             </div>
@@ -553,6 +696,24 @@ export default function BillingSettingsPage({
       </Card>
 
       {/* SaaS Invoice History Table */}
+      <Card className="border border-border/80 shadow-xs">
+        <CardHeader><CardTitle className="text-base font-bold text-text">Payment attempts</CardTitle>
+          <CardDescription className="text-xs text-text-muted">Created, paid, and interrupted checkout attempts for this organization.</CardDescription></CardHeader>
+        <CardContent className="p-0">
+          <Table data={paymentAttempts} mobileCardView emptyMessage="No payment attempts yet." columns={[
+            { header: "Created", accessor: (row: any) => <span className="text-xs">{new Date(row.createdAt).toLocaleString()}</span> },
+            { header: "Plan", accessor: (row: any) => <span className="text-xs">{row.planId?.name || "Plan unavailable"} ({row.billingCycle})</span> },
+            { header: "Amount", accessor: (row: any) => <span className="text-xs">₹{row.amount?.toLocaleString("en-IN")} {row.currency}</span> },
+            { header: "Status", accessor: (row: any) => <span className="text-xs">
+              <span className="capitalize">{row.status.replaceAll("_", " ")}</span>
+              {row.failureReason && <span className="block text-text-muted">{row.failureReason}</span>}
+              {row.paidAt && <span className="block text-text-muted">Paid {new Date(row.paidAt).toLocaleString()}</span>}
+            </span> },
+            { header: "Order", accessor: (row: any) => <span className="font-mono text-[10px]">{row.razorpayOrderId}</span> },
+          ]} />
+        </CardContent>
+      </Card>
+
       <Card className="border border-border/80 shadow-xs">
         <CardHeader className="border-b border-border/60 pb-3">
           <CardTitle className="text-base font-bold text-text">SaaS Commercial Invoices</CardTitle>
@@ -608,7 +769,7 @@ export default function BillingSettingsPage({
               {plans.map((p) => (
                 <div
                   key={p.id}
-                  onClick={() => handleInitiateCheckout(p)}
+                  onClick={() => { if (!isProcessing && !pendingOrderId) handleInitiateCheckout(p); }}
                   className="p-4 rounded-xl border border-border hover:border-primary cursor-pointer bg-surface-alt/30 transition-all space-y-2"
                 >
                   <div className="font-bold text-text text-sm">{p.name}</div>

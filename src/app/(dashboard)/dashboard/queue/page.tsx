@@ -4366,7 +4366,7 @@ export default function QueuePage() {
         size="xl"
       >
         {timelinePatient && (
-          <div className="max-h-[75vh] overflow-y-auto pr-1 pt-1">
+          <div className="pt-1">
             <PatientTimeline patientId={timelinePatient.id} />
           </div>
         )}

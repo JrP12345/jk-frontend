@@ -195,7 +195,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // Platform Root Superadmin Navigation (Free of tenant clinical clutter)
     { section: "Platform Console", label: "Platform Overview", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
     { section: "Organization management", label: "Organizations", href: "/dashboard/organizations", icon: <Building2 className="w-5 h-5" /> },
-    { section: "Organization management", label: "Users & access", href: "/dashboard/admin/users", icon: <Users className="w-5 h-5" /> },
+    { section: "Organization management", label: "Global users", href: "/dashboard/admin/users", icon: <Users className="w-5 h-5" /> },
     { section: "Live supervision", label: "Live activity", href: "/dashboard/admin/monitor", icon: <Activity className="w-5 h-5" /> },
     { section: "Billing & revenue", label: "Plans & subscriptions", href: "/dashboard/admin/billing", icon: <CreditCard className="w-5 h-5" /> },
     { section: "Security & auditing", label: "Audit log", href: "/dashboard/audit", icon: <FileText className="w-5 h-5" /> },
@@ -224,6 +224,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { section: "Billing & Finance", label: "Service Catalog", href: "/dashboard/billing/services", icon: <ClipboardList className="w-5 h-5" />, moduleKey: "service-catalog" },
 
     // 5. Administration & Facilities
+    { section: "Administration & Facilities", label: "Organization", href: "/dashboard/organizations", icon: <Building2 className="w-5 h-5" /> },
     { section: "Administration & Facilities", label: "Locations", href: "/dashboard/clinics", icon: <Building2 className="w-5 h-5" />, moduleKey: "clinics" },
     { section: "Administration & Facilities", label: "Team", href: "/dashboard/staff", icon: <Users className="w-5 h-5" />, moduleKey: "staff" },
     { section: "Administration & Facilities", label: "Shift Roster", href: "/dashboard/shifts", icon: <Clock className="w-5 h-5" />, moduleKey: "shifts" },

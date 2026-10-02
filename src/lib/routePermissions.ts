@@ -15,6 +15,7 @@ export const routePermissions: Record<string, string[]> = {
 
   // ── Administration ─────────────────────────────────────────────
   "/dashboard/settings":            ["MANAGE_ORGANIZATION"],
+  "/dashboard/organizations":       ["MANAGE_ORGANIZATION"],
   "/dashboard/settings/modules":    ["MANAGE_ORGANIZATION"],
   "/dashboard/audit":               ["VIEW_AUDIT_LOGS", "MANAGE_ORGANIZATION"],
   "/dashboard/analytics":           ["VIEW_ANALYTICS", "MANAGE_ORGANIZATION"],
@@ -44,7 +45,6 @@ export function hasRoutePermission(
 
   // Platform Root Super-Admin exclusive routes
   const ROOT_ONLY_ROUTES = [
-    "/dashboard/organizations",
     "/dashboard/admin/billing",
     "/dashboard/admin/users",
     "/dashboard/admin/monitor",

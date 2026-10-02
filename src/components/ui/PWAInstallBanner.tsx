@@ -8,11 +8,11 @@ import { createPortal } from "react-dom";
 import { useToastPosition } from "@/hooks/useToastPosition";
 import { useToast } from "./Toast";
 
-export function PWAInstallBanner() {
+export function PWAInstallBanner({ suppressed = false }: { suppressed?: boolean }) {
   const { isInstallable, installApp } = usePWA();
   const { hasActiveToasts } = useToast();
   const [dismissed, setDismissed] = useState(true);
-  const position = useToastPosition(isInstallable && !dismissed && !hasActiveToasts);
+  const position = useToastPosition(isInstallable && !dismissed && !hasActiveToasts && !suppressed);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -21,7 +21,7 @@ export function PWAInstallBanner() {
     }
   }, []);
 
-  if (!isInstallable || dismissed || hasActiveToasts) return null;
+  if (!isInstallable || dismissed || hasActiveToasts || suppressed) return null;
 
   const handleDismiss = () => {
     setDismissed(true);

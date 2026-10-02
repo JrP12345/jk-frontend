@@ -252,7 +252,7 @@ export function ClinicalDocumentGeneratorModal({
         title="Official Medico-Legal & Clinical Document Generator"
         size="lg"
       >
-        <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+        <div className="space-y-4">
           {/* Category Tabs */}
           <div className="grid grid-cols-3 gap-2 bg-surface-alt p-1 rounded-xl border border-border text-xs font-bold">
             <button

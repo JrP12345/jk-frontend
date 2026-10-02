@@ -221,7 +221,7 @@ export function NurseVitalsModal({
 
   return (
     <Modal open={open} onClose={onClose} title={`Nurse Triage & Vitals Station — ${patientName}`} size="lg">
-      <form onSubmit={handleSaveVitals} className="space-y-4 pt-1 max-h-[80vh] overflow-y-auto pr-1">
+      <form onSubmit={handleSaveVitals} className="space-y-4 pt-1">
         {/* Realtime Safety Alerts Bar */}
         {(isHighBp || isHypoxic || isFever) && (
           <div className="p-3 bg-danger/10 border border-danger/30 rounded-xl space-y-1 text-xs">

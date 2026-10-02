@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, Badge, Button, Modal, Select, Input, Checkbox, Tabs, useToast, cn, Skeleton, SkeletonTable } from "@/components/ui";
 import api from "@/lib/api";
+import { organizationPath } from "@/services/organization.service";
 
 export interface UserRoleRecord {
   id: string;
@@ -31,9 +32,10 @@ export interface PermissionItem {
 interface RBACPermissionMatrixProps {
   users: UserRoleRecord[];
   onRefresh: () => void;
+  organizationId?: string;
 }
 
-export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixProps) {
+export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACPermissionMatrixProps) {
   const { toast } = useToast();
 
   const [roles, setRoles] = useState<RoleRecord[]>([]);
@@ -159,11 +161,11 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
     try {
       setLoading(true);
       const [rolesRes, catalogRes] = await Promise.all([
-        api.get("/roles").catch(() => ({ data: { data: [] } })),
-        api.get("/permissions").catch(() => ({ data: { data: [] } })),
+        api.get(organizationPath("/roles", organizationId)),
+        api.get("/permissions"),
       ]);
 
-      const loadedRoles: RoleRecord[] = rolesRes.data?.data || [];
+      const loadedRoles: RoleRecord[] = (rolesRes.data?.data || []).filter((role: RoleRecord) => !organizationId || role.name !== "root");
       const loadedCatalog: PermissionItem[] = catalogRes.data?.data || [];
 
       setRoles(loadedRoles);
@@ -187,7 +189,7 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
 
   useEffect(() => {
     fetchRBACData();
-  }, []);
+  }, [organizationId]);
 
   const MANDATORY_ADMIN_PERMISSIONS = [
     "ADMINISTRATIVE_GOVERNANCE",
@@ -235,7 +237,7 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
     if (!activeMatrixRole) return;
     try {
       setSavingMatrix(true);
-      await api.put(`/roles/${activeMatrixRole}`, {
+      await api.put(organizationPath(`/roles/${activeMatrixRole}`, organizationId), {
         permissions: matrixPermissions,
       });
 
@@ -266,7 +268,7 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
     if (!selectedUser || !targetRole) return;
     try {
       setRoleUpdating(true);
-      await api.put(`/users/${selectedUser.id}/role`, { role: targetRole });
+      await api.put(organizationPath(`/users/${selectedUser.id}/role`, organizationId), { role: targetRole });
       toast({
         title: "User Role Updated",
         description: `Assigned role '${targetRole.toUpperCase()}' to ${selectedUser.name}`,
@@ -290,7 +292,7 @@ export function RBACPermissionMatrix({ users, onRefresh }: RBACPermissionMatrixP
     if (!newRoleName.trim()) return;
     try {
       setCreatingRole(true);
-      const res = await api.post("/roles", {
+      const res = await api.post(organizationPath("/roles", organizationId), {
         name: newRoleName,
         description: newRoleDesc,
         permissions: newRolePermissions,

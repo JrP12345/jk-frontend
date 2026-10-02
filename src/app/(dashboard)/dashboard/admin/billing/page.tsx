@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, StatCard, Button, Input, Badge, Table, Modal, Toggle, useToast, cn, Skeleton, SkeletonStats, SkeletonCardGrid } from "@/components/ui";
 import { billingService, SaaSPlan } from "@/services/billing.service";
 import { API_URL } from "@/lib/api";
@@ -10,6 +10,7 @@ export default function AdminBillingPage() {
   const { toast } = useToast();
   const [plans, setPlans] = useState<SaaSPlan[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [paymentReviews, setPaymentReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,20 +65,18 @@ export default function AdminBillingPage() {
   });
   const [savingPlan, setSavingPlan] = useState(false);
 
-  useEffect(() => {
-    loadAdminData();
-  }, []);
-
-  async function loadAdminData() {
+  const loadAdminData = useCallback(async () => {
     try {
       setIsRefreshing(true);
-      const [plansData, subsData, rzpData] = await Promise.all([
+      const [plansData, subsData, rzpData, reviewsData] = await Promise.all([
         billingService.adminGetPlans(),
         billingService.adminGetSubscriptions(),
         billingService.adminGetRazorpayConfig(),
+        billingService.adminGetPaymentReviews(),
       ]);
       setPlans(plansData || []);
       setSubscriptions(subsData || []);
+      setPaymentReviews(reviewsData || []);
       if (rzpData) {
         setRazorpayConfig({
           keyId: rzpData.keyId || "",
@@ -96,7 +95,12 @@ export default function AdminBillingPage() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }
+  }, [toast]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadAdminData(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadAdminData]);
 
   async function handleExtendTrial() {
     if (!extendingSubId) return;
@@ -497,6 +501,20 @@ export default function AdminBillingPage() {
          ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "subscriptions" && (
         <div className="space-y-4">
+          {paymentReviews.length > 0 && (
+            <Card className="p-4 border border-warning/40 bg-warning/10">
+              <CardTitle className="text-sm">Captured payments requiring review ({paymentReviews.length})</CardTitle>
+              <div className="mt-3 space-y-2 text-xs">
+                {paymentReviews.map((payment) => (
+                  <div key={payment._id} className="rounded-lg bg-surface p-3 border border-border">
+                    <strong>{payment.organizationId?.name || "Organization unavailable"}</strong> · {payment.planId?.name || "Plan unavailable"} · ₹{payment.amount?.toLocaleString("en-IN")}
+                    <div className="font-mono mt-1">Order {payment.razorpayOrderId} · Payment {payment.razorpayPaymentId}</div>
+                    <div className="mt-1">Review the existing entitlement and invoice before a manual grant or refund.</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
           <Table
             data={filteredSubs}
             loading={loading}
@@ -747,9 +765,9 @@ export default function AdminBillingPage() {
           open={planModalOpen}
           onClose={() => setPlanModalOpen(false)}
           title={editingPlan.id ? "Edit plan" : "Create plan"}
-          size="lg"
+          size="xl"
         >
-          <form onSubmit={handleSavePlan} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
+          <form onSubmit={handleSavePlan} className="space-y-4 pt-1">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <Input
                 label="Plan Name *"

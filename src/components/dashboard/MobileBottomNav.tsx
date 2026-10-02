@@ -57,7 +57,7 @@ export function MobileBottomNav({
       case "root":
         return [
           { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
-          { label: "Tenants", href: "/dashboard/organizations", icon: Building2 },
+          { label: "Organizations", href: "/dashboard/organizations", icon: Building2 },
           { label: "Users", href: "/dashboard/admin/users", icon: Users },
           { label: "Billing", href: "/dashboard/admin/billing", icon: Receipt },
         ];

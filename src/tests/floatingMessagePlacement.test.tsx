@@ -7,13 +7,13 @@ function offerInstallation() {
   act(() => { window.dispatchEvent(new Event("beforeinstallprompt", { cancelable: true })); });
 }
 
-function Page({ browse = false }: { browse?: boolean }) {
+function Page({ browse = false, management = false }: { browse?: boolean; management?: boolean }) {
   const { toast, clearAll } = useToast();
   return <>
     <header key={browse ? "browse" : "dashboard"} data-app-header data-bottom={browse ? 64 : 112}>Navigation</header>
     <button onClick={() => toast({ title: "Impersonation ended", duration: 10000 })}>Notify</button>
     <button onClick={clearAll}>Clear messages</button>
-    <PWAInstallBanner />
+    <PWAInstallBanner suppressed={management} />
   </>;
 }
 
@@ -28,6 +28,13 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("Floating messages across page transitions", () => {
+  it("keeps organization management clear while preserving the installation offer on other pages", () => {
+    const view = render(<ToastProvider><Page management /></ToastProvider>);
+    offerInstallation();
+    expect(screen.queryByRole("region", { name: "Install Ekavyu" })).not.toBeInTheDocument();
+    view.rerender(<ToastProvider><Page browse /></ToastProvider>);
+    expect(screen.getByRole("region", { name: "Install Ekavyu" })).toBeInTheDocument();
+  });
   it("keeps the install prompt below the current header when routes replace navigation", async () => {
     const { container, rerender } = render(<ToastProvider><Page /></ToastProvider>);
     offerInstallation();

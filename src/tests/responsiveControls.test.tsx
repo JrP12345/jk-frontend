@@ -19,6 +19,17 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("responsive controls", () => {
+  it("uses compact, standard, and wide dialog widths according to the task", async () => {
+    const { rerender } = render(<Modal open title="Confirm" size="sm" onClose={vi.fn()}>Confirm action</Modal>);
+    expect(await screen.findByRole("dialog", { name: "Confirm" })).toHaveClass("max-w-sm");
+
+    rerender(<Modal open title="Form" size="lg" onClose={vi.fn()}>Form fields</Modal>);
+    expect(await screen.findByRole("dialog", { name: "Form" })).toHaveClass("max-w-2xl");
+
+    rerender(<Modal open title="Workspace" size="2xl" onClose={vi.fn()}>Workspace</Modal>);
+    expect(await screen.findByRole("dialog", { name: "Workspace" })).toHaveClass("max-w-6xl");
+  });
+
   it("does not turn a card containing a link into a second interactive control", () => {
     const open = vi.fn();
     render(<Card onClick={open} role="group"><Link href="/browse/clinic">Clinic details</Link></Card>);

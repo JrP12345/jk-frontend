@@ -1598,7 +1598,7 @@ export default function AppointmentsPage() {
 
           {/* STEP 3: Live Time Slots & Schedule Picker */}
           {bookingStep === 3 && (
-            <form onSubmit={handleConfirmBooking} className="space-y-4 animate-fade-in max-h-[70vh] overflow-y-auto pr-1">
+            <form onSubmit={handleConfirmBooking} className="space-y-4 animate-fade-in">
               <h3 className="text-xs font-bold uppercase tracking-wider text-text">Date & Time Slot</h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -2030,7 +2030,7 @@ export default function AppointmentsPage() {
         }} disabled={!activeRecord} />}
       >
         {activeRecord && (
-          <div className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
+          <div className="space-y-4 pt-1">
             <div
               id="printable-prescription"
               className="border border-border/80 rounded-2xl p-5 sm:p-6 bg-surface-alt text-text space-y-4 shadow-xs"

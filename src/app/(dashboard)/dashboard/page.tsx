@@ -408,6 +408,15 @@ export default function DashboardOverview() {
               <Button
                 variant="primary"
                 size="sm"
+                onClick={() => router.push("/dashboard/organizations?create=1")}
+                className="rounded-xl text-xs font-semibold shadow-xs min-h-[40px] sm:min-h-[36px] justify-center"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Create organization
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={() => router.push("/dashboard/admin/users")}
                 className="rounded-xl text-xs font-semibold shadow-xs min-h-[40px] sm:min-h-[36px] justify-center"
               >

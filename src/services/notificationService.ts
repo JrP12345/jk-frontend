@@ -152,8 +152,9 @@ export const notificationService = {
     return res.data;
   },
 
-  sendTestEmail: async (targetEmail?: string) => {
-    const res = await api.post("/notifications/test-email", { targetEmail });
+  sendTestEmail: async (targetEmail?: string, organizationId?: string) => {
+    const url = organizationId ? `/notifications/test-email?organizationId=${encodeURIComponent(organizationId)}` : "/notifications/test-email";
+    const res = await api.post(url, { targetEmail });
     return res.data;
   },
 

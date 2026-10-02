@@ -116,7 +116,7 @@ export function InCabinLabOrderModal({
       description={`Order laboratory investigations for ${patientName} (Token #${tokenNumber}). Patient will be held in Standby for report review.`}
       size="lg"
     >
-      <div className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
+      <div className="space-y-4 pt-1">
         {/* Quick Test Chips Picker */}
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">

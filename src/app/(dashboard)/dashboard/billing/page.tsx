@@ -1386,9 +1386,9 @@ export default function BillingPage() {
         }}
         title="Create Manual Medical Invoice"
         description="Generate an outpatient invoice itemized by consultation fees, diagnostics, and procedures."
-        size="lg"
+        size="xl"
       >
-        <form onSubmit={handleCreateInvoice} className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
+        <form onSubmit={handleCreateInvoice} className="space-y-4 pt-1">
           {/* Step 1: Choose Patient */}
           <div className="space-y-2 border-b border-border/60 pb-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-text">1. Choose Patient</h3>
