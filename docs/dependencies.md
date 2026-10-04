@@ -35,12 +35,13 @@ versions were upgraded during cleanup.
 | `@types/qrcode` | 1.5.6 | MIT | Types for qrcode APIs |
 | `@types/react` | 19.3.0 | MIT | Types for react APIs |
 | `@types/react-dom` | 19.3.0 | MIT | Types for react-dom APIs |
-| `eslint` | 9.39.5 | MIT | Lint CLI |
+| `eslint` | 9.39.5 | MIT | Lint CLI; newest release supported by the installed Next lint plugins |
 | `eslint-config-next` | 16.3.8 | MIT | Next/React lint rules |
 | `jsdom` | 29.1.1 | MIT | Vitest DOM environment |
 | `sharp` | 0.35.5 | Apache-2.0 | Existing logo/icon generation script |
 | `tailwindcss` | 4.3.3 | MIT | CSS utilities and tokens |
-| `typescript` | 5.9.3 | Apache-2.0 | Type compiler |
+| `@typescript/native` | 7.0.2 | Apache-2.0 | Native TypeScript 7 compiler (`tsc`) |
+| `typescript` | 6.0.2 compatibility API | Apache-2.0 | Required by the installed `typescript-eslint` integration while it awaits TypeScript 7 API support |
 | `vite` | 8.3.2 | MIT | Required non-optional Vitest peer |
 | `vitest` | 5.0.3 | MIT | Test runner |
 
@@ -48,7 +49,7 @@ versions were upgraded during cleanup.
 
 - `lucide-react` → ISC (MIT notices for Feather-derived icons) → UI icons → no replacement needed under the permissive-license policy. [Upstream license](https://lucide.dev/license).
 - `sharp` → Apache-2.0 → development asset exports → no replacement needed. Declared directly at the already locked version rather than relying on Next's optional transitive install. Existing native libvips packages carry separate LGPL-3.0-or-later notices; preserve them when distributing binaries. [Sharp license](https://github.com/lovell/sharp/blob/main/LICENSE).
-- `typescript` → Apache-2.0 → compiler tooling → no replacement needed. [TypeScript license](https://github.com/microsoft/TypeScript/blob/main/LICENSE.txt).
+- `@typescript/native` and `typescript` → Apache-2.0 → compiler tooling and the temporary TypeScript 6 API compatibility layer → no replacement needed. [TypeScript license](https://github.com/microsoft/TypeScript/blob/main/LICENSE.txt).
 
 No premium UI package or commercial component runtime appears in the direct
 manifest. Checkout/video/imaging integrations use intentional provider services.
