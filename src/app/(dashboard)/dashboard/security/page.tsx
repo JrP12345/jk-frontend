@@ -74,23 +74,23 @@ export default function AccountSecurityPage() {
   if (loadError) return <div className="space-y-4 max-w-4xl mx-auto"><h1 className="text-2xl font-bold">Account security</h1><Alert variant="error" title="Security settings unavailable" action={<Button variant="outline" onClick={load}>Try again</Button>}>Your passkeys and session policies could not be loaded.</Alert></div>;
   return <div className="space-y-5 max-w-4xl mx-auto pb-24">
     <div><h1 className="text-2xl font-bold text-text">Account security</h1><p className="text-sm text-text-secondary mt-1">Manage your passkeys and device preferences.</p></div>
-    <Card className="p-4 sm:p-6 space-y-4">
+    <Card className="p-4 sm:p-6" contentClassName="gap-4 items-start">
       <h2 className="font-bold flex items-center gap-2"><KeyRound className="w-5 h-5 text-accent" />Passkeys</h2>
       <p className="text-sm text-text-secondary">Sign in with your fingerprint, face, or device PIN. Your existing sign-in methods remain available.</p>
-      {loading ? <Skeleton className="h-16 w-full" /> : keys.length === 0 ? <p className="text-sm text-text-muted">No passkeys added yet.</p> : keys.map((key) => <div key={key.id} className="flex flex-wrap gap-3 justify-between items-center border border-border rounded-xl p-3">
+      {loading ? <Skeleton height="4rem" /> : keys.length === 0 ? <p className="text-sm text-text-muted">No passkeys added yet.</p> : keys.map((key) => <div key={key.id} className="w-full flex flex-wrap gap-3 justify-between items-center border border-border rounded-xl p-3 sm:p-4">
         <div><p className="font-semibold text-sm">{key.name}</p><p className="text-xs text-text-muted">{key.lastUsedAt ? `Last used ${new Date(key.lastUsedAt).toLocaleDateString()}` : `Added ${new Date(key.createdAt).toLocaleDateString()}`}</p></div>
-        <Button variant="outline" size="sm" disabled={busy !== null} loading={busy === key.id} onClick={() => removeKey(key.id)}>Remove</Button>
+        <Button variant="outline" size="sm" className="shrink-0" disabled={busy !== null} loading={busy === key.id} onClick={() => removeKey(key.id)}>Remove</Button>
       </div>)}
-      <Button onClick={addKey} disabled={!supported || busy !== null || loading} loading={busy === "add"}>Add passkey</Button>
+      <Button icon={<KeyRound />} className="w-full sm:w-auto shrink-0" onClick={addKey} disabled={!supported || busy !== null || loading} loading={busy === "add"}>Add passkey</Button>
       {!supported && <p className="text-xs text-text-muted">Open this page in a browser that supports passkeys over HTTPS.</p>}
     </Card>
     <Card className="p-4 sm:p-6"><Toggle label="Vibration feedback" checked={haptics} onChange={(value) => { setHaptics(value); localStorage.setItem("ananta_haptics", value ? "on" : "off"); }} /><p className="text-xs text-text-muted mt-2">Brief feedback for confirmations and errors on supported devices.</p></Card>
-    {user?.role === "root" && <Card className="p-4 sm:p-6 space-y-4">
+    {user?.role === "root" && <Card className="p-4 sm:p-6" contentClassName="gap-4">
       <h2 className="font-bold flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-accent" />Organization owner sessions</h2>
       <p className="text-sm text-text-secondary">Owners have unlimited sessions by default. Lowering a limit signs out the oldest sessions above that limit.</p>
-      {loading ? <Skeleton className="h-20 w-full" /> : owners.map((owner) => <div key={owner.id} className="border border-border p-3 sm:p-4 rounded-xl space-y-3">
+      {loading ? <Skeleton height="8rem" /> : owners.map((owner) => <div key={owner.id} className="min-w-0 border border-border p-4 sm:p-5 rounded-xl space-y-4">
         <div className="flex flex-wrap gap-2 justify-between"><div><p className="font-semibold">{owner.name}</p><p className="text-xs text-text-muted break-all">{owner.email} · {owner.organizations.join(", ")}</p></div><Badge>{owner.activeSessions} active sessions</Badge></div>
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-end"><Input label="Maximum sessions (blank means unlimited)" type="number" min={1} max={1000} value={limits[owner.id] || ""} onChange={(event) => setLimits((current) => ({ ...current, [owner.id]: event.target.value }))} /><Button disabled={busy !== null} loading={busy === owner.id} onClick={() => updateLimit(owner)}>Save limit</Button></div>
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-end"><Input containerClassName="min-w-0 flex-1" label="Maximum sessions (blank means unlimited)" type="number" min={1} max={1000} value={limits[owner.id] || ""} onChange={(event) => setLimits((current) => ({ ...current, [owner.id]: event.target.value }))} /><Button className="w-full shrink-0 whitespace-nowrap sm:w-auto" disabled={busy !== null} loading={busy === owner.id} onClick={() => updateLimit(owner)}>Save limit</Button></div>
         <Button variant="outline" size="sm" disabled={busy !== null} onClick={async () => { setBusy(owner.id); try { await api.post(`/auth/admin/sessions/revoke-user/${owner.id}`); await load(); toast({ title: "Owner sessions signed out", variant: "success" }); } catch { toast({ title: "Could not sign out sessions", variant: "error" }); } finally { setBusy(null); } }}>Sign out all sessions</Button>
       </div>)}
     </Card>}

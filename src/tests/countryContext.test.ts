@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { addCalendarDays, clinicClockMinutes, clinicDateKey, clinicLocalDateTimeInput, clinicLocalTimeToIso } from "@/lib/clinicTime";
 import { detectPatientOtpTarget, patientOtpDestination } from "@/lib/patientLogin";
+import { COUNTRIES, countryOptions, phoneCountryOptions } from "@/lib/countries";
 
 describe("clinic local time", () => {
   it("uses the clinic's calendar when the browser is on another day", () => {
@@ -22,6 +23,17 @@ describe("clinic local time", () => {
 });
 
 describe("patient phone entry", () => {
+  it("uses one country list for organization setup and phone selection", () => {
+    expect(phoneCountryOptions.map(country => country.value)).toEqual(countryOptions.map(country => country.value));
+    expect(COUNTRIES.GB).toMatchObject({ currency: "GBP", timezone: "Europe/London", callingCode: "+44" });
+    expect(detectPatientOtpTarget("9876543210", "IN")).toEqual({ phone: "9876543210" });
+    expect(detectPatientOtpTarget("+91 9876543210", "US")).toEqual({ phone: "9876543210" });
+    expect(detectPatientOtpTarget("+44 20 7946 0123", "GB")).toEqual({ phone: "+442079460123" });
+    expect(detectPatientOtpTarget("12345", "US")).toBeNull();
+    expect(detectPatientOtpTarget("abc4155550199", "US")).toBeNull();
+    expect(detectPatientOtpTarget("41555501991234567", "US")).toBeNull();
+    expect(detectPatientOtpTarget(" Patient@Example.COM ", "AE")).toEqual({ email: "patient@example.com" });
+  });
   it("preserves Indian accounts and accepts explicit international numbers", () => {
     expect(detectPatientOtpTarget("+91 98765 43210")).toEqual({ phone: "9876543210" });
     expect(detectPatientOtpTarget("+1 (415) 555-0199")).toEqual({ phone: "+14155550199" });

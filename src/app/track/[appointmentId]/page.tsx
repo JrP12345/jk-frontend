@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingImage from "@/components/ui/LoadingImage";
 import PrintButton from "@/components/ui/PrintButton";
 import { printHtml } from "@/lib/printBrand";
 import { formatCurrency } from "@/lib/currency";
@@ -1661,7 +1662,7 @@ export default function PublicLiveQueueTracker() {
                 </div>
                 {trackerQrDataUrl ? (
                   <div className="p-2.5 bg-surface dark:bg-surface rounded-xl inline-block border border-border/80 shadow-xs">
-                    <img
+                    <LoadingImage
                       src={trackerQrDataUrl}
                       alt="UPI Payment QR Code"
                       className="w-44 h-44 object-contain mx-auto"

@@ -3,6 +3,15 @@ import { NextRequest } from "next/server";
 import { proxy } from "../proxy";
 
 describe("Content Security Policy (CSP) Regression Tests", () => {
+  it("clears stale cookies after intentional logout and lands on the clean browse URL", () => {
+    const response = proxy(new NextRequest("https://ananta.health/browse?logout=1", { headers: { cookie: "refresh_token=stale; access_token=stale; ananta_session=1" } }));
+    expect(response.headers.get("location")).toBe("https://ananta.health/browse");
+    for (const name of ["refresh_token", "access_token", "ananta_session"]) {
+      expect(response.cookies.get(name)?.value).toBe("");
+      expect(response.cookies.get(name)?.expires?.getTime()).toBe(0);
+    }
+    expect(proxy(new NextRequest("https://ananta.health/dashboard" )).headers.get("location")).toBe("https://ananta.health/login");
+  });
   const originalEnv = process.env.NODE_ENV;
 
   afterEach(() => {

@@ -6,14 +6,12 @@ import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import { Button, Input, Badge, Avatar, useToast } from "@/components/ui";
 import api from "@/lib/api";
 import { Lock, KeyRound, LogOut, ArrowRight } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes of inactivity
 
 export function ClinicalScreenLock() {
   const { user, logout } = useAuthStore();
   const { toast } = useToast();
-  const router = useRouter();
 
   const [isLocked, setIsLocked] = useState(false);
   const lockRef = useRef<HTMLDivElement>(null);
@@ -97,7 +95,7 @@ export function ClinicalScreenLock() {
   const handleSignOut = async () => {
     await logout();
     setIsLocked(false);
-    router.replace("/login?logout=1");
+    window.location.replace("/browse?logout=1");
   };
 
   return (

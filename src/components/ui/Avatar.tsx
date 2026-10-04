@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, memo } from "react";
+import { memo } from "react";
 import { cn } from "./utils";
+import LoadingImage from "./LoadingImage";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
 
@@ -59,30 +60,22 @@ function getInitials(name: string): string {
 }
 
 const Avatar = memo(function Avatar({ src, alt, name = "", size = "md", status, className = "" }: AvatarProps) {
-  const [imageError, setImageError] = useState(false);
+  const initials = (
+    <span
+      className={cn(
+        "rounded-full inline-flex items-center justify-center font-semibold uppercase tracking-wider",
+        sizeStyles[size],
+        getColor(name)
+      )}
+      aria-label={name || "Avatar"}
+    >
+      {getInitials(name)}
+    </span>
+  );
 
   return (
     <div className={cn("relative inline-flex shrink-0 select-none", className)}>
-      {src && !imageError ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={src}
-          alt={alt || name}
-          onError={() => setImageError(true)}
-          className={cn("rounded-full object-cover animate-fade-in ring-1 ring-border/50", sizeStyles[size])}
-        />
-      ) : (
-        <div
-          className={cn(
-            "rounded-full inline-flex items-center justify-center font-semibold uppercase tracking-wider",
-            sizeStyles[size],
-            getColor(name)
-          )}
-          aria-label={name || "Avatar"}
-        >
-          {getInitials(name)}
-        </div>
-      )}
+      {src ? <LoadingImage src={src} alt={alt || name} fallback={initials} className={cn("rounded-full object-cover ring-1 ring-border/50", sizeStyles[size])} /> : initials}
       {status && (
         <span
           className={cn(
@@ -98,4 +91,3 @@ const Avatar = memo(function Avatar({ src, alt, name = "", size = "md", status, 
 });
 
 export default Avatar;
-

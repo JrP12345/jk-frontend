@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingImage from "@/components/ui/LoadingImage";
 import PrintDialogActions from "@/components/ui/PrintDialogActions";
 
 import { getPrintBrandStyles, printHtml, PrintPreparationError } from "@/lib/printBrand";
@@ -829,7 +830,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
             </div>
             <div className="text-right">
               {document.doctorSignatureUrl ? (
-                <img
+                <LoadingImage
                   src={document.doctorSignatureUrl}
                   alt="Doctor Signature"
                   className="h-10 max-w-[140px] ml-auto object-contain mb-1"

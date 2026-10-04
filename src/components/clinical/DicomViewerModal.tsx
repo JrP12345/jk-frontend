@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingImage from "@/components/ui/LoadingImage";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { externalServiceUrl } from "@/lib/externalServiceUrl";
@@ -105,8 +106,7 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
           {currentManifest?.limited && <Alert>Showing the first 500 instances. Open PACS to review the complete study.</Alert>}
           <div className="relative h-72 sm:h-96 rounded-xl bg-black overflow-auto flex items-center justify-center">
             {imageError ? <div className="p-5 text-white text-center space-y-3"><p>This image could not be loaded.</p><Button onClick={() => setImageRetry(value => value + 1)}>Retry frame</Button></div> : image ? (
-              // eslint-disable-next-line @next/next/no-img-element -- Authenticated PNG blob; revoke on frame change or close.
-              <img src={image} alt={`Study preview, image ${instanceIndex + 1}, frame ${frame}`} onError={() => setImageError(true)} className="max-w-full max-h-full object-contain" style={{ transform: `rotate(${rotation}deg) scale(${zoom / 100})`, filter: inverted ? "invert(1)" : undefined }} />
+              <LoadingImage src={image} alt={`Study preview, image ${instanceIndex + 1}, frame ${frame}`} onError={() => setImageError(true)} className="max-w-full max-h-full object-contain" style={{ transform: `rotate(${rotation}deg) scale(${zoom / 100})`, filter: inverted ? "invert(1)" : undefined }} />
             ) : <p role="status" className="text-white">Loading frame...</p>}
           </div>
           <div className="flex flex-wrap gap-2 items-center">

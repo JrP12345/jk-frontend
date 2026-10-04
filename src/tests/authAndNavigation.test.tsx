@@ -50,6 +50,12 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
     expect(post).toHaveBeenCalledTimes(1);
     expect(get).not.toHaveBeenCalled();
 
+    // A protected request that finishes during explicit logout must not
+    // announce expiry or start a second logout request.
+    window.dispatchEvent(new Event("auth-expired"));
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(useAuthStore.getState().isLoggingOut).toBe(true);
+
     rejectLogout(new Error("Network unavailable"));
     await logout;
     expect(useAuthStore.getState()).toMatchObject({ user: null, isAuthenticated: false, isLoggingOut: true });

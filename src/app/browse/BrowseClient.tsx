@@ -7,12 +7,13 @@ import api from "@/lib/api";
 import { Alert, Button, Input, Select, Card, EmptyState } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import ClinicCardSkeletons from "@/components/ui/ClinicCardSkeletons";
+import LoadingImage from "@/components/ui/LoadingImage";
 import { Search, MapPin, ChevronRight, Building2, Users, CreditCard, Camera, Star, Stethoscope, ArrowUpDown } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
 import { getPublicBookingStatus, type PublicBookingStatus } from "@/lib/publicBooking";
 import { parseWeeklySchedule } from "@/lib/timing/clinicStatus";
-import { detectUserLocation, findMatchingClinicCity, DetectedLocation } from "@/lib/geo/locationDetector";
+import { detectUserLocation, hasLocationCoordinates, distanceBandLabel, type DetectedLocation } from "@/lib/geo/locationDetector";
 
 interface DoctorSummary {
   id: string;
@@ -41,6 +42,7 @@ export interface Clinic {
   minFee?: number | null;
   rating?: number | null;
   reviewsCount?: number;
+  distanceKm?: number;
   specialties?: string[];
   doctorsSummary?: DoctorSummary[];
   onlineBookingAvailable?: boolean;
@@ -65,10 +67,7 @@ function directoryMinimumFeeLabel(fee: number, currency: string): string {
 function ClinicImage({ src, name }: { src: string | undefined; name: string }) {
   const [failedSrc, setFailedSrc] = useState<string>();
   return src && failedSrc !== src ? (
-    <div className="relative w-full h-full">
-      <Building2 aria-hidden="true" className="absolute inset-0 m-auto w-5 h-5 text-text-muted" strokeWidth={1.75} />
-      <img src={src} alt={name} width={48} height={48} loading="lazy" decoding="async" onError={() => setFailedSrc(src)} className="relative w-full h-full object-cover rounded-xl" />
-    </div>
+    <LoadingImage src={src} alt={name} width={48} height={48} loading="lazy" onError={() => setFailedSrc(src)} className="w-full h-full object-contain rounded-xl" />
   ) : <Building2 aria-label="Clinic image unavailable" className="w-5 h-5 text-text-muted" strokeWidth={1.75} />;
 }
 
@@ -102,6 +101,7 @@ function normalizeFilters(filters: ClinicFilters | undefined, clinics: Clinic[])
 }
 
 const SORT_OPTIONS = [
+  { value: "nearby", label: "Nearest first" },
   { value: "rating", label: "Top rated" },
   { value: "fee_low", label: "Lowest fee" },
 ];
@@ -131,7 +131,7 @@ export default function BrowseClient({
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
-  const [sortBy, setSortBy] = useState("rating");
+  const [sortBy, setSortBy] = useState("nearby");
   const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
@@ -142,6 +142,9 @@ export default function BrowseClient({
   const moreRequest = useRef<AbortController | null>(null);
   useEffect(() => () => moreRequest.current?.abort(), []);
   const [detectedLocation, setDetectedLocation] = useState<DetectedLocation | null>(null);
+  const latitude = hasLocationCoordinates(detectedLocation) ? detectedLocation.latitude : undefined;
+  const longitude = hasLocationCoordinates(detectedLocation) ? detectedLocation.longitude : undefined;
+  const effectiveSort = sortBy === "nearby" && latitude === undefined ? "rating" : sortBy;
   const [filters, setFilters] = useState<ClinicFilters>(() => normalizeFilters(initialFilters, normalizeClinics(initialClinics)));
   const allCities = filters.cities;
   const quickSpecialties = [{ value: "", label: "All Care" }, ...filters.specialties.map(value => ({ value, label: value }))];
@@ -155,8 +158,8 @@ export default function BrowseClient({
         const search = typeof saved.search === "string" ? saved.search : "";
         const city = typeof saved.city === "string" ? saved.city : "";
         const specialty = typeof saved.specialty === "string" ? saved.specialty : "";
-        const sort = SORT_OPTIONS.some(option => option.value === saved.sort) ? saved.sort : "rating";
-        restoredFilters.current = Boolean(search || city || specialty || sort !== "rating");
+        const sort = SORT_OPTIONS.some(option => option.value === saved.sort) ? saved.sort : "nearby";
+        restoredFilters.current = Boolean(search || city || specialty || sort !== "nearby");
         restoringResults.current = restoredFilters.current;
         setSearchQuery(search);
         setDebouncedSearch(search);
@@ -191,7 +194,7 @@ export default function BrowseClient({
         const loc = await detectUserLocation();
         if (!isMounted) return;
 
-        if (loc && (loc.city || loc.state)) {
+        if (loc && (hasLocationCoordinates(loc) || loc.city || loc.state)) {
           setDetectedLocation(loc);
 
         }
@@ -206,20 +209,6 @@ export default function BrowseClient({
     };
   }, [loadingOnly]);
 
-  // Auto-select city if user hasn't explicitly chosen one and a matching clinic city exists
-  useEffect(() => {
-    if (!restored || !detectedLocation?.city || allCities.length === 0) return;
-    try {
-      const userChoice = sessionStorage.getItem("ananta_user_city_choice");
-      if (userChoice) return;
-
-      const matched = findMatchingClinicCity(detectedLocation.city, allCities);
-      if (matched && !selectedCity) {
-        setSelectedCity(matched);
-      }
-    } catch {}
-  }, [detectedLocation, allCities, selectedCity, restored]);
-
   // 300ms Search Debounce
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -233,7 +222,7 @@ export default function BrowseClient({
     if (loadingOnly || !restored) return;
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      if (!restoredFilters.current && (initialLoaded || initialClinics.length > 0)) return;
+      if (effectiveSort !== "nearby" && !restoredFilters.current && (initialLoaded || initialClinics.length > 0)) return;
     }
     moreRequest.current?.abort();
     setLoadingMore(false);
@@ -246,7 +235,11 @@ export default function BrowseClient({
       if (debouncedSearch) params.append("search", debouncedSearch);
       if (selectedCity) params.append("city", selectedCity);
       if (selectedSpecialty) params.append("specialization", selectedSpecialty);
-      params.append("sort", sortBy);
+      params.append("sort", effectiveSort);
+      if (effectiveSort === "nearby" && latitude !== undefined && longitude !== undefined) {
+        params.set("latitude", String(latitude));
+        params.set("longitude", String(longitude));
+      }
       const res = await api.get(`/public/clinics${params.toString() ? `?${params}` : ""}`, { signal: controller.signal });
       if (controller.signal.aborted) return;
       if (!Array.isArray(res.data.data)) throw new Error("Invalid clinic response");
@@ -280,7 +273,7 @@ export default function BrowseClient({
     };
     void fetchClinics();
     return () => controller.abort();
-  }, [debouncedSearch, selectedCity, selectedSpecialty, retryKey, sortBy, loadingOnly, restored]);
+  }, [debouncedSearch, selectedCity, selectedSpecialty, retryKey, effectiveSort, latitude, longitude, loadingOnly, restored]);
 
   const loadMore = async () => {
     if (!nextCursor || loadingMore || loading || searchQuery !== debouncedSearch) return;
@@ -289,7 +282,11 @@ export default function BrowseClient({
     setLoadingMore(true);
     setLoadMoreError(false);
     try {
-      const params = new URLSearchParams({ sort: sortBy, cursor: nextCursor });
+      const params = new URLSearchParams({ sort: effectiveSort, cursor: nextCursor });
+      if (effectiveSort === "nearby" && latitude !== undefined && longitude !== undefined) {
+        params.set("latitude", String(latitude));
+        params.set("longitude", String(longitude));
+      }
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (selectedCity) params.set("city", selectedCity);
       if (selectedSpecialty) params.set("specialization", selectedSpecialty);
@@ -308,7 +305,8 @@ export default function BrowseClient({
   };
 
   const sortedClinics = useMemo(() => [...clinics].sort((a, b) => {
-        if (sortBy === "fee_low") {
+        if (effectiveSort === "nearby") return 0; // Server ranks the full directory before pagination.
+        if (effectiveSort === "fee_low") {
           if (a.minFee == null) return b.minFee == null ? 0 : 1;
           if (b.minFee == null) return -1;
           return a.minFee - b.minFee;
@@ -316,7 +314,7 @@ export default function BrowseClient({
         if (a.rating == null) return b.rating == null ? 0 : 1;
         if (b.rating == null) return -1;
         return b.rating - a.rating;
-      }), [clinics, sortBy]);
+      }), [clinics, effectiveSort]);
 
   const handleCitySelect = (city: string) => {
     try {
@@ -343,7 +341,7 @@ export default function BrowseClient({
 
   const hasActiveFilters = Boolean(debouncedSearch || selectedCity || selectedSpecialty);
 
-  const localizedSortOptions = SORT_OPTIONS.map((opt) => ({
+  const localizedSortOptions = SORT_OPTIONS.filter(opt => opt.value !== "nearby" || latitude !== undefined).map((opt) => ({
     value: opt.value,
     label: opt.label,
   }));
@@ -429,13 +427,13 @@ export default function BrowseClient({
               )}
             </p>
 
-            {detectedLocation && (detectedLocation.city || detectedLocation.state) && (
+            {detectedLocation && latitude !== undefined && (
               <span className="inline-flex items-center gap-1.5 text-accent text-[11px] font-medium">
                 <MapPin className="w-3 h-3 text-accent shrink-0" />
                 <span>
-                  {"Near"}{" "}
+                  {detectedLocation.source === "ip" ? "Approximate area: " : "Using your location"}
                   <strong className="font-bold">
-                    {[detectedLocation.city, detectedLocation.state].filter(Boolean).join(", ")}
+                    {detectedLocation.source === "ip" && ([detectedLocation.city, detectedLocation.state].filter(Boolean).join(", ") || "connection location")}
                   </strong>
                 </span>
                 {selectedCity ? (
@@ -470,7 +468,7 @@ export default function BrowseClient({
             )}
             <Select
               icon={<ArrowUpDown className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />}
-              value={sortBy}
+              value={effectiveSort}
               disabled={loadingOnly}
               onChange={(e) => setSortBy(e.target.value)}
               options={localizedSortOptions}
@@ -557,6 +555,9 @@ export default function BrowseClient({
                           )}
                           <p className="text-xs text-text-muted flex flex-wrap items-center gap-1.5 mt-0.5">
                             <span className="truncate">{clinic.city || "Location not listed"}</span>
+                            {effectiveSort === "nearby" && typeof clinic.distanceKm === "number" && Number.isFinite(clinic.distanceKm) && clinic.distanceKm >= 0 && (
+                              <span className="text-accent font-medium">{distanceBandLabel(clinic.distanceKm, detectedLocation?.source === "ip" || (detectedLocation?.accuracy ?? 0) > 1000)}</span>
+                            )}
                             {hasClinicHours && <><span aria-hidden="true">•</span><ClinicStatusBadge timings={clinic.timings} compact className="max-w-full flex-wrap" /></>}
                           </p>
                         </div>

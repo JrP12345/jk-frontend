@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingImage from "@/components/ui/LoadingImage";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
@@ -572,8 +573,7 @@ function OnboardingInner() {
                 {qrCodeUrl ? (
                   <div className="flex flex-col items-center justify-center space-y-3">
                     <div className="p-3 bg-white rounded-2xl border border-border shadow-md">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={qrCodeUrl} alt="Google Authenticator 2FA QR Code" className="w-44 h-44" />
+                      <LoadingImage src={qrCodeUrl} alt="Google Authenticator 2FA QR Code" className="w-44 h-44" />
                     </div>
 
                     {totpSecret && (

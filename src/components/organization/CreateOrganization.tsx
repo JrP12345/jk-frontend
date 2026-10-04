@@ -3,8 +3,8 @@ import { useState } from "react";
 import api from "@/lib/api";
 import { Alert, Button, ImageUpload, Input, Modal, Select } from "@/components/ui";
 import { saveWithBranding } from "@/services/organization.service";
+import { COUNTRIES, countryOptions, type CountryCode } from "@/lib/countries";
 
-const countries = { IN: ["India", "INR", "Asia/Kolkata"], US: ["United States", "USD", "America/New_York"], CA: ["Canada", "CAD", "America/Toronto"], GB: ["United Kingdom", "GBP", "Europe/London"], AE: ["United Arab Emirates", "AED", "Asia/Dubai"] };
 export function CreateOrganization({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (id: string) => void }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ org_name: "", city: "", countryCode: "IN", timezone: "Asia/Kolkata", plan: "starter", trial: "default", customDays: "", admin_name: "", admin_email: "", admin_password: "", clinic_name: "", sendWelcomeEmail: true });
@@ -26,7 +26,7 @@ export function CreateOrganization({ open, onClose, onCreated }: { open: boolean
     try {
       const response = await saveWithBranding([logo, cover], undefined, ([logo_url, image_url]) => api.post("/onboarding/organization", {
         org_name: form.org_name.trim(), city: form.city.trim(), countryCode: form.countryCode,
-        currency: countries[form.countryCode as keyof typeof countries][1], timezone: form.timezone,
+        currency: COUNTRIES[form.countryCode as CountryCode].currency, timezone: form.timezone,
         plan: form.plan, trialDays: form.trial === "default" ? undefined : Number(form.trial === "custom" ? form.customDays : form.trial),
         admin_name: form.admin_name.trim(), admin_email: form.admin_email.trim().toLowerCase(), admin_password: form.admin_password,
         clinic_name: form.clinic_name.trim() || undefined, sendWelcomeEmail: form.sendWelcomeEmail,
@@ -45,7 +45,7 @@ export function CreateOrganization({ open, onClose, onCreated }: { open: boolean
       <fieldset disabled={busy} className="space-y-4">
         {step === 1 ? <>
           <Input label="Organization name" required value={form.org_name} onChange={(e) => change("org_name", e.target.value)} />
-          <div className="grid gap-4 sm:grid-cols-2"><Input label="City" required value={form.city} onChange={(e) => change("city", e.target.value)} /><Select label="Country" value={form.countryCode} options={Object.entries(countries).map(([value, [label]]) => ({ value, label }))} onChange={(e) => setForm({ ...form, countryCode: e.target.value, timezone: countries[e.target.value as keyof typeof countries][2] })} /></div>
+          <div className="grid gap-4 sm:grid-cols-2"><Input label="City" required value={form.city} onChange={(e) => change("city", e.target.value)} /><Select label="Country" value={form.countryCode} options={countryOptions} onChange={(e) => setForm({ ...form, countryCode: e.target.value, timezone: COUNTRIES[e.target.value as CountryCode].timezone })} /></div>
           <Select label="Subscription tier" value={form.plan} options={[{ value: "starter", label: "Starter" }, { value: "pro", label: "Pro" }, { value: "enterprise", label: "Enterprise" }]} onChange={(e) => change("plan", e.target.value)} />
           <Select label="Free trial duration" value={form.trial} options={[{ value: "default", label: "Use plan default" }, { value: "7", label: "7 days" }, { value: "15", label: "15 days" }, { value: "30", label: "30 days" }, { value: "custom", label: "Custom duration" }]} onChange={(e) => change("trial", e.target.value)} />
           {form.trial === "custom" && <Input label="Custom trial days" type="number" required min={1} max={365} step={1} value={form.customDays} onChange={(e) => change("customDays", e.target.value)} />}

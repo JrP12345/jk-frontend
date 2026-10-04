@@ -1,5 +1,7 @@
 "use client";
 
+import LoadingImage from "@/components/ui/LoadingImage";
+import BrowseDetailSkeleton from "@/components/ui/BrowseDetailSkeleton";
 import PrintButton from "@/components/ui/PrintButton";
 
 import { rememberTracker } from "@/store/trackerStore";
@@ -1110,43 +1112,7 @@ export default function BrowseDetailClient({
 
   if (loading || (clinic && clinic.id !== id)) {
     if (bookingOnly) return <div role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">Loading appointments at {bookingName || "this location"}…</div>;
-    return (
-      <div className="min-h-screen bg-surface-alt font-sans text-text antialiased">
-        <MarketplaceNavbar />
-        {/* Navigation Breadcrumbs Skeleton */}
-        <div className="bg-surface border-b border-border/40 px-4 sm:px-6 py-3 pt-20">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <div className="h-4 w-40 bg-surface-alt rounded-lg animate-pulse" />
-            <div className="h-4 w-24 bg-surface-alt rounded-lg animate-pulse" />
-          </div>
-        </div>
-
-        {/* Clinic Header Banner Skeleton */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6">
-          <div className="bg-surface border border-border rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs animate-pulse">
-            <div className="h-36 sm:h-52 w-full bg-surface-alt" />
-            <div className="p-4 sm:p-6 space-y-3">
-              <div className="h-7 w-64 bg-surface-alt rounded-lg" />
-              <div className="h-4 w-48 bg-surface-alt rounded-lg" />
-            </div>
-          </div>
-        </div>
-
-        {/* Content Skeleton */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col lg:grid lg:grid-cols-3 gap-6">
-          <div className="order-1 lg:order-2 lg:col-span-2 space-y-4">
-            <div className="h-6 w-40 bg-surface rounded-lg animate-pulse" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="h-64 bg-surface rounded-2xl border border-border animate-pulse p-4" />
-              <div className="h-64 bg-surface rounded-2xl border border-border animate-pulse p-4" />
-            </div>
-          </div>
-          <div className="order-2 lg:order-1 lg:col-span-1">
-            <div className="h-72 bg-surface rounded-2xl border border-border animate-pulse p-4" />
-          </div>
-        </div>
-      </div>
-    );
+    return <BrowseDetailSkeleton />;
   }
 
   if (!clinic) return null;
@@ -1207,7 +1173,7 @@ export default function BrowseDetailClient({
           {/* Visual Cover Header */}
           {hasCoverImage && <div className="h-24 sm:h-40 w-full relative bg-surface-alt overflow-hidden">
             {clinic.image_url ? (
-              <img src={clinic.image_url} alt={clinic.name} className="w-full h-full object-cover" />
+              <LoadingImage src={clinic.image_url} alt={clinic.name} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-surface border-b border-border/40">
                 <Building2 className="w-8 h-8 text-text-muted" strokeWidth={1.75} aria-hidden="true" />
@@ -1239,10 +1205,11 @@ export default function BrowseDetailClient({
               <div className="flex min-w-0 items-center gap-3.5">
                 {(clinic.logo_url || clinic.organization?.logo_url) && (
                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-surface border-2 border-surface shadow-md overflow-hidden shrink-0 -mt-8 sm:-mt-12 z-10 relative">
-                    <img
+                    <LoadingImage
                       src={clinic.logo_url || clinic.organization?.logo_url}
                       alt={clinic.name}
-                      className="w-full h-full object-cover"
+                      fallback={clinic.name.slice(0, 1)}
+                      className="w-full h-full object-contain"
                     />
                   </div>
                 )}
@@ -1411,7 +1378,7 @@ export default function BrowseDetailClient({
                     <Link href={`/doctor/${encodeURIComponent(doc.id)}?clinicId=${encodeURIComponent(id)}`} className="flex items-start gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" aria-label={`View Dr. ${doc.name.replace(/^Dr\.?\s*/i, "")}'s profile`}>
                       <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
                         {doc.image_url ? (
-                          <img src={doc.image_url} alt={doc.name} className="w-full h-full object-cover rounded-xl" />
+                          <LoadingImage src={doc.image_url} alt={doc.name} loading="lazy" className="w-full h-full object-cover rounded-xl" />
                         ) : (
                           <span className="text-xs sm:text-sm font-bold text-text-muted">DR</span>
                         )}
@@ -1559,7 +1526,7 @@ export default function BrowseDetailClient({
               <CardContent className="pt-3.5 space-y-3">
                 {clinic.organization.logo_url && (
                   <div className="flex items-center gap-3">
-                    <img
+                    <LoadingImage
                       src={clinic.organization.logo_url}
                       alt={clinic.organization.name}
                       className="w-10 h-10 rounded-xl object-contain border border-border p-1 bg-surface-alt shadow-2xs"
@@ -1598,9 +1565,10 @@ export default function BrowseDetailClient({
                       onClick={() => setLightboxIndex(idx)}
                       className="relative aspect-square rounded-xl overflow-hidden border border-border/60 group hover:opacity-90 transition-opacity cursor-pointer bg-surface-alt"
                     >
-                      <img
+                      <LoadingImage
                         src={img}
                         alt={`Facility photo ${idx + 1}`}
+                        loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                       />
                       {idx === 5 && clinic.images!.length > 6 && (
@@ -1690,7 +1658,7 @@ export default function BrowseDetailClient({
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 rounded-lg bg-surface border border-border flex items-center justify-center font-bold text-text-secondary text-[11px] shrink-0 overflow-hidden shadow-2xs">
                     {selectedDoctor?.image_url ? (
-                      <img src={selectedDoctor.image_url} alt={selectedDoctor.name} className="w-full h-full object-cover" />
+                      <LoadingImage src={selectedDoctor.image_url} alt={selectedDoctor.name} className="w-full h-full object-cover" />
                     ) : (
                       "DR"
                     )}
@@ -2345,7 +2313,7 @@ export default function BrowseDetailClient({
             className="relative max-w-4xl max-h-[80vh] w-full flex items-center justify-center [touch-action:pan-y_pinch-zoom]"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
+            <LoadingImage
               src={clinic.images[lightboxIndex]}
               alt={`Facility showcase ${lightboxIndex + 1}`}
               draggable={false}

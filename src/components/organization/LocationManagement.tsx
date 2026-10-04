@@ -1,11 +1,13 @@
 "use client";
 
+import LoadingImage from "@/components/ui/LoadingImage";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
 import type { ClinicDetail } from "@/app/browse/[id]/BrowseDetailClient";
 import { getPublicBookingStatus } from "@/lib/publicBooking";
 import { parseWeeklySchedule } from "@/lib/timing/clinicStatus";
+import { parseClinicCoordinates } from "@/lib/geo/clinicCoordinates";
 import { Alert, Card, CardContent, Table, Button, Modal, Input, useToast, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, SkeletonTable, Dropdown, StatCard, cn } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { useOrganizationClinics } from "@/hooks/useOrganizationClinics";
@@ -230,6 +232,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
       upiVpa: row.upiVpa || "",
       merchantName: row.merchantName || "",
       brandColor: row.brandColor || "#0F6F66",
+      mapCoordinates: typeof row.latitude === "number" && typeof row.longitude === "number" ? `${row.latitude}, ${row.longitude}` : "",
     });
     setClinicErrors({});
     setIsModalOpen(true);
@@ -250,15 +253,18 @@ export default function LocationManagement({ organizationId, embedded = false }:
     const isNameValid = validateClinicField("name", formData.name || "");
     const isCityValid = validateClinicField("city", formData.city || "");
     const isEmailValid = validateClinicField("email", formData.email || "");
+    const coordinates = parseClinicCoordinates(formData.mapCoordinates || "");
+    if (!coordinates) setClinicErrors(previous => ({ ...previous, mapCoordinates: "Enter valid latitude, longitude (for example: 20.5992, 72.9342)." }));
 
-    if (!isNameValid || !isCityValid || !isEmailValid) {
+    if (!isNameValid || !isCityValid || !isEmailValid || !coordinates) {
       toast({ title: "Validation Error", description: "Please correct the highlighted errors.", variant: "error" });
       return;
     }
 
     setSubmitting(true);
     try {
-      let finalData = { ...formData };
+      const finalData = { ...formData, ...coordinates };
+      delete finalData.mapCoordinates;
 
       // Handle deferred image upload
       if (finalData.image_url instanceof File) {
@@ -548,7 +554,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                     <div className="flex items-center gap-3 min-w-[180px]">
                       <div className="w-10 h-10 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
                         {row.image_url ? (
-                          <img src={row.image_url} alt={row.name} className="w-full h-full object-cover" />
+                          <LoadingImage src={row.image_url} alt={row.name} className="w-full h-full object-cover" />
                         ) : (
                           <Building2 className="w-5 h-5 text-accent" />
                         )}
@@ -661,7 +667,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-10 h-10 rounded-xl bg-surface-alt border border-border flex items-center justify-center text-accent font-bold text-sm shrink-0 overflow-hidden shadow-2xs">
                         {row.image_url ? (
-                          <img src={row.image_url} alt={row.name} className="w-full h-full object-cover" />
+                          <LoadingImage src={row.image_url} alt={row.name} className="w-full h-full object-cover" />
                         ) : (
                           <Building2 className="w-5 h-5 text-accent" />
                         )}
@@ -961,6 +967,14 @@ export default function LocationManagement({ organizationId, embedded = false }:
               value={formData.address || ""}
               onChange={(e) => handleFieldChange("address", e.target.value)}
               placeholder="e.g. 742 Evergreen Terrace, Suite 100"
+            />
+            <Input
+              label="Map coordinates (optional)"
+              value={formData.mapCoordinates || ""}
+              onChange={(event) => handleFieldChange("mapCoordinates", event.target.value)}
+              placeholder="20.5992, 72.9342"
+              hint="Copy latitude, longitude from this clinic's pin in Google Maps to help nearby patients find you."
+              error={clinicErrors.mapCoordinates}
             />
             <Input
               label="Branch timezone (optional)"

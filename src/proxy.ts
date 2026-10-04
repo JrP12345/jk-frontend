@@ -44,6 +44,16 @@ function nextWithContentSecurityPolicy(request: NextRequest) {
 export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
+  // A full navigation after logout clears stale HttpOnly cookies even if the
+  // API was unavailable, and returns to the clean public directory URL.
+  if (pathname === "/browse" && searchParams.get("logout") === "1") {
+    const response = NextResponse.redirect(new URL("/browse", request.url));
+    response.cookies.delete("refresh_token");
+    response.cookies.delete("access_token");
+    response.cookies.delete("ananta_session");
+    return response;
+  }
+
   // Check for the presence of auth tokens (refresh_token, access_token) or session cookie (ananta_session)
   const isBookingGuest = request.cookies.get("ananta_session")?.value === "guest";
   const hasAuthToken = !isBookingGuest && (

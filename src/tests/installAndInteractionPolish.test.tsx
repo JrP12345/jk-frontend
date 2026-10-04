@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({ push: vi.fn(), toast: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }), usePathname: () => "/dashboard", useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/components/MarketplaceNavbar", () => ({ default: () => null }));
 vi.mock("@/components/ui", async original => ({ ...await original<typeof import("@/components/ui")>(), useToast: () => ({ toast: mocks.toast }) }));
-vi.mock("@/lib/geo/locationDetector", () => ({ detectUserLocation: async () => null, findMatchingClinicCity: () => null }));
+vi.mock("@/lib/geo/locationDetector", async importOriginal => ({ ...await importOriginal<typeof import("@/lib/geo/locationDetector")>(), detectUserLocation: async () => null }));
 
 beforeEach(() => {
   vi.clearAllMocks();

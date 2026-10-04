@@ -7,8 +7,9 @@ import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
 import PasskeySignIn from "@/components/auth/PasskeySignIn";
 import { detectPatientOtpTarget, patientOtpDestination, type PatientOtpTarget } from "@/lib/patientLogin";
+import { COUNTRIES, phoneCountryOptions, type CountryCode } from "@/lib/countries";
 import { NavigationPending } from "@/components/ui/RouteProgress";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, Modal, useToast, ModeSwitcher, EkavyuLogo, cn } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Select, Button, Modal, useToast, ModeSwitcher, EkavyuLogo, cn } from "@/components/ui";
 import { AlertTriangle, Smartphone, Mail, Lock, KeyRound, Eye, EyeOff, ArrowLeft, ArrowRight, ShieldCheck, CheckCircle2, Clock, RotateCcw, Sparkles } from "lucide-react";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -16,6 +17,8 @@ const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 export default function LoginPage() {
   const [authTab, setAuthTab] = useState<"mobile" | "email">("mobile");
   const [patientIdentifier, setPatientIdentifier] = useState("");
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>("IN");
+  const enteringPhone = !patientIdentifier.includes("@");
   const [patientIdentifierError, setPatientIdentifierError] = useState("");
   const [otpTarget, setOtpTarget] = useState<PatientOtpTarget | null>(null);
   const [phoneOtp, setPhoneOtp] = useState("");
@@ -56,16 +59,11 @@ export default function LoginPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("expired") === "1" || params.get("error") || params.get("logout") === "1") {
-        setSessionExpired(true);
+        setSessionExpired(params.get("expired") === "1");
         useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
         document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         if (params.get("logout") === "1") {
-          toast({
-            title: "Signed Out",
-            description: "You have been successfully signed out.",
-            variant: "info",
-            duration: 4000,
-          });
+          router.replace("/browse");
         } else if (params.get("expired") === "1") {
           toast({
             title: "Session Expired",
@@ -76,7 +74,7 @@ export default function LoginPage() {
         }
       }
     }
-  }, [toast]);
+  }, [toast, router]);
 
   useEffect(() => {
     if (!sessionExpired && !isLoading && isAuthenticated) {
@@ -98,9 +96,9 @@ export default function LoginPage() {
   const handleRequestPatientOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otpLoading) return;
-    const target = otpSent ? otpTarget : detectPatientOtpTarget(patientIdentifier);
+    const target = otpSent ? otpTarget : detectPatientOtpTarget(patientIdentifier, phoneCountry);
     if (!target) {
-      setPatientIdentifierError("Enter an email, Indian 10-digit number, or international number with +country code.");
+      setPatientIdentifierError("Enter a valid email or mobile number for the selected country.");
       triggerShake();
       return;
     }
@@ -213,11 +211,6 @@ export default function LoginPage() {
     try {
       const res = await api.post("/auth/login", { email, password });
       if (res.data?.data?.twoFactorRequired) {
-        toast({
-          title: "2FA Authentication Required",
-          description: "Please enter your 2FA verification code to complete sign in.",
-          variant: "warning",
-        });
         setIsTwoFactorModalOpen(true);
         setTwoFactorToken(res.data.data.twoFactorToken || "");
         return;
@@ -401,18 +394,46 @@ export default function LoginPage() {
                     <Input
                       label="Email or mobile number"
                       type="text"
-                      placeholder="Email or phone (+country code outside India)"
+                      placeholder="Enter your email or mobile number"
                       icon={patientIdentifier.includes("@") ? <Mail className="w-4 h-4 text-text-muted" /> : <Smartphone className="w-4 h-4 text-text-muted" />}
                       value={patientIdentifier}
-                      onChange={(e) => { setPatientIdentifier(e.target.value); setPatientIdentifierError(""); }}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setPatientIdentifier(value);
+                        setPatientIdentifierError("");
+                        if (value.trim().startsWith("+")) {
+                          const digits = `+${value.replace(/\D/g, "")}`;
+                          if (!digits.startsWith(COUNTRIES[phoneCountry].callingCode)) {
+                            const country = (Object.keys(COUNTRIES) as CountryCode[]).find(code => digits.startsWith(COUNTRIES[code].callingCode));
+                            if (country) setPhoneCountry(country);
+                          }
+                        }
+                      }}
                       error={patientIdentifierError}
-                      hint="We'll send a verification code to your email or phone."
+                      aria-describedby="patient-sign-in-hint"
                       autoComplete="username"
                       autoCapitalize="none"
                       spellCheck={false}
                       disabled={otpLoading}
                       required
                     />
+
+                    {enteringPhone && <Select
+                      label="Country code"
+                      value={phoneCountry}
+                      options={phoneCountryOptions}
+                      disabled={otpLoading}
+                      onChange={(event) => {
+                        if (patientIdentifier.trim().startsWith("+")) {
+                          const digits = `+${patientIdentifier.replace(/\D/g, "")}`;
+                          if (digits.startsWith(COUNTRIES[phoneCountry].callingCode)) setPatientIdentifier(digits.slice(COUNTRIES[phoneCountry].callingCode.length));
+                        }
+                        setPhoneCountry(event.target.value as CountryCode);
+                        setPatientIdentifierError("");
+                      }}
+                    />}
+
+                    <p id="patient-sign-in-hint" className="text-center text-xs leading-relaxed text-text-muted">We&apos;ll send a verification code to your email or phone.</p>
 
                     <Button
                       type="submit"
@@ -660,18 +681,6 @@ export default function LoginPage() {
           )}
         </Card>
 
-        {/* Security & Compliance Badges */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-text-muted font-medium">
-          <span className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-success-text" strokeWidth={2.25} />
-            <span>256-Bit SSL Encrypted</span>
-          </span>
-          <span className="w-1 h-1 rounded-full bg-border" />
-          <span className="flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-accent" strokeWidth={2} />
-            <span>ABDM & HIPAA Compliant</span>
-          </span>
-        </div>
       </div>
 
       {/* 2FA OTP Verification Modal */}

@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PWAInstallBanner } from "@/components/ui/PWAInstallBanner";
 import { ToastProvider, useToast, type ToastOptions } from "@/components/ui/Toast";
 
+vi.mock("next/navigation", () => ({ usePathname: () => "/browse" }));
+
 function offerInstallation() {
   act(() => { window.dispatchEvent(new Event("beforeinstallprompt", { cancelable: true })); });
 }
@@ -38,15 +40,15 @@ describe("Floating messages across page transitions", () => {
     view.rerender(<ToastProvider><Page browse /></ToastProvider>);
     expect(screen.getByRole("region", { name: "Install Ekavyu" })).toBeInTheDocument();
   });
-  it("keeps installation in page flow when routes replace navigation", () => {
+  it("keeps installation floating when routes replace navigation", () => {
     const { container, rerender } = render(<ToastProvider><Page /></ToastProvider>);
     offerInstallation();
     const banner = screen.getByRole("region", { name: "Install Ekavyu" });
     expect(container).toContainElement(banner);
-    expect(banner).not.toHaveClass("fixed");
+    expect(banner).toHaveClass("fixed");
     rerender(<ToastProvider><Page browse /></ToastProvider>);
     expect(container).toContainElement(banner);
-    expect(banner).not.toHaveClass("fixed");
+    expect(banner).toHaveClass("fixed");
   });
 
   it("gives notifications priority over the install prompt without dismissing installation", () => {
@@ -95,7 +97,7 @@ describe("Floating messages across page transitions", () => {
     render(<ToastProvider><Page browse /></ToastProvider>);
     offerInstallation();
     const banner = screen.getByRole("region", { name: "Install Ekavyu" });
-    expect(banner).not.toHaveClass("fixed");
+    expect(banner).toHaveClass("fixed");
     fireEvent.click(screen.getByRole("button", { name: "Notify" }));
     const region = screen.getByRole("region", { name: "Notifications" });
     expect(region.style.getPropertyValue("--toast-visible-top")).toBe("40px");
@@ -104,7 +106,7 @@ describe("Floating messages across page transitions", () => {
     expect(region.style.getPropertyValue("--toast-visible-top")).toBe("96px");
     expect(region.style.getPropertyValue("--toast-viewport-bottom")).toBe("360px");
     fireEvent.click(screen.getByRole("button", { name: "Clear messages" }));
-    expect(banner).not.toHaveClass("fixed");
+    expect(banner).toHaveClass("fixed");
     fireEvent.click(within(screen.getByRole("region", { name: "Install Ekavyu" })).getByRole("button", { name: "Dismiss banner" }));
     expect(screen.queryByRole("region", { name: "Install Ekavyu" })).not.toBeInTheDocument();
     expect(sessionStorage.getItem("pwa_install_dismissed")).toBe("1");

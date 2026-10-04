@@ -8,9 +8,11 @@ import api from "../lib/api";
 const routePush = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: routePush }) }));
 vi.mock("../components/MarketplaceNavbar", () => ({ default: () => null }));
-vi.mock("../lib/geo/locationDetector", () => ({ detectUserLocation: async () => null, findMatchingClinicCity: () => null }));
+const detectLocation = vi.hoisted(() => vi.fn());
+vi.mock("../lib/geo/locationDetector", async importOriginal => ({ ...await importOriginal<typeof import("../lib/geo/locationDetector")>(), detectUserLocation: detectLocation }));
 
 beforeEach(() => {
+  detectLocation.mockResolvedValue(null);
   vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   // jsdom does not implement the browser scrolling API used by Select.
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, writable: true, value: vi.fn() });
@@ -18,6 +20,24 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); routePush.mockClear(); sessionStorage.clear(); });
 
 describe("Mobile calendar and browse loading", () => {
+  it("prioritizes nearby clinics across cities and keeps the same origin on subsequent pages", async () => {
+    detectLocation.mockResolvedValue({ city: "Surat", state: "Gujarat", source: "ip", latitude: 21.17, longitude: 72.83 });
+    const base = { address: "", phone: "", email: "", description: "", image_url: "", timings: "" };
+    const near = { ...base, id: "near", name: "Nearby across town", city: "Other town", distanceKm: 5, rating: 2 };
+    const further = { ...base, id: "further", name: "Next distance band", city: "Surat", distanceKm: 15, rating: 5 };
+    const request = vi.spyOn(api, "get").mockResolvedValueOnce({ data: { data: [near] }, headers: { "x-next-cursor": "near-page" } })
+      .mockResolvedValueOnce({ data: { data: { items: [further], nextCursor: null } } });
+    render(<BrowseClient initialLoaded />);
+    expect(await screen.findByText("Within 10 km (approx.)")).toBeInTheDocument();
+    expect(request).toHaveBeenNthCalledWith(1, "/public/clinics?sort=nearby&latitude=21.17&longitude=72.83", expect.anything());
+    expect(screen.getByRole("combobox", { name: "Filter by location" })).toHaveTextContent("All Cities");
+    expect(screen.getByText("Approximate area:")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Load more clinics" }));
+    expect(await screen.findByText("Within 20 km (approx.)")).toBeInTheDocument();
+    expect(request).toHaveBeenNthCalledWith(2, "/public/clinics?sort=nearby&cursor=near-page&latitude=21.17&longitude=72.83", expect.anything());
+    expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).toEqual([near.name, further.name]);
+  });
+
   it("opens a readable daily agenda on phones", () => {
     vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
     render(<AppointmentCalendarView appointments={[]} />);

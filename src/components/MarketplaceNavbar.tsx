@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingImage from "@/components/ui/LoadingImage";
 import { useState, useRef } from "react";
 import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import Link from "next/link";
@@ -24,7 +25,7 @@ export default function MarketplaceNavbar({ brand }: { brand?: { name: string; l
   const handleLogout = async () => {
     setIsMobileMenuOpen(false);
     await logout();
-    router.replace("/login?logout=1");
+    window.location.replace("/browse?logout=1");
   };
 
   const toggleMobileMenu = () => {
@@ -40,8 +41,7 @@ export default function MarketplaceNavbar({ brand }: { brand?: { name: string; l
         {brand ? <Link href={brand.href} className="flex min-w-0 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring sm:gap-3">
           <NavigationPending />
           {brand.logoUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={brand.logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg border border-border bg-surface object-contain sm:h-10 sm:w-10" />
+            <LoadingImage src={brand.logoUrl} alt="" fallback={brand.name.slice(0, 1)} className="h-9 w-9 shrink-0 rounded-lg border border-border bg-surface object-contain sm:h-10 sm:w-10" />
           ) : <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-500/10 text-base font-bold text-accent sm:h-10 sm:w-10">{brand.name.slice(0, 1)}</span>}
           <span className="min-w-0"><span className="block max-w-[9rem] truncate text-sm font-bold text-text sm:max-w-[18rem]">{brand.name}</span><span className="block text-[10px] text-text-muted">Appointments powered by Ekavyu</span></span>
         </Link> : <Link href="/browse" className="shrink-0">

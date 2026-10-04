@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingImage from "@/components/ui/LoadingImage";
 import PrintDialogActions from "@/components/ui/PrintDialogActions";
 
 import { useState, useEffect, useRef } from "react";
@@ -206,7 +207,7 @@ export default function ThermalTokenSlipModal({
               Scan to Track Live on Phone
             </p>
             {qrDataUrl ? (
-              <img
+              <LoadingImage
                 src={qrDataUrl}
                 alt="Scan to track queue live"
                 className={cn(

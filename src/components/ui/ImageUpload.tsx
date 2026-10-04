@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingImage from "@/components/ui/LoadingImage";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "./utils";
 
@@ -173,8 +174,7 @@ export default function ImageUpload({
                 </span>
               </div>
             ) : (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={previewUrl} alt="Preview" className="w-full h-full object-cover animate-scale-in" />
+              <LoadingImage src={previewUrl} alt="Preview" className="w-full h-full object-cover animate-scale-in" />
             )}
 
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-3">
@@ -243,4 +243,3 @@ export default function ImageUpload({
     </div>
   );
 }
-

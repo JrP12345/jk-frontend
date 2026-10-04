@@ -99,6 +99,24 @@ describe("responsive controls", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("uses layout width, keeps its position on focus, and removes the menu before navigation", async () => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function () {
+      return { left: 500, right: 700, top: 50, bottom: 90, width: this.getAttribute("role") === "menu" ? 246 : 200, height: 40 } as DOMRect;
+    });
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(256);
+    const action = vi.fn();
+    render(<Dropdown align="right" width="w-64" trigger={<button>Profile</button>} items={[{ label: "Settings", onClick: action }, { label: "Security" }]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Profile" }));
+    const menu = await screen.findByRole("menu");
+    expect(menu.style.left).toBe("444px");
+    expect(screen.getByRole("menuitem", { name: "Settings" })).not.toHaveFocus();
+    fireEvent.focus(screen.getByRole("menuitem", { name: "Security" }));
+    expect(menu.style.left).toBe("444px");
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    expect(action).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
   it("associates tooltip text with its trigger and dismisses on Escape", async () => {
     render(<Tooltip content="Opens patient details" delay={0}><button>Patient details</button></Tooltip>);
     const trigger = screen.getByRole("button", { name: "Patient details" });

@@ -151,7 +151,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleLogout = async () => {
     await logout();
-    router.replace("/login?logout=1");
+    window.location.replace("/browse?logout=1");
   };
 
   const handleExitImpersonation = async () => {

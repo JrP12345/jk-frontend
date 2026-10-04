@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingImage from "@/components/ui/LoadingImage";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { Modal, Button, Badge, Spinner, cn } from "@/components/ui";
@@ -337,7 +338,7 @@ export function InCabinInvestigationViewerModal({
 
                       {latestReading.attachmentUrl.match(/\.(jpg|jpeg|png|webp)/i) ? (
                         <div className="mt-2 rounded-xl overflow-hidden border border-border bg-surface max-h-48 flex items-center justify-center">
-                          <img
+                          <LoadingImage
                             src={latestReading.attachmentUrl}
                             alt="Lab Report Scan"
                             className="max-h-48 object-contain w-full"

@@ -126,7 +126,7 @@ const Button = memo(
             }
           }}
         >
-          <span className="grid min-w-0 max-w-full items-center">
+          <span className="grid min-w-0 max-w-full items-center gap-[inherit]">
             <span className={cn("[grid-area:1/1] inline-flex min-w-0 max-w-full items-center justify-center gap-[inherit]", loading && "invisible")} aria-hidden={loading || undefined}>
               {icon ? (
                 <span className={cn("shrink-0 inline-flex items-center justify-center", iconSizes[size])}>

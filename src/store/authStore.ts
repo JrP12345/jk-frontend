@@ -212,7 +212,7 @@ if (typeof window !== "undefined") {
       useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: true });
       clearRecentTracker();
       window.dispatchEvent(new Event("auth-logout"));
-      window.location.replace("/login?logout=1");
+      window.location.replace("/browse?logout=1");
     }
   });
 
@@ -222,7 +222,7 @@ if (typeof window !== "undefined") {
   // proxy middleware to bounce `/login` back to `/dashboard`.
   let handlingExpiredSession = false;
   window.addEventListener("auth-expired", () => {
-    if (handlingExpiredSession) return;
+    if (handlingExpiredSession || useAuthStore.getState().isLoggingOut) return;
     handlingExpiredSession = true;
 
     if (typeof window !== "undefined") {

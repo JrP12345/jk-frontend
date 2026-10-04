@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState, useRef, useEffect, useCallback, useId, cloneElement, isValidElement, type ReactElement, memo } from "react";
+import { type ReactNode, useState, useRef, useEffect, useLayoutEffect, useCallback, useId, cloneElement, isValidElement, type ReactElement, memo } from "react";
 import { createPortal } from "react-dom";
 import { popoverPosition } from "@/lib/popoverPosition";
 import { cn } from "./utils";
@@ -45,10 +45,11 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
     setMounted(true);
   }, []);
 
-  const close = useCallback((restoreFocus = true) => {
-    if (restoreFocus) containerRef.current?.querySelector<HTMLElement>("button, [tabindex]")?.focus();
+  const close = useCallback((restoreFocus = true, immediately = false) => {
+    if (restoreFocus) containerRef.current?.querySelector<HTMLElement>("button, [tabindex]")?.focus({ preventScroll: true });
     setOpen(false);
     setFocusedIndex(-1);
+    if (immediately) setRender(false);
   }, []);
 
   useEffect(() => {
@@ -69,7 +70,8 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       setOwner(containerRef.current.closest('[role="dialog"]')?.id || undefined);
-      setCoords(popoverPosition(rect, menuRef.current?.getBoundingClientRect().width || 192, 220, align));
+      // Layout dimensions exclude the entry animation's scale transform.
+      setCoords(popoverPosition(rect, menuRef.current?.offsetWidth || 192, menuRef.current?.scrollHeight || 220, align));
     }
   }, [align]);
 
@@ -116,15 +118,18 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
     };
   }, [open, close]);
 
+  useLayoutEffect(() => {
+    if (open && render) updateCoords();
+  }, [open, render, width, updateCoords]);
+
   useEffect(() => {
-    if (!open || !render) return;
+    if (!open || !render || focusedIndex < 0) return;
     const timer = window.setTimeout(() => {
-      updateCoords();
       const buttons = menuRef.current?.querySelectorAll<HTMLButtonElement>('button:not([disabled])');
-      buttons?.[Math.max(0, focusedIndex)]?.focus();
+      buttons?.[focusedIndex]?.focus({ preventScroll: true });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [open, render, focusedIndex, updateCoords]);
+  }, [open, render, focusedIndex]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (items.length === 0) return;
@@ -154,8 +159,8 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
     } else if (e.key === "Enter" || e.key === " ") {
       if (focusedIndex >= 0 && focusedIndex < focusableItems.length) {
         const { item } = focusableItems[focusedIndex];
+        close(true, true);
         item.onClick?.();
-        close();
       }
       e.preventDefault();
     } else if (e.key === "Tab") {
@@ -190,6 +195,7 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
               maxWidth: "calc(100vw - 16px)",
               maxHeight: coords.maxHeight,
               zIndex: "var(--layer-popover)",
+              pointerEvents: isExiting ? "none" : undefined,
             }}
             className={cn(
               "bg-surface rounded-2xl border border-border/80 shadow-xl p-1.5 focus:outline-none  ring-1 ring-border/50 transform-gpu select-none overflow-y-auto",
@@ -214,11 +220,11 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
                   tabIndex={isFocused || (focusedIndex < 0 && focusableIdx === 0) ? 0 : -1}
                   onFocus={() => setFocusedIndex(focusableIdx)}
                   onClick={() => {
+                    close(true, true);
                     item.onClick?.();
-                    close();
                   }}
                   className={cn(
-                    "w-full flex items-center justify-between gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-left cursor-pointer transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring min-h-[44px] md:min-h-0",
+                    "w-full flex items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-left cursor-pointer transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring focus-visible:bg-surface-hover min-h-[44px]",
                     item.danger || item.variant === "danger"
                       ? "text-danger-text hover:bg-danger-500/10 dark:hover:bg-danger-500/20 font-semibold"
                       : item.variant === "warning"
@@ -226,7 +232,6 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
                       : item.variant === "primary"
                       ? "text-accent dark:text-accent hover:bg-primary-500/10"
                       : "text-text hover:bg-surface-hover hover:text-text",
-                    isFocused && !(item.danger || item.variant === "danger") && "bg-surface-hover text-text",
                     isSelected && "font-semibold text-accent"
                   )}
                 >
@@ -261,4 +266,3 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
 });
 
 export default Dropdown;
-

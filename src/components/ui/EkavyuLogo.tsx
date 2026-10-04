@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingImage from "@/components/ui/LoadingImage";
 import { cn } from "./utils";
 
 export interface EkavyuLogoProps {
@@ -29,7 +30,7 @@ const iconSizeMap = {
 export function EkavyuIcon({ className = "h-10 w-10" }: { className?: string }) {
   return (
     <div className={cn("relative inline-flex shrink-0 items-center justify-center", className)}>
-      <img
+      <LoadingImage
         src="/ekavyu-leaf.png?v=website-1"
         alt="Ekavyu"
         width={512}

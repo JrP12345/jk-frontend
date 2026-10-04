@@ -1077,6 +1077,11 @@ body {
   aside, nav, header, footer, button, .no-print, [role="navigation"], .fixed {
     display: none !important;
   }
+  img[data-image-state] {
+    animation: none !important;
+    opacity: 1 !important;
+    background: none !important;
+  }
   main, .print-area {
     width: 100% !important;
     margin: 0 !important;

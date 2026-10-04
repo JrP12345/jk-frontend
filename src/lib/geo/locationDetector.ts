@@ -4,136 +4,73 @@ export interface DetectedLocation {
   city: string;
   state: string;
   country?: string;
+  latitude?: number;
+  longitude?: number;
+  accuracy?: number;
   source: "gps" | "ip" | "fallback";
 }
 
 const CACHE_KEY = "ananta_detected_geo";
+const CACHE_AGE = 5 * 60 * 1000;
 
-export function findMatchingClinicCity(detectedCity: string, clinicCities: string[]): string | null {
-  if (!detectedCity || !clinicCities || clinicCities.length === 0) return null;
-  const cleanDetected = detectedCity.toLowerCase().trim();
-
-  // Direct case-insensitive match
-  const directMatch = clinicCities.find((c) => c.toLowerCase().trim() === cleanDetected);
-  if (directMatch) return directMatch;
-
-  // Partial/contains match
-  const partialMatch = clinicCities.find((c) => {
-    const cleanC = c.toLowerCase().trim();
-    return cleanC.includes(cleanDetected) || cleanDetected.includes(cleanC);
-  });
-
-  return partialMatch || null;
+export function hasLocationCoordinates(location: DetectedLocation | null): location is DetectedLocation & { latitude: number; longitude: number } {
+  return typeof location?.latitude === "number" && Number.isFinite(location.latitude) && Math.abs(location.latitude) <= 90 &&
+    typeof location.longitude === "number" && Number.isFinite(location.longitude) && Math.abs(location.longitude) <= 180;
 }
 
-/**
- * Dual Location Detection:
- * 1. Checks session cache.
- * 2. Tries browser GPS with a gentle 3-second timeout.
- * 3. Falls back smoothly to IP-based location (zero permissions needed).
- */
+export function findMatchingClinicCity(detectedCity: string, clinicCities: string[]): string | null {
+  return clinicCities.find(city => city.trim().toLowerCase() === detectedCity.trim().toLowerCase()) || null;
+}
+
+function cache(location: DetectedLocation): DetectedLocation {
+  try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ...location, detectedAt: Date.now() })); } catch { /* Optional cache. */ }
+  return location;
+}
+
+/** GPS needs browser permission. IP coordinates are an approximate area only. */
 export async function detectUserLocation(): Promise<DetectedLocation> {
-  if (typeof window === "undefined") {
-    return { city: "", state: "", source: "fallback" };
+  const fallback: DetectedLocation = { city: "", state: "", source: "fallback" };
+  if (typeof window === "undefined") return fallback;
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(CACHE_KEY) || "null");
+    const detectedAt: unknown = saved?.detectedAt;
+    if (saved && ["gps", "ip"].includes(saved.source) && hasLocationCoordinates(saved) &&
+      typeof detectedAt === "number" && Date.now() - detectedAt >= 0 && Date.now() - detectedAt < CACHE_AGE) return saved;
+  } catch { /* Ignore stale or malformed cache. */ }
+
+  const gps = await new Promise<DetectedLocation | null>(resolve => {
+    if (!navigator.geolocation) return resolve(null);
+    const timer = setTimeout(() => resolve(null), 5000);
+    try {
+      navigator.geolocation.getCurrentPosition(position => {
+        clearTimeout(timer);
+        const location: DetectedLocation = { city: "", state: "", source: "gps", latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy };
+        // Ranking needs coordinates, so reverse geocoding cannot delay or break it.
+        resolve(hasLocationCoordinates(location) ? location : null);
+      }, () => { clearTimeout(timer); resolve(null); }, { timeout: 4500, enableHighAccuracy: true, maximumAge: CACHE_AGE });
+    } catch { clearTimeout(timer); resolve(null); }
+  });
+  if (gps) return cache(gps);
+
+  for (const endpoint of ["https://ipwho.is/", "https://ipapi.co/json/"]) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    try {
+      const response = await fetch(endpoint, { signal: controller.signal });
+      if (!response.ok) continue;
+      const data = await response.json();
+      if (data.success === false || data.error) continue;
+      const location: DetectedLocation = { city: typeof data.city === "string" ? data.city : "", state: typeof data.region === "string" ? data.region : "", country: data.country_name || data.country, latitude: data.latitude, longitude: data.longitude, source: "ip" };
+      if (hasLocationCoordinates(location)) return cache(location);
+    } catch { /* Try the next provider, then show the ordinary directory. */ }
+    finally { clearTimeout(timer); }
   }
+  return fallback;
+}
 
-  // 1. Check Session Cache
-  try {
-    const cached = sessionStorage.getItem(CACHE_KEY);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (parsed?.city || parsed?.state) {
-        return parsed;
-      }
-    }
-  } catch {}
-
-  // 2. Try Browser GPS
-  try {
-    const gpsLocation = await new Promise<DetectedLocation | null>((resolve) => {
-      if (!navigator.geolocation) {
-        return resolve(null);
-      }
-
-      const timer = setTimeout(() => {
-        resolve(null); // Timeout fallback to IP
-      }, 3000);
-
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          clearTimeout(timer);
-          try {
-            const { latitude, longitude } = pos.coords;
-            const res = await fetch(
-              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-            );
-            if (res.ok) {
-              const data = await res.json();
-              const city = data.city || data.locality || "";
-              const state = data.principalSubdivision || "";
-              const country = data.countryName || "India";
-              if (city || state) {
-                return resolve({ city, state, country, source: "gps" });
-              }
-            }
-          } catch {}
-          resolve(null);
-        },
-        () => {
-          clearTimeout(timer);
-          resolve(null); // Permission denied / error -> fallback to IP
-        },
-        { timeout: 2800, enableHighAccuracy: false, maximumAge: 300000 }
-      );
-    });
-
-    if (gpsLocation) {
-      try {
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify(gpsLocation));
-      } catch {}
-      return gpsLocation;
-    }
-  } catch {}
-
-  // 3. Fallback: IP-based Location (Zero-permission instant detection)
-  try {
-    const ipRes = await fetch("https://ipwho.is/");
-    if (ipRes.ok) {
-      const data = await ipRes.json();
-      if (data && data.success !== false && (data.city || data.region)) {
-        const result: DetectedLocation = {
-          city: data.city || "",
-          state: data.region || "",
-          country: data.country || "India",
-          source: "ip",
-        };
-        try {
-          sessionStorage.setItem(CACHE_KEY, JSON.stringify(result));
-        } catch {}
-        return result;
-      }
-    }
-  } catch {}
-
-  // Secondary IP Fallback
-  try {
-    const ipApiRes = await fetch("https://ipapi.co/json/");
-    if (ipApiRes.ok) {
-      const data = await ipApiRes.json();
-      if (data && (data.city || data.region)) {
-        const result: DetectedLocation = {
-          city: data.city || "",
-          state: data.region || "",
-          country: data.country_name || "India",
-          source: "ip",
-        };
-        try {
-          sessionStorage.setItem(CACHE_KEY, JSON.stringify(result));
-        } catch {}
-        return result;
-      }
-    }
-  } catch {}
-
-  return { city: "", state: "", source: "fallback" };
+export function distanceBandLabel(distanceKm: number, approximate = false): string {
+  const label = distanceKm <= 50
+    ? `Within ${Math.max(10, Math.ceil(distanceKm / 10) * 10)} km`
+    : `${Math.round(distanceKm)} km away`;
+  return approximate ? `${label} (approx.)` : label;
 }

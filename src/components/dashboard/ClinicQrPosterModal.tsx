@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingImage from "@/components/ui/LoadingImage";
 import PrintDialogActions from "@/components/ui/PrintDialogActions";
 
 import { printElement, PrintPreparationError } from "@/lib/printBrand";
@@ -132,7 +133,7 @@ export default function ClinicQrPosterModal({
           {/* High-Resolution QR Code Frame */}
           <div className="inline-block p-4 bg-white rounded-3xl border-4 border-border shadow-lg relative my-2">
             {qrDataUrl ? (
-              <img
+              <LoadingImage
                 src={qrDataUrl}
                 alt={`QR code to join live queue at ${clinic.name}`}
                 className="w-full max-w-64 aspect-square object-contain mx-auto"

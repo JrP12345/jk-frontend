@@ -1,5 +1,6 @@
 "use client";
 
+import LoadingImage from "@/components/ui/LoadingImage";
 import { useState, useEffect } from "react";
 import QRCode from "qrcode";
 import api from "@/lib/api";
@@ -206,7 +207,7 @@ export default function UpiPaymentModal({
 
               {qrDataUrl ? (
                 <div className="p-3 bg-white rounded-xl shadow-sm border border-border dark:border-border">
-                  <img
+                  <LoadingImage
                     src={qrDataUrl}
                     alt="UPI Payment QR Code"
                     className="w-52 h-52 object-contain"

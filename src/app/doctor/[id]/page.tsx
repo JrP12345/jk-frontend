@@ -1,3 +1,4 @@
+import LoadingImage from "@/components/ui/LoadingImage";
 import type { Metadata } from "next";
 import { Suspense, cache } from "react";
 import Link from "next/link";
@@ -125,8 +126,7 @@ export default async function DoctorPage({ params, searchParams }: { params: Pro
       </section> : <>
         {selectedLocation && selectedLocation.name !== doctor.organizationName && <div className="mb-6 flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3" style={{ borderLeft: `4px solid ${selectedLocation.brandColor}` }}>
           {selectedLocation.logo || doctor.organizationLogo ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={selectedLocation.logo || doctor.organizationLogo || ""} alt="" className="h-11 w-11 rounded-xl border border-border bg-surface object-contain" />
+            <LoadingImage src={selectedLocation.logo || doctor.organizationLogo || ""} alt="" className="h-11 w-11 rounded-xl border border-border bg-surface object-contain" />
           ) : <div aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-500/10 font-bold text-accent">{selectedLocation.name.slice(0, 1)}</div>}
           <div className="min-w-0"><p className="truncate text-sm font-bold">{doctor.organizationName}</p><p className="truncate text-xs text-text-secondary">Appointments at {selectedLocation.name}</p></div>
         </div>}
@@ -141,8 +141,7 @@ export default async function DoctorPage({ params, searchParams }: { params: Pro
               <p className="text-xs font-semibold uppercase tracking-wide text-accent">Doctor profile</p>
               <div className="mt-3 flex items-start gap-3 sm:gap-4">
                 {doctor.imageUrl ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={doctor.imageUrl} alt={doctor.name} className="h-16 w-16 sm:h-24 sm:w-24 shrink-0 rounded-xl border border-border object-cover" />
+                  <LoadingImage src={doctor.imageUrl} alt={doctor.name} className="h-16 w-16 sm:h-24 sm:w-24 shrink-0 rounded-xl border border-border object-cover" />
                 ) : <div aria-hidden="true" className="flex h-16 w-16 sm:h-24 sm:w-24 shrink-0 items-center justify-center rounded-xl bg-primary-500/10 text-2xl font-semibold text-accent">{doctor.name.slice(0, 1)}</div>}
                 <div className="min-w-0 flex-1">
                   <h1 className="text-xl font-semibold sm:text-2xl break-words">{doctor.name}</h1>
