@@ -21,6 +21,8 @@ export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
   size?: SelectSize;
   variant?: SelectVariant;
   options: SelectOption[];
+  /** Compact trigger content; dropdown options retain their full labels. */
+  renderValue?: (option: SelectOption) => ReactNode;
   placeholder?: string;
   icon?: ReactNode;
   fullWidth?: boolean;
@@ -63,6 +65,7 @@ const Select = memo(
         size = "md",
         variant = "default",
         options = [],
+        renderValue,
         placeholder = "Select an option...",
         icon,
         fullWidth = true,
@@ -367,7 +370,7 @@ const Select = memo(
                   )}
                   <span className="hidden sm:inline-flex items-center shrink-0">{icon}</span>
                   <span className={cn("hidden sm:inline truncate flex-1 min-w-0 text-left text-xs font-medium", !activeOption && "text-text-muted")}>
-                    {activeOption ? activeOption.label : placeholder}
+                    {activeOption ? (renderValue?.(activeOption) ?? activeOption.label) : placeholder}
                   </span>
                   <svg
                     className={cn(
@@ -388,7 +391,7 @@ const Select = memo(
               ) : (
                 <>
                   <span className={cn("truncate flex-1 min-w-0 text-left", !activeOption && "text-text-muted")}>
-                    {activeOption ? activeOption.label : placeholder}
+                    {activeOption ? (renderValue?.(activeOption) ?? activeOption.label) : placeholder}
                   </span>
                   <svg
                     className={cn(

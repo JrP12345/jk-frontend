@@ -394,8 +394,27 @@ export default function LoginPage() {
                     <Input
                       label="Email or mobile number"
                       type="text"
-                      placeholder="Enter your email or mobile number"
-                      icon={patientIdentifier.includes("@") ? <Mail className="w-4 h-4 text-text-muted" /> : <Smartphone className="w-4 h-4 text-text-muted" />}
+                      placeholder={enteringPhone ? "Email or mobile number" : "Enter your email address"}
+                      icon={!enteringPhone ? <Mail className="w-4 h-4 text-text-muted" /> : undefined}
+                      leadingControl={enteringPhone ? <Select
+                        aria-label="Country code"
+                        value={phoneCountry}
+                        options={phoneCountryOptions}
+                        renderValue={() => COUNTRIES[phoneCountry].callingCode}
+                        variant="flush"
+                        containerClassName="w-24 shrink-0"
+                        className="rounded-l-xl px-3 focus-visible:ring-0"
+                        minMenuWidth={240}
+                        disabled={otpLoading}
+                        onChange={(event) => {
+                          if (patientIdentifier.trim().startsWith("+")) {
+                            const digits = `+${patientIdentifier.replace(/\D/g, "")}`;
+                            if (digits.startsWith(COUNTRIES[phoneCountry].callingCode)) setPatientIdentifier(digits.slice(COUNTRIES[phoneCountry].callingCode.length));
+                          }
+                          setPhoneCountry(event.target.value as CountryCode);
+                          setPatientIdentifierError("");
+                        }}
+                      /> : undefined}
                       value={patientIdentifier}
                       onChange={(e) => {
                         const value = e.target.value;
@@ -417,21 +436,6 @@ export default function LoginPage() {
                       disabled={otpLoading}
                       required
                     />
-
-                    {enteringPhone && <Select
-                      label="Country code"
-                      value={phoneCountry}
-                      options={phoneCountryOptions}
-                      disabled={otpLoading}
-                      onChange={(event) => {
-                        if (patientIdentifier.trim().startsWith("+")) {
-                          const digits = `+${patientIdentifier.replace(/\D/g, "")}`;
-                          if (digits.startsWith(COUNTRIES[phoneCountry].callingCode)) setPatientIdentifier(digits.slice(COUNTRIES[phoneCountry].callingCode.length));
-                        }
-                        setPhoneCountry(event.target.value as CountryCode);
-                        setPatientIdentifierError("");
-                      }}
-                    />}
 
                     <p id="patient-sign-in-hint" className="text-center text-xs leading-relaxed text-text-muted">We&apos;ll send a verification code to your email or phone.</p>
 

@@ -27,7 +27,7 @@ afterEach(() => { vi.restoreAllMocks(); window.history.replaceState(null, "", "/
 describe("Patient identifier sign in", () => {
   it("shows the shared phone country selector before typing and omits the footer badges", () => {
     render(<LoginPage />);
-    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("India (+91)");
+    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("+91");
     expect(screen.queryByText(/256-Bit|HIPAA/)).not.toBeInTheDocument();
   });
 
@@ -140,7 +140,7 @@ describe("Patient identifier sign in", () => {
     render(<LoginPage />);
     const input = screen.getByRole("textbox", { name: "Email or mobile number" });
     fireEvent.change(input, { target: { value: "+44 20 7946 0123" } });
-    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("United Kingdom (+44)");
+    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("+44");
     fireEvent.click(screen.getByRole("combobox", { name: "Country code" }));
     fireEvent.click(await screen.findByRole("option", { name: "United States (+1)" }));
     expect(input).toHaveValue("2079460123");

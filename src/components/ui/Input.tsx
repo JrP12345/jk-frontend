@@ -17,6 +17,8 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   iconRight?: ReactNode;
   rightIcon?: ReactNode;
   prefix?: ReactNode;
+  /** Interactive control joined to the input inside one border. */
+  leadingControl?: ReactNode;
   suffix?: ReactNode;
   fullWidth?: boolean;
   onClear?: () => void;
@@ -69,6 +71,7 @@ const Input = memo(
         iconRight,
         rightIcon,
         prefix,
+        leadingControl,
         suffix,
         fullWidth = true,
         disabled,
@@ -108,7 +111,11 @@ const Input = memo(
               {label}
             </label>
           )}
-          <div className="group relative flex items-center w-full">
+          <div className={cn(
+            "group relative flex items-center w-full",
+            leadingControl && cn(variantStyles[variant], "focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-focus-ring", disabled && "opacity-50", visibleError && "border-danger-500/80 focus-within:border-danger-500 focus-within:ring-danger-500/15")
+          )}>
+            {leadingControl && <div className="flex shrink-0 self-stretch items-center border-r border-border/60">{leadingControl}</div>}
             <input
               data-touch-control
               ref={ref}
@@ -129,14 +136,14 @@ const Input = memo(
                 onInvalid?.(event);
               }}
               className={cn(
-                "w-full text-text font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt",
+                "w-full min-w-0 text-text font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt",
                 sizes[size],
-                variantStyles[variant],
+                leadingControl ? "flex-1 rounded-r-xl border-0 bg-transparent shadow-none focus-visible:ring-0" : variantStyles[variant],
                 resolvedLeftIcon && !prefix && iconPaddingLeft[size],
                 resolvedLeftIcon && prefix && (size === "sm" ? "pl-15" : size === "lg" ? "pl-18" : "pl-16"),
                 !resolvedLeftIcon && prefix && (size === "sm" ? "pl-10" : size === "lg" ? "pl-13" : "pl-11"),
                 (resolvedRightIcon || hasClear || suffix) && iconPaddingRight[size],
-                visibleError && variant !== "flush" && "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500/15 focus-visible:border-danger-500",
+                visibleError && !leadingControl && variant !== "flush" && "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500/15 focus-visible:border-danger-500",
                 className
               )}
               {...rest}

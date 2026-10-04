@@ -35,6 +35,9 @@ export function EkavyuIcon({ className = "h-10 w-10" }: { className?: string }) 
         alt="Ekavyu"
         width={512}
         height={512}
+        loading="eager"
+        fetchPriority="high"
+        loadingEffect={false}
         className="block h-full w-full object-contain"
       />
     </div>

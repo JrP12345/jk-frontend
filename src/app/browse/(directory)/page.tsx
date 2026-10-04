@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import BrowseClient, { Clinic, ClinicFilters } from "./BrowseClient";
+import BrowseClient, { Clinic, ClinicFilters } from "../BrowseClient";
 
 export const metadata: Metadata = {
   title: "Browse Hospitals & Clinics | Ekavyu Healthcare",

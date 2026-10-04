@@ -5,10 +5,11 @@ import { cn } from "./utils";
 
 export interface LoadingImageProps extends ImgHTMLAttributes<HTMLImageElement> {
   fallback?: ReactNode;
+  loadingEffect?: boolean;
 }
 
 /** Keep the native image box (including print/viewer styles) while it loads. */
-function ImageSource({ fallback, className, style, alt = "", onLoad, onError, decoding = "async", ...props }: LoadingImageProps) {
+function ImageSource({ fallback, loadingEffect = true, className, style, alt = "", onLoad, onError, decoding = "async", ...props }: LoadingImageProps) {
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
   const imageRef = useCallback((image: HTMLImageElement | null) => {
     // Cached images may finish before hydration attaches the load handler.
@@ -29,8 +30,8 @@ function ImageSource({ fallback, className, style, alt = "", onLoad, onError, de
       decoding={decoding}
       data-image-state={status}
       aria-busy={status === "loading" || undefined}
-      className={cn(className, status === "loading" ? "skeleton-shimmer" : "animate-fade-in")}
-      style={status === "loading" ? { ...style, color: "transparent" } : style}
+      className={cn(className, loadingEffect && (status === "loading" ? "skeleton-shimmer" : "animate-fade-in"))}
+      style={loadingEffect && status === "loading" ? { ...style, color: "transparent" } : style}
       onLoad={(event) => { setStatus("loaded"); onLoad?.(event); }}
       onError={(event) => { setStatus("error"); onError?.(event); }}
     />

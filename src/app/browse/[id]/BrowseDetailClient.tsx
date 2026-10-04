@@ -122,7 +122,7 @@ function BookingSurface({ inline, open, onClose, title, subtitle, footer, busy, 
     <div className="px-4 py-5 sm:px-6">{children}</div>
     <div className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 border-t border-border bg-surface px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">{footer}</div>
   </section>;
-  return <Modal open={open} onClose={onClose} title={title} size="xl" presentation="sheet" busy={busy} footerClassName="!flex-row" footer={footer}>{children}</Modal>;
+  return <Modal open={open} onClose={onClose} title={title} size="xl" className="md:max-w-3xl!" presentation="sheet" busy={busy} footerClassName="!flex-row" footer={footer}>{children}</Modal>;
 }
 
 // ─── Helper: Format 24-hour time to 12-hour AM/PM ─────────────────

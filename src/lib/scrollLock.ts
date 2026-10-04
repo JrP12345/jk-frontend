@@ -9,6 +9,7 @@ let originalOverflow: string | null = null;
 let originalPaddingRight: string | null = null;
 let originalBody: Pick<CSSStyleDeclaration, "position" | "top" | "left" | "width" | "boxSizing"> | null = null;
 let originalRootOverflow = "";
+let originalRootScrollbarGutter = "";
 const appScrollContainers = new Map<HTMLElement, string>();
 let savedX = 0;
 let savedY = 0;
@@ -21,6 +22,7 @@ export function lockScroll(): void {
     originalPaddingRight = document.body.style.paddingRight;
     originalBody = { position: document.body.style.position, top: document.body.style.top, left: document.body.style.left, width: document.body.style.width, boxSizing: document.body.style.boxSizing };
     originalRootOverflow = document.documentElement.style.overflow;
+    originalRootScrollbarGutter = document.documentElement.style.scrollbarGutter;
     savedX = window.scrollX;
     savedY = window.scrollY;
 
@@ -32,6 +34,9 @@ export function lockScroll(): void {
 
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
+    // The global stable gutter otherwise remains visible outside the backdrop,
+    // even with scrolling locked. Body padding above preserves the page width.
+    document.documentElement.style.scrollbarGutter = "auto";
     // Fixed positioning also stops iOS touch scrolling behind an overlay.
     Object.assign(document.body.style, { position: "fixed", top: `${-savedY}px`, left: `${-savedX}px`, width: "100%", boxSizing: "border-box" });
     // The dashboard has its own scrolling main; locking only body leaves it movable.
@@ -55,6 +60,7 @@ export function unlockScroll(): void {
     document.body.style.paddingRight = originalPaddingRight ?? "";
     if (originalBody) Object.assign(document.body.style, originalBody);
     document.documentElement.style.overflow = originalRootOverflow;
+    document.documentElement.style.scrollbarGutter = originalRootScrollbarGutter;
     for (const [element, overflowY] of appScrollContainers) element.style.overflowY = overflowY;
     appScrollContainers.clear();
     const behavior = document.documentElement.style.scrollBehavior;
