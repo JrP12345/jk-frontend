@@ -14,7 +14,9 @@ export default function WaitingRoomTvQueueBoard() {
   const [waitingQueue, setWaitingQueue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [readFailed, setReadFailed] = useState(false);
-  const [lastAnnounced, setLastAnnounced] = useState<string>("");
+  const lastAnnounced = useRef("");
+  const fetching = useRef<AbortController | null>(null);
+  const lastFetchedAt = useRef(0);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [voiceLanguage, setVoiceLanguage] = useState<VoiceAnnounceLanguage>("both");
   const [doctorBreak, setDoctorBreak] = useState<{
@@ -139,11 +141,15 @@ export default function WaitingRoomTvQueueBoard() {
   }, []);
 
   const fetchQueueState = useCallback(async () => {
+    if (fetching.current) return;
+    const request = new AbortController();
+    fetching.current = request;
     try {
       if (clinicId) {
         // Public Kiosk / TV display endpoint (no sensitive auth credentials required)
         const doctorQuery = doctorId ? `?doctorId=${doctorId}` : "";
-        const res = await api.get(`/public/queue-tv/${clinicId}${doctorQuery}`);
+        const res = await api.get(`/public/queue-tv/${clinicId}${doctorQuery}`, { signal: request.signal });
+        if (request.signal.aborted) return;
         const data = res.data?.data;
         if (data) {
           if (data.clinic?.name) setClinicName(data.clinic.name);
@@ -155,8 +161,8 @@ export default function WaitingRoomTvQueueBoard() {
             setCabins(data.cabins);
           }
 
-          if (currentToken && currentToken.tokenNumber && String(currentToken.tokenNumber) !== lastAnnounced) {
-            setLastAnnounced(String(currentToken.tokenNumber));
+          if (currentToken && currentToken.tokenNumber && String(currentToken.tokenNumber) !== lastAnnounced.current) {
+            lastAnnounced.current = String(currentToken.tokenNumber);
             speakAnnouncement(
               currentToken.tokenNumber,
               currentToken.patientName || "Patient",
@@ -167,7 +173,8 @@ export default function WaitingRoomTvQueueBoard() {
         }
       } else {
         // Fallback to internal authenticated queue
-        const res = await api.get("/queue");
+        const res = await api.get("/queue", { signal: request.signal });
+        if (request.signal.aborted) return;
         const list = res.data?.data || [];
         const inConsult = list.find((item: any) => item.status === "in-consultation");
         const waiting = list
@@ -198,8 +205,8 @@ export default function WaitingRoomTvQueueBoard() {
         );
         setWaitingQueue(waiting.slice(0, 8));
 
-        if (inConsult && inConsult.tokenNumber && String(inConsult.tokenNumber) !== lastAnnounced) {
-          setLastAnnounced(String(inConsult.tokenNumber));
+        if (inConsult && inConsult.tokenNumber && String(inConsult.tokenNumber) !== lastAnnounced.current) {
+          lastAnnounced.current = String(inConsult.tokenNumber);
           speakAnnouncement(
             inConsult.tokenNumber,
             inConsult.patientId?.userId?.name || "Patient",
@@ -210,15 +217,33 @@ export default function WaitingRoomTvQueueBoard() {
       }
       setReadFailed(false);
     } catch {
-      setReadFailed(true);
+      if (!request.signal.aborted) setReadFailed(true);
     } finally {
-      setLoading(false);
+      if (fetching.current === request) fetching.current = null;
+      if (!request.signal.aborted) {
+        lastFetchedAt.current = Date.now();
+        setLoading(false);
+      }
     }
-  }, [clinicId, doctorId, lastAnnounced, speakAnnouncement]);
+  }, [clinicId, doctorId, speakAnnouncement]);
 
   useEffect(() => {
+    if (!clockReady) return;
+    lastAnnounced.current = '';
+    lastFetchedAt.current = 0;
+    setActiveToken(null);
+    setWaitingQueue([]);
+    setCabins([]);
+    setDoctorBreak(null);
+    setLoading(true);
     fetchQueueState();
-    const interval = setInterval(fetchQueueState, 3500); // 3.5s refresh for wall displays
+    let connected = false;
+    const refresh = () => {
+      if (document.visibilityState === 'visible' && (!connected || Date.now() - lastFetchedAt.current >= 30000)) void fetchQueueState();
+    };
+    const interval = setInterval(refresh, 3500);
+    const onVisible = () => { if (document.visibilityState === 'visible') void fetchQueueState(); };
+    document.addEventListener('visibilitychange', onVisible);
 
     // WebSocket real-time connection for instantaneous token summon
     let ws: WebSocket | null = null;
@@ -227,6 +252,9 @@ export default function WaitingRoomTvQueueBoard() {
         const wsUrl = getWebSocketUrl(`/api/queue/ws?clinicId=${clinicId}`);
         ws = new WebSocket(wsUrl);
 
+        ws.onopen = () => { connected = true; };
+        ws.onclose = () => { connected = false; };
+        ws.onerror = () => { connected = false; };
         ws.onmessage = (event) => {
           try {
             const payload = JSON.parse(event.data);
@@ -251,10 +279,13 @@ export default function WaitingRoomTvQueueBoard() {
     }
 
     return () => {
+      fetching.current?.abort();
+      fetching.current = null;
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
       if (ws) ws.close();
     };
-  }, [fetchQueueState, clinicId]);
+  }, [fetchQueueState, clinicId, clockReady]);
 
   return (
     <div className="min-h-screen bg-background text-text p-4 sm:p-8 lg:p-10 flex flex-col justify-between select-none animate-fade-in font-sans">

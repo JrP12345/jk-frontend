@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, Badge, StatCard, Button, ChartContainer, LineChart } from "@/components/ui";
 
 export interface PatientDemographics {

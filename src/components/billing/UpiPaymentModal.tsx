@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import QRCode from "qrcode";
 import api from "@/lib/api";
 import Modal from "@/components/ui/Modal";

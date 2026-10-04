@@ -58,7 +58,7 @@ const ClinicalDocumentGeneratorModal = dynamic(
 );
 
 import { playChimeSound, CHIME_OPTIONS, ChimeType, announcePatientToken, VoiceAnnounceLanguage } from "@/utils/audioChimes";
-import { Megaphone, Volume2, RotateCw, Users, UserCheck, Stethoscope, Ticket, Clock, ChevronUp, ChevronDown, CheckCircle2, Activity, UserX, XCircle, Plus, Trash2, Sparkles, Check, Play, CalendarClock, Phone, FileText, AlertTriangle, Zap, QrCode, PauseCircle, Banknote, FlaskConical, History, Send, ShieldCheck } from "lucide-react";
+import { Megaphone, Volume2, RotateCw, Users, UserCheck, Stethoscope, Ticket, Clock, ChevronUp, ChevronDown, CheckCircle2, Activity, UserX, XCircle, Plus, Trash2, Sparkles, Check, Play, CalendarClock, Phone, FileText, AlertTriangle, Zap, PauseCircle, Banknote, FlaskConical, History, Send, ShieldCheck } from "lucide-react";
 import { PatientTimeline } from "@/components/ehr/PatientTimeline";
 import { InCabinInvestigationViewerModal } from "@/components/clinical/InCabinInvestigationViewerModal";
 import { DrugAllergyAlert } from "@/components/clinical/DrugAllergyAlert";

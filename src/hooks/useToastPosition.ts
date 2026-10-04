@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useState, type CSSProperties } from "react";
 
-/** Keep transient messages below visible application navigation and safe areas. */
+/** Share visible viewport bounds; notification previews also clear the app header. */
 export function useToastPosition(active: boolean): CSSProperties {
   const [bounds, setBounds] = useState({ headerBottom: 0, top: 0, bottom: 0 });
   useLayoutEffect(() => {

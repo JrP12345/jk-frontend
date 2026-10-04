@@ -127,7 +127,7 @@ export default function Modal({
   const hasHeader = Boolean(header || title || description);
 
   return createPortal(
-    <div style={{ ...viewport, ...viewportStyle }} className={cn("fixed inset-0 z-[1000] flex justify-center", presentation === "sheet" ? "p-0 md:p-4" : "p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]", placement === "top" ? "items-start" : presentation === "sheet" ? "items-end md:items-center" : "items-center", viewportClassName)}>
+    <div style={{ ...viewport, ...viewportStyle }} className={cn("fixed inset-0 z-[var(--layer-dialog)] flex justify-center", presentation === "sheet" ? "p-0 md:p-4" : "p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]", placement === "top" ? "items-start" : presentation === "sheet" ? "items-end md:items-center" : "items-center", viewportClassName)}>
       {/* Overlay Backdrop */}
       <div
         className={cn(

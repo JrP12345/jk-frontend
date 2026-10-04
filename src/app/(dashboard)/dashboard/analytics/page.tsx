@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { canViewAnalytics } from "@/lib/permissions";
-import { Alert, Card, CardHeader, CardTitle, CardContent, Button, Table, useToast, Badge, StatCard, SkeletonCard, SkeletonTable, ChartContainer, DonutChart, cn } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardContent, Button, Table, useToast, Badge, StatCard, SkeletonCard, SkeletonTable, ChartContainer, DonutChart } from "@/components/ui";
 import { RotateCw, IndianRupee, AlertCircle, Building2, Boxes } from "lucide-react";
 
 interface ClinicPerformance {

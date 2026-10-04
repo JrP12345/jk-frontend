@@ -87,10 +87,20 @@ identifiers remain where required for production compatibility.
 
 ## Frontend UI refinement validation
 
+Completed loading/navigation/recovery checkpoint on 2026-09-27: 105 tests across
+16 files, TypeScript and production build passed; affected-source lint had zero
+errors and 32 warnings. Mocked browse checks at 320, 390, 768 and 1280px covered
+retained results, retry and true empty states. Those browser fixtures bypassed
+CSP and the service worker and do not verify deployed security/offline behavior.
+The completed temporary audits were consolidated into
+[interaction-patterns.md](interaction-patterns.md); historical validation is
+retained here.
+
 The interrupted UI refinement was resumed on 2026-09-27. The remaining queue
 and billing action clipping, narrow invoice cards and long clinic listing text
-were corrected. The audit and implementation details are in
-[frontend-ui-refinement.md](frontend-ui-refinement.md).
+were corrected. Current behavior is documented in
+[interaction-patterns.md](interaction-patterns.md); subsequent page-level work
+is tracked in [frontend-refinement.md](frontend-refinement.md).
 
 - Frontend unit/component suite: **78 tests passed across 13 files**, with no
   failures or skips (`npm test`). This includes responsive controls, nested

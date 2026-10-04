@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
@@ -19,7 +20,7 @@ vi.mock("@/components/clinical/PreviousVisitsSidebar", () => ({ PreviousVisitsSi
 const doctor = { id: "doctor", name: "Assigned doctor" };
 const assignment = { doctorId: doctor, isActive: true };
 const patient = { id: "patient", name: "Canonical walk-in", phone: "9876500011", mrn: "REAL-12" };
-function mount(element: React.ReactElement) { return render(<ToastProvider>{element}</ToastProvider>); }
+function mount(element: React.ReactElement) { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}><ToastProvider>{element}</ToastProvider></QueryClientProvider>); }
 
 beforeEach(() => {
   Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, writable: true, value: vi.fn() });

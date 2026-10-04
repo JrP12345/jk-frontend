@@ -318,17 +318,6 @@ export default function BrowseClient({
         return b.rating - a.rating;
       }), [clinics, sortBy]);
 
-  const handleBookingAction = (e: React.MouseEvent, clinic: Clinic) => {
-    e.stopPropagation();
-    rememberPosition();
-    if (getPublicBookingStatus(clinic) === "check_availability" && clinic.doctorCount === 1 && clinic.doctorsSummary && clinic.doctorsSummary.length === 1) {
-      const doc = clinic.doctorsSummary[0];
-      router.push(`/doctor/${encodeURIComponent(doc.id)}?clinicId=${encodeURIComponent(clinic.id)}&openBooking=true`);
-    } else {
-      router.push(`/browse/${clinic.id}`);
-    }
-  };
-
   const handleCitySelect = (city: string) => {
     try {
       sessionStorage.setItem("ananta_user_city_choice", "true");
@@ -366,11 +355,11 @@ export default function BrowseClient({
       {/* Hero Header Section - Clean Modern Healthcare Design */}
       <section className="pt-20 sm:pt-24 pb-4 sm:pb-5 bg-surface border-b border-border">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <h1 className="text-2xl sm:text-3xl font-semibold text-text tracking-tight mb-2 leading-tight text-balance" suppressHydrationWarning>
+          <h1 className="text-center text-2xl sm:text-3xl font-semibold text-text tracking-tight mb-2 leading-tight text-balance" suppressHydrationWarning>
             {"Find and book"}{" "}
             <span className="text-accent" suppressHydrationWarning>{"care that fits your needs"}</span>
           </h1>
-          <p className="text-text-secondary text-sm mb-4 leading-relaxed" suppressHydrationWarning>
+          <p className="text-center text-text-secondary text-sm mb-4 leading-relaxed" suppressHydrationWarning>
             {"Compare clinics and doctors, then book a visit that suits you."}
           </p>
 
@@ -519,11 +508,14 @@ export default function BrowseClient({
           </Card>
         ) : clinics.length === 0 ? <Card className="min-h-[220px] flex items-center justify-center p-4 sm:p-8 rounded-2xl border border-border bg-surface"><EmptyState className="py-5 sm:py-7" title="We couldn't load clinics" description="Check your connection and try again to see available care." action={<Button size="sm" loading={loading} onClick={() => setRetryKey((key) => key + 1)}>Try again</Button>} /></Card> : (
           /* Modern Healthcare Clinic Card Grid */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className={`grid grid-cols-1 gap-4 sm:gap-6 ${sortedClinics.length === 1 ? "md:mx-auto md:max-w-[360px]" : sortedClinics.length === 2 ? "md:grid-cols-2 lg:mx-auto lg:max-w-[744px]" : "md:grid-cols-2 lg:grid-cols-3"}`}>
             {sortedClinics.map((clinic) => {
               const bookingStatus = getPublicBookingStatus(clinic);
               const hasSingleDoctor = clinic.doctorCount === 1 && clinic.doctorsSummary && clinic.doctorsSummary.length === 1;
               const singleDoctor = hasSingleDoctor ? clinic.doctorsSummary![0] : null;
+              const bookingHref = bookingStatus === "check_availability" && singleDoctor
+                ? `/doctor/${encodeURIComponent(singleDoctor.id)}?clinicId=${encodeURIComponent(clinic.id)}&openBooking=true`
+                : `/browse/${clinic.id}`;
               const hasClinicHours = parseWeeklySchedule(clinic.timings).hasExplicitSchedule;
               const doctorMatches = debouncedSearch.trim().toLocaleLowerCase();
               const previewDoctors = doctorMatches
@@ -694,13 +686,12 @@ export default function BrowseClient({
 
                     {/* Actions Bar */}
                     <div className="flex items-center gap-2">
-                      {bookingStatus === "contact_clinic" && clinic.phone ? <a href={`tel:${clinic.phone.replace(/\s+/g, "")}`} onClick={(event) => event.stopPropagation()} className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-3.5 text-sm font-bold text-brand-mist shadow-xs hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Call clinic about appointments</a> : <Button
-                        variant="primary"
-                        size="sm"
-                        className="w-full font-bold rounded-xl shadow-xs min-h-[44px] flex items-center justify-center gap-1.5 group/btn cursor-pointer"
-                        onClick={(e) => handleBookingAction(e, clinic)}
+                      {bookingStatus === "contact_clinic" && clinic.phone ? <a href={`tel:${clinic.phone.replace(/\s+/g, "")}`} onClick={(event) => event.stopPropagation()} className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-3.5 text-sm font-bold text-brand-mist shadow-xs hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Call clinic about appointments</a> : <Link
+                        href={bookingHref}
+                        onClick={(event) => { event.stopPropagation(); rememberPosition(); }}
+                        className="group/btn inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-3.5 text-sm font-bold text-brand-mist shadow-xs hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                       >
-                        <span>
+                        <span className="min-w-0 text-center">
                           {bookingStatus === "contact_clinic"
                             ? "View contact options"
                             : bookingStatus === "no_doctors"
@@ -708,7 +699,7 @@ export default function BrowseClient({
                             : "Book Appointment"}
                         </span>
                         <ChevronRight className="w-4 h-4 shrink-0 group-hover/btn:translate-x-0.5 transition-transform" strokeWidth={2} />
-                      </Button>}
+                      </Link>}
                     </div>
                   </div>
                 </Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, StatCard, Badge, Button, ChartContainer, AreaChart, DonutChart, Skeleton, SkeletonStats } from "@/components/ui";
 

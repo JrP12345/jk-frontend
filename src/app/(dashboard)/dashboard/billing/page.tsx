@@ -1,6 +1,7 @@
 "use client";
 
 import PrintDialogActions from "@/components/ui/PrintDialogActions";
+import { RefundReconciliationAction } from "@/components/billing/RefundReconciliationAction";
 
 import PrintButton from "@/components/ui/PrintButton";
 
@@ -27,6 +28,8 @@ interface Invoice {
   id: string;
   invoiceNumber: string;
   currency?: string;
+  appointmentId?: string;
+  refundPending?: boolean;
   patientId: { id: string; userId: { name: string; email: string; phone: string } };
   clinicId: { id: string; name: string; city: string; address: string };
   doctorId: { id: string; name: string; specialization: string };
@@ -37,7 +40,7 @@ interface Invoice {
   totalAmount: number;
   amountPaid?: number;
   balanceDue?: number;
-  status: "unpaid" | "partially_paid" | "paid" | "refunded";
+  status: "unpaid" | "partially_paid" | "paid" | "refunded" | "cancelled";
   paymentMethod?: string;
   paymentDate?: string;
   createdAt: string;
@@ -1193,7 +1196,8 @@ export default function BillingPage() {
                 align: "right",
                 render: (row: Invoice) => (
                   <div className="flex items-center justify-end gap-1.5">
-                    {row.status !== "paid" ? (
+                    {row.refundPending && row.appointmentId && canManageBilling && <RefundReconciliationAction appointmentId={row.appointmentId} onReconciled={fetchInvoices} />}
+                    {canManageBilling && !row.refundPending && ["unpaid", "partially_paid"].includes(row.status) ? (
                       <Button
                         size="xs"
                         variant="primary"
@@ -1228,7 +1232,7 @@ export default function BillingPage() {
                         </Button>
                       }
                       items={[
-                        ...(row.status !== "paid"
+                        ...(canManageBilling && !row.refundPending && ["unpaid", "partially_paid"].includes(row.status)
                           ? [
                               {
                                 label: "Record Installment Payment",
@@ -1237,7 +1241,7 @@ export default function BillingPage() {
                               },
                             ]
                           : []),
-                        ...(row.status === "unpaid"
+                        ...(canManageBilling && !row.refundPending && row.status === "unpaid"
                           ? [
                               {
                                 label: "Collect Full Payment",
@@ -1269,7 +1273,7 @@ export default function BillingPage() {
             data={filteredInvoices}
             emptyMessage="No clinical invoices found for selected filter."
             renderMobileCard={(row: Invoice) => {
-              const isPaid = row.status === "paid";
+              const canCollect = canManageBilling && !row.refundPending && ["unpaid", "partially_paid"].includes(row.status);
               const dueAmount =
                 row.balanceDue !== undefined
                   ? row.balanceDue
@@ -1331,7 +1335,7 @@ export default function BillingPage() {
                           {formatCurrency(row.totalAmount, row.currency)}
                         </span>
                       </div>
-                      {!isPaid && (
+                      {canCollect && (
                         <div className="text-right">
                           <span className="text-[10px] text-danger-text font-bold block">Balance Due</span>
                           <span className="font-bold text-danger-text text-sm">
@@ -1343,7 +1347,7 @@ export default function BillingPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 pt-1">
-                    {!isPaid ? (
+                    {canCollect ? (
                       <Button
                         size="sm"
                         variant="primary"
@@ -1371,6 +1375,7 @@ export default function BillingPage() {
                     >
               </PrintButton>
                   </div>
+                  {row.refundPending && row.appointmentId && canManageBilling && <RefundReconciliationAction appointmentId={row.appointmentId} onReconciled={fetchInvoices} />}
                 </div>
               );
             }}

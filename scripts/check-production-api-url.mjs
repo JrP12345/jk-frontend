@@ -1,15 +1,16 @@
 import { pathToFileURL } from "node:url";
 
-export function validateProductionApiUrl(value) {
+/** @param {string | undefined} value */
+export function validateProductionApiUrl(value, name = "NEXT_PUBLIC_API_URL") {
   let url;
-  try { url = new URL(value); } catch { throw new Error("NEXT_PUBLIC_API_URL must be an absolute HTTP(S) API URL"); }
-  if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) {
-    throw new Error("NEXT_PUBLIC_API_URL must be an HTTP(S) URL without credentials");
+  try { url = new URL(value); } catch { throw new Error(`${name} must be an absolute HTTPS URL`); }
+  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
+    throw new Error(`${name} must be an HTTPS URL without credentials, query parameters or fragments`);
   }
   const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
   if (hostname === "localhost" || hostname.endsWith(".localhost") || hostname === "[::1]" || hostname === "[::]"
     || hostname === "0.0.0.0" || hostname.startsWith("127.")) {
-    throw new Error("NEXT_PUBLIC_API_URL cannot target a local machine in a production image");
+    throw new Error(`${name} cannot target a local machine in production`);
   }
 }
 

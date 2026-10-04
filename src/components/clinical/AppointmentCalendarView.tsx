@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Badge, Button, Modal } from "@/components/ui";
 
 interface AppointmentItem {

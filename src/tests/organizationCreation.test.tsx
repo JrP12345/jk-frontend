@@ -61,14 +61,15 @@ describe("organization management", () => {
     expect(switchOrg).not.toHaveBeenCalled();
   });
   it("gives an organization admin the same sections but restricts platform actions", async () => {
-    useAuthStore.setState({ user: { id: "admin-1", name: "Admin", email: "admin@test", role: "admin", organization_id: org.id } });
+    useAuthStore.setState({ user: { id: "admin-1", name: "Admin", email: "admin@test", role: "admin", organization_id: org.id, permissions: ["MANAGE_ORGANIZATION"] } });
     mount(<OrganizationsPage />);
     await screen.findByRole("heading", { name: org.name });
     expect(within(screen.getByRole("navigation", { name: "Organization sections" })).getByRole("tab", { name: "Details & branding" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add organization" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Login as administrator" })).not.toBeInTheDocument();
     expect(screen.queryByText("Platform status and deletion")).not.toBeInTheDocument();
-    expect(hasRoutePermission("/dashboard/organizations", "admin")).toBe(true);
+    expect(hasRoutePermission("/dashboard/organizations", "admin", ["MANAGE_ORGANIZATION"])).toBe(true);
+    expect(hasRoutePermission("/dashboard/organizations", "admin", [])).toBe(false);
     expect(hasRoutePermission("/dashboard/admin/users", "admin")).toBe(false);
     expect(hasRoutePermission("/dashboard/organizations", "nurse", [])).toBe(false);
   });

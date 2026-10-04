@@ -2,6 +2,36 @@
 
 Use the shared `Modal` and `Button` components for application tasks.
 
+Use the existing Next App Router layouts, shared controls, Zustand workspace
+stores, Axios client and TanStack Query consumers. Keep one light/dark Ekavyu
+identity; browser translation handles other languages while doctor language and
+queue voice settings retain their separate purposes. See
+[visual identity](ekavyu-visual-identity.md) for tokens and asset regeneration.
+
+Dashboard navigation stays off-canvas below 1024px. Shared controls and table
+cards use mobile behavior through 767px, with readable input text and touch
+targets. Mobile table views retain sorting, filtering, selection and secondary
+details. Clamp pagination after dataset changes and keep compact phone controls.
+Use the existing focus, popover-position and scroll-lock helpers for nested
+overlays; keyboard focus, Escape and trigger restoration belong to the active
+overlay. Native Select validation and DatePicker's string/event callback
+compatibility remain required by existing callers.
+
+Distinguish failed initial reads from successful empty results. Preserve loaded
+rows during background refresh and expose local retry controls. Patient, catalog,
+organization and radiology reads use `useLatestRead` to cancel obsolete requests
+and reject late results; commit query/page state together and retain the existing
+300ms catalog debounce. Do not cancel or automatically replay writes. Keep Table
+row actions usable during refresh and use skeletons only before initial data.
+Technical-message filtering belongs to presentation; preserve transport errors
+and meaningful domain validation messages.
+
+Use native Next Link pending state and the delayed route indicator; programmatic
+navigation retains framework loading fallbacks. Button keeps idle content as its
+size reference during processing. Respect reduced motion and keep clinical,
+payment and permission behavior in the existing domain code. Profile actual
+routes before adding virtualization, cache layers or pagination contracts.
+
 Theme controls act as one button: clicking either icon or anywhere on the track toggles the theme. The accessible label names the next mode. Respect reduced-motion preferences during theme changes.
 
 In authenticated workspaces, appearance belongs in the account menu beside profile/settings on desktop and mobile. In mobile Browse navigation, use a labelled Appearance row that shows the current mode and next action. Signed-out desktop visitors use a labelled Appearance menu. Keep the header focused on navigation, notifications, and the account; standalone authentication and kiosk screens can retain their existing theme control.

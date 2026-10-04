@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, memo } from "react";
+import React, { useState, useRef, useEffect, memo } from "react";
 import { cn } from "../utils";
 
 export interface BarSeries {
@@ -24,6 +24,8 @@ export interface BarChartProps {
   showLegend?: boolean;
   benchmark?: { value: number; label: string; color?: string };
   className?: string;
+  /** Keep the requested height and readable labels as the container resizes. */
+  responsive?: boolean;
 }
 
 const DEFAULT_COLORS = [
@@ -44,12 +46,28 @@ export const BarChart = memo(function BarChart({
   showLegend = true,
   benchmark,
   className = "",
+  responsive = false,
 }: BarChartProps) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const [measuredWidth, setMeasuredWidth] = useState(600);
 
-  const padding = { top: 16, right: 14, bottom: 28, left: 42 };
-  const viewBoxWidth = 600;
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!responsive || !svg) return;
+    const update = () => {
+      const width = Math.round(svg.getBoundingClientRect().width);
+      if (width > 0) setMeasuredWidth(Math.max(240, width));
+    };
+    update();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : undefined;
+    observer?.observe(svg);
+    window.addEventListener("resize", update);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", update); };
+  }, [responsive, data.length]);
+
+  const padding = { top: 16, right: 14, bottom: 28, left: responsive ? 58 : 42 };
+  const viewBoxWidth = responsive ? measuredWidth : 600;
   const viewBoxHeight = height;
 
   const chartWidth = viewBoxWidth - padding.left - padding.right;
@@ -124,6 +142,7 @@ export const BarChart = memo(function BarChart({
         <svg
           ref={svgRef}
           viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+          style={responsive ? { height } : undefined}
           className="w-full h-auto overflow-visible cursor-pointer [touch-action:pan-y_pinch-zoom]"
           onMouseMove={(e) => handlePointerPos(e.clientX)}
           onMouseLeave={() => setHoverIndex(null)}
@@ -154,6 +173,7 @@ export const BarChart = memo(function BarChart({
                       y={y + 3.5}
                       textAnchor="end"
                       fontSize="9"
+                      style={responsive ? { fontSize: 11 } : undefined}
                       fill="var(--s-text-muted)"
                       className="font-mono font-medium text-[9px]"
                     >
@@ -292,8 +312,10 @@ export const BarChart = memo(function BarChart({
           {/* X Axis Labels */}
           <g className="x-axis-labels">
             {data.map((d, i) => {
-              const skip = data.length > 10 ? Math.ceil(data.length / 7) : 1;
+              const maxLabels = responsive ? Math.max(2, Math.floor(chartWidth / 64)) : 7;
+              const skip = responsive || data.length > 10 ? Math.max(1, Math.ceil(data.length / maxLabels)) : 1;
               if (i % skip !== 0 && i !== data.length - 1) return null;
+              if (responsive && i > 0 && i !== data.length - 1 && data.length - 1 - i < skip) return null;
 
               const x = padding.left + i * groupWidth + groupWidth / 2;
               return (
@@ -303,6 +325,7 @@ export const BarChart = memo(function BarChart({
                   y={viewBoxHeight - 6}
                   textAnchor="middle"
                   fontSize="9.5"
+                  style={responsive ? { fontSize: 11 } : undefined}
                   fill="var(--s-text-muted)"
                   className="font-semibold text-[9px] tracking-tight"
                 >

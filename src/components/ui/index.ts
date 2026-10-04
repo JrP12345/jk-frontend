@@ -13,13 +13,12 @@ export { default as Textarea } from "./Textarea";
 export { default as Select } from "./Select";
 export { default as Checkbox } from "./Checkbox";
 export { default as Toggle } from "./Toggle";
-export { default as SearchInput } from "./SearchInput";
 export { default as ImageUpload } from "./ImageUpload";
 export { default as ScheduleEditor } from "./ScheduleEditor";
 
 export { default as Badge } from "./Badge";
 export { default as Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "./Card";
-export { default as Avatar, AvatarGroup } from "./Avatar";
+export { default as Avatar } from "./Avatar";
 export { default as StatCard } from "./StatCard";
 export { default as Table } from "./Table";
 export type { Column, TableBulkAction } from "./Table";
@@ -47,5 +46,4 @@ export { default as EkavyuLogo, EkavyuIcon } from "./EkavyuLogo";
 export { default as PageTransition } from "./PageTransition";
 
 export * from "./charts";
-export { default as MultiImageUpload } from "./MultiImageUpload";
 export { PWAInstallBanner } from "./PWAInstallBanner";

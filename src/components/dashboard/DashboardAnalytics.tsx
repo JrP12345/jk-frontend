@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { ChartContainer, AreaChart, BarChart } from "@/components/ui";
 
 interface DashboardAnalyticsProps {

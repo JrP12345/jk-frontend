@@ -67,7 +67,7 @@ it("closes the notification action menu before its parent dialog and restores fo
   expect(dialog).toBeInTheDocument();
   fireEvent.keyDown(document.activeElement!, { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-  expect(trigger).toHaveFocus();
+  await waitFor(() => expect(trigger).toHaveFocus());
 });
 
 it("places the compact preview below navigation on a shared blurred backdrop", async () => {

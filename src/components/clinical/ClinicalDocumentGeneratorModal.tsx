@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Modal, Button, Input, Select, useToast } from "@/components/ui";
 import { UnifiedDocumentData, UnifiedDocumentModal } from "./UnifiedDocumentModal";
 import { FileText, Building2, HeartPulse, CheckCircle2 } from "lucide-react";

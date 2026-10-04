@@ -1,4 +1,14 @@
 import type { NextConfig } from "next";
+import { validateProductionApiUrl } from "./scripts/check-production-api-url.mjs";
+
+// Apply the existing image guard to native/hosted Next builds and starts too.
+// Public URLs are compiled into browser code; a runtime environment change cannot repair them.
+if (process.env.NODE_ENV === "production") {
+  validateProductionApiUrl(process.env.NEXT_PUBLIC_API_URL);
+  if (process.env.NEXT_PUBLIC_BACKEND_URL) {
+    validateProductionApiUrl(process.env.NEXT_PUBLIC_BACKEND_URL, "NEXT_PUBLIC_BACKEND_URL");
+  }
+}
 
 const nextConfig: NextConfig = {
   // Allow mobile devices on LAN (hotspot/Wi-Fi) to access dev resources (HMR, hot reload)

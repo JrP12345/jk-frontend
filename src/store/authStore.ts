@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import api from "@/lib/api";
 import { useClinicStore } from "./clinicStore";
+import { useModuleStore } from "./moduleStore";
+import { authScopeKey } from "@/lib/authScope";
 import { aiSDK } from "@/lib/aiSDK";
 import { clearRecentTracker } from "./trackerStore";
 
@@ -37,6 +39,48 @@ interface AuthState {
   stopImpersonation: () => Promise<void>;
 }
 
+let authRevision = 0;
+let authRead = 0;
+let changingWorkspace = false;
+
+function normalizeUser(user: User): User {
+  return { ...user, impersonatedBy: user.impersonatedBy?.id ? user.impersonatedBy : null };
+}
+
+function resetScopedData() {
+  useClinicStore.getState().reset();
+  useModuleStore.getState().reset();
+  aiSDK.cancelAllStreams();
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("auth-context-change"));
+}
+
+/** Suspend private screens while the server changes the effective session. */
+async function changeWorkspace(loadUser: () => Promise<User>) {
+  if (changingWorkspace || useAuthStore.getState().isLoggingOut) throw new Error("A session change is already in progress");
+  changingWorkspace = true;
+  authRevision++;
+  useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: true });
+  const revision = authRevision;
+  try {
+    const user = normalizeUser(await loadUser());
+    if (revision !== authRevision || useAuthStore.getState().isLoggingOut) throw new Error("The session changed while switching workspace");
+    if (!user.id) throw new Error("The server did not return a valid session");
+    try {
+      if (typeof window !== "undefined") {
+        if (user.organization_id) localStorage.setItem("ananta_active_org_id", user.organization_id);
+        else localStorage.removeItem("ananta_active_org_id");
+      }
+    } catch { /* Server session remains authoritative when storage is unavailable. */ }
+    useAuthStore.setState({ user, isAuthenticated: true, isLoading: false });
+  } catch (error) {
+    // A failed request may have changed the HttpOnly cookie; never retain the old workspace.
+    if (revision === authRevision) useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
+    throw error;
+  } finally {
+    changingWorkspace = false;
+  }
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
@@ -44,10 +88,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoggingOut: false,
 
   checkAuth: async () => {
-    if (get().isLoggingOut) return;
+    if (get().isLoggingOut || changingWorkspace) return;
+    const revision = authRevision;
+    const read = ++authRead;
     try {
       const res = await api.get("/auth/me");
-      if (get().isLoggingOut) return;
+      if (get().isLoggingOut || revision !== authRevision || read !== authRead) return;
       const user = res.data.data.user;
       if (user && (user.role as string) === "guest") {
         if (typeof window !== "undefined") {
@@ -56,9 +102,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ user: null, isAuthenticated: false, isLoading: false });
         return;
       }
-      if (user && (!user.impersonatedBy || !user.impersonatedBy.id)) {
-        user.impersonatedBy = null;
-      }
       if (typeof window !== "undefined") {
         document.cookie = "ananta_session=1; path=/; max-age=604800; SameSite=Lax";
         if (user && (user.role === "patient" || user.role === "family_member")) {
@@ -66,9 +109,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           localStorage.removeItem("ananta_active_clinic_id");
         }
       }
-      set({ user, isAuthenticated: true, isLoading: false });
-    } catch (error) {
-      if (get().isLoggingOut) return;
+      set({ user: user ? normalizeUser(user) : null, isAuthenticated: Boolean(user), isLoading: false });
+    } catch {
+      if (get().isLoggingOut || revision !== authRevision || read !== authRead) return;
       if (typeof window !== "undefined" && !document.cookie.split("; ").includes("ananta_session=guest")) {
         document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       }
@@ -77,12 +120,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   login: (user: User) => {
+    authRevision++;
+    user = normalizeUser(user);
     if ((user?.role as string) === "guest") {
       set({ user: null, isAuthenticated: false, isLoading: false });
       return;
-    }
-    if (user && (!user.impersonatedBy || !user.impersonatedBy.id)) {
-      user.impersonatedBy = null;
     }
     if (typeof window !== "undefined") {
       document.cookie = "ananta_session=1; path=/; max-age=604800; SameSite=Lax";
@@ -91,12 +133,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         localStorage.removeItem("ananta_active_clinic_id");
       }
     }
-      set({ user, isAuthenticated: true, isLoading: false, isLoggingOut: false });
+    set({ user, isAuthenticated: true, isLoading: false, isLoggingOut: false });
   },
 
   logout: async () => {
     if (get().isLoggingOut) return;
+    authRevision++;
     set({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: true });
+    const revision = authRevision;
     clearRecentTracker();
     aiSDK.cancelAllStreams();
     if (typeof window !== "undefined") {
@@ -105,9 +149,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     try {
       await api.post("/auth/logout", {}, { timeout: 3000 });
-    } catch (err) {
+    } catch {
       // ignore
     } finally {
+      if (revision !== authRevision || !get().isLoggingOut) return;
       if (typeof window !== "undefined") {
         document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         // Clear sensitive client caches during logout (Finding: Step 2.8)
@@ -123,96 +168,49 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  switchOrg: async (organizationId?: string) => {
-    try {
-      await api.post("/auth/switch-org", { organizationId });
-      const res = await api.get("/auth/me");
-      const user = res.data.data.user;
-      if (user && (!user.impersonatedBy || !user.impersonatedBy.id)) {
-        user.impersonatedBy = null;
-      }
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("ananta_active_clinic_id");
-        if (organizationId) localStorage.setItem("ananta_active_org_id", organizationId);
-        else localStorage.removeItem("ananta_active_org_id");
-      }
-      useClinicStore.getState().setActiveClinic(null);
-      set({ user, isAuthenticated: true });
-    } catch (err) {
-      console.error("Failed to switch organization context:", err);
-      throw err;
-    }
-  },
+  switchOrg: (organizationId?: string) => changeWorkspace(async () => {
+    await api.post("/auth/switch-org", { organizationId });
+    const res = await api.get("/auth/me");
+    return res.data.data.user;
+  }),
 
-  impersonate: async (params: { userId?: string; organizationId?: string; role?: string }) => {
-    try {
-      const res = await api.post("/auth/impersonate", params);
-      const targetUser = res.data.data.user;
-      if (targetUser && (!targetUser.impersonatedBy || !targetUser.impersonatedBy.id)) {
-        targetUser.impersonatedBy = null;
-      }
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("ananta_active_clinic_id");
-        if (targetUser.organization_id) {
-          localStorage.setItem("ananta_active_org_id", targetUser.organization_id);
-        }
-      }
-      useClinicStore.getState().setActiveClinic(null);
-      set({ user: targetUser, isAuthenticated: true });
-    } catch (err) {
-      console.error("Failed to impersonate user:", err);
-      throw err;
-    }
-  },
+  impersonate: (params: { userId?: string; organizationId?: string; role?: string }) => changeWorkspace(async () => {
+    const res = await api.post("/auth/impersonate", params);
+    return res.data.data.user;
+  }),
 
-  stopImpersonation: async () => {
+  stopImpersonation: () => changeWorkspace(async () => {
     try {
       const res = await api.post("/auth/stop-impersonation");
-      const rootUser = res.data.data.user;
-      if (rootUser && (!rootUser.impersonatedBy || !rootUser.impersonatedBy.id)) {
-        rootUser.impersonatedBy = null;
-      }
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("ananta_active_clinic_id");
-        localStorage.removeItem("ananta_active_org_id");
-      }
-      useClinicStore.getState().setActiveClinic(null);
-      set({ user: rootUser, isAuthenticated: true });
-    } catch (err: any) {
-      // If 400 (session not active or out of sync), gracefully resync user via /auth/me
-      if (err.response?.status === 400) {
-        try {
-          const checkRes = await api.get("/auth/me");
-          const refreshedUser = checkRes.data.data.user;
-          if (refreshedUser && (!refreshedUser.impersonatedBy || !refreshedUser.impersonatedBy.id)) {
-            refreshedUser.impersonatedBy = null;
-          }
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("ananta_active_clinic_id");
-            localStorage.removeItem("ananta_active_org_id");
-          }
-          useClinicStore.getState().setActiveClinic(null);
-          set({ user: refreshedUser, isAuthenticated: true });
-          return;
-        } catch {
-          // ignore
-        }
-      }
-      console.error("Failed to stop impersonation:", err);
-      throw err;
+      return res.data.data.user;
+    } catch (error: unknown) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status !== 400) throw error;
+      const res = await api.get("/auth/me");
+      return res.data.data.user;
     }
-  },
+  }),
 }));
+
+useAuthStore.subscribe((state, previous) => {
+  if (authScopeKey(state.user) === authScopeKey(previous.user)) return;
+  authRevision++;
+  resetScopedData();
+});
 
 // Listen for cross-tab context changes (active org or logout)
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (e) => {
     if (e.key === "ananta_active_org_id") {
       // Re-verify auth when organization changes across tabs
+      authRevision++;
+      useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: true });
       useAuthStore.getState().checkAuth();
     }
     if (e.key === "ananta_logout_at") {
+      authRevision++;
       useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: true });
+      clearRecentTracker();
       window.dispatchEvent(new Event("auth-logout"));
       window.location.replace("/login?logout=1");
     }
@@ -232,6 +230,7 @@ if (typeof window !== "undefined") {
     }
 
     // Clear state so no component remains in its authentication loading state.
+    authRevision++;
     useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
 
     // Best-effort server-side cleanup. `/auth/logout` is excluded from refresh

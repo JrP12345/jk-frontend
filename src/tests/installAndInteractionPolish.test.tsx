@@ -54,8 +54,7 @@ describe("Production install assets", () => {
 });
 
 describe("Shared action and overlay behavior", () => {
-  it("locks an async action immediately, preserves its width, and restores its original icon", async () => {
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ width: 156 } as DOMRect);
+  it("locks an async action immediately, keeps its intrinsic content space, and restores its original icon", async () => {
     let finish!: () => void;
     const action = vi.fn(() => new Promise<void>(resolve => { finish = resolve; }));
     render(<><Button aria-label="Save changes" onClick={action} icon={<svg role="img" aria-label="Save icon" />}>Save changes</Button><Button>Unrelated action</Button></>);
@@ -64,7 +63,9 @@ describe("Shared action and overlay behavior", () => {
     expect(action).toHaveBeenCalledOnce();
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
-    expect(button.style.width).toBe("156px");
+    expect(button.firstElementChild).toHaveClass("grid");
+    expect(button.querySelector('[aria-hidden="true"].invisible')).toBeInTheDocument();
+    expect(button.style.width).toBe("");
     expect(screen.queryByRole("img", { name: "Save icon" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("status")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Unrelated action" })).toBeEnabled();

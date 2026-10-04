@@ -1,6 +1,6 @@
 "use client";
 
-import React, { type ReactNode, memo } from "react";
+import { type ReactNode, memo } from "react";
 import { cn } from "../utils";
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from "../Card";
 import Spinner from "../Spinner";

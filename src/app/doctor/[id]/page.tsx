@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { Suspense, cache } from "react";
 import Link from "next/link";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import BrowseDetailClient, { type ClinicDetail } from "@/app/browse/[id]/BrowseDetailClient";
@@ -36,7 +36,7 @@ function doctorDisplayName(name: string) {
   return /^Dr\.?\s/i.test(name) ? name : `Dr. ${name}`;
 }
 
-export async function getDoctor(id: string, clinicId?: string): Promise<DoctorProfile | null> {
+export const getDoctor = cache(async function getDoctor(id: string, clinicId?: string): Promise<DoctorProfile | null> {
   try {
     const response = await fetch(`${backendUrl()}/api/public/doctors/${encodeURIComponent(id)}/profile${clinicId ? `?clinicId=${encodeURIComponent(clinicId)}` : ""}`, {
       cache: "no-store", signal: AbortSignal.timeout(3000),
@@ -70,7 +70,7 @@ export async function getDoctor(id: string, clinicId?: string): Promise<DoctorPr
         bookingStatus: getPublicBookingStatus({ ...clinic, doctorCount: clinic.doctors.length }) }],
     };
   } catch { return null; }
-}
+});
 
 async function getClinicForBooking(clinicId: string, doctorId: string): Promise<ClinicDetail | null> {
   try {
@@ -105,10 +105,15 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
 export default async function DoctorPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ clinicId?: string }> }) {
   const { id } = await params;
   const { clinicId } = await searchParams;
-  const doctor = await getDoctor(id, clinicId);
+  const [doctor, requestedClinic] = await Promise.all([
+    getDoctor(id, clinicId),
+    clinicId ? getClinicForBooking(clinicId, id) : Promise.resolve(null),
+  ]);
   const locations = doctor?.locations || [];
   const selectedLocation = locations.find((location) => location.id === clinicId) || locations[0];
-  const bookingClinic = selectedLocation ? await getClinicForBooking(selectedLocation.id, id) : null;
+  const bookingClinic = selectedLocation
+    ? selectedLocation.id === clinicId ? requestedClinic : await getClinicForBooking(selectedLocation.id, id)
+    : null;
 
   return <div className="min-h-screen bg-surface-alt text-text">
     <MarketplaceNavbar brand={selectedLocation ? { name: doctor?.organizationName || selectedLocation.name, logoUrl: doctor?.organizationLogo || selectedLocation.logo, href: `/browse/${selectedLocation.id}` } : undefined} />

@@ -1,10 +1,13 @@
 import { describe, it, expect } from "vitest";
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import StatCard from "../components/ui/StatCard";
 import Table from "../components/ui/Table";
 import Button from "../components/ui/Button";
+import Input from "../components/ui/Input";
+import Textarea from "../components/ui/Textarea";
+import Checkbox from "../components/ui/Checkbox";
 import Card, { CardHeader, CardTitle, CardContent } from "../components/ui/Card";
 import { SkeletonStats, SkeletonCardGrid } from "../components/ui/Skeleton";
 
@@ -58,9 +61,38 @@ describe("Table Component Tests", () => {
     expect(progress).toBeInTheDocument();
     expect(screen.getByLabelText("Loading table data")).toBeInTheDocument();
   });
+
+  it("uses one structural loading indicator for an empty table", () => {
+    const { container } = render(<Table columns={[{ header: "Name", key: "name" }]} data={[]} loading />);
+    expect(container.querySelectorAll(".skeleton-shimmer").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("progressbar", { name: "Loading table data" })).not.toBeInTheDocument();
+  });
+
+  it("keeps column semantics while reserving vertical rules for bordered tables", () => {
+    const props = { columns: [{ header: "Name", key: "name" }, { header: "Status", key: "status" }], data: [{ id: "1", name: "A patient", status: "Booked" }] };
+    const { rerender } = render(<Table {...props} />);
+    const heading = screen.getByRole("columnheader", { name: "Name" });
+    expect(heading).toHaveAttribute("scope", "col");
+    expect(heading).not.toHaveClass("border-r");
+    rerender(<Table {...props} variant="bordered" />);
+    expect(screen.getByRole("columnheader", { name: "Name" })).toHaveClass("border-r");
+  });
 });
 
 describe("Button Loading State Tests", () => {
+  it("keeps a label and its trailing arrow together inside a full-width button", () => {
+    render(<Button fullWidth><span>Schedule Next Available Date</span><svg aria-hidden="true" data-testid="trailing-arrow" /></Button>);
+    const label = screen.getByText("Schedule Next Available Date");
+    expect(label.parentElement).toHaveClass("inline-flex", "items-center", "gap-1.5");
+    expect(label.parentElement).toContainElement(screen.getByTestId("trailing-arrow"));
+    expect(screen.getByRole("button")).toHaveClass("w-full");
+  });
+  it("allows long labels to wrap while icons retain their width", () => {
+    const { container } = render(<Button icon={<svg data-testid="button-icon" />}>Save and continue to consultation</Button>);
+    expect(screen.getByRole("button")).toHaveClass("min-w-0", "max-w-full");
+    expect(screen.getByText("Save and continue to consultation")).toHaveClass("whitespace-normal", "wrap-anywhere");
+    expect(container.querySelector("[data-testid='button-icon']")?.parentElement).toHaveClass("shrink-0");
+  });
   it("keeps the accessible action name when loading a compound label with an arrow", () => {
     render(<Button fullWidth loading><span>Verify &amp; Sign In</span><svg aria-hidden="true" /></Button>);
     const button = screen.getByRole("button", { name: "Verify & Sign In" });
@@ -79,6 +111,41 @@ describe("Button Loading State Tests", () => {
   it("renders loadingText when provided", () => {
     render(<Button loading={true} loadingText="Saving Record...">Confirm</Button>);
     expect(screen.getByText("Saving Record...")).toBeInTheDocument();
+  });
+});
+
+describe("Field validation feedback", () => {
+  it("shows a native input error after interaction and clears it when corrected", () => {
+    render(<Input type="email" required label="Email" />);
+    const input = screen.getByRole("textbox", { name: "Email" });
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    fireEvent.change(input, { target: { value: "invalid" } });
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    fireEvent.change(input, { target: { value: "patient@example.com" } });
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("keeps required textareas neutral until blur and clears the error on edit", () => {
+    render(<Textarea required label="Reason" />);
+    const textarea = screen.getByRole("textbox", { name: "Reason" });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    fireEvent.blur(textarea);
+    expect(textarea).toHaveAttribute("aria-invalid", "true");
+    fireEvent.change(textarea, { target: { value: "Follow-up" } });
+    expect(textarea).not.toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("validates a required checkbox after interaction", () => {
+    render(<Checkbox required label="Accept terms" />);
+    const checkbox = screen.getByRole("checkbox", { name: "Accept terms" });
+    expect(checkbox).not.toHaveAttribute("aria-invalid", "true");
+    fireEvent.blur(checkbox);
+    expect(checkbox).toHaveAttribute("aria-invalid", "true");
+    fireEvent.click(checkbox);
+    expect(checkbox).not.toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
 

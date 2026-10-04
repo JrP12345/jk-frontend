@@ -6,6 +6,7 @@ import Modal from "@/components/ui/Modal";
 import Select from "@/components/ui/Select";
 import Dropdown from "@/components/ui/Dropdown";
 import Tabs from "@/components/ui/Tabs";
+import Tooltip from "@/components/ui/Tooltip";
 import Table from "@/components/ui/Table";
 import DatePicker from "@/components/ui/DatePicker";
 import Card from "@/components/ui/Card";
@@ -51,6 +52,17 @@ describe("responsive controls", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("shows required select feedback after blur and clears it on selection", async () => {
+    render(<Select label="Clinic" required options={[{ value: "central", label: "Central" }]} />);
+    const trigger = screen.getByRole("combobox", { name: "Clinic" });
+    expect(trigger).not.toHaveAttribute("aria-invalid", "true");
+    fireEvent.blur(trigger);
+    expect(trigger).toHaveAttribute("aria-invalid", "true");
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("option", { name: "Central" }));
+    expect(trigger).not.toHaveAttribute("aria-invalid", "true");
+  });
+
   it("skips disabled options during keyboard selection", async () => {
     const change = vi.fn();
     render(<Select label="Location" value="a" options={[{ value: "a", label: "A" }, { value: "b", label: "B", disabled: true }, { value: "c", label: "C" }]} onChange={change} />);
@@ -85,6 +97,17 @@ describe("responsive controls", () => {
     expect(action).toHaveBeenCalledTimes(1);
     expect(trigger).toHaveFocus();
     expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("associates tooltip text with its trigger and dismisses on Escape", async () => {
+    render(<Tooltip content="Opens patient details" delay={0}><button>Patient details</button></Tooltip>);
+    const trigger = screen.getByRole("button", { name: "Patient details" });
+    fireEvent.focus(trigger);
+    const tooltip = await screen.findByRole("tooltip");
+    expect(trigger).toHaveAttribute("aria-describedby", tooltip.id);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    expect(trigger).not.toHaveAttribute("aria-describedby");
   });
 
   it("only closes the top dialog and restores nested focus", async () => {

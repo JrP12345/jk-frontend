@@ -136,6 +136,15 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* Portaled controls must clear navigation and dialogs in a predictable order. */
+:root {
+  --layer-dialog: 500;
+  --layer-popover: 600;
+  --layer-tooltip: 650;
+  --layer-toast: 700;
+  --layer-route-progress: 800;
+}
+
 /* ────────────────────────────────────────────────
    Accessibility — Prefers Reduced Motion
    ──────────────────────────────────────────────── */
@@ -153,12 +162,12 @@
 }
 
 /* ────────────────────────────────────────────────
-   Springy Toast Animation Engine (Top Center Spring Entrance & Exit)
+   Toast entrance and dismissal
    ──────────────────────────────────────────────── */
 @keyframes toast-enter {
   0% {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(-8px);
   }
   100% {
     opacity: 1;
@@ -173,7 +182,7 @@
   }
   100% {
     opacity: 0;
-    transform: translateY(-20px) scale(0.9);
+    transform: translateY(-8px);
   }
 }
 
@@ -182,7 +191,7 @@
 }
 
 .animate-toast-exit {
-  animation: toast-exit 0.25s cubic-bezier(0.06, 0.71, 0.55, 1) forwards;
+  animation: toast-exit 0.18s ease-in forwards;
 }
 
 @keyframes toast-progress {
@@ -1181,10 +1190,9 @@ button, a, input, select, textarea {
   backdrop-filter: blur(8px) saturate(115%);
 }
 
-/* Transient messages clear navigation and the visible viewport edges. */
-.toast-region,
-.install-banner-region {
-  --toast-top: max(calc(env(safe-area-inset-top) + 0.75rem), var(--toast-header-offset, 1rem), var(--toast-visible-top, 1rem));
+/* Toasts stay at the viewport's top center, independent of navigation height. */
+.toast-region {
+  --toast-top: max(calc(env(safe-area-inset-top) + 1rem), var(--toast-visible-top, 1rem));
   top: var(--toast-top);
   max-height: max(0px, calc(var(--toast-viewport-bottom, 100dvh) - var(--toast-top) - env(safe-area-inset-bottom) - 1rem));
 }

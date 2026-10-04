@@ -17,6 +17,7 @@ interface ModuleState {
   isLoaded: boolean;
   isLoading: boolean;
   error: string | null;
+  reset: () => void;
 
   // Actions
   fetchModules: () => Promise<void>;
@@ -25,25 +26,44 @@ interface ModuleState {
   bulkToggleModules: (updates: Array<{ moduleKey: string; enabled: boolean }>) => Promise<void>;
 }
 
+let generation = 0;
+let pending: Promise<void> | null = null;
+let controller: AbortController | null = null;
+
 export const useModuleStore = create<ModuleState>((set, get) => ({
   modules: [],
   isLoaded: false,
   isLoading: false,
   error: null,
 
-  fetchModules: async () => {
-    // Avoid duplicate fetches
-    if (get().isLoading) return;
+  reset: () => {
+    generation++;
+    controller?.abort();
+    controller = null;
+    pending = null;
+    set({ modules: [], isLoaded: false, isLoading: false, error: null });
+  },
 
+  fetchModules: () => {
+    if (pending) return pending;
+
+    const requestGeneration = generation;
+    const requestController = new AbortController();
+    controller = requestController;
     set({ isLoading: true, error: null });
-    try {
-      const res = await api.get("/modules");
-      const data = res.data.data || [];
-      set({ modules: data, isLoaded: true, isLoading: false });
-    } catch (err: any) {
-      console.error("Failed to fetch modules:", err);
-      set({ error: err.message || "Failed to load modules", isLoaded: true, isLoading: false });
-    }
+    pending = (async () => {
+      try {
+        const res = await api.get("/modules", { signal: requestController.signal });
+        if (requestGeneration !== generation) return;
+        const data = res.data.data || [];
+        set({ modules: data, isLoaded: true, isLoading: false });
+      } catch (err: unknown) {
+        if (requestGeneration === generation) set({ error: err instanceof Error ? err.message : "Failed to load modules", isLoading: false });
+      } finally {
+        if (requestGeneration === generation) { pending = null; controller = null; }
+      }
+    })();
+    return pending;
   },
 
   isModuleEnabled: (moduleKey: string) => {
@@ -61,24 +81,26 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
   },
 
   toggleModule: async (moduleKey: string, enabled: boolean) => {
+    const requestGeneration = generation;
     try {
       await api.put(`/modules/${moduleKey}`, { enabled });
-      // Optimistic update
+      if (requestGeneration !== generation) return;
       set((state) => ({
         modules: state.modules.map((m) =>
           m.moduleKey === moduleKey ? { ...m, enabled } : m
         ),
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to toggle module:", err);
       throw err;
     }
   },
 
   bulkToggleModules: async (updates: Array<{ moduleKey: string; enabled: boolean }>) => {
+    const requestGeneration = generation;
     try {
       await api.put("/modules/bulk", { modules: updates });
-      // Optimistic update
+      if (requestGeneration !== generation) return;
       const updateMap = new Map(updates.map((u) => [u.moduleKey, u.enabled]));
       set((state) => ({
         modules: state.modules.map((m) =>
@@ -87,7 +109,7 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
             : m
         ),
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to bulk toggle modules:", err);
       throw err;
     }

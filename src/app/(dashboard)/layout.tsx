@@ -59,7 +59,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     // Only fetch clinics if the user is operating within a clinic/tenant workspace
-    if (user && user.role !== "patient" && (!isRootAdmin || isImpersonating)) {
+    if (!isLoading && requiresTenantModules(user)) {
       if (workflowPreferencesLoading) return;
       fetchClinics().then((list) => {
         if (list.length > 0 && (!activeClinicId || !list.some((c) => c.id === activeClinicId))) {
@@ -68,14 +68,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
       });
     }
-  }, [user?.id, user?.organization_id, user?.role, user?.impersonatedBy, isRootAdmin, isImpersonating, fetchClinics, activeClinicId, setActiveClinic, workflowPreferencesLoading, workflowPreferences.registration, workflowPreferences.consultation]);
+  }, [user, isLoading, fetchClinics, activeClinicId, setActiveClinic, workflowPreferencesLoading, workflowPreferences.registration, workflowPreferences.consultation]);
 
   // Fetch module toggle states once user is loaded
   useEffect(() => {
-    if (requiresTenantModules(user) && !modulesLoaded) {
+    if (!isLoading && requiresTenantModules(user) && !modulesLoaded) {
       fetchModules();
     }
-  }, [user, modulesLoaded, fetchModules]);
+  }, [user, isLoading, modulesLoaded, fetchModules]);
 
   useEffect(() => {
     if (!isLoading && user && !hasRoutePermission(pathname, user.role, user.permissions)) {
@@ -456,6 +456,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <main
           role="main"
           id="main-content"
+          data-app-scroll
           className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 pb-32 sm:pb-32 lg:pb-8 scroll-smooth w-full touch-scroll [scrollbar-gutter:stable]"
         >
           <div className="w-full space-y-5 sm:space-y-6 max-w-7xl xl:max-w-[90rem] mx-auto">

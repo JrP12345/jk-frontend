@@ -44,7 +44,7 @@ export const RouteProgress = memo(function RouteProgress() {
   }, []);
   if (!visible) return null;
   return (
-    <div role="progressbar" aria-label="Loading page" className="fixed top-0 inset-x-0 z-[99999] h-0.5 overflow-hidden pointer-events-none bg-surface-alt">
+    <div role="progressbar" aria-label="Loading page" className="fixed top-0 inset-x-0 z-[var(--layer-route-progress)] h-0.5 overflow-hidden pointer-events-none bg-surface-alt">
       <div className="h-full w-1/3 bg-accent animate-route-progress motion-reduce:w-full motion-reduce:animate-none" />
     </div>
   );

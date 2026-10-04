@@ -200,10 +200,11 @@ const Select = memo(
             setTimeout(() => searchInputRef.current?.focus(), 50);
           }
         } else if (wasOpenRef.current) {
+          if (rest.required && !selectedValue) setNativeError("Please choose an option.");
           if (restoreFocusRef.current) buttonRef.current?.focus();
           wasOpenRef.current = false;
         }
-      }, [isOpen, shouldShowSearch]);
+      }, [isOpen, shouldShowSearch, selectedValue, rest.required]);
 
       // Auto scroll focused option into view
       useEffect(() => {
@@ -333,6 +334,9 @@ const Select = memo(
               aria-describedby={describedBy}
               disabled={disabled}
               onClick={handleToggle}
+              onBlur={() => {
+                if (!isOpen && rest.required && !selectedValue) setNativeError("Please choose an option.");
+              }}
               onKeyDown={handleKeyDown}
               className={cn(
                 "font-normal text-text text-left transform-gpu transition-all duration-200 ease-smooth focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt cursor-pointer relative",
@@ -422,7 +426,7 @@ const Select = memo(
                   left: coords.left,
                   width: coords.width,
                   maxHeight: coords.maxHeight,
-                  zIndex: 99999,
+                  zIndex: "var(--layer-popover)",
                 }}
                 className={cn(
                   "flex flex-col rounded-2xl border border-border/80 bg-surface shadow-xl overflow-hidden  ring-1 ring-border/50 select-none transform-gpu",
@@ -542,4 +546,3 @@ const Select = memo(
 
 Select.displayName = "Select";
 export default Select;
-

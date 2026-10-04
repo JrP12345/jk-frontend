@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, memo, useCallback } from "react";
+import { useState, useRef, memo, useCallback } from "react";
 import { cn } from "../utils";
 
 export interface LineSeries {

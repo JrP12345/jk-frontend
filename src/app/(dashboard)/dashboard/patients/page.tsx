@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { PatientService } from "@/services/patient.service";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, Column, Button, Input, Select, Modal, useToast, Badge, StatCard, Dropdown, cn } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, Column, Button, Input, Select, Modal, useToast, Badge, StatCard, Dropdown } from "@/components/ui";
 import { UserPlus, RotateCw, Search, Users, FileText, User, UserCheck, MoreHorizontal, AlertCircle, CalendarPlus, Activity, ArrowLeft, ArrowRight, Mail, Phone, Droplets } from "lucide-react";
 
 interface PatientUser {

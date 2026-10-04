@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { localDateKey } from "@/lib/date";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent, Badge, Table, Button, Dropdown } from "@/components/ui";

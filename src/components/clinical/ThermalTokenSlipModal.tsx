@@ -2,7 +2,7 @@
 
 import PrintDialogActions from "@/components/ui/PrintDialogActions";
 
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import Modal from "@/components/ui/Modal";
 import { Button, cn } from "@/components/ui";

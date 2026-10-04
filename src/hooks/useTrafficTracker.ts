@@ -24,19 +24,22 @@ export function useTrafficTracker(clinicId?: string, organizationId?: string) {
 
   useEffect(() => {
     if (!pathname || pathname === lastTrackedPath.current) return;
-    lastTrackedPath.current = pathname;
 
     // Small timeout to allow page title & referrer to settle
     const timeout = setTimeout(() => {
       try {
+        lastTrackedPath.current = pathname;
         const visitorId = getOrCreateVisitorId();
+        const routePath = pathname.split(/[?#]/, 1)[0].replace(/\/(?:[a-f\d]{24}|[a-f\d-]{36}|[A-Za-z\d_-]{32,})(?=\/|$)/gi, '/:id');
+        let referrer = '';
+        try { if (document.referrer) referrer = new URL(document.referrer).origin; } catch { /* Invalid referrer is omitted. */ }
         api
           .post("/public/track-visit", {
-            path: pathname,
+            path: routePath,
             clinicId,
             organizationId,
             visitorId,
-            referrer: typeof document !== "undefined" ? document.referrer : "",
+            referrer,
           })
           .catch(() => {
             // Ignore analytics tracking failures silently

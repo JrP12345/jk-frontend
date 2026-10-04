@@ -1,7 +1,7 @@
 import type { User } from "@/store/authStore";
 
 export function isPrivilegedRole(role: string | undefined): boolean {
-  return role === "root" || role === "admin";
+  return role === "root";
 }
 
 export function isRootUser(user: Pick<User, "role"> | null | undefined): boolean {
@@ -12,7 +12,7 @@ export function isPrivilegedUser(user: Pick<User, "role"> | null | undefined): b
   return isPrivilegedRole(user?.role);
 }
 
-/** True when the user has at least one of the listed permissions (root/admin bypass). */
+/** Mirrors server grants: only the platform root bypasses permissions. */
 export function hasAnyPermission(
   user: Pick<User, "role" | "permissions"> | null | undefined,
   ...permissions: string[]

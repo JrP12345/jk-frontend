@@ -144,6 +144,11 @@ export default function LoginPage() {
     setOtpAction("verifying");
     try {
       const res = await api.post("/auth/otp/verify", { ...otpTarget, otp: phoneOtp, purpose: "authentication" });
+      if (res.data?.data?.twoFactorRequired) {
+        setTwoFactorToken(res.data.data.twoFactorToken || '');
+        setIsTwoFactorModalOpen(true);
+        return;
+      }
       login(res.data.data.user);
       toast({
         title: "Welcome!",

@@ -43,6 +43,26 @@ describe("scrollLock manager", () => {
     expect(document.body.style.overflow).toBe(""); // RESTORED
   });
 
+  it("locks the dashboard scroll region until the last dialog closes", () => {
+    const main = document.createElement("main");
+    main.dataset.appScroll = "";
+    main.style.overflowY = "auto";
+    document.body.append(main);
+    try {
+      lockScroll();
+      lockScroll();
+      expect(main.style.overflowY).toBe("hidden");
+      expect(document.body.style.boxSizing).toBe("border-box");
+      unlockScroll();
+      expect(main.style.overflowY).toBe("hidden");
+      unlockScroll();
+      expect(main.style.overflowY).toBe("auto");
+    } finally {
+      forceResetScrollLock();
+      main.remove();
+    }
+  });
+
   it("forceResetScrollLock clears any stuck lock on route transitions", () => {
     lockScroll();
     lockScroll();

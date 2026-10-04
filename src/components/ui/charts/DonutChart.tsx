@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, memo } from "react";
+import { useState, memo } from "react";
 import { cn } from "../utils";
 
 export interface DonutDataItem {

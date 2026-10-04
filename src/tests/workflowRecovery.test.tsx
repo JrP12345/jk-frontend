@@ -34,16 +34,18 @@ function ToastActions() {
   return <><button onClick={() => toast({ title: "Appointment saved", description: "Your consultation has been reserved.", duration: 1000 })}>Save</button><button onClick={() => toast({ title: "Queue updated", description: "A longer message can wrap naturally without fixed-height overlap.", duration: 1000 })}>Update</button></>;
 }
 describe("Top-center transient notifications", () => {
-  it("uses the visible header bottom and updates when navigation grows", () => {
+  it("keeps the viewport top offset stable when navigation grows", () => {
     let bottom = 64;
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) { return this.hasAttribute("data-app-header") ? { height: bottom, top: 0, bottom } as DOMRect : { width: 156 } as DOMRect; });
     render(<ToastProvider><header data-app-header>Navigation</header><ToastActions /></ToastProvider>);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     const region = screen.getByRole("region", { name: "Notifications" });
     expect(region.style.getPropertyValue("--toast-header-offset")).toBe("76px");
+    expect(region.style.getPropertyValue("--toast-visible-top")).toBe("16px");
     bottom = 112;
     fireEvent.resize(window);
     expect(region.style.getPropertyValue("--toast-header-offset")).toBe("124px");
+    expect(region.style.getPropertyValue("--toast-visible-top")).toBe("16px");
     expect(screen.getByRole("status")).toHaveAttribute("aria-live", "polite");
   });
   it("lets touch and keyboard users expand the stack without overlapping fixed-height cards", () => {

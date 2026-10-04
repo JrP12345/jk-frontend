@@ -31,7 +31,7 @@ export const routePermissions: Record<string, string[]> = {
 /**
  * Checks if a user has permission to access a specific route.
  *
- * - root and admin always have full access.
+ * - root bypasses grants; organization admins use effective server permissions.
  * - Routes NOT listed in routePermissions are open to all authenticated users
  *   (e.g. /dashboard, /dashboard/notifications, /dashboard/profile).
  * - Routes listed require the user to have at least ONE of the listed permissions.
@@ -61,7 +61,7 @@ export function hasRoutePermission(
   // below it retain the existing EHR/clinical-note permission requirement.
   if (route === "/dashboard/consultations" && userPermissions.some(permission => ["VIEW_APPOINTMENTS", "MANAGE_APPOINTMENTS"].includes(permission))) return true;
 
-  if (userRole === "patient") {
+  if (userRole === "patient" || userRole === "family_member") {
     const patientAllowed = [
       "/dashboard",
       "/dashboard/notifications",
@@ -83,7 +83,7 @@ export function hasRoutePermission(
 
   // Longest-prefix match so /dashboard/settings/modules beats /dashboard/settings
   const matchedRoute = Object.keys(routePermissions)
-    .filter(p => route.startsWith(p))
+    .filter(p => route === p || route.startsWith(p + "/"))
     .sort((a, b) => b.length - a.length)[0];
 
   // No explicit restriction → open to all authenticated users

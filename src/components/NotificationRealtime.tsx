@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { NotificationItem } from "@/services/notificationService";
 import { useToast } from "@/components/ui/Toast";
 import { useAuthStore } from "@/store/authStore";
+import { authScopeKey } from "@/lib/authScope";
 import { getWebSocketUrl } from "@/utils/websocket";
 import { getApiUrl } from "@/lib/api";
 
@@ -11,6 +12,7 @@ import { getApiUrl } from "@/lib/api";
 export function NotificationRealtime() {
   const userId = useAuthStore(state => state.user?.id);
   const organizationId = useAuthStore(state => state.user?.organization_id);
+  const scopeKey = useAuthStore(state => authScopeKey(state.user));
   const queryClient = useQueryClient();
   const { toast } = useToast();
   useEffect(() => {
@@ -24,7 +26,7 @@ export function NotificationRealtime() {
     const receivedIds = new Set<string>();
 
     const handlePayload = (payload: any) => {
-      if (disposed) return;
+      if (disposed || authScopeKey(useAuthStore.getState().user) !== scopeKey) return;
       if (payload.type === "NOTIFICATION_RECEIVED") {
         const newNotif: NotificationItem = payload.data?.notification || payload.data;
         if (!newNotif || !newNotif.id || receivedIds.has(newNotif.id)) return;
@@ -156,6 +158,6 @@ export function NotificationRealtime() {
         eventSource.close();
       }
     };
-  }, [userId, organizationId, queryClient, toast]);
+  }, [userId, organizationId, scopeKey, queryClient, toast]);
   return null;
 }

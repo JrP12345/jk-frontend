@@ -27,8 +27,7 @@ function captureFrame() {
 }
 
 describe("Shared print action", () => {
-  it("prevents repeated printing, preserves width, and only loads the initiating action", async () => {
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ width: 180 } as DOMRect);
+  it("prevents repeated printing, retains the original label during preparation, and only loads the initiating action", async () => {
     let finish!: () => void;
     const prepare = vi.fn(() => new Promise<void>(resolve => { finish = resolve; }));
     render(<ToastProvider><PrintButton documentName="invoice" onPrint={prepare} /><button>Other action</button></ToastProvider>);
@@ -37,7 +36,7 @@ describe("Shared print action", () => {
     expect(prepare).toHaveBeenCalledOnce();
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
-    expect(button.style.width).toBe("180px");
+    expect(button.querySelector('[aria-hidden="true"].invisible')).toHaveTextContent("Print invoice");
     expect(within(button).getAllByRole("status")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Other action" })).toBeEnabled();
     await act(async () => finish());
@@ -74,6 +73,17 @@ describe("Shared print action", () => {
 });
 
 describe("Shared document lifecycle", () => {
+  it('blocks active nested documents and executable links while preserving receipt content', async () => {
+    const pending = printHtml('<html><body><p>Receipt</p><iframe srcdoc="<script>parent.alert(1)</script>"></iframe><object data="javascript:alert(1)"></object><a href="javascript:alert(1)">Link</a></body></html>');
+    const { frame, print } = captureFrame();
+    expect(frame.getAttribute('sandbox')).toBe('allow-same-origin allow-modals');
+    expect(frame.contentDocument!.querySelector('iframe, object, [srcdoc], [href]')).toBeNull();
+    frame.dispatchEvent(new Event('load'));
+    await pending;
+    expect(print).toHaveBeenCalledOnce();
+    expect(frame.contentDocument!.body.textContent).toContain('Receipt');
+    frame.contentWindow!.dispatchEvent(new Event('afterprint'));
+  });
   it("prints HTML once without popups or legacy scripts and restores focus after printing", async () => {
     render(<button>Return here</button>);
     screen.getByRole("button", { name: "Return here" }).focus();

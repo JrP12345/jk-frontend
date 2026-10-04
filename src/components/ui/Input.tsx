@@ -1,6 +1,6 @@
 "use client";
 
-import { type InputHTMLAttributes, type ReactNode, forwardRef, useId, memo } from "react";
+import { type InputHTMLAttributes, type ReactNode, forwardRef, useId, memo, useState } from "react";
 import { cn } from "./utils";
 
 export type InputSize = "sm" | "md" | "lg";
@@ -76,6 +76,9 @@ const Input = memo(
         containerClassName = "",
         id: propId,
         onClear,
+        onChange,
+        onBlur,
+        onInvalid,
         "aria-describedby": ariaDescribedByProp,
         ...rest
       },
@@ -85,6 +88,8 @@ const Input = memo(
       const id = propId || autoId;
       const errorId = `${id}-error`;
       const hintId = `${id}-hint`;
+      const [nativeError, setNativeError] = useState("");
+      const visibleError = error || nativeError;
 
       const resolvedLeftIcon = icon || leftIcon;
       const resolvedRightIcon = iconRight || rightIcon;
@@ -92,7 +97,7 @@ const Input = memo(
       const hasClear = !!(onClear && rest.value !== undefined && rest.value !== "" && !disabled);
 
       const describedBy =
-        [ariaDescribedByProp, error ? errorId : null, !error && hint ? hintId : null]
+        [ariaDescribedByProp, visibleError ? errorId : null, !visibleError && hint ? hintId : null]
           .filter(Boolean)
           .join(" ") || undefined;
 
@@ -109,8 +114,20 @@ const Input = memo(
               ref={ref}
               id={id}
               disabled={disabled}
-              aria-invalid={error ? true : undefined}
+              aria-invalid={visibleError ? true : undefined}
               aria-describedby={describedBy}
+              onChange={(event) => {
+                setNativeError(event.currentTarget.validity.valid ? "" : event.currentTarget.validationMessage);
+                onChange?.(event);
+              }}
+              onBlur={(event) => {
+                setNativeError(event.currentTarget.validity.valid ? "" : event.currentTarget.validationMessage);
+                onBlur?.(event);
+              }}
+              onInvalid={(event) => {
+                setNativeError(event.currentTarget.validationMessage);
+                onInvalid?.(event);
+              }}
               className={cn(
                 "w-full text-text font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt",
                 sizes[size],
@@ -119,7 +136,7 @@ const Input = memo(
                 resolvedLeftIcon && prefix && (size === "sm" ? "pl-15" : size === "lg" ? "pl-18" : "pl-16"),
                 !resolvedLeftIcon && prefix && (size === "sm" ? "pl-10" : size === "lg" ? "pl-13" : "pl-11"),
                 (resolvedRightIcon || hasClear || suffix) && iconPaddingRight[size],
-                error && variant !== "flush" && "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500/15 focus-visible:border-danger-500",
+                visibleError && variant !== "flush" && "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500/15 focus-visible:border-danger-500",
                 className
               )}
               {...rest}
@@ -177,12 +194,12 @@ const Input = memo(
               </span>
             ) : null}
           </div>
-          {error && (
-            <p id={errorId} className="text-xs font-medium text-danger-text animate-fade-in">
-              {error}
+          {visibleError && (
+            <p id={errorId} role="alert" className="text-xs font-medium text-danger-text animate-fade-in">
+              {visibleError}
             </p>
           )}
-          {!error && hint && (
+          {!visibleError && hint && (
             <p id={hintId} className="text-xs text-text-muted">
               {hint}
             </p>
@@ -195,4 +212,3 @@ const Input = memo(
 
 Input.displayName = "Input";
 export default Input;
-

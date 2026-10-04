@@ -7,8 +7,9 @@
 let activeLocks = 0;
 let originalOverflow: string | null = null;
 let originalPaddingRight: string | null = null;
-let originalBody: Pick<CSSStyleDeclaration, "position" | "top" | "left" | "width"> | null = null;
+let originalBody: Pick<CSSStyleDeclaration, "position" | "top" | "left" | "width" | "boxSizing"> | null = null;
 let originalRootOverflow = "";
+const appScrollContainers = new Map<HTMLElement, string>();
 let savedX = 0;
 let savedY = 0;
 
@@ -18,7 +19,7 @@ export function lockScroll(): void {
   if (activeLocks === 0) {
     originalOverflow = document.body.style.overflow;
     originalPaddingRight = document.body.style.paddingRight;
-    originalBody = { position: document.body.style.position, top: document.body.style.top, left: document.body.style.left, width: document.body.style.width };
+    originalBody = { position: document.body.style.position, top: document.body.style.top, left: document.body.style.left, width: document.body.style.width, boxSizing: document.body.style.boxSizing };
     originalRootOverflow = document.documentElement.style.overflow;
     savedX = window.scrollX;
     savedY = window.scrollY;
@@ -32,7 +33,12 @@ export function lockScroll(): void {
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
     // Fixed positioning also stops iOS touch scrolling behind an overlay.
-    Object.assign(document.body.style, { position: "fixed", top: `${-savedY}px`, left: `${-savedX}px`, width: "100%" });
+    Object.assign(document.body.style, { position: "fixed", top: `${-savedY}px`, left: `${-savedX}px`, width: "100%", boxSizing: "border-box" });
+    // The dashboard has its own scrolling main; locking only body leaves it movable.
+    for (const element of document.querySelectorAll<HTMLElement>("[data-app-scroll]")) {
+      appScrollContainers.set(element, element.style.overflowY);
+      element.style.overflowY = "hidden";
+    }
   }
 
   activeLocks++;
@@ -49,6 +55,8 @@ export function unlockScroll(): void {
     document.body.style.paddingRight = originalPaddingRight ?? "";
     if (originalBody) Object.assign(document.body.style, originalBody);
     document.documentElement.style.overflow = originalRootOverflow;
+    for (const [element, overflowY] of appScrollContainers) element.style.overflowY = overflowY;
+    appScrollContainers.clear();
     const behavior = document.documentElement.style.scrollBehavior;
     document.documentElement.style.scrollBehavior = "auto";
     if (savedX || savedY) window.scrollTo(savedX, savedY);

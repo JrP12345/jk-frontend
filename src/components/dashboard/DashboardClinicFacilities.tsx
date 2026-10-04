@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { useRouter } from "next/navigation";
 import { Card, Badge, Button } from "@/components/ui";
 import { Building2, ArrowUpRight, ChevronRight } from "lucide-react";

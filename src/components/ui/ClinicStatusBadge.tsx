@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { getClinicOperationalStatus, OperationalStatusResult } from "@/lib/timing/clinicStatus";
 
 import Badge, { type BadgeVariant } from "@/components/ui/Badge";

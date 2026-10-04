@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import PatientHistoryAccess from "./PatientHistoryAccess";
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Tabs, Skeleton, SkeletonCardGrid } from "@/components/ui";

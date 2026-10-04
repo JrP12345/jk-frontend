@@ -326,6 +326,8 @@ export default function Table<T extends Record<string, any>>({
 
   const hasFilterableColumns = columns.some((c) => c.filterable);
   const activeFiltersCount = Object.values(columnFilters).filter(Boolean).length;
+  const hasToolbar = Boolean(title || description || action || searchable || hasFilterableColumns || showColumnVisibility || exportable || onAddClick || toolbarFilters);
+  const hasMobileControls = selectable || columns.some((column) => column.sortable) || hasFilterableColumns || Boolean(sortKey);
 
   return (
     <div aria-busy={loading} className={cn("w-full flex flex-col relative", className)}>
@@ -337,7 +339,7 @@ export default function Table<T extends Record<string, any>>({
       )}>
 
         {/* 1. TOP TOOLBAR BAR (TITLE, ACTION, PILL SEARCH & FILTER CONTROLS) */}
-        <div className="p-3.5 sm:p-4 bg-surface-alt/40 border-b border-border/80 flex flex-col gap-2.5 sm:gap-3">
+        {hasToolbar && <div className="p-3.5 sm:p-4 bg-surface-alt/40 border-b border-border/80 flex flex-col gap-2.5 sm:gap-3">
           {/* Title & Primary Action Row */}
           {(title || description || action) && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2.5 border-b border-border/60">
@@ -450,16 +452,16 @@ export default function Table<T extends Record<string, any>>({
               {toolbarFilters}
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Subtle Non-Blocking Loading Shimmer Line */}
         <div className="h-0.5 w-full overflow-hidden shrink-0">
-          {loading && <div className="h-full bg-primary-500 skeleton-shimmer animate-pulse" role="progressbar" aria-label="Loading table data" />}
+          {loading && currentData.length > 0 && <div className="h-full bg-primary-500 animate-pulse" role="progressbar" aria-label="Loading table data" />}
         </div>
 
 
         {error && <Alert variant="error" title="Unable to load results" className="m-3" action={onRetry ? <Button variant="outline" size="sm" onClick={onRetry} loading={loading}>Try again</Button> : undefined}>{error}</Alert>}
-        {mobileCardView && (
+        {mobileCardView && hasMobileControls && (
           <div className="md:hidden p-3 border-b border-border/60 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               {selectable && <Checkbox label="Select page" checked={currentData.length > 0 && currentData.every((row) => selected.has(row[keyField]))} onChange={toggleAll} disabled={!currentData.length} />}
@@ -557,11 +559,11 @@ export default function Table<T extends Record<string, any>>({
           <table className="w-full text-sm border-collapse text-left min-w-[650px] sm:min-w-full">
             <thead>
               <tr className={cn(
-                "border-b border-border/80 bg-surface-alt text-text font-bold text-xs uppercase tracking-wider",
+                "border-b border-border/80 bg-surface-alt/70 text-text-secondary text-xs font-semibold",
                 stickyHeader && "sticky top-0 z-10"
               )}>
                 {selectable && (
-                  <th className="w-10 px-3 py-3 align-middle text-center border-r border-border/60">
+                  <th scope="col" className={cn("w-10 px-3 py-3 align-middle text-center", variant === "bordered" && "border-r border-border/60")}>
                     <Checkbox
                       checked={currentData.length > 0 && currentData.every((row) => selected.has(row[keyField]))}
                       aria-label="Select all rows on this page"
@@ -579,11 +581,12 @@ export default function Table<T extends Record<string, any>>({
                   return (
                     <th
                       key={colKey}
-                      aria-sort={col.sortable ? sortKey === colKey ? sortDir === "asc" ? "ascending" : "descending" : "none" : undefined}
+                      scope="col"
+                      aria-sort={col.sortable && sortKey === colKey ? sortDir === "asc" ? "ascending" : "descending" : undefined}
                       style={col.width ? { width: col.width } : undefined}
                       className={cn(
-                        "px-4 py-3 text-text-secondary select-none font-bold text-xs tracking-wider whitespace-nowrap",
-                        !isLast && "border-r border-border/60",
+                        "px-4 py-3 text-text-secondary select-none font-semibold text-xs whitespace-nowrap",
+                        variant === "bordered" && !isLast && "border-r border-border/60",
                         alignClass
                       )}
                     >
@@ -610,17 +613,17 @@ export default function Table<T extends Record<string, any>>({
               {/* Column Filter Row */}
               {showFilterRow && hasFilterableColumns && (
                 <tr className="border-b border-border bg-surface-alt/40">
-                  {selectable && <th className="px-3 py-1.5 border-r border-border/40" />}
+                  {selectable && <th className={cn("px-3 py-1.5", variant === "bordered" && "border-r border-border/40")} />}
                   {visibleColumns.map((col, idx) => {
                     const colKey = col.key || (typeof col.accessor === "string" ? col.accessor : col.header) || String(idx);
                     const isLast = idx === visibleColumns.length - 1;
 
                     if (!col.filterable) {
-                      return <th key={`filter-${colKey}`} className={cn("px-2.5 py-1.5", !isLast && "border-r border-border/40")} />;
+                      return <th key={`filter-${colKey}`} className={cn("px-2.5 py-1.5", variant === "bordered" && !isLast && "border-r border-border/40")} />;
                     }
 
                     return (
-                      <th key={`filter-${colKey}`} className={cn("px-2.5 py-1.5 font-normal", !isLast && "border-r border-border/40")}>
+                      <th key={`filter-${colKey}`} className={cn("px-2.5 py-1.5 font-normal", variant === "bordered" && !isLast && "border-r border-border/40")}>
                         <input
                           type="text"
                           placeholder={`Filter ${col.header}...`}
@@ -647,7 +650,7 @@ export default function Table<T extends Record<string, any>>({
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/40">
                     {selectable && (
-                      <td className="px-3 py-3 align-middle text-center border-r border-border/40">
+                      <td className={cn("px-3 py-3 align-middle text-center", variant === "bordered" && "border-r border-border/40")}>
                         <div className="h-4 w-4 mx-auto rounded-md skeleton-shimmer" />
                       </td>
                     )}
@@ -656,7 +659,7 @@ export default function Table<T extends Record<string, any>>({
                       const widths = ["75%", "55%", "85%", "65%", "45%", "60%"];
                       const width = widths[(i + idx) % widths.length];
                       return (
-                        <td key={col.key || String(idx)} className={cn(densityPadding[density], !isLast && "border-r border-border/30")}>
+                        <td key={col.key || String(idx)} className={cn(densityPadding[density], variant === "bordered" && !isLast && "border-r border-border/30")}>
                           <div className="h-4 rounded-lg skeleton-shimmer" style={{ width }} />
                         </td>
                       );
@@ -697,7 +700,7 @@ export default function Table<T extends Record<string, any>>({
                       )}
                     >
                       {selectable && (
-                        <td className="px-3 py-3 align-middle text-center border-r border-border/40">
+                        <td className={cn("px-3 py-3 align-middle text-center", variant === "bordered" && "border-r border-border/40")}>
                           <Checkbox
                             checked={isSelected}
                             onChange={() => toggleRow(row)}
@@ -724,9 +727,9 @@ export default function Table<T extends Record<string, any>>({
                         return (
                           <td
                             key={colKey}
-                            className={cn(densityPadding[density], alignClass, !isLast && "border-r border-border/30")}
+                            className={cn(densityPadding[density], alignClass, variant === "bordered" && !isLast && "border-r border-border/30")}
                           >
-                            <div className={cn(effectiveAlign === "center" && "flex justify-center items-center", effectiveAlign === "right" && "flex justify-end items-center")}>
+                            <div className={cn("min-w-0 wrap-anywhere", effectiveAlign === "center" && "flex justify-center items-center", effectiveAlign === "right" && "flex justify-end items-center")}>
                               {cellContent}
                             </div>
                           </td>

@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useId, useEffect, useRef, useImperativeHandle, memo } from "react";
+import { forwardRef, useId, useEffect, useRef, useImperativeHandle, useState, memo } from "react";
 import { cn } from "./utils";
 
 export interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {
@@ -23,6 +23,8 @@ const Checkbox = memo(
         checked,
         defaultChecked,
         onChange,
+        onBlur,
+        onInvalid,
         indeterminate = false,
         "aria-describedby": ariaDescribedByProp,
         ...rest
@@ -33,6 +35,8 @@ const Checkbox = memo(
       const id = propId || autoId;
       const errorId = `${id}-error`;
       const descriptionId = `${id}-desc`;
+      const [nativeError, setNativeError] = useState("");
+      const visibleError = error || nativeError;
 
       const innerRef = useRef<HTMLInputElement | null>(null);
       useImperativeHandle(ref, () => innerRef.current!);
@@ -44,7 +48,7 @@ const Checkbox = memo(
       }, [indeterminate]);
 
       const describedBy =
-        [ariaDescribedByProp, error ? errorId : null, description ? descriptionId : null]
+        [ariaDescribedByProp, visibleError ? errorId : null, description ? descriptionId : null]
           .filter(Boolean)
           .join(" ") || undefined;
 
@@ -65,8 +69,19 @@ const Checkbox = memo(
                 disabled={disabled}
                 checked={checked}
                 defaultChecked={defaultChecked}
-                onChange={onChange}
-                aria-invalid={error ? true : undefined}
+                onChange={(event) => {
+                  setNativeError(event.currentTarget.validity.valid ? "" : event.currentTarget.validationMessage);
+                  onChange?.(event);
+                }}
+                onBlur={(event) => {
+                  setNativeError(event.currentTarget.validity.valid ? "" : event.currentTarget.validationMessage);
+                  onBlur?.(event);
+                }}
+                onInvalid={(event) => {
+                  setNativeError(event.currentTarget.validationMessage);
+                  onInvalid?.(event);
+                }}
+                aria-invalid={visibleError ? true : undefined}
                 aria-describedby={describedBy}
                 className="peer sr-only"
                 {...rest}
@@ -78,7 +93,7 @@ const Checkbox = memo(
                   "peer-focus-visible:ring-2 peer-focus-visible:ring-focus-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface",
                   "peer-checked:bg-primary-600 peer-checked:border-primary-600 peer-checked:shadow-xs peer-checked: peer-checked:[&_svg]:scale-100",
                   indeterminate && "bg-primary-600 border-primary-600 shadow-xs  [&_svg]:scale-100",
-                  error ? "border-danger-500/80" : "group-hover/chk:border-primary-500/60"
+                  visibleError ? "border-danger-500/80" : "group-hover/chk:border-primary-500/60"
                 )}
               >
                 {/* Checkmark or Indeterminate Icon */}
@@ -125,9 +140,9 @@ const Checkbox = memo(
             </div>
           </label>
 
-          {error && (
-            <p id={errorId} className="text-xs font-medium text-danger-text ml-7 animate-fade-in">
-              {error}
+          {visibleError && (
+            <p id={errorId} role="alert" className="text-xs font-medium text-danger-text ml-7 animate-fade-in">
+              {visibleError}
             </p>
           )}
         </div>
@@ -138,4 +153,3 @@ const Checkbox = memo(
 
 Checkbox.displayName = "Checkbox";
 export default Checkbox;
-

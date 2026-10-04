@@ -313,7 +313,7 @@ export const InlineLoader = memo(function InlineLoader({
       <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center">
         <Spinner size={size} color={color} />
       </span>
-      {label && <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap overflow-hidden [&_svg]:shrink-0">{label}</span>}
+      {label && <span className="min-w-0 text-center whitespace-normal wrap-anywhere [&_svg]:shrink-0">{label}</span>}
     </span>
   );
 });

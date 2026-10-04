@@ -100,6 +100,8 @@ interface UnifiedDocumentModalProps {
   document: UnifiedDocumentData | null;
 }
 
+const escapePrintText = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
+
 export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumentModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [letterheadMode, setLetterheadMode] = useState<"plain_a4" | "preprinted_stationery">("plain_a4");
@@ -125,7 +127,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${document.title} — ${document.patientName}</title>
+          <title>${escapePrintText(document.title)} — ${escapePrintText(document.patientName)}</title>
           <style>${getPrintBrandStyles()}
             @page {
               size: A4;

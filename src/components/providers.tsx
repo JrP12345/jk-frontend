@@ -35,7 +35,11 @@ export function Providers({
   useEffect(() => {
     const clearUserQueries = () => queryClient.clear();
     window.addEventListener("auth-logout", clearUserQueries);
-    return () => window.removeEventListener("auth-logout", clearUserQueries);
+    window.addEventListener("auth-context-change", clearUserQueries);
+    return () => {
+      window.removeEventListener("auth-logout", clearUserQueries);
+      window.removeEventListener("auth-context-change", clearUserQueries);
+    };
   }, [queryClient]);
 
   // Route transition recovery: ensure scroll is never stuck across SPA navigations

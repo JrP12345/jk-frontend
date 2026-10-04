@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { Modal, Button, Input, Badge, Checkbox, useToast, cn } from "@/components/ui";
 import { AlertTriangle, UserCheck, Clock, Calendar, XCircle, CheckCircle2, Phone, Stethoscope, RefreshCw } from "lucide-react";

@@ -1,6 +1,6 @@
 "use client";
 
-import { type TextareaHTMLAttributes, forwardRef, useId, memo } from "react";
+import { type TextareaHTMLAttributes, forwardRef, useId, memo, useState } from "react";
 import { cn } from "./utils";
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -25,6 +25,9 @@ const Textarea = memo(
         containerClassName = "",
         showCharacterCount,
         id: propId,
+        onChange,
+        onBlur,
+        onInvalid,
         "aria-describedby": ariaDescribedByProp,
         ...rest
       },
@@ -34,13 +37,15 @@ const Textarea = memo(
       const id = propId || autoId;
       const errorId = `${id}-error`;
       const hintId = `${id}-hint`;
+      const [nativeError, setNativeError] = useState("");
+      const visibleError = error || nativeError;
 
       const valueLength = String(rest.value || rest.defaultValue || "").length;
       const hasMaxLength = typeof rest.maxLength === "number";
       const displayCounter = showCharacterCount || hasMaxLength;
 
       const describedBy =
-        [ariaDescribedByProp, error ? errorId : null, !error && hint ? hintId : null]
+        [ariaDescribedByProp, visibleError ? errorId : null, !visibleError && hint ? hintId : null]
           .filter(Boolean)
           .join(" ") || undefined;
 
@@ -72,23 +77,35 @@ const Textarea = memo(
             ref={ref}
             id={id}
             disabled={disabled}
-            aria-invalid={error ? true : undefined}
+            aria-invalid={visibleError ? true : undefined}
             aria-describedby={describedBy}
+            onChange={(event) => {
+              setNativeError(event.currentTarget.validity.valid ? "" : event.currentTarget.validationMessage);
+              onChange?.(event);
+            }}
+            onBlur={(event) => {
+              setNativeError(event.currentTarget.validity.valid ? "" : event.currentTarget.validationMessage);
+              onBlur?.(event);
+            }}
+            onInvalid={(event) => {
+              setNativeError(event.currentTarget.validationMessage);
+              onInvalid?.(event);
+            }}
             className={cn(
               "w-full rounded-xl border bg-surface text-text px-3.5 py-2.5 text-base md:text-sm min-h-[88px] resize-y font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt shadow-2xs",
-              error
+              visibleError
                 ? "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:border-danger-500"
                 : "border-border hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring",
               className
             )}
             {...rest}
           />
-          {error && (
-            <p id={errorId} className="text-xs font-medium text-danger-text animate-fade-in">
-              {error}
+          {visibleError && (
+            <p id={errorId} role="alert" className="text-xs font-medium text-danger-text animate-fade-in">
+              {visibleError}
             </p>
           )}
-          {!error && hint && (
+          {!visibleError && hint && (
             <p id={hintId} className="text-xs text-text-muted">
               {hint}
             </p>
@@ -101,5 +118,4 @@ const Textarea = memo(
 
 Textarea.displayName = "Textarea";
 export default Textarea;
-
 

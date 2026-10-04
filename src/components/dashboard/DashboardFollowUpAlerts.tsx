@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { useRouter } from "next/navigation";
 import { Button, Badge } from "@/components/ui";
 import { CalendarClock, ArrowRight } from "lucide-react";

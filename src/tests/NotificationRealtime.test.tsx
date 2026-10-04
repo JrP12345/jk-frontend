@@ -4,7 +4,10 @@ import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { NotificationRealtime } from "@/components/NotificationRealtime";
 import { useNotifications } from "@/hooks/useNotifications";
 const mocks = vi.hoisted(() => ({ toast: vi.fn(), user: { id: "u1", organization_id: "org1" } }));
-vi.mock("@/store/authStore", () => ({ useAuthStore: (selector?: any) => selector ? selector({ user: mocks.user }) : { user: mocks.user } }));
+vi.mock("@/store/authStore", () => ({ useAuthStore: Object.assign(
+  (selector?: any) => selector ? selector({ user: mocks.user }) : { user: mocks.user },
+  { getState: () => ({ user: mocks.user }) },
+) }));
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock("@/lib/api", () => ({ getApiUrl: () => "https://example.test/api" }));
 vi.mock("@/utils/websocket", () => ({ getWebSocketUrl: () => "wss://example.test/api/ws" }));

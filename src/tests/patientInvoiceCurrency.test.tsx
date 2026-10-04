@@ -12,7 +12,7 @@ vi.mock("@/lib/printBrand", async importOriginal => ({
 }));
 
 const invoice = {
-  id: "invoice", invoiceNumber: "USD-1", currency: "USD", totalAmount: 125, subtotal: 125, tax: 0, discount: 0,
+  id: "invoice", appointmentId: "appointment", invoiceNumber: "USD-1", currency: "USD", totalAmount: 125, subtotal: 125, tax: 0, discount: 0,
   balanceDue: 125, status: "unpaid", createdAt: "2026-09-29T12:00:00Z",
   items: [{ description: "Consultation", amount: 125, quantity: 1 }],
   clinicId: { id: "clinic", name: "US Clinic", city: "New York", address: "Real Street" },
@@ -27,7 +27,7 @@ describe("patient invoice currency", () => {
     render(<ToastProvider><PatientBillsPage /></ToastProvider>);
     expect(await screen.findAllByText("$125")).not.toHaveLength(0);
     expect(screen.queryByRole("button", { name: /Pay Online|Pay Balance/ })).not.toBeInTheDocument();
-    expect(screen.getByText("Pay at clinic reception")).toBeInTheDocument();
+    expect(screen.getAllByText("Pay at clinic reception")).not.toHaveLength(0);
     expect(screen.queryByText(/₹125/)).not.toBeInTheDocument();
   });
 

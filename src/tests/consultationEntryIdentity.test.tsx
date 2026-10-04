@@ -1,4 +1,6 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render as renderView, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConsultationClientWorkspace } from "@/app/(dashboard)/dashboard/consultations/[id]/ConsultationClientWorkspace";
 
@@ -7,7 +9,13 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/lib/api", () => ({ default: { get: fixture.get, post: fixture.post } }));
 vi.mock("@/providers/EncounterProvider", () => ({ EncounterProvider: ({ children }: { children: import("react").ReactNode }) => children }));
 vi.mock("@/components/clinical/EncounterWorkspace", () => ({ EncounterWorkspace: ({ patient }: { patient: { mrn: string } }) => <p>Recorded MRN: {patient.mrn || "Not listed"}</p> }));
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+const clients: QueryClient[] = [];
+function render(view: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  clients.push(client);
+  return renderView(<QueryClientProvider client={client}>{view}</QueryClientProvider>);
+}
+afterEach(() => { cleanup(); clients.splice(0).forEach(client => client.clear()); vi.clearAllMocks(); });
 
 describe("Consultation entry identity", () => {
   it.each([undefined, "REAL-123"])("displays only the recorded MRN (%s) and retains appointment-derived context", async mrn => {

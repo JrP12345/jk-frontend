@@ -193,12 +193,15 @@ export default function PublicLiveQueueTracker() {
 
   useEffect(() => {
     if (typeof window === "undefined" || !appointmentId) return;
-    const token = new URLSearchParams(window.location.search).get("t");
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("t");
     if (!token) return;
 
     try { window.sessionStorage.setItem(`tracker-capability:${appointmentId}`, token); } catch { /* The URL still carries the capability. */ }
     rememberTracker(appointmentId, token, useAuthStore.getState().user?.id || null);
-    const cleanUrl = `${window.location.pathname}${window.location.hash}`;
+    params.delete("t");
+    const search = params.toString();
+    const cleanUrl = `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`;
     window.history.replaceState(window.history.state, "", cleanUrl);
   }, [appointmentId]);
 
@@ -273,17 +276,21 @@ export default function PublicLiveQueueTracker() {
     if (!disruptionActionType) return;
     setIsSubmittingDisruption(true);
     try {
-      await api.post("/doctor-overrides/patient-action", {
+      const response = await api.post("/doctor-overrides/patient-action", {
         appointmentId,
         action: disruptionActionType,
         targetDate: disruptionActionType === "reschedule" ? effectiveRescheduleDate : undefined,
         reason: "Patient selected choice via live tracker",
-      });
+      }, { headers: getTrackerHeaders() });
       toast({
         title: disruptionActionType === "reschedule" ? "Rescheduled with Priority" : "Appointment Cancelled",
         description: disruptionActionType === "reschedule"
           ? "Your appointment has been booked for the selected date with high priority."
-          : "Your appointment has been cancelled and refund initiated.",
+          : response.data.data?.paymentStatus === "refunded"
+            ? "Your appointment is cancelled and the refund has been processed."
+            : response.data.data?.paymentStatus === "refund_pending"
+              ? "Your appointment is cancelled. Contact reception to confirm the pending refund."
+              : "Your appointment has been cancelled.",
         variant: "success",
       });
       setIsDisruptionModalOpen(false);
@@ -893,7 +900,7 @@ export default function PublicLiveQueueTracker() {
                 </p>
                 {data.disruptionResponseDeadline && (
                   <p className="mt-2 text-[11px] font-semibold text-danger-text dark:text-danger-text">
-                    ⏱ Automatic refund will be processed if no action is taken by{" "}
+                    ⏱ Your appointment will be cancelled if no action is taken by{" "}
                     {new Date(data.disruptionResponseDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.
                   </p>
                 )}
@@ -1746,7 +1753,7 @@ export default function PublicLiveQueueTracker() {
           ) : (
             <p className="text-xs text-text-muted leading-relaxed">
               Are you sure you want to cancel your appointment?
-              If you have made a prepayment, a 100% full refund will be processed back to your original payment method.
+              If you have prepaid, eligible online payments are refunded to the original payment method. Other payments need reception to confirm the refund.
             </p>
           )}
 

@@ -5,6 +5,7 @@ export interface UploadResult {
   url: string;
   publicUrl: string;
   key: string;
+  intentId?: string;
 }
 
 export interface UseR2UploadOptions {
@@ -17,7 +18,7 @@ export function useR2Upload(options?: UseR2UploadOptions) {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const uploadImage = async (file: File): Promise<UploadResult> => {
+  const uploadImage = async (file: File, context?: { patientId?: string; contentClass?: 'avatar' | 'lab_report' | 'clinical_document' }): Promise<UploadResult> => {
     setUploading(true);
     setProgress(30);
     setError(null);
@@ -37,9 +38,9 @@ export function useR2Upload(options?: UseR2UploadOptions) {
         contentType: file.type || 'image/png',
         originalFilename: file.name,
         base64Data: base64,
-        base64,
         fileName,
         folder: 'healthos',
+        ...context,
       });
 
       const data = res.data;
@@ -53,6 +54,7 @@ export function useR2Upload(options?: UseR2UploadOptions) {
         url,
         publicUrl: url,
         key: data.data?.key || data.data?.fileKey || fileName,
+        intentId: data.data?.intentId,
       };
 
       if (options?.onSuccess) {

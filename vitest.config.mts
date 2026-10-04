@@ -9,7 +9,7 @@ export default defineConfig({
     pool: "threads",
     testTimeout: 30000,
     hookTimeout: 30000,
-    isolate: false,
+    isolate: true,
   },
   resolve: {
     alias: {

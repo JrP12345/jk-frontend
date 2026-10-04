@@ -189,7 +189,7 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
               left: coords.left,
               maxWidth: "calc(100vw - 16px)",
               maxHeight: coords.maxHeight,
-              zIndex: 99999,
+              zIndex: "var(--layer-popover)",
             }}
             className={cn(
               "bg-surface rounded-2xl border border-border/80 shadow-xl p-1.5 focus:outline-none  ring-1 ring-border/50 transform-gpu select-none overflow-y-auto",
@@ -261,5 +261,4 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
 });
 
 export default Dropdown;
-
 

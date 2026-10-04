@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { ShieldCheck, Lock, AlertCircle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 
 interface PrescriptionSealingBadgeProps {

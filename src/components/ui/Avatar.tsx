@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState, memo } from "react";
+import { useState, memo } from "react";
 import { cn } from "./utils";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
@@ -98,38 +98,4 @@ const Avatar = memo(function Avatar({ src, alt, name = "", size = "md", status, 
 });
 
 export default Avatar;
-
-export interface AvatarGroupProps {
-  children: ReactNode;
-  max?: number;
-  size?: AvatarSize;
-  className?: string;
-}
-
-export const AvatarGroup = memo(function AvatarGroup({ children, max = 5, size = "md", className = "" }: AvatarGroupProps) {
-  const items = Array.isArray(children) ? children : [children];
-  const shown = items.slice(0, max);
-  const overflow = items.length - max;
-
-  return (
-    <div className={cn("flex -space-x-2 items-center", className)}>
-      {shown.map((child, i) => (
-        <div key={i} className="ring-2 ring-surface rounded-full transition-transform duration-150 hover:z-10 hover:scale-105">
-          {child}
-        </div>
-      ))}
-      {overflow > 0 && (
-        <div
-          className={cn(
-            "rounded-full bg-surface-alt border-2 border-surface inline-flex items-center justify-center font-bold text-text-secondary select-none",
-            sizeStyles[size]
-          )}
-        >
-          +{overflow}
-        </div>
-      )}
-    </div>
-  );
-});
-
 

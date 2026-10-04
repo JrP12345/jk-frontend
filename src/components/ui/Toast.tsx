@@ -9,7 +9,7 @@ import { vibrateFeedback } from "@/lib/haptics";
 import { userFacingError } from "@/lib/userFacingError";
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Ekavyu notifications — accessible messages below application navigation
+   Ekavyu notifications — accessible messages clear of application controls
    ───────────────────────────────────────────────────────────────────────────── */
 
 export type ToastVariant = "default" | "success" | "error" | "warning" | "info";
@@ -23,9 +23,15 @@ export interface Toast {
   timestamp: number;
 }
 
+export type ToastOptions = Omit<Toast, "id" | "duration" | "timestamp" | "variant"> & {
+  id?: string;
+  duration?: number;
+  variant?: ToastVariant;
+};
+
 export interface ToastContextValue {
   hasActiveToasts: boolean;
-  toast: (options: Omit<Toast, "id" | "duration" | "timestamp"> & { id?: string; duration?: number; variant?: ToastVariant }) => void;
+  toast: (options: ToastOptions) => void;
   dismiss: (id: string) => void;
   clearAll: () => void;
 }
@@ -58,10 +64,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => {
     if (toasts.length < 2) setExpanded(false);
-    if (!toasts.length) { setPaused(false); previousFocus.current?.focus({ preventScroll: true }); previousFocus.current = null; }
-  }, [toasts.length]);
+    if (!toasts.length || (previousFocus.current && document.activeElement === document.body)) {
+      setPaused(false);
+      if (previousFocus.current?.isConnected) previousFocus.current.focus({ preventScroll: true });
+      previousFocus.current = null;
+    }
+  }, [toasts]);
 
-  const addToast = useCallback((options: Omit<Toast, "id" | "duration" | "timestamp"> & { id?: string; duration?: number; variant?: ToastVariant }) => {
+  const addToast = useCallback((options: ToastOptions) => {
     const now = Date.now();
     const id = options.id || "toast-" + now + "-" + Math.random().toString(36).slice(2, 7);
     const variant = options.variant || "default";
@@ -70,10 +80,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       description: options.description === undefined ? undefined : userFacingError(options.description, variant === "error" ? "Please try again. If the problem continues, contact support." : "Open the related page for details."),
     };
     if (variant === "success" || variant === "error") vibrateFeedback(variant);
-    const duration = options.duration || 4500;
+    const requestedDuration = options.duration ?? 4500;
+    const duration = requestedDuration >= 0 ? requestedDuration : 4500;
     setToasts(previous => {
-      const duplicate = previous.find(item => (options.id && item.id === options.id) || (now - item.timestamp < 3500 && ((options.description && item.description === options.description) || (options.title && item.title === options.title))));
-      const item = { ...options, id: duplicate?.id || id, variant, duration, timestamp: now } as Toast;
+      const duplicate = previous.find(item => options.id
+        ? item.id === options.id
+        : now - item.timestamp < 3500 && item.variant === variant && item.title === options.title && item.description === options.description);
+      // A refresh starts a new countdown, even when messages arrive in the same millisecond.
+      const timestamp = duplicate ? Math.max(now, duplicate.timestamp + 1) : now;
+      const item: Toast = { ...options, id: duplicate?.id || id, variant, duration, timestamp };
       return duplicate ? [...previous.filter(old => old.id !== duplicate.id), item] : [...previous, item].slice(-3);
     });
   }, []);
@@ -88,7 +103,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         onMouseEnter={() => setPaused(true)} onMouseLeave={() => { if (!regionRef.current?.contains(document.activeElement)) setPaused(false); }}
         onFocusCapture={event => { setPaused(true); if (!regionRef.current?.contains(event.relatedTarget as Node)) previousFocus.current = event.relatedTarget as HTMLElement | null; }}
         onBlurCapture={event => { if (!regionRef.current?.contains(event.relatedTarget as Node)) { setPaused(false); previousFocus.current = null; } }}
-        className="toast-region fixed left-1/2 -translate-x-1/2 z-[9999] flex flex-col w-[calc(100vw-2rem)] max-w-[390px] pointer-events-none">
+        className="toast-region fixed left-1/2 -translate-x-1/2 z-[var(--layer-toast)] flex flex-col w-[calc(100vw-2rem)] max-w-[390px] pointer-events-none">
         <div id="transient-notification-list" className="flex flex-col gap-2 min-h-0 p-3 -m-3 overflow-y-auto overscroll-contain pointer-events-auto">
           {[...toasts].reverse().map((item, index) => <div key={item.id} hidden={!expanded && index > 0}><ToastItem {...item} onDismiss={() => dismiss(item.id)} isHoveredStack={paused || expanded || pageHidden || index > 0} /></div>)}
         </div>
@@ -170,7 +185,7 @@ function ToastItem({ title, description, variant, duration, timestamp, onDismiss
   useEffect(() => { dismissRef.current = onDismiss; }, [onDismiss]);
   useEffect(() => { remaining.current = duration; setExiting(false); }, [timestamp, duration]);
   useEffect(() => {
-    if (isHoveredStack || gesture.dragging || exiting) return;
+    if (isHoveredStack || gesture.dragging || exiting || duration === Infinity) return;
     const started = Date.now();
     const timer = setTimeout(() => setExiting(true), remaining.current);
     return () => { clearTimeout(timer); remaining.current = Math.max(0, remaining.current - (Date.now() - started)); };
@@ -179,7 +194,7 @@ function ToastItem({ title, description, variant, duration, timestamp, onDismiss
     if (!exiting) return;
     const timer = setTimeout(() => dismissRef.current(), 180);
     return () => clearTimeout(timer);
-  }, [exiting]);
+  }, [exiting, timestamp]);
   return <div role="group" aria-label={title}
     {...gesture.handlers}
     className={cn("relative flex items-start gap-3 border rounded-2xl p-3 bg-surface-elevated shadow-xl ring-1 ring-border/50 overflow-hidden [touch-action:pan-y_pinch-zoom] transition-all duration-200", variantBorders[variant], exiting ? "animate-toast-exit opacity-0" : "animate-toast-enter")}
@@ -189,10 +204,10 @@ function ToastItem({ title, description, variant, duration, timestamp, onDismiss
       <p className="text-sm font-semibold text-text leading-snug">{title}</p>
       {description && <p className="text-xs text-text-secondary mt-1 leading-relaxed">{description}</p>}
     </div>
-    <button type="button" disabled={exiting} onClick={() => setExiting(true)} aria-label="Dismiss notification"
+    <button type="button" aria-disabled={exiting} onClick={() => { if (!exiting) setExiting(true); }} aria-label="Dismiss notification"
       className="shrink-0 w-11 h-11 -mt-1 -mr-1 flex items-center justify-center rounded-xl text-text-muted hover:text-text hover:bg-surface-hover cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
       <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2}><path d="M4 4l8 8M12 4l-8 8" /></svg>
     </button>
-    <div aria-hidden="true" className={cn("absolute bottom-0 left-0 h-0.5 opacity-60 animate-toast-progress", progressColors[variant])} style={{ animationDuration: duration + "ms", animationPlayState: isHoveredStack ? "paused" : "running" }} />
+    {duration !== Infinity && <div key={timestamp} aria-hidden="true" className={cn("absolute bottom-0 left-0 h-0.5 opacity-60 animate-toast-progress", progressColors[variant])} style={{ animationDuration: duration + "ms", animationPlayState: isHoveredStack || gesture.dragging || exiting ? "paused" : "running" }} />}
   </div>;
 }

@@ -1,4 +1,3 @@
-import React from "react";
 import { ConsultationClientWorkspace } from "./ConsultationClientWorkspace";
 
 interface PageProps {

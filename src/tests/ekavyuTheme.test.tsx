@@ -100,7 +100,7 @@ describe("standalone print branding", () => {
 
 const css = readFileSync("src/app/globals.css", "utf8");
 function palette(mode: "light" | "dark") {
-  const base = css.match(/:root \{([^}]+)\}/)![1];
+  const base = [...css.matchAll(/(?:^|\n):root \{([^}]+)\}/g)].map(match => match[1]).join("\n");
   const themed = css.match(mode === "light" ? /:root, \[data-mode="light"\] \{([^}]+)\}/ : /\.dark, \[data-mode="dark"\] \{([^}]+)\}/)![1];
   const tokens = Object.fromEntries([...`${base}${themed}`.matchAll(/--([\w-]+):\s*([^;]+);/g)].map(m => [m[1], m[2].trim()]));
   const resolve = (key: string): string => tokens[key].replace(/var\(--([\w-]+)\)/g, (_, next) => resolve(next));

@@ -88,14 +88,14 @@ describe("Root organization and identity scope", () => {
   });
 
   it("denies global identity APIs to an organization admin", async () => {
-    useAuthStore.setState({ user: { id: "admin-a", name: "Admin", email: "admin@example.test", role: "admin", organization_id: "org-a" } });
+    useAuthStore.setState({ user: { id: "admin-a", name: "Admin", email: "admin@example.test", role: "admin", organization_id: "org-a", permissions: ["MANAGE_ORGANIZATION"] } });
     mount(<UsersPage />);
     expect(screen.getByText("Restricted")).toBeInTheDocument();
     expect(api.get).not.toHaveBeenCalled();
   });
 
   it("ignores a forged organization override for organization administrators", async () => {
-    useAuthStore.setState({ user: { id: "admin-a", name: "Admin", email: "admin@example.test", role: "admin", organization_id: "org-a" } });
+    useAuthStore.setState({ user: { id: "admin-a", name: "Admin", email: "admin@example.test", role: "admin", organization_id: "org-a", permissions: ["MANAGE_ORGANIZATION"] } });
     window.history.replaceState(null, "", "/dashboard/organizations?organizationId=org-b");
     mount(<OrganizationsPage />);
     await screen.findByRole("heading", { name: "Aurora Health" });

@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState, useRef, useEffect, memo } from "react";
+import { type ReactNode, useState, useRef, useEffect, useId, cloneElement, isValidElement, memo } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "./utils";
 
@@ -26,9 +26,11 @@ const Tooltip = memo(function Tooltip({
   const [show, setShow] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const id = useId();
   const triggerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     setMounted(true);
@@ -37,17 +39,26 @@ const Tooltip = memo(function Tooltip({
   const enter = () => {
     if (disabled || !content) return;
     if (timerRef.current) clearTimeout(timerRef.current);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     timerRef.current = setTimeout(() => setShow(true), delay);
   };
 
   const leave = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => setShow(false), 120);
+  };
+
+  const dismiss = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     setShow(false);
   };
 
   useEffect(
     () => () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     },
     []
   );
@@ -57,7 +68,7 @@ const Tooltip = memo(function Tooltip({
     if (!show) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        leave();
+        dismiss();
       }
     };
     document.addEventListener("keydown", handleKeyDown);
@@ -75,6 +86,11 @@ const Tooltip = memo(function Tooltip({
       const triggerRect = triggerRef.current.getBoundingClientRect();
       const tooltipRect = tooltipRef.current.getBoundingClientRect();
       const gap = 6;
+      const viewport = window.visualViewport;
+      const leftEdge = viewport?.offsetLeft ?? 0;
+      const topEdge = viewport?.offsetTop ?? 0;
+      const rightEdge = leftEdge + (viewport?.width ?? window.innerWidth);
+      const bottomEdge = topEdge + (viewport?.height ?? window.innerHeight);
 
       let top = 0;
       let left = 0;
@@ -99,25 +115,23 @@ const Tooltip = memo(function Tooltip({
       }
 
       // Boundary collision checking
-      if (left < gap) {
-        left = gap;
-      } else if (left + tooltipRect.width > window.innerWidth - gap) {
-        left = window.innerWidth - tooltipRect.width - gap;
-      }
+      left = Math.max(leftEdge + gap, Math.min(left, rightEdge - tooltipRect.width - gap));
 
-      if (top < gap) {
+      if (top < topEdge + gap) {
         if (position === "top") {
           top = triggerRect.bottom + gap;
         } else {
-          top = gap;
+          top = topEdge + gap;
         }
-      } else if (top + tooltipRect.height > window.innerHeight - gap) {
+      } else if (top + tooltipRect.height > bottomEdge - gap) {
         if (position === "bottom") {
           top = triggerRect.top - tooltipRect.height - gap;
         } else {
-          top = window.innerHeight - tooltipRect.height - gap;
+          top = bottomEdge - tooltipRect.height - gap;
         }
       }
+
+      top = Math.max(topEdge + gap, Math.min(top, bottomEdge - tooltipRect.height - gap));
 
       setCoords({ top, left });
     };
@@ -125,10 +139,14 @@ const Tooltip = memo(function Tooltip({
     updatePosition();
     window.addEventListener("resize", updatePosition, { passive: true });
     window.addEventListener("scroll", updatePosition, { capture: true, passive: true });
+    window.visualViewport?.addEventListener("resize", updatePosition);
+    window.visualViewport?.addEventListener("scroll", updatePosition);
 
     return () => {
       window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition);
+      window.removeEventListener("scroll", updatePosition, { capture: true });
+      window.visualViewport?.removeEventListener("resize", updatePosition);
+      window.visualViewport?.removeEventListener("scroll", updatePosition);
     };
   }, [show, position]);
 
@@ -139,17 +157,22 @@ const Tooltip = memo(function Tooltip({
       onMouseEnter={enter}
       onMouseLeave={leave}
       onFocus={enter}
-      onBlur={leave}
+      onBlur={dismiss}
     >
-      {children}
+      {isValidElement<{ "aria-describedby"?: string }>(children)
+        ? cloneElement(children, { "aria-describedby": [children.props["aria-describedby"], show && !disabled ? id : null].filter(Boolean).join(" ") || undefined })
+        : children}
       {show &&
         mounted &&
         createPortal(
           <div
             ref={tooltipRef}
+            id={id}
             role="tooltip"
+            onMouseEnter={() => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); }}
+            onMouseLeave={leave}
             className={cn(
-              "fixed z-50 px-2.5 py-1.5 text-xs font-semibold text-text bg-surface  border border-border/80 rounded-xl shadow-xl pointer-events-none animate-scale-in transform-gpu transition-opacity duration-150 select-none",
+              "fixed z-[var(--layer-tooltip)] max-w-[min(20rem,calc(100vw-1rem))] max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain px-2.5 py-1.5 text-xs font-medium leading-relaxed text-text bg-surface border border-border/80 rounded-lg shadow-lg whitespace-normal wrap-anywhere animate-scale-in transition-opacity duration-150",
               !coords && "opacity-0"
             )}
             style={{
@@ -166,6 +189,3 @@ const Tooltip = memo(function Tooltip({
 });
 
 export default Tooltip;
-
-
-

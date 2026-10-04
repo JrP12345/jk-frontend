@@ -70,7 +70,7 @@ describe("platform messaging ownership", () => {
   });
 
   it("links an organization admin to their signed-in workspace without duplicate editors", () => {
-    useAuthStore.setState({ user: { id: "admin-a", name: "Admin", email: "admin@example.test", role: "admin", organization_id: "org-a" } });
+    useAuthStore.setState({ user: { id: "admin-a", name: "Admin", email: "admin@example.test", role: "admin", organization_id: "org-a", permissions: ["MANAGE_ORGANIZATION"] } });
     window.history.replaceState(null, "", "/dashboard/settings?organizationId=org-b");
     mount(<SettingsPage />);
     expect(screen.getByRole("link", { name: /Open your organization/ })).toHaveAttribute("href", "/dashboard/organizations?organizationId=org-a&section=overview");

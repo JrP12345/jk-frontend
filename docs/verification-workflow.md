@@ -18,7 +18,7 @@ This audit covers the standalone frontend and sibling backend checkouts as inspe
 | `npm ci`, `npm audit --audit-level=high` | CI; install/audit sometimes local | Install and network-bound vulnerability lookup; Mongo postinstall download is disabled, runtime test download remains possible | On dependency/security changes or CI/release |
 | `check:payments`, `check:build-install`, `check:startup`, `check:tenants` | Specific boundary, install, built-server, tenant probes | Narrow checks, but startup/tenant checks have prerequisites; CI runs first two | Run locally when their boundary changes; retain CI gates |
 
-The frontend CI runs payment boundary, dependency audit, full TypeScript, full lint, full Vitest, and Next build on PRs and pushes to `main`/`develop`. Backend CI runs install behavior, dependency audit, bundle build and `repo_auditor.js` (full TypeScript, serial Vitest and fitness checks); tag release repeats the backend release gate. Those are already the broad safety net. The frontend CI passes Vitest worker/parallel flags that the `test` script already contains; the duplication is harmless and provides no extra confidence. Frontend CI's standalone TypeScript check and Next build overlap in type work but catch failures at different stages, so they remain in CI.
+The frontend CI runs payment boundary, dependency audit, full TypeScript, full lint, full Vitest, and Next build on PRs and pushes to `main`/`develop`. Backend CI runs install behavior, dependency audit, bundle build and `repo_auditor.js` (full TypeScript, serial Vitest and fitness checks); tag release repeats the backend release gate. Those are already the broad safety net. The frontend CI uses `npm test`; the package script owns Vitest worker and file-parallelism limits. Frontend CI's standalone TypeScript check and Next build overlap in type work but catch failures at different stages, so they remain in CI.
 
 There is no tracked Playwright/Cypress E2E command, no formatting or pre-commit hook script, and no backend ESLint script. Do not claim automated E2E, formatting, or backend lint coverage. Browser verification is a focused manual/available-tool check today. Database migrations, seeding, backup/restore, MFA provisioning and replay scripts are operational actions, never routine validation.
 
@@ -76,7 +76,7 @@ Inspect the diff, run changed-file ESLint for frontend code, affected tests for 
 ## G. Duplicate or low-yield repetition
 
 - Repeating a successful full build after a tiny final CSS/text edit gives little added confidence; use changed-file lint and visual inspection. Rebuild only when the later edit affects compile/build behavior.
-- Frontend CI supplies Vitest limits already baked into `npm test`; remove the duplicate arguments at a future CI cleanup if desired, with no expected speed gain. No reason to run both forms locally.
+- Frontend CI uses `npm test`, which owns the Vitest worker and file-parallelism limits; there is no second set of CLI limits to keep in sync.
 - Running backend `npm test` and then `npm run audit:release` locally repeats the complete serial Mongo suite; select tests during development and let the single release auditor own the full suite at its checkpoint.
 - Running `npx tsc --noEmit` immediately before a Next build duplicates some type work; during local development choose the gate that addresses the risk. CI keeps both for now.
 - Re-running unrelated frontend and backend suites because both repositories are open adds wait without coverage of the changed module. A changed API contract is the exception.

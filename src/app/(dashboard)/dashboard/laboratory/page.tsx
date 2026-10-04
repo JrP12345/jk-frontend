@@ -11,6 +11,7 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import { Card, Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, ImageUpload, Dropdown, ConfirmDialog, ChartContainer, DonutChart, cn } from "@/components/ui";
+import { useLatestRead } from "@/hooks/useLatestRead";
 import { useR2Upload } from "@/hooks/useR2Upload";
 import { Activity, Layers, RotateCw, Plus, FlaskConical, Clock, CheckCircle2, Phone } from "lucide-react";
 
@@ -66,7 +67,6 @@ export default function LaboratoryPage() {
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"worklist" | "catalog" | "patientVault">("worklist");
-  const [clinics, setClinics] = useState<any[]>([]);
   const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
 
   useEffect(() => {
@@ -79,36 +79,42 @@ export default function LaboratoryPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const beginDataRead = useLatestRead();
+  const beginPatientRead = useLatestRead();
   const fetchData = async () => {
+    const request = beginDataRead();
     setLoading(true);
     try {
       setLoadError(null);
       const isAll = !selectedClinicId || selectedClinicId === "all";
       if (user?.role === "patient") {
         const [testsRes, ordersRes] = await Promise.all([
-          api.get(!isAll ? `/lab-tests?clinicId=${selectedClinicId}` : "/lab-tests"),
-          api.get(!isAll ? `/lab-orders?clinicId=${selectedClinicId}` : "/lab-orders"),
+          api.get(!isAll ? `/lab-tests?clinicId=${selectedClinicId}` : "/lab-tests", { signal: request.signal }),
+          api.get(!isAll ? `/lab-orders?clinicId=${selectedClinicId}` : "/lab-orders", { signal: request.signal }),
         ]);
+        if (!request.isCurrent()) return;
         setLabTests(testsRes.data?.data || []);
         setLabOrders(ordersRes.data?.data || []);
       } else {
         const [testsRes, ordersRes, docRes, tatRes] = await Promise.all([
-          api.get(!isAll ? `/lab-tests?clinicId=${selectedClinicId}` : "/lab-tests"),
-          api.get(!isAll ? `/lab-orders?clinicId=${selectedClinicId}` : "/lab-orders"),
-          api.get(!isAll ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff"),
-          api.get(!isAll ? `/lab/tat-metrics?clinicId=${selectedClinicId}` : "/lab/tat-metrics"),
+          api.get(!isAll ? `/lab-tests?clinicId=${selectedClinicId}` : "/lab-tests", { signal: request.signal }),
+          api.get(!isAll ? `/lab-orders?clinicId=${selectedClinicId}` : "/lab-orders", { signal: request.signal }),
+          api.get(!isAll ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff", { signal: request.signal }),
+          api.get(!isAll ? `/lab/tat-metrics?clinicId=${selectedClinicId}` : "/lab/tat-metrics", { signal: request.signal }),
         ]);
 
+        if (!request.isCurrent()) return;
         setLabTests(testsRes.data?.data || []);
         setLabOrders(ordersRes.data?.data || []);
         setDoctors(docRes.data?.data?.doctors || []);
         setTatMetrics(tatRes.data?.data || null);
       }
     } catch (err) {
+      if (!request.isCurrent()) return;
       setLoadError("Laboratory records could not be loaded. Check your connection and try again.");
       // Non-critical
     } finally {
-      setLoading(false);
+      if (request.isCurrent()) setLoading(false);
     }
   };
 
@@ -192,56 +198,32 @@ export default function LaboratoryPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Initial Fetch: Clinics & Doctors
+  // Workspace owns clinic metadata. Doctors come from fetchData.
   useEffect(() => {
-    const fetchMetadata = async () => {
-      try {
-        const [clinicsRes, staffRes] = await Promise.all([
-          api.get("/onboarding/clinics"),
-          api.get("/onboarding/staff")
-        ]);
-        const clinicsList = clinicsRes.data.data || [];
-        setClinics(clinicsList);
-        setDoctors(staffRes.data.data.doctors || []);
-      } catch (err) {
-        toast({ title: "Error", description: "Failed to load clinic or staff lists", variant: "error" });
-      }
-    };
-
-    if (user) {
-      if (user.role === "patient") {
-        setActiveTab("patientVault");
-        setSelectedClinicId("all");
-      } else {
-        setActiveTab("worklist");
-        fetchMetadata();
-      }
+    if (user?.role === 'patient') { setActiveTab('patientVault'); setSelectedClinicId('all'); }
+    else if (user) {
+      setActiveTab('worklist');
     }
-  }, [user]);
+  }, [user?.id, user?.role, user?.organization_id]);
 
+  useEffect(() => { if (user) void fetchData(); else beginDataRead(); }, [selectedClinicId, user?.id, user?.role, user?.organization_id]);
+
+  const handlePatientSearch = (val: string) => { setSelectedPatient(null); setPatientSearch(val); };
   useEffect(() => {
-    if (selectedClinicId) {
-      fetchData();
-    }
-  }, [selectedClinicId]);
-
-  // Patient Lookup
-  const handlePatientSearch = async (val: string) => {
-    setPatientSearch(val);
-    if (val.trim().length < 2) {
-      setPatientResults([]);
-      return;
-    }
-    try {
+    const request = beginPatientRead();
+    setPatientResults([]);
+    setSearchLoading(false);
+    if (!user || !isOrderOpen || selectedPatient || patientSearch.trim().length < 2) return;
+    const timer = window.setTimeout(async () => {
       setSearchLoading(true);
-      const res = await api.get(`/patients?search=${val}`);
-      setPatientResults(res.data.data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
+      try {
+        const res = await api.get('/patients', { params: { search: patientSearch.trim() }, signal: request.signal });
+        if (request.isCurrent()) setPatientResults(res.data.data || []);
+      } catch { /* Cancelled or failed reads retain no results. */ }
+      finally { if (request.isCurrent()) setSearchLoading(false); }
+    }, 300);
+    return () => { window.clearTimeout(timer); request.signal.aborted || beginPatientRead(); };
+  }, [patientSearch, selectedPatient, isOrderOpen, user?.id, user?.organization_id, beginPatientRead]);
 
   const handleSelectPatient = (patient: any) => {
     setSelectedPatient(patient);
@@ -1271,16 +1253,13 @@ export default function LaboratoryPage() {
                   if (val instanceof File) {
                     setUploadedFile(val);
                     try {
-                      const res = await uploadFile(val);
+                      const res = await uploadFile(val, { patientId: activeOrder?.patientId.id, contentClass: 'lab_report' });
                       setAttachmentUrl(res.publicUrl);
                       toast({ title: "Upload Success", description: "Lab report file uploaded successfully", variant: "success" });
-                    } catch (err) {
-                      const reader = new FileReader();
-                      reader.onload = (e) => {
-                        setAttachmentUrl(e.target?.result as string);
-                        toast({ title: "Attachment Attached", description: "Lab report file attached successfully", variant: "success" });
-                      };
-                      reader.readAsDataURL(val);
+                    } catch {
+                      setUploadedFile(null);
+                      setAttachmentUrl('');
+                      toast({ title: "Upload failed", description: "The attachment was not saved. Check its type and size, then retry.", variant: "error" });
                     }
                   } else {
                     setAttachmentUrl(val);

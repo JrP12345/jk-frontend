@@ -57,6 +57,7 @@ function createPrintFrame(title: string) {
   frame.dataset.printFrame = "true";
   frame.title = title;
   frame.setAttribute("aria-hidden", "true");
+  frame.setAttribute("sandbox", "allow-same-origin allow-modals");
   frame.style.cssText = "position:fixed;left:-10000px;top:0;width:800px;height:1000px;border:0";
   document.body.appendChild(frame);
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -69,7 +70,7 @@ function createPrintFrame(title: string) {
 export async function printHtml(html: string): Promise<void> {
   if (!html.trim()) throw new PrintPreparationError("not-ready");
   const parsed = new DOMParser().parseFromString(html, "text/html");
-  parsed.querySelectorAll("script").forEach(script => script.remove());
+  parsed.querySelectorAll("script, iframe, object, embed, form, base, meta[http-equiv], link").forEach(node => node.remove());
   const nonce = document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce || "";
   parsed.querySelectorAll("style").forEach(style => { style.nonce = nonce; });
   const defaults = parsed.createElement("style");
@@ -77,7 +78,10 @@ export async function printHtml(html: string): Promise<void> {
   defaults.textContent = `${getPrintBrandStyles()}@page { size: A4; margin: 10mm; } @media print { body { min-height: 0 !important; } button, .no-print { display: none !important; } }`;
   parsed.head.prepend(defaults);
   parsed.querySelectorAll("*").forEach(element => {
-    Array.from(element.attributes).forEach(attribute => { if (/^on/i.test(attribute.name)) element.removeAttribute(attribute.name); });
+    Array.from(element.attributes).forEach(attribute => {
+      if (/^on/i.test(attribute.name) || attribute.name === 'srcdoc' ||
+        (['href', 'src', 'action', 'formaction', 'xlink:href'].includes(attribute.name) && /^\s*(javascript|vbscript|data:text\/html):/i.test(attribute.value))) element.removeAttribute(attribute.name);
+    });
   });
   const job = createPrintFrame(parsed.title || "Print document");
   try {

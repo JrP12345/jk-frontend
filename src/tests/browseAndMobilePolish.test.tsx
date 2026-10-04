@@ -42,7 +42,7 @@ describe("Mobile calendar and browse loading", () => {
     expect(await screen.findByRole("option", { name: "Top rated" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: /featured|name|city/i })).not.toBeInTheDocument();
     fireEvent.click(await screen.findByRole("option", { name: "Lowest fee" }));
-    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["Alpha Clinic", "Zeta Clinic"]);
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["Alpha Clinic", "Zeta Clinic"]);
     await waitFor(() => expect(request).toHaveBeenCalledWith("/public/clinics?sort=fee_low", expect.anything()));
   });
   it("uses actual specialties and keeps full-directory cities/care choices after empty filtering", async () => {
@@ -65,7 +65,7 @@ describe("Mobile calendar and browse loading", () => {
       { ...base, id: "low", name: "Lower Rated", rating: 3 },
       { ...base, id: "high", name: "Higher Rated", rating: 4.8 },
     ]} />);
-    expect(screen.getAllByRole("link").map(link => link.textContent)).toEqual(["Higher Rated", "Lower Rated", "Unrated"]);
+    expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).toEqual(["Higher Rated", "Lower Rated", "Unrated"]);
   });
   it("loads the next cursor page without replacing clinics already shown", async () => {
     const base = { city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "" };
@@ -88,7 +88,7 @@ describe("Mobile calendar and browse loading", () => {
     expect(screen.getByRole("textbox", { name: "Search by doctor, clinic name, or specialty" })).toHaveValue("heart");
     await waitFor(() => expect(request).toHaveBeenCalledWith("/public/clinics?search=heart&sort=rating", expect.anything()));
   });
-  it("opens a dedicated doctor profile while preserving the booking button", () => {
+  it("links directly to a single doctor's booking page without navigating through the clinic card", () => {
     const clinic = { id: "clinic-1", name: "Surat Clinic", city: "Surat", address: "", phone: "", email: "", description: "", image_url: "", timings: "", doctorCount: 1, doctorsSummary: [{ id: "doctor-1", name: "Rajesh", specialization: "General Medicine", fees: 300 }] };
     render(<BrowseClient initialLoaded initialClinics={[clinic]} />);
     const doctorLink = screen.getByRole("link", { name: /Rajesh/ });
@@ -96,8 +96,11 @@ describe("Mobile calendar and browse loading", () => {
     doctorLink.addEventListener("click", (event) => event.preventDefault());
     fireEvent.click(doctorLink);
     expect(routePush).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Book Appointment" }));
-    expect(routePush).toHaveBeenCalledWith("/doctor/doctor-1?clinicId=clinic-1&openBooking=true");
+    const bookingLink = screen.getByRole("link", { name: "Book Appointment" });
+    expect(bookingLink).toHaveAttribute("href", "/doctor/doctor-1?clinicId=clinic-1&openBooking=true");
+    bookingLink.addEventListener("click", (event) => event.preventDefault());
+    fireEvent.click(bookingLink);
+    expect(routePush).not.toHaveBeenCalled();
   });
   it("routes paused and doctorless clinics to their contact page without promising an appointment", () => {
     const base = { city: "Surat", address: "Clinic Road", phone: "9876543210", email: "", description: "", image_url: "", timings: "" };
@@ -106,8 +109,7 @@ describe("Mobile calendar and browse loading", () => {
       { ...base, id: "empty", name: "New Clinic", doctorCount: 0, bookingStatus: "no_doctors", onlineBookingAvailable: true, doctorsSummary: [] },
     ]} />);
     expect(screen.getByRole("link", { name: "Call clinic about appointments" })).toHaveAttribute("href", "tel:9876543210");
-    fireEvent.click(screen.getByRole("button", { name: "View clinic" }));
-    expect(routePush).toHaveBeenCalledWith("/browse/empty");
+    expect(screen.getByRole("link", { name: "View clinic" })).toHaveAttribute("href", "/browse/empty");
   });
   it("offers retry after a failed load instead of reporting an empty clinic directory", async () => {
     vi.spyOn(api, "get").mockRejectedValueOnce(new Error("Offline")).mockResolvedValueOnce({ data: { data: [] } });

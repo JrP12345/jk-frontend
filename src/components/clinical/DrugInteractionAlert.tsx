@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { AlertTriangle, AlertCircle, ShieldAlert, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge, cn } from "@/components/ui";
 

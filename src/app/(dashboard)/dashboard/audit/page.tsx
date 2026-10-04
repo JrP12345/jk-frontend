@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { canViewAuditLogs } from "@/lib/permissions";
 import { useLatestRead } from "@/hooks/useLatestRead";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, Badge, Button, Select, Input, useToast, Alert, ChartContainer, BarChart, cn } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, Badge, Button, Select, Input, useToast, Alert, ChartContainer, BarChart } from "@/components/ui";
 import { RotateCw, Filter, X, Building2, Stethoscope, Tag, Calendar } from "lucide-react";
 
 interface AuditLogEntry {

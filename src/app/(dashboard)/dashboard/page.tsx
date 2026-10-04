@@ -1,33 +1,31 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import PlatformOwnerDashboard from "@/components/dashboard/PlatformOwnerDashboard";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import api from "@/lib/api";
 import { localDateKey, todayRangeParams } from "@/lib/date";
-import { Badge, Button, Card, StatCard, Table, Column, useToast } from "@/components/ui";
-import { useModuleStore } from "@/store/moduleStore";
-import { RotateCw, Building2, Users, Layers, Shield, KeyRound, ArrowRight, Plus, CalendarPlus } from "lucide-react";
+import { Badge, Button, useToast } from "@/components/ui";
+import { RotateCw, Plus, CalendarPlus } from "lucide-react";
 import { DashboardStatCards, DashboardAnalytics, DashboardAppointmentsQueue, DashboardQuickActions, DashboardFollowUpAlerts, DashboardClinicFacilities } from "@/components/dashboard";
 
 export default function DashboardOverview() {
-  const { user, switchOrg, impersonate } = useAuthStore();
+  const user = useAuthStore(state => state.user);
+  if (!user) return null;
+  if (user.role === "root" && !user.impersonatedBy?.id) return <PlatformOwnerDashboard />;
+  return <OperationalDashboard />;
+}
+
+function OperationalDashboard() {
+  const { user } = useAuthStore();
   const { clinics: clinicsList, fetchClinics } = useClinicStore();
-  const { isModuleEnabled } = useModuleStore();
   const router = useRouter();
   const { toast } = useToast();
 
-  const isRootPlatformAdmin = user?.role === "root" && !(user?.impersonatedBy && user.impersonatedBy.id);
-
-  // Platform Superadmin Hierarchy & KPI state
-  const [platformHierarchy, setPlatformHierarchy] = useState<any>(null);
-  const [loadingHierarchy, setLoadingHierarchy] = useState(false);
-  const [impersonatingOrgId, setImpersonatingOrgId] = useState<string | null>(null);
-
   const canViewOpsDashboard =
-    !isRootPlatformAdmin &&
     user?.role !== "patient" &&
     user?.role !== "doctor" &&
     hasAnyPermission(
@@ -65,45 +63,6 @@ export default function DashboardOverview() {
       return false;
     }
   });
-
-  // Fetch Root Platform Superadmin Data
-  const fetchPlatformOverview = async () => {
-    try {
-      setLoadingHierarchy(true);
-      const res = await api.get("/admin/hierarchy");
-      setPlatformHierarchy(res.data?.data || null);
-    } catch (err: any) {
-      console.error("Failed to load platform hierarchy", err);
-      toast({
-        title: "Error Loading Platform Data",
-        description: err.response?.data?.message || "Could not fetch platform hierarchy.",
-        variant: "error",
-      });
-    } finally {
-      setLoadingHierarchy(false);
-    }
-  };
-
-  const handleLoginAsOrgAdmin = async (orgId: string, orgName: string) => {
-    try {
-      setImpersonatingOrgId(orgId);
-      await impersonate({ organizationId: orgId, role: "admin" });
-      toast({
-        title: "Workspace Entered as Admin",
-        description: `Now logged in as Administrator for ${orgName}.`,
-        variant: "success",
-      });
-      router.push("/dashboard");
-    } catch (err: any) {
-      toast({
-        title: "Impersonation Failed",
-        description: err.response?.data?.message || "Could not login as organization administrator.",
-        variant: "error",
-      });
-    } finally {
-      setImpersonatingOrgId(null);
-    }
-  };
 
   // Purposeful Analytics: Patient volume trajectory over 7D/30D
   const appointmentTrendData = useMemo(() => {
@@ -179,10 +138,6 @@ export default function DashboardOverview() {
 
   const fetchDashboardData = async () => {
     if (!user) return;
-    if (isRootPlatformAdmin) {
-      fetchPlatformOverview();
-      return;
-    }
     try {
       setIsRefreshing(true);
       if (canViewOpsDashboard) {
@@ -279,347 +234,6 @@ export default function DashboardOverview() {
   // Clean user display name
   const cleanUserName = user.name.replace(/\s*\([^)]*\)/g, "");
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // A. PLATFORM ROOT SUPERADMIN VIEW
-  // ──────────────────────────────────────────────────────────────────────────
-  if (isRootPlatformAdmin) {
-    const summary = platformHierarchy?.summary || {
-      totalOrganizations: 0,
-      totalBranches: 0,
-      totalMembers: 0,
-      totalPlatformAdmins: 1,
-    };
-    const orgList = platformHierarchy?.organizations || [];
-
-    const columns: Column<any>[] = [
-      {
-        header: "Organization",
-        accessor: (org) => (
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-accent font-bold flex items-center justify-center text-xs shrink-0 border border-primary-500/20">
-              {org.name.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <p className="font-bold text-text text-xs sm:text-sm">{org.name}</p>
-              <p className="text-[11px] text-text-muted">{org.city || "Multi-Branch"}</p>
-            </div>
-          </div>
-        ),
-      },
-      {
-        header: "Plan",
-        accessor: (org) => (
-          <Badge
-            variant={
-              org.plan === "enterprise"
-                ? "primary"
-                : org.plan === "pro"
-                ? "info"
-                : "secondary"
-            }
-            size="sm"
-            className="uppercase text-[10px] font-bold"
-          >
-            {org.plan}
-          </Badge>
-        ),
-      },
-      {
-        header: "Branches & Staff",
-        accessor: (org) => (
-          <div className="text-xs text-text-secondary">
-            <span className="font-semibold text-text">{org.counts.branches}</span> Clinics &bull;{" "}
-            <span className="font-semibold text-text">{org.counts.totalMembers}</span> Users
-          </div>
-        ),
-      },
-      {
-        header: "Status",
-        accessor: (org) => (
-          <Badge
-            variant={org.status === "active" ? "success" : "neutral"}
-            size="sm"
-            dot
-            pulse={org.status === "active"}
-            className="text-[10px] font-semibold"
-          >
-            {org.status === "active" ? "Active" : "Suspended"}
-          </Badge>
-        ),
-      },
-      {
-        header: "Actions",
-        align: "right",
-        accessor: (org) => (
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              size="xs"
-              variant="primary"
-              loading={impersonatingOrgId === org.id}
-              onClick={() => handleLoginAsOrgAdmin(org.id, org.name)}
-              className="font-semibold text-xs rounded-xl flex items-center gap-1.5 min-h-[34px]"
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              Login as Admin
-            </Button>
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => router.push("/dashboard/organizations")}
-              className="text-xs rounded-xl min-h-[34px]"
-            >
-              Details
-            </Button>
-          </div>
-        ),
-      },
-    ];
-
-    return (
-      <div className="space-y-6 font-sans text-text antialiased animate-fade-up">
-        {/* 1. ROOT BANNER */}
-        <div className="rounded-xl border border-border bg-surface p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                  Platform overview
-                </h1>
-                <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                  Platform admin
-                </Badge>
-              </div>
-              <p className="text-xs sm:text-sm text-text-muted max-w-2xl">
-                Review organizations, subscriptions, and users across the platform.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto [&>button]:flex-1 sm:[&>button]:flex-initial">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchPlatformOverview}
-                disabled={loadingHierarchy}
-                className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-11 justify-center"
-               loading={loadingHierarchy}>
-                <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary " />
-                Refresh
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => router.push("/dashboard/organizations?create=1")}
-                className="rounded-xl text-xs font-semibold min-h-11 justify-center"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Create organization
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push("/dashboard/admin/users")}
-                className="rounded-xl text-xs font-semibold min-h-11 justify-center"
-              >
-                <Users className="h-3.5 w-3.5 mr-1" />
-                Users & access
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. PLATFORM STATCARDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Organizations"
-            value={summary.totalOrganizations}
-            icon={<Building2 className="w-5 h-5 text-accent" />}
-            description="Registered medical institutions"
-            onClick={() => router.push("/dashboard/organizations")}
-          />
-          <StatCard
-            title="Clinic locations"
-            value={summary.totalBranches}
-            icon={<Layers className="w-5 h-5 text-success-text" />}
-            description="Registered clinic locations"
-          />
-          <StatCard
-            title="Users"
-            value={summary.totalMembers}
-            icon={<Users className="w-5 h-5 text-accent" />}
-            description="Doctors, staff, and administrators"
-            onClick={() => router.push("/dashboard/admin/users")}
-          />
-          <StatCard
-            title="Audit log"
-            value="Open"
-            icon={<Shield className="w-5 h-5 text-accent" />}
-            description="Review platform activity"
-            onClick={() => router.push("/dashboard/audit")}
-          />
-        </div>
-
-        {/* 3. TENANT ORGANIZATIONS HUB */}
-        <div className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <h2 className="text-base font-bold text-text">Organizations</h2>
-              <p className="text-xs text-text-muted">
-                Review clinic locations, staff, and organization access.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="xs"
-              onClick={() => router.push("/dashboard/organizations")}
-              className="text-xs rounded-xl w-full sm:w-auto justify-center"
-            >
-              View organizations <ArrowRight className="w-3.5 h-3.5 ml-1" />
-            </Button>
-          </div>
-
-          <div className="bg-surface rounded-2xl border border-border overflow-hidden shadow-2xs">
-            <Table
-              columns={columns}
-              data={orgList}
-              loading={loadingHierarchy}
-              mobileCardView
-              renderMobileCard={(org: any) => (
-                <div
-                  key={org.id}
-                  className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
-                >
-                  <div className="flex items-start justify-between gap-2.5">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-accent font-bold flex items-center justify-center text-sm shrink-0 border border-primary-500/20">
-                        {org.name?.charAt(0).toUpperCase() || "T"}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-text text-sm truncate">{org.name}</p>
-                        <p className="text-xs text-text-muted">{org.city || "Multi-Branch Practice"}</p>
-                      </div>
-                    </div>
-                    <Badge
-                      variant={org.plan === "enterprise" ? "primary" : org.plan === "pro" ? "info" : "secondary"}
-                      size="sm"
-                      className="uppercase text-[10px] font-bold shrink-0"
-                    >
-                      {org.plan}
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs py-2 px-3 rounded-xl bg-surface-alt/70 border border-border/50 text-text-secondary">
-                    <div className="flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-text-muted" />
-                      <span><strong className="text-text">{org.counts?.branches || 0}</strong> Clinics</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-text-muted" />
-                      <span><strong className="text-text">{org.counts?.totalMembers || 0}</strong> Users</span>
-                    </div>
-                    <Badge
-                      variant={org.status === "active" ? "success" : "neutral"}
-                      size="sm"
-                      dot
-                      pulse={org.status === "active"}
-                      className="text-[10px] font-semibold"
-                    >
-                      {org.status === "active" ? "Active" : "Suspended"}
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-1">
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      loading={impersonatingOrgId === org.id}
-                      onClick={() => handleLoginAsOrgAdmin(org.id, org.name)}
-                      className="flex-1 font-semibold text-xs rounded-xl min-h-[42px] justify-center"
-                    >
-                      <KeyRound className="w-3.5 h-3.5 mr-1.5" />
-                      Login as Admin
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => router.push("/dashboard/organizations")}
-                      className="font-semibold text-xs rounded-xl min-h-[42px] px-3.5"
-                    >
-                      Details
-                    </Button>
-                  </div>
-                </div>
-              )}
-              emptyMessage="No organizations have been added yet."
-            />
-          </div>
-        </div>
-
-        {/* 4. PLATFORM QUICK ACCESS TILES */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card
-            className="p-4 cursor-pointer hover:border-primary-500/40 transition-all group"
-            onClick={() => router.push("/dashboard/admin/users")}
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-accent group-hover:scale-105 transition-transform">
-                <KeyRound className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-text group-hover:text-accent transition-colors">
-                  Users & access
-                </h3>
-                <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                  Find users and, when authorized, view their account to help resolve an issue.
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card
-            className="p-4 cursor-pointer hover:border-primary-500/40 transition-all group"
-            onClick={() => router.push("/dashboard/admin/billing")}
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center text-success-text group-hover:scale-105 transition-transform">
-                <Layers className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-text group-hover:text-success-text transition-colors">
-                  Plans & subscriptions
-                </h3>
-                <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                  Manage subscription pricing and limits for clinics and doctors.
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card
-            className="p-4 cursor-pointer hover:border-primary-500/40 transition-all group"
-            onClick={() => router.push("/dashboard/audit")}
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-accent group-hover:scale-105 transition-transform">
-                <Shield className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-text group-hover:text-accent transition-colors">
-                  System Audit Logs
-                </h3>
-                <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                  Inspect cryptographic audit records, impersonation access sessions, and administrative actions.
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // B. TENANT OPERATIONAL WORKSPACE (DOCTOR, ADMIN, RECEPTIONIST, PATIENT)
-  // ──────────────────────────────────────────────────────────────────────────
   const roleBadgeLabel =
     user.role === "admin"
       ? "Org Admin"
@@ -698,7 +312,6 @@ export default function DashboardOverview() {
 
       {/* 1.5 FIRST-TIME SETUP CHECKLIST (shown only for fresh tenant practices, NEVER for Root) */}
       {canViewOpsDashboard &&
-        !isRootPlatformAdmin &&
         !loading &&
         adminStats.doctors + adminStats.receptionists === 0 &&
         !setupDismissed && (
