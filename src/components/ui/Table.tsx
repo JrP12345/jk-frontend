@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState, useMemo, useEffect } from "react";
+import { type ReactNode, isValidElement, useState, useMemo, useEffect } from "react";
 import { cn } from "./utils";
 import Checkbox from "./Checkbox";
 import Button from "./Button";
@@ -73,11 +73,16 @@ const densityPadding: Record<TableDensity, string> = {
   spacious: "px-5 py-4 text-sm",
 };
 
-function extractSearchableText(obj: any): string {
-    if (obj === null || obj === undefined) return "";
-    if (typeof obj !== "object") return String(obj);
-    if (Array.isArray(obj)) return obj.map(extractSearchableText).join(" ");
-    return Object.values(obj).map(extractSearchableText).join(" ");
+function extractSearchableText(obj: unknown, seen = new WeakSet<object>()): string {
+  if (obj === null || obj === undefined || typeof obj === "function" || typeof obj === "symbol") return "";
+  if (typeof obj !== "object") return String(obj);
+  if (seen.has(obj)) return "";
+  seen.add(obj);
+  // React elements contain development owner/fiber graphs. Search their visible
+  // children, never component internals or event handler closures.
+  if (isValidElement<{ children?: ReactNode }>(obj)) return extractSearchableText(obj.props.children, seen);
+  const values = Array.isArray(obj) ? obj : Object.values(obj);
+  return values.map(value => extractSearchableText(value, seen)).join(" ");
 }
 
 

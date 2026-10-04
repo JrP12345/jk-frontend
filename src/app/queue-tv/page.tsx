@@ -13,6 +13,7 @@ export default function WaitingRoomTvQueueBoard() {
   const [activeToken, setActiveToken] = useState<any | null>(null);
   const [waitingQueue, setWaitingQueue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [readFailed, setReadFailed] = useState(false);
   const [lastAnnounced, setLastAnnounced] = useState<string>("");
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [voiceLanguage, setVoiceLanguage] = useState<VoiceAnnounceLanguage>("both");
@@ -207,8 +208,9 @@ export default function WaitingRoomTvQueueBoard() {
           );
         }
       }
+      setReadFailed(false);
     } catch {
-      // Background poll error handled gracefully
+      setReadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -278,11 +280,12 @@ export default function WaitingRoomTvQueueBoard() {
               <button
                 key={lang}
                 type="button"
+                aria-pressed={voiceLanguage === lang}
                 onClick={() => {
                   setVoiceLanguage(lang);
                   if (!audioUnlocked) unlockAudio();
                 }}
-                className={`px-2.5 py-1.5 min-h-[36px] rounded-xl text-[11px] font-bold uppercase transition-all cursor-pointer flex items-center justify-center ${
+                className={`px-2.5 py-1.5 min-h-11 min-w-11 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center justify-center ${
                   voiceLanguage === lang
                     ? "bg-primary-600 text-brand-mist shadow-xs"
                     : "text-text-muted hover:text-text hover:bg-surface-alt/80"
@@ -300,7 +303,7 @@ export default function WaitingRoomTvQueueBoard() {
               <button
                 type="button"
                 onClick={() => setViewMode(viewMode === "multi" ? "single" : "multi")}
-                className="px-3 py-1.5 min-h-[36px] rounded-xl text-[11px] font-bold text-text-secondary hover:text-text bg-surface-alt hover:bg-surface-alt transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-3 py-1.5 min-h-11 rounded-xl text-xs font-medium text-text-secondary hover:text-text bg-surface-alt hover:bg-surface-alt transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span>{viewMode === "multi" ? "🖥️ Stage View" : "🔲 Multi-Cabin"}</span>
               </button>
@@ -310,14 +313,14 @@ export default function WaitingRoomTvQueueBoard() {
           {!audioUnlocked && (
             <button
               onClick={unlockAudio}
-              className="px-3.5 py-2 min-h-[40px] bg-warning-subtle hover:bg-warning/20 text-warning-text rounded-xl text-xs font-bold border border-warning/30 flex items-center gap-2 cursor-pointer transition-all"
+              className="px-3.5 py-2 min-h-11 bg-warning-subtle hover:bg-warning/20 text-warning-text rounded-xl text-xs font-bold border border-warning/30 flex items-center gap-2 cursor-pointer transition-all"
             >
               <span>🔔</span> Enable Audio
             </button>
           )}
-          <Badge variant="success" className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 font-black tracking-wide flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-success animate-ping" />
-            LIVE QUEUE
+          <Badge variant={readFailed ? "warning" : "success"} className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 font-black tracking-wide flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${readFailed ? "bg-warning" : "bg-success"}`} />
+            {readFailed ? "RECONNECTING" : loading ? "CONNECTING" : "LIVE QUEUE"}
           </Badge>
           <span className="text-xl sm:text-2xl font-black text-text-secondary font-mono min-w-[8ch]">
             {clockReady ? new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:-- --"}
@@ -326,6 +329,11 @@ export default function WaitingRoomTvQueueBoard() {
       </div>
 
       {/* Doctor OPD Intermission / Break Waiting Lounge Banner */}
+      {readFailed && (
+        <p role="status" className="mt-4 rounded-xl border border-warning/30 bg-warning-subtle p-4 text-warning-text">
+          Queue updates are unavailable. Showing the last received information while we reconnect. Please confirm calls with reception.
+        </p>
+      )}
       {doctorBreak?.isOnBreak && (
         <div className="mt-6 p-6 rounded-3xl bg-warning-subtle border-2 border-warning/50 shadow-lg flex items-center justify-between gap-6">
           <div className="flex items-center gap-5">
@@ -500,8 +508,8 @@ export default function WaitingRoomTvQueueBoard() {
               </div>
             ) : (
               <div className="my-20 text-center text-text-muted space-y-3">
-                <p className="text-4xl font-extrabold text-text-muted">Doctor Ready for Next Consultation</p>
-                <p className="text-base text-text-muted">Please watch the screen for your token call.</p>
+                <p className="text-4xl font-extrabold text-text-muted">{readFailed ? "Waiting for queue updates" : loading ? "Connecting to the queue" : "Doctor Ready for Next Consultation"}</p>
+                <p className="text-base text-text-muted">{readFailed ? "Please check with reception for the latest call." : "Please watch the screen for your token call."}</p>
               </div>
             )}
 
@@ -509,7 +517,7 @@ export default function WaitingRoomTvQueueBoard() {
               <div className="flex items-center gap-2">
                 <span>🔔 Melodic Chime & Voice Synthesis Active</span>
               </div>
-              <span className="text-xs text-success-text font-mono">Real-time sync</span>
+              <span className="text-xs text-text-secondary font-mono">{readFailed ? "Reconnecting" : loading ? "Connecting" : "Real-time sync"}</span>
             </div>
           </div>
 
@@ -526,8 +534,8 @@ export default function WaitingRoomTvQueueBoard() {
               <div className="space-y-3">
                 {waitingQueue.length === 0 ? (
                   <div className="text-center py-16 space-y-2">
-                    <p className="text-base text-text-muted font-bold">Waiting Queue is Empty</p>
-                    <p className="text-xs text-text-secondary">All registered patients have been attended.</p>
+                    <p className="text-base text-text-muted font-bold">{readFailed || loading ? "Waiting for queue updates" : "Waiting Queue is Empty"}</p>
+                    <p className="text-xs text-text-secondary">{readFailed || loading ? "The waiting list will update when the connection is restored." : "No patients are currently waiting."}</p>
                   </div>
                 ) : (
                   waitingQueue.map((item, idx) => (

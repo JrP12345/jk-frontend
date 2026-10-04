@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PWAInstallBanner } from "@/components/ui/PWAInstallBanner";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
@@ -35,14 +35,15 @@ describe("Floating messages across page transitions", () => {
     view.rerender(<ToastProvider><Page browse /></ToastProvider>);
     expect(screen.getByRole("region", { name: "Install Ekavyu" })).toBeInTheDocument();
   });
-  it("keeps the install prompt below the current header when routes replace navigation", async () => {
+  it("keeps installation in page flow when routes replace navigation", () => {
     const { container, rerender } = render(<ToastProvider><Page /></ToastProvider>);
     offerInstallation();
     const banner = screen.getByRole("region", { name: "Install Ekavyu" });
-    expect(container).not.toContainElement(banner);
-    expect(banner.style.getPropertyValue("--toast-header-offset")).toBe("124px");
+    expect(container).toContainElement(banner);
+    expect(banner).not.toHaveClass("fixed");
     rerender(<ToastProvider><Page browse /></ToastProvider>);
-    await waitFor(() => expect(banner.style.getPropertyValue("--toast-header-offset")).toBe("76px"));
+    expect(container).toContainElement(banner);
+    expect(banner).not.toHaveClass("fixed");
   });
 
   it("gives notifications priority over the install prompt without dismissing installation", () => {
@@ -64,11 +65,9 @@ describe("Floating messages across page transitions", () => {
     render(<ToastProvider><Page browse /></ToastProvider>);
     offerInstallation();
     const banner = screen.getByRole("region", { name: "Install Ekavyu" });
-    expect(banner.style.getPropertyValue("--toast-visible-top")).toBe("40px");
-    expect(banner.style.getPropertyValue("--toast-viewport-bottom")).toBe("384px");
+    expect(banner).not.toHaveClass("fixed");
     act(() => { viewport.offsetTop = 80; viewport.height = 280; viewport.dispatchEvent(new Event("resize")); });
-    expect(banner.style.getPropertyValue("--toast-visible-top")).toBe("96px");
-    expect(banner.style.getPropertyValue("--toast-viewport-bottom")).toBe("360px");
+    expect(banner).not.toHaveClass("fixed");
     fireEvent.click(within(banner).getByRole("button", { name: "Dismiss banner" }));
     expect(screen.queryByRole("region", { name: "Install Ekavyu" })).not.toBeInTheDocument();
     expect(sessionStorage.getItem("pwa_install_dismissed")).toBe("1");

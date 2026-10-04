@@ -287,13 +287,14 @@ export default function RootAdminMonitorPage() {
         </div>
 
         {/* Global Tab Switcher */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto max-w-full">
             <button
               type="button"
+              aria-pressed={activeTab === "sessions"}
               onClick={() => setActiveTab("sessions")}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                "min-h-11 shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-accent",
                 activeTab === "sessions"
                   ? "bg-surface text-accent dark:text-accent shadow-xs border border-border/60"
                   : "text-text-muted hover:text-text"
@@ -304,9 +305,10 @@ export default function RootAdminMonitorPage() {
             </button>
             <button
               type="button"
+              aria-pressed={activeTab === "traffic"}
               onClick={() => setActiveTab("traffic")}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                "min-h-11 shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-accent",
                 activeTab === "traffic"
                   ? "bg-surface text-accent dark:text-accent shadow-xs border border-border/60"
                   : "text-text-muted hover:text-text"
@@ -386,6 +388,7 @@ export default function RootAdminMonitorPage() {
                 <Search className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input
                   placeholder="Search active users by name, email, role, IP address, or device..."
+                  aria-label="Search active sessions"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 h-10 text-xs w-full"
@@ -642,8 +645,9 @@ export default function RootAdminMonitorPage() {
               <button
                 type="button"
                 onClick={() => setTrafficDays(14)}
+                aria-pressed={trafficDays === 14}
                 className={cn(
-                  "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                  "min-h-11 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-accent",
                   trafficDays === 14 ? "bg-surface text-accent shadow-xs" : "text-text-muted hover:text-text"
                 )}
               >
@@ -652,8 +656,9 @@ export default function RootAdminMonitorPage() {
               <button
                 type="button"
                 onClick={() => setTrafficDays(30)}
+                aria-pressed={trafficDays === 30}
                 className={cn(
-                  "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                  "min-h-11 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-accent",
                   trafficDays === 30 ? "bg-surface text-accent shadow-xs" : "text-text-muted hover:text-text"
                 )}
               >

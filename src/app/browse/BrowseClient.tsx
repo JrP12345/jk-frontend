@@ -364,19 +364,19 @@ export default function BrowseClient({
       <MarketplaceNavbar />
 
       {/* Hero Header Section - Clean Modern Healthcare Design */}
-      <section className="relative pt-20 sm:pt-24 pb-4 sm:pb-6 brand-wash border-b border-border/50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 relative z-10 text-center">
-          <h1 className="text-xl min-[400px]:text-2xl sm:text-3xl md:text-4xl lg:text-[2.6rem] font-bold text-text tracking-tight mb-2 leading-tight max-w-4xl mx-auto text-balance sm:whitespace-nowrap" suppressHydrationWarning>
+      <section className="pt-20 sm:pt-24 pb-4 sm:pb-5 bg-surface border-b border-border">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-text tracking-tight mb-2 leading-tight text-balance" suppressHydrationWarning>
             {"Find and book"}{" "}
             <span className="text-accent" suppressHydrationWarning>{"care that fits your needs"}</span>
           </h1>
-          <p className="text-text-secondary text-xs sm:text-sm max-w-lg mx-auto mb-4 sm:mb-6 leading-relaxed" suppressHydrationWarning>
+          <p className="text-text-secondary text-sm mb-4 leading-relaxed" suppressHydrationWarning>
             {"Compare clinics and doctors, then book a visit that suits you."}
           </p>
 
           {/* Unified Streamlined Search Console: Search + City Selector */}
-          <div className="max-w-4xl mx-auto mt-2 sm:mt-3">
-            <div className="glass-surface rounded-2xl sm:rounded-full p-2 sm:p-2.5 focus-within:ring-2 focus-within:ring-focus-ring/40 focus-within:border-accent/50 transition-[border-color,box-shadow] duration-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2 shadow-md hover:shadow-lg bg-surface/90 backdrop-blur-md">
+          <div className="mt-3">
+            <div className="rounded-xl border border-border p-2 focus-within:border-accent flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2 bg-surface">
               {/* Keyword Search Input with Inside Icon */}
               <div className="flex-1 min-w-0">
                 <Input
@@ -535,7 +535,7 @@ export default function BrowseClient({
                   key={clinic.id}
                   role="group"
                   onClick={() => { rememberPosition(); router.push(`/browse/${clinic.id}`); }}
-                  className="group cursor-pointer hover:shadow-sm hover:border-accent/40 p-4 sm:p-5 rounded-2xl border border-border bg-surface flex flex-col min-h-[300px]"
+                  className="group cursor-pointer hover:border-accent/40 p-4 rounded-xl border border-border bg-surface flex flex-col"
                   contentClassName="flex-1 justify-between gap-3"
                 >
                   <div>
@@ -551,12 +551,12 @@ export default function BrowseClient({
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <h3
+                            <h2
                               className="text-base font-semibold text-text group-hover:text-accent transition-colors min-w-0"
                               title={clinic.name}
                             >
                               <Link href={`/browse/${clinic.id}`} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block line-clamp-2 break-words focus-visible:outline-none focus-visible:underline">{clinic.name}</Link>
-                            </h3>
+                            </h2>
                           </div>
                           {clinic.organizationName && clinic.organizationName !== clinic.name && (
                             <p className="text-[10px] text-text-muted font-medium truncate">

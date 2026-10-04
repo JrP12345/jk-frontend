@@ -715,13 +715,14 @@ export default function PublicLiveQueueTracker() {
                 if (!soundEnabled) playChimeSound();
               }}
               className={cn(
-                "p-2.5 rounded-xl border transition-colors cursor-pointer text-xs min-h-[40px] min-w-[40px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
+                "p-2.5 rounded-xl border transition-colors cursor-pointer text-xs min-h-11 min-w-11 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
                 soundEnabled
                   ? "bg-primary-500/10 border-primary-500/30 text-accent dark:text-accent"
                   : "bg-surface border-border/70 text-text-muted hover:text-text"
               )}
               title={soundEnabled ? "Chime sound enabled" : "Chime muted"}
               aria-label={soundEnabled ? "Disable chime" : "Enable chime"}
+              aria-pressed={soundEnabled}
             >
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
@@ -730,7 +731,7 @@ export default function PublicLiveQueueTracker() {
               type="button"
               onClick={() => fetchTrackerData(false)}
               disabled={refreshing}
-              className="p-2.5 rounded-xl bg-surface border border-border/70 hover:bg-surface-alt transition-colors text-text-muted hover:text-text cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              className="p-2.5 rounded-xl bg-surface border border-border/70 hover:bg-surface-alt transition-colors text-text-muted hover:text-text cursor-pointer min-h-11 min-w-11 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               title="Refresh Queue"
               aria-label="Refresh Queue Data"
              loading={refreshing}>

@@ -254,7 +254,7 @@ export default function PatientExperienceFeedbackPage() {
         <StatCard
           label="Average CSAT Rating"
           value={`${stats.averageCsatRating} / 5.0`}
-          description="Verified Patient Encounters"
+          description="Submitted visit ratings"
           icon={<Star className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
@@ -287,7 +287,7 @@ export default function PatientExperienceFeedbackPage() {
             <div className="w-full bg-surface-alt h-2.5 rounded-full overflow-hidden">
               <div className="bg-success h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.waitTime) }} />
             </div>
-            <p className="text-xs text-text-muted">Target: Avg consult wait time under 15 minutes.</p>
+            <p className="text-xs text-text-muted">Patient ratings of their waiting experience.</p>
           </CardContent>
         </Card>
 
@@ -305,7 +305,7 @@ export default function PatientExperienceFeedbackPage() {
             <div className="w-full bg-surface-alt h-2.5 rounded-full overflow-hidden">
               <div className="bg-primary h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.doctorAttitude) }} />
             </div>
-            <p className="text-xs text-text-muted">High patient trust in clinical explanation & empathy.</p>
+            <p className="text-xs text-text-muted">Patient ratings of communication and attitude.</p>
           </CardContent>
         </Card>
 
@@ -323,7 +323,7 @@ export default function PatientExperienceFeedbackPage() {
             <div className="w-full bg-surface-alt h-2.5 rounded-full overflow-hidden">
               <div className="bg-primary h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.cleanliness) }} />
             </div>
-            <p className="text-xs text-text-muted">Sanitization & room hygiene standards compliant.</p>
+            <p className="text-xs text-text-muted">Patient ratings of facility cleanliness.</p>
           </CardContent>
         </Card>
       </div>
@@ -336,13 +336,14 @@ export default function PatientExperienceFeedbackPage() {
               Patient Feedback & Review Feed
             </CardTitle>
             <p className="text-xs text-text-muted">
-              Verified clinical visit reviews and qualitative feedback comments.
+              Visit ratings and patient comments.
             </p>
           </div>
 
           <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
             <span className="text-xs text-text-muted font-medium shrink-0">Filter Sentiment:</span>
             <select
+              aria-label="Filter feedback by NPS category"
               value={filterRating}
               onChange={(e) => setFilterRating(e.target.value)}
               className="text-xs py-2 px-3 rounded-xl border border-border/80 bg-surface text-text font-semibold cursor-pointer min-h-[38px] sm:min-h-[32px] w-full sm:w-auto"
@@ -424,13 +425,20 @@ export default function PatientExperienceFeedbackPage() {
         isOpen={isSurveyModalOpen}
         onClose={() => setIsSurveyModalOpen(false)}
         title="Submit Patient Experience Survey"
+        size="lg"
+        busy={submitting}
+        footer={<div className="flex flex-col-reverse sm:flex-row justify-end gap-2 w-full">
+          <Button type="button" variant="outline" disabled={submitting} onClick={() => setIsSurveyModalOpen(false)} className="w-full sm:w-auto min-h-11">Cancel</Button>
+          <Button type="submit" form="patient-survey-form" disabled={submitting} loading={submitting} className="w-full sm:w-auto min-h-11">Save Patient Feedback</Button>
+        </div>}
       >
-        <form onSubmit={handleSubmitSurvey} className="space-y-4">
+        <form id="patient-survey-form" onSubmit={handleSubmitSurvey} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-text mb-1">
               Select Completed Clinical Visit *
             </label>
             <select
+              aria-label="Select completed clinical visit"
               value={selectedAppointmentId}
               onChange={(e) => setSelectedAppointmentId(e.target.value)}
               className="w-full text-xs p-2.5 rounded-xl border border-border/80 bg-surface text-text font-medium"
@@ -454,6 +462,7 @@ export default function PatientExperienceFeedbackPage() {
                 Overall CSAT Rating (1 - 5 Stars) *
               </label>
               <select
+                aria-label="Overall CSAT rating"
                 value={csatRating.toString()}
                 onChange={(e) => setCsatRating(Number(e.target.value))}
                 className="w-full text-xs p-2.5 rounded-xl border border-border/80 bg-surface text-text font-medium"
@@ -471,6 +480,7 @@ export default function PatientExperienceFeedbackPage() {
                 Net Promoter Score (NPS 0 - 10) *
               </label>
               <Input
+                aria-label="Net Promoter Score"
                 type="number"
                 min={0}
                 max={10}
@@ -491,6 +501,7 @@ export default function PatientExperienceFeedbackPage() {
               <div>
                 <label className="block text-xs text-text-muted mb-1">⏱ Wait Time</label>
                 <Input
+                  aria-label="Wait time rating"
                   type="number"
                   min={1}
                   max={5}
@@ -502,6 +513,7 @@ export default function PatientExperienceFeedbackPage() {
               <div>
                 <label className="block text-xs text-text-muted mb-1">👨‍⚕️ Doctor Attitude</label>
                 <Input
+                  aria-label="Doctor attitude rating"
                   type="number"
                   min={1}
                   max={5}
@@ -513,6 +525,7 @@ export default function PatientExperienceFeedbackPage() {
               <div>
                 <label className="block text-xs text-text-muted mb-1">✨ Cleanliness</label>
                 <Input
+                  aria-label="Cleanliness rating"
                   type="number"
                   min={1}
                   max={5}
@@ -529,6 +542,7 @@ export default function PatientExperienceFeedbackPage() {
               Patient Comments & Qualitative Feedback
             </label>
             <Textarea
+              aria-label="Patient comments"
               rows={3}
               value={comments}
               onChange={(e) => setComments(e.target.value)}
@@ -537,24 +551,6 @@ export default function PatientExperienceFeedbackPage() {
             />
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-border/60">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsSurveyModalOpen(false)}
-              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] text-xs rounded-xl"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={submitting}
-              variant="primary"
-              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] text-xs rounded-xl font-semibold"
-             loading={submitting}>
-              {submitting ? "Submitting..." : "Save Patient Feedback"}
-            </Button>
-          </div>
         </form>
       </Modal>
     </div>

@@ -378,7 +378,7 @@ export default function DashboardOverview() {
     return (
       <div className="space-y-6 font-sans text-text antialiased animate-fade-up">
         {/* 1. ROOT BANNER */}
-        <div className="relative overflow-hidden rounded-2xl border border-primary-500/20 bg-surface p-5 sm:p-6 shadow-xs ">
+        <div className="rounded-xl border border-border bg-surface p-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
             <div className="space-y-1">
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -400,7 +400,7 @@ export default function DashboardOverview() {
                 size="sm"
                 onClick={fetchPlatformOverview}
                 disabled={loadingHierarchy}
-                className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-[40px] sm:min-h-[36px] justify-center"
+                className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-11 justify-center"
                loading={loadingHierarchy}>
                 <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary " />
                 Refresh
@@ -409,16 +409,16 @@ export default function DashboardOverview() {
                 variant="primary"
                 size="sm"
                 onClick={() => router.push("/dashboard/organizations?create=1")}
-                className="rounded-xl text-xs font-semibold shadow-xs min-h-[40px] sm:min-h-[36px] justify-center"
+                className="rounded-xl text-xs font-semibold min-h-11 justify-center"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Create organization
               </Button>
               <Button
-                variant="primary"
+                variant="outline"
                 size="sm"
                 onClick={() => router.push("/dashboard/admin/users")}
-                className="rounded-xl text-xs font-semibold shadow-xs min-h-[40px] sm:min-h-[36px] justify-center"
+                className="rounded-xl text-xs font-semibold min-h-11 justify-center"
               >
                 <Users className="h-3.5 w-3.5 mr-1" />
                 Users & access

@@ -1,261 +1,123 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Sparkles, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
+import { Button } from "@/components/ui";
+import { billingService, type SaaSPlan } from "@/services/billing.service";
+import { formatCurrency } from "@/lib/currency";
 
-import { billingService, SaaSPlan } from "@/services/billing.service";
+const capacityRows: { label: string; key: keyof SaaSPlan["limits"] }[] = [
+  { label: "Clinic branches", key: "maxClinics" },
+  { label: "Doctor profiles", key: "maxDoctors" },
+  { label: "Staff members", key: "maxStaff" },
+  { label: "Patient records", key: "maxPatients" },
+  { label: "Appointments", key: "maxAppointments" },
+  { label: "Storage (MB)", key: "maxStorageMB" },
+];
+const featureRows: { label: string; key: keyof SaaSPlan["features"] }[] = [
+  { label: "Analytics", key: "analytics" },
+  { label: "Audit logs", key: "auditLogs" },
+  { label: "Multiple branches", key: "multiBranch" },
+  { label: "Data export", key: "dataExport" },
+  { label: "API access", key: "apiAccess" },
+  { label: "Clinical AI", key: "aiFeatures" },
+];
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
   const [plans, setPlans] = useState<SaaSPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    async function fetchPlans() {
-      try {
-        const data = await billingService.getPlans();
-        if (data && data.length > 0) {
-          setPlans(data);
-        } else {
-          setPlans([]);
-          setError("No active pricing plans are configured.");
-        }
-      } catch (err) {
-        setPlans([]);
-        setError("Pricing plans could not be loaded. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchPlans();
-  }, []);
+    let current = true;
+    setLoading(true);
+    setError(null);
+    billingService.getPlans().then(data => {
+      if (!current) return;
+      setPlans(data || []);
+      if (!data?.length) setError("No active pricing plans are configured.");
+    }).catch(() => {
+      if (!current) return;
+      setPlans([]);
+      setError("Pricing plans could not be loaded. Please try again.");
+    }).finally(() => { if (current) setLoading(false); });
+    return () => { current = false; };
+  }, [attempt]);
 
   return (
-    <div className="min-h-screen bg-background text-text flex flex-col font-sans selection:bg-primary selection:text-text animate-page-enter">
-      {/* Public Navbar */}
+    <div className="min-h-dvh bg-background text-text flex flex-col">
       <MarketplaceNavbar />
-
-      {/* Hero Header */}
-      <section className="relative pt-32 pb-16 px-4 text-center overflow-hidden">
-        <div className="absolute inset-0 brand-wash pointer-events-none" />
-        <div className="max-w-4xl mx-auto relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-accent/30 text-accent text-xs font-semibold uppercase tracking-wider mb-6">
-            <Sparkles className="w-3.5 h-3.5" /> Commercial SaaS Pricing
-          </div>
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-text mb-6">
-            Predictable Pricing for <span className="text-accent">Modern Healthcare</span>
-          </h1>
-          <p className="text-lg sm:text-xl text-text-muted max-w-2xl mx-auto mb-10">
-            Scale your clinics and hospital operations seamlessly with a 15-day free trial on all plans. No setup fees, cancel anytime.
-          </p>
-
-          {/* Monthly / Annual Toggle */}
-          <div className="inline-flex max-w-full items-center p-1 sm:p-1.5 rounded-2xl bg-surface border border-border ">
-            <button
-              onClick={() => setBillingCycle("monthly")}
-              className={`px-3.5 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 min-h-[44px] flex items-center justify-center ${
-                billingCycle === "monthly"
-                  ? "bg-primary text-brand-mist shadow-sm"
-                  : "text-text-muted hover:text-text"
-              }`}
-            >
-              Monthly Billing
-            </button>
-            <button
-              onClick={() => setBillingCycle("annual")}
-              className={`relative px-3.5 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 min-h-[44px] flex items-center justify-center ${
-                billingCycle === "annual"
-                  ? "bg-primary text-brand-mist shadow-sm"
-                  : "text-text-muted hover:text-text"
-              }`}
-            >
-              Annual Billing
-              <span className={`ml-1.5 sm:ml-2 inline-block text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full border font-bold uppercase ${billingCycle === "annual" ? "bg-brand-ink/20 text-brand-mist border-brand-mist/30" : "bg-success-subtle text-success-text border-success/30"}`}>
-                Save 17%
-              </span>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Plan Cards Grid */}
-      <section className="max-w-7xl mx-auto px-4 pb-24 w-full">
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch animate-fade-in" aria-busy="true" aria-label="Loading pricing tiers">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="rounded-3xl p-6 sm:p-8 bg-surface/50 border border-border space-y-6">
-                <div className="space-y-2">
-                  <div className="h-6 w-28 bg-surface-alt rounded-lg animate-pulse" />
-                  <div className="h-4 w-44 bg-surface-alt/60 rounded animate-pulse" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-10 w-32 bg-surface-alt rounded-lg animate-pulse" />
-                  <div className="h-3 w-20 bg-surface-alt/50 rounded animate-pulse" />
-                </div>
-                <div className="space-y-3 pt-4 border-t border-border/80">
-                  {Array.from({ length: 4 }).map((_, j) => (
-                    <div key={j} className="h-4 bg-surface-alt/40 rounded animate-pulse" style={{ width: `${60 + (j * 10)}%` }} />
-                  ))}
-                </div>
-                <div className="h-12 w-full bg-surface-alt rounded-xl animate-pulse" />
-              </div>
+      <main className="mx-auto w-full max-w-6xl px-4 pt-24 pb-10 sm:px-6">
+        <header className="mb-8 space-y-3">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Plans for your practice</h1>
+          <p className="text-sm text-text-secondary max-w-2xl">Compare clinic capacity and features. Trial duration and pricing depend on the selected plan.</p>
+          <div className="inline-flex rounded-xl border border-border bg-surface p-1" role="group" aria-label="Billing cycle">
+            {(["monthly", "annual"] as const).map(cycle => (
+              <button key={cycle} type="button" aria-pressed={billingCycle === cycle} onClick={() => setBillingCycle(cycle)} className={`min-h-11 rounded-lg px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${billingCycle === cycle ? "bg-primary text-brand-mist" : "text-text-secondary hover:bg-surface-hover"}`}>
+                {cycle === "monthly" ? "Monthly billing" : "Annual billing"}
+              </button>
             ))}
           </div>
+        </header>
+        {loading ? (
+          <div className="grid gap-4 md:grid-cols-3" aria-busy="true" aria-label="Loading pricing tiers">
+            {Array.from({ length: 3 }, (_, index) => <div key={index} className="h-80 animate-pulse rounded-xl border border-border bg-surface-alt" />)}
+          </div>
         ) : error ? (
-          <div className="py-20 text-center text-text-muted">{error}</div>
+          <div className="rounded-xl border border-border bg-surface p-6 space-y-4">
+            <p role="status" className="text-sm text-text-secondary">{error}</p>
+            <Button variant="outline" onClick={() => setAttempt(value => value + 1)}>Try again</Button>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-            {plans.map((plan) => {
-              const price = billingCycle === "annual" ? Math.round(plan.annualPrice / 12) : plan.monthlyPrice;
-              const isEnterprise = plan.slug === "enterprise";
-
-              return (
-                <div
-                  key={plan.id || plan.slug}
-                  className={`relative rounded-3xl p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 ${
-                    plan.isPopular
-                      ? "bg-surface/90 border-2 border-accent shadow-sm md:scale-105"
-                      : "bg-surface/50 border border-border hover:border-border"
-                  }`}
-                >
-                  {plan.isPopular && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-primary text-brand-mist text-[11px] sm:text-xs font-bold uppercase px-3 sm:px-4 py-1 rounded-full shadow-md whitespace-nowrap">
-                      Most Popular
+          <>
+            <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Subscription plans">
+              {plans.map(plan => {
+                const price = billingCycle === "annual" ? Math.round(plan.annualPrice / 12) : plan.monthlyPrice;
+                const isEnterprise = plan.slug === "enterprise";
+                return (
+                  <article key={plan.id || plan.slug} className={`flex flex-col rounded-xl border bg-surface p-4 sm:p-6 ${plan.isPopular ? "border-accent" : "border-border"}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                      <h2 className="text-xl font-semibold break-words">{plan.name}</h2>
+                      {plan.isPopular && <span className="text-xs font-medium text-accent">Most popular</span>}
                     </div>
-                  )}
-
-                  <div>
-                    <h3 className="text-2xl font-bold text-text mb-2">{plan.name}</h3>
-                    <p className="text-sm text-text-muted mb-6 min-h-[40px]">{plan.description}</p>
-
-                    <div className="mb-8">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-extrabold text-text">
-                          ₹{price.toLocaleString("en-IN")}
-                        </span>
-                        <span className="text-text-muted text-sm">/ month</span>
-                      </div>
-                      {billingCycle === "annual" && (
-                        <p className="text-xs text-success-text mt-1 font-medium">
-                          Billed annually (₹{plan.annualPrice.toLocaleString("en-IN")}/yr)
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-3 pt-4 border-t border-border mb-8 text-sm">
-                      <div className="flex items-center text-text-secondary">
-                        <Check className="w-4 h-4 text-accent mr-3 flex-shrink-0" />
-                        <span>Up to <strong>{plan.limits?.maxClinics || 1} Clinic Branch(es)</strong></span>
-                      </div>
-                      <div className="flex items-center text-text-secondary">
-                        <Check className="w-4 h-4 text-accent mr-3 flex-shrink-0" />
-                        <span>Up to <strong>{plan.limits?.maxDoctors || 2} Doctor Profiles</strong></span>
-                      </div>
-                      <div className="flex items-center text-text-secondary">
-                        <Check className="w-4 h-4 text-accent mr-3 flex-shrink-0" />
-                        <span>Up to <strong>{plan.limits?.maxStaff || 5} Operational Staff</strong></span>
-                      </div>
-                      <div className="flex items-center text-text-secondary">
-                        <Check className="w-4 h-4 text-accent mr-3 flex-shrink-0" />
-                        <span><strong>{(plan.limits?.maxPatients || 500).toLocaleString()}</strong> Patient Records</span>
-                      </div>
-                      {plan.features?.analytics && (
-                        <div className="flex items-center text-text-secondary">
-                          <Check className="w-4 h-4 text-accent mr-3 flex-shrink-0" />
-                          <span>Advanced Analytics & Dashboard</span>
-                        </div>
-                      )}
-                      {plan.features?.auditLogs && (
-                        <div className="flex items-center text-text-secondary">
-                          <Check className="w-4 h-4 text-accent mr-3 flex-shrink-0" />
-                          <span>HIPAA / DISHA Audit Logs</span>
-                        </div>
-                      )}
-                      {plan.features?.aiFeatures && (
-                        <div className="flex items-center text-text-secondary">
-                          <Check className="w-4 h-4 text-accent mr-3 flex-shrink-0" />
-                          <span>Clinical AI Copilot & Transcription</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <Link
-                    href={isEnterprise ? "/contact" : `/onboarding?mode=new_org&plan=${encodeURIComponent(plan.id || "standard")}`}
-                    className={`w-full py-3.5 rounded-xl font-semibold text-center transition-all duration-200 flex items-center justify-center gap-2 min-h-[44px] ${
-                      plan.isPopular
-                        ? "bg-primary text-brand-mist hover:opacity-90 shadow-sm"
-                        : "bg-surface-alt hover:bg-surface-alt text-text border border-border"
-                    }`}
-                  >
-                    {isEnterprise ? "Contact Sales" : "Start 15-Day Free Trial"} <ArrowRight className="w-4 h-4" />
-                  </Link>
-                </div>
-              );
-            })}
-          </div>
+                    <p className="text-sm text-text-secondary mb-5">{plan.description}</p>
+                    <p className="text-3xl font-semibold break-words">{formatCurrency(price, plan.currency)} <span className="text-sm font-normal text-text-muted">/ month</span></p>
+                    {billingCycle === "annual" && <p className="text-xs text-text-secondary mt-1">Billed annually ({formatCurrency(plan.annualPrice, plan.currency)}/year)</p>}
+                    <p className="text-sm text-text-secondary mt-3">{plan.trialDays > 0 ? `${plan.trialDays}-day free trial` : "No free trial"}</p>
+                    <dl className="my-5 space-y-2 border-t border-border pt-4 text-sm">
+                      {capacityRows.slice(0, 4).map(row => <div key={row.key} className="flex justify-between gap-3"><dt className="text-text-secondary">{row.label}</dt><dd className="font-medium">{plan.limits?.[row.key]?.toLocaleString() ?? "—"}</dd></div>)}
+                    </dl>
+                    <ul className="space-y-1 text-sm text-text-secondary mb-5">
+                      {featureRows.filter(row => plan.features?.[row.key]).map(row => <li key={row.key}>{row.label}</li>)}
+                    </ul>
+                    <Link href={isEnterprise ? "mailto:ekavyuofficial@gmail.com" : `/onboarding?mode=new_org&plan=${encodeURIComponent(plan.slug)}`} className={`mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${plan.isPopular ? "bg-primary text-brand-mist hover:opacity-90" : "border border-border hover:bg-surface-hover"}`}>
+                      {isEnterprise ? "Contact Sales" : `Request ${plan.name} setup`} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </article>
+                );
+              })}
+            </section>
+            <details className="mt-6 rounded-xl border border-border bg-surface">
+              <summary className="cursor-pointer p-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Compare all limits and features</summary>
+              <div className="overflow-x-auto px-4 pb-4 touch-scroll focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring" tabIndex={0} role="region" aria-label="Plan feature comparison">
+                <table className="w-full min-w-[560px] text-left text-sm">
+                  <caption className="sr-only">Configured subscription plan limits and features</caption>
+                  <thead><tr className="border-b border-border"><th scope="col" className="p-3">Feature</th>{plans.map(plan => <th scope="col" className="p-3 text-center" key={plan.id || plan.slug}>{plan.name}</th>)}</tr></thead>
+                  <tbody>
+                    {capacityRows.map(row => <tr key={row.key} className="border-b border-border"><th scope="row" className="p-3 font-medium">{row.label}</th>{plans.map(plan => <td key={plan.id || plan.slug} className="p-3 text-center">{plan.limits?.[row.key]?.toLocaleString() ?? "—"}</td>)}</tr>)}
+                    {featureRows.map(row => <tr key={row.key} className="border-b border-border"><th scope="row" className="p-3 font-medium">{row.label}</th>{plans.map(plan => <td key={plan.id || plan.slug} className="p-3 text-center">{plan.features?.[row.key] ? "Included" : "Not included"}</td>)}</tr>)}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
         )}
-      </section>
-
-      {/* Feature Comparison Matrix */}
-      <section className="bg-surface/60 border-t border-b border-border py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-text mb-12">Detailed Feature Matrix</h2>
-
-          <div className="overflow-x-auto touch-scroll" tabIndex={0} role="region" aria-label="Plan feature comparison">
-            <table className="w-full text-left text-sm text-text-secondary min-w-[560px] sm:min-w-full">
-              <thead className="bg-background/80 text-text uppercase text-xs font-semibold">
-                <tr>
-                  <th className="py-4 px-6 rounded-l-xl">Feature</th>
-                  <th className="py-4 px-6 text-center">Starter</th>
-                  <th className="py-4 px-6 text-center">Professional</th>
-                  <th className="py-4 px-6 text-center rounded-r-xl">Enterprise</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                <tr>
-                  <td className="py-4 px-6 font-medium text-text">Clinics / Branches</td>
-                  <td className="py-4 px-6 text-center">1 Branch</td>
-                  <td className="py-4 px-6 text-center font-semibold text-accent">Up to 5 Branches</td>
-                  <td className="py-4 px-6 text-center">Unlimited</td>
-                </tr>
-                <tr>
-                  <td className="py-4 px-6 font-medium text-text">Doctors & Practitioners</td>
-                  <td className="py-4 px-6 text-center">Up to 2</td>
-                  <td className="py-4 px-6 text-center font-semibold text-accent">Up to 15</td>
-                  <td className="py-4 px-6 text-center">Unlimited</td>
-                </tr>
-                <tr>
-                  <td className="py-4 px-6 font-medium text-text">Patient Record Capacity</td>
-                  <td className="py-4 px-6 text-center">500 Records</td>
-                  <td className="py-4 px-6 text-center">5,000 Records</td>
-                  <td className="py-4 px-6 text-center font-semibold text-accent">Unlimited</td>
-                </tr>
-                <tr>
-                  <td className="py-4 px-6 font-medium text-text">Clinical AI Engine</td>
-                  <td className="py-4 px-6 text-center text-text-muted">—</td>
-                  <td className="py-4 px-6 text-center"><Check className="w-5 h-5 text-accent mx-auto" /></td>
-                  <td className="py-4 px-6 text-center"><Check className="w-5 h-5 text-accent mx-auto" /></td>
-                </tr>
-                <tr>
-                  <td className="py-4 px-6 font-medium text-text">Multi-Branch Support</td>
-                  <td className="py-4 px-6 text-center text-text-muted">—</td>
-                  <td className="py-4 px-6 text-center"><Check className="w-5 h-5 text-accent mx-auto" /></td>
-                  <td className="py-4 px-6 text-center"><Check className="w-5 h-5 text-accent mx-auto" /></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="mt-auto border-t border-border py-8 px-4 text-center text-xs text-text-muted">
-        © 2026 Ekavyu Healthcare Infrastructure Platform. All rights reserved. Razorpay Secured.
-      </footer>
+      </main>
+      <footer className="mt-auto border-t border-border p-6 text-center text-xs text-text-muted">© 2026 Ekavyu Healthcare Infrastructure Platform.</footer>
     </div>
   );
 }

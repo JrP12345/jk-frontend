@@ -103,7 +103,7 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] px-4 bg-surface-alt relative font-sans text-text animate-page-enter">
+    <div className="min-h-dvh flex flex-col items-center justify-center py-20 px-4 bg-surface-alt relative font-sans text-text animate-page-enter">
       {/* Background glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 brand-wash" />
@@ -121,7 +121,7 @@ function ResetPasswordForm() {
 
         <Card
           className={cn(
-            "shadow-xl border-border/80  bg-surface p-0 rounded-2xl overflow-hidden transition-transform duration-300",
+            "border-border bg-surface p-0 rounded-xl overflow-hidden transition-transform duration-300",
             isShaking && "animate-shake"
           )}
         >

@@ -1,0 +1,34 @@
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import Onboarding from "@/app/(auth)/onboarding/page";
+const fixture = vi.hoisted(() => ({ plans: vi.fn(), post: vi.fn(), query: "mode=new_org&plan=pro-id", user: null as null | { id: string; role: string }, loading: false }));
+vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(fixture.query), useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("@/store/authStore", () => ({ useAuthStore: () => ({ user: fixture.user, isLoading: fixture.loading }) }));
+vi.mock("@/services/billing.service", () => ({ billingService: { getPlans: fixture.plans } }));
+vi.mock("@/lib/api", () => ({ default: { post: fixture.post } }));
+afterEach(() => { cleanup(); vi.clearAllMocks(); fixture.user = null; fixture.loading = false; });
+it("prepares a request for the selected configured plan without provisioning or collecting credentials", async () => {
+  fixture.plans.mockResolvedValue([{ id: "pro-id", slug: "pro", name: "Practice Pro", trialDays: 9 }]);
+  render(<Onboarding />);
+  expect(await screen.findByText(/configured plan trial is 9 days/)).toBeInTheDocument();
+  expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
+  for (const [label, value] of [["Organization name", "Care & Health"], ["City", "Pune"], ["Contact name", "Asha"], ["Contact email", "asha@example.test"]]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  fireEvent.submit(screen.getByRole("button", { name: "Prepare setup request" }).closest("form")!);
+  const url = new URL(screen.getByRole("link", { name: "Open email draft" }).getAttribute("href")!);
+  expect(url.pathname).toBe("ekavyuofficial@gmail.com");
+  expect(url.searchParams.get("body")).toContain("Organization: Care & Health");
+  expect(url.searchParams.get("body")).toContain("Requested plan: Practice Pro");
+  expect(screen.getByText(/Nothing has been sent yet/)).toBeInTheDocument();
+  expect(fixture.post).not.toHaveBeenCalled();
+});
+it("recovers failed plan loading and waits for auth before choosing a setup flow", async () => {
+  fixture.loading = true;
+  fixture.plans.mockRejectedValueOnce(new Error("offline")).mockResolvedValue([]);
+  const view = render(<Onboarding />);
+  expect(fixture.plans).not.toHaveBeenCalled();
+  fixture.loading = false; view.rerender(<Onboarding />);
+  expect(await screen.findByText("Plans could not be loaded")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  await waitFor(() => expect(fixture.plans).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(screen.queryByText("Plans could not be loaded")).not.toBeInTheDocument());
+});

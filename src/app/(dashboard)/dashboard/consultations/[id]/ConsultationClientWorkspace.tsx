@@ -57,7 +57,7 @@ export function ConsultationClientWorkspace({
         let patientName = "Patient Profile";
         let patientGender = "Unknown";
         let patientDob = "N/A";
-        let patientMrn = "MRN-PENDING";
+        let patientMrn = "";
         let patientAllergies: string[] = [];
         let patientConditions: string[] = [];
 
@@ -71,7 +71,7 @@ export function ConsultationClientWorkspace({
             patientName = typeof pObj === "object" ? (pObj.userId?.name || pObj.name || "Patient") : "Patient";
             patientGender = typeof pObj === "object" ? (pObj.gender || "Unknown") : "Unknown";
             patientDob = typeof pObj === "object" ? (pObj.dob || "N/A") : "N/A";
-            patientMrn = typeof pObj === "object" ? (pObj.mrn || `MRN-${resolvedPatientId.substring(0, 6)}`) : "MRN-PENDING";
+            patientMrn = typeof pObj === "object" ? (pObj.mrn || "") : "";
             patientAllergies = typeof pObj === "object" ? (pObj.allergies || []) : [];
             patientConditions = typeof pObj === "object" ? (pObj.conditions || []) : [];
           }
@@ -174,6 +174,7 @@ export function ConsultationClientWorkspace({
   if (error || !encounterId || !patientData) {
     return (
       <div className="p-8 max-w-2xl mx-auto space-y-4">
+        <h1 className="sr-only">Consultation could not be opened</h1>
         <Alert variant="error" title="Consultation could not be opened">
           {error || "Please try again or return to the queue."}
         </Alert>
@@ -208,6 +209,7 @@ export function ConsultationClientWorkspace({
       clinicId={clinicId}
       doctorId={doctorId}
     >
+      <h1 className="sr-only">Consultation: {patientData.name}</h1>
       <EncounterWorkspace patient={patientData} />
     </EncounterProvider>
   );

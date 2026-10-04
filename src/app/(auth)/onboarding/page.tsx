@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, useToast, Stepper, ModeSwitcher, EkavyuLogo, Badge, Spinner, Checkbox, cn } from "@/components/ui";
 import { Eye, EyeOff, RefreshCw, ArrowLeft } from "lucide-react";
+import { OrganizationSetupRequest } from "@/components/organization/OrganizationSetupRequest";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const PHONE_REGEX = /^[0-9+\s-]{8,15}$/;
@@ -15,6 +16,14 @@ const STEPS = [
   { label: "Secure Account", description: "Google Authenticator" },
   { label: "You're Ready!", description: "Workspace Live" }
 ];
+
+function OnboardingEntry() {
+  const searchParams = useSearchParams();
+  const { user, isLoading } = useAuthStore();
+  if (isLoading) return <div className="min-h-dvh flex items-center justify-center"><Spinner label="Loading setup" /></div>;
+  if (user?.role !== "root" && !searchParams.get("key")) return <OrganizationSetupRequest planKey={searchParams.get("plan") || ""} />;
+  return <OnboardingInner />;
+}
 
 function OnboardingInner() {
   const [step, setStep] = useState(0);
@@ -334,13 +343,13 @@ function OnboardingInner() {
         <div className="text-center mb-6 select-none flex flex-col items-center justify-center">
           <EkavyuLogo size="md" className="mb-2" />
           <h1 className="text-xl font-bold text-text tracking-tight">Set Up Your Practice</h1>
-          <p className="text-text-secondary text-xs mt-0.5">Get your workspace ready in under 2 minutes</p>
+          <p className="text-text-secondary text-sm mt-1">Practice details, administrator account and security setup</p>
         </div>
 
         {/* Wizard Card Container */}
         <Card 
           className={cn(
-            "shadow-xl  border-border/50  bg-surface/90 transition-transform duration-300", 
+            "border-border bg-surface rounded-xl transition-transform duration-300",
             isShaking && "animate-shake"
           )}
         >
@@ -357,17 +366,16 @@ function OnboardingInner() {
             <Stepper steps={STEPS} currentStep={step} />
           </CardHeader>
           
-          <CardContent className="pt-5 sm:pt-6 max-h-[64vh] sm:max-h-[60vh] overflow-y-auto touch-scroll">
+          <CardContent className="pt-5 sm:pt-6">
             
             {/* ── STEP 0: Practice Profile + Admin + Optional Location ─────────── */}
             {step === 0 && (
               <form id="onboarding-step-0-form" onSubmit={handleCreatePractice} className="space-y-4 animate-fade-in">
                 <div className="text-center border-b border-border pb-3">
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    <Badge variant="primary" size="sm">⏱️ ~2 Minutes Setup</Badge>
                     {planParam && planParam !== "starter" && (
                       <Badge variant="info" size="sm" className="uppercase font-bold tracking-wide">
-                        {planParam} Tier
+                        Selected pricing plan
                       </Badge>
                     )}
                   </div>
@@ -610,10 +618,13 @@ function OnboardingInner() {
                 )}
 
                 <div className="max-w-xs mx-auto space-y-2">
-                  <label className="block text-xs font-bold text-text uppercase tracking-wider">
+                  <label htmlFor="setup-authenticator-code" className="block text-sm font-medium text-text">
                     Enter 6-Digit Authenticator Code
                   </label>
                   <Input
+                    id="setup-authenticator-code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     placeholder="123456"
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -757,7 +768,7 @@ export default function OnboardingPage() {
         </div>
       }
     >
-      <OnboardingInner />
+      <OnboardingEntry />
     </Suspense>
   );
 }

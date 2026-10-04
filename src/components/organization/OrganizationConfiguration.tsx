@@ -12,27 +12,29 @@ export function OrganizationNotifications({
   isRoot: propIsRoot,
   orgsLoading = false,
   organizationOnly = false,
+  personalOnly = false,
 }: {
   selectedOrgId?: string;
   isRoot?: boolean;
   orgsLoading?: boolean;
   organizationOnly?: boolean;
+  personalOnly?: boolean;
 }) {
   const { user } = useAuthStore();
   const isRoot = propIsRoot ?? user?.role === "root";
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: pref, isLoading: prefLoading } = useQuery({
-    queryKey: ["notification-preferences", selectedOrgId],
+  const { data: pref, isLoading: prefLoading, isError: prefError, refetch: retryPreferences } = useQuery({
+    queryKey: ["notification-preferences", user?.id],
     queryFn: () => notificationService.getPreferences(),
-    enabled: !organizationOnly && (!isRoot || !!selectedOrgId),
+    enabled: !organizationOnly && !!user && (!isRoot || personalOnly || !!selectedOrgId),
   });
 
   const { data: smtpData, isLoading: smtpLoading, isError: smtpError, refetch: retrySmtp } = useQuery({
     queryKey: ["smtp-config", selectedOrgId],
     queryFn: () => notificationService.getSmtpConfig(selectedOrgId),
-    enabled: !!isRoot && !!selectedOrgId,
+    enabled: !personalOnly && !!isRoot && !!selectedOrgId,
   });
 
   const [channels, setChannels] = useState({ email: true, inApp: true });
@@ -123,7 +125,8 @@ export function OrganizationNotifications({
     }
   };
 
-  if ((!organizationOnly && prefLoading) || (isRoot && (smtpLoading || !selectedOrgId || orgsLoading))) return <SkeletonForm fields={4} />;
+  if ((!organizationOnly && prefLoading) || (!personalOnly && isRoot && (smtpLoading || !selectedOrgId || orgsLoading))) return <SkeletonForm fields={4} />;
+  if (!organizationOnly && prefError) return <Alert variant="error" title="Notification preferences unavailable" action={<Button onClick={() => retryPreferences()}>Retry preferences</Button>}>Load your saved preferences before making changes.</Alert>;
   if (smtpError) return <Alert variant="error" title="Email gateway could not be loaded" action={<Button onClick={() => retrySmtp()}>Retry</Button>}>Retry before making changes.</Alert>;
 
   const smtpConfigured = !!(smtpData?.host && smtpData?.user && smtpData?.passIsSet);
@@ -167,7 +170,7 @@ export function OrganizationNotifications({
       </Card>}
 
       {/* Meta WhatsApp Business Gateway & Notification Credits */}
-      <WhatsAppSettingsCard selectedOrgId={selectedOrgId} isRoot={isRoot} orgsLoading={orgsLoading} />
+      {!personalOnly && <WhatsAppSettingsCard key={selectedOrgId || user?.organization_id} selectedOrgId={selectedOrgId} isRoot={isRoot} orgsLoading={orgsLoading} />}
 
       {/* Event Categories */}
       {!organizationOnly && <Card className="p-5 border border-border/80 shadow-xs rounded-2xl space-y-4 bg-surface">
@@ -204,7 +207,7 @@ export function OrganizationNotifications({
       </Card>}
 
       {/* Email Gateway (SMTP) */}
-      <Card className="p-5 border border-border/80 shadow-xs rounded-2xl space-y-4 bg-surface">
+      {!personalOnly && <Card className="p-5 border border-border/80 shadow-xs rounded-2xl space-y-4 bg-surface">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -345,7 +348,7 @@ export function OrganizationNotifications({
             </div>
           </div>
         )}
-      </Card>
+      </Card>}
     </div>
   );
 }

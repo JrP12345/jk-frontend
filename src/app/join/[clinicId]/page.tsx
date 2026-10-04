@@ -351,15 +351,15 @@ export default function JoinClinicQueuePage() {
       {/* Main Content Form */}
       <main className="max-w-md mx-auto px-4 pt-5">
         {/* Step Visual Indicator */}
-        <div className="mb-5 bg-primary rounded-2xl p-4 text-brand-mist shadow-lg ">
+        <div className="mb-4 border-b border-border pb-4 text-text">
           <div className="flex items-center justify-between text-xs font-semibold mb-1">
             <span>Fast Walk-In Registration</span>
-            <span className="bg-brand-ink/20 text-brand-mist px-2 py-0.5 rounded-full text-[10px]">Zero Login</span>
+            <span className="text-text-muted text-xs">No login needed</span>
           </div>
           <h2 className="text-lg font-extrabold tracking-tight">
             Join the Live Doctor Queue
           </h2>
-          <p className="text-xs text-brand-mist mt-0.5">
+          <p className="text-sm text-text-secondary mt-1">
             Fill your name & number below to instantly receive your token and live mobile tracking link.
           </p>
 
@@ -393,10 +393,12 @@ export default function JoinClinicQueuePage() {
             <CardContent className="px-4 pb-4 space-y-3.5">
               {/* Name */}
               <div>
-                <label className="block text-xs font-semibold text-text-secondary dark:text-text-secondary mb-1">
+                <label htmlFor="walk-in-name" className="block text-xs font-semibold text-text-secondary dark:text-text-secondary mb-1">
                   Full Name <span className="text-danger-text">*</span>
                 </label>
                 <input
+                  id="walk-in-name"
+                  autoComplete="name"
                   type="text"
                   required
                   placeholder="e.g. Ramesh Patel"
@@ -408,7 +410,7 @@ export default function JoinClinicQueuePage() {
 
               {/* Mobile Phone */}
               <div>
-                <label className="block text-xs font-semibold text-text-secondary dark:text-text-secondary mb-1">
+                <label htmlFor="walk-in-phone" className="block text-xs font-semibold text-text-secondary dark:text-text-secondary mb-1">
                   Mobile Number <span className="text-danger-text">*</span>
                 </label>
                 <div className="relative">
@@ -416,6 +418,10 @@ export default function JoinClinicQueuePage() {
                     <Phone className="w-4 h-4" />
                   </div>
                   <input
+                    id="walk-in-phone"
+                    autoComplete="tel"
+                    inputMode="tel"
+                    aria-describedby="walk-in-phone-hint"
                     type="tel"
                     required
                     placeholder="Phone (+country code outside India)"
@@ -425,7 +431,7 @@ export default function JoinClinicQueuePage() {
                     className="w-full pl-9 pr-3.5 py-2.5 text-sm rounded-xl border border-border dark:border-border bg-surface dark:bg-surface text-text dark:text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition"
                   />
                 </div>
-                <p className="text-[11px] text-text-muted dark:text-text-muted mt-1">
+                <p id="walk-in-phone-hint" className="text-[11px] text-text-muted dark:text-text-muted mt-1">
                   We use this to recover your existing token or send queue updates.
                 </p>
               </div>
@@ -440,6 +446,7 @@ export default function JoinClinicQueuePage() {
                     <button
                       type="button"
                       key={g}
+                      aria-pressed={gender === g}
                       onClick={() => setGender(g)}
                       className={cn(
                         "py-2.5 px-3 text-xs font-semibold rounded-xl capitalize border transition text-center min-h-[44px] flex items-center justify-center cursor-pointer",
@@ -456,10 +463,11 @@ export default function JoinClinicQueuePage() {
 
               {/* Reason / Notes (Optional) */}
               <div>
-                <label className="block text-xs font-semibold text-text-secondary dark:text-text-secondary mb-1">
+                <label htmlFor="walk-in-reason" className="block text-xs font-semibold text-text-secondary dark:text-text-secondary mb-1">
                   Reason for Visit / Symptoms <span className="text-text-muted font-normal">(Optional)</span>
                 </label>
                 <input
+                  id="walk-in-reason"
                   type="text"
                   placeholder="e.g. Fever, routine checkup, cough"
                   value={notes}
@@ -478,7 +486,7 @@ export default function JoinClinicQueuePage() {
                 Step 2: Select Doctor
               </CardTitle>
               <span className="text-[11px] text-text-muted font-medium">
-                {clinic.doctors.length} available
+                {clinic.doctors.length} doctors listed
               </span>
             </CardHeader>
             <CardContent className="px-4 pb-4 pt-1">

@@ -57,14 +57,14 @@ describe("organization management", () => {
     const entry = await screen.findByRole("button", { name: /Test organization with a long name/ });
     fireEvent.click(entry);
     expect(screen.getByRole("navigation", { name: "Organization sections" })).toBeInTheDocument();
-    expect(within(screen.getByRole("navigation", { name: "Organization sections" })).getByRole("button", { name: "Details & branding" })).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Organization sections" })).getByRole("tab", { name: "Details & branding" })).toBeInTheDocument();
     expect(switchOrg).not.toHaveBeenCalled();
   });
   it("gives an organization admin the same sections but restricts platform actions", async () => {
     useAuthStore.setState({ user: { id: "admin-1", name: "Admin", email: "admin@test", role: "admin", organization_id: org.id } });
     mount(<OrganizationsPage />);
     await screen.findByRole("heading", { name: org.name });
-    expect(within(screen.getByRole("navigation", { name: "Organization sections" })).getByRole("button", { name: "Details & branding" })).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Organization sections" })).getByRole("tab", { name: "Details & branding" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add organization" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Login as administrator" })).not.toBeInTheDocument();
     expect(screen.queryByText("Platform status and deletion")).not.toBeInTheDocument();

@@ -332,9 +332,10 @@ export default function AdminBillingPage() {
         <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-manipulation w-fit max-w-full">
           <button
             type="button"
+            aria-pressed={activeTab === "plans"}
             onClick={() => setActiveTab("plans")}
             className={cn(
-              "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+              "min-h-11 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 focus-visible:ring-2 focus-visible:ring-accent",
               activeTab === "plans"
                 ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -349,9 +350,10 @@ export default function AdminBillingPage() {
 
           <button
             type="button"
+            aria-pressed={activeTab === "subscriptions"}
             onClick={() => setActiveTab("subscriptions")}
             className={cn(
-              "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+              "min-h-11 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 focus-visible:ring-2 focus-visible:ring-accent",
               activeTab === "subscriptions"
                 ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -366,9 +368,10 @@ export default function AdminBillingPage() {
 
           <button
             type="button"
+            aria-pressed={activeTab === "razorpay"}
             onClick={() => setActiveTab("razorpay")}
             className={cn(
-              "px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+              "min-h-11 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 focus-visible:ring-2 focus-visible:ring-accent",
               activeTab === "razorpay"
                 ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -385,6 +388,7 @@ export default function AdminBillingPage() {
             <input
               type="text"
               placeholder="Search by organization..."
+              aria-label="Search organization subscriptions"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-1.5 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 transition-all"

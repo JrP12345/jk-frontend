@@ -341,8 +341,8 @@ export default function PatientsDirectoryPage() {
                 <Button
                   variant="outline"
                   size="xs"
-                  className="h-8 w-8 min-h-[36px] min-w-[36px] p-0 rounded-lg text-text-secondary hover:text-text cursor-pointer"
-                  aria-label="Actions menu"
+                  className="min-h-11 min-w-11 p-0 rounded-lg text-text-secondary hover:text-text cursor-pointer"
+                  aria-label={`Actions for ${p.userId?.name || "patient"}`}
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
@@ -437,15 +437,15 @@ export default function PatientsDirectoryPage() {
           icon={<FileText className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
-          label="Male Demographic"
+          label="Male on this page"
           value={maleCount.toString()}
-          description="Registered male patients"
+          description="In the current results"
           icon={<User className="w-5 h-5 text-text-secondary" />}
         />
         <StatCard
-          label="Female Demographic"
+          label="Female on this page"
           value={femaleCount.toString()}
-          description="Registered female patients"
+          description="In the current results"
           icon={<UserCheck className="w-5 h-5 text-text-secondary" />}
         />
       </div>
@@ -460,6 +460,7 @@ export default function PatientsDirectoryPage() {
               size="sm"
               icon={<Search className="w-4 h-4 text-text-muted" />}
               placeholder="Search patient by name, email, or phone number..."
+              aria-label="Search patients by name, email or phone"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onClear={() => {
@@ -480,6 +481,7 @@ export default function PatientsDirectoryPage() {
           </div>
 
           <Select
+            aria-label="Filter patients by gender"
             value={genderFilter}
             onChange={(e) => {
               setGenderFilter(e.target.value);

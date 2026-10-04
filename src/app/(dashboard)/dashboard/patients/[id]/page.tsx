@@ -7,7 +7,7 @@ import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { PatientService } from "@/services/patient.service";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge, Table, Column, Spinner, Skeleton, SkeletonCard, Tabs, Modal, Input, Textarea, Select, useToast } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge, Table, Column, Spinner, Skeleton, SkeletonCard, Tabs, Modal, Input, Textarea, Select, useToast } from "@/components/ui";
 import dynamic from "next/dynamic";
 import PatientHistoryAccess from "@/components/ehr/PatientHistoryAccess";
 import { PatientHeader } from "@/components/clinical/PatientHeader";
@@ -69,6 +69,7 @@ export default function PatientDetailPage() {
   const [labOrders, setLabOrders] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
 
   // Edit Profile Modal state
@@ -91,6 +92,7 @@ export default function PatientDetailPage() {
     const requestId = ++profileRequest.current;
     try {
       setLoading(true);
+      setLoadError(null);
       const response = await api.get(`/patients/${patientId}${recordAccessToken ? "?scope=all" : ""}`, { headers: recordAccessToken ? { "X-Patient-Record-Access": recordAccessToken } : {} });
       if (requestId !== profileRequest.current) return;
       const res = response.data.data;
@@ -130,6 +132,7 @@ export default function PatientDetailPage() {
 
     } catch (err: any) {
       if (requestId !== profileRequest.current) return;
+      setLoadError("The patient record could not be loaded. Check your connection or access and try again.");
       toast({
         title: "Failed to Load Patient Profile",
         description: err.response?.data?.message || err.message || "Patient record not found",
@@ -245,12 +248,13 @@ export default function PatientDetailPage() {
             </svg>
           </div>
           <div>
-            <h2 className="text-base font-bold text-text">Patient Record Not Found</h2>
+            <h1 className="text-lg font-semibold text-text">{loadError ? "Unable to load patient record" : "Patient Record Not Found"}</h1>
             <p className="text-xs text-text-muted mt-1 leading-relaxed">
-              The requested patient profile could not be located or has been archived.
+              {loadError || "The requested patient profile could not be located or has been archived."}
             </p>
           </div>
           <div className="pt-2">
+            {loadError && <Button variant="outline" onClick={loadPatientDetails} className="mb-3 w-full">Try again</Button>}
             <Link href="/dashboard/patients">
               <Button variant="outline" size="sm" className="rounded-xl font-semibold">
                 Back to Patient Directory
@@ -265,7 +269,7 @@ export default function PatientDetailPage() {
   const patientName = patientData.name || patientData.userId?.name || "Patient Record";
   const patientEmail = patientData.email || patientData.userId?.email || "";
   const patientPhone = patientData.phone || patientData.userId?.phone || "";
-  const mrnCode = patientData.mrn || `MRN-${patientId.substring(0, 6).toUpperCase()}`;
+  const mrnCode = patientData.mrn || undefined;
 
   const headerData = {
     id: patientId,
@@ -363,9 +367,11 @@ export default function PatientDetailPage() {
 
   return (
     <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-12">
+      <h1 className="sr-only">Patient profile: {patientName}</h1>
+      {loadError && <Alert variant="warning" title="Patient information may be out of date" action={<Button variant="outline" size="sm" onClick={loadPatientDetails}>Try again</Button>}>{loadError}</Alert>}
       {/* Top Breadcrumb Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <Link href="/dashboard/patients" className="text-xs text-text-muted hover:text-accent flex items-center gap-1 font-semibold transition-colors min-h-[36px]">
+        <Link href="/dashboard/patients" className="text-sm text-text-secondary hover:text-accent flex items-center gap-1 font-medium transition-colors min-h-11">
           ← Back to Patients Directory
         </Link>
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 w-full sm:w-auto">

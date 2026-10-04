@@ -278,9 +278,10 @@ export default function ConsultationsPage() {
               <button
                 key={s.key}
                 type="button"
+                aria-pressed={statusFilter === s.key}
                 onClick={() => setStatusFilter(s.key)}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0 min-h-[36px] sm:min-h-[32px]",
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
                   statusFilter === s.key
                     ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                     : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -307,9 +308,10 @@ export default function ConsultationsPage() {
             <input
               type="text"
               placeholder="Search patient, doctor, complaint..."
+              aria-label="Search consultations by patient, doctor or complaint"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 transition-all"
+              className="w-full min-h-11 pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-base md:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 transition-all"
             />
           </div>
         </div>

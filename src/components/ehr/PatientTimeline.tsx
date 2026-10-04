@@ -78,7 +78,7 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
       const data = res.data?.data || res.data;
       setAiExplanationText(data.answer || data.text || "AI analysis completed.");
     } catch {
-      setAiExplanationText(`This record documents ${event.displayMetadata.statusLabel.toLowerCase()} recorded by ${event.actor.name}. All findings are preserved in your Universal Health Vault.`);
+      setAiExplanationText("The explanation could not be loaded. Please use the original record shown above or ask your care team for help understanding it.");
     } finally {
       setAiExplanationLoading(false);
     }
@@ -174,9 +174,11 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
           ].map((cat) => (
             <button
               key={cat.id}
+              type="button"
+              aria-pressed={category === cat.id}
               onClick={() => setCategory(cat.id)}
               className={cn(
-                "px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
+                "min-h-11 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
                 category === cat.id
                   ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                   : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -193,10 +195,11 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
             <input
               type="text"
+              aria-label="Search patient history"
               placeholder="Search diagnoses, meds, labs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-surface-alt border border-border/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 text-text"
+              className="w-full min-h-11 pl-9 pr-3 py-1.5 text-base md:text-sm bg-surface-alt border border-border/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 text-text"
             />
           </form>
 
@@ -216,8 +219,9 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
       {loading && events.length === 0 ? (
         <div className="py-12 text-center text-sm text-text-muted">Loading patient health records timeline...</div>
       ) : error ? (
-        <div className="p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger-text dark:text-danger-text text-sm">
-          {error}
+        <div role="alert" className="p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger-text dark:text-danger-text text-sm space-y-3">
+          <p>{error}</p>
+          <Button variant="outline" onClick={() => fetchTimeline()}>Try again</Button>
         </div>
       ) : events.length === 0 ? (
         <div className="py-12 text-center text-sm text-text-muted">No clinical timeline events found matching filters.</div>
@@ -312,7 +316,7 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
         {selectedExplainerEvent && (
           <div className="space-y-4 text-xs">
             <div className="flex items-center gap-2">
-              <Badge variant="primary">Grounded Real AI Analysis</Badge>
+              <Badge variant="primary">Record explanation</Badge>
               <span className="text-text-muted">{new Date(selectedExplainerEvent.occurredAt).toLocaleDateString()}</span>
             </div>
 

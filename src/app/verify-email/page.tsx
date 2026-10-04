@@ -60,7 +60,7 @@ function VerifyEmailContent() {
           <EkavyuLogo size="xl" showTagline className="mb-2" />
         </div>
 
-        <Card className="border-border/60 shadow-xl  bg-card/95">
+        <Card className="border-border bg-surface rounded-xl">
           <CardHeader className="text-center pb-2">
             {status === "loading" && (
               <div className="mx-auto my-4 w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-accent">
@@ -86,7 +86,7 @@ function VerifyEmailContent() {
               </div>
             )}
 
-            <CardTitle className="text-2xl font-bold tracking-tight">
+            <CardTitle as="h1" className="text-xl sm:text-2xl font-semibold tracking-tight">
               {status === "loading" && "Verifying your email..."}
               {status === "success" && "Email Verified!"}
               {status === "error" && "Verification Failed"}
@@ -95,7 +95,7 @@ function VerifyEmailContent() {
 
             <CardDescription className="text-muted-foreground mt-2">
               {status === "loading" && "Please wait while we confirm your account details."}
-              {status === "success" && "Your Ekavyu account email has been verified. You now have full access."}
+              {status === "success" && "Your Ekavyu account email has been verified. Sign in to continue."}
               {status === "error" && errorMessage}
               {status === "no_token" && "No verification token was detected in your link. Please check your email inbox."}
             </CardDescription>

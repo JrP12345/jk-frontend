@@ -132,15 +132,15 @@ export default async function DoctorPage({ params, searchParams }: { params: Pro
         </nav>
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)]">
           <div className="contents">
-            <section className="order-1 min-w-0 rounded-3xl border border-border bg-surface p-5 sm:p-8 lg:col-start-1 lg:row-start-1" style={selectedLocation ? { borderTop: `4px solid ${selectedLocation.brandColor}` } : undefined}>
+            <section className="order-1 min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-6 lg:col-start-1 lg:row-start-1" style={selectedLocation ? { borderTop: `4px solid ${selectedLocation.brandColor}` } : undefined}>
               <p className="text-xs font-semibold uppercase tracking-wide text-accent">Doctor profile</p>
-              <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-start">
+              <div className="mt-3 flex items-start gap-3 sm:gap-4">
                 {doctor.imageUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={doctor.imageUrl} alt={doctor.name} className="h-28 w-28 rounded-2xl border border-border object-cover" />
-                ) : <div aria-hidden="true" className="flex h-28 w-28 items-center justify-center rounded-2xl bg-primary-500/10 text-4xl font-bold text-accent">{doctor.name.slice(0, 1)}</div>}
+                  <img src={doctor.imageUrl} alt={doctor.name} className="h-16 w-16 sm:h-24 sm:w-24 shrink-0 rounded-xl border border-border object-cover" />
+                ) : <div aria-hidden="true" className="flex h-16 w-16 sm:h-24 sm:w-24 shrink-0 items-center justify-center rounded-xl bg-primary-500/10 text-2xl font-semibold text-accent">{doctor.name.slice(0, 1)}</div>}
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-2xl font-bold sm:text-3xl">{doctor.name}</h1>
+                  <h1 className="text-xl font-semibold sm:text-2xl break-words">{doctor.name}</h1>
                   <p className="mt-1 text-base font-medium text-accent">{doctor.specialization}</p>
                   <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-secondary">
                     {doctor.qualification && <span>{doctor.qualification}</span>}

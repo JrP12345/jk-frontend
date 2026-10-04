@@ -134,7 +134,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-surface-alt relative font-sans text-text animate-page-enter">
+    <div className="min-h-dvh flex flex-col items-center justify-center px-4 py-20 bg-surface-alt relative font-sans text-text animate-page-enter">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 brand-wash" />
       </div>
@@ -163,7 +163,7 @@ export default function RegisterPage() {
 
         <Card
           className={cn(
-            "shadow-xl border-border/80  bg-surface p-0 rounded-2xl overflow-hidden transition-transform duration-300",
+            "border-border bg-surface p-0 rounded-xl overflow-hidden transition-transform duration-300",
             isShaking && "animate-shake"
           )}
         >
@@ -212,8 +212,8 @@ export default function RegisterPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-text-secondary mb-1">Gender</label>
                     <Select
+                      label="Gender"
                       value={formData.gender}
                       onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                       options={[

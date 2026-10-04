@@ -1,0 +1,24 @@
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import Feedback from "@/app/(dashboard)/dashboard/feedback/page";
+import { ToastProvider } from "@/components/ui/Toast";
+const fixture = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), user: { id: "staff", role: "admin" } }));
+vi.mock("@/lib/api", () => ({ default: { get: fixture.get, post: fixture.post } }));
+vi.mock("@/store/authStore", () => ({ useAuthStore: () => ({ user: fixture.user }) }));
+vi.mock("@/store/clinicStore", () => ({ useClinicStore: () => ({ activeClinicId: "clinic" }) }));
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
+it("submits the selected completed visit and ratings through the pinned action", async () => {
+  fixture.get.mockImplementation(async (url: string) => ({ data: { success: true, data: url.startsWith("/appointments") ? [{ id: "completed-visit", status: "completed", doctorId: { name: "Doctor" }, patientId: { name: "Patient" } }] : url.startsWith("/feedback/stats") ? { totalResponses: 0, averageCsatRating: 0, netPromoterScore: 0, npsCategory: "No responses", averageAspectRatings: { waitTime: null, doctorAttitude: null, cleanliness: null } } : [] } }));
+  let finish!: (result: unknown) => void;
+  fixture.post.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  render(<ToastProvider><Feedback /></ToastProvider>);
+  await waitFor(() => expect(fixture.get).toHaveBeenCalledWith("/appointments?clinicId=clinic"));
+  fireEvent.click(screen.getByRole("button", { name: "Submit Patient Survey" }));
+  await waitFor(() => expect(screen.getByRole("combobox", { name: "Select completed clinical visit" })).toHaveValue("completed-visit"));
+  fireEvent.change(screen.getByRole("spinbutton", { name: "Net Promoter Score" }), { target: { value: "7" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save Patient Feedback" }));
+  await waitFor(() => expect(fixture.post).toHaveBeenCalledWith("/feedback", { appointmentId: "completed-visit", rating: 5, npsScore: 7, comments: "", aspectRatings: { waitTime: 5, doctorAttitude: 5, cleanliness: 5 } }));
+  expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+  finish({ data: { success: true } });
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Save Patient Feedback" })).not.toBeInTheDocument());
+});

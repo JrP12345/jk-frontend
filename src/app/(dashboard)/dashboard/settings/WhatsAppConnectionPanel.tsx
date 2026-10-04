@@ -2,10 +2,12 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 import { Button, Input, Toggle, Badge, useToast } from "@/components/ui";
 
-export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode }: { organizationId?: string; isRoot: boolean; mode: string }) {
-  const platform = isRoot && mode === "shared";
+export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode, scope = "organization" }: { organizationId?: string; isRoot: boolean; mode: string; scope?: "organization" | "platform" }) {
+  const { user } = useAuthStore();
+  const platform = scope === "platform" && isRoot && user?.role === "root";
   const base = platform ? "/admin/whatsapp" : "/organization/whatsapp";
   const params = !platform && organizationId ? { organizationId } : undefined;
   const queryClient = useQueryClient();
@@ -16,8 +18,10 @@ export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode }
   const [appSecret, setAppSecret] = useState("");
   const [enabled, setEnabled] = useState<boolean | undefined>();
   const health = useQuery({ queryKey: ["whatsapp-health", base, organizationId], queryFn: async () => (await api.get(`${base}/health`, { params })).data.data,
-    enabled: mode !== "disabled", refetchInterval: 15_000 });
+    enabled: mode !== "disabled" && (scope !== "platform" || platform) && (platform || !!organizationId || !!user?.organization_id), refetchInterval: 15_000 });
   const mutation = useMutation({ mutationFn: async (action: string) => {
+    if (scope === "platform" && !platform) throw new Error("Platform messaging requires Root");
+    if (health.isPending || health.isError || !health.data) throw new Error("Load the saved connection before making changes");
     if (action === "save") return api.patch(base, { enabled: enabled ?? health.data?.connection.enabled ?? false,
       wabaId: wabaId.trim() || undefined, phoneNumberId: phoneNumberId.trim() || undefined, accessToken: accessToken.trim() || undefined, appSecret: appSecret.trim() || undefined });
     return api.post(`${base}/${action}`, {}, { params });
@@ -27,7 +31,7 @@ export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode }
     queryClient.invalidateQueries({ queryKey: ["whatsapp-settings"] });
     toast({ title: "WhatsApp setup updated", description: result.data.message || "Credentials saved securely", variant: "success" });
   }, onError: (error: any) => toast({ title: "WhatsApp setup failed", description: error.response?.data?.message || "Please try again", variant: "error" }) });
-  if (mode === "disabled") return null;
+  if (mode === "disabled" || (scope === "platform" && !platform)) return null;
   const data = health.data;
   return <div className="space-y-4 rounded-2xl border border-border p-4">
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -45,7 +49,7 @@ export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode }
         <Input label="Meta app secret" type="password" autoComplete="new-password" value={appSecret} placeholder={data?.connection.hasAppSecret ? "Saved — leave blank to keep" : "Paste app secret"} onChange={e => setAppSecret(e.target.value)} />
       </div>
       <Toggle checked={enabled ?? data?.connection.enabled ?? false} onChange={setEnabled} label="Enable shared gateway" />
-      <Button onClick={() => mutation.mutate("save")} disabled={mutation.isPending} loading={mutation.isPending && mutation.variables === "save"}>Save platform credentials</Button>
+      <Button onClick={() => mutation.mutate("save")} disabled={mutation.isPending || health.isPending || health.isError} loading={mutation.isPending && mutation.variables === "save"}>Save platform credentials</Button>
     </div>}
     {(platform || mode === "dedicated") && <>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -54,8 +58,8 @@ export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode }
       </div>
       <p className="text-xs text-text-muted">Save your credentials first, then test the connection and sync templates. Configure this HTTPS callback in Meta and subscribe to messages and template updates.</p>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" disabled={mutation.isPending} loading={mutation.isPending && mutation.variables === "test"} onClick={() => mutation.mutate("test")}>Test connection</Button>
-        <Button variant="outline" disabled={mutation.isPending} loading={mutation.isPending && mutation.variables === "templates/sync"} onClick={() => mutation.mutate("templates/sync")}>Sync templates</Button>
+        <Button variant="outline" disabled={mutation.isPending || health.isPending || health.isError} loading={mutation.isPending && mutation.variables === "test"} onClick={() => mutation.mutate("test")}>Test connection</Button>
+        <Button variant="outline" disabled={mutation.isPending || health.isPending || health.isError} loading={mutation.isPending && mutation.variables === "templates/sync"} onClick={() => mutation.mutate("templates/sync")}>Sync templates</Button>
       </div>
     </>}
     {!!data?.issues?.length && <ul className="list-disc space-y-1 pl-5 text-xs text-text-muted">{data.issues.map((issue: string) => <li key={issue}>{issue}</li>)}</ul>}

@@ -1193,7 +1193,7 @@ export default function BrowseDetailClient({
           <Link
             href="/browse"
             aria-label={"Back to clinics"}
-            className="text-xs font-semibold text-text-muted hover:text-accent transition-colors inline-flex items-center gap-1 shrink-0 py-1 px-2 rounded-lg hover:bg-surface-alt min-h-[36px]"
+            className="text-sm font-medium text-text-muted hover:text-accent inline-flex items-center gap-1 shrink-0 py-1 px-2 rounded-lg hover:bg-surface-alt min-h-11"
           >
             <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.75} />
             <span className="hidden xs:inline">{"Back to Clinics"}</span>
@@ -1205,7 +1205,7 @@ export default function BrowseDetailClient({
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6">
         <div className="bg-surface border border-border rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs" style={{ borderTop: `4px solid ${clinic.brandColor || "#0F6F66"}` }}>
           {/* Visual Cover Header */}
-          {hasCoverImage && <div className="h-32 xs:h-40 sm:h-56 w-full relative bg-surface-alt overflow-hidden">
+          {hasCoverImage && <div className="h-24 sm:h-40 w-full relative bg-surface-alt overflow-hidden">
             {clinic.image_url ? (
               <img src={clinic.image_url} alt={clinic.name} className="w-full h-full object-cover" />
             ) : (
@@ -1337,17 +1337,17 @@ export default function BrowseDetailClient({
               </div>
             </div>
 
-            {clinic.description && <p className="max-w-3xl whitespace-pre-line text-sm leading-6 text-text-secondary">{clinic.description}</p>}
+            {clinic.description && <details className="border-t border-border pt-2"><summary className="cursor-pointer py-2 text-sm font-medium">About this clinic</summary><p className="max-w-3xl whitespace-pre-line text-sm leading-6 text-text-secondary pb-2">{clinic.description}</p></details>}
 
             {/* Facilities Tags */}
             {clinic.facilities && clinic.facilities.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
+              <details className="border-t border-border pt-2"><summary className="cursor-pointer py-2 text-sm font-medium">Facilities ({clinic.facilities.length})</summary><div className="flex flex-wrap gap-1.5 pb-2">
                 {clinic.facilities.map((fac, idx) => (
                   <span key={idx} className="text-[10px] font-medium bg-surface-alt text-text-secondary px-2 py-0.5 rounded-md border border-border">
                     {fac}
                   </span>
                 ))}
-              </div>
+              </div></details>
             )}
           </div>
         </div>

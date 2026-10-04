@@ -210,16 +210,14 @@ export default function PublicSelfCheckInKiosk() {
 
         {/* Kiosk Branding Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-500/10 border border-primary-500/20 text-xs font-bold text-accent dark:text-accent">
-            🏥 Staff Reception Kiosk • Authenticated Check-In
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-text tracking-tight">Ekavyu Health Desk</h1>
+          <p className="text-sm text-text-secondary">Reception check-in</p>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-text tracking-tight">Check in an appointment</h1>
           <p className="text-xs sm:text-sm text-text-muted max-w-md mx-auto leading-relaxed">
             Reception staff can check in a confirmed appointment below. Patients should use the private tracker link sent with their booking.
           </p>
         </div>
 
-        <Card className="border-border/80 shadow-lg rounded-3xl overflow-hidden bg-surface">
+        <Card className="border-border rounded-xl overflow-hidden bg-surface">
           {!checkInResult ? (
             <div>
               {/* Segmented Mode Selector */}
@@ -227,6 +225,7 @@ export default function PublicSelfCheckInKiosk() {
                 <button
                   type="button"
                   onClick={() => setMode("token")}
+                  aria-pressed={mode === "token"}
                   className={cn(
                     "flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]",
                     mode === "token"
@@ -241,6 +240,7 @@ export default function PublicSelfCheckInKiosk() {
                 <button
                   type="button"
                   onClick={() => setMode("phone")}
+                  aria-pressed={mode === "phone"}
                   className={cn(
                     "flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]",
                     mode === "phone"
@@ -253,12 +253,13 @@ export default function PublicSelfCheckInKiosk() {
                 </button>
               </div>
 
-              <CardContent className="p-6 sm:p-8 space-y-6">
+              <CardContent className="p-4 sm:p-6 space-y-5">
                 {mode === "token" ? (
                   <form onSubmit={handleCheckInByToken} className="space-y-6">
                     <div className="text-center space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-text-muted">Appointment ID</label>
+                      <label htmlFor="reception-appointment" className="text-sm font-medium text-text-secondary">Appointment ID</label>
                       <Input
+                        id="reception-appointment"
                         type="text"
                         placeholder="Appointment reference"
                         className="text-center font-mono text-sm h-12 rounded-xl border border-primary-500/40 focus:border-primary-500"
@@ -267,8 +268,9 @@ export default function PublicSelfCheckInKiosk() {
                         autoFocus
                         required
                       />
-                      <label className="text-xs font-bold uppercase tracking-wider text-text-muted">Clinic ID</label>
+                      <label htmlFor="reception-clinic" className="text-sm font-medium text-text-secondary">Clinic ID</label>
                       <Input
+                        id="reception-clinic"
                         type="text"
                         placeholder="Clinic reference"
                         className="text-center font-mono text-sm h-12 rounded-xl border border-primary-500/40 focus:border-primary-500"
@@ -276,8 +278,9 @@ export default function PublicSelfCheckInKiosk() {
                         onChange={(e) => setInputClinicId(e.target.value)}
                         required
                       />
-                      <label className="text-xs font-bold uppercase tracking-wider text-text-muted">Queue Token #</label>
+                      <label htmlFor="reception-token" className="text-sm font-medium text-text-secondary">Queue token</label>
                       <Input
+                        id="reception-token"
                         type="number"
                         placeholder="e.g. 1, 2, 14..."
                         className="text-center text-4xl sm:text-5xl font-black tracking-widest h-20 rounded-2xl border-2 border-primary-500/40 focus:border-primary-500 shadow-inner"
@@ -302,10 +305,13 @@ export default function PublicSelfCheckInKiosk() {
                   <form onSubmit={handleCheckInByPhone} className="space-y-6">
                     <Select label="Clinic" placeholder="Select the appointment clinic" value={inputClinicId} options={clinics.map(c => ({ value: c.id, label: c.name }))} onChange={e => { setInputClinicId(e.target.value); setCandidates([]); }} required />
                     <div className="text-center space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider text-text-muted">
+                      <label htmlFor="reception-phone" className="text-sm font-medium text-text-secondary">
                         Enter Patient Mobile Number
                       </label>
                       <Input
+                        id="reception-phone"
+                        autoComplete="tel"
+                        inputMode="tel"
                         type="tel"
                         placeholder="e.g. 9876543210"
                         className="text-center text-3xl font-black tracking-wider h-20 rounded-2xl border-2 border-primary-500/40 focus:border-primary-500 shadow-inner"
@@ -326,7 +332,7 @@ export default function PublicSelfCheckInKiosk() {
                       <span>Find today's appointments</span>
                       <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
-                    {candidates.map(a => <Button key={a.id || a._id} type="button" variant="outline" disabled={submitting} className="w-full whitespace-normal" onClick={() => checkInSelectedVisit(a)}>Token #{a.tokenNumber} ? {a.patientId?.userId?.name || a.patientId?.name || "Patient"} ? Dr. {a.doctorId?.name || "Doctor"} ? {new Date(a.appointmentTime).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})} ? {a.status}</Button>)}
+                    {candidates.map(a => <Button key={a.id || a._id} type="button" variant="outline" disabled={submitting} className="w-full whitespace-normal" onClick={() => checkInSelectedVisit(a)}>Token #{a.tokenNumber} · {a.patientId?.userId?.name || a.patientId?.name || "Patient"} · Dr. {a.doctorId?.name || "Doctor"} · {new Date(a.appointmentTime).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})} · {a.status}</Button>)}
                   </form>
                 )}
               </CardContent>

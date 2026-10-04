@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { browserSupportsWebAuthn, startRegistration } from "@simplewebauthn/browser";
-import { Button, Card, Input, Toggle, Skeleton, useToast, Badge } from "@/components/ui";
+import { Alert, Button, Card, Input, Toggle, Skeleton, useToast, Badge } from "@/components/ui";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
@@ -17,10 +17,13 @@ export default function AccountSecurityPage() {
   const [owners, setOwners] = useState<Owner[]>([]);
   const [limits, setLimits] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [supported, setSupported] = useState(false);
   const [haptics, setHaptics] = useState(true);
   const load = async () => {
+    setLoading(true);
+    setLoadError(false);
     try {
       const result = await api.get("/auth/passkeys");
       setKeys(result.data.data || []);
@@ -29,7 +32,7 @@ export default function AccountSecurityPage() {
         setOwners(policies.data.data || []);
         setLimits(Object.fromEntries((policies.data.data || []).map((owner: Owner) => [owner.id, owner.limit === null ? "" : String(owner.limit)])));
       }
-    } catch (error: any) { toast({ title: "Could not load account security", description: error.response?.data?.message || "Please try again.", variant: "error" }); }
+    } catch (error: any) { setLoadError(true); toast({ title: "Could not load account security", description: error.response?.data?.message || "Please try again.", variant: "error" }); }
     finally { setLoading(false); }
   };
   useEffect(() => {
@@ -68,6 +71,7 @@ export default function AccountSecurityPage() {
     finally { setBusy(null); }
   };
   if (user?.impersonatedBy) return <Card className="p-5">Return to your own account to manage account security.</Card>;
+  if (loadError) return <div className="space-y-4 max-w-4xl mx-auto"><h1 className="text-2xl font-bold">Account security</h1><Alert variant="error" title="Security settings unavailable" action={<Button variant="outline" onClick={load}>Try again</Button>}>Your passkeys and session policies could not be loaded.</Alert></div>;
   return <div className="space-y-5 max-w-4xl mx-auto pb-24">
     <div><h1 className="text-2xl font-bold text-text">Account security</h1><p className="text-sm text-text-secondary mt-1">Manage your passkeys and device preferences.</p></div>
     <Card className="p-4 sm:p-6 space-y-4">

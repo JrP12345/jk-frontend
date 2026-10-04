@@ -15,6 +15,9 @@ export interface OrganizationMember { id: string; name: string; email: string; p
 export function organizationPath(path: string, organizationId?: string) {
   return organizationId ? `${path}${path.includes("?") ? "&" : "?"}organizationId=${encodeURIComponent(organizationId)}` : path;
 }
+export function organizationWorkspaceUrl(organizationId?: string, section = "overview") {
+  return organizationId ? `${organizationPath("/dashboard/organizations", organizationId)}&section=${encodeURIComponent(section)}` : "/dashboard/organizations";
+}
 export function organizationImageUrl(value?: string | null, organizationId?: string, slot: string | number = "logo_url") {
   if (!value) return undefined;
   if (/^(https?:|blob:|data:)/i.test(value)) return value;

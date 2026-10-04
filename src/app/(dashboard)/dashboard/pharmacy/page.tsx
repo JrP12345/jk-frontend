@@ -514,8 +514,9 @@ export default function PharmacyPage() {
         <button
           type="button"
           onClick={() => setActiveTab("inventory")}
+          aria-pressed={activeTab === "inventory"}
           className={cn(
-            "px-3.5 py-2 min-h-[38px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+            "px-3.5 py-2 min-h-11 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
             activeTab === "inventory"
               ? "bg-surface text-text shadow-xs font-bold border border-border/60"
               : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -531,8 +532,9 @@ export default function PharmacyPage() {
         <button
           type="button"
           onClick={() => setActiveTab("alerts")}
+          aria-pressed={activeTab === "alerts"}
           className={cn(
-            "px-3.5 py-2 min-h-[38px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+            "px-3.5 py-2 min-h-11 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
             activeTab === "alerts"
               ? "bg-surface text-text shadow-xs font-bold border border-border/60"
               : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -550,8 +552,9 @@ export default function PharmacyPage() {
         <button
           type="button"
           onClick={() => setActiveTab("dispensing")}
+          aria-pressed={activeTab === "dispensing"}
           className={cn(
-            "px-3.5 py-2 min-h-[38px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+            "px-3.5 py-2 min-h-11 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
             activeTab === "dispensing"
               ? "bg-surface text-text shadow-xs font-bold border border-border/60"
               : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -844,6 +847,7 @@ export default function PharmacyPage() {
               <input
                 type="text"
                 placeholder="Find prescription by Patient Name, Token # (e.g. #14), or Medicine..."
+                aria-label="Search pending prescriptions"
                 value={dispenseSearch}
                 onChange={(e) => setDispenseSearch(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-surface-alt rounded-xl text-xs text-text border border-border/70 focus:outline-none focus:ring-2 focus:ring-focus-ring"

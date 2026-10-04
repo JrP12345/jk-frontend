@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { canViewAnalytics } from "@/lib/permissions";
-import { Card, CardHeader, CardTitle, CardContent, Button, Table, useToast, Badge, StatCard, SkeletonCard, SkeletonTable, ChartContainer, DonutChart, cn } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardContent, Button, Table, useToast, Badge, StatCard, SkeletonCard, SkeletonTable, ChartContainer, DonutChart, cn } from "@/components/ui";
 import { RotateCw, IndianRupee, AlertCircle, Building2, Boxes } from "lucide-react";
 
 interface ClinicPerformance {
@@ -48,10 +48,12 @@ export default function AnalyticsPage() {
 
   const displayMetric = (value: unknown, suffix = "") => value === null || value === undefined ? "—" : `${value}${suffix}`;
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const [execData, qData, nabhData] = await Promise.all([
         AnalyticsService.getExecutiveAnalytics(),
         AnalyticsService.getQualityMetrics().catch(() => null),
@@ -61,6 +63,7 @@ export default function AnalyticsPage() {
       setQualityMetrics(qData);
       setNabhKpis(nabhData);
     } catch (err) {
+      setLoadError(true);
       toast({
         title: "Error",
         description: "Failed to load executive analytics reports",
@@ -76,6 +79,10 @@ export default function AnalyticsPage() {
       fetchAnalytics();
     }
   }, [user]);
+
+  if (!user || !canViewAnalytics(user)) {
+    return <Alert variant="warning" title="Analytics access required">Your account does not have access to these reports.</Alert>;
+  }
 
   if (loading) {
     return (
@@ -96,6 +103,10 @@ export default function AnalyticsPage() {
         </div>
       </div>
     );
+  }
+
+  if (loadError) {
+    return <div className="space-y-4"><h1 className="text-xl font-semibold">Analytics overview</h1><Alert variant="error" title="Reports could not be loaded" action={<Button variant="outline" onClick={fetchAnalytics}>Try again</Button>}>Check your connection and try again.</Alert></div>;
   }
 
   if (!data) {
@@ -315,7 +326,7 @@ export default function AnalyticsPage() {
             <Card>
               <CardHeader className="py-4 px-5 border-b border-border flex justify-between items-center">
                 <CardTitle className="text-base font-bold text-text">NABH Quality Standards (5th Ed.)</CardTitle>
-                <Badge variant="primary" className="text-[10px]">Accreditation Ready</Badge>
+                <Badge variant="primary" className="text-[10px]">Reported indicators</Badge>
               </CardHeader>
               <CardContent className="p-5 space-y-3 text-xs">
                 <div className="flex justify-between items-center">

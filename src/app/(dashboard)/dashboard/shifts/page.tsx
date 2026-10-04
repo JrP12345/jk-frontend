@@ -44,7 +44,7 @@ export default function NursingShiftRosterPage() {
     nightShifts: 0,
     nurseCount: 0,
     totalPatientsAssigned: 0,
-    nurseToPatientRatio: "1:4.0",
+    nurseToPatientRatio: "—",
   });
   const [isLoading, setIsLoading] = useState(true);
   const [selectedWard, setSelectedWard] = useState("ALL");
@@ -281,6 +281,7 @@ export default function NursingShiftRosterPage() {
         <div className="flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
           <div className="w-full md:w-80">
             <Input
+              aria-label="Search shifts by staff, ward or role"
               placeholder="Search staff name, ward, role..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -290,6 +291,7 @@ export default function NursingShiftRosterPage() {
 
           <div className="flex flex-wrap gap-2.5 w-full md:w-auto">
             <Select
+              aria-label="Filter shifts by ward"
               value={selectedWard}
               onChange={(e) => setSelectedWard(e.target.value)}
               options={[
@@ -302,6 +304,7 @@ export default function NursingShiftRosterPage() {
             />
 
             <Select
+              aria-label="Filter shifts by staff role"
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value)}
               options={[
@@ -314,6 +317,7 @@ export default function NursingShiftRosterPage() {
             />
 
             <Select
+              aria-label="Filter shifts by shift type"
               value={selectedShiftType}
               onChange={(e) => setSelectedShiftType(e.target.value)}
               options={[

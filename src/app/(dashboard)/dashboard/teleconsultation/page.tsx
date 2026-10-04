@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { externalServiceUrl } from "@/lib/externalServiceUrl";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
-import { Card, CardContent, Button, Modal, Input, Select, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
+import { Alert, Card, CardContent, Button, Modal, Input, Select, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
 import { RotateCw, Plus, Video, Clock, Activity, CheckCircle2 } from "lucide-react";
 
 export interface TeleconsultationAppointment {
@@ -50,6 +51,7 @@ export default function TeleconsultationPage() {
   const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
   const [appointments, setAppointments] = useState<TeleconsultationAppointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -60,15 +62,6 @@ export default function TeleconsultationPage() {
   const [loadingSession, setLoadingSession] = useState(false);
   const [submittingEndCall, setSubmittingEndCall] = useState(false);
 
-  // Native WebRTC Stream & In-Call Control States
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [isMicOn, setIsMicOn] = useState(true);
-  const [isCamOn, setIsCamOn] = useState(true);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [callDuration, setCallDuration] = useState(0);
-
-  const localVideoRef = useRef<HTMLVideoElement | null>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
 
   // Clinical workspace tab & form states inside video call modal
   const [activeTab, setActiveTab] = useState<"ehr" | "notes" | "rx">("ehr");
@@ -91,11 +84,13 @@ export default function TeleconsultationPage() {
 
   const fetchData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const apptsRes = await api.get(selectedClinicId ? `/appointments?clinicId=${selectedClinicId}` : "/appointments");
       const list: TeleconsultationAppointment[] = apptsRes.data?.data || apptsRes.data || [];
       setAppointments(list);
     } catch (err: any) {
+      setLoadError("Virtual appointments could not be loaded. Please try again.");
       toast({
         title: "Failed to Fetch Virtual Care Queue",
         description: err.response?.data?.message || "Could not retrieve telehealth sessions",
@@ -110,100 +105,12 @@ export default function TeleconsultationPage() {
     fetchData();
   }, [selectedClinicId]);
 
-  // Native WebRTC Stream Initializer & Call Timer
-  useEffect(() => {
-    let streamObj: MediaStream | null = null;
-    let timerInterval: any = null;
-
-    if (isVideoModalOpen) {
-      navigator.mediaDevices
-        ?.getUserMedia({ video: true, audio: true })
-        .then((s) => {
-          streamObj = s;
-          setLocalStream(s);
-        })
-        .catch((err) => {
-          console.warn("Webcam/Microphone access notice:", err);
-        });
-
-      timerInterval = setInterval(() => {
-        setCallDuration((prev) => prev + 1);
-      }, 1000);
-    } else {
-      setCallDuration(0);
-    }
-
-    return () => {
-      if (streamObj) {
-        streamObj.getTracks().forEach((track) => track.stop());
-      }
-      if (timerInterval) clearInterval(timerInterval);
-      setLocalStream(null);
-    };
-  }, [isVideoModalOpen]);
-
-  // Ensure localVideoRef receives localStream whenever stream or camera state updates
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-    }
-  }, [localStream, isCamOn, isVideoModalOpen]);
-
-  // Toggle Microphone
-  const toggleMic = () => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach((track) => {
-        track.enabled = !isMicOn;
-      });
-      setIsMicOn(!isMicOn);
-    }
-  };
-
-  // Toggle Camera
-  const toggleCam = () => {
-    if (localStream) {
-      localStream.getVideoTracks().forEach((track) => {
-        track.enabled = !isCamOn;
-      });
-      setIsCamOn(!isCamOn);
-    }
-  };
-
-  // Screen Sharing
-  const handleScreenShare = async () => {
-    try {
-      if (!isScreenSharing) {
-        const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = displayStream;
-        }
-        setIsScreenSharing(true);
-        displayStream.getVideoTracks()[0].onended = () => {
-          if (localVideoRef.current && localStream) {
-            localVideoRef.current.srcObject = localStream;
-          }
-          setIsScreenSharing(false);
-        };
-      } else {
-        if (localVideoRef.current && localStream) {
-          localVideoRef.current.srcObject = localStream;
-        }
-        setIsScreenSharing(false);
-      }
-    } catch (e) {
-      console.warn("Screen share notice:", e);
-    }
-  };
-
-  // Helper: Format seconds to MM:SS
-  const formatDuration = (totalSeconds: number) => {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
 
   // Join or Create Video Session & Start Call
   const handleJoinVideoCall = async (appt: TeleconsultationAppointment) => {
+    setActiveSession(null);
+    setClinicalNotesInput("");
+    setVitalsInput({ bp: "", pulse: "", temp: "", spo2: "" });
     setActiveApptForCall(appt);
     setIsVideoModalOpen(true);
     setLoadingSession(true);
@@ -214,7 +121,8 @@ export default function TeleconsultationPage() {
       try {
         const getRes = await api.get(`/teleconsultation/session/${appt.id}`);
         sessionData = getRes.data?.data;
-      } catch {
+      } catch (error) {
+        if ((error as { response?: { status?: number } }).response?.status !== 404) throw error;
         const createRes = await api.post("/teleconsultation/session", { appointmentId: appt.id });
         sessionData = createRes.data?.data;
       }
@@ -308,7 +216,7 @@ export default function TeleconsultationPage() {
 
       toast({
         title: "Prescription Added to Consultation Notes ✓",
-        description: `Prescribed ${rxForm.drugName} to patient.`,
+        description: `Added ${rxForm.drugName} to the consultation notes.`,
         variant: "success",
       });
 
@@ -324,18 +232,15 @@ export default function TeleconsultationPage() {
     }
   };
 
-  // Copy Patient Join Link
-  const handleCopyLink = () => {
-    const link = activeSession?.sessionRoomId
-      ? `${window.location.origin}/dashboard/teleconsultation?room=${activeSession.sessionRoomId}`
-      : window.location.href;
-
-    navigator.clipboard.writeText(link);
-    toast({
-      title: "Patient Direct Join Link Copied 📋",
-      description: "Share this link with the patient via SMS or WhatsApp to join.",
-      variant: "success",
-    });
+  const meetingUrl = externalServiceUrl(activeSession?.meetingUrl);
+  const handleCopyLink = async () => {
+    if (!meetingUrl) return;
+    try {
+      await navigator.clipboard.writeText(meetingUrl);
+      toast({ title: "Meeting link copied", description: "Share this link with the invited patient.", variant: "success" });
+    } catch {
+      toast({ title: "Could not copy link", description: "Open the meeting and copy its address instead.", variant: "error" });
+    }
   };
 
   // Launch New Session Submit
@@ -345,10 +250,10 @@ export default function TeleconsultationPage() {
 
     try {
       setLaunchingSession(true);
-      const res = await api.post("/teleconsultation/session", { appointmentId: selectedApptId });
+      await api.post("/teleconsultation/session", { appointmentId: selectedApptId });
       toast({
-        title: "Virtual Care Room Created 📹",
-        description: `Meeting Room ${res.data?.data?.sessionRoomId} provisioned.`,
+        title: "Consultation session created",
+        description: "The clinical workspace is ready. Open its video meeting when the service is connected.",
         variant: "success",
       });
       setIsLaunchModalOpen(false);
@@ -375,14 +280,10 @@ export default function TeleconsultationPage() {
         await api.put(`/teleconsultation/session/${sId}/end`);
       }
 
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop());
-        setLocalStream(null);
-      }
 
       toast({
         title: "Teleconsultation Call Ended 🔴",
-        description: "Call duration logged. Session completed.",
+        description: "Session completed. Video meeting controls remain in the meeting tab.",
         variant: "success",
       });
 
@@ -466,7 +367,7 @@ export default function TeleconsultationPage() {
               className="font-semibold rounded-xl shadow-xs flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
-              Launch Virtual Room
+              Create consultation session
             </Button>
           </div>
         </div>
@@ -518,9 +419,10 @@ export default function TeleconsultationPage() {
             <button
               key={s.key}
               type="button"
+              aria-pressed={statusFilter === s.key}
               onClick={() => setStatusFilter(s.key)}
               className={cn(
-                "px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0 min-h-[38px] sm:min-h-[32px]",
+                "px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
                 statusFilter === s.key
                   ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                   : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -543,6 +445,7 @@ export default function TeleconsultationPage() {
 
         <Input
           placeholder="Search patient, doctor, complaint..."
+          aria-label="Search virtual appointments"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full md:w-64 text-xs h-10 sm:h-9"
@@ -552,6 +455,8 @@ export default function TeleconsultationPage() {
       {/* Teleconsultation Cards Grid */}
       {loading ? (
         <SkeletonCardGrid count={6} columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3" />
+      ) : loadError ? (
+        <Alert variant="error" title="Unable to load virtual appointments" action={<Button variant="outline" onClick={fetchData}>Try again</Button>}>{loadError}</Alert>
       ) : filteredAppointments.length === 0 ? (
         <Card className="py-12 text-center text-xs text-text-muted rounded-2xl border-border">
           <CardContent>No virtual appointments currently in queue matching selected filter.</CardContent>
@@ -659,7 +564,7 @@ export default function TeleconsultationPage() {
                     className="font-bold text-xs rounded-xl w-full gap-2 bg-primary hover:bg-primary text-brand-mist cursor-pointer min-h-[44px] justify-center shadow-xs"
                   >
                     <Video className="w-4 h-4" />
-                    <span>{isInCall ? "Resume Video Workspace" : "Join Video Room"}</span>
+                    <span>{isInCall ? "Resume consultation" : "Open consultation"}</span>
                   </Button>
                 </div>
               </div>
@@ -678,114 +583,23 @@ export default function TeleconsultationPage() {
           title={`Teleconsultation Clinical Workspace — ${activeApptForCall.patientId?.userId?.name || "Patient"}`}
           size="2xl"
           loading={loadingSession}
-          loadingText="Connecting to secure teleconsultation room..."
+          loadingText="Loading consultation workspace..."
         >
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 text-xs">
               {/* Left Column: Pure Native WebRTC Video Call Theater */}
               <div className="lg:col-span-7 space-y-3">
-                <div className="relative w-full h-[360px] sm:h-[460px] bg-background rounded-2xl overflow-hidden border border-border text-text shadow-2xl flex flex-col justify-between">
-                  {/* Main Video Stream Container (Remote Feed / Native Player) */}
-                  <div className="relative w-full h-full bg-surface    flex flex-col items-center justify-center text-center p-4">
-                    {/* Patient Profile Remote Feed Video / Avatar */}
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <div className="relative">
-                        <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-primary/30 border-2 border-accent/50 flex items-center justify-center text-3xl sm:text-4xl shadow-inner text-accent">
-                          👤
-                        </div>
-                        <span className="absolute bottom-0 right-0 h-4.5 w-4.5 rounded-full bg-success border-2 border-border" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-base text-brand-mist tracking-wide">
-                          {activeApptForCall.patientId?.userId?.name || "Patient Remote Feed"}
-                        </h4>
-                        <div className="flex items-center justify-center gap-2 mt-1">
-                          <span className="text-[11px] text-success-text font-mono flex items-center gap-1.5 bg-success/10 px-2.5 py-0.5 rounded-md border border-success/20">
-                            <span className="h-2 w-2 rounded-full bg-success animate-ping" />
-                            Encrypted Native P2P Stream ({formatDuration(callDuration)})
-                          </span>
-                        </div>
-                      </div>
+                <div className="rounded-2xl border border-border bg-surface-alt p-5 sm:p-8 space-y-4">
+                  <h2 className="text-lg font-bold text-text">Video meeting</h2>
+                  {meetingUrl && activeSession?.status !== "ended" ? <>
+                    <p className="text-sm text-text-secondary">Open the meeting in a separate tab. Camera, microphone and screen sharing are controlled there. Keep this workspace open for clinical notes.</p>
+                    <div className="flex flex-wrap gap-3">
+                      <a href={meetingUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="inline-flex min-h-11 items-center rounded-xl bg-primary-600 px-4 py-2 text-white font-semibold">Join video meeting</a>
+                      <Button variant="outline" onClick={handleCopyLink}>Copy meeting link</Button>
                     </div>
-
-                    {/* Picture-in-Picture Doctor Local Webcam Video Window */}
-                    <div className="absolute top-3 right-3 w-28 h-24 sm:w-40 sm:h-32 bg-surface rounded-2xl overflow-hidden border-2 border-accent/40 shadow-2xl transition-all">
-                      <video
-                        ref={localVideoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className={`w-full h-full object-cover transform -scale-x-100 ${isCamOn ? "block" : "hidden"}`}
-                      />
-                      {!isCamOn && (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-background text-text-muted text-xs font-semibold space-y-1">
-                          <span className="text-lg">📷</span>
-                          <span>Cam Off</span>
-                        </div>
-                      )}
-                      <div className="absolute bottom-1.5 left-2 flex items-center gap-1 text-[9px] font-mono bg-background/85 px-2 py-0.5 rounded-md text-text-secondary backdrop-blur-xs font-bold border border-border">
-                        <span>You (MD)</span>
-                        {isMicOn && (
-                          <span className="flex items-center gap-0.5 ml-1">
-                            <span className="h-2 w-0.5 bg-success rounded-full animate-pulse" />
-                            <span className="h-2.5 w-0.5 bg-success rounded-full animate-pulse delay-75" />
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* In-Call Action Control Bar */}
-                    <div className="absolute bottom-3 left-3 right-3 p-2.5 sm:p-3 bg-surface/90 backdrop-blur-md rounded-2xl border border-border/90 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 shadow-2xl">
-                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
-                        {/* Mic Button */}
-                        <button
-                          type="button"
-                          onClick={toggleMic}
-                          className={`h-9 min-h-[38px] px-2.5 sm:px-3.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
-                            isMicOn
-                              ? "bg-primary/30 text-accent border-accent/50 hover:bg-primary/40 shadow-xs"
-                              : "bg-danger/20 text-danger-text border-danger/40 hover:bg-danger/30"
-                          }`}
-                        >
-                          {isMicOn ? "🎙️ Mic On" : "🔇 Muted"}
-                        </button>
-
-                        {/* Camera Button */}
-                        <button
-                          type="button"
-                          onClick={toggleCam}
-                          className={`h-9 min-h-[38px] px-2.5 sm:px-3.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
-                            isCamOn
-                              ? "bg-primary/30 text-accent border-accent/50 hover:bg-primary/40 shadow-xs"
-                              : "bg-danger/20 text-danger-text border-danger/40 hover:bg-danger/30"
-                          }`}
-                        >
-                          {isCamOn ? "📹 Video On" : "📷 Video Off"}
-                        </button>
-
-                        {/* Screen Share Button */}
-                        <button
-                          type="button"
-                          onClick={handleScreenShare}
-                          className={`h-9 min-h-[38px] px-2.5 sm:px-3.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
-                            isScreenSharing
-                              ? "bg-primary text-brand-mist border-accent shadow-xs"
-                              : "bg-surface-alt text-text-secondary border-border hover:bg-surface-alt"
-                          }`}
-                        >
-                          🖥️ <span className="hidden sm:inline">{isScreenSharing ? "Sharing Screen" : "Screen Share"}</span><span className="sm:hidden">Share</span>
-                        </button>
-                      </div>
-
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        onClick={handleCopyLink}
-                        className="text-xs h-9 min-h-[38px] px-3 border-border bg-surface-alt text-text-secondary hover:bg-surface-alt font-semibold rounded-xl"
-                      >
-                        📋 <span className="hidden sm:inline">Copy Link</span>
-                      </Button>
-                    </div>
-                  </div>
+                    <p className="text-xs text-text-muted">Opening this link does not confirm that the patient has joined.</p>
+                  </> : <Alert title={activeSession?.status === "ended" ? "Session completed" : "Video meeting unavailable"}>
+                    {activeSession?.status === "ended" ? "This consultation has ended." : "Your clinic administrator needs to connect the video service. Clinical notes are available below."}
+                  </Alert>}
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-1">
@@ -806,7 +620,7 @@ export default function TeleconsultationPage() {
                     loading={submittingEndCall}
                     className="bg-danger hover:bg-danger text-background font-bold rounded-xl text-xs gap-1.5 px-4 cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
                   >
-                    <span>🔴 End & Complete Consultation</span>
+                    <span>Complete consultation</span>
                   </Button>
                 </div>
               </div>
@@ -994,7 +808,7 @@ export default function TeleconsultationPage() {
                         loading={savingRx}
                         className="w-full font-bold bg-success hover:bg-success text-background rounded-xl text-xs mt-1 min-h-[44px] sm:min-h-[36px] cursor-pointer"
                       >
-                        Issue Prescription
+                        Add to consultation notes
                       </Button>
                     </form>
                   )}
@@ -1008,7 +822,7 @@ export default function TeleconsultationPage() {
       <Modal
         isOpen={isLaunchModalOpen}
         onClose={() => setIsLaunchModalOpen(false)}
-        title="Start video consultation"
+        title="Create consultation session"
         size="md"
         footer={
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 w-full">
@@ -1016,7 +830,7 @@ export default function TeleconsultationPage() {
               Cancel
             </Button>
             <Button type="submit" form="launch-session-form" variant="primary" size="sm" loading={launchingSession} className="bg-primary hover:bg-primary text-brand-mist w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
-              Create video room
+              Create session
             </Button>
           </div>
         }
@@ -1037,7 +851,7 @@ export default function TeleconsultationPage() {
           />
 
           <div className="p-3 bg-primary/10 border border-accent/30 rounded-xl text-[11px] text-accent dark:text-accent">
-            💡 Provisioning will generate a secure WebRTC room ID (`TELE-XXXXX`) and provide a join link for both physician and patient portals.
+            A consultation record is created for this appointment. The clinic must connect its video service before a meeting can be opened.
           </div>
         </form>
       </Modal>

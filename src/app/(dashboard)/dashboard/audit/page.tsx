@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { canViewAuditLogs } from "@/lib/permissions";
+import { useLatestRead } from "@/hooks/useLatestRead";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, Badge, Button, Select, Input, useToast, Alert, ChartContainer, BarChart, cn } from "@/components/ui";
 import { RotateCw, Filter, X, Building2, Stethoscope, Tag, Calendar } from "lucide-react";
 
@@ -56,6 +57,8 @@ export default function AuditLogsPage() {
   const { user } = useAuthStore();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const beginRead = useLatestRead();
   const { toast } = useToast();
 
   // Filter state
@@ -87,40 +90,52 @@ export default function AuditLogsPage() {
   // Load clinics when org changes
   useEffect(() => {
     if (!canViewAuditLogs(user)) return;
+    const controller = new AbortController();
+    setClinics([]);
     const orgParam = filters.organizationId
       ? `?organizationId=${filters.organizationId}`
       : "";
     api
-      .get(`/onboarding/clinics${orgParam}`)
+      .get(`/onboarding/clinics${orgParam}`, { signal: controller.signal })
       .then((res) => {
+        if (controller.signal.aborted) return;
         const clinicList = res.data.data || [];
         setClinics(clinicList);
       })
-      .catch(() => setClinics([]));
+      .catch(() => { if (!controller.signal.aborted) setClinics([]); });
+    return () => controller.abort();
   }, [user, filters.organizationId]);
 
   // Load doctors/staff when org changes
   useEffect(() => {
     if (!canViewAuditLogs(user)) return;
+    const controller = new AbortController();
+    setDoctors([]);
     const orgParam = filters.organizationId
       ? `?organizationId=${filters.organizationId}`
       : "";
     api
-      .get(`/onboarding/staff${orgParam}`)
+      .get(`/onboarding/staff${orgParam}`, { signal: controller.signal })
       .then((res) => {
-        const staffList = res.data.data || [];
+        if (controller.signal.aborted) return;
+        const data = res.data.data;
+        const staffList = Array.isArray(data) ? data : data?.allStaff || (data?.doctors || []).map((doctor: any) => ({ ...doctor, role: "doctor" }));
         // Filter to doctors only for the dropdown
         const doctorList = staffList.filter(
           (s: any) => s.role === "doctor" || s.role === "admin"
         );
         setDoctors(doctorList);
       })
-      .catch(() => setDoctors([]));
+      .catch(() => { if (!controller.signal.aborted) setDoctors([]); });
+    return () => controller.abort();
   }, [user, filters.organizationId]);
 
   const fetchLogs = useCallback(async (activeFilters: FilterState = filters) => {
+    if (!canViewAuditLogs(user)) return;
+    const request = beginRead();
     try {
       setLoading(true);
+      setLoadError(null);
       const params = new URLSearchParams();
       if (activeFilters.organizationId) params.set("organizationId", activeFilters.organizationId);
       if (activeFilters.clinicId) params.set("clinicId", activeFilters.clinicId);
@@ -132,15 +147,18 @@ export default function AuditLogsPage() {
       params.set("limit", "100");
 
       const qs = params.toString();
-      const res = await api.get(`/audit-logs${qs ? `?${qs}` : ""}`);
+      const res = await api.get(`/audit-logs${qs ? `?${qs}` : ""}`, { signal: request.signal });
+      if (!request.isCurrent()) return;
       setLogs(res.data.data || []);
     } catch (err) {
+      if (!request.isCurrent()) return;
+      setLoadError("Audit events could not be loaded. Please try again.");
       console.error("Failed to load audit logs", err);
       toast?.({ title: "Error", description: "Failed to load audit logs", variant: "error" });
     } finally {
-      setLoading(false);
+      if (request.isCurrent()) setLoading(false);
     }
-  }, [filters, toast]);
+  }, [filters, toast, user, beginRead]);
 
   useEffect(() => {
     if (canViewAuditLogs(user)) {
@@ -283,6 +301,7 @@ export default function AuditLogsPage() {
               variant={showFilters ? "primary" : "outline"}
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
+              aria-expanded={showFilters}
               className="rounded-xl text-xs font-semibold transition-colors w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
             >
               <Filter className="h-3.5 w-3.5 mr-1.5" />
@@ -395,7 +414,7 @@ export default function AuditLogsPage() {
 
               {/* Date Range */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-text-secondary flex items-center gap-1.5">
+                <label htmlFor="audit-start-date" className="text-xs font-medium text-text-secondary flex items-center gap-1.5">
                   <Calendar className="h-3 w-3" />
                   Start Date
                 </label>
@@ -403,11 +422,12 @@ export default function AuditLogsPage() {
                   type="date"
                   size="sm"
                   value={filters.startDate}
+                  id="audit-start-date"
                   onChange={(e) => updateFilter("startDate", e.target.value)}
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-text-secondary flex items-center gap-1.5">
+                <label htmlFor="audit-end-date" className="text-xs font-medium text-text-secondary flex items-center gap-1.5">
                   <Calendar className="h-3 w-3" />
                   End Date
                 </label>
@@ -415,6 +435,7 @@ export default function AuditLogsPage() {
                   type="date"
                   size="sm"
                   value={filters.endDate}
+                  id="audit-end-date"
                   onChange={(e) => updateFilter("endDate", e.target.value)}
                 />
               </div>
@@ -485,6 +506,8 @@ export default function AuditLogsPage() {
         </CardHeader>
         <CardContent className="p-0">
           <Table
+            error={loadError}
+            onRetry={() => fetchLogs()}
             loading={loading}
             searchable
             mobileCardView={true}

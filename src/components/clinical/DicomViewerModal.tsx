@@ -1,16 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
-import { Modal, Button, Badge } from "@/components/ui";
-import { Globe, RotateCw, Contrast, FileCheck, ZoomIn, ZoomOut } from "lucide-react";
+import { useEffect, useState } from "react";
+import api from "@/lib/api";
+import { externalServiceUrl } from "@/lib/externalServiceUrl";
+import { Modal, Button, Badge, Alert } from "@/components/ui";
 
 export interface ImagingStudyItem {
   id: string;
   studyInstanceUid: string;
-  patientId: {
-    id: string;
-    userId?: { name: string; phone?: string };
-  };
+  patientId: { id: string; userId?: { name: string; phone?: string } };
   clinicId?: { id: string; name: string };
   modality: "CR" | "DX" | "CT" | "MR" | "US" | "MG";
   studyDescription: string;
@@ -20,171 +18,113 @@ export interface ImagingStudyItem {
   status: "requested" | "in_progress" | "completed" | "reported" | "cancelled";
   createdAt?: string;
 }
-
-interface DICOMViewerModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  study: ImagingStudyItem | null;
-}
+interface DicomInstance { seriesUid: string; instanceUid: string; frames: number; number: number; }
+interface DICOMViewerModalProps { isOpen: boolean; onClose: () => void; study: ImagingStudyItem | null; }
 
 export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalProps) {
-  const [zoomLevel, setZoomLevel] = useState<number>(100);
-  const [rotationAngle, setRotationAngle] = useState<number>(0);
-  const [isInverted, setIsInverted] = useState<boolean>(false);
-  const [selectedPreset, setSelectedPreset] = useState<string>("soft_tissue");
+  const [manifest, setManifest] = useState<{ studyId: string; instances: DicomInstance[]; limited: boolean } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [instanceIndex, setInstanceIndex] = useState(0);
+  const [frame, setFrame] = useState(1);
+  const [loadedImage, setLoadedImage] = useState<{ key: string; url: string } | null>(null);
+  const [imageError, setImageError] = useState(false);
+  const [imageRetry, setImageRetry] = useState(0);
+  const [zoom, setZoom] = useState(100);
+  const [rotation, setRotation] = useState(0);
+  const [inverted, setInverted] = useState(false);
+  const studyId = study?.id;
+  const currentManifest = manifest?.studyId === studyId ? manifest : null;
+  const instance = currentManifest?.instances[instanceIndex];
+  const imageKey = `${studyId}-${instance?.instanceUid}-${frame}`;
+  const image = loadedImage?.key === imageKey ? loadedImage.url : null;
+
+  useEffect(() => {
+    if (!isOpen || !studyId) return;
+    const controller = new AbortController();
+    setLoading(true); setError(false); setManifest(null);
+    setInstanceIndex(0); setFrame(1); setZoom(100); setRotation(0); setInverted(false);
+    api.get(`/radiology/studies/${studyId}/preview`, { signal: controller.signal })
+      .then(response => {
+        if (controller.signal.aborted) return;
+        const data = response.data?.data;
+        if (!Array.isArray(data?.instances)) throw new Error("Invalid preview metadata");
+        setManifest({ studyId, instances: data.instances, limited: Boolean(data.limited) });
+      }).catch(() => { if (!controller.signal.aborted) setError(true); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [isOpen, studyId, retry]);
+
+  useEffect(() => {
+    setLoadedImage(null); setImageError(false);
+    if (!isOpen || !studyId || !instance) return;
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+    const query = new URLSearchParams({ seriesUid: instance.seriesUid, instanceUid: instance.instanceUid, frame: String(frame) });
+    api.get(`/radiology/studies/${studyId}/preview?${query}`, { signal: controller.signal, responseType: "blob" })
+      .then(response => {
+        if (controller.signal.aborted) return;
+        if (!(response.data instanceof Blob) || response.data.type !== "image/png") throw new Error("Unsupported preview");
+        objectUrl = URL.createObjectURL(response.data);
+        setLoadedImage({ key: imageKey, url: objectUrl });
+      }).catch(() => { if (!controller.signal.aborted) setImageError(true); });
+    return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [isOpen, studyId, instance, frame, imageRetry, imageKey]);
 
   if (!study) return null;
-
-  const handleZoomIn = () => setZoomLevel((prev) => Math.min(250, prev + 25));
-  const handleZoomOut = () => setZoomLevel((prev) => Math.max(50, prev - 25));
-  const handleRotate = () => setRotationAngle((prev) => (prev + 90) % 360);
-  const handleToggleInvert = () => setIsInverted((prev) => !prev);
-  const handleReset = () => {
-    setZoomLevel(100);
-    setRotationAngle(0);
-    setIsInverted(false);
-    setSelectedPreset("soft_tissue");
-  };
-
-  const patientName = study.patientId?.userId?.name || "Patient";
-
+  const pacsUrl = externalServiceUrl(study.dicomWebUrl);
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`PACS DICOM Viewer — ${study.modality}`} size="xl">
-      <div className="space-y-4 text-xs">
-        {/* DICOM Header Metadata Bar */}
-        <div className="p-3 bg-surface-alt rounded-2xl border border-border flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <span className="font-bold text-text text-sm block">{study.studyDescription}</span>
-            <div className="flex items-center gap-3 text-[11px] text-text-muted mt-0.5">
-              <span>Patient: <b className="text-text">{patientName}</b></span>
-              <span>Modality: <b className="font-mono text-accent font-bold">{study.modality}</b></span>
-              <span>UID: <b className="font-mono text-text truncate max-w-[140px] inline-block align-bottom">{study.studyInstanceUid}</b></span>
-            </div>
+    <Modal isOpen={isOpen} onClose={onClose} title={`Imaging study — ${study.modality}`} size="xl">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border bg-surface-alt p-3">
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold text-text break-words">{study.studyDescription}</h2>
+            <p className="text-sm text-text-secondary">Patient: {study.patientId?.userId?.name || "Patient"}</p>
+            <p className="text-xs text-text-muted break-all">Study UID: {study.studyInstanceUid}</p>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Badge
-              variant={
-                study.status === "reported"
-                  ? "success"
-                  : study.status === "in_progress"
-                  ? "warning"
-                  : "neutral"
-              }
-              className="capitalize font-bold"
-            >
-              {study.status}
-            </Badge>
-
-            {study.dicomWebUrl && (
-              <a
-                href={study.dicomWebUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-brand-mist font-bold transition-all text-xs"
-              >
-                <Globe className="w-3.5 h-3.5" />
-                <span>WADO PACS</span>
-              </a>
-            )}
-          </div>
+          <Badge variant={study.status === "reported" ? "success" : "neutral"}>{study.status}</Badge>
+          {pacsUrl && <a href={pacsUrl} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer" className="text-accent underline min-h-11 inline-flex items-center text-sm">Open PACS</a>}
         </div>
-
-        {/* Viewport Control Bar */}
-        <div className="flex items-center justify-between flex-wrap gap-2 p-2.5 bg-surface border border-border/80 rounded-xl">
-          {/* Window Level Presets */}
-          <div className="flex items-center gap-1 text-[11px] overflow-x-auto pb-1 sm:pb-0">
-            <span className="font-bold text-text-muted mr-1">Presets:</span>
-            {[
-              { id: "soft_tissue", label: "Soft Tissue" },
-              { id: "lung", label: "Lung Window" },
-              { id: "bone", label: "Bone Window" },
-            ].map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setSelectedPreset(p.id)}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer text-xs ${
-                  selectedPreset === p.id
-                    ? "bg-primary-500/10 text-accent font-bold border border-primary-500/30"
-                    : "bg-surface-alt text-text-muted hover:text-text"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Canvas Tools */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Button size="xs" variant="outline" onClick={handleZoomOut} className="px-2 font-bold min-h-[32px]" title="Zoom Out">
-              <ZoomOut className="w-3.5 h-3.5" />
-            </Button>
-            <span className="font-mono font-bold text-text text-[11px] px-1">{zoomLevel}%</span>
-            <Button size="xs" variant="outline" onClick={handleZoomIn} className="px-2 font-bold min-h-[32px]" title="Zoom In">
-              <ZoomIn className="w-3.5 h-3.5" />
-            </Button>
-
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={handleRotate}
-              className="font-semibold text-[11px] min-h-[32px] gap-1"
-              title="Rotate 90 Deg"
-            >
-              <RotateCw className="w-3 h-3" />
-              <span>{rotationAngle}°</span>
-            </Button>
-
-            <Button
-              size="xs"
-              variant={isInverted ? "primary" : "outline"}
-              onClick={handleToggleInvert}
-              className="font-semibold text-[11px] min-h-[32px] gap-1"
-              title="Invert Grayscale"
-            >
-              <Contrast className="w-3 h-3" />
-              <span>Invert</span>
-            </Button>
-
-            <Button size="xs" variant="outline" onClick={handleReset} className="font-semibold text-[11px] min-h-[32px]">
-              Reset
-            </Button>
-          </div>
-        </div>
-
-        {/* Viewport DICOM Canvas Frame */}
-        <div className="relative w-full h-80 bg-black rounded-2xl overflow-hidden flex items-center justify-center border border-border/80 shadow-inner group">
-          <div className="absolute inset-0 z-20 flex items-center justify-center p-6 text-center">
-            <div className="space-y-2 max-w-md">
-              <p className="font-bold text-warning-text">DICOM image preview in this viewer</p>
-              <p className="text-xs text-text-secondary">The study metadata is loaded. Connect to your organization&apos;s DICOMweb endpoint or WADO server for full resolution slice manipulation.</p>
+        {loading ? <p role="status">Loading study images...</p> : error ? (
+          <Alert title="Study images unavailable" action={<Button variant="outline" onClick={() => setRetry(value => value + 1)}>Retry images</Button>}>
+            Images could not be loaded. Your clinic can check whether this study has been received by its imaging service.
+          </Alert>
+        ) : currentManifest && currentManifest.instances.length === 0 ? <Alert title="No images received">This study has no image instances available yet.</Alert> : instance ? <>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-0 flex-1">
+              <label htmlFor="dicom-instance" className="block text-sm font-medium mb-1">Image instance</label>
+              <select id="dicom-instance" value={instanceIndex} onChange={event => { setInstanceIndex(Number(event.target.value)); setFrame(1); }} className="w-full min-h-11 rounded-xl border border-border bg-surface px-3 text-sm">
+                {currentManifest?.instances.map((item, index) => <option key={`${item.seriesUid}-${item.instanceUid}`} value={index}>Image {index + 1}{item.number ? ` · Instance ${item.number}` : ""}</option>)}
+              </select>
             </div>
+            <Button variant="outline" disabled={frame <= 1} onClick={() => setFrame(value => value - 1)}>Previous frame</Button>
+            <span className="text-sm py-3">Frame {frame} of {instance.frames}</span>
+            <Button variant="outline" disabled={frame >= instance.frames} onClick={() => setFrame(value => value + 1)}>Next frame</Button>
           </div>
-        </div>
-
-        {/* Radiology Report Card if available */}
-        {study.radiologyReport && (
-          <div className="p-3.5 bg-success/5 border border-success/30 rounded-2xl space-y-1.5">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <span className="font-bold text-success-text dark:text-success-text text-xs flex items-center gap-1.5">
-                <FileCheck className="w-4 h-4" />
-                Signed Radiology Clinical Report
-              </span>
-              {study.radiologistId?.name && (
-                <span className="text-[11px] text-text-muted">
-                  Radiologist: <b>{study.radiologistId.name}</b>
-                </span>
-              )}
-            </div>
-            <p className="text-text text-xs leading-relaxed whitespace-pre-wrap font-sans pl-1 border-l-2 border-success">
-              {study.radiologyReport}
-            </p>
+          {currentManifest?.limited && <Alert>Showing the first 500 instances. Open PACS to review the complete study.</Alert>}
+          <div className="relative h-72 sm:h-96 rounded-xl bg-black overflow-auto flex items-center justify-center">
+            {imageError ? <div className="p-5 text-white text-center space-y-3"><p>This image could not be loaded.</p><Button onClick={() => setImageRetry(value => value + 1)}>Retry frame</Button></div> : image ? (
+              // eslint-disable-next-line @next/next/no-img-element -- Authenticated PNG blob; revoke on frame change or close.
+              <img src={image} alt={`Study preview, image ${instanceIndex + 1}, frame ${frame}`} onError={() => setImageError(true)} className="max-w-full max-h-full object-contain" style={{ transform: `rotate(${rotation}deg) scale(${zoom / 100})`, filter: inverted ? "invert(1)" : undefined }} />
+            ) : <p role="status" className="text-white">Loading frame...</p>}
           </div>
-        )}
+          <div className="flex flex-wrap gap-2 items-center">
+            <Button variant="outline" disabled={!image || zoom <= 50} onClick={() => setZoom(value => value - 25)}>Zoom out</Button>
+            <span className="text-sm">{zoom}%</span>
+            <Button variant="outline" disabled={!image || zoom >= 250} onClick={() => setZoom(value => value + 25)}>Zoom in</Button>
+            <Button variant="outline" disabled={!image} onClick={() => setRotation(value => (value + 90) % 360)}>Rotate</Button>
+            <Button variant="outline" disabled={!image} aria-pressed={inverted} onClick={() => setInverted(value => !value)}>Invert</Button>
+            <Button variant="outline" onClick={() => { setZoom(100); setRotation(0); setInverted(false); }}>Reset view</Button>
+          </div>
+          <p className="text-xs text-text-muted">Rendered image preview. Display adjustments do not change the study. Use the clinical PACS viewer for diagnostic interpretation and window-level controls.</p>
+        </> : null}
+        {study.radiologyReport && <section className="rounded-xl border border-border p-4 space-y-2">
+          <h2 className="font-semibold text-text">Radiology report</h2>
+          {study.radiologistId?.name && <p className="text-sm text-text-muted">Radiologist: {study.radiologistId.name}</p>}
+          <p className="text-sm text-text whitespace-pre-wrap">{study.radiologyReport}</p>
+        </section>}
       </div>
     </Modal>
   );
 }
-
-

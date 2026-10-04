@@ -7,6 +7,7 @@ import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { Card, CardHeader, CardTitle, CardContent, Table, Button, Modal, Input, Select, Textarea, useToast, Badge, StatCard, Dropdown } from "@/components/ui";
 import { Plus, FileText, Stethoscope, FlaskConical, Building2 } from "lucide-react";
+import type { Column } from "@/components/ui";
 
 interface ServiceItem {
   _id: string;
@@ -25,6 +26,7 @@ interface ServiceItem {
 export default function ServiceCatalogPage() {
   const { user } = useAuthStore();
   const { toast } = useToast();
+  const canManageBilling = hasAnyPermission(user, "MANAGE_BILLING");
 
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -217,7 +219,7 @@ export default function ServiceCatalogPage() {
           </div>
 
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto shrink-0">
-            {totalCount === 0 && (
+            {canManageBilling && totalCount === 0 && !loading && !loadError && (
               <Button
                 variant="outline"
                 size="sm"
@@ -225,10 +227,10 @@ export default function ServiceCatalogPage() {
                 disabled={seeding}
                 className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
               >
-                Seed Default Rate Card
+                Add default services
               </Button>
             )}
-            {hasAnyPermission(user, "MANAGE_BILLING") && (
+            {canManageBilling && (
               <Button
                 variant="primary"
                 size="sm"
@@ -316,7 +318,7 @@ export default function ServiceCatalogPage() {
             onRetry={fetchServices}
             loading={loading}
             mobileCardView
-            columns={[
+            columns={([
               {
                 key: "code",
                 header: "Service Code",
@@ -398,9 +400,9 @@ export default function ServiceCatalogPage() {
                   </div>
                 ),
               },
-            ]}
+            ] satisfies Column<ServiceItem>[]).filter(column => column.key !== "actions" || canManageBilling)}
             data={services}
-            emptyMessage="No services found in rate catalog. Click 'Seed Default Rate Card' to populate standard healthcare fees."
+            emptyMessage={canManageBilling ? "No services match the current search or category. Clear filters or add a service." : "No services match the current search or category. Clear filters or ask your billing administrator to add services."}
             renderMobileCard={(row: ServiceItem) => (
               <div
                 key={row._id || row.id}
@@ -442,7 +444,7 @@ export default function ServiceCatalogPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/60">
+                {canManageBilling && <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/60">
                   <Button
                     size="sm"
                     variant="outline"
@@ -461,7 +463,7 @@ export default function ServiceCatalogPage() {
                       Deactivate
                     </Button>
                   )}
-                </div>
+                </div>}
               </div>
             )}
           />

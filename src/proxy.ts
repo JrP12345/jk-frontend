@@ -59,18 +59,11 @@ export function proxy(request: NextRequest) {
   }
 
   // ── Protect /onboarding ─────────────────────────────────────────
-  // Provisioning is a platform-admin workflow. Authorization is enforced by
-  // the backend; this guard avoids presenting the form to anonymous visitors.
-  if (pathname === "/onboarding") {
-    const isNewOrgMode = searchParams.get("mode") === "new_org";
-
-    if (!hasAuthToken) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-
-    if (!isNewOrgMode) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
+  // Public onboarding prepares a setup request. The page mounts provisioning
+  // only for Root; the backend authorizes every organization write. Legacy
+  // account activation still requires an authenticated session.
+  if (pathname === "/onboarding" && searchParams.has("key") && !hasAuthToken) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // ── Redirect away from login if already logged in ───────────────

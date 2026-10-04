@@ -7,10 +7,12 @@ import PrintButton from "@/components/ui/PrintButton";
 import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
 import { formatCurrency } from "@/lib/currency";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { loadRazorpayScript } from "@/lib/razorpay";
+import { userFacingError } from "@/lib/userFacingError";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import { Table, Button, Modal, useToast, Badge, cn } from "@/components/ui";
+import { Alert, Table, Button, Modal, useToast, Badge } from "@/components/ui";
 import { RotateCw, CreditCard } from "lucide-react";
 
 interface InvoiceItem {
@@ -22,6 +24,7 @@ interface InvoiceItem {
 interface Invoice {
   id: string;
   invoiceNumber: string;
+  appointmentId?: string | { id?: string; _id?: string };
   currency?: string;
   patientId: { id: string; userId: { name: string; email: string; phone: string } };
   clinicId: { id: string; name: string; city: string; address: string };
@@ -39,18 +42,30 @@ interface Invoice {
   createdAt: string;
 }
 
+type PaymentProof = { appointmentId: string; razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string };
+type CheckoutResult = { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
+function appointmentId(invoice: Invoice) { return typeof invoice.appointmentId === "string" ? invoice.appointmentId : invoice.appointmentId?.id || invoice.appointmentId?._id; }
+function canPayOnline(invoice: Invoice) {
+  return !!appointmentId(invoice) && invoice.status === "unpaid" && (!invoice.currency || invoice.currency === "INR") && !(invoice.amountPaid && invoice.amountPaid > 0) && invoice.totalAmount > 0 && (invoice.balanceDue === undefined || invoice.balanceDue === invoice.totalAmount);
+}
+
 export default function PatientBillsPage() {
   const { user } = useAuthStore();
   const { toast } = useToast();
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Checkout Modal State
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [activeInvoice, setActiveInvoice] = useState<Invoice | null>(null);
-  const [paymentOption, setPaymentOption] = useState<"card" | "upi">("upi");
   const [submittingPayment, setSubmittingPayment] = useState(false);
+  const paymentBusy = useRef(false);
+  const mounted = useRef(true);
+  const verifying = useRef(false);
+  const [pendingProof, setPendingProof] = useState<PaymentProof | null>(null);
+  const [paymentIssue, setPaymentIssue] = useState<string | null>(null);
 
   // Receipt Modal State
   const [receiptOpen, setReceiptOpen] = useState(false);
@@ -59,9 +74,11 @@ export default function PatientBillsPage() {
   const fetchPatientBills = async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const res = await api.get("/invoices");
       setInvoices(res.data.data || []);
     } catch (err) {
+      setLoadError("Your invoices could not be loaded. Please try again.");
       toast({ title: "Unable to load invoices", description: "We could not fetch your billing statements. Please refresh the page.", variant: "error" });
     } finally {
       setLoading(false);
@@ -69,40 +86,62 @@ export default function PatientBillsPage() {
   };
 
   useEffect(() => {
+    mounted.current = true;
     if (user) fetchPatientBills();
+    return () => { mounted.current = false; };
   }, [user]);
 
-  const handleCheckoutSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeInvoice) return;
-    if (activeInvoice.currency && activeInvoice.currency !== "INR") {
-      toast({ title: "Payment at reception", description: "Online payment is not configured for this invoice currency.", variant: "warning" });
-      return;
-    }
-
+  const releasePayment = () => { paymentBusy.current = false; setSubmittingPayment(false); };
+  const verifyPayment = async (proof: PaymentProof) => {
+    if (verifying.current) return;
+    verifying.current = true; paymentBusy.current = true; setSubmittingPayment(true);
+    setPendingProof(proof);
     try {
-      setSubmittingPayment(true);
-      const method = paymentOption === "upi" ? "upi" : "online";
-      const paymentToken = paymentOption === "card" ? "card" : "upi";
-
-      await api.put(`/invoices/${activeInvoice.id}/pay`, { 
-        paymentMethod: method,
-        paymentToken
+      const result = await api.post("/appointment-payments/verify", proof);
+      if (result.data?.success !== true) throw new Error("Payment confirmation is unavailable.");
+      setPendingProof(null); setCheckoutOpen(false); setActiveInvoice(null);
+      toast({ title: "Payment confirmed", description: "Your payment was verified. Refreshing your invoices.", variant: "success" });
+      await fetchPatientBills();
+    } catch {
+      toast({ title: "Payment confirmation pending", description: "Check confirmation again. Do not make another payment for this invoice.", variant: "warning" });
+    } finally { verifying.current = false; releasePayment(); }
+  };
+  const handleCheckoutSubmit = async () => {
+    if (!activeInvoice || !canPayOnline(activeInvoice) || paymentBusy.current || pendingProof || paymentIssue) return;
+    const invoice = activeInvoice;
+    const visitId = appointmentId(invoice)!;
+    paymentBusy.current = true; setSubmittingPayment(true);
+    try {
+      const result = await api.post("/appointment-payments/create-order", { appointmentId: visitId });
+      if (!mounted.current) return;
+      const order = result.data?.data as { keyId: string; razorpayOrderId: string; amount: number; currency: string; appointmentId: string };
+      if (!order?.keyId || !order.razorpayOrderId || order.appointmentId !== visitId || order.currency !== "INR" || !Number.isFinite(order.amount) || Math.round(order.amount * 100) !== Math.round(invoice.totalAmount * 100)) {
+        throw new Error("Invoice details have changed. Refresh your invoices before paying.");
+      }
+      if (!await loadRazorpayScript()) throw new Error("Checkout could not be loaded. Please try again.");
+      if (!mounted.current) return;
+      let handled = false;
+      const checkout = new (window as any).Razorpay({
+        key: order.keyId, order_id: order.razorpayOrderId, amount: Math.round(order.amount * 100), currency: order.currency,
+        name: invoice.clinicId?.name || "Ekavyu", description: `Invoice ${invoice.invoiceNumber}`,
+        prefill: { name: user?.name || "", email: user?.email || "" },
+        handler: (response: CheckoutResult) => {
+          if (handled) return;
+          handled = true;
+          if (response.razorpay_order_id !== order.razorpayOrderId || !response.razorpay_payment_id || !response.razorpay_signature) {
+            setPaymentIssue(order.razorpayOrderId);
+            releasePayment(); toast({ title: "Payment response could not be verified", description: "Contact the clinic with your payment reference before retrying.", variant: "error" }); return;
+          }
+          void verifyPayment({ appointmentId: visitId, razorpayOrderId: response.razorpay_order_id, razorpayPaymentId: response.razorpay_payment_id, razorpaySignature: response.razorpay_signature });
+        },
+        modal: { ondismiss: () => { if (!verifying.current) releasePayment(); } },
       });
-      
-      toast({ 
-        title: "Payment Successful", 
-        description: `Your payment of ${formatCurrency(activeInvoice.totalAmount, activeInvoice.currency)} for Invoice #${activeInvoice.invoiceNumber} was processed successfully.`,
-        variant: "success",
-        duration: 5000
-      });
-      setCheckoutOpen(false);
-      setActiveInvoice(null);
-      fetchPatientBills();
-    } catch (err: any) {
-      toast({ title: "Payment Failed", description: err.response?.data?.message || "Unable to complete transaction. Please try another payment method.", variant: "error" });
-    } finally {
-      setSubmittingPayment(false);
+      checkout.on("payment.failed", () => { if (!verifying.current) { releasePayment(); toast({ title: "Payment not completed", description: "Review the payment status before retrying.", variant: "warning" }); } });
+      checkout.open();
+    } catch (error: unknown) {
+      releasePayment();
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || (error as Error).message;
+      toast({ title: "Checkout unavailable", description: userFacingError(message, "Refresh your invoices or contact clinic reception."), variant: "error" });
     }
   };
 
@@ -186,7 +225,7 @@ export default function PatientBillsPage() {
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              View billing history, print medical receipts, and make outstanding payments online.
+              View invoices and receipts. Eligible appointment invoices can be paid online; other payments are handled at reception.
             </p>
           </div>
 
@@ -205,8 +244,12 @@ export default function PatientBillsPage() {
         </div>
       </div>
 
+      {pendingProof && <Alert variant="warning" title="Payment confirmation pending" action={<Button variant="outline" loading={submittingPayment} disabled={submittingPayment} onClick={() => void verifyPayment(pendingProof)}>Check confirmation</Button>}>Do not pay again while confirmation is pending. Payment reference: <span className="break-all">{pendingProof.razorpayPaymentId}</span>. If you leave this page, share this reference with clinic reception.</Alert>}
+      {paymentIssue && <Alert variant="warning" title="Payment needs review">Contact clinic reception before paying again. Order reference: <span className="break-all">{paymentIssue}</span>.</Alert>}
       <div>
         <Table
+          error={loadError}
+          onRetry={fetchPatientBills}
           loading={loading}
           mobileCardView
           columns={[
@@ -241,23 +284,22 @@ export default function PatientBillsPage() {
             )},
             { key: "actions", header: "Actions", render: (row: Invoice) => (
               <div className="flex gap-2">
-                {(row.status === "unpaid" || row.status === "partially_paid") && (!row.currency || row.currency === "INR") ? (
-                  <Button size="xs" variant="primary" className="min-h-[36px] px-3.5 font-bold cursor-pointer" onClick={() => {
+                {canPayOnline(row) ? (
+                  <Button size="xs" variant="primary" disabled={submittingPayment || !!pendingProof || !!paymentIssue} className="min-h-[36px] px-3.5 font-bold cursor-pointer" onClick={() => {
                     setActiveInvoice(row);
                     setCheckoutOpen(true);
                   }}>
-                    {row.status === "partially_paid" ? "Pay Balance" : "Pay Online"}
+                    Pay Online
                   </Button>
                 ) : row.status === "paid" ? (
                   <PrintButton size="xs" variant="outline" className="min-h-[36px] px-3.5 font-bold cursor-pointer" onPrint={() => handleOpenReceipt(row)} documentName="receipt" preview>
               </PrintButton>
-                ) : <span className="text-xs text-text-muted">Pay at clinic</span>}
+                ) : <span className="text-xs text-text-muted">{row.status === "unpaid" || row.status === "partially_paid" ? "Pay at clinic reception" : "No payment due"}</span>}
               </div>
             )}
           ]}
           renderMobileCard={(row: Invoice) => {
             const balance = row.balanceDue !== undefined ? row.balanceDue : (row.status === "paid" ? 0 : row.totalAmount);
-            const isUnpaid = row.status === "unpaid" || row.status === "partially_paid";
             return (
               <div
                 key={row.id}
@@ -305,8 +347,9 @@ export default function PatientBillsPage() {
                 </div>
 
                 <div className="pt-1">
-                  {isUnpaid && (!row.currency || row.currency === "INR") ? (
+                  {canPayOnline(row) ? (
                     <Button
+                      disabled={submittingPayment || !!pendingProof || !!paymentIssue}
                       size="sm"
                       variant="primary"
                       className="w-full min-h-[44px] font-bold text-xs rounded-xl shadow-xs justify-center cursor-pointer"
@@ -316,7 +359,7 @@ export default function PatientBillsPage() {
                       }}
                     >
                       <CreditCard className="w-4 h-4 mr-1.5" />
-                      {row.status === "partially_paid" ? `Pay Balance (${formatCurrency(balance, row.currency)})` : `Pay Online (${formatCurrency(row.totalAmount, row.currency)})`}
+                      {`Pay Online (${formatCurrency(row.totalAmount, row.currency)})`}
                     </Button>
                   ) : row.status === "paid" ? (
                     <PrintButton
@@ -326,7 +369,7 @@ export default function PatientBillsPage() {
                       onPrint={() => handleOpenReceipt(row)} documentName="receipt" preview
                     >
               </PrintButton>
-                  ) : <p className="text-xs text-text-muted text-center">Pay at clinic reception</p>}
+                  ) : <p className="text-xs text-text-muted text-center">{row.status === "unpaid" || row.status === "partially_paid" ? "Pay at clinic reception" : "No payment due"}</p>}
                 </div>
               </div>
             );
@@ -336,77 +379,13 @@ export default function PatientBillsPage() {
         />
       </div>
 
-      {/* Online Checkout Payment Modal — PCI-DSS SAQ A Compliant */}
-      <Modal open={checkoutOpen} onClose={() => { setCheckoutOpen(false); setActiveInvoice(null); }} title="Pay Secure Outpatient Bill" size="sm">
-        <form onSubmit={handleCheckoutSubmit} className="space-y-5 font-sans pt-1">
-          <div className="p-4 bg-surface-alt border border-border/80 rounded-2xl space-y-1 text-center relative overflow-hidden shadow-xs">
-            <div className="inline-block">
-              <span className="text-[10px] tracking-widest font-black uppercase text-accent bg-primary-500/10 px-2.5 py-0.5 rounded-full border border-primary-500/20">
-                🔒 PCI-DSS Tokenized Gateway
-              </span>
-            </div>
-            <p className="text-xs text-text-secondary font-medium pt-1">Invoice #{activeInvoice?.invoiceNumber} • Dr. {activeInvoice?.doctorId?.name}</p>
-            <p className="text-3xl font-black text-text tracking-tight pt-0.5">{formatCurrency(activeInvoice?.balanceDue ?? activeInvoice?.totalAmount, activeInvoice?.currency)}</p>
-            {activeInvoice?.balanceDue !== undefined && activeInvoice.balanceDue < activeInvoice.totalAmount && (
-              <p className="text-[11px] text-text-muted">Total Bill: {formatCurrency(activeInvoice.totalAmount, activeInvoice.currency)} ({formatCurrency(activeInvoice.amountPaid ?? (activeInvoice.totalAmount - activeInvoice.balanceDue), activeInvoice.currency)} previously paid)</p>
-            )}
-          </div>
-
-          {/* Payment Method Selector */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setPaymentOption("upi")}
-              className={`p-3.5 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs ${
-                paymentOption === "upi"
-                  ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs"
-                  : "bg-surface-alt border-border text-text-secondary hover:bg-surface-hover"
-              }`}
-            >
-              📱 UPI / QR Code
-            </button>
-            <button
-              type="button"
-              onClick={() => setPaymentOption("card")}
-              className={`p-3.5 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs ${
-                paymentOption === "card"
-                  ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs"
-                  : "bg-surface-alt border-border text-text-secondary hover:bg-surface-hover"
-              }`}
-            >
-              💳 Tokenized Card SDK
-            </button>
-          </div>
-
-          {paymentOption === "upi" ? (
-            <div className="space-y-4 text-center py-2 animate-fade-in">
-              <div className="mx-auto w-36 h-36 bg-surface border border-border p-2 rounded-xl flex items-center justify-center shadow-inner relative overflow-hidden group">
-                <div className="w-full h-full border-2 border-dashed border-primary-500/30 rounded flex flex-col items-center justify-center gap-1.5 bg-surface-alt/50">
-                  <svg className="w-8 h-8 text-accent animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-16v.01M4 12h4m12 0h.01M4 20h.01M4 4h10v10H4V4z" /></svg>
-                  <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Scan UPI QR</span>
-                </div>
-              </div>
-              <p className="text-xs text-text-muted max-w-[240px] mx-auto">Scan with GPay, PhonePe, or Paytm to pay securely.</p>
-            </div>
-          ) : (
-            <div className="space-y-3.5 animate-fade-in py-2">
-              <div className="p-4 border border-border rounded-xl bg-surface-alt text-center space-y-2">
-                <div className="flex items-center justify-center gap-2 text-xs font-bold text-text">
-                  <svg className="w-4 h-4 text-success-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                  <span>Hosted Payment Gateway (SAQ A)</span>
-                </div>
-                <p className="text-xs text-text-muted">Payment details are tokenized directly via hosted Elements iframe SDK (`pm_card_visa`). No card numbers touch application servers.</p>
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 border-t border-border/80 pt-4 mt-6">
-            <Button variant="outline" type="button" onClick={() => { setCheckoutOpen(false); setActiveInvoice(null); }} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">Cancel</Button>
-            <Button type="submit" loading={submittingPayment} variant="primary" className="font-bold w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
-              {submittingPayment ? "Processing..." : `Pay ${formatCurrency(activeInvoice?.balanceDue ?? activeInvoice?.totalAmount, activeInvoice?.currency)}`}
-            </Button>
-          </div>
-        </form>
+      <Modal open={checkoutOpen} onClose={() => { if (!submittingPayment) { setCheckoutOpen(false); setActiveInvoice(null); } }} title="Pay appointment invoice" size="sm" busy={submittingPayment}
+        footer={<div className="flex flex-wrap gap-3 justify-end w-full"><Button variant="outline" disabled={submittingPayment} onClick={() => { setCheckoutOpen(false); setActiveInvoice(null); }}>Close</Button><Button loading={submittingPayment} disabled={!!pendingProof || !!paymentIssue} onClick={handleCheckoutSubmit}>Continue to payment</Button></div>}>
+        <div className="space-y-4">
+          <div><p className="text-sm text-text-muted">Invoice #{activeInvoice?.invoiceNumber}</p><p className="text-2xl font-semibold mt-1">{formatCurrency(activeInvoice?.totalAmount, activeInvoice?.currency)}</p></div>
+          <p className="text-sm text-text-secondary">Choose your payment method in Razorpay checkout. Your invoice is marked paid after the server verifies the payment.</p>
+          {pendingProof && <p className="text-sm text-warning-text">Payment confirmation is pending. Use Check confirmation on the invoices page before making another payment.</p>}
+        </div>
       </Modal>
 
       {/* View Paid Receipt Modal */}

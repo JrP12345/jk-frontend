@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Toggle, Badge, useToast, cn, SkeletonForm } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Toggle, Badge, useToast, cn, SkeletonForm } from "@/components/ui";
 import Modal from "@/components/ui/Modal";
 import WhatsAppConnectionPanel from "./WhatsAppConnectionPanel";
 import { whatsappSettingsService } from "@/services/whatsappSettings.service";
@@ -45,7 +45,7 @@ export default function WhatsAppSettingsCard({
     sendDisruptionAlert: true,
   });
 
-  const { data: config, isLoading, refetch } = useQuery({
+  const { data: config, isLoading, isError, refetch } = useQuery({
     queryKey: ["whatsapp-settings", selectedOrgId],
     queryFn: () => whatsappSettingsService.getConfig(selectedOrgId),
     enabled: !isRoot || !!selectedOrgId,
@@ -132,8 +132,9 @@ export default function WhatsAppSettingsCard({
     );
   }
 
-  const creditsBalance = config?.creditsBalance ?? 500;
-  const monthlyQuota = config?.monthlyQuota ?? 500;
+  if (isError || !config) return <Alert variant="error" title="Organization WhatsApp settings unavailable" action={<Button variant="outline" onClick={() => refetch()}>Retry WhatsApp settings</Button>}>Load the saved settings before making changes.</Alert>;
+  const creditsBalance = config.creditsBalance ?? 0;
+  const monthlyQuota = config.monthlyQuota ?? 0;
   const creditsUsedThisMonth = config?.creditsUsedThisMonth ?? 0;
   const isLowBalance = config?.isLowBalance || creditsBalance <= lowBalanceThreshold;
   const usagePercentage = Math.min(100, Math.round((creditsUsedThisMonth / (monthlyQuota || 1)) * 100));

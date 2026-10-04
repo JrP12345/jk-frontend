@@ -981,10 +981,10 @@ export default function BillingPage() {
                   size="sm"
                   onClick={handleOpenCheckoutModal}
                   className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold rounded-xl border-primary-500/40 text-accent dark:text-accent hover:bg-primary-500/10 transition-colors shadow-2xs justify-center"
-                  title="Consolidate Consultation + Lab Tests + Prescriptions into single 1-Click checkout"
+                  title="Combine consultation, tests and prescriptions for checkout"
                 >
                   <Receipt className="h-3.5 w-3.5 mr-1 text-accent" />
-                  1-Click OPD
+                  OPD checkout
                 </Button>
 
                 <Button
@@ -1029,9 +1029,11 @@ export default function BillingPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           3. BILLING ANALYTICS & CASHFLOW CHARTS
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+      <details className="rounded-xl border border-border bg-surface">
+        <summary className="cursor-pointer p-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Collection trends and payment channels</summary>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 pt-0 sm:gap-5">
         <ChartContainer
-          title="Cashflow Velocity & Aging"
+          title="Collections and outstanding balances"
           description="14-day comparison of collected revenue vs pending receivables"
           className="lg:col-span-2"
           loading={loading}
@@ -1063,7 +1065,8 @@ export default function BillingPage() {
             valueFormatter={(v) => `₹${v.toLocaleString("en-IN")}`}
           />
         </ChartContainer>
-      </div>
+        </div>
+      </details>
 
       {/* ──────────────────────────────────────────────────────────────────────────
           4. INVOICES ROSTER TABLE

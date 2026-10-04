@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { useLatestRead } from "@/hooks/useLatestRead";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
-import { Card, CardContent, Button, Modal, Input, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
+import { Alert, Card, CardContent, Button, Modal, Input, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
 import { RotateCw, Plus, ShieldCheck, IndianRupee, Clock, AlertCircle, FileText, CheckCircle2, FileCheck } from "lucide-react";
 
 interface PatientUser {
@@ -98,6 +99,8 @@ export default function InsurancePage() {
   const [patients, setPatients] = useState<PatientProfile[]>([]);
   const [doctors, setDoctors] = useState<DoctorUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const beginRead = useLatestRead();
 
   const [selectedTpaFilter, setSelectedTpaFilter] = useState<string>("all");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("all");
@@ -149,29 +152,34 @@ export default function InsurancePage() {
   }, [activeClinicId]);
 
   const fetchData = async () => {
+    const request = beginRead();
     setLoading(true);
+    setLoadError(false);
     try {
       const [preAuthRes, claimsRes, patientsRes, staffRes, invoicesRes] = await Promise.all([
-        api.get(selectedClinicId ? `/pre-auth?clinicId=${selectedClinicId}` : "/pre-auth"),
-        api.get(selectedClinicId ? `/billing/claims?clinicId=${selectedClinicId}` : "/billing/claims").catch(() => ({ data: { data: [] } })),
-        api.get("/patients"),
-        api.get(selectedClinicId ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff"),
-        api.get(selectedClinicId ? `/invoices?clinicId=${selectedClinicId}` : "/invoices").catch(() => ({ data: { data: [] } })),
+        api.get(selectedClinicId ? `/pre-auth?clinicId=${selectedClinicId}` : "/pre-auth", { signal: request.signal }),
+        api.get(selectedClinicId ? `/billing/claims?clinicId=${selectedClinicId}` : "/billing/claims", { signal: request.signal }),
+        api.get("/patients", { signal: request.signal }),
+        api.get(selectedClinicId ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff", { signal: request.signal }),
+        api.get(selectedClinicId ? `/invoices?clinicId=${selectedClinicId}` : "/invoices", { signal: request.signal }),
       ]);
 
+      if (!request.isCurrent()) return;
       setPreAuths(preAuthRes.data?.data || []);
       setClaims(claimsRes.data?.data || []);
       setPatients(patientsRes.data?.data || []);
       setDoctors(staffRes.data?.data?.doctors || []);
       setInvoices(invoicesRes.data?.data || []);
     } catch (err: any) {
+      if (!request.isCurrent()) return;
+      setLoadError(true);
       toast({
         title: "Failed to Fetch Insurance Records",
-        description: err.response?.data?.message || "Could not retrieve TPA claims data",
+        description: "Insurance records could not be loaded. Please try again.",
         variant: "error",
       });
     } finally {
-      setLoading(false);
+      if (request.isCurrent()) setLoading(false);
     }
   };
 
@@ -418,6 +426,19 @@ export default function InsurancePage() {
   const pendingPreAuthCount = preAuths.filter((p) => p.status === "submitted").length;
   const underQueryCount = preAuths.filter((p) => p.status === "under_query").length;
 
+  if (loadError && !loading) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-xl font-bold text-text">Insurance claims</h1>
+        <Alert title="Insurance records unavailable" variant="error" action={
+          <Button variant="outline" onClick={fetchData}>Retry</Button>
+        }>
+          Claims, pre-authorizations, or supporting records could not be loaded. Please try again.
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
@@ -482,12 +503,13 @@ export default function InsurancePage() {
       <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-manipulation w-fit max-w-full">
         <button
           type="button"
+          aria-pressed={activeTab === "preAuth"}
           onClick={() => {
             setActiveTab("preAuth");
             setSelectedStatusFilter("all");
           }}
           className={cn(
-            "px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+            "min-h-11 px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 focus-visible:ring-2 focus-visible:ring-accent",
             activeTab === "preAuth"
               ? "bg-surface text-text shadow-xs font-bold border border-border/60"
               : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -502,12 +524,13 @@ export default function InsurancePage() {
 
         <button
           type="button"
+          aria-pressed={activeTab === "claims"}
           onClick={() => {
             setActiveTab("claims");
             setSelectedStatusFilter("all");
           }}
           className={cn(
-            "px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+            "min-h-11 px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 focus-visible:ring-2 focus-visible:ring-accent",
             activeTab === "claims"
               ? "bg-surface text-text shadow-xs font-bold border border-border/60"
               : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -599,9 +622,10 @@ export default function InsurancePage() {
                 <button
                   key={t.key}
                   type="button"
+                  aria-pressed={selectedTpaFilter === t.key}
                   onClick={() => setSelectedTpaFilter(t.key)}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
+                    "min-h-11 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-accent",
                     selectedTpaFilter === t.key
                       ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                       : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -619,6 +643,7 @@ export default function InsurancePage() {
           )}
 
           <Input
+            aria-label="Search insurance claims by claim number, policy or patient"
             placeholder="Search claim#, policy#, patient..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -649,9 +674,10 @@ export default function InsurancePage() {
             <button
               key={s.key}
               type="button"
+              aria-pressed={selectedStatusFilter === s.key}
               onClick={() => setSelectedStatusFilter(s.key)}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
+                "min-h-11 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 focus-visible:ring-2 focus-visible:ring-accent",
                 selectedStatusFilter === s.key
                   ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                   : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"

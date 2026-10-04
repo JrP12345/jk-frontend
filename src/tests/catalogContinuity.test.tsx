@@ -3,10 +3,29 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import Catalog from "@/app/(dashboard)/dashboard/billing/services/page";
 import { ToastProvider } from "@/components/ui/Toast";
 import api from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); useAuthStore.setState({ user: null }); });
 
 describe("Catalog query continuity", () => {
+  it("shows catalog data without management actions to a read-only billing user", async () => {
+    useAuthStore.setState({ user: { id: "reader", name: "Reader", email: "reader@example.test", role: "staff", permissions: ["VIEW_BILLING"] } });
+    const service = { _id: "service", code: "CONS", name: "Consultation", category: "consultation", department: "General", price: 100, hsnSacCode: "999312", gstRate: 0, isActive: true };
+    vi.spyOn(api, "get").mockResolvedValue({ data: { data: [service] } });
+    render(<ToastProvider><Catalog /></ToastProvider>);
+    await screen.findAllByText("Consultation");
+    expect(screen.queryByRole("button", { name: "Add Service Item" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit Rates & Tax" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Row Actions" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Deactivate" })).not.toBeInTheDocument();
+  });
+  it("keeps default service provisioning available to authorized billing managers", async () => {
+    useAuthStore.setState({ user: { id: "manager", name: "Manager", email: "manager@example.test", role: "staff", permissions: ["MANAGE_BILLING"] } });
+    vi.spyOn(api, "get").mockResolvedValue({ data: { data: [] } });
+    render(<ToastProvider><Catalog /></ToastProvider>);
+    expect(await screen.findByRole("button", { name: "Add default services" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add Service Item" })).toBeInTheDocument();
+  });
   it("debounces typing and ignores an older response that finishes last", async () => {
     const requests: { url: string; signal?: AbortSignal; resolve: (value: unknown) => void }[] = [];
     vi.spyOn(api, "get").mockImplementation((url, config) => new Promise(resolve => {

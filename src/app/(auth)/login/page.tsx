@@ -267,7 +267,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 py-10 bg-surface-alt relative font-sans text-text animate-page-enter">
+    <div className="min-h-dvh flex flex-col items-center justify-center px-4 py-20 bg-surface-alt relative font-sans text-text animate-page-enter">
       {/* Background ambient glow & subtle pattern */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 brand-wash" />
@@ -313,14 +313,14 @@ export default function LoginPage() {
         {/* Auth Card Container */}
         <Card
           className={cn(
-            "shadow-lg   border border-border/80  bg-surface p-0 rounded-3xl overflow-hidden transition-transform duration-300 relative ring-1 ring-border/40",
+            "border border-border bg-surface p-0 rounded-xl overflow-hidden transition-transform duration-300 relative",
             isShaking && "animate-shake"
           )}
         >
           {!isForgotPassword ? (
-            <div className="p-6 sm:p-7 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <CardHeader className="p-0 mb-3 text-center">
-                <CardTitle as="h1" className="text-2xl font-black text-text tracking-tight">Welcome Back</CardTitle>
+                <CardTitle as="h1" className="text-2xl font-semibold text-text tracking-tight">Sign in</CardTitle>
                 <CardDescription className="text-xs text-text-muted mt-1 font-medium">
                   Access your patient portal or healthcare workspace
                 </CardDescription>
@@ -343,7 +343,7 @@ export default function LoginPage() {
                       });
                     }}
                     className={cn(
-                      "py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer min-h-[44px] sm:min-h-0 flex items-center justify-center gap-1.5",
+                      "py-2 text-xs font-medium rounded-xl transition-all duration-200 cursor-pointer min-h-11 flex items-center justify-center gap-1.5",
                       authTab === "mobile"
                         ? "bg-surface text-accent dark:text-accent shadow-xs border border-border/70"
                         : "text-text-muted hover:text-text hover:bg-surface/40"
@@ -371,7 +371,7 @@ export default function LoginPage() {
                       });
                     }}
                     className={cn(
-                      "py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer min-h-[44px] sm:min-h-0 flex items-center justify-center gap-1.5",
+                      "py-2 text-xs font-medium rounded-xl transition-all duration-200 cursor-pointer min-h-11 flex items-center justify-center gap-1.5",
                       authTab === "email"
                         ? "bg-surface text-accent dark:text-accent shadow-xs border border-border/70"
                         : "text-text-muted hover:text-text hover:bg-surface/40"

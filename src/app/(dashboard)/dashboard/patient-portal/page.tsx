@@ -37,7 +37,6 @@ export default function PatientPortalPage() {
     relationship: "son" as "mother" | "father" | "son" | "daughter" | "spouse" | "guardian" | "other",
     dob: "",
     gender: "male" as "male" | "female" | "other",
-    bloodGroup: "O+",
   });
   const [addingFamily, setAddingFamily] = useState(false);
 
@@ -74,7 +73,7 @@ export default function PatientPortalPage() {
     phone: (user as any)?.phone || "",
     dob: "",
     gender: "male",
-    bloodGroup: "O+",
+    bloodGroup: "",
     address: "",
     emergencyName: "",
     emergencyRelationship: "",
@@ -196,7 +195,7 @@ export default function PatientPortalPage() {
           phone: (user as any)?.phone || "",
           dob: p.dob ? new Date(p.dob).toISOString().split("T")[0] : "",
           gender: p.gender || "male",
-          bloodGroup: p.bloodGroup || "O+",
+          bloodGroup: p.bloodGroup || "",
           address: p.address || "",
           emergencyName: p.emergencyContacts?.[0]?.name || "",
           emergencyRelationship: p.emergencyContacts?.[0]?.relationship || "",
@@ -261,7 +260,7 @@ export default function PatientPortalPage() {
         phone: editForm.phone,
         dob: editForm.dob,
         gender: editForm.gender,
-        bloodGroup: editForm.bloodGroup,
+        bloodGroup: editForm.bloodGroup || undefined,
         address: editForm.address,
       };
 
@@ -341,12 +340,11 @@ export default function PatientPortalPage() {
         relationship: familyForm.relationship,
         dob: familyForm.dob || undefined,
         gender: familyForm.gender,
-        bloodGroup: familyForm.bloodGroup,
       });
 
       toast({ title: "Family Member Added! 👨‍👩‍👧", description: `Added ${familyForm.name} to your family list.`, variant: "success" });
       setAddFamilyModalOpen(false);
-      setFamilyForm({ name: "", relationship: "son", dob: "", gender: "male", bloodGroup: "O+" });
+      setFamilyForm({ name: "", relationship: "son", dob: "", gender: "male" });
       fetchFamilyMembers();
     } catch (err: any) {
       toast({ title: "Error", description: err.response?.data?.message || "Failed to add family member", variant: "error" });
@@ -446,9 +444,11 @@ export default function PatientPortalPage() {
         ].map((tab) => (
           <button
             key={tab.key}
+            type="button"
+            aria-pressed={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key as any)}
             className={cn(
-              "px-3.5 py-2 min-h-[38px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
+              "px-3.5 py-2 min-h-11 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
               activeTab === tab.key
                 ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -807,6 +807,7 @@ export default function PatientPortalPage() {
               />
               <Select
                 label="Blood Group"
+                placeholder="Not recorded"
                 value={editForm.bloodGroup}
                 onChange={(e) => setEditForm({ ...editForm, bloodGroup: e.target.value })}
                 options={[

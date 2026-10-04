@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { PatientTimeline } from "@/components/ehr/PatientTimeline";
 
 interface PageProps {
@@ -10,6 +11,7 @@ export default async function PatientTimelinePage({ params }: PageProps) {
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+      <Link href={`/dashboard/patients/${id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-text-secondary hover:text-accent">← Back to patient profile</Link>
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-text">Patient history</h1>
         <p className="text-sm text-text-muted dark:text-text-muted mt-1">

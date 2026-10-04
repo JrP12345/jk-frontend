@@ -202,7 +202,7 @@ describe("responsive controls", () => {
 
   it("shows root console destinations on mobile", () => {
     render(<MobileBottomNav user={{ role: "root" }} pathname="/dashboard" onOpenMenu={vi.fn()} isMenuOpen={false} />);
-    expect(screen.getByRole("link", { name: "Tenants" })).toHaveAttribute("href", "/dashboard/organizations");
+    expect(screen.getByRole("link", { name: "Organizations" })).toHaveAttribute("href", "/dashboard/organizations");
     expect(screen.queryByRole("link", { name: "Schedule" })).not.toBeInTheDocument();
   });
 

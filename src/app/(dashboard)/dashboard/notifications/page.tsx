@@ -464,6 +464,7 @@ export default function NotificationsInboxPage() {
             <input
               type="text"
               placeholder="Search notifications"
+              aria-label="Search notifications"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 transition-all"

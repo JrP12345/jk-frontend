@@ -522,7 +522,7 @@ export default function LaboratoryPage() {
           <StatCard
             label="Completed Results"
             value={completedOrders.toString()}
-            description="Signed & verified reports"
+            description="Uploaded test results"
             icon={<CheckCircle2 className="w-5 h-5 text-text-secondary" />}
           />
         </div>
@@ -534,8 +534,9 @@ export default function LaboratoryPage() {
           <button
             type="button"
             onClick={() => setActiveTab("worklist")}
+            aria-pressed={activeTab === "worklist"}
             className={cn(
-              "px-3.5 py-2 min-h-[38px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+              "px-3.5 py-2 min-h-11 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
               activeTab === "worklist"
                 ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -550,8 +551,9 @@ export default function LaboratoryPage() {
           <button
             type="button"
             onClick={() => setActiveTab("catalog")}
+            aria-pressed={activeTab === "catalog"}
             className={cn(
-              "px-3.5 py-2 min-h-[38px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0",
+              "px-3.5 py-2 min-h-11 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
               activeTab === "catalog"
                 ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                 : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"

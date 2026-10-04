@@ -297,8 +297,9 @@ export default function RadiologyPage() {
                 key={m.key}
                 type="button"
                 onClick={() => setSelectedModality(m.key)}
+                aria-pressed={selectedModality === m.key}
                 className={cn(
-                  "px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
+                  "px-3 py-1.5 min-h-11 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
                   selectedModality === m.key
                     ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                     : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
@@ -311,6 +312,7 @@ export default function RadiologyPage() {
 
           <Input
             placeholder="Search patient, study description, UID..."
+            aria-label="Search imaging studies"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full md:w-64 text-xs"
@@ -331,8 +333,9 @@ export default function RadiologyPage() {
               key={s.key}
               type="button"
               onClick={() => setSelectedStatus(s.key)}
+              aria-pressed={selectedStatus === s.key}
               className={cn(
-                "px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0",
+                "px-3 py-1.5 min-h-11 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
                 selectedStatus === s.key
                   ? "bg-surface text-text shadow-xs font-bold border border-border/60"
                   : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
