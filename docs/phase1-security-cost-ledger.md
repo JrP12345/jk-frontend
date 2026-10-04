@@ -4,8 +4,14 @@ Completed local source/configuration pass. Evidence, page coverage and deploymen
 
 Final source/configuration gate: [phase1-final-production-gate.md](phase1-final-production-gate.md).
 Small deployment/SMTP/job/signing/provider timeout fixes are recorded there.
-No tests/builds/lint/type checks were run in that final pass; the existing unpatched
-frontend dependency gate remains the sole known repository P1 blocker.
+The subsequent authorized local [VAPT report](../../backend/docs/vapt-2026-10-04.md)
+closed one manual-notification HTML/open-navigation P1 and found no unresolved
+repository-side P0/P1.
+No tests/builds/lint/type checks were run in that final pass or its dependency
+closure. DEP-01 is now closed through a version-scoped replacement of the Next
+ESLint plugin's glob dependency; full frontend/backend npm audits report zero
+vulnerabilities. The source/configuration code gate is PASS; external deployment
+requirements remain in the final report.
 
 Read the healthcare ledger first; preserved existing local changes. Highest implementation risk: Level 4. The user's explicit restriction limited verification to static checks and small focused cases. No deployment, live provider/data action, seed, migration, full suite, browser E2E, build or load test. **Stop here; Phase 1 Production Deployment is a separate milestone.**
 
@@ -39,7 +45,7 @@ Read the healthcare ledger first; preserved existing local changes. Highest impl
 - Retire historical signing credential; verify runtime secrets, explicit HTTPS origins/proxy trust and origin firewalling.
 - Coordinate session, Google/SSO and upload contracts; verify identity/nonce indexes, transaction-capable MongoDB and completed-intent TTL maintenance.
 - Verify private R2, CORS, signed length/type, staging cleanup and clinical file inspection policy. Signature/pattern scanning is not antivirus/CDR.
-- Recheck earlier unpatched frontend development dependency advisory: `braces`, GHSA-vfj7-8cjw-p6xm. Runtime-only clean results do not satisfy the full release audit.
+- DEP-01 closed: `braces`/`micromatch` removed from the frontend lockfile; full dependency audits pass. Preserve the scoped replacement and its rootDir/upgrade limits documented in the final gate report.
 - Next separate milestone: clean CI/build/release gates, authenticated browser journeys, provider test mode, deployed workers/restart behavior and backup/rotation evidence. Earlier release snapshots predate these edits.
 
 ## P2 intentionally deferred

@@ -2,10 +2,11 @@
 
 ## Code readiness
 
-**Not Ready.** One previously recorded repository release blocker remains: the
-frontend's required high/critical dependency audit. No other repository-side
-P0/P1 remains known from this incremental inspection and the completed audits.
-This is a source/configuration decision, not deployed certification.
+**Ready to enter Phase 1 deployment.** DEP-01 is closed: the vulnerable frontend
+development dependency chain has been removed and both repositories' full
+dependency audits pass with zero reported vulnerabilities. No known repository-side
+P0/P1 remains based on the completed audits, existing test evidence and this
+source/configuration review. This is not deployed certification.
 
 Read first: [security/cost ledger](phase1-security-cost-ledger.md),
 [healthcare ledger](healthcare-product-ledger.md),
@@ -14,10 +15,14 @@ Read first: [security/cost ledger](phase1-security-cost-ledger.md),
 [deployment](../../backend/DEPLOYMENT.md),
 [recovery](../../backend/DISASTER_RECOVERY.md).
 
-No tests, browser checks, builds, lint/type checks, load tests, dependency-audit
-commands, migrations, provider transactions, messages or infrastructure changes
-were performed. Verification was source/dependency/caller tracing and whitespace
-inspection. Highest changed-code risk: Level 4. Earlier 398 frontend/806 backend
+No tests, browser checks, builds, lint/type checks, load tests, migrations,
+provider transactions, messages or infrastructure changes were performed in this
+final review or its dependency closure. The initial review used source/dependency/
+caller tracing and whitespace inspection. The closure additionally installed the
+targeted dependency replacement with lifecycle scripts disabled, ran full npm
+dependency audits, inspected the installed tree and validated lockfile acceptance
+with an npm ci dry run. This is a Level 5 checkpoint; the user's explicit no-test
+restriction applies to local verification. Earlier 398 frontend/806 backend
 full-suite evidence predates the security/cost pass and these final fixes; the
 ledgers retain subsequent focused evidence. Do not relabel it as a current full run.
 
@@ -28,14 +33,47 @@ and production credentials/network rules remain deployment obligations.
 
 ## P1 blockers
 
-**DEP-01 remains open:** lockfile `braces@3.0.3` through the Next ESLint development
-tool chain fails the required frontend dependency gate. The [reviewed advisory
-GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm), rechecked
-during this review, still lists no patched version. Existing runtime-only audit
-evidence is clean; it does not satisfy the full CI gate. No gate suppression,
-incompatible downgrade or speculative package patch was introduced. Closure
-requires a supported remediation, or an explicitly documented release-owner
-exception changing the gate decision; none has been granted.
+**None known remaining in repository source.**
+
+### DEP-01 closure — 2026-10-04
+
+The [braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) still has
+no patched release. The remediation removes the affected chain rather than
+accepting an exception: a version-scoped npm override replaces only
+`@next/eslint-plugin-next@16.3.8`'s `fast-glob` dependency with the published
+`tinyglobby@0.2.17` package. The lockfile no longer contains `braces` or
+`micromatch`. Existing application dependencies, Next/React versions, lint rules
+and the full high/critical audit gate are retained.
+
+Compatibility was traced in the installed plugin: its sole `fast-glob` import is
+`dist/utils/get-root-dirs.js`, using CommonJS `globSync(pattern,
+{ onlyDirectories: true })` only when `settings.next.rootDir` is configured.
+This standalone repository does not configure that setting, so it continues to
+use `context.cwd`. The replacement exports CommonJS `globSync` and supports
+`onlyDirectories`. [npm documents dependency replacement through overrides](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#overrides);
+[tinyglobby documents its glob API and migration options](https://superchupu.dev/tinyglobby/documentation).
+
+This is a repository-owned dependency substitution, not an upstream Next fix or
+a general fast-glob replacement. Revisit it if introducing `settings.next.rootDir`:
+tinyglobby defaults to `expandDirectories: true`, whereas fast-glob does not expand
+literal directories recursively. Review any such configuration change before use.
+The exact plugin-version scope avoids silently applying the substitution to future
+plugin releases. Remove it once an audited upstream toolchain no longer needs the
+affected chain; keep the normal CI gates for upgrades.
+
+Closure evidence (Windows, Node 24.7.0, npm 11.1.0):
+
+| Check | Result |
+| --- | --- |
+| `npm install --ignore-scripts --no-audit --no-fund` (frontend) | PASS; 3 replacement packages added, 16 obsolete packages removed |
+| `npm ls @next/eslint-plugin-next fast-glob tinyglobby` | PASS; plugin resolves `fast-glob@npm:tinyglobby@0.2.17` |
+| Frontend `npm audit --audit-level=high --json` | PASS; zero vulnerabilities, including development dependencies |
+| Backend `npm audit --audit-level=high --json` | PASS; zero vulnerabilities, including development dependencies |
+| Frontend `npm ci --dry-run --ignore-scripts --no-audit --no-fund` | PASS; lockfile accepted, no clean install or lifecycle scripts executed |
+
+Existing test evidence was reused; these results do not claim a fresh lint,
+test, build or hosted-CI run. Deployment must still use the normal hosted release
+gates and production environment values below.
 
 Small confirmed P1 fixes completed in this review:
 
@@ -146,8 +184,11 @@ available; existing mocked/consumer evidence is not live browser certification.
 
 ## Final decision
 
-**PHASE 1 PRODUCTION CODE GATE: FAIL**
+**PHASE 1 PRODUCTION CODE GATE: PASS**
 
-The sole remaining repository blocker is DEP-01. Close that specific dependency
-gate, then continue with Phase 1 deployment and controlled launch using the
-actions above. This review does not authorize a new broad audit cycle.
+DEP-01 is closed and no known repository-side P0/P1 remains within this review's
+scope. Continue with Phase 1 deployment and controlled launch using the actions
+above. Hosting/DNS, runtime secrets, production MongoDB/storage, provider setup,
+deployed workers, monitoring and backup/rollback evidence remain external launch
+requirements. This pass does not certify that those settings have been applied
+and does not authorize a new broad audit cycle.

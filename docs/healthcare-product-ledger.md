@@ -8,8 +8,11 @@ Read this before each loop. Source audit: [healthcare-product-audit.md](healthca
   Reused all completed evidence; no tests/build/lint/type checks or live actions.
   Closed confirmed production URL/Caddy logging, standalone scheduled-job ownership,
   SMTP TLS/privacy, payment-link deadline/error and prescription-key fallback gaps.
-  Decision remains FAIL for the existing unpatched frontend `braces` dependency gate;
-  deployment requirements and recovery/rollback ownership are recorded in the report.
+  DEP-01 subsequently closed with a version-scoped glob dependency replacement;
+  full frontend/backend npm audits report zero vulnerabilities and npm ci dry-run
+  accepts the frontend lockfile. Decision is PASS for the source/configuration
+  code gate; deployment requirements and recovery/rollback ownership remain in
+  the report. No fresh tests/build/lint/type checks or live actions were run.
 
 - Phase 1 security/request/cost source pass (2026-10-04): [audit and all 47 page dispositions](phase1-security-cost-audit.md), [finding ledger](phase1-security-cost-ledger.md). Closed the recorded session/MFA/identity, private realtime, clinical read/export, upload intent/file bounds, CSRF/logging/input and print findings locally. Removed unused lab reads/duplicated upload bytes, reduced connected TV polling, replaced global patient identity search and historical quality materialization. Seven auth, nine security-contract and four selected print cases passed across focused batches; package types and changed frontend lint pass. No full suite/build/browser/load/provider run. Session/SSO/upload contracts and deployment requirements are explicit; earlier release snapshots predate this pass. Stop here; Phase 1 Production Deployment is a separate milestone.
 - Initial product/model/route/workflow audit; core already supports many providers, locations, staff and optional departments. Keep one modular product.
@@ -32,17 +35,17 @@ Read this before each loop. Source audit: [healthcare-product-audit.md](healthca
 
 ## IN PROGRESS
 
-- None in the completed local implementation and verification checkpoint. Overall release remains blocked by the dependency security gate and external checks recorded below.
+- None in the completed local source/configuration code gate. External deployment and release-environment checks remain below.
 
 ## NEXT
 
 1. Refund follow-up implementation complete locally; real provider test-mode verification remains a release-environment check. The user selected agent judgment for the environment; use isolated local fixtures and do not infer a staging URL or provider sandbox from production credentials.
 2. Local representative scale baseline includes retained history and provider identity joins. Follow up with candidate index comparisons, concurrent users and network/deployment measurements; use evidence to justify any pagination/index change.
-3. Release follow-up: resolve the unpatched frontend dependency advisory and pass a clean hosted-CI run, then record authenticated booking/arrival/consultation/payment journeys, real-provider test-mode scenarios, transaction-capable deployment, worker health and restore/rotation checks. Local gate results are complete above; no hosted CI or production deployment was performed.
+3. Phase 1 deployment follow-up: use the normal clean hosted-CI gate, then record authenticated booking/arrival/consultation/payment journeys, real-provider test-mode scenarios, transaction-capable deployment, worker health and restore/rotation checks. DEP-01 is resolved; no hosted CI or production deployment was performed here.
 
 ## BLOCKED / LATER
 
-- Full frontend dependency audit fails on the unpatched development-tool `braces` advisory GHSA-vfj7-8cjw-p6xm (five affected package entries, one underlying advisory). Runtime-only audit is clean; it does not replace the required full audit. No audit gate was relaxed or incompatible lint-tool downgrade applied.
+- The earlier development-tool `braces` advisory is closed locally by removing its dependency chain. Full frontend/backend npm audits pass; the scoped override's compatibility and retirement limits are documented in [the final report](phase1-final-production-gate.md). External deployment evidence remains outstanding.
 - P2 workload/payload/execution-plan review beyond affected paths; no production measurement or index migration yet.
 - P2 departments and specialized workflows only when organization requirements justify UI/assignment integration.
 - Production release gates, real provider flows, distributed infrastructure checks and operational key/backup procedures require release context. Existing security/readiness trackers retain their operational requirements.

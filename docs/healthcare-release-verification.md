@@ -2,6 +2,8 @@
 
 This continues ledger NEXT #3 after the refund reconciliation and workload measurement loops. It records local evidence, not deployment approval. Existing local changes in both repositories were preserved. No configured database, live payment provider, patient notification recipient, seed, migration or backup restore was used.
 
+**Subsequent dependency closure:** DEP-01 is resolved and the [final source/configuration code gate](phase1-final-production-gate.md) is PASS. The Next ESLint plugin's glob dependency was replaced through a version-scoped npm override; the frontend lockfile no longer contains `braces`/`micromatch`, and current full frontend/backend npm audits report zero vulnerabilities. npm ci dry-run accepts the frontend lockfile. The results below remain the historical checkpoint; tests/build/lint/type checks were not repeated during closure. External deployment checks still apply.
+
 Environment: Windows, Node 24.7.0, installed Next 16.3.8, Vitest 5.0.3 and TypeScript 5.9.3. Workload fixtures used MongoDB 8.2.6 with one disposable replica-set node. Gates used the existing installed dependencies; a clean hosted-CI install remains a release-environment check.
 
 ## Required local gates
@@ -35,7 +37,7 @@ The new replica-set rollback case exposed an existing shared outbox defect: expl
 
 The complete run after that correction reported one failing case in `postConsultationFeeWorkflow`: its walk-in setup was past the clinic's 17:00 close, so it correctly returned capacity conflict before reaching the cash-settlement assertions. A focused reproduction records that response in the assertion. The fixture now pins only Date to a clinic morning and restores it afterwards; all five cases pass. The final complete backend gate passes all 806 tests, including the 36-case refund/disruption integrity suite and the three new queue-pacing integrity cases. No cases were skipped or removed to obtain this result.
 
-## Security gate that remains blocked
+## Security gate blocked at this historical checkpoint
 
 The installed development dependency chain is `eslint-config-next` -> `@next/eslint-plugin-next` -> `fast-glob` -> `micromatch` -> `braces@3.0.3`. The [reviewed upstream advisory GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) affects versions through 3.0.3 and lists no patched version at this checkpoint. The vulnerability is stack-exhaustion denial of service from deeply nested patterns.
 
