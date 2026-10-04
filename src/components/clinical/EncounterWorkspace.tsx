@@ -12,21 +12,34 @@ import { SOAPNoteEditor } from "./SOAPNoteEditor";
 import { NEWS2Calculator } from "./NEWS2Calculator";
 import { PatientTimeline } from "../ehr/PatientTimeline";
 import { DoctorCopilotCard } from "./DoctorCopilotCard";
+import { VisitCompletion } from "./VisitCompletion";
+import { useAuthStore } from "@/store/authStore";
+import { hasAnyPermission } from "@/lib/permissions";
 import { Tabs, Card, CardContent, Badge, Button, Input, Select, Modal, useToast, Table, Skeleton } from "@/components/ui";
 import api from "@/lib/api";
 import { OrdersService } from "@/services/orders.service";
 import { Receipt, Megaphone, Activity, FileText, Clock } from "lucide-react";
 
 interface EncounterWorkspaceProps {
+  appointmentId?: string;
+  appointmentStatus?: string;
+  visitNotes?: string;
+  focused?: boolean;
   patient: PatientHeaderData;
   initialNoteId?: string;
+  initialNoteData?: any;
   initialTimelineEvents?: any[];
 }
 
 export function EncounterWorkspace({
   patient,
   initialNoteId,
+  initialNoteData,
   initialTimelineEvents = [],
+  appointmentId,
+  appointmentStatus,
+  visitNotes,
+  focused = false,
 }: EncounterWorkspaceProps) {
   const {
     encounterId,
@@ -38,7 +51,14 @@ export function EncounterWorkspace({
   } = useEncounterContext();
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("soap");
+  const [visitCompleted, setVisitCompleted] = useState(appointmentStatus === "completed");
+  const [activeTab, setActiveTab] = useState(initialNoteId ? "soap" : appointmentStatus === "completed" ? "timeline" : focused ? "visit" : "soap");
+  const [hasSavedNote, setHasSavedNote] = useState(Boolean(initialNoteId));
+  const [editorData, setEditorData] = useState(initialNoteData);
+  const [soapOpened, setSoapOpened] = useState(Boolean(initialNoteId) || !focused);
+  const user = useAuthStore(state => state.user);
+  const canBill = hasAnyPermission(user, "MANAGE_BILLING");
+  const canCallNext = hasAnyPermission(user, "MANAGE_QUEUE");
   const { toast } = useToast();
 
   // Diagnostic Orders State
@@ -109,8 +129,8 @@ export function EncounterWorkspace({
   };
 
   const router = useRouter();
-  const handleCallNextPatient = async (confirmedAppointmentId?: string) => {
-    if (!confirmLeavingClinicalDraft()) return;
+  const handleCallNextPatient = async (confirmedAppointmentId?: string, justCompleted = false) => {
+    if (!justCompleted && !confirmLeavingClinicalDraft()) return;
     try {
       setCallingNext(true);
       const res = await api.post("/queue/call-next", { clinicId, doctorId, requireArrivalConfirmation: true, confirmedAppointmentId });
@@ -125,7 +145,7 @@ export function EncounterWorkspace({
     } catch (err: any) {
       if ((err.response?.data?.error || err.response?.data?.details) === "ARRIVAL_CONFIRMATION_REQUIRED") {
         const candidate = err.response.data.data;
-        if (window.confirm(`Token #${candidate.tokenNumber} has not checked in. Call this booked patient now?`)) await handleCallNextPatient(candidate.id);
+        if (window.confirm(`Token #${candidate.tokenNumber} has not checked in. Call this booked patient now?`)) await handleCallNextPatient(candidate.id, justCompleted);
         return;
       }
       toast({ title: "Error", description: err.response?.data?.message || "Failed to call next patient", variant: "error" });
@@ -282,14 +302,16 @@ export function EncounterWorkspace({
       {/* Main Workspace Container */}
       <div className="p-4 max-w-7xl mx-auto w-full space-y-4">
         {/* Ekavyu 20-Second Doctor Pre-Visit Briefing Card */}
-        <DoctorCopilotCard patientName={patient.name} />
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {(!focused || activeTab !== "visit") && <DoctorCopilotCard patientName={patient.name} />}
+        {visitCompleted && <p className="text-sm text-text-muted" role="status">Visit completed. Review history or continue with billing and the next patient.</p>}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 min-w-0">
           <Tabs
-            variant="pills"
+            variant="pills" className="min-w-0 xl:flex-1"
             activeTab={activeTab}
-            onChange={setActiveTab}
+            onChange={tab => { if (tab === "soap") setSoapOpened(true); setActiveTab(tab); }}
             tabs={[
-              { id: "soap", label: "SOAP Note Editor", icon: <FileText className="w-4 h-4" /> },
+              ...(focused && appointmentId ? [{ id: "visit", label: "Visit", icon: <FileText className="w-4 h-4" /> }] : []),
+              ...(!visitCompleted || hasSavedNote ? [{ id: "soap", label: "Full clinical editor", icon: <FileText className="w-4 h-4" /> }] : []),
               { id: "orders", label: `Diagnostic Orders (${orders.length})`, icon: <Activity className="w-4 h-4" /> },
               { id: "timeline", label: "EHR Timeline", icon: <Clock className="w-4 h-4" /> },
               { id: "news2", label: "NEWS2 Vitals Calculator", icon: <Activity className="w-4 h-4" /> },
@@ -297,7 +319,7 @@ export function EncounterWorkspace({
           />
 
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 w-full sm:w-auto">
-            <Button
+            {canBill && <Button
               variant="outline"
               size="sm"
               onClick={handleOpenChargePreview}
@@ -305,8 +327,8 @@ export function EncounterWorkspace({
             >
               <Receipt className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
               Auto Charge Capture
-            </Button>
-            <Button
+            </Button>}
+            {canCallNext && <Button
               variant="primary"
               size="sm"
               onClick={() => handleCallNextPatient()}
@@ -315,20 +337,33 @@ export function EncounterWorkspace({
             >
               <Megaphone className="w-3.5 h-3.5 mr-1.5" />
               Call Next Patient
-            </Button>
+            </Button>}
           </div>
         </div>
 
         {/* Tab 1: SOAP Note Editor */}
-        {activeTab === "soap" && (
+        {focused && appointmentId && !hasSavedNote && !soapOpened && <div hidden={activeTab !== "visit"}><VisitCompletion appointmentId={appointmentId} encounterId={encounterId || undefined} doctorId={doctorId} initialNotes={visitNotes} completed={visitCompleted}
+          onFullEditor={draft => {
+            setEditorData({ subjective: { chiefComplaint: draft.symptoms, historyOfPresentIllness: draft.notes, symptoms: draft.symptoms ? [draft.symptoms] : [] },
+              assessment: { diagnoses: draft.diagnosis ? [{ code: "CUSTOM", description: draft.diagnosis }] : [] },
+              plan: { prescriptionIds: draft.medicines.map(medicine => ({ ...medicine, medicineName: medicine.name })) } });
+            setSoapOpened(true); setActiveTab("soap");
+          }}
+          onCompleted={async next => { setVisitCompleted(true); if (next && canCallNext) await handleCallNextPatient(undefined, true); }} /></div>}
+        {activeTab === "visit" && (hasSavedNote || soapOpened) && <Card className="p-4 space-y-3"><p className="text-sm">Continue this visit in the full clinical editor. Saved clinical documentation must be signed to complete.</p><Button variant="outline" onClick={() => setActiveTab("soap")}>Open full clinical editor</Button></Card>}
+        {soapOpened && (!visitCompleted || hasSavedNote) && <div hidden={activeTab !== "soap"}>
           <SOAPNoteEditor
             encounterId={encounterId}
             patientId={patient.id}
             clinicId={clinicId}
             doctorId={doctorId}
             initialNoteId={initialNoteId}
+            initialNoteData={editorData}
+            onSaved={() => setHasSavedNote(true)}
+            onSigned={() => setVisitCompleted(true)}
+            appointmentId={appointmentId}
           />
-        )}
+        </div>}
 
         {/* Tab 2: Diagnostic Orders & Results */}
         {activeTab === "orders" && (

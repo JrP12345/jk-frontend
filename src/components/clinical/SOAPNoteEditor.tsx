@@ -19,13 +19,15 @@ interface SOAPNoteEditorProps {
   appointmentId?: string;
   doctorId?: string;
   initialNoteId?: string;
+  initialNoteData?: any;
+  onSigned?: () => void;
   onSaved?: () => void;
 }
 
-export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncounterId, appointmentId, doctorId, initialNoteId, onSaved }: SOAPNoteEditorProps) {
+export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncounterId, appointmentId, doctorId, initialNoteId, initialNoteData, onSaved, onSigned }: SOAPNoteEditorProps) {
   const [encounterId, setEncounterId] = useState<string | null>(initialEncounterId || null);
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(initialNoteId || null);
-  const [isSigned, setIsSigned] = useState(false);
+  const [isSigned, setIsSigned] = useState(initialNoteData?.status === "signed");
   const [loading, setLoading] = useState(false);
   const [signing, setSigning] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
@@ -86,34 +88,37 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
   const [submittingAmend, setSubmittingAmend] = useState(false);
 
   // SOAP Form State
-  const [chiefComplaint, setChiefComplaint] = useState("");
-  const [historyOfPresentIllness, setHistoryOfPresentIllness] = useState("");
-  const [symptomsText, setSymptomsText] = useState("");
+  const [chiefComplaint, setChiefComplaint] = useState(initialNoteData?.subjective?.chiefComplaint || "");
+  const [historyOfPresentIllness, setHistoryOfPresentIllness] = useState(initialNoteData?.subjective?.historyOfPresentIllness || "");
+  const [symptomsText, setSymptomsText] = useState<string>((initialNoteData?.subjective?.symptoms || []).join(", "));
   
   // Vitals State
-  const [bpSystolic, setBpSystolic] = useState("");
-  const [bpDiastolic, setBpDiastolic] = useState("");
-  const [pulseRate, setPulseRate] = useState("");
-  const [spO2, setSpO2] = useState("");
-  const [temperatureF, setTemperatureF] = useState("");
-  const [physicalExamination, setPhysicalExamination] = useState("");
+  const recordedVital = (code: string) => String(initialNoteData?.objective?.observationIds?.find((value: any) => value.code === code)?.value || "");
+  const [bpSystolic, setBpSystolic] = useState(recordedVital("BP").split("/")[0] || "");
+  const [bpDiastolic, setBpDiastolic] = useState(recordedVital("BP").split("/")[1] || "");
+  const [pulseRate, setPulseRate] = useState(recordedVital("HR"));
+  const [spO2, setSpO2] = useState(recordedVital("SPO2"));
+  const [temperatureF, setTemperatureF] = useState(recordedVital("TEMP"));
+  const [physicalExamination, setPhysicalExamination] = useState(initialNoteData?.objective?.physicalExamination || "");
 
   // Assessment & Diagnoses State
-  const [primaryDiagnosis, setPrimaryDiagnosis] = useState("");
-  const [icdCode, setIcdCode] = useState("");
-  const [severity, setSeverity] = useState("moderate");
+  const [primaryDiagnosis, setPrimaryDiagnosis] = useState(initialNoteData?.assessment?.diagnoses?.[0]?.description || "");
+  const [icdCode, setIcdCode] = useState(initialNoteData?.assessment?.diagnoses?.[0]?.code || "");
+  const [severity, setSeverity] = useState(initialNoteData?.assessment?.severity || "moderate");
 
   // Plan State
-  const [treatmentPlan, setTreatmentPlan] = useState("");
+  const [treatmentPlan, setTreatmentPlan] = useState(initialNoteData?.plan?.treatmentPlan || "");
   const [medName, setMedName] = useState("");
   const [medDosage, setMedDosage] = useState("");
   const [medDuration, setMedDuration] = useState("");
-  const [prescriptions, setPrescriptions] = useState<Array<{ name: string; dosage: string; duration: string }>>([]);
+  const [prescriptions, setPrescriptions] = useState<Array<{ name: string; dosage: string; duration: string; frequency?: string; instructions?: string; medicineId?: string }>>((initialNoteData?.plan?.prescriptionIds || []).map((value: any) => ({
+    name: value.medicineName, dosage: value.dosage, duration: value.duration, frequency: value.frequency, instructions: value.instructions, medicineId: typeof value.medicineId === "object" ? value.medicineId?.id || value.medicineId?._id : value.medicineId,
+  })));
 
   const draftSnapshot = JSON.stringify({ chiefComplaint, historyOfPresentIllness, symptomsText,
     bpSystolic, bpDiastolic, pulseRate, spO2, temperatureF, physicalExamination,
     primaryDiagnosis, icdCode, severity, treatmentPlan, prescriptions });
-  const [savedSnapshot, setSavedSnapshot] = useState(draftSnapshot);
+  const [savedSnapshot, setSavedSnapshot] = useState(initialNoteData && !initialNoteId ? "" : draftSnapshot);
   const hasUnsavedChanges = !isSigned && (draftSnapshot !== savedSnapshot || Boolean(medName || medDosage || medDuration));
   useUnsavedClinicalChanges(hasUnsavedChanges);
 
@@ -463,6 +468,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
     try {
       await SOAPService.signNote(currentNoteId);
       setIsSigned(true);
+      onSigned?.();
       setMessage({ type: "success", text: "Clinical note signed successfully. Immutable lock applied." });
     } catch (err: any) {
       const errMsg = err.response?.data?.message || err.message || "Failed to sign note";

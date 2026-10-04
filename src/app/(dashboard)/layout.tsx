@@ -13,6 +13,7 @@ import dynamic from "next/dynamic";
 import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import { useModuleStore } from "@/store/moduleStore";
 import { useClinicStore } from "@/store/clinicStore";
+import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
 import { hasAnyPermission } from "@/lib/permissions";
 import { ClinicalScreenLock } from "@/components/auth/ClinicalScreenLock";
 import { OfflineStatusBanner } from "@/components/clinical/OfflineStatusBanner";
@@ -42,6 +43,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const drawerRef = useRef<HTMLDivElement>(null);
   useOverlayFocus(mobileMenuOpen, drawerRef, () => setMobileMenuOpen(false));
   const { clinics: headerClinics, fetchClinics, activeClinicId, setActiveClinic } = useClinicStore();
+  const { preferences: workflowPreferences, loading: workflowPreferencesLoading } = useWorkflowPreferences();
   const { toast } = useToast();
   const { isLoaded: modulesLoaded, fetchModules, isModuleEnabled } = useModuleStore();
 
@@ -58,13 +60,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     // Only fetch clinics if the user is operating within a clinic/tenant workspace
     if (user && user.role !== "patient" && (!isRootAdmin || isImpersonating)) {
+      if (workflowPreferencesLoading) return;
       fetchClinics().then((list) => {
         if (list.length > 0 && (!activeClinicId || !list.some((c) => c.id === activeClinicId))) {
-          setActiveClinic(list[0].id);
+          const focused = workflowPreferences.registration === "essential" || workflowPreferences.consultation === "focused";
+          setActiveClinic(!focused || list.length === 1 ? list[0].id : null);
         }
       });
     }
-  }, [user?.id, user?.organization_id, user?.role, user?.impersonatedBy, isRootAdmin, isImpersonating, fetchClinics, activeClinicId, setActiveClinic]);
+  }, [user?.id, user?.organization_id, user?.role, user?.impersonatedBy, isRootAdmin, isImpersonating, fetchClinics, activeClinicId, setActiveClinic, workflowPreferencesLoading, workflowPreferences.registration, workflowPreferences.consultation]);
 
   // Fetch module toggle states once user is loaded
   useEffect(() => {
@@ -209,7 +213,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // 2. Outpatient Care (OPD)
     { section: "Outpatient (OPD)", label: "Queue Desk", href: "/dashboard/queue", icon: <Users className="w-5 h-5" />, moduleKey: "queue" },
     { section: "Outpatient (OPD)", label: "Appointments", href: "/dashboard/appointments", icon: <Calendar className="w-5 h-5" />, moduleKey: "appointments" },
-    { section: "Outpatient (OPD)", label: "Consultations", href: "/dashboard/consultations", icon: <FileText className="w-5 h-5" />, moduleKey: "consultations" },
+    { section: "Outpatient (OPD)", label: workflowPreferences.registration === "essential" || workflowPreferences.consultation === "focused" ? "Today's patients" : "Consultations", href: "/dashboard/consultations", icon: <FileText className="w-5 h-5" />, moduleKey: "consultations" },
     { section: "Outpatient (OPD)", label: "Teleconsultation", href: "/dashboard/teleconsultation", icon: <Video className="w-5 h-5" />, moduleKey: "teleconsultation" },
     { section: "Outpatient (OPD)", label: "Patients Directory", href: "/dashboard/patients", icon: <User className="w-5 h-5" />, moduleKey: "patients" },
 
@@ -244,6 +248,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         // Check route permission first
         const hasPermission = hasRoutePermission(item.href, user.role, user.permissions);
+        if (item.href === "/dashboard/consultations" && !hasAnyPermission(user, "VIEW_EHR", "MANAGE_CLINICAL_NOTES") && workflowPreferences.registration === "full" && workflowPreferences.consultation === "full") return false;
         if (!hasPermission) return false;
 
         // Platform root and portal users do not use tenant module toggles.

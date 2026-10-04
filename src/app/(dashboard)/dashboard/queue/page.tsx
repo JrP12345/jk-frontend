@@ -4,6 +4,9 @@ import PrintButton from "@/components/ui/PrintButton";
 
 import { confirmLeavingClinicalDraft } from "@/hooks/useUnsavedClinicalChanges";
 import { useLatestRead } from "@/hooks/useLatestRead";
+import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
+import { PatientEntryModal } from "@/components/appointments/PatientEntryModal";
+import { PatientService } from "@/services/patient.service";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
@@ -469,11 +472,14 @@ export default function QueuePage() {
 
   // Quick Walk-In Modal State
   const [isQuickWalkInOpen, setIsQuickWalkInOpen] = useState(false);
+  const { preferences } = useWorkflowPreferences();
   const [walkInName, setWalkInName] = useState("");
   const [walkInPhone, setWalkInPhone] = useState("");
   const [walkInDoctorId, setWalkInDoctorId] = useState("");
   const [walkInPriority, setWalkInPriority] = useState<"normal" | "emergency">("normal");
-  const [walkInGender, setWalkInGender] = useState<"male" | "female" | "other">("male");
+  const [walkInGender, setWalkInGender] = useState<"" | "male" | "female" | "other">("");
+  const [walkInPatientId, setWalkInPatientId] = useState("");
+  const [walkInAppointmentId, setWalkInAppointmentId] = useState("");
   const [walkInNotes, setWalkInNotes] = useState("");
   const [submittingWalkIn, setSubmittingWalkIn] = useState(false);
 
@@ -1303,7 +1309,9 @@ export default function QueuePage() {
     setWalkInPhone("");
     setWalkInDoctorId(selectedDoctor || (doctors[0]?.id || doctors[0]?._id || ""));
     setWalkInPriority("normal");
-    setWalkInGender("male");
+    setWalkInGender("");
+    setWalkInPatientId("");
+    setWalkInAppointmentId("");
     setWalkInNotes("");
     setIsQuickWalkInOpen(true);
   };
@@ -1328,34 +1336,34 @@ export default function QueuePage() {
     setSubmittingWalkIn(true);
     try {
       const isEmergency = walkInPriority === "emergency";
+      let canonicalPatientId = walkInPatientId;
+      if (!canonicalPatientId && !walkInAppointmentId) {
+        const patient = await PatientService.createPatient({ name: walkInName.trim(), phone: cleanPhone, ...(walkInGender ? { gender: walkInGender } : {}) });
+        canonicalPatientId = patient.id || patient._id;
+        setWalkInPatientId(canonicalPatientId);
+      }
       const payload: any = {
         clinicId: selectedClinic,
         doctorId: targetDoc,
         appointmentTime: new Date().toISOString(),
         appointmentType: "walk-in",
-        patientDetails: {
-          name: walkInName.trim(),
-          phone: cleanPhone,
-          gender: walkInGender,
-          dob: "2000-01-01",
-        },
+        patientId: canonicalPatientId,
         forceBooking: isEmergency,
         notes: isEmergency
           ? `[EMERGENCY WALK-IN] Priority Triage${walkInNotes.trim() ? ` - ${walkInNotes.trim()}` : ""}`
           : (walkInNotes.trim() || "Front-desk walk-in"),
       };
 
-      const res = await api.post("/appointments", payload);
+      const res = walkInAppointmentId ? await api.get(`/appointments/${walkInAppointmentId}`) : await api.post("/appointments", payload);
       const newAppt = res.data?.data;
+      const savedAppointmentId = newAppt?.id || newAppt?._id;
+      if (savedAppointmentId) setWalkInAppointmentId(savedAppointmentId);
       const assignedToken = newAppt?.tokenNumber;
 
       // Immediately set status to checked-in for physical walk-in arrival
       if (newAppt?.id || newAppt?._id) {
-        try {
-          await api.put(`/appointments/${newAppt.id || newAppt._id}/status`, { status: "checked-in" });
-        } catch {
-          // Non-blocking
-        }
+        if (newAppt.status === "pending_payment") throw new Error("Visit booked. Collect the required payment before marking arrival.");
+        await api.put(`/appointments/${newAppt.id || newAppt._id}/status`, { status: "checked-in" });
       }
 
       toast({
@@ -1388,7 +1396,7 @@ export default function QueuePage() {
     } catch (err: any) {
       toast({
         title: "Registration Failed",
-        description: err.response?.data?.message || "Could not register walk-in patient.",
+        description: err.response?.data?.message || err.message || "Could not register walk-in patient.",
         variant: "error",
       });
     } finally {
@@ -3789,8 +3797,10 @@ export default function QueuePage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           6. QUICK WALK-IN REGISTRATION MODAL
          ────────────────────────────────────────────────────────────────────────── */}
+      <PatientEntryModal open={isQuickWalkInOpen && preferences.registration === "essential"} onClose={() => setIsQuickWalkInOpen(false)} clinicId={selectedClinic}
+        onBooked={() => { setIsQuickWalkInOpen(false); void fetchQueue(); }} />
       <Modal
-        isOpen={isQuickWalkInOpen}
+        isOpen={isQuickWalkInOpen && preferences.registration !== "essential"}
         onClose={() => setIsQuickWalkInOpen(false)}
         title="Quick Walk-In Patient Registration"
         size="md"
@@ -3873,10 +3883,11 @@ export default function QueuePage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-1">
               <Select
-                label="Gender *"
+                label="Gender (optional)"
                 value={walkInGender}
                 onChange={(e) => setWalkInGender(e.target.value as any)}
                 options={[
+                  { value: "", label: "Not recorded" },
                   { value: "male", label: "Male" },
                   { value: "female", label: "Female" },
                   { value: "other", label: "Other" },

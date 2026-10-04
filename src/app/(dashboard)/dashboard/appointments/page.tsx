@@ -6,6 +6,9 @@ import PrintDialogActions from "@/components/ui/PrintDialogActions";
 import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
 
 import { useLatestRead } from "@/hooks/useLatestRead";
+import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
+import { patientName as appointmentPatientName, patientPhone as appointmentPatientPhone } from "@/lib/clinicWorkflow";
+import { PatientEntryModal } from "@/components/appointments/PatientEntryModal";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
@@ -69,6 +72,8 @@ interface Appointment {
   doctorId: { id: string; name: string; email: string; phone: string; specialization: string };
   patientId: {
     id: string;
+    name?: string;
+    phone?: string;
     dob: string;
     gender: string;
     allergies: string[];
@@ -86,6 +91,8 @@ interface Appointment {
 export default function AppointmentsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { preferences } = useWorkflowPreferences();
+  const [isEssentialEntryOpen, setIsEssentialEntryOpen] = useState(false);
   const { clinics, fetchClinics, activeClinicId } = useClinicStore();
   const timezoneForClinic = (clinicId: string) => clinics.find(clinic => clinic.id === clinicId)?.effectiveTimezone || "Asia/Kolkata";
   const canManageAppointments = hasAnyPermission(user, "MANAGE_APPOINTMENTS");
@@ -374,7 +381,7 @@ export default function AppointmentsPage() {
   const handleViewSlip = (appt: Appointment) => {
     setCreatedTicket({
       tokenNumber: appt.tokenNumber,
-      patientName: appt.patientId?.userId?.name || "Patient",
+      patientName: appointmentPatientName(appt.patientId),
       doctorName: appt.doctorId?.name || "Doctor",
       doctorSpecialty: appt.doctorId?.specialization || "General Medicine",
       clinicName: appt.clinicId?.name || "Healthcare Facility",
@@ -961,7 +968,7 @@ export default function AppointmentsPage() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={openBookModal}
+                onClick={() => preferences.registration === "essential" ? setIsEssentialEntryOpen(true) : openBookModal()}
                 className="font-semibold rounded-xl shadow-xs min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
@@ -1167,10 +1174,10 @@ export default function AppointmentsPage() {
                       <div className="text-right shrink-0">
                         <div className="flex items-center justify-end gap-1 text-xs font-semibold text-text">
                           <User className="w-3 h-3 text-text-muted shrink-0" />
-                          <span>{row.patientId?.userId?.name || "Self"}</span>
+                          <span>{appointmentPatientName(row.patientId)}</span>
                         </div>
-                        {row.patientId?.userId?.phone && row.patientId?.userId?.phone !== "-" && (
-                          <p className="text-[10px] text-text-muted font-mono">{row.patientId?.userId?.phone}</p>
+                        {appointmentPatientPhone(row.patientId) && appointmentPatientPhone(row.patientId) !== "-" && (
+                          <p className="text-[10px] text-text-muted font-mono">{appointmentPatientPhone(row.patientId)}</p>
                         )}
                       </div>
                     </div>
@@ -1255,12 +1262,12 @@ export default function AppointmentsPage() {
                   render: (row: Appointment) => (
                     <div className="space-y-0.5 min-w-[140px]">
                       <span className="font-bold text-text text-xs sm:text-sm">
-                        {row.patientId?.userId?.name || "Self"}
+                        {appointmentPatientName(row.patientId)}
                       </span>
-                      {row.patientId?.userId?.phone && row.patientId?.userId?.phone !== "-" && (
+                      {appointmentPatientPhone(row.patientId) && appointmentPatientPhone(row.patientId) !== "-" && (
                         <span className="text-xs text-text-muted block flex items-center gap-1">
                           <Phone className="w-3 h-3 text-text-muted shrink-0" />
-                          {row.patientId?.userId?.phone}
+                          {appointmentPatientPhone(row.patientId)}
                         </span>
                       )}
                     </div>
@@ -1388,6 +1395,9 @@ export default function AppointmentsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           4. BOOK APPOINTMENT MODAL (3-STEP STEPPER WIZARD)
          ────────────────────────────────────────────────────────────────────────── */}
+      <PatientEntryModal open={isEssentialEntryOpen} onClose={() => setIsEssentialEntryOpen(false)} clinicId={filterClinic}
+        onBooked={() => { setIsEssentialEntryOpen(false); fetchAppointments(); }}
+        onFullRegistration={() => { setIsEssentialEntryOpen(false); openBookModal(); }} />
       <Modal
         open={isBookModalOpen}
         onClose={handleCloseBookModal}
@@ -1430,9 +1440,9 @@ export default function AppointmentsPage() {
                       className="p-3 hover:bg-surface-hover flex flex-col sm:flex-row justify-between sm:items-center transition-colors gap-2"
                     >
                       <div>
-                        <p className="font-bold text-text text-xs sm:text-sm">{pt.userId?.name}</p>
+                        <p className="font-bold text-text text-xs sm:text-sm">{appointmentPatientName(pt)}</p>
                         <p className="text-xs text-text-muted">
-                          {pt.userId?.phone} &bull; {pt.userId?.email}
+                          {appointmentPatientPhone(pt)} &bull; {pt.userId?.email}
                         </p>
                       </div>
                       <Button size="xs" variant="primary" onClick={() => handleSelectPatient(pt)} className="rounded-lg font-semibold min-h-[38px] sm:min-h-[32px] px-3.5 w-full sm:w-auto justify-center">
@@ -1740,7 +1750,7 @@ export default function AppointmentsPage() {
               <div className="p-3.5 bg-surface-alt border border-border/80 rounded-2xl space-y-1 text-xs">
                 <h4 className="font-bold text-text">Booking Summary Confirmation</h4>
                 <p className="text-text-muted">
-                  <strong>Patient:</strong> {isNewPatient ? newPatientForm.name : selectedPatient?.userId?.name} &bull;{" "}
+                  <strong>Patient:</strong> {isNewPatient ? newPatientForm.name : appointmentPatientName(selectedPatient)} &bull;{" "}
                   <strong>Doctor:</strong> Dr. {doctors.find((d) => d.id === bookingDoctorId)?.name} &bull;{" "}
                   <strong>Location:</strong> {clinics.find((c) => c.id === bookingClinicId)?.name}
                 </p>
@@ -1903,7 +1913,7 @@ export default function AppointmentsPage() {
                   const clinicAddress =
                     [activeRecord.clinicId?.address, activeRecord.clinicId?.city].filter(Boolean).join(", ") ||
                     "Main Facility Campus";
-                  const patientName = activeRecord.patientId?.userId?.name || "Patient";
+                  const patientName = appointmentPatientName(activeRecord.patientId);
                   const rawDoctorName = activeRecord.doctorId?.name || "Practitioner";
                   const cleanDoctorName = rawDoctorName.replace(/^dr\.?\s+/i, "");
                   const doctorFormatted = `Dr. ${cleanDoctorName}`;
@@ -2054,7 +2064,7 @@ export default function AppointmentsPage() {
               <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-surface border border-border/60 p-3.5 rounded-xl">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-muted block">Patient</span>
-                  <span className="font-bold text-text">{activeRecord.patientId?.userId?.name || "Patient"}</span>
+                  <span className="font-bold text-text">{appointmentPatientName(activeRecord.patientId)}</span>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-muted block">Practitioner</span>
@@ -2142,7 +2152,7 @@ export default function AppointmentsPage() {
       >
         <form onSubmit={handleRescheduleSubmit} className="space-y-4 pt-1">
           <div className="p-3.5 bg-surface-alt rounded-2xl border border-border/80 text-xs space-y-1">
-            <p className="font-bold text-text">Patient: {rescheduleTargetAppt?.patientId?.userId?.name}</p>
+            <p className="font-bold text-text">Patient: {appointmentPatientName(rescheduleTargetAppt?.patientId)}</p>
             <p className="text-text-muted">Doctor: Dr. {rescheduleTargetAppt?.doctorId?.name}</p>
             <p className="text-text-muted">
               Current Time:{" "}

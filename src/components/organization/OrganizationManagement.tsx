@@ -15,6 +15,7 @@ import { OrganizationDetails } from "./OrganizationDetails";
 import { OrganizationMembers } from "./OrganizationMembers";
 import { OrganizationNotifications, OrganizationAISettings } from "./OrganizationConfiguration";
 import { OrganizationModules } from "./OrganizationModules";
+import { OrganizationWorkflowPreferences } from "./OrganizationWorkflowPreferences";
 import { RBACPermissionMatrix } from "@/components/clinical/RBACPermissionMatrix";
 import LocationManagement from "./LocationManagement";
 import BillingSettingsPage from "@/app/(dashboard)/dashboard/settings/billing/page";
@@ -165,6 +166,7 @@ export default function OrganizationManagement() {
         {active === "locations" && <LocationManagement organizationId={organization.id} embedded />}
         {active === "subscription" && <BillingSettingsPage selectedOrgId={organization.id} isRoot={root} />}
         {active === "configuration" && <div className="space-y-5">
+          <OrganizationWorkflowPreferences key={organization.id} organizationId={organization.id} />
           <Card><CardHeader><div className="flex flex-wrap items-center justify-between gap-2"><CardTitle as="h2">Organization delivery settings</CardTitle><Badge variant="outline">{organization.name}</Badge></div><p className="text-sm text-text-muted">Settings here apply to this organization. The shared platform sender is managed separately by Root.</p>{root && <Link href="/dashboard/settings?tab=messaging" className="inline-flex min-h-11 items-center text-sm font-medium text-accent hover:underline">Open platform WhatsApp settings →</Link>}</CardHeader><CardContent><OrganizationNotifications selectedOrgId={organization.id} isRoot={root} organizationOnly /></CardContent></Card>
           <Card><CardHeader><CardTitle as="h2">Enabled modules</CardTitle><p className="text-sm text-text-muted">Root controls optional modules for this organization.</p></CardHeader><CardContent><OrganizationModules organizationId={organization.id} /></CardContent></Card>
           {root && <Card><CardHeader><div className="flex items-center gap-2"><CardTitle as="h2">AI configuration</CardTitle><Badge variant="primary">Root</Badge></div></CardHeader><CardContent><OrganizationAISettings selectedOrgId={organization.id} isRoot /></CardContent></Card>}

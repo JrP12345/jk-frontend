@@ -9,6 +9,8 @@ import { useClinicStore } from "@/store/clinicStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { Alert, Card, CardContent, Button, Modal, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
 import { RotateCw, Plus, Calendar, Clock, Stethoscope, CheckCircle2, Search, Ticket, Phone, ArrowRight } from "lucide-react";
+import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
+import { TodayPatients } from "@/components/appointments/TodayPatients";
 
 interface PatientUser {
   name: string;
@@ -18,6 +20,8 @@ interface PatientUser {
 
 interface PatientProfile {
   id: string;
+  name?: string;
+  phone?: string;
   userId: PatientUser;
   gender?: string;
   dob?: string;
@@ -37,6 +41,8 @@ export interface OPDQueueAppointment {
   appointmentTime: string;
   patientId: {
     id: string;
+    name?: string;
+    phone?: string;
     userId?: { name: string; email?: string; phone?: string };
     gender?: string;
     dob?: string;
@@ -48,10 +54,18 @@ export interface OPDQueueAppointment {
 }
 
 export default function ConsultationsPage() {
+  const { preferences, loading } = useWorkflowPreferences();
+  const [detailed, setDetailed] = useState(false);
+  if (loading) return <SkeletonCardGrid count={2} columns="grid-cols-1" />;
+  if (!detailed && (preferences.registration === "essential" || preferences.consultation === "focused")) return <TodayPatients currency={preferences.currency} essentialEntry={preferences.registration === "essential"} onDetailedView={() => setDetailed(true)} />;
+  return <DetailedConsultationsPage />;
+}
+
+function DetailedConsultationsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { activeClinicId } = useClinicStore();
-  const canStartConsultation = hasAnyPermission(user, "MANAGE_CLINICAL_NOTES", "MANAGE_APPOINTMENTS");
+  const canStartConsultation = hasAnyPermission(user, "MANAGE_CLINICAL_NOTES");
   const { toast } = useToast();
 
   const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
@@ -72,6 +86,7 @@ export default function ConsultationsPage() {
   const [doctorId, setDoctorId] = useState("");
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [startingEncounter, setStartingEncounter] = useState(false);
+  const [walkInBookedId, setWalkInBookedId] = useState("");
 
   useEffect(() => {
     setSelectedClinicId(activeClinicId || "");
@@ -129,17 +144,20 @@ export default function ConsultationsPage() {
 
     try {
       setStartingEncounter(true);
-      const apptRes = await api.post("/appointments", {
+      const apptRes = walkInBookedId ? await api.get(`/appointments/${walkInBookedId}`) : await api.post("/appointments", {
         clinicId: selectedClinicId,
         patientId,
         doctorId,
         appointmentTime: new Date().toISOString(),
         appointmentType: "walk-in",
-        status: "checked-in",
-        notes: chiefComplaint.trim() || "Walk-in OPD consultation",
+        notes: chiefComplaint.trim(),
       });
 
       const newApptId = apptRes.data?.data?.id || apptRes.data?.data?._id || apptRes.data?.id;
+      setWalkInBookedId(newApptId);
+      if (apptRes.data?.data?.status === "pending_payment") throw new Error("Visit booked. Collect the required payment before starting.");
+      if (apptRes.data?.data?.status !== "in-consultation") await api.put(`/appointments/${newApptId}/status`, { status: "checked-in" });
+      await api.put(`/appointments/${newApptId}/status`, { status: "in-consultation" });
 
       toast({
         title: "Consultation started",
@@ -163,9 +181,19 @@ export default function ConsultationsPage() {
   };
 
   // Filter Queue
+  async function openConsultation(item: OPDQueueAppointment) {
+    try {
+      if (["pending", "confirmed"].includes(item.status)) {
+        if (!window.confirm("Is this patient present and ready? Mark arrival and start the consultation?")) return;
+        await api.put(`/appointments/${item.id}/status`, { status: "checked-in" });
+      }
+      if (["pending", "confirmed", "checked-in"].includes(item.status)) await api.put(`/appointments/${item.id}/status`, { status: "in-consultation" });
+      router.push(`/dashboard/consultations/${item.id}`);
+    } catch (error: any) { toast({ title: "Consultation could not be opened", description: error.response?.data?.message || "Refresh the list before retrying.", variant: "error" }); }
+  }
   const filteredQueue = queueList.filter((item) => {
     const matchesStatus = statusFilter === "all" || item.status === statusFilter;
-    const pName = item.patientId?.userId?.name || "";
+    const pName = item.patientId?.userId?.name || item.patientId?.name || "";
     const dName = item.doctorId?.name || "";
     const matchesSearch =
       !searchQuery.trim() ||
@@ -220,7 +248,7 @@ export default function ConsultationsPage() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => setIsWalkInModalOpen(true)}
+                onClick={() => { setWalkInBookedId(""); setIsWalkInModalOpen(true); }}
                 className="font-semibold rounded-xl shadow-xs min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
@@ -348,8 +376,8 @@ export default function ConsultationsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredQueue.map((item) => {
-            const patientName = item.patientId?.userId?.name || "Patient Profile";
-            const patientPhone = item.patientId?.userId?.phone || "";
+            const patientName = item.patientId?.userId?.name || item.patientId?.name || "Patient";
+            const patientPhone = item.patientId?.userId?.phone || item.patientId?.phone || "";
             const doctorName = item.doctorId?.name || "Attending Doctor";
             const isInConsultation = item.status === "in-consultation";
             const isCompleted = item.status === "completed";
@@ -420,7 +448,8 @@ export default function ConsultationsPage() {
                   <Button
                     size="sm"
                     variant={isInConsultation ? "primary" : isCompleted ? "secondary" : "primary"}
-                    onClick={() => router.push(`/dashboard/consultations/${item.id}`)}
+                    onClick={() => openConsultation(item)}
+                    disabled={!canStartConsultation || ["cancelled", "no-show", "pending_payment"].includes(item.status)}
                     className="font-semibold text-xs rounded-xl w-full shadow-xs justify-between min-h-[44px]"
                   >
                     <span>
@@ -457,7 +486,7 @@ export default function ConsultationsPage() {
               { value: "", label: "Select patient profile..." },
               ...patients.map((p) => ({
                 value: p.id,
-                label: `${p.userId?.name || "Patient"} (${p.userId?.phone || "No phone"})`,
+                label: `${p.userId?.name || p.name || "Patient"} (${p.userId?.phone || p.phone || "No phone"})`,
               })),
             ]}
             required

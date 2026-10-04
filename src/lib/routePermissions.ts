@@ -57,6 +57,10 @@ export function hasRoutePermission(
 
   if (isPrivilegedRole(userRole)) return true;
 
+  // The daily operational index composes appointments. Clinical workspaces
+  // below it retain the existing EHR/clinical-note permission requirement.
+  if (route === "/dashboard/consultations" && userPermissions.some(permission => ["VIEW_APPOINTMENTS", "MANAGE_APPOINTMENTS"].includes(permission))) return true;
+
   if (userRole === "patient") {
     const patientAllowed = [
       "/dashboard",

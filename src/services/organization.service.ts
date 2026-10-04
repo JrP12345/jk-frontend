@@ -1,6 +1,7 @@
 import api from "@/lib/api";
 
 export interface OrganizationRecord {
+  workflowPreferences?: { registration?: "full" | "essential"; consultation?: "full" | "focused" };
   id: string; name: string; city: string; plan: string; status: string; isActive?: boolean;
   address?: string; email?: string; phone?: string; description?: string;
   logo_url?: string | null; image_url?: string | null; images?: string[];

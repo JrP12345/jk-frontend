@@ -9,6 +9,7 @@ import type { PatientHeaderData } from "@/components/clinical/PatientHeader";
 import { Alert, Button, Skeleton, SkeletonCard } from "@/components/ui";
 import { RotateCw, ArrowLeft } from "lucide-react";
 import { userFacingError } from "@/lib/userFacingError";
+import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
 
 interface ConsultationClientWorkspaceProps {
   appointmentId: string;
@@ -22,6 +23,10 @@ export function ConsultationClientWorkspace({
   initialClinicId,
 }: ConsultationClientWorkspaceProps) {
   const router = useRouter();
+  const { preferences, loading: preferencesLoading } = useWorkflowPreferences();
+  const [appointmentStatus, setAppointmentStatus] = useState("");
+  const [visitNotes, setVisitNotes] = useState("");
+  const [initialNoteData, setInitialNoteData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -41,15 +46,12 @@ export function ConsultationClientWorkspace({
         setError(null);
 
         // 1. Fetch appointment details directly by ID to resolve real patientId, clinicId, doctorId
-        let appt: any = null;
-        try {
-          const apptRes = await api.get(`/appointments/${appointmentId}`);
-          appt = apptRes.data?.data || apptRes.data;
-        } catch {
-          const apptsRes = await api.get("/appointments");
-          const list = apptsRes.data?.data || [];
-          appt = list.find((a: any) => a.id === appointmentId || a._id === appointmentId);
-        }
+        const apptRes = await api.get(`/appointments/${appointmentId}`);
+        const appt = apptRes.data?.data || apptRes.data;
+        if (!appt?.patientId || !appt.clinicId || !appt.doctorId) throw new Error("The visit is missing its patient, clinic or doctor reference.");
+        if (!isMounted) return;
+        setAppointmentStatus(appt.status || "");
+        setVisitNotes(appt.notes || "");
 
         let resolvedPatientId = patientId;
         let resolvedClinicId = clinicId;
@@ -85,6 +87,7 @@ export function ConsultationClientWorkspace({
           }
         }
 
+        if (!isMounted) return;
         setPatientId(resolvedPatientId);
         setClinicId(resolvedClinicId);
         setDoctorId(resolvedDoctorId);
@@ -109,8 +112,11 @@ export function ConsultationClientWorkspace({
 
         const activeEncounterId = encRes.data?.data?.id || encRes.data?.data?._id || encRes.data?.id || encRes.data?._id;
         if (!activeEncounterId) throw new Error("Failed to initialize encounter session");
+        const notesRes = await api.get(`/patients/${resolvedPatientId}/clinical-notes/history`, { params: { encounterId: activeEncounterId } });
+        const noteList = notesRes.data?.data || [];
 
         if (isMounted) {
+          setInitialNoteData(Array.isArray(noteList) ? noteList[0] || null : null);
           setEncounterId(activeEncounterId);
         }
       } catch (err: any) {
@@ -129,7 +135,7 @@ export function ConsultationClientWorkspace({
     };
   }, [appointmentId, retryCount]);
 
-  if (loading) {
+  if (loading || preferencesLoading) {
     return (
       <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading consultation">
         {/* Patient Header Banner Skeleton */}
@@ -210,7 +216,7 @@ export function ConsultationClientWorkspace({
       doctorId={doctorId}
     >
       <h1 className="sr-only">Consultation: {patientData.name}</h1>
-      <EncounterWorkspace patient={patientData} />
+      <EncounterWorkspace key={appointmentId} patient={patientData} appointmentId={appointmentId} appointmentStatus={appointmentStatus} visitNotes={visitNotes} initialNoteId={initialNoteData?.id || initialNoteData?._id} initialNoteData={initialNoteData} focused={preferences.consultation === "focused"} />
     </EncounterProvider>
   );
 }
