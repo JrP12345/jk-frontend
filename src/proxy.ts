@@ -99,11 +99,8 @@ export function proxy(request: NextRequest) {
   }
 
   // ── Handle root path ──────────────────────────────────────────
-  if (pathname === "/") {
-    if (hasAuthToken) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
-    return NextResponse.redirect(new URL("/browse", request.url));
+  if (pathname === "/" && hasAuthToken) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return nextWithContentSecurityPolicy(request);

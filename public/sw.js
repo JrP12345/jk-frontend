@@ -1,152 +1,51 @@
-// Ekavyu Progressive Web App (PWA) Service Worker
-const CACHE_NAME = 'ekavyu-cache-v9';
-const STATIC_ASSETS = [
-  '/',
-  '/browse',
-  '/manifest.json?v=brand-3',
-  '/ekavyu-leaf.png?v=website-1',
-  '/favicon-16.png?v=brand-3',
-  '/favicon-32.png?v=brand-3',
-  '/app-icon-180.png?v=brand-3',
-  '/app-icon-192.png?v=brand-3',
-  '/app-icon-512.png?v=brand-3',
-  '/app-icon-maskable-512.png?v=brand-3',
-];
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[PWA SW] Pre-caching non-fatal warning:', err);
-      });
-    })
-  );
-  self.skipWaiting();
+// Only explicit public resources can enter the offline cache.
+const CACHE_NAME = 'ekavyu-cache-v10';
+const PUBLIC_PAGES = new Set(['/browse', '/pricing']);
+const PUBLIC_FILES = new Set(['/manifest.json', '/ekavyu-leaf.png', '/ekavyu-home-social.png', '/favicon.ico', '/favicon-16.png', '/favicon-32.png', '/app-icon-180.png', '/app-icon-192.png', '/app-icon-512.png', '/app-icon-maskable-512.png', '/logo-d.png', '/logo-w.png']);
+function allowed(url) {
+  return url.origin === self.location.origin && (PUBLIC_PAGES.has(url.pathname) || PUBLIC_FILES.has(url.pathname) || url.pathname.startsWith('/_next/static/'));
+}
+function cacheable(response) {
+  if (!response || response.status !== 200 || response.redirected) return false;
+  if (/private|no-store/i.test(response.headers.get('cache-control') || '')) return false;
+  return allowed(new URL(response.url));
+}
+async function store(cache, request, response) {
+  if (!cacheable(response)) return;
+  await cache.put(request, response.clone());
+  const keys = await cache.keys();
+  for (const key of keys.slice(0, Math.max(0, keys.length - 200))) await cache.delete(key);
+}
+self.addEventListener('install', event => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    for (const path of PUBLIC_FILES) {
+      try { const response = await fetch(path, { cache: 'reload' }); await store(cache, path, response); } catch {}
+    }
+    await self.skipWaiting();
+  })());
 });
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => /^(ekavyu|ananta|jk)-cache-/.test(name) && name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      );
-    }).then(() => self.clients.claim())
-  );
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const names = await caches.keys();
+    await Promise.all(names.filter(name => /^(ekavyu|ananta|jk)-cache-/.test(name) && name !== CACHE_NAME).map(name => caches.delete(name)));
+    await self.clients.claim();
+  })());
 });
-
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
-
-  // Skip non-GET requests and WebSocket connections
-  if (request.method !== 'GET' || url.protocol.startsWith('ws')) {
-    return;
-  }
-
-  if (url.origin !== self.location.origin) return;
-
-  // Installation metadata and brand images must refresh before serving old art.
-  if (url.pathname === '/manifest.json' || /^\/(?:app-icon[^/]*|favicon[^/]*|ekavyu-leaf|logo-[dw])\.png$/.test(url.pathname)) {
-    event.respondWith((async () => {
-      const cache = await caches.open(CACHE_NAME);
-      try {
-        const response = await fetch(request, { cache: 'reload' });
-        if (response.ok) await cache.put(request, response.clone());
-        return response;
-      } catch {
-        return (await cache.match(request)) || Response.error();
-      }
-    })());
-    return;
-  }
-
-  // API calls & dynamic auth routes: Network-first, never stale
-  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/auth')) {
-    event.respondWith(
-      fetch(request).catch(() => {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            offline: true,
-            message: 'You are currently offline. Please check your network connection.',
-          }),
-          {
-            headers: { 'Content-Type': 'application/json' },
-            status: 503,
-          }
-        );
-      })
-    );
-    return;
-  }
-
-  // Static assets (Next.js chunks, images, fonts): Stale-While-Revalidate
-  if (
-    url.pathname.startsWith('/_next/static') ||
-    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|woff2?)$/)
-  ) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then(async (cache) => {
-        const cached = await cache.match(request);
-        const fetchPromise = fetch(request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              cache.put(request, networkResponse.clone());
-            }
-            return networkResponse;
-          })
-          .catch(() => cached);
-        return cached || fetchPromise;
-      })
-    );
-    return;
-  }
-
-  // HTML page navigations: Network-first with cache fallback
-  if (request.mode === 'navigate') {
-    // Exclude tracker and authenticated clinical pages from service worker caching (Finding: Step 2.8)
-    const isSensitivePage =
-      url.pathname.startsWith('/track') ||
-      url.pathname.startsWith('/dashboard') ||
-      url.pathname.startsWith('/portal') ||
-      url.pathname.startsWith('/patient-portal') ||
-      url.pathname.startsWith('/settings') ||
-      url.pathname.startsWith('/admin') ||
-      url.pathname.startsWith('/reset-password') ||
-      url.pathname.startsWith('/verify-email');
-
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response.status === 200 && !isSensitivePage) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(async () => {
-          if (isSensitivePage) {
-            return new Response('You are offline. Sensitive clinical records are not cached for security.', { status: 503 });
-          }
-          const cached = await caches.match(request);
-          if (cached) return cached;
-          const rootFallback = await caches.match('/');
-          return rootFallback || new Response('Offline - Ekavyu Healthcare', { status: 503 });
-        })
-    );
-    return;
-  }
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  if (request.method !== 'GET' || !allowed(new URL(request.url))) return;
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    try {
+      const response = await fetch(request);
+      await store(cache, request, response);
+      return response;
+    } catch { return (await cache.match(request)) || new Response('Offline', { status: 503 }); }
+  })());
 });
-
-// Clear sensitive caches during logout or when instructed by client
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.action === 'CLEAR_USER_CACHE') {
-    caches.keys().then((names) => {
-      return Promise.all(names.map((name) => caches.delete(name)));
-    }).then(() => {
-      console.log('[PWA SW] Sensitive caches purged on user logout');
-    });
+self.addEventListener('message', event => {
+  if (event.data?.action === 'CLEAR_USER_CACHE') {
+    event.waitUntil(caches.keys().then(names => Promise.all(names.filter(name => /^(ekavyu|ananta|jk)-cache-/.test(name)).map(name => caches.delete(name)))));
   }
 });

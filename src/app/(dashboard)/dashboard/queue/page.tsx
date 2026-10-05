@@ -7,8 +7,9 @@ import { useLatestRead } from "@/hooks/useLatestRead";
 import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
 import { PatientEntryModal } from "@/components/appointments/PatientEntryModal";
 import { PatientService } from "@/services/patient.service";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
+import { createReconnectingSocket, type ReconnectingSocket } from "@/utils/websocket";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useClinicStore } from "@/store/clinicStore";
@@ -612,7 +613,19 @@ export default function QueuePage() {
 
   // Fetch queue when filters change
   const beginQueueRead = useLatestRead();
-  const fetchQueue = async () => {
+  const queueReads = useRef(new Map<string, { pending: Promise<void>; dirty: boolean }>());
+  const fetchQueue = () => {
+    const key = `${selectedClinic}:${selectedDoctor}:${selectedDate}`;
+    const existing = queueReads.current.get(key);
+    if (existing) { existing.dirty = true; return existing.pending; }
+    const state = { pending: Promise.resolve(), dirty: false };
+    queueReads.current.set(key, state);
+    state.pending = (async () => {
+      do { state.dirty = false; await fetchQueueNow(); } while (state.dirty && queueReads.current.get(key) === state);
+    })().finally(() => { if (queueReads.current.get(key) === state) queueReads.current.delete(key); });
+    return state.pending;
+  };
+  const fetchQueueNow = async () => {
     const request = beginQueueRead();
     if (!selectedClinic || !selectedDoctor) {
       setAppointments([]);
@@ -1028,29 +1041,21 @@ export default function QueuePage() {
   useEffect(() => {
     setAppointments([]);
     setQueueStatusData(null);
+    queueReads.current.clear();
     setActiveOverride(null);
     setDelayStatus(null);
     setTriageAppointments([]);
     fetchQueue();
-    fetchActiveOverride();
-    fetchDelayStatus();
-    fetchTriageAppointments();
 
     const interval = setInterval(() => {
       if (document.visibilityState === "visible" && selectedClinic && selectedDoctor) void fetchQueue();
     }, 15000);
 
     // Real-time WebSocket connection to Clinic OPD Queue
-    let ws: WebSocket | null = null;
+    let ws: ReconnectingSocket | null = null;
     if (typeof window !== "undefined" && selectedClinic) {
       try {
-        const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-        let wsHost = new URL(apiUrl, window.location.origin).host;
-        if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-          wsHost = wsHost.replace("localhost", window.location.hostname).replace("127.0.0.1", window.location.hostname);
-        }
-        ws = new WebSocket(`${wsProto}//${wsHost}/api/clinical/ws?clinicId=${selectedClinic}`);
+        ws = createReconnectingSocket(`/api/clinical/ws?clinicId=${selectedClinic}`, () => { void fetchQueue(); }, true);
 
         ws.onmessage = (event) => {
           try {

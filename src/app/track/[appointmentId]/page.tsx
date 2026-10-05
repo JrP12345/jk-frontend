@@ -13,6 +13,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api, { getApiUrl } from "@/lib/api";
+import { createReconnectingSocket, type ReconnectingSocket } from "@/utils/websocket";
 import { userFacingError } from "@/lib/userFacingError";
 import { Card, Button, Badge, Skeleton, Modal, useToast, cn, EkavyuIcon, ModeSwitcher } from "@/components/ui";
 import { Clock, Users, CheckCircle2, AlertCircle, Stethoscope, MapPin, RotateCw, Calendar, Sparkles, ShieldCheck, BellRing, Phone, Receipt, CreditCard, Pill, Volume2, VolumeX, Smartphone, Copy } from "lucide-react";
@@ -408,17 +409,11 @@ export default function PublicLiveQueueTracker() {
 
   // Real-time WebSocket connection to clinic updates
   useEffect(() => {
-    let ws: WebSocket | null = null;
+    let ws: ReconnectingSocket | null = null;
     const clinicId = data?.clinic?.id;
     if (typeof window !== "undefined" && clinicId) {
       try {
-        const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-        let wsHost = apiUrl.replace(/^https?:\/\//, "").replace(/\/api\/?$/, "");
-        if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-          wsHost = wsHost.replace("localhost", window.location.hostname).replace("127.0.0.1", window.location.hostname);
-        }
-        ws = new WebSocket(`${wsProto}//${wsHost}/api/queue/ws?clinicId=${clinicId}`);
+        ws = createReconnectingSocket(`/api/queue/ws?clinicId=${clinicId}`, () => { void fetchTrackerData(true); });
 
         ws.onopen = () => {
           consecutiveFailuresRef.current = 0;

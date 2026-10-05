@@ -190,6 +190,7 @@ describe("responsive controls", () => {
   it("moves tab focus, skips disabled tabs, and gives instances unique IDs", () => {
     const tabs = [{ id: "one", label: "One", content: "First" }, { id: "disabled", label: "Disabled", disabled: true }, { id: "two", label: "Two", content: "Second" }];
     render(<><Tabs tabs={tabs} /><Tabs tabs={tabs} /></>);
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ inline: "nearest", block: "nearest" }));
     const lists = screen.getAllByRole("tablist");
     const first = within(lists[0]).getByRole("tab", { name: "One" });
     expect(first.id).not.toBe(within(lists[1]).getByRole("tab", { name: "One" }).id);

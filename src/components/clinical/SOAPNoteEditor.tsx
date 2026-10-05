@@ -89,6 +89,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
 
   // SOAP Form State
   const [chiefComplaint, setChiefComplaint] = useState(initialNoteData?.subjective?.chiefComplaint || "");
+  const [draftRevision, setDraftRevision] = useState<number>(initialNoteData?.revision || 0);
   const [historyOfPresentIllness, setHistoryOfPresentIllness] = useState(initialNoteData?.subjective?.historyOfPresentIllness || "");
   const [symptomsText, setSymptomsText] = useState<string>((initialNoteData?.subjective?.symptoms || []).join(", "));
   
@@ -418,6 +419,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
         : [];
 
       const payload = {
+        expectedRevision: draftRevision,
         clinicId: activeClinicId || clinicId,
         encounterId: activeEncounterId,
         patientId: activePatientId || patientId,
@@ -439,6 +441,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
       };
 
       const savedNote = await SOAPService.saveDraft(payload);
+      setDraftRevision(savedNote.revision);
       setSavedSnapshot(draftSnapshot);
       if (savedNote?.id || savedNote?._id) {
         setCurrentNoteId(savedNote.id || savedNote._id);
@@ -513,11 +516,12 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
 
       if (amended?.id || amended?._id) {
         setCurrentNoteId(amended.id || amended._id);
+        setDraftRevision(amended.revision || 0);
       }
-      setIsSigned(false);
+      setIsSigned(amended.status === "signed" || amended.status === "amended");
       setAmendOpen(false);
       setAmendmentReason("");
-      setMessage({ type: "success", text: "Clinical note amended successfully. New draft version created." });
+      setMessage({ type: "success", text: "Clinical amendment saved as a new signed version." });
     } catch (err: any) {
       setMessage({ type: "error", text: err.response?.data?.message || "Failed to amend note" });
     } finally {

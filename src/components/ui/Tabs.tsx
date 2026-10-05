@@ -20,6 +20,8 @@ export interface TabsProps {
   activeTab?: string;
   variant?: "underline" | "pills";
   onChange?: (tabId: string) => void;
+  /** Disable for embedded previews that should leave the page's scroll position alone. */
+  scrollActiveIntoView?: boolean;
   className?: string;
 }
 
@@ -29,6 +31,7 @@ const Tabs = memo(function Tabs({
   activeTab: controlledActiveTab,
   variant = "underline",
   onChange,
+  scrollActiveIntoView = true,
   className = "",
 }: TabsProps) {
   const id = useId();
@@ -61,12 +64,12 @@ const Tabs = memo(function Tabs({
 
   useIsomorphicLayoutEffect(() => {
     updateSlider();
-    if (activeTabRef.current) {
+    if (scrollActiveIntoView && activeTabRef.current) {
       activeTabRef.current.scrollIntoView({ behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", inline: "nearest", block: "nearest" });
     }
     window.addEventListener("resize", updateSlider);
     return () => window.removeEventListener("resize", updateSlider);
-  }, [active, variant, tabs]);
+  }, [active, variant, tabs, scrollActiveIntoView]);
 
   const enabledTabs = tabs.filter((t) => !t.disabled);
 
@@ -183,6 +186,5 @@ const Tabs = memo(function Tabs({
 });
 
 export default Tabs;
-
 
 

@@ -37,9 +37,27 @@ const api = axios.create({
   },
 });
 
+// Keep the same operation key across transport failures and token refresh.
+// Memory only: financial request bodies are never persisted in browser storage.
+const pendingMutations = new Map<string, string>();
+function mutationFingerprint(config: { url?: string; method?: string; data?: unknown }) {
+  return `${config.method}:${config.url}:${typeof config.data === "string" ? config.data : JSON.stringify(config.data)}`;
+}
+
 // Active clinic/organization is a client display preference, never server-side
 // authorization context. Tenant scope is derived from the authenticated session.
 api.interceptors.request.use((config) => {
+  const path = config.url || "";
+  if (["/auth/logout", "/auth/login"].includes(path)) pendingMutations.clear();
+  if (config.method === "post" && (path === "/billing/checkout/consolidate" || /^\/invoices\/[^/]+\/payments$/.test(path))) {
+    const fingerprint = mutationFingerprint(config);
+    let key = pendingMutations.get(fingerprint);
+    if (!key) {
+      if (pendingMutations.size >= 100) throw new Error("Too many unfinished payment operations. Resolve pending requests first.");
+      key = crypto.randomUUID(); pendingMutations.set(fingerprint, key);
+    }
+    config.headers.set("Idempotency-Key", config.headers.get("Idempotency-Key") || key);
+  }
   if (typeof window !== "undefined") {
     config.baseURL = getApiUrl();
   }
@@ -53,7 +71,7 @@ api.interceptors.request.use((config) => {
 let refreshPromise: Promise<void> | null = null;
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => { pendingMutations.delete(mutationFingerprint(response.config)); return response; },
   async (error) => {
     const originalRequest = error.config as (typeof error.config & { _retry?: boolean });
     const requestPath = originalRequest?.url?.split("?")[0];

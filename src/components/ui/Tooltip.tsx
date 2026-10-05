@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState, useRef, useEffect, useId, cloneElement, isValidElement, memo } from "react";
+import { type ReactNode, useState, useRef, useEffect, useId, useCallback, cloneElement, isValidElement, memo } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "./utils";
 
@@ -49,11 +49,11 @@ const Tooltip = memo(function Tooltip({
     hideTimerRef.current = setTimeout(() => setShow(false), 120);
   };
 
-  const dismiss = () => {
+  const dismiss = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     setShow(false);
-  };
+  }, []);
 
   useEffect(
     () => () => {
@@ -65,7 +65,6 @@ const Tooltip = memo(function Tooltip({
 
   // Escape key dismiss listener
   useEffect(() => {
-    if (!show) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         dismiss();
@@ -73,7 +72,7 @@ const Tooltip = memo(function Tooltip({
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [show]);
+  }, [dismiss]);
 
   useEffect(() => {
     if (!show || !triggerRef.current) {

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { Badge } from "@/components/ui";
 import api from "@/lib/api";
 import { announcePatientToken, VoiceAnnounceLanguage } from "@/utils/audioChimes";
-import { getWebSocketUrl } from "@/utils/websocket";
+import { createReconnectingSocket, type ReconnectingSocket } from "@/utils/websocket";
 
 export default function WaitingRoomTvQueueBoard() {
   const [clinicName, setClinicName] = useState("Ekavyu Healthcare OPD");
@@ -246,11 +246,10 @@ export default function WaitingRoomTvQueueBoard() {
     document.addEventListener('visibilitychange', onVisible);
 
     // WebSocket real-time connection for instantaneous token summon
-    let ws: WebSocket | null = null;
+    let ws: ReconnectingSocket | null = null;
     if (typeof window !== "undefined" && clinicId) {
       try {
-        const wsUrl = getWebSocketUrl(`/api/queue/ws?clinicId=${clinicId}`);
-        ws = new WebSocket(wsUrl);
+        ws = createReconnectingSocket(`/api/queue/ws?clinicId=${clinicId}`, () => { void fetchQueueState(); });
 
         ws.onopen = () => { connected = true; };
         ws.onclose = () => { connected = false; };

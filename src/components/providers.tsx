@@ -62,7 +62,7 @@ export function Providers({
         <ToastProvider>
           <NotificationRealtime />
           {children}
-          <PWAInstallBanner suppressed={pathname === "/dashboard/organizations" || pathname.startsWith("/dashboard/admin/")} />
+          <PWAInstallBanner suppressed={pathname === "/" || pathname === "/dashboard/organizations" || pathname.startsWith("/dashboard/admin/")} />
         </ToastProvider>
       </ThemeProvider>
     </QueryClientProvider>

@@ -287,8 +287,11 @@ export function FloatingAICopilot() {
       const res = await api.post(chatUrl(`/ai/chat/sessions/${sessionId}/messages`), { query, currentRoute: pathname }, { signal: requestController.current?.signal, timeout: 60000 });
       if (version !== contextVersion.current) return;
       const data = res.data?.data;
-      if (!Array.isArray(data?.allMessages)) throw new Error("Invalid chat response");
-      setMessages(data.allMessages);
+      if (data?.incremental && data.userMessage && data.aiMessage) {
+        setMessages(previous => [...previous.slice(0, -1), data.userMessage, data.aiMessage]);
+      } else if (Array.isArray(data?.allMessages)) {
+        setMessages(data.allMessages);
+      } else throw new Error("Invalid chat response");
       if (data.title) setSessions(prev => prev.map(session => session.id === sessionId ? { ...session, title: data.title } : session));
     } catch (error) { if (version === contextVersion.current) { reportError(error); setInputQuery(query); } }
     finally { if (version === contextVersion.current) { sendBusy.current = false; setIsThinking(false); } }

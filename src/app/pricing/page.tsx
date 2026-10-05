@@ -1,29 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import { Button } from "@/components/ui";
 import { billingService, type SaaSPlan } from "@/services/billing.service";
-import { formatCurrency } from "@/lib/currency";
-
-const capacityRows: { label: string; key: keyof SaaSPlan["limits"] }[] = [
-  { label: "Clinic branches", key: "maxClinics" },
-  { label: "Doctor profiles", key: "maxDoctors" },
-  { label: "Staff members", key: "maxStaff" },
-  { label: "Patient records", key: "maxPatients" },
-  { label: "Appointments", key: "maxAppointments" },
-  { label: "Storage (MB)", key: "maxStorageMB" },
-];
-const featureRows: { label: string; key: keyof SaaSPlan["features"] }[] = [
-  { label: "Analytics", key: "analytics" },
-  { label: "Audit logs", key: "auditLogs" },
-  { label: "Multiple branches", key: "multiBranch" },
-  { label: "Data export", key: "dataExport" },
-  { label: "API access", key: "apiAccess" },
-  { label: "Clinical AI", key: "aiFeatures" },
-];
+import { BillingCycleSwitch, PublicPlanCard, planCapacityRows as capacityRows, planFeatureRows as featureRows } from "@/components/billing/PublicPlanCard";
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
@@ -55,13 +36,7 @@ export default function PricingPage() {
         <header className="mb-8 space-y-3">
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Plans for your practice</h1>
           <p className="text-sm text-text-secondary max-w-2xl">Compare clinic capacity and features. Trial duration and pricing depend on the selected plan.</p>
-          <div className="inline-flex rounded-xl border border-border bg-surface p-1" role="group" aria-label="Billing cycle">
-            {(["monthly", "annual"] as const).map(cycle => (
-              <button key={cycle} type="button" aria-pressed={billingCycle === cycle} onClick={() => setBillingCycle(cycle)} className={`min-h-11 rounded-lg px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${billingCycle === cycle ? "bg-primary text-brand-mist" : "text-text-secondary hover:bg-surface-hover"}`}>
-                {cycle === "monthly" ? "Monthly billing" : "Annual billing"}
-              </button>
-            ))}
-          </div>
+          <BillingCycleSwitch value={billingCycle} onChange={setBillingCycle} />
         </header>
         {loading ? (
           <div className="grid gap-4 md:grid-cols-3" aria-busy="true" aria-label="Loading pricing tiers">
@@ -75,31 +50,7 @@ export default function PricingPage() {
         ) : (
           <>
             <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Subscription plans">
-              {plans.map(plan => {
-                const price = billingCycle === "annual" ? Math.round(plan.annualPrice / 12) : plan.monthlyPrice;
-                const isEnterprise = plan.slug === "enterprise";
-                return (
-                  <article key={plan.id || plan.slug} className={`flex flex-col rounded-xl border bg-surface p-4 sm:p-6 ${plan.isPopular ? "border-accent" : "border-border"}`}>
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                      <h2 className="text-xl font-semibold break-words">{plan.name}</h2>
-                      {plan.isPopular && <span className="text-xs font-medium text-accent">Most popular</span>}
-                    </div>
-                    <p className="text-sm text-text-secondary mb-5">{plan.description}</p>
-                    <p className="text-3xl font-semibold break-words">{formatCurrency(price, plan.currency)} <span className="text-sm font-normal text-text-muted">/ month</span></p>
-                    {billingCycle === "annual" && <p className="text-xs text-text-secondary mt-1">Billed annually ({formatCurrency(plan.annualPrice, plan.currency)}/year)</p>}
-                    <p className="text-sm text-text-secondary mt-3">{plan.trialDays > 0 ? `${plan.trialDays}-day free trial` : "No free trial"}</p>
-                    <dl className="my-5 space-y-2 border-t border-border pt-4 text-sm">
-                      {capacityRows.slice(0, 4).map(row => <div key={row.key} className="flex justify-between gap-3"><dt className="text-text-secondary">{row.label}</dt><dd className="font-medium">{plan.limits?.[row.key]?.toLocaleString() ?? "—"}</dd></div>)}
-                    </dl>
-                    <ul className="space-y-1 text-sm text-text-secondary mb-5">
-                      {featureRows.filter(row => plan.features?.[row.key]).map(row => <li key={row.key}>{row.label}</li>)}
-                    </ul>
-                    <Link href={isEnterprise ? "mailto:ekavyuofficial@gmail.com" : `/onboarding?mode=new_org&plan=${encodeURIComponent(plan.slug)}`} className={`mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${plan.isPopular ? "bg-primary text-brand-mist hover:opacity-90" : "border border-border hover:bg-surface-hover"}`}>
-                      {isEnterprise ? "Contact Sales" : `Request ${plan.name} setup`} <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </article>
-                );
-              })}
+              {plans.map(plan => <PublicPlanCard key={plan.id || plan.slug} plan={plan} billingCycle={billingCycle} />)}
             </section>
             <details className="mt-6 rounded-xl border border-border bg-surface">
               <summary className="cursor-pointer p-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Compare all limits and features</summary>

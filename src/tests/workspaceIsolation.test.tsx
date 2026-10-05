@@ -9,13 +9,15 @@ import { hasRoutePermission } from "@/lib/routePermissions";
 import { Providers } from "@/components/providers";
 import api from "@/lib/api";
 
+const navigationFixture = vi.hoisted(() => ({ pathname: "/dashboard" }));
 vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn() } }));
-vi.mock("next/navigation", () => ({ usePathname: () => "/dashboard" }));
+vi.mock("next/navigation", () => ({ usePathname: () => navigationFixture.pathname }));
 vi.mock("@/components/NotificationRealtime", () => ({ NotificationRealtime: () => null }));
 vi.mock("@/components/ui", () => ({
   ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
   ToastProvider: ({ children }: { children: React.ReactNode }) => children,
-  RouteProgress: () => null, PWAInstallBanner: () => null,
+  RouteProgress: () => null,
+  PWAInstallBanner: ({ suppressed }: { suppressed: boolean }) => suppressed ? null : <aside aria-label="Installation offer" />,
 }));
 
 const user = (organization_id = "org-a", permissions = ["VIEW_APPOINTMENTS"]): User => ({ id: "staff", name: "Staff", email: "staff@test", role: "admin", organization_id, permissions });
@@ -29,12 +31,26 @@ function deferred<T>() {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  navigationFixture.pathname = "/dashboard";
   useAuthStore.setState({ user: null, isLoading: false, isAuthenticated: false, isLoggingOut: false });
   useClinicStore.getState().reset();
   useModuleStore.getState().reset();
   localStorage.clear(); sessionStorage.clear();
 });
 afterEach(() => vi.restoreAllMocks());
+
+it("keeps the homepage clear of the install offer and restores it on the directory", () => {
+  vi.mocked(api.get).mockResolvedValue(response(null));
+  navigationFixture.pathname = "/";
+  const view = render(<Providers><p>Public page</p></Providers>);
+  expect(view.queryByRole("complementary", { name: "Installation offer" })).not.toBeInTheDocument();
+  navigationFixture.pathname = "/browse";
+  view.rerender(<Providers><p>Public page</p></Providers>);
+  expect(view.getByRole("complementary", { name: "Installation offer" })).toBeInTheDocument();
+  navigationFixture.pathname = "/dashboard/organizations";
+  view.rerender(<Providers><p>Organization management</p></Providers>);
+  expect(view.queryByRole("complementary", { name: "Installation offer" })).not.toBeInTheDocument();
+});
 
 describe("Effective grants and workspace isolation", () => {
   it("uses explicit admin grants, preserves platform root authority and family self-service", () => {
