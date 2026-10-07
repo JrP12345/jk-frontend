@@ -165,7 +165,7 @@ export default function VerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background" aria-busy="true" aria-label="Verifying email">
+        <div role="status" aria-live="polite" className="min-h-screen flex flex-col items-center justify-center p-4 bg-background" aria-busy="true" aria-label="Verifying email">
           <div className="w-full max-w-md bg-card/95 border border-border/60 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 text-center animate-fade-in">
             <div className="mx-auto w-14 h-14 rounded-full bg-surface-alt animate-pulse" />
             <div className="space-y-2">

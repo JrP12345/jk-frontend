@@ -330,7 +330,8 @@ export default function Table<T extends Record<string, any>>({
   const hasMobileControls = selectable || columns.some((column) => column.sortable) || hasFilterableColumns || Boolean(sortKey);
 
   return (
-    <div aria-busy={loading} className={cn("w-full flex flex-col relative", className)}>
+    <div aria-busy={loading} className={cn("w-full min-w-0 flex flex-col relative", className)}>
+      {loading && <span role="status" aria-live="polite" className="sr-only">{currentData.length ? "Updating results" : "Loading results"}</span>}
       {/* UNIFIED PREMIUM CARD WRAPPER */}
       <div className={cn(
         "w-full rounded-container border border-border bg-surface overflow-hidden flex flex-col",

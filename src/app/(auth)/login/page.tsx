@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, startTransition } from "react";
+import { useState, useEffect, useRef, useCallback, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore, type User } from "@/store/authStore";
 import api from "@/lib/api";
 import PasskeySignIn from "@/components/auth/PasskeySignIn";
 import { detectPatientOtpTarget, patientOtpDestination, type PatientOtpTarget } from "@/lib/patientLogin";
@@ -50,15 +50,33 @@ export default function LoginPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [isResetSent, setIsResetSent] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const navigationStarted = useRef(false);
 
   const router = useRouter();
   const { isAuthenticated, isLoading, login } = useAuthStore();
   const { toast } = useToast();
 
+  const openDashboard = useCallback(() => {
+    if (navigationStarted.current) return;
+    navigationStarted.current = true;
+    setIsNavigating(true);
+    startTransition(() => router.replace("/dashboard"));
+  }, [router]);
+
+  const completeSignIn = (user: User) => {
+    if (navigationStarted.current) return;
+    if (!user?.id) throw new Error("The server did not return a signed-in account");
+    login(user);
+    if (!useAuthStore.getState().isAuthenticated) throw new Error("Sign-in did not establish a session");
+    setSessionExpired(false);
+    openDashboard();
+  };
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("expired") === "1" || params.get("error") || params.get("logout") === "1") {
+      if (["expired", "error", "logout", "logged_out"].some(key => params.has(key))) {
         setSessionExpired(params.get("expired") === "1");
         useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
         document.cookie = "ekavyu_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
@@ -77,10 +95,12 @@ export default function LoginPage() {
   }, [toast, router]);
 
   useEffect(() => {
-    if (!sessionExpired && !isLoading && isAuthenticated) {
-      router.replace("/dashboard");
+    const params = new URLSearchParams(window.location.search);
+    const requiresSignIn = ["expired", "error", "logout", "logged_out"].some(key => params.has(key));
+    if (!requiresSignIn && !sessionExpired && !isLoading && isAuthenticated) {
+      openDashboard();
     }
-  }, [isLoading, isAuthenticated, sessionExpired, router]);
+  }, [isLoading, isAuthenticated, sessionExpired, openDashboard]);
 
   useEffect(() => {
     let interval: any;
@@ -132,7 +152,7 @@ export default function LoginPage() {
 
   const handleVerifyPatientOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpLoading || !otpTarget) return;
+    if (otpLoading || navigationStarted.current || !otpTarget) return;
     if (!/^\d{6}$/.test(phoneOtp)) {
       toast({ title: "Validation Error", description: "Enter 6-digit OTP code", variant: "error" });
       triggerShake();
@@ -147,13 +167,7 @@ export default function LoginPage() {
         setIsTwoFactorModalOpen(true);
         return;
       }
-      login(res.data.data.user);
-      toast({
-        title: "Welcome!",
-        description: `Successfully logged in as ${res.data.data.user.name}.`,
-        variant: "success",
-      });
-      router.push("/dashboard");
+      completeSignIn(res.data.data.user);
     } catch (err: any) {
       triggerShake();
       toast({
@@ -162,7 +176,7 @@ export default function LoginPage() {
         variant: "error",
       });
     } finally {
-      setOtpAction(null);
+      if (!navigationStarted.current) setOtpAction(null);
     }
   };
 
@@ -197,6 +211,7 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading || navigationStarted.current) return;
 
     const isEmailValid = validateEmail(email);
     const isPassValid = validatePassword(password);
@@ -216,14 +231,7 @@ export default function LoginPage() {
         return;
       }
 
-      login(res.data.data.user);
-      toast({
-        title: "Welcome back!",
-        description: `Successfully logged in as ${res.data.data.user.name}.`,
-        variant: "success",
-        duration: 3000,
-      });
-      router.push("/dashboard");
+      completeSignIn(res.data.data.user);
     } catch (err: any) {
       triggerShake();
       toast({
@@ -233,7 +241,7 @@ export default function LoginPage() {
         duration: 4000,
       });
     } finally {
-      setLoading(false);
+      if (!navigationStarted.current) setLoading(false);
     }
   };
 
@@ -309,6 +317,7 @@ export default function LoginPage() {
         )}
 
         {/* Auth Card Container */}
+        <fieldset disabled={isNavigating} aria-busy={isNavigating} aria-label="Sign in" className="min-w-0 w-full border-0 p-0">
         <Card
           className={cn(
             "border border-border bg-surface p-0 rounded-xl overflow-hidden transition-transform duration-300 relative",
@@ -514,7 +523,7 @@ export default function LoginPage() {
                       type="submit"
                       fullWidth
                       loading={otpLoading}
-                      loadingText={otpAction === "sending" ? "Sending code…" : "Verifying…"}
+                      loadingText={isNavigating ? "Opening dashboard…" : otpAction === "sending" ? "Sending code…" : "Verifying…"}
                       size="lg"
                       className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
                     >
@@ -590,7 +599,7 @@ export default function LoginPage() {
                         </button>
                       </div>
                     </div>
-                  <div className="pt-4"><PasskeySignIn onTwoFactor={(token) => { setTwoFactorToken(token); setIsTwoFactorModalOpen(true); }} /></div>
+                  <div className="pt-4"><PasskeySignIn onSuccess={completeSignIn} disabled={loading || twoFactorLoading || isNavigating || isTwoFactorModalOpen} onTwoFactor={(token) => { setTwoFactorToken(token); setIsTwoFactorModalOpen(true); }} /></div>
               </CardContent>
 
                   <CardFooter className="p-0 pt-2 flex flex-col gap-3">
@@ -598,7 +607,7 @@ export default function LoginPage() {
                       type="submit"
                       fullWidth
                       loading={loading}
-                      loadingText="Signing in…"
+                      loadingText={isNavigating ? "Opening dashboard…" : "Signing in…"}
                       size="lg"
                       className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
                     >
@@ -684,6 +693,8 @@ export default function LoginPage() {
             </form>
           )}
         </Card>
+        </fieldset>
+        <p role="status" aria-live="polite" className="sr-only">{isNavigating ? "Opening your dashboard" : ""}</p>
 
       </div>
 
@@ -701,21 +712,14 @@ export default function LoginPage() {
           <form
             onSubmit={async (e) => {
               e.preventDefault();
-              if (twoFactorLoading) return;
+              if (twoFactorLoading || navigationStarted.current) return;
               setTwoFactorLoading(true);
               try {
                 const res = await api.post("/auth/login/verify-2fa", {
                   twoFactorToken,
                   otp: otpCode.trim(),
                 });
-                login(res.data.data.user);
-                toast({
-                  title: "Welcome back!",
-                  description: `2FA Verified. Logged in as ${res.data.data.user.name}.`,
-                  variant: "success",
-                });
-                setIsTwoFactorModalOpen(false);
-                router.push("/dashboard");
+                completeSignIn(res.data.data.user);
               } catch (err: any) {
                 const msg = err.response?.data?.message || "";
                 const isExpired = msg.toLowerCase().includes("expired") || msg.toLowerCase().includes("challenge");
@@ -733,7 +737,7 @@ export default function LoginPage() {
                   setTwoFactorToken("");
                 }
               } finally {
-                setTwoFactorLoading(false);
+                if (!navigationStarted.current) setTwoFactorLoading(false);
               }
             }}
             className="space-y-4"
@@ -755,7 +759,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               loading={twoFactorLoading}
-              loadingText="Verifying…"
+              loadingText={isNavigating ? "Opening dashboard…" : "Verifying…"}
               fullWidth
               size="lg"
               className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"

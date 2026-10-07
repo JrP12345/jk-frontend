@@ -23,7 +23,7 @@ import { vibrateFeedback } from "@/lib/haptics";
 import { locationDateKey, locationClockMinutes, addCalendarDays, locationLocalTimeToIso } from "@/lib/locationTime";
 import { getPublicBookingStatus, type PublicBookingStatus } from "@/lib/publicBooking";
 import { useAuthStore } from "@/store/authStore";
-import { Card, CardContent, CardHeader, CardTitle, Button, Modal, Input, Select, useToast, Badge, Breadcrumbs } from "@/components/ui";
+import { Card, CardContent, CardHeader, CardTitle, Button, Modal, Input, Select, useToast, Badge, Breadcrumbs, LoadingState, SkeletonForm } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import { AlertCircle, MapPin, Phone, Clock, Building2, Calendar, ExternalLink, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, Star, UserCheck, User, Smartphone, Share2, Mail, FileText, CalendarOff, Camera, X, ChevronLeft, MessageSquare, Search } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
@@ -1120,7 +1120,7 @@ export default function BrowseDetailClient({
   }
 
   if (loading || (location && location.slug !== slug)) {
-    if (bookingOnly) return <div role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">Loading appointments at {bookingName || "this location"}…</div>;
+    if (bookingOnly) return <LoadingState label={`Loading appointments at ${bookingName || "this location"}`}><SkeletonForm fields={3} /></LoadingState>;
     return <BrowseDetailSkeleton />;
   }
 

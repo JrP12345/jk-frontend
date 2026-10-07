@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
-import { Card, CardHeader, CardTitle, CardContent, Button, Modal, Input, Textarea, useToast, Badge, StatCard, SkeletonTable } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Button, Modal, Input, Textarea, useToast, Badge, StatCard, SkeletonTable, LoadingState } from "@/components/ui";
 import { Plus, Target, Star, MessageSquare, Sparkles } from "lucide-react";
 
 interface AspectRatings {
@@ -245,25 +245,25 @@ export default function PatientExperienceFeedbackPage() {
           2. KPI STATS CARDS GRID
          ────────────────────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <StatCard
+        <StatCard loading={loading}
           label="Net Promoter Score (NPS)"
           value={`${stats.netPromoterScore > 0 ? `+${stats.netPromoterScore}` : stats.netPromoterScore}`}
           description={`${stats.npsCategory} Sentiment`}
           icon={<Target className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Average CSAT Rating"
           value={`${stats.averageCsatRating} / 5.0`}
           description="Submitted visit ratings"
           icon={<Star className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Total Survey Responses"
           value={stats.totalResponses.toString()}
           description="Completed Clinical Feedbacks"
           icon={<MessageSquare className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Hygiene & Care Rating"
           value={formatAspectRating(stats.averageAspectRatings.cleanliness)}
           description="Cleanliness Index"
@@ -359,7 +359,7 @@ export default function PatientExperienceFeedbackPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="p-6">
-              <SkeletonTable rows={4} cols={5} />
+              <LoadingState label="Loading feedback"><SkeletonTable rows={4} cols={5} /></LoadingState>
             </div>
           ) : filteredFeedbacks.length === 0 ? (
             <div className="p-12 text-center text-text-muted space-y-3">

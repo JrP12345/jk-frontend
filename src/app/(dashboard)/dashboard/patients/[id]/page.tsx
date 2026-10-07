@@ -190,7 +190,7 @@ export default function PatientDetailPage() {
 
   if (loading && !patientData) {
     return (
-      <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading patient medical records">
+      <div role="status" aria-live="polite" className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading patient medical records">
         {/* Back navigation placeholder */}
         <div className="flex items-center gap-2">
           <Skeleton width="120px" height="1.75rem" rounded="xl" />

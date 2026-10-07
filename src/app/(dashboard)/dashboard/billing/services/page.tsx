@@ -249,25 +249,25 @@ export default function ServiceCatalogPage() {
           2. KPI STATS CARDS GRID
          ────────────────────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
+        <StatCard loading={loading}
           label="Total Catalog Services"
           value={totalCount.toString()}
           description="Active chargemaster items"
           icon={<FileText className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Consultation Tariffs"
           value={consultationCount.toString()}
           description="OPD / Specialist rates"
           icon={<Stethoscope className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Diagnostic Lab Tests"
           value={labCount.toString()}
           description="Pathology & Lab tariff list"
           icon={<FlaskConical className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="IPD Bed Charges"
           value={bedCount.toString()}
           description="Ward / ICU room tariffs"

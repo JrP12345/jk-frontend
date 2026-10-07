@@ -26,6 +26,14 @@ row actions usable during refresh and use skeletons only before initial data.
 Technical-message filtering belongs to presentation; preserve transport errors
 and meaningful domain validation messages.
 
+Use `LoadingState` for a full-width content region; supply skeleton children when
+the layout is known and let its default spinner center an unknown body. Keep
+`InlineLoader` for a small field or update, and Button feedback for the initiating
+action. Expose one named progress status per region, keep decorative shapes out
+of the accessibility tree, and use semantic dimensions or responsive utilities
+for `Skeleton`. A required organization selection should show a selection prompt,
+not a permanent loader. See [the page loading audit](loading-state-audit.md).
+
 Use native Next Link pending state and the delayed route indicator; programmatic
 navigation retains framework loading fallbacks. Button keeps idle content as its
 size reference during processing. Respect reduced motion and keep clinical,

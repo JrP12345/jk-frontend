@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Building2, CheckCircle2, RotateCw, ShieldCheck, Users } from "lucide-react";
 import api from "@/lib/api";
-import { Alert, Avatar, Badge, Button, Card, Input, Modal, Pagination, Select, Spinner, StatCard, Table, useToast } from "@/components/ui";
+import { Alert, Avatar, Badge, Button, Card, Input, Modal, Pagination, Select, StatCard, Table, useToast, LoadingState, SkeletonTable } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { organizationWorkspaceUrl, type OrganizationRecord } from "@/services/organization.service";
@@ -134,5 +134,5 @@ function PlatformUsers() {
   </div>;
 }
 export default function PlatformUsersPage() {
-  return <Suspense fallback={<Spinner label="Loading global users" />}><PlatformUsers /></Suspense>;
+  return <Suspense fallback={<LoadingState label="Loading global users"><SkeletonTable columns={5} /></LoadingState>}><PlatformUsers /></Suspense>;
 }

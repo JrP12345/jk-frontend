@@ -481,25 +481,25 @@ export default function LaboratoryPage() {
          ────────────────────────────────────────────────────────────────────────── */}
       {user && user.role !== "patient" && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
+          <StatCard loading={loading}
             label="Total Lab Orders"
             value={totalOrders.toString()}
             description="Diagnostic test requests"
             icon={<FlaskConical className="w-5 h-5 text-text-secondary" />}
           />
-          <StatCard
+          <StatCard loading={loading}
             label="Samples Pending"
             value={pendingSamples.toString()}
             description="Awaiting phlebotomy collection"
             icon={<Clock className="w-5 h-5 text-text-secondary" />}
           />
-          <StatCard
+          <StatCard loading={loading}
             label="Results Awaiting"
             value={pendingResults.toString()}
             description="Under processing / analysis"
             icon={<Activity className="w-5 h-5 text-text-secondary" />}
           />
-          <StatCard
+          <StatCard loading={loading}
             label="Completed Results"
             value={completedOrders.toString()}
             description="Uploaded test results"

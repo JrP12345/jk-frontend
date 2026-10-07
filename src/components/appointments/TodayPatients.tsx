@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-import { Alert, Badge, Button, Card, Input, Pagination, Select, Spinner, Table } from "@/components/ui";
+import { Alert, Badge, Button, Card, Input, Pagination, Select, Table, LoadingState, SkeletonTable } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
 import { hasAnyPermission } from "@/lib/permissions";
@@ -126,7 +126,7 @@ export function TodayPatients({ onDetailedView, essentialEntry = false, currency
       <Select label="Visit status" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} options={filters} />
       <Input label="Search patient or token" placeholder="Name, phone, MRN or token" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
     </div>
-    {loading && visits.length === 0 ? <Spinner label="Loading today's patients" /> : <>
+    {loading && visits.length === 0 ? <LoadingState label="Loading today's patients"><SkeletonTable columns={5} /></LoadingState> : <>
       <div className="hidden md:block"><Table<Visit> data={visits} density="compact" pagination={false} columns={[{ header: "Token", accessor: visit => visit.tokenNumber || "—" }, { header: "Patient", accessor: visit => <div><p className="font-medium">{patientName(visit.patientId)}</p><p className="text-xs text-text-muted">{patientPhone(visit.patientId)} · {visit.patientId?.mrn}</p></div> }, { header: "Doctor / source", accessor: visit => <div>{visit.doctorId?.name}<p className="text-xs text-text-muted">{visit.appointmentType === "reception" ? "Phone / desk" : visit.appointmentType}</p></div> }, { header: "Status", accessor: visit => <Badge variant={visit.status === "completed" ? "success" : "outline"}>{visit.status.replaceAll("-", " ").replaceAll("_", " ")}</Badge> }, { header: "Actions", accessor: actions }]} /></div>
       <div className="space-y-2 md:hidden">{visits.map(visit => <Card key={visit.id} className="p-3 space-y-3"><div className="flex items-start justify-between gap-2"><div><p className="font-medium">{visit.tokenNumber ? `#${visit.tokenNumber} · ` : ""}{patientName(visit.patientId)}</p><p className="text-xs text-text-muted">{patientPhone(visit.patientId)} · {visit.doctorId?.name}</p><p className="text-xs text-text-muted">{visit.appointmentType === "reception" ? "Phone / desk" : visit.appointmentType}</p></div><Badge variant="outline">{visit.status.replaceAll("-", " ").replaceAll("_", " ")}</Badge></div>{actions(visit)}</Card>)}</div>
       {!visits.length && <p className="py-6 text-center text-sm text-text-muted">No visits match this view.</p>}

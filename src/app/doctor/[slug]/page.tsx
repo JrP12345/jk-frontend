@@ -3,6 +3,7 @@ import { facilityTypeLabel, type FacilityType } from "@/lib/facility";
 import LoadingImage from "@/components/ui/LoadingImage";
 import type { Metadata } from "next";
 import { Suspense, cache } from "react";
+import { LoadingState, SkeletonForm } from "@/components/ui";
 import Link from "next/link";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import BrowseDetailClient, { type LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
@@ -151,7 +152,7 @@ export default async function DoctorPage({ params, searchParams }: { params: Pro
             </section>
           </div>
           <aside id="booking" className="order-2 min-w-0 scroll-mt-24 lg:col-start-2 lg:row-span-3 lg:row-start-1" aria-label="Book an appointment">
-            {selectedLocation && <Suspense fallback={<div className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">Loading booking options…</div>}><BrowseDetailClient key={selectedLocation.id} slug={selectedLocation.slug!} initialLocation={bookingLocation} bookingDoctorId={doctor.id} bookingOnly bookingName={selectedLocation.name} /></Suspense>}
+            {selectedLocation && <Suspense fallback={<LoadingState label="Loading booking options"><SkeletonForm fields={3} /></LoadingState>}><BrowseDetailClient key={selectedLocation.id} slug={selectedLocation.slug!} initialLocation={bookingLocation} bookingDoctorId={doctor.id} bookingOnly bookingName={selectedLocation.name} /></Suspense>}
           </aside>
         </div>
       </>}

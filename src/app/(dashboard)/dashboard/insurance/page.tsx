@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
-import { Alert, Card, CardContent, Button, Modal, Input, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
+import { Alert, Card, CardContent, Button, Modal, Input, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, LoadingState, cn } from "@/components/ui";
 import { RotateCw, Plus, ShieldCheck, IndianRupee, Clock, AlertCircle, FileText, CheckCircle2, FileCheck } from "lucide-react";
 
 interface PatientUser {
@@ -549,25 +549,25 @@ export default function InsurancePage() {
          ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "preAuth" ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
+          <StatCard loading={loading}
             label="Total Pre-Auth Claims"
             value={totalPreAuthCount.toString()}
             description="Submitted policy pre-authorizations"
             icon={<ShieldCheck className="w-5 h-5 text-text-secondary" />}
           />
-          <StatCard
+          <StatCard loading={loading}
             label="Approved Cashless Ceiling"
             value={`₹${approvedTotalCeiling.toLocaleString("en-IN")}`}
             description="Total sanctioned cashless cap"
             icon={<IndianRupee className="w-5 h-5 text-text-secondary" />}
           />
-          <StatCard
+          <StatCard loading={loading}
             label="Pending TPA Review"
             value={pendingPreAuthCount.toString()}
             description="Awaiting initial sanction response"
             icon={<Clock className="w-5 h-5 text-text-secondary" />}
           />
-          <StatCard
+          <StatCard loading={loading}
             label="Under Query"
             value={underQueryCount.toString()}
             description="Requires clinical docs / queries"
@@ -576,25 +576,25 @@ export default function InsurancePage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
+          <StatCard loading={loading}
             label="Total Insurance Claims"
             value={totalClaimsCount.toString()}
             description="Filed reimbursement/cashless claims"
             icon={<FileText className="w-5 h-5 text-text-secondary" />}
           />
-          <StatCard
+          <StatCard loading={loading}
             label="Approved / Settled Amount"
             value={`₹${approvedClaimsTotal.toLocaleString("en-IN")}`}
             description="Total adjudicated payout"
             icon={<IndianRupee className="w-5 h-5 text-text-secondary" />}
           />
-          <StatCard
+          <StatCard loading={loading}
             label="Pending Adjudication"
             value={pendingClaimsCount.toString()}
             description="Awaiting desk review"
             icon={<Clock className="w-5 h-5 text-text-secondary" />}
           />
-          <StatCard
+          <StatCard loading={loading}
             label="Fully Settled Claims"
             value={settledClaimsCount.toString()}
             description="Reconciled & finalized"
@@ -694,7 +694,7 @@ export default function InsurancePage() {
          ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "preAuth" && (
         loading ? (
-          <SkeletonCardGrid count={6} columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3" />
+          <LoadingState label="Loading insurance authorizations"><SkeletonCardGrid count={6} columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3" /></LoadingState>
         ) : filteredPreAuths.length === 0 ? (
           <Card className="py-12 text-center text-xs text-text-muted rounded-2xl border-border">
             <CardContent>No insurance pre-authorization claims found matching current filters.</CardContent>
@@ -838,7 +838,7 @@ export default function InsurancePage() {
          ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "claims" && (
         loading ? (
-          <SkeletonCardGrid count={6} columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3" />
+          <LoadingState label="Loading insurance claims"><SkeletonCardGrid count={6} columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3" /></LoadingState>
         ) : filteredClaims.length === 0 ? (
           <Card className="py-12 text-center text-xs text-text-muted rounded-2xl border-border">
             <CardContent>No insurance claims found matching current filters.</CardContent>

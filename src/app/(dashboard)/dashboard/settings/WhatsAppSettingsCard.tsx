@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Toggle, Badge, useToast, cn, SkeletonForm } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Toggle, Badge, useToast, cn, SkeletonForm, LoadingState } from "@/components/ui";
 import Modal from "@/components/ui/Modal";
 import WhatsAppConnectionPanel from "./WhatsAppConnectionPanel";
 import { whatsappSettingsService } from "@/services/whatsappSettings.service";
@@ -124,12 +124,9 @@ export default function WhatsAppSettingsCard({
     },
   });
 
-  if (isLoading || (isRoot && (!selectedOrgId || orgsLoading))) {
-    return (
-      <div className="space-y-4">
-        <SkeletonForm rows={4} />
-      </div>
-    );
+  if (isRoot && !selectedOrgId && !orgsLoading) return <Alert title="Choose an organization">Select an organization to load its WhatsApp settings.</Alert>;
+  if (isLoading || (isRoot && orgsLoading)) {
+    return <LoadingState label="Loading WhatsApp settings"><SkeletonForm rows={4} /></LoadingState>;
   }
 
   if (isError || !config) return <Alert variant="error" title="Organization WhatsApp settings unavailable" action={<Button variant="outline" onClick={() => refetch()}>Retry WhatsApp settings</Button>}>Load the saved settings before making changes.</Alert>;

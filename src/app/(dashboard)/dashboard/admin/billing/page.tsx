@@ -190,11 +190,11 @@ export default function AdminBillingPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 w-full pb-32 sm:pb-12 animate-fade-in">
+      <div role="status" aria-label="Loading platform billing" aria-busy="true" className="space-y-6 w-full min-w-0 pb-32 sm:pb-12 animate-fade-in">
         <Card className="p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Skeleton className="h-7 w-72 rounded" />
                 <Skeleton className="h-6 w-28 rounded-full" />
               </div>

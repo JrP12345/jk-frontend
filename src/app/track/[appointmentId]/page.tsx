@@ -583,7 +583,7 @@ export default function PublicLiveQueueTracker() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-alt font-sans text-text antialiased p-4 sm:p-6" aria-busy="true" aria-label="Connecting to Live Queue Tracker">
+      <div role="status" aria-live="polite" className="min-h-screen bg-surface-alt font-sans text-text antialiased p-4 sm:p-6" aria-busy="true" aria-label="Connecting to Live Queue Tracker">
         <div className="max-w-2xl mx-auto space-y-5 animate-fade-in">
           {/* Location Brand Header Skeleton */}
           <div className="p-4 sm:p-5 bg-surface border border-border/80 rounded-3xl shadow-xs flex items-center justify-between">

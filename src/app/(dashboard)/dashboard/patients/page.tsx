@@ -424,25 +424,25 @@ export default function PatientsDirectoryPage() {
           2. SUMMARY KPI STAT CARDS
          ────────────────────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
+        <StatCard loading={loading}
           label="Total Patients"
           value={(totalCount || patients.length).toString()}
           description="Registered profiles in system"
           icon={<Users className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Directory Page Count"
           value={patients.length.toString()}
           description="Currently displayed on page"
           icon={<FileText className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Male on this page"
           value={maleCount.toString()}
           description="In the current results"
           icon={<User className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Female on this page"
           value={femaleCount.toString()}
           description="In the current results"

@@ -137,7 +137,7 @@ export function ConsultationClientWorkspace({
 
   if (loading || preferencesLoading) {
     return (
-      <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading consultation">
+      <div role="status" aria-live="polite" className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading consultation">
         {/* Patient Header Banner Skeleton */}
         <div className="p-4 sm:p-5 bg-surface border border-border/80 rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">

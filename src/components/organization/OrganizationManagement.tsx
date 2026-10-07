@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, Building2, CheckCircle2, CreditCard, MapPin, Palette, Plus, RotateCw, Settings2, ShieldCheck, Users } from "lucide-react";
 import api from "@/lib/api";
-import { Alert, Avatar, Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, Input, Modal, Select, Spinner, StatCard, Tabs, useToast } from "@/components/ui";
+import { Alert, Avatar, Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState, Input, LoadingState, Modal, Select, SkeletonCardGrid, SkeletonForm, SkeletonStats, SkeletonTable, StatCard, Tabs, useToast, Skeleton } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useLatestRead } from "@/hooks/useLatestRead";
+import { authScopeKey } from "@/lib/authScope";
 import { organizationImageUrl, organizationWorkspaceUrl, type OrganizationRecord } from "@/services/organization.service";
 import { CreateOrganization } from "./CreateOrganization";
 import { OrganizationDetails } from "./OrganizationDetails";
@@ -34,7 +35,7 @@ function Access({ organizationId }: { organizationId: string }) {
     finally { if (request.isCurrent()) setLoading(false); }
   }, [organizationId, beginRead]);
   useEffect(() => { void load(); }, [load]);
-  if (loading) return <Spinner label="Loading organization access" />;
+  if (loading) return <LoadingState label="Loading organization access"><SkeletonTable columns={3} /></LoadingState>;
   if (error) return <Alert variant="error" title="Access could not be loaded" action={<Button onClick={load}>Retry</Button>}>Please retry.</Alert>;
   return <div className="space-y-4"><p className="text-sm text-text-muted">Permission changes apply to this organization. Shared identities need platform review before their global role changes.</p><RBACPermissionMatrix users={members} onRefresh={load} organizationId={organizationId} /></div>;
 }
@@ -57,7 +58,11 @@ export default function OrganizationManagement() {
   const [selectedId, setSelectedId] = useState(queryId);
   const [section, setSection] = useState(querySection);
   const [create, setCreate] = useState(queryCreate);
-  const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
+  const scope = authScopeKey(user);
+  const [organizationRecords, setOrganizations] = useState<OrganizationRecord[]>([]);
+  const [loadedScope, setLoadedScope] = useState<string | null>(null);
+  const hasLoaded = loadedScope === scope;
+  const organizations = hasLoaded ? organizationRecords : [];
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -74,10 +79,13 @@ export default function OrganizationManagement() {
     const request = beginRead(); setLoading(true); setError("");
     try {
       const res = await api.get("/organizations", { signal: request.signal });
-      if (request.isCurrent()) setOrganizations(res.data.data || []);
+      if (request.isCurrent() && authScopeKey(useAuthStore.getState().user) === scope) {
+        setOrganizations(res.data.data || []);
+        setLoadedScope(scope);
+      }
     } catch { if (request.isCurrent()) setError("Organizations could not be loaded. Check your connection and retry."); }
     finally { if (request.isCurrent()) setLoading(false); }
-  }, [canManage, user?.id, beginRead]);
+  }, [canManage, scope, beginRead]);
   useEffect(() => { void load(); }, [load]);
   const organization = organizations.find(org => org.id === (root ? selectedId : user?.organization_id));
   const sections = [
@@ -127,11 +135,12 @@ export default function OrganizationManagement() {
           {directory && <Button onClick={() => setCreate(true)}><Plus className="h-4 w-4" />Add organization</Button>}
           {root && <Link href="/dashboard/admin/setup-requests" className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-sm font-medium text-accent hover:bg-surface-alt">Setup requests</Link>}
           {root && organization && <Button variant="outline" onClick={() => openAction("login")} disabled={suspended(organization)}>Login as administrator</Button>}
-          <Button variant="outline" onClick={load} disabled={loading} aria-label="Refresh organizations"><RotateCw className="h-4 w-4" /><span>Refresh</span></Button>
+          <Button variant="outline" onClick={load} loading={loading && hasLoaded} disabled={loading} loadingText="Refreshing…" aria-label="Refresh organizations"><RotateCw className="h-4 w-4" /><span>Refresh</span></Button>
         </div>
       </div>
     </Card>
-    {error ? <Alert variant="error" title="Unable to load organizations" action={<Button onClick={load}>Retry</Button>}>{error}</Alert> : loading ? <div className="py-8"><Spinner label="Loading organizations" /></div> : directory ? <>
+    {error && <Alert variant="error" title="Unable to load organizations" action={<Button onClick={load} loading={loading}>Retry</Button>}>{error}</Alert>}
+    {!hasLoaded ? error ? null : <LoadingState label="Loading organizations">{directory ? <div className="space-y-6"><SkeletonStats count={3} /><Skeleton height="2.75rem" /><SkeletonCardGrid count={6} /></div> : <SkeletonForm fields={4} />}</LoadingState> : directory ? <>
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard label="Organizations" value={organizations.length} icon={<Building2 />} description="Current directory" />
         <StatCard label="Active workspaces" value={organizations.filter(org => !suspended(org)).length} icon={<CheckCircle2 />} />

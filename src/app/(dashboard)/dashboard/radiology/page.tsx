@@ -253,25 +253,25 @@ export default function RadiologyPage() {
           2. KPI STATS CARDS GRID
          ────────────────────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
+        <StatCard loading={loading}
           label="Total Imaging Studies"
           value={totalStudies.toString()}
           description="Registered radiology series"
           icon={<Scan className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Pending Scans"
           value={requestedCount.toString()}
           description="Awaiting modality capture"
           icon={<Clock className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Reported Studies"
           value={reportedCount.toString()}
           description="Signed & finalized reports"
           icon={<CheckCircle2 className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Advanced CT / MRI"
           value={ctMrCount.toString()}
           description="High-resolution volumetric series"

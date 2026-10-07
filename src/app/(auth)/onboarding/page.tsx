@@ -757,7 +757,7 @@ export default function OnboardingPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-4" aria-busy="true" aria-label="Initializing setup">
+        <div role="status" aria-live="polite" className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-4" aria-busy="true" aria-label="Initializing setup">
           <div className="w-full max-w-xl bg-surface border border-border/80 rounded-2xl p-6 sm:p-8 shadow-xs space-y-6 animate-fade-in">
             <div className="space-y-2 text-center">
               <div className="h-7 w-48 bg-surface-alt rounded-lg mx-auto animate-pulse" />

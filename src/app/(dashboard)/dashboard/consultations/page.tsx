@@ -7,7 +7,7 @@ import { todayRangeParams } from "@/lib/date";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
 import { hasAnyPermission } from "@/lib/permissions";
-import { Alert, Card, CardContent, Button, Modal, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
+import { Alert, Card, CardContent, Button, Modal, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, cn, LoadingState } from "@/components/ui";
 import { RotateCw, Plus, Calendar, Clock, Stethoscope, CheckCircle2, Search, Ticket, Phone, ArrowRight } from "lucide-react";
 import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
 import { TodayPatients } from "@/components/appointments/TodayPatients";
@@ -56,7 +56,7 @@ export interface OPDQueueAppointment {
 export default function ConsultationsPage() {
   const { preferences, loading } = useWorkflowPreferences();
   const [detailed, setDetailed] = useState(false);
-  if (loading) return <SkeletonCardGrid count={2} columns="grid-cols-1" />;
+  if (loading) return <LoadingState label="Loading consultations"><SkeletonCardGrid count={2} columns="grid-cols-1" /></LoadingState>;
   if (!detailed && (preferences.registration === "essential" || preferences.consultation === "focused")) return <TodayPatients currency={preferences.currency} essentialEntry={preferences.registration === "essential"} onDetailedView={() => setDetailed(true)} />;
   return <DetailedConsultationsPage />;
 }
@@ -263,25 +263,25 @@ function DetailedConsultationsPage() {
           2. KPI STATS CARDS
          ────────────────────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
+        <StatCard loading={loading}
           label="Total OPD Appointments"
           value={totalToday.toString()}
           description="Scheduled outpatient visits"
           icon={<Calendar className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Waiting for Doctor"
           value={checkedInCount.toString()}
           description="Checked-in waiting line"
           icon={<Clock className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="In Consultation"
           value={inConsultationCount.toString()}
           description="Active physician encounters"
           icon={<Stethoscope className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Completed Today"
           value={completedCount.toString()}
           description="Concluded patient visits"

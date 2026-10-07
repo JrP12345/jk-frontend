@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { userFacingError } from "@/lib/userFacingError";
-import { Button, Input, EkavyuLogo, Alert } from "@/components/ui";
+import { Button, Input, EkavyuLogo, Alert, LoadingState } from "@/components/ui";
 
 function AcceptInvitation() {
   const token = useSearchParams().get("token") || "";
@@ -78,5 +78,5 @@ function AcceptInvitation() {
 }
 
 export default function AcceptInvitationPage() {
-  return <Suspense fallback={<main className="min-h-dvh flex items-center justify-center" aria-busy="true">Loading invitation…</main>}><AcceptInvitation /></Suspense>;
+  return <Suspense fallback={<LoadingState label="Loading invitation" fullPage />}><AcceptInvitation /></Suspense>;
 }

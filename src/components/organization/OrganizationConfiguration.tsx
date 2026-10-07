@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Input, useToast, Toggle, Badge, SkeletonForm } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Input, useToast, Toggle, Badge, SkeletonForm, LoadingState } from "@/components/ui";
 import { notificationService, type SmtpConfig } from "@/services/notificationService";
 import { aiAdminService } from "@/services/aiAdmin.service";
 import { useAuthStore } from "@/store/authStore";
@@ -125,7 +125,8 @@ export function OrganizationNotifications({
     }
   };
 
-  if ((!organizationOnly && prefLoading) || (!personalOnly && isRoot && (smtpLoading || !selectedOrgId || orgsLoading))) return <SkeletonForm fields={4} />;
+  if (!personalOnly && isRoot && !selectedOrgId && !orgsLoading) return <Alert title="Choose an organization">Select an organization to load its delivery settings.</Alert>;
+  if ((!organizationOnly && prefLoading) || (!personalOnly && isRoot && (smtpLoading || orgsLoading))) return <LoadingState label="Loading notification settings"><SkeletonForm fields={4} /></LoadingState>;
   if (!organizationOnly && prefError) return <Alert variant="error" title="Notification preferences unavailable" action={<Button onClick={() => retryPreferences()}>Retry preferences</Button>}>Load your saved preferences before making changes.</Alert>;
   if (smtpError) return <Alert variant="error" title="Email gateway could not be loaded" action={<Button onClick={() => retrySmtp()}>Retry</Button>}>Retry before making changes.</Alert>;
 
@@ -405,7 +406,8 @@ export function OrganizationAISettings({
       }),
   });
 
-  if (isLoading || (isRoot && (!selectedOrgId || orgsLoading))) return <SkeletonForm fields={4} />;
+  if (isRoot && !selectedOrgId && !orgsLoading) return <Alert title="Choose an organization">Select an organization to load its AI settings.</Alert>;
+  if (isLoading || (isRoot && orgsLoading)) return <LoadingState label="Loading AI settings"><SkeletonForm fields={4} /></LoadingState>;
   if (isError) return <Alert variant="error" title="AI configuration could not be loaded" action={<Button onClick={() => refetch()}>Retry</Button>}>Retry before making changes.</Alert>;
 
   const FLAG_CONFIG = [

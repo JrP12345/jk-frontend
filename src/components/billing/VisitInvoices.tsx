@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
-import { Alert, Button, Modal, Pagination, Select, Spinner } from "@/components/ui";
+import { Alert, Button, Modal, Pagination, Select, LoadingState, SkeletonCardGrid } from "@/components/ui";
 import { useLatestRead } from "@/hooks/useLatestRead";
 
 interface Invoice { id: string; invoiceNumber: string; totalAmount: number; amountPaid?: number; balanceDue?: number; currency?: string; status: string }
@@ -36,7 +36,7 @@ export function VisitInvoices({ appointmentId, patientName, locationId, onClose,
   }
   return <Modal open title={`Payments · ${patientName}`} size="md" busy={Boolean(busy)} onClose={() => { if (!busy) onClose(); }}>
     <div className="space-y-4">{error && <Alert variant="error" action={<Button disabled={Boolean(busy)} onClick={load}>Refresh</Button>}>{error}</Alert>}
-      {loading ? <Spinner label="Loading visit invoices" /> : <>
+      {loading ? <LoadingState label="Loading visit invoices"><SkeletonCardGrid count={2} columns={1} /></LoadingState> : <>
         {invoices.length === 0 && <p className="text-sm text-text-muted">No invoice has been issued for this visit. Free visits need no collection. Use billing for fee review or additional charges.</p>}
         <Select label="Payment received by" value={method} onChange={e => setMethod(e.target.value)} disabled={Boolean(busy)} options={[{ value: "cash", label: "Cash" }, { value: "card", label: "Card" }, { value: "upi", label: "UPI (INR locations only)" }]} />
         {invoices.map(invoice => {

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
 import { userFacingError } from "@/lib/userFacingError";
 import PatientHistoryAccess from "./PatientHistoryAccess";
-import { Modal, Badge, Button, cn } from "@/components/ui";
+import { Modal, Badge, Button, cn, LoadingState, SkeletonCardGrid } from "@/components/ui";
 import { Stethoscope, FlaskConical, Building2, CreditCard, FileText, Sparkles, Search } from "lucide-react";
 
 export interface TimelineEvent {
@@ -217,7 +217,7 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
 
       {/* Timeline Stream View */}
       {loading && events.length === 0 ? (
-        <div className="py-12 text-center text-sm text-text-muted">Loading patient health records timeline...</div>
+        <LoadingState label="Loading patient health records timeline"><SkeletonCardGrid count={3} columns={1} /></LoadingState>
       ) : error ? (
         <div role="alert" className="p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger-text dark:text-danger-text text-sm space-y-3">
           <p>{error}</p>

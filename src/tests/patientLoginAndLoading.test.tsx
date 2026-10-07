@@ -3,12 +3,12 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import LoginPage from "@/app/(auth)/login/page";
 import LoginLoading from "@/app/(auth)/login/loading";
 import RootLoading from "@/app/loading";
-import { useAuthStore } from "@/store/authStore";
+import { useAuthStore, type User } from "@/store/authStore";
 import api from "@/lib/api";
 
 const { push, replace, toast } = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), toast: vi.fn() }));
 vi.mock("next/navigation", () => { const router = { push, replace }; return { useRouter: () => router }; });
-vi.mock("@/components/auth/PasskeySignIn", () => ({ default: () => <button type="button">Use passkey</button> }));
+vi.mock("@/components/auth/PasskeySignIn", () => ({ default: ({ onSuccess }: { onSuccess: (user: User) => void }) => <button type="button" onClick={() => onSuccess(patient)}>Use passkey</button> }));
 vi.mock("@/components/ui", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/components/ui")>(),
   useToast: () => ({ toast }),
@@ -20,7 +20,7 @@ const patient = { id: "patient-1", role: "patient" as const, name: "Patient", em
 beforeEach(() => {
   vi.clearAllMocks();
   HTMLElement.prototype.scrollIntoView = vi.fn();
-  useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
+  useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: false });
 });
 afterEach(() => { vi.restoreAllMocks(); window.history.replaceState(null, "", "/login"); });
 
@@ -57,7 +57,11 @@ describe("Patient identifier sign in", () => {
     fireEvent.change(screen.getByRole("textbox", { name: /6-Digit Verification OTP/ }), { target: { value: "482910" } });
     fireEvent.click(screen.getByRole("button", { name: "Verify & Sign In" }));
     await waitFor(() => expect(post).toHaveBeenNthCalledWith(2, "/auth/otp/verify", { email: "patient@example.com", otp: "482910", purpose: "authentication" }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/dashboard"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/dashboard"));
+    expect(replace).toHaveBeenCalledOnce();
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Opening dashboard…" })).toBeDisabled();
+    expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: expect.stringMatching(/welcome|login successful/i) }));
   });
 
   it.each(["9876543210", "+91 (98765) 43210", "09876543210"])("detects and normalizes mobile input %s", async (identifier) => {
@@ -173,13 +177,117 @@ describe("Patient identifier sign in", () => {
     const otp = await screen.findByRole("textbox", { name: /6-Digit OTP Code/ });
     expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: "2FA Authentication Required" }));
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(replace).not.toHaveBeenCalled();
     fireEvent.change(otp, { target: { value: "482910" } });
     fireEvent.click(screen.getByRole("button", { name: "Verify & Sign In" }));
     expect(screen.getByRole("button", { name: "Verifying…" })).toBeDisabled();
     expect(otp).toBeDisabled();
     expect(post).toHaveBeenNthCalledWith(2, "/auth/login/verify-2fa", { twoFactorToken: "test-challenge", otp: "482910" });
     await act(async () => resolveVerification({ data: { data: { user: { ...patient, role: "root" } } } }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/dashboard"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/dashboard"));
+    expect(replace).toHaveBeenCalledOnce();
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Opening dashboard…" })).toBeDisabled();
+    expect(toast).not.toHaveBeenCalled();
+  });
+});
+
+describe("Sign-in dashboard handoff", () => {
+  const enterStaffCredentials = () => {
+    fireEvent.click(screen.getByRole("tab", { name: /Staff Email/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: /Staff Email Address/ }), { target: { value: "doctor@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password *"), { target: { value: "test-only-password" } });
+  };
+
+  it("keeps password sign-in busy until a single dashboard navigation completes", async () => {
+    let resolveLogin!: (value: unknown) => void;
+    const post = vi.spyOn(api, "post").mockImplementation(() => new Promise(resolve => { resolveLogin = resolve; }));
+    render(<LoginPage />);
+    enterStaffCredentials();
+    const button = screen.getByRole("button", { name: "Sign In to Dashboard" });
+    const form = button.closest("form")!;
+    fireEvent.click(button);
+    expect(screen.getByRole("button", { name: "Signing in…" })).toBeDisabled();
+    expect(replace).not.toHaveBeenCalled();
+    await act(async () => resolveLogin({ data: { data: { user: { ...patient, role: "doctor" } } } }));
+    expect(replace).toHaveBeenCalledExactlyOnceWith("/dashboard");
+    expect(push).not.toHaveBeenCalled();
+    expect(toast).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Opening dashboard…" })).toBeDisabled();
+    expect(screen.getByRole("group", { name: "Sign in" })).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("tab", { name: /Patient Sign In/ })).toBeDisabled();
+    fireEvent.submit(form);
+    expect(post).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["rejected credentials", { response: { data: { message: "Invalid credentials" } } }, true],
+    ["an incomplete session response", { data: { data: {} } }, false],
+  ])("allows retry without navigation after %s", async (_label, response, rejected) => {
+    const post = vi.spyOn(api, "post");
+    if (rejected) post.mockRejectedValueOnce(response);
+    else post.mockResolvedValueOnce(response);
+    render(<LoginPage />);
+    enterStaffCredentials();
+    fireEvent.click(screen.getByRole("button", { name: "Sign In to Dashboard" }));
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Login Failed" })));
+    expect(screen.getByRole("button", { name: "Sign In to Dashboard" })).toBeEnabled();
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(replace).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("uses the same handoff for a verified passkey", async () => {
+    render(<LoginPage />);
+    fireEvent.click(screen.getByRole("tab", { name: /Staff Email/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Use passkey" }));
+    await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith("/dashboard"));
+    expect(useAuthStore.getState().user?.id).toBe(patient.id);
+    expect(push).not.toHaveBeenCalled();
+    expect(toast).not.toHaveBeenCalled();
+    expect(screen.getByRole("group", { name: "Sign in" })).toBeDisabled();
+  });
+
+  it("keeps the two-factor prompt available after an invalid code without opening the dashboard", async () => {
+    vi.spyOn(api, "post").mockResolvedValueOnce({ data: { data: { twoFactorRequired: true, twoFactorToken: "test-challenge" } } })
+      .mockRejectedValueOnce({ response: { data: { message: "Invalid verification code" } } });
+    render(<LoginPage />);
+    enterStaffCredentials();
+    fireEvent.click(screen.getByRole("button", { name: "Sign In to Dashboard" }));
+    const otp = await screen.findByRole("textbox", { name: /6-Digit OTP Code/ });
+    fireEvent.change(otp, { target: { value: "482910" } });
+    fireEvent.click(screen.getByRole("button", { name: "Verify & Sign In" }));
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Verification Failed" })));
+    expect(otp).toBeEnabled();
+    expect(otp).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Verify & Sign In" })).toBeEnabled();
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("redirects a restored session only once without a welcome notification", async () => {
+    useAuthStore.setState({ user: patient, isAuthenticated: true });
+    render(<LoginPage />);
+    await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith("/dashboard"));
+    expect(push).not.toHaveBeenCalled();
+    expect(toast).not.toHaveBeenCalled();
+    expect(screen.getByRole("group", { name: "Sign in" })).toBeDisabled();
+  });
+
+  it("waits for sign-in again when an expired link has a cached account", async () => {
+    window.history.replaceState(null, "", "/login?expired=1");
+    useAuthStore.setState({ user: patient, isAuthenticated: true });
+    const post = vi.spyOn(api, "post").mockResolvedValue({ data: { data: { user: { ...patient, role: "doctor" } } } });
+    render(<LoginPage />);
+    expect(await screen.findByText(/Your session has expired/)).toBeInTheDocument();
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(replace).not.toHaveBeenCalled();
+    enterStaffCredentials();
+    fireEvent.click(screen.getByRole("button", { name: "Sign In to Dashboard" }));
+    await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith("/dashboard"));
+    expect(post).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/Your session has expired/)).not.toBeInTheDocument();
   });
 });
 

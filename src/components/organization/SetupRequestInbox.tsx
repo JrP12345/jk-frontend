@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Badge, Button, Card, Select, Spinner } from "@/components/ui";
+import { Alert, Badge, Button, Card, Select, LoadingState, SkeletonCardGrid, InlineLoader } from "@/components/ui";
 import api from "@/lib/api";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useAuthStore } from "@/store/authStore";
@@ -50,7 +50,7 @@ export default function SetupRequestInbox() {
     <header><h1 className="page-title">Setup requests</h1><p className="mt-2 text-sm text-text-secondary">Practice details submitted from the website. Review requests and track your follow-up here.</p></header>
     <div className="flex flex-wrap items-end gap-3"><Select label="Request status" value={status} disabled={busy !== null} onChange={event => setStatus(event.target.value)} options={[{ value: "", label: "All requests" }, ...statuses]} /><Button variant="outline" onClick={() => void load()} disabled={loading || busy !== null}>Refresh</Button></div>
     {error && <Alert variant="error" title="Request inbox unavailable" action={<Button variant="outline" onClick={() => void load()}>Try again</Button>}>{error}</Alert>}
-    {loading && <Spinner label="Loading setup requests" />}
+    {loading && (requests.length ? <InlineLoader label="Updating setup requests" /> : <LoadingState label="Loading setup requests"><SkeletonCardGrid count={3} columns={1} /></LoadingState>)}
     {!loading && !error && !requests.length && <Card><p className="text-sm text-text-muted">No {status || "setup"} requests.</p></Card>}
     <ul className="space-y-4">{requests.map(request => <li key={request.id}><Card className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold break-words">{request.organization}</h2><p className="text-sm text-text-secondary">{request.city}</p></div><Badge variant={request.status === "new" ? "primary" : "outline"}>{statuses.find(item => item.value === request.status)?.label}</Badge></div>

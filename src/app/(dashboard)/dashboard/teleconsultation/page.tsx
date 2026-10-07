@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { externalServiceUrl } from "@/lib/externalServiceUrl";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
-import { Alert, Card, CardContent, Button, Modal, Input, Select, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
+import { Alert, Card, CardContent, Button, Modal, Input, Select, useToast, Badge, StatCard, SkeletonCardGrid, cn, LoadingState } from "@/components/ui";
 import { RotateCw, Plus, Video, Clock, Activity, CheckCircle2 } from "lucide-react";
 
 export interface TeleconsultationAppointment {
@@ -377,25 +377,25 @@ export default function TeleconsultationPage() {
           2. KPI STATS CARDS GRID
          ────────────────────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <StatCard
+        <StatCard loading={loading}
           label="Total Telehealth Visits"
           value={totalVirtual.toString()}
           description="Registered online encounters"
           icon={<Video className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Virtual Waiting Room"
           value={waitingCount.toString()}
           description="Checked-in patients queue"
           icon={<Clock className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Active Video Calls"
           value={activeCallCount.toString()}
           description="Currently ongoing encounters"
           icon={<Activity className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Completed Visits"
           value={completedCount.toString()}
           description="Finished virtual consultations"
@@ -454,7 +454,7 @@ export default function TeleconsultationPage() {
 
       {/* Teleconsultation Cards Grid */}
       {loading ? (
-        <SkeletonCardGrid count={6} columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3" />
+        <LoadingState label="Loading teleconsultations"><SkeletonCardGrid count={6} columns="grid-cols-1 md:grid-cols-2 lg:grid-cols-3" /></LoadingState>
       ) : loadError ? (
         <Alert variant="error" title="Unable to load virtual appointments" action={<Button variant="outline" onClick={fetchData}>Try again</Button>}>{loadError}</Alert>
       ) : filteredAppointments.length === 0 ? (

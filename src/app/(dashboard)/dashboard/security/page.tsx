@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { browserSupportsWebAuthn, startRegistration } from "@simplewebauthn/browser";
-import { Alert, Button, Card, Input, Toggle, Skeleton, useToast, Badge } from "@/components/ui";
+import { Alert, Button, Card, Input, Toggle, Skeleton, useToast, Badge, LoadingState } from "@/components/ui";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
@@ -77,7 +77,7 @@ export default function AccountSecurityPage() {
     <Card className="p-4 sm:p-6" contentClassName="gap-4 items-start">
       <h2 className="font-bold flex items-center gap-2"><KeyRound className="w-5 h-5 text-accent" />Passkeys</h2>
       <p className="text-sm text-text-secondary">Sign in with your fingerprint, face, or device PIN. Your existing sign-in methods remain available.</p>
-      {loading ? <Skeleton height="4rem" /> : keys.length === 0 ? <p className="text-sm text-text-muted">No passkeys added yet.</p> : keys.map((key) => <div key={key.id} className="w-full flex flex-wrap gap-3 justify-between items-center border border-border rounded-xl p-3 sm:p-4">
+      {loading ? <LoadingState label="Loading passkeys"><Skeleton height="4rem" /></LoadingState> : keys.length === 0 ? <p className="text-sm text-text-muted">No passkeys added yet.</p> : keys.map((key) => <div key={key.id} className="w-full flex flex-wrap gap-3 justify-between items-center border border-border rounded-xl p-3 sm:p-4">
         <div><p className="font-semibold text-sm">{key.name}</p><p className="text-xs text-text-muted">{key.lastUsedAt ? `Last used ${new Date(key.lastUsedAt).toLocaleDateString()}` : `Added ${new Date(key.createdAt).toLocaleDateString()}`}</p></div>
         <Button variant="outline" size="sm" className="shrink-0" disabled={busy !== null} loading={busy === key.id} onClick={() => removeKey(key.id)}>Remove</Button>
       </div>)}
@@ -88,7 +88,7 @@ export default function AccountSecurityPage() {
     {user?.role === "root" && <Card className="p-4 sm:p-6" contentClassName="gap-4">
       <h2 className="font-bold flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-accent" />Organization owner sessions</h2>
       <p className="text-sm text-text-secondary">Owners have unlimited sessions by default. Lowering a limit signs out the oldest sessions above that limit.</p>
-      {loading ? <Skeleton height="8rem" /> : owners.map((owner) => <div key={owner.id} className="min-w-0 border border-border p-4 sm:p-5 rounded-xl space-y-4">
+      {loading ? <LoadingState label="Loading session limits"><Skeleton height="8rem" /></LoadingState> : owners.map((owner) => <div key={owner.id} className="min-w-0 border border-border p-4 sm:p-5 rounded-xl space-y-4">
         <div className="flex flex-wrap gap-2 justify-between"><div><p className="font-semibold">{owner.name}</p><p className="text-xs text-text-muted break-all">{owner.email} · {owner.organizations.join(", ")}</p></div><Badge>{owner.activeSessions} active sessions</Badge></div>
         <div className="flex flex-col sm:flex-row gap-3 sm:items-end"><Input containerClassName="min-w-0 flex-1" label="Maximum sessions (blank means unlimited)" type="number" min={1} max={1000} value={limits[owner.id] || ""} onChange={(event) => setLimits((current) => ({ ...current, [owner.id]: event.target.value }))} /><Button className="w-full shrink-0 whitespace-nowrap sm:w-auto" disabled={busy !== null} loading={busy === owner.id} onClick={() => updateLimit(owner)}>Save limit</Button></div>
         <Button variant="outline" size="sm" disabled={busy !== null} onClick={async () => { setBusy(owner.id); try { await api.post(`/auth/admin/sessions/revoke-user/${owner.id}`); await load(); toast({ title: "Owner sessions signed out", variant: "success" }); } catch { toast({ title: "Could not sign out sessions", variant: "error" }); } finally { setBusy(null); } }}>Sign out all sessions</Button>

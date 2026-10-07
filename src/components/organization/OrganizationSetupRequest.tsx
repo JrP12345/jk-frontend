@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
-import { Alert, Button, Card, Input, Select, Spinner } from "@/components/ui";
+import { Alert, Button, Card, Input, Select, LoadingState, Skeleton } from "@/components/ui";
 import { billingService, type SaaSPlan } from "@/services/billing.service";
 
 export function OrganizationSetupRequest({ planKey }: { planKey: string }) {
@@ -54,7 +54,7 @@ export function OrganizationSetupRequest({ planKey }: { planKey: string }) {
           <Input label="Organization name" required maxLength={200} autoComplete="organization" value={form.organization} onChange={event => update("organization", event.target.value)} />
           <Input label="City" required maxLength={100} autoComplete="address-level2" value={form.city} onChange={event => update("city", event.target.value)} />
           <div className="grid gap-4 sm:grid-cols-2"><Input label="Contact name" required maxLength={100} autoComplete="name" value={form.name} onChange={event => update("name", event.target.value)} /><Input label="Contact email" type="email" required maxLength={254} autoComplete="email" value={form.email} onChange={event => update("email", event.target.value)} /></div>
-          {loading ? <Spinner label="Loading plans" /> : <Select label="Requested plan" value={planSlug} onChange={event => { setPlanSlug(event.target.value); requestKey.current = null; setSubmitError(null); }} options={[{ value: "", label: "Help me choose a plan" }, ...plans.map(item => ({ value: item.slug, label: item.name }))]} />}
+          {loading ? <LoadingState label="Loading plans"><Skeleton height="4rem" /></LoadingState> : <Select label="Requested plan" value={planSlug} onChange={event => { setPlanSlug(event.target.value); requestKey.current = null; setSubmitError(null); }} options={[{ value: "", label: "Help me choose a plan" }, ...plans.map(item => ({ value: item.slug, label: item.name }))]} />}
           {plan && <p className="text-sm text-text-muted">{plan.trialDays > 0 ? `The configured plan trial is ${plan.trialDays} days. The team will confirm your terms during setup.` : "The team will confirm activation and trial terms during setup."}</p>}
           {submitError && <Alert variant="error" title="Request not submitted">{submitError}</Alert>}
           <Button type="submit" className="w-full sm:w-auto" disabled={loading} loading={submitting}>Submit setup request</Button>

@@ -15,7 +15,6 @@ import { useModuleStore } from "@/store/moduleStore";
 import { useLocationStore } from "@/store/locationStore";
 import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
 import { hasAnyPermission } from "@/lib/permissions";
-import { ClinicalScreenLock } from "@/components/auth/ClinicalScreenLock";
 import { OfflineStatusBanner } from "@/components/clinical/OfflineStatusBanner";
 import { MobileBottomNav } from "@/components/dashboard";
 import { useTrafficTracker } from "@/hooks/useTrafficTracker";
@@ -424,13 +423,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     icon: <User className="w-4 h-4" />
                   },
                   { label: "Account security", onClick: () => router.push("/dashboard/security"), icon: <Lock className="w-4 h-4" /> },
-                  ...(user.role !== "patient" ? [
-                    {
-                      label: "Lock Workstation",
-                      onClick: () => window.dispatchEvent(new CustomEvent("lock-workstation")),
-                      icon: <Lock className="w-4 h-4 text-text-secondary" />
-                    }
-                  ] : []),
                   { divider: true, label: "" },
                   {
                     label: "Sign out",
@@ -485,8 +477,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Global Floating AI Copilot Drawer Button */}
       <FloatingAICopilot />
 
-      {/* Clinical Inactivity & Workstation Screen Lock */}
-      <ClinicalScreenLock />
     </div>
   );
 }

@@ -487,19 +487,19 @@ export default function PharmacyPage() {
           2. KPI STATS CARDS
          ────────────────────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard
+        <StatCard loading={loading}
           label="Total Catalog Items"
           value={totalItems.toString()}
           description="Registered medicine formulations"
           icon={<Pill className="w-5 h-5 text-text-secondary" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Low Stock Warnings"
           value={lowStockCount.toString()}
           description="Items with < 10 units remaining"
           icon={<AlertTriangle className="w-5 h-5 text-warning-text" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Expired / Expiring Soon"
           value={expiredCount.toString()}
           description="Batches past validity date"

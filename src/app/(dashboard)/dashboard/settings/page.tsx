@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Bell, Building2, CreditCard, Settings2 } from "lucide-react";
-import { Alert, Badge, Card, CardContent, CardHeader, CardTitle, Spinner, Tabs } from "@/components/ui";
+import { Alert, Badge, Card, CardContent, CardHeader, CardTitle, Tabs, LoadingState, SkeletonForm } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { organizationWorkspaceUrl } from "@/services/organization.service";
@@ -38,5 +38,5 @@ function OrganizationSettings() {
 }
 export default function SettingsPage() {
   const { user } = useAuthStore();
-  return <Suspense fallback={<Spinner label="Loading settings" />}>{user?.role === "root" ? <PlatformSettings /> : <OrganizationSettings />}</Suspense>;
+  return <Suspense fallback={<LoadingState label="Loading settings"><SkeletonForm fields={4} /></LoadingState>}>{user?.role === "root" ? <PlatformSettings /> : <OrganizationSettings />}</Suspense>;
 }

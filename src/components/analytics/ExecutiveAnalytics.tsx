@@ -251,7 +251,7 @@ export function ExecutiveAnalytics() {
 
 export function ExecutiveAnalyticsSkeleton() {
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div role="status" aria-label="Loading executive analytics" aria-busy="true" className="space-y-6 animate-fade-in">
       {/* Header Skeleton */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
         <div className="space-y-1.5">

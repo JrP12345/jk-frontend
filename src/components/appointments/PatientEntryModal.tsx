@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
-import { Alert, Button, Input, Modal, Select, Spinner } from "@/components/ui";
+import { Alert, Button, Input, Modal, Select, LoadingState, Skeleton, InlineLoader } from "@/components/ui";
 import { useLocationStore } from "@/store/locationStore";
 import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
@@ -142,12 +142,12 @@ function PatientEntryForm({ onClose, initialLocationId, onBooked, onFullRegistra
         </>}
         <div className="grid gap-3 sm:grid-cols-2">
           {locations.length !== 1 ? <Select label="Location" value={locationId} onChange={e => { setLocationId(e.target.value); setError(""); }} options={[{ value: "", label: "Select location" }, ...locations.map(value => ({ value: value.id, label: value.name }))]} required /> : <p className="self-center text-sm text-text-muted">Location: {location?.name}</p>}
-          {assignmentLoading ? <Spinner label="Loading doctors" /> : assignments.length !== 1 ? <Select label="Doctor" value={doctorId} onChange={e => { setDoctorId(e.target.value); setError(""); }} options={[{ value: "", label: "Select doctor" }, ...assignments.map(value => ({ value: recordId(value.doctorId), label: typeof value.doctorId === "object" ? value.doctorId.name || "Doctor" : "Doctor" }))]} required /> : <p className="self-center text-sm text-text-muted">Doctor: {typeof assignments[0].doctorId === "object" ? assignments[0].doctorId.name : "Assigned doctor"}</p>}
+          {assignmentLoading ? <LoadingState label="Loading doctors"><Skeleton height="4rem" /></LoadingState> : assignments.length !== 1 ? <Select label="Doctor" value={doctorId} onChange={e => { setDoctorId(e.target.value); setError(""); }} options={[{ value: "", label: "Select doctor" }, ...assignments.map(value => ({ value: recordId(value.doctorId), label: typeof value.doctorId === "object" ? value.doctorId.name || "Doctor" : "Doctor" }))]} required /> : <p className="self-center text-sm text-text-muted">Doctor: {typeof assignments[0].doctorId === "object" ? assignments[0].doctorId.name : "Assigned doctor"}</p>}
           <Select label="Visit source" value={source} onChange={e => setSource(e.target.value)} options={[{ value: "walk-in", label: "Walk-in (patient present)" }, { value: "reception", label: "Phone / desk booking" }]} />
           <Input type="date" label={`Visit date (${timezone})`} min={locationDateKey(new Date(), timezone)} value={date} onChange={e => { setDate(e.target.value); setError(""); }} required />
           {slotMode === "time_slot" && <Select label="Available appointment time" value={slot} onChange={e => setSlot(e.target.value)} options={[{ value: "", label: "Choose time" }, ...slots.map(value => ({ value: value.time, label: value.time }))]} required />}
         </div>
-        {slotLoading && <Spinner label="Checking availability" />}
+        {slotLoading && <InlineLoader label="Checking availability" />}
         {slotMode === "sequential_queue" && <p className="text-xs text-text-muted">This doctor uses a token queue. Walk-ins are marked arrived; phone / desk bookings wait for arrival confirmation.</p>}
         {onFullRegistration && <Button variant="ghost" onClick={onFullRegistration}>Full registration and scheduling</Button>}
       </fieldset>

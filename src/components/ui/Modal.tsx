@@ -204,8 +204,9 @@ export default function Modal({
               className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-surface  p-6 text-center animate-fade-in"
               role="status"
               aria-live="polite"
+              aria-label={loadingText || "Loading..."}
             >
-              <Spinner size="md" label={loadingText || "Loading..."} />
+              <div aria-hidden="true"><Spinner size="md" label={loadingText || "Loading..."} /></div>
             </div>
           )}
           <div inert={loading || undefined} className={cn("w-full transition-opacity duration-200", loading && "opacity-30 pointer-events-none", contentClassName)}>

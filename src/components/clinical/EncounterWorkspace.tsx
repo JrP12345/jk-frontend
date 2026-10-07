@@ -234,7 +234,7 @@ export function EncounterWorkspace({
 
   if (contextLoading) {
     return (
-      <div className="min-h-screen bg-surface-alt flex flex-col animate-fade-in">
+      <div role="status" aria-label="Loading encounter" aria-busy="true" className="min-h-screen bg-surface-alt flex flex-col animate-fade-in">
         {/* Sticky Patient Context Banner Skeleton */}
         <div className="bg-surface border-b border-border/80 px-4 py-3">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">

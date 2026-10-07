@@ -86,8 +86,9 @@ const Card = memo(function Card({
           className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-surface/70 dark:bg-surface  p-4 text-center animate-fade-in"
           role="status"
           aria-live="polite"
+          aria-label={loadingText || "Loading content"}
         >
-          <Spinner size="md" label={loadingText} />
+          <div aria-hidden="true"><Spinner size="md" label={loadingText} /></div>
         </div>
       )}
     </div>

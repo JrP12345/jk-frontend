@@ -402,7 +402,7 @@ export default function BillingSettingsPage({
 
   if (loading || (isRootAdmin && orgsLoading)) {
     return (
-      <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading commercial subscription and plan limits">
+      <div role="status" aria-live="polite" className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading commercial subscription and plan limits">
         {/* Current Plan Overview Skeleton */}
         <div className="p-5 sm:p-6 bg-surface border border-border/80 rounded-2xl shadow-xs space-y-3">
           <div className="flex items-center justify-between">

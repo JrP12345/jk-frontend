@@ -373,12 +373,12 @@ export default function PatientPortalPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading patient portal">
+      <div role="status" aria-live="polite" className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading patient portal">
         {/* Header Banner Skeleton */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-6 bg-surface border border-border/80 rounded-2xl shadow-xs">
           <div className="flex items-center gap-4">
             <Skeleton width="3.5rem" height="3.5rem" rounded="2xl" />
-            <div className="space-y-2">
+            <div className="space-y-2 min-w-0 flex-1">
               <Skeleton width="180px" height="1.5rem" rounded="md" />
               <Skeleton width="220px" height="0.875rem" rounded="sm" />
             </div>
@@ -390,7 +390,7 @@ export default function PatientPortalPage() {
         </div>
 
         {/* Portal Tabs Skeleton */}
-        <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
           <Skeleton width="110px" height="2.25rem" rounded="xl" />
           <Skeleton width="100px" height="2.25rem" rounded="xl" />
           <Skeleton width="150px" height="2.25rem" rounded="xl" />

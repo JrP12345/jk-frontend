@@ -47,7 +47,7 @@ export function PreviousVisitsSidebar({ patientId, onCopyForward }: PreviousVisi
       </div>
 
       {loading ? (
-        <div className="space-y-3 animate-fade-in" aria-busy="true">
+        <div role="status" aria-label="Loading previous visits" className="space-y-3 animate-fade-in" aria-busy="true">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="p-3 rounded-xl border border-border/80 bg-surface-alt/40 space-y-2">
               <div className="flex items-center justify-between">

@@ -9,7 +9,7 @@ import { getPublicBookingStatus } from "@/lib/publicBooking";
 import { locationPath } from "@/lib/publicPaths";
 import { parseWeeklySchedule } from "@/lib/timing/locationStatus";
 import { parseLocationCoordinates } from "@/lib/geo/locationCoordinates";
-import { Alert, Card, CardContent, Table, Button, Modal, Input, useToast, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, SkeletonTable, Dropdown, StatCard, cn } from "@/components/ui";
+import { Alert, Card, CardContent, Table, Button, Modal, Input, useToast, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, LoadingState, SkeletonTable, Dropdown, StatCard, cn } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { useOrganizationLocations } from "@/hooks/useOrganizationLocations";
 import { organizationPath } from "@/services/organization.service";
@@ -458,7 +458,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
       {activeTab === "active" ? (
         (loading || locationsLoading) && locations.length === 0 ? (
           <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-            <CardContent className="p-0"><SkeletonTable /></CardContent>
+            <CardContent className="p-0"><LoadingState label="Loading locations"><SkeletonTable /></LoadingState></CardContent>
           </Card>
         ) : locations.length === 1 ? (
         /* ── Smart Single-Location Card View ── */
@@ -758,7 +758,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
         /* ── Archived Locations View ── */
         loadingArchived && archivedLocations.length === 0 ? (
           <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-            <CardContent className="p-0"><SkeletonTable /></CardContent>
+            <CardContent className="p-0"><LoadingState label="Loading archived locations"><SkeletonTable /></LoadingState></CardContent>
           </Card>
         ) : archivedLocations.length === 0 ? (
           <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs p-8 text-center">

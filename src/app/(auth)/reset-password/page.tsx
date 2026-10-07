@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, useToast, ModeSwitcher, EkavyuLogo, cn } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, useToast, ModeSwitcher, EkavyuLogo, cn, LoadingState } from "@/components/ui";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -196,7 +196,7 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-xs text-text-muted">Loading...</div>}>
+    <Suspense fallback={<LoadingState label="Loading password reset" fullPage />}>
       <ResetPasswordForm />
     </Suspense>
   );

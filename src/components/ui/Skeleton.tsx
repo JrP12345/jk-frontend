@@ -21,8 +21,8 @@ const roundedMap = {
 };
 
 const Skeleton = memo(function Skeleton({
-  width = "100%",
-  height = "1rem",
+  width,
+  height,
   rounded = "lg",
   className = "",
   style,
@@ -30,9 +30,11 @@ const Skeleton = memo(function Skeleton({
   return (
     <div
       aria-hidden="true"
-      style={{ width, height, ...style }}
+      style={{ ...(width === undefined ? {} : { width }), ...(height === undefined ? {} : { height }), ...style }}
       className={cn(
-        "skeleton-shimmer shrink-0 select-none",
+        "skeleton-shimmer max-w-full min-w-0 select-none",
+        width === undefined && !/(?:^|\s)!?(?:w|size)-/.test(className) && "w-full",
+        height === undefined && !/(?:^|\s)!?(?:h|size)-/.test(className) && "h-4",
         roundedMap[rounded],
         className
       )}
@@ -133,7 +135,7 @@ export const SkeletonStats = memo(function SkeletonStats({
   className?: string;
 }) {
   return (
-    <div aria-hidden="true" className={cn("grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4", className)}>
+    <div aria-hidden="true" className={cn("grid gap-2.5 sm:gap-4", count === 3 ? "grid-cols-1 sm:grid-cols-3" : count === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2 md:grid-cols-4", className)}>
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="p-4 sm:p-5 bg-surface border border-border/80 rounded-2xl shadow-xs space-y-2">
           <div className="flex items-start justify-between gap-2">

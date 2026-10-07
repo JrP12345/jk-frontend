@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
-import { Alert, Button, Input, Spinner, Toggle, useToast } from "@/components/ui";
+import { Alert, Button, Input, Toggle, useToast, LoadingState, SkeletonForm } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { useModuleStore, type ModuleInfo } from "@/store/moduleStore";
 import { organizationPath } from "@/services/organization.service";
@@ -35,7 +35,7 @@ export function OrganizationModules({ organizationId }: { organizationId?: strin
     finally { setBusy(""); }
   }
   if (!id) return <p className="text-sm text-text-muted">Select an organization to configure its modules.</p>;
-  if (loading) return <Spinner label="Loading module configuration" />;
+  if (loading) return <LoadingState label="Loading module configuration"><SkeletonForm fields={4} /></LoadingState>;
   if (error) return <Alert variant="error" title="Unable to load modules" action={<Button onClick={load}>Retry</Button>}>{error}</Alert>;
   return <div className="space-y-4"><h2 className="text-base font-semibold">Organization modules</h2><p className="text-sm text-text-muted">Core modules are enabled during provisioning. Required modules stay enabled. Root controls optional modules.</p><Input aria-label="Find module" placeholder="Find a module" value={search} onChange={(e) => setSearch(e.target.value)} />{["P1", "P2"].map((priority) => {
     const group = modules.filter((m) => m.priority === priority);

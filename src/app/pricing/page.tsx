@@ -39,7 +39,7 @@ export default function PricingPage() {
           <BillingCycleSwitch value={billingCycle} onChange={setBillingCycle} />
         </header>
         {loading ? (
-          <div className="grid gap-4 md:grid-cols-3" aria-busy="true" aria-label="Loading pricing tiers">
+          <div role="status" aria-live="polite" className="grid gap-4 md:grid-cols-3" aria-busy="true" aria-label="Loading pricing tiers">
             {Array.from({ length: 3 }, (_, index) => <div key={index} className="h-80 animate-pulse rounded-xl border border-border bg-surface-alt" />)}
           </div>
         ) : error ? (

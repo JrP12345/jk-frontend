@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import { Button, Input, Toggle, Badge, useToast } from "@/components/ui";
+import { Button, Input, Toggle, Badge, useToast, InlineLoader } from "@/components/ui";
 
 export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode, scope = "organization" }: { organizationId?: string; isRoot: boolean; mode: string; scope?: "organization" | "platform" }) {
   const { user } = useAuthStore();
@@ -38,7 +38,7 @@ export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode, 
       <h4 className="text-sm font-semibold">{platform ? "Platform WhatsApp connection" : "Connection and delivery"}</h4>
       <Badge>{data?.connection?.connectionStatus || "Not connected"}</Badge>
     </div>
-    {health.isLoading && <p className="text-sm text-text-muted">Loading connection details…</p>}
+    {health.isLoading && <InlineLoader label="Loading connection details" />}
     {health.isError && <p className="text-sm text-text-muted">Could not load connection details. <button type="button" className="underline" onClick={() => health.refetch()}>Retry</button></p>}
     {platform && <div className="space-y-3">
       <p className="text-xs text-text-muted">Root controls the shared sender for all organizations. Blank credential fields keep the saved values.</p>

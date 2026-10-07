@@ -1009,19 +1009,19 @@ export default function BillingPage() {
           2. FINANCIAL KPI STATS CARDS
          ────────────────────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard
+        <StatCard loading={loading}
           label="Today's Collections"
           value={`₹${todaysPaidAmount.toLocaleString("en-IN")}`}
           description="Settled outpatient receipts"
           icon={<IndianRupee className="w-5 h-5 text-success-text" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Outstanding Balances"
           value={`₹${pendingAmount.toLocaleString("en-IN")}`}
           description="Uncollected pending receivables"
           icon={<AlertCircle className="w-5 h-5 text-warning-text" />}
         />
-        <StatCard
+        <StatCard loading={loading}
           label="Unpaid Invoices"
           value={unpaidCount.toString()}
           description="Invoices awaiting settlement"
