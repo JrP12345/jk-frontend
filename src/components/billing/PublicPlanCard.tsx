@@ -11,7 +11,7 @@ import type { SaaSPlan } from "@/services/billing.service";
 export type BillingCycle = "monthly" | "annual";
 
 export const planCapacityRows: { label: string; key: keyof SaaSPlan["limits"] }[] = [
-  { label: "Clinic branches", key: "maxClinics" },
+  { label: "Locations", key: "maxLocations" },
   { label: "Doctor profiles", key: "maxDoctors" },
   { label: "Staff members", key: "maxStaff" },
   { label: "Patient records", key: "maxPatients" },
@@ -77,7 +77,7 @@ export function PublicPlanCard({ plan, billingCycle, compact = false }: { plan: 
         <dl className={compact ? "my-4 grid grid-cols-3 gap-2 border-t border-border pt-3" : "my-5 space-y-2 border-t border-border pt-4 text-sm"}>
           {capacities.map(row => (
             <div key={row.key} className={compact ? "flex min-w-0 flex-col gap-1" : "flex justify-between gap-3"}>
-              <dt className={compact ? "text-[11px] text-text-secondary" : "text-text-secondary"}>{compact && row.key === "maxClinics" ? "Locations" : row.label}</dt>
+              <dt className={compact ? "text-[11px] text-text-secondary" : "text-text-secondary"}>{compact && row.key === "maxLocations" ? "Locations" : row.label}</dt>
               <dd className={compact ? "text-lg font-medium wrap-anywhere" : "font-medium"}>{plan.limits?.[row.key]?.toLocaleString() ?? "—"}</dd>
             </div>
           ))}

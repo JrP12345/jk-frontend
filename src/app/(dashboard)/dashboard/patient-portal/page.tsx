@@ -90,9 +90,9 @@ export default function PatientPortalPage() {
 
   // Self-Booking State
   const [isSelfBookOpen, setIsSelfBookOpen] = useState(false);
-  const [selfClinics, setSelfClinics] = useState<any[]>([]);
+  const [selfLocations, setSelfLocations] = useState<any[]>([]);
   const [selfDoctors, setSelfDoctors] = useState<any[]>([]);
-  const [selfClinicId, setSelfClinicId] = useState("");
+  const [selfLocationId, setSelfLocationId] = useState("");
   const [selfDoctorId, setSelfDoctorId] = useState("");
   const [selfApptTime, setSelfApptTime] = useState("");
   const [selfNotes, setSelfNotes] = useState("");
@@ -100,11 +100,11 @@ export default function PatientPortalPage() {
   const [selfDoctorBookingInfo, setSelfDoctorBookingInfo] = useState<any | null>(null);
 
   useEffect(() => {
-    if (!selfDoctorId || !selfClinicId) return;
+    if (!selfDoctorId || !selfLocationId) return;
     const checkMode = async () => {
       try {
         const todayStr = new Date().toISOString().split("T")[0];
-        const res = await api.get(`/doctors/${selfDoctorId}/slots?clinicId=${selfClinicId}&date=${todayStr}`);
+        const res = await api.get(`/doctors/${selfDoctorId}/slots?locationId=${selfLocationId}&date=${todayStr}`);
         const data = res.data?.data;
         setSelfDoctorBookingInfo(data);
         if (data?.bookingMode === "sequential_queue") {
@@ -115,20 +115,20 @@ export default function PatientPortalPage() {
       }
     };
     checkMode();
-  }, [selfDoctorId, selfClinicId]);
+  }, [selfDoctorId, selfLocationId]);
 
   const openSelfBookModal = async () => {
     setIsSelfBookOpen(true);
     setSelfDoctorBookingInfo(null);
     try {
-      const res = await api.get("/public/clinics");
+      const res = await api.get("/public/locations");
       const list = res.data?.data || [];
-      setSelfClinics(list);
+      setSelfLocations(list);
       if (list.length > 0) {
-        const firstClinic = list[0];
-        const cid = firstClinic.id || firstClinic._id;
-        setSelfClinicId(cid);
-        const docs = firstClinic.doctorsSummary || firstClinic.doctors || [];
+        const firstLocation = list[0];
+        const cid = firstLocation.id || firstLocation._id;
+        setSelfLocationId(cid);
+        const docs = firstLocation.doctorsSummary || firstLocation.doctors || [];
         setSelfDoctors(docs);
         if (docs.length > 0) {
           setSelfDoctorId(docs[0].id || docs[0]._id);
@@ -139,25 +139,25 @@ export default function PatientPortalPage() {
     }
   };
 
-  const handleSelfClinicChange = (cid: string) => {
-    setSelfClinicId(cid);
-    const selectedClinic = selfClinics.find((c) => (c.id || c._id) === cid);
-    const docs = selectedClinic?.doctorsSummary || selectedClinic?.doctors || [];
+  const handleSelfLocationChange = (cid: string) => {
+    setSelfLocationId(cid);
+    const selectedLocation = selfLocations.find((c) => (c.id || c._id) === cid);
+    const docs = selectedLocation?.doctorsSummary || selectedLocation?.doctors || [];
     setSelfDoctors(docs);
     setSelfDoctorId(docs[0]?.id || docs[0]?._id || "");
   };
 
   const handleSelfBookSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selfClinicId || !selfDoctorId || !selfApptTime) {
-      toast({ title: "Validation Error", description: "Please select clinic, doctor, and appointment time", variant: "error" });
+    if (!selfLocationId || !selfDoctorId || !selfApptTime) {
+      toast({ title: "Validation Error", description: "Please select location, doctor, and appointment time", variant: "error" });
       return;
     }
 
     setSubmittingSelfBook(true);
     try {
       const res = await api.post("/patient-portal/self-book", {
-        clinicId: selfClinicId,
+        locationId: selfLocationId,
         doctorId: selfDoctorId,
         appointmentTime: selfApptTime,
         notes: selfNotes,
@@ -311,7 +311,7 @@ export default function PatientPortalPage() {
 
       toast({
         title: "Refill Requested",
-        description: "Your prescription refill request has been submitted to the clinic.",
+        description: "Your prescription refill request has been submitted to your care team.",
         variant: "success",
       });
 
@@ -931,10 +931,10 @@ export default function PatientPortalPage() {
           />
 
           <Select
-            label="Clinic Location *"
-            value={selfClinicId}
-            onChange={(e) => handleSelfClinicChange(e.target.value)}
-            options={selfClinics.map((c) => ({ value: c.id || c._id, label: `${c.name} - ${c.city}` }))}
+            label="Location *"
+            value={selfLocationId}
+            onChange={(e) => handleSelfLocationChange(e.target.value)}
+            options={selfLocations.map((c) => ({ value: c.id || c._id, label: `${c.name} - ${c.city}` }))}
             required
           />
 
@@ -961,7 +961,7 @@ export default function PatientPortalPage() {
               label="Preferred Appointment Date & Time *"
               mode="datetime"
               value={selfApptTime}
-              onChange={(val) => setSelfApptTime(typeof val === "string" ? val : val.target.value)}
+              onChange={(val) => setSelfApptTime(val)}
               fullWidth
             />
           )}
@@ -1052,11 +1052,11 @@ export default function PatientPortalPage() {
         <Modal
           open={claimModalOpen}
           onClose={() => setClaimModalOpen(false)}
-          title="Claim Existing Clinic Record"
+          title="Link existing patient record"
         >
           <form onSubmit={handleClaimRecord} className="space-y-4">
             <p className="text-xs text-text-muted">
-              If you have a walk-in record at the clinic, enter your Patient ID or MRN below to link it directly to your online account.
+              If your care team has a walk-in record for you, enter your Patient ID or MRN below to link it directly to your online account.
             </p>
             <Input
               label="Patient ID or Record Reference *"

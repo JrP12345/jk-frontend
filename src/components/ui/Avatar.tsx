@@ -32,17 +32,17 @@ const statusSizes: Record<AvatarSize, string> = {
 };
 
 const statusColors = {
-  online: "bg-success-500",
+  online: "bg-success",
   offline: "bg-text-muted",
-  away: "bg-warning-500",
-  busy: "bg-danger-500",
+  away: "bg-warning",
+  busy: "bg-danger",
 };
 
 const avatarColors = [
   "bg-primary-500/10 text-accent dark:text-accent border border-primary-500/20",
-  "bg-success-500/10 text-success-text dark:text-success-text border border-success-500/20",
-  "bg-warning-500/10 text-warning-text dark:text-warning-text border border-warning-500/20",
-  "bg-danger-500/10 text-danger-text dark:text-danger-text border border-danger-500/20",
+  "bg-success/10 text-success-text dark:text-success-text border border-success/20",
+  "bg-warning/10 text-warning-text dark:text-warning-text border border-warning/20",
+  "bg-danger/10 text-danger-text dark:text-danger-text border border-danger/20",
   "bg-primary-500/15 text-accent dark:text-accent border border-primary-500/25",
 ];
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { externalServiceUrl } from "@/lib/externalServiceUrl";
 import { useAuthStore } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { Alert, Card, CardContent, Button, Modal, Input, Select, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
 import { RotateCw, Plus, Video, Clock, Activity, CheckCircle2 } from "lucide-react";
 
@@ -20,7 +20,7 @@ export interface TeleconsultationAppointment {
     dob?: string;
   };
   doctorId: { id: string; name: string; specialization?: string };
-  clinicId?: { id: string; name: string };
+  locationId?: { id: string; name: string };
   notes?: string;
 }
 
@@ -45,10 +45,10 @@ export interface TeleSessionData {
 
 export default function TeleconsultationPage() {
   const { user } = useAuthStore();
-  const { activeClinicId } = useClinicStore();
+  const { activeLocationId } = useLocationStore();
   const { toast } = useToast();
 
-  const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
+  const [selectedLocationId, setSelectedLocationId] = useState(activeLocationId || "");
   const [appointments, setAppointments] = useState<TeleconsultationAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -79,14 +79,14 @@ export default function TeleconsultationPage() {
   const [launchingSession, setLaunchingSession] = useState(false);
 
   useEffect(() => {
-    setSelectedClinicId(activeClinicId || "");
-  }, [activeClinicId]);
+    setSelectedLocationId(activeLocationId || "");
+  }, [activeLocationId]);
 
   const fetchData = async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const apptsRes = await api.get(selectedClinicId ? `/appointments?clinicId=${selectedClinicId}` : "/appointments");
+      const apptsRes = await api.get(selectedLocationId ? `/appointments?locationId=${selectedLocationId}` : "/appointments");
       const list: TeleconsultationAppointment[] = apptsRes.data?.data || apptsRes.data || [];
       setAppointments(list);
     } catch (err: any) {
@@ -103,7 +103,7 @@ export default function TeleconsultationPage() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedClinicId]);
+  }, [selectedLocationId]);
 
 
   // Join or Create Video Session & Start Call
@@ -598,7 +598,7 @@ export default function TeleconsultationPage() {
                     </div>
                     <p className="text-xs text-text-muted">Opening this link does not confirm that the patient has joined.</p>
                   </> : <Alert title={activeSession?.status === "ended" ? "Session completed" : "Video meeting unavailable"}>
-                    {activeSession?.status === "ended" ? "This consultation has ended." : "Your clinic administrator needs to connect the video service. Clinical notes are available below."}
+                    {activeSession?.status === "ended" ? "This consultation has ended." : "Your organization administrator needs to connect the video service. Clinical notes are available below."}
                   </Alert>}
                 </div>
 
@@ -851,7 +851,7 @@ export default function TeleconsultationPage() {
           />
 
           <div className="p-3 bg-primary/10 border border-accent/30 rounded-xl text-[11px] text-accent dark:text-accent">
-            A consultation record is created for this appointment. The clinic must connect its video service before a meeting can be opened.
+            A consultation record is created for this appointment. The organization must connect its video service before a meeting can be opened.
           </div>
         </form>
       </Modal>

@@ -265,7 +265,7 @@ export default function NotificationsInboxPage() {
           </div>
           {row.priority === "urgent" || row.priority === "high" ? (
             <div className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-danger-500 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
               <span className="text-[10px] font-bold text-danger-text uppercase tracking-wider">
                 {row.priority} Priority
               </span>

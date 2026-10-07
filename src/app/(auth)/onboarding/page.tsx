@@ -5,7 +5,8 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, useToast, Stepper, ModeSwitcher, EkavyuLogo, Badge, Spinner, Checkbox, cn } from "@/components/ui";
+import { facilityTypeOptions } from "@/lib/facility";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Select, Button, useToast, Stepper, ModeSwitcher, EkavyuLogo, Badge, Spinner, Checkbox, cn } from "@/components/ui";
 import { Eye, EyeOff, RefreshCw, ArrowLeft } from "lucide-react";
 import { OrganizationSetupRequest } from "@/components/organization/OrganizationSetupRequest";
 
@@ -35,7 +36,7 @@ function OnboardingInner() {
   const modeParam = searchParams.get("mode") || "";
   const { user, login } = useAuthStore();
   const { toast } = useToast();
-  
+
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
@@ -62,11 +63,12 @@ function OnboardingInner() {
     adminEmail: "",
     adminPassword: "",
     adminPhone: "",
-    clinicName: "",
-    clinicCity: "",
-    clinicAddress: "",
-    clinicPhone: "",
-    clinicEmail: "",
+    locationName: "",
+    facilityType: "clinic",
+    locationCity: "",
+    locationAddress: "",
+    locationPhone: "",
+    locationEmail: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -85,7 +87,7 @@ function OnboardingInner() {
   // Restore Draft from localStorage (strictly omitting password for security)
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("ananta_onboarding_draft");
+      const saved = localStorage.getItem("ekavyu_onboarding_draft");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.formData) {
@@ -107,7 +109,7 @@ function OnboardingInner() {
     saveTimeoutRef.current = setTimeout(() => {
       try {
         const { adminPassword, ...safeFormData } = formData;
-        localStorage.setItem("ananta_onboarding_draft", JSON.stringify({ step, formData: safeFormData, isMultiLocation }));
+        localStorage.setItem("ekavyu_onboarding_draft", JSON.stringify({ step, formData: safeFormData, isMultiLocation }));
         if (onboardingKey) {
           api.post("/onboarding/draft", { token: onboardingKey, step, formData: safeFormData }).catch(() => {});
         }
@@ -127,7 +129,7 @@ function OnboardingInner() {
   };
 
   const handleChange = (field: keyof typeof formData) => (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: { target: { value: string } }
   ) => {
     const val = e.target.value;
     setFormData((prev) => ({ ...prev, [field]: val }));
@@ -149,7 +151,7 @@ function OnboardingInner() {
       else if (/^[0-9+\s-]{6,}$/.test(formData.orgCity.trim())) newErrors.orgCity = "City appears to be a phone number. Please enter a valid city name (e.g. Mumbai).";
       if (formData.orgEmail.trim() && !EMAIL_REGEX.test(formData.orgEmail)) newErrors.orgEmail = "Invalid email address";
       if (formData.orgPhone.trim() && !PHONE_REGEX.test(formData.orgPhone.trim())) newErrors.orgPhone = "Invalid phone number (8-15 digits)";
-      
+
       // Admin fields
       if (!formData.adminName.trim()) newErrors.adminName = "Your name is required";
       if (!formData.adminEmail.trim()) newErrors.adminEmail = "Email is required";
@@ -164,9 +166,9 @@ function OnboardingInner() {
 
       // Multi-location: first location name is required
       if (isMultiLocation) {
-        if (!formData.clinicName.trim()) newErrors.clinicName = "First location name is required";
-        if (formData.clinicCity.trim() && /^[0-9+\s-]{6,}$/.test(formData.clinicCity.trim())) {
-          newErrors.clinicCity = "City appears to be a phone number. Please enter a valid city name.";
+        if (!formData.locationName.trim()) newErrors.locationName = "First location name is required";
+        if (formData.locationCity.trim() && /^[0-9+\s-]{6,}$/.test(formData.locationCity.trim())) {
+          newErrors.locationCity = "City appears to be a phone number. Please enter a valid city name.";
         }
       }
     }
@@ -213,12 +215,12 @@ function OnboardingInner() {
       return;
     }
 
-    // Derive clinic fields: for single-location, auto-create from org details
-    const clinicName = isMultiLocation && formData.clinicName.trim()
-      ? formData.clinicName.trim()
+    // Derive location fields: for single-location, auto-create from org details
+    const locationName = isMultiLocation && formData.locationName.trim()
+      ? formData.locationName.trim()
       : undefined; // Let the backend use default: org_name.trim()
-    const clinicCity = isMultiLocation && formData.clinicCity.trim()
-      ? formData.clinicCity.trim()
+    const locationCity = isMultiLocation && formData.locationCity.trim()
+      ? formData.locationCity.trim()
       : undefined; // Backend defaults to org city
 
     setLoading(true);
@@ -241,18 +243,19 @@ function OnboardingInner() {
         admin_email: formData.adminEmail.trim().toLowerCase(),
         admin_password: formData.adminPassword,
         admin_phone: formData.adminPhone.trim() || undefined,
-        clinic_name: clinicName,
-        clinic_city: clinicCity,
-        clinic_address: isMultiLocation ? (formData.clinicAddress.trim() || undefined) : (formData.orgAddress.trim() || undefined),
-        clinic_phone: isMultiLocation ? (formData.clinicPhone.trim() || undefined) : (formData.orgPhone.trim() || undefined),
-        clinic_email: isMultiLocation ? (formData.clinicEmail.trim() || undefined) : (formData.orgEmail.trim() || undefined),
+        location_name: locationName,
+        facilityType: formData.facilityType,
+        location_city: locationCity,
+        location_address: isMultiLocation ? (formData.locationAddress.trim() || undefined) : (formData.orgAddress.trim() || undefined),
+        location_phone: isMultiLocation ? (formData.locationPhone.trim() || undefined) : (formData.orgPhone.trim() || undefined),
+        location_email: isMultiLocation ? (formData.locationEmail.trim() || undefined) : (formData.orgEmail.trim() || undefined),
       }, { headers: Object.keys(headers).length > 0 ? headers : undefined });
 
       // Save created org ID and active org context
       if (orgRes.data?.data?.organization?.id) {
         const newOrgId = orgRes.data.data.organization.id;
         setCreatedOrgId(newOrgId);
-        localStorage.setItem("ananta_active_org_id", newOrgId);
+        localStorage.setItem("ekavyu_active_org_id", newOrgId);
       }
 
       // Login Admin session if user not already logged in
@@ -262,7 +265,7 @@ function OnboardingInner() {
 
       // Clear saved draft on successful practice creation
       try {
-        localStorage.removeItem("ananta_onboarding_draft");
+        localStorage.removeItem("ekavyu_onboarding_draft");
       } catch {}
 
       toast({
@@ -300,7 +303,7 @@ function OnboardingInner() {
         secret: totpSecret,
       });
 
-      localStorage.removeItem("ananta_onboarding_draft");
+      localStorage.removeItem("ekavyu_onboarding_draft");
 
       toast({
         title: "Account Secured! 🔒",
@@ -323,7 +326,7 @@ function OnboardingInner() {
 
   const handleLaunchWorkspace = () => {
     if (createdOrgId) {
-      localStorage.setItem("ananta_active_org_id", createdOrgId);
+      localStorage.setItem("ekavyu_active_org_id", createdOrgId);
     }
     router.replace("/dashboard");
   };
@@ -343,12 +346,12 @@ function OnboardingInner() {
         {/* Brand Header */}
         <div className="text-center mb-6 select-none flex flex-col items-center justify-center">
           <EkavyuLogo size="md" className="mb-2" />
-          <h1 className="text-xl font-bold text-text tracking-tight">Set Up Your Practice</h1>
+          <h1 className="page-title">Set Up Your Practice</h1>
           <p className="text-text-secondary text-sm mt-1">Practice details, administrator account and security setup</p>
         </div>
 
         {/* Wizard Card Container */}
-        <Card 
+        <Card
           className={cn(
             "border-border bg-surface rounded-xl transition-transform duration-300",
             isShaking && "animate-shake"
@@ -366,9 +369,9 @@ function OnboardingInner() {
             </div>
             <Stepper steps={STEPS} currentStep={step} />
           </CardHeader>
-          
+
           <CardContent className="pt-5 sm:pt-6">
-            
+
             {/* ── STEP 0: Practice Profile + Admin + Optional Location ─────────── */}
             {step === 0 && (
               <form id="onboarding-step-0-form" onSubmit={handleCreatePractice} className="space-y-4 animate-fade-in">
@@ -381,7 +384,7 @@ function OnboardingInner() {
                     )}
                   </div>
                   <CardTitle>Your Practice Profile</CardTitle>
-                  <CardDescription className="mt-1">Tell us about your clinic or hospital. We&apos;ll set everything up for you.</CardDescription>
+                  <CardDescription className="mt-1">Tell us about your healthcare team. We&apos;ll set everything up for you.</CardDescription>
                 </div>
 
                 {/* Section A: Practice Details */}
@@ -399,40 +402,40 @@ function OnboardingInner() {
                     required
                   />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <Input 
-                      label="Contact Phone Number" 
+                    <Input
+                      label="Contact Phone Number"
                       type="tel"
-                      placeholder="+91 98765 43210" 
-                      value={formData.orgPhone} 
-                      onChange={handleChange("orgPhone")} 
+                      placeholder="+91 98765 43210"
+                      value={formData.orgPhone}
+                      onChange={handleChange("orgPhone")}
                       error={errors.orgPhone}
                       autoComplete="off"
                     />
-                    <Input 
-                      label="Contact Email" 
-                      type="email" 
-                      placeholder="contact@clinic.com" 
-                      value={formData.orgEmail} 
-                      onChange={handleChange("orgEmail")} 
+                    <Input
+                      label="Contact Email"
+                      type="email"
+                      placeholder="contact@clinic.com"
+                      value={formData.orgEmail}
+                      onChange={handleChange("orgEmail")}
                       error={errors.orgEmail}
                       autoComplete="off"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <Input 
-                      label="City *" 
-                      placeholder="e.g. Mumbai, Delhi" 
-                      value={formData.orgCity} 
-                      onChange={handleChange("orgCity")} 
+                    <Input
+                      label="City *"
+                      placeholder="e.g. Mumbai, Delhi"
+                      value={formData.orgCity}
+                      onChange={handleChange("orgCity")}
                       error={errors.orgCity}
                       autoComplete="off"
-                      required 
+                      required
                     />
-                    <Input 
-                      label="Physical Address" 
-                      placeholder="123 Healthcare Boulevard" 
-                      value={formData.orgAddress} 
-                      onChange={handleChange("orgAddress")} 
+                    <Input
+                      label="Physical Address"
+                      placeholder="123 Healthcare Boulevard"
+                      value={formData.orgAddress}
+                      onChange={handleChange("orgAddress")}
                       autoComplete="off"
                     />
                   </div>
@@ -509,6 +512,7 @@ function OnboardingInner() {
                 </div>
 
                 {/* Section C: Multi-Location Disclosure */}
+                <Select label="Primary location type" value={formData.facilityType} options={[...facilityTypeOptions]} onChange={handleChange("facilityType")} />
                 <div className="pt-3 border-t border-border">
                   <div
                     className="flex items-start gap-3 p-3 rounded-xl bg-surface-hover/50 border border-border/50 cursor-pointer hover:bg-surface-hover transition-colors"
@@ -524,7 +528,7 @@ function OnboardingInner() {
                     />
                     <div className="space-y-0.5 select-none">
                       <p className="text-sm font-semibold text-text">I have multiple locations</p>
-                      <p className="text-xs text-text-muted">Enable this if you run multiple branches, departments, or hospital locations. You can always add more locations later.</p>
+                      <p className="text-xs text-text-muted">Enable this if you run clinics, hospitals or centers at several locations. You can always add more locations later.</p>
                     </div>
                   </div>
 
@@ -537,23 +541,23 @@ function OnboardingInner() {
                       <Input
                         label="Location / Branch Name *"
                         placeholder="e.g. Main Branch, North Wing, Downtown Clinic"
-                        value={formData.clinicName}
-                        onChange={handleChange("clinicName")}
-                        error={errors.clinicName}
+                        value={formData.locationName}
+                        onChange={handleChange("locationName")}
+                        error={errors.locationName}
                         required
                       />
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <Input 
-                          label="City (if different)" 
-                          placeholder="Same as above if blank" 
-                          value={formData.clinicCity} 
-                          onChange={handleChange("clinicCity")} 
+                        <Input
+                          label="City (if different)"
+                          placeholder="Same as above if blank"
+                          value={formData.locationCity}
+                          onChange={handleChange("locationCity")}
                         />
-                        <Input 
-                          label="Location Address" 
-                          placeholder="Branch address" 
-                          value={formData.clinicAddress} 
-                          onChange={handleChange("clinicAddress")} 
+                        <Input
+                          label="Location Address"
+                          placeholder="Branch address"
+                          value={formData.locationAddress}
+                          onChange={handleChange("locationAddress")}
                         />
                       </div>
                     </div>
@@ -639,7 +643,7 @@ function OnboardingInner() {
             {/* ── STEP 2: Success & Next Steps ───────────────────────────── */}
             {step === 2 && (
               <div className="space-y-6 animate-fade-in text-center py-2">
-                <div className="w-16 h-16 rounded-full bg-success-500/15 text-success-text flex items-center justify-center text-3xl mx-auto animate-bounce">
+                <div className="w-16 h-16 rounded-full bg-success/15 text-success-text flex items-center justify-center text-3xl mx-auto animate-bounce">
                   ✓
                 </div>
 
@@ -654,10 +658,10 @@ function OnboardingInner() {
                     <span className="text-text-muted">Practice:</span>
                     <span className="font-bold text-text">{formData.orgName}</span>
                   </div>
-                  {isMultiLocation && formData.clinicName && (
+                  {isMultiLocation && formData.locationName && (
                     <div className="flex items-center justify-between border-b border-border/60 pb-2">
                       <span className="text-text-muted">First Location:</span>
-                      <span className="font-bold text-text">{formData.clinicName}</span>
+                      <span className="font-bold text-text">{formData.locationName}</span>
                     </div>
                   )}
                   <div className="flex items-center justify-between">
@@ -690,12 +694,12 @@ function OnboardingInner() {
             )}
 
           </CardContent>
-          
+
           {/* Footer Actions */}
           <CardFooter className="flex justify-between border-t border-border pt-4 bg-surface-alt/25">
             {step === 0 && (
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 form="onboarding-step-0-form"
                 loading={loading}
                 size="md"
@@ -718,8 +722,8 @@ function OnboardingInner() {
                   <ArrowLeft className="w-4 h-4" />
                   Back
                 </Button>
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   onClick={handleVerifyTOTP}
                   loading={isVerifyingOTP}
                   disabled={otpCode.length < 6}
@@ -732,9 +736,9 @@ function OnboardingInner() {
             )}
 
             {step === 2 && (
-              <Button 
-                type="button" 
-                variant="primary" 
+              <Button
+                type="button"
+                variant="primary"
                 onClick={handleLaunchWorkspace}
                 size="md"
                 className="w-full"

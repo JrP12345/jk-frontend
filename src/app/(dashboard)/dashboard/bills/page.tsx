@@ -27,7 +27,7 @@ interface Invoice {
   appointmentId?: string | { id?: string; _id?: string };
   currency?: string;
   patientId: { id: string; userId: { name: string; email: string; phone: string } };
-  clinicId: { id: string; name: string; city: string; address: string };
+  locationId: { id: string; name: string; city: string; address: string };
   doctorId: { id: string; name: string; specialization: string };
   items: InvoiceItem[];
   subtotal: number;
@@ -123,14 +123,14 @@ export default function PatientBillsPage() {
       let handled = false;
       const checkout = new (window as any).Razorpay({
         key: order.keyId, order_id: order.razorpayOrderId, amount: Math.round(order.amount * 100), currency: order.currency,
-        name: invoice.clinicId?.name || "Ekavyu", description: `Invoice ${invoice.invoiceNumber}`,
+        name: invoice.locationId?.name || "Ekavyu", description: `Invoice ${invoice.invoiceNumber}`,
         prefill: { name: user?.name || "", email: user?.email || "" },
         handler: (response: CheckoutResult) => {
           if (handled) return;
           handled = true;
           if (response.razorpay_order_id !== order.razorpayOrderId || !response.razorpay_payment_id || !response.razorpay_signature) {
             setPaymentIssue(order.razorpayOrderId);
-            releasePayment(); toast({ title: "Payment response could not be verified", description: "Contact the clinic with your payment reference before retrying.", variant: "error" }); return;
+            releasePayment(); toast({ title: "Payment response could not be verified", description: "Contact reception with your payment reference before retrying.", variant: "error" }); return;
           }
           void verifyPayment({ appointmentId: visitId, razorpayOrderId: response.razorpay_order_id, razorpayPaymentId: response.razorpay_payment_id, razorpaySignature: response.razorpay_signature });
         },
@@ -141,7 +141,7 @@ export default function PatientBillsPage() {
     } catch (error: unknown) {
       releasePayment();
       const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message || (error as Error).message;
-      toast({ title: "Checkout unavailable", description: userFacingError(message, "Refresh your invoices or contact clinic reception."), variant: "error" });
+      toast({ title: "Checkout unavailable", description: userFacingError(message, "Refresh your invoices or contact reception."), variant: "error" });
     }
   };
 
@@ -171,7 +171,7 @@ export default function PatientBillsPage() {
           <div class="receipt">
             <div class="center">
               <h3 style="margin:2px 0;">Ekavyu HEALTHCARE SYSTEM</h3>
-              <p style="margin:2px 0; font-size:11px;">${inv.clinicId?.name}</p>
+              <p style="margin:2px 0; font-size:11px;">${inv.locationId?.name}</p>
             </div>
             <div class="border-dashed"></div>
             <div class="flex-between"><span class="bold">Invoice No:</span><span>${inv.invoiceNumber}</span></div>
@@ -244,8 +244,8 @@ export default function PatientBillsPage() {
         </div>
       </div>
 
-      {pendingProof && <Alert variant="warning" title="Payment confirmation pending" action={<Button variant="outline" loading={submittingPayment} disabled={submittingPayment} onClick={() => void verifyPayment(pendingProof)}>Check confirmation</Button>}>Do not pay again while confirmation is pending. Payment reference: <span className="break-all">{pendingProof.razorpayPaymentId}</span>. If you leave this page, share this reference with clinic reception.</Alert>}
-      {paymentIssue && <Alert variant="warning" title="Payment needs review">Contact clinic reception before paying again. Order reference: <span className="break-all">{paymentIssue}</span>.</Alert>}
+      {pendingProof && <Alert variant="warning" title="Payment confirmation pending" action={<Button variant="outline" loading={submittingPayment} disabled={submittingPayment} onClick={() => void verifyPayment(pendingProof)}>Check confirmation</Button>}>Do not pay again while confirmation is pending. Payment reference: <span className="break-all">{pendingProof.razorpayPaymentId}</span>. If you leave this page, share this reference with reception.</Alert>}
+      {paymentIssue && <Alert variant="warning" title="Payment needs review">Contact reception before paying again. Order reference: <span className="break-all">{paymentIssue}</span>.</Alert>}
       <div>
         <Table
           error={loadError}
@@ -254,7 +254,7 @@ export default function PatientBillsPage() {
           mobileCardView
           columns={[
             { key: "invoiceNumber", header: "Invoice #", render: (row: Invoice) => <span className="font-bold text-text">#{row.invoiceNumber}</span> },
-            { key: "clinic", header: "Clinic", render: (row: Invoice) => <span>{row.clinicId?.name}</span> },
+            { key: "location", header: "Location", render: (row: Invoice) => <span>{row.locationId?.name}</span> },
             { key: "doctor", header: "Doctor", render: (row: Invoice) => <span>Dr. {row.doctorId?.name}</span> },
             { key: "createdAt", header: "Date Issued", render: (row: Invoice) => <span>{new Date(row.createdAt).toLocaleDateString()}</span> },
             { key: "totalAmount", header: "Total Due", render: (row: Invoice) => {
@@ -294,7 +294,7 @@ export default function PatientBillsPage() {
                 ) : row.status === "paid" ? (
                   <PrintButton size="xs" variant="outline" className="min-h-[36px] px-3.5 font-bold cursor-pointer" onPrint={() => handleOpenReceipt(row)} documentName="receipt" preview>
               </PrintButton>
-                ) : <span className="text-xs text-text-muted">{row.status === "unpaid" || row.status === "partially_paid" ? "Pay at clinic reception" : "No payment due"}</span>}
+                ) : <span className="text-xs text-text-muted">{row.status === "unpaid" || row.status === "partially_paid" ? "Pay at reception" : "No payment due"}</span>}
               </div>
             )}
           ]}
@@ -326,7 +326,7 @@ export default function PatientBillsPage() {
                 <div className="grid grid-cols-2 gap-2 text-xs py-2 px-3 rounded-xl bg-surface-alt/70 border border-border/50">
                   <div>
                     <span className="text-text-muted text-[10px] uppercase font-bold block">Facility</span>
-                    <span className="font-semibold text-text truncate mt-0.5 block">{row.clinicId?.name || "Clinic"}</span>
+                    <span className="font-semibold text-text truncate mt-0.5 block">{row.locationId?.name || "Location"}</span>
                   </div>
                   <div>
                     <span className="text-text-muted text-[10px] uppercase font-bold block">Practitioner</span>
@@ -369,7 +369,7 @@ export default function PatientBillsPage() {
                       onPrint={() => handleOpenReceipt(row)} documentName="receipt" preview
                     >
               </PrintButton>
-                  ) : <p className="text-xs text-text-muted text-center">{row.status === "unpaid" || row.status === "partially_paid" ? "Pay at clinic reception" : "No payment due"}</p>}
+                  ) : <p className="text-xs text-text-muted text-center">{row.status === "unpaid" || row.status === "partially_paid" ? "Pay at reception" : "No payment due"}</p>}
                 </div>
               </div>
             );
@@ -396,8 +396,8 @@ export default function PatientBillsPage() {
             <div className="border border-border rounded-xl p-5 bg-surface-alt font-mono text-sm space-y-4">
               <div className="text-center border-b border-border/80 border-dashed pb-4 mb-2">
                 <h3 className="font-extrabold text-base tracking-tight text-text">Ekavyu</h3>
-                <p className="text-xs text-text-muted mt-0.5">{receiptInvoice.clinicId?.name}</p>
-                <p className="text-[11px] text-text-muted">{receiptInvoice.clinicId?.address}, {receiptInvoice.clinicId?.city}</p>
+                <p className="text-xs text-text-muted mt-0.5">{receiptInvoice.locationId?.name}</p>
+                <p className="text-[11px] text-text-muted">{receiptInvoice.locationId?.address}, {receiptInvoice.locationId?.city}</p>
               </div>
 
               <div className="space-y-1 border-b border-border/80 border-dashed pb-3">
@@ -434,7 +434,7 @@ export default function PatientBillsPage() {
               </div>
 
               <div className="text-center pt-2">
-                <span className="inline-block font-extrabold text-xs px-4 py-1.5 rounded-full uppercase border bg-success-100/50 text-success-text border-success/40">
+                <span className="inline-block font-extrabold text-xs px-4 py-1.5 rounded-full uppercase border bg-success-subtle/50 text-success-text border-success/40">
                   {receiptInvoice.status}
                 </span>
                 {receiptInvoice.paymentMethod && (

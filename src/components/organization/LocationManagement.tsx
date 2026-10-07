@@ -4,25 +4,29 @@ import LoadingImage from "@/components/ui/LoadingImage";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
-import type { ClinicDetail } from "@/app/browse/[id]/BrowseDetailClient";
+import type { LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
 import { getPublicBookingStatus } from "@/lib/publicBooking";
-import { parseWeeklySchedule } from "@/lib/timing/clinicStatus";
-import { parseClinicCoordinates } from "@/lib/geo/clinicCoordinates";
+import { locationPath } from "@/lib/publicPaths";
+import { parseWeeklySchedule } from "@/lib/timing/locationStatus";
+import { parseLocationCoordinates } from "@/lib/geo/locationCoordinates";
 import { Alert, Card, CardContent, Table, Button, Modal, Input, useToast, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, SkeletonTable, Dropdown, StatCard, cn } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
-import { useOrganizationClinics } from "@/hooks/useOrganizationClinics";
+import { useOrganizationLocations } from "@/hooks/useOrganizationLocations";
 import { organizationPath } from "@/services/organization.service";
+import { facilityTypeLabel, facilityTypeOptions, type FacilityType } from "@/lib/facility";
 import { hasAnyPermission, isRootUser } from "@/lib/permissions";
 import { useR2Upload } from "@/hooks/useR2Upload";
 import { RotateCw, Plus, Building2, MapPin, Phone, Mail, QrCode, MoreHorizontal, Edit3, Trash2, Archive, RotateCcw, Clock, Link2 } from "lucide-react";
-import ClinicQrPosterModal from "@/components/dashboard/ClinicQrPosterModal";
+import LocationQrPosterModal from "@/components/dashboard/LocationQrPosterModal";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-interface Clinic {
+interface Location {
   id: string;
+  slug?: string;
   name: string;
   city: string;
+  facilityType?: FacilityType | null;
   address?: string;
   timezone?: string;
   phone?: string;
@@ -31,7 +35,7 @@ interface Clinic {
   brandColor?: string;
   image_url?: string;
   timings?: string;
-  facilities?: string[];
+  amenities?: string[];
   upiVpa?: string;
   merchantName?: string;
   [key: string]: unknown;
@@ -40,8 +44,8 @@ interface Clinic {
 export default function LocationManagement({ organizationId, embedded = false }: { organizationId?: string; embedded?: boolean }) {
   const scopedPath = (path: string) => organizationPath(path, organizationId);
   const { user } = useAuthStore();
-  const { clinics, fetchClinics, isLoading: clinicsLoading, error: clinicLoadError } = useOrganizationClinics(organizationId);
-  const canManageClinics = hasAnyPermission(user, "MANAGE_CLINICS");
+  const { locations, fetchLocations, isLoading: locationsLoading, error: locationLoadError } = useOrganizationLocations(organizationId);
+  const canManageLocations = hasAnyPermission(user, "MANAGE_LOCATIONS");
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -50,62 +54,62 @@ export default function LocationManagement({ organizationId, embedded = false }:
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [qrClinic, setQrClinic] = useState<Clinic | null>(null);
-  const [websiteClinic, setWebsiteClinic] = useState<Clinic | null>(null);
-  const [websitePublicResponse, setWebsitePublicResponse] = useState<{ clinicId: string; data: ClinicDetail } | null>(null);
+  const [qrLocation, setQrLocation] = useState<Location | null>(null);
+  const [websiteLocation, setWebsiteLocation] = useState<Location | null>(null);
+  const [websitePublicResponse, setWebsitePublicResponse] = useState<{ locationId: string; data: LocationDetail } | null>(null);
   const [websiteDetailLoadingFor, setWebsiteDetailLoadingFor] = useState<string | null>(null);
   const [websiteDetailErrorFor, setWebsiteDetailErrorFor] = useState<string | null>(null);
   const [websiteDetailRetry, setWebsiteDetailRetry] = useState(0);
-  const [archivedClinics, setArchivedClinics] = useState<Clinic[]>([]);
+  const [archivedLocations, setArchivedLocations] = useState<Location[]>([]);
   const [archivedError, setArchivedError] = useState<string | null>(null);
   const [loadingArchived, setLoadingArchived] = useState(false);
   const [activeTab, setActiveTab] = useState<"active" | "archived">("active");
   const [reactivatingId, setReactivatingId] = useState<string | null>(null);
   const { toast } = useToast();
   const { uploadFile } = useR2Upload();
-  const websiteUrl = websiteClinic && typeof window !== "undefined" ? `${window.location.origin}/browse/${websiteClinic.id}` : "";
-  const websitePublicDetail = websitePublicResponse && websitePublicResponse.clinicId === websiteClinic?.id ? websitePublicResponse.data : null;
-  const websiteDetailLoading = websiteDetailLoadingFor === websiteClinic?.id;
-  const websiteDetailError = websiteDetailErrorFor === websiteClinic?.id;
+  const websitePublicDetail = websitePublicResponse && websitePublicResponse.locationId === websiteLocation?.id ? websitePublicResponse.data : null;
+  const websiteUrl = websitePublicDetail && typeof window !== "undefined" ? `${window.location.origin}${locationPath(websitePublicDetail)}` : "";
+  const websiteDetailLoading = websiteDetailLoadingFor === websiteLocation?.id;
+  const websiteDetailError = websiteDetailErrorFor === websiteLocation?.id;
   const publicBookingStatus = websitePublicDetail ? getPublicBookingStatus({ ...websitePublicDetail, doctorCount: websitePublicDetail.doctors.length }) : null;
-  const websiteButtonLabel = publicBookingStatus === "check_availability" ? "Check appointments" : publicBookingStatus === "contact_clinic" ? "Contact clinic" : "View clinic";
+  const websiteButtonLabel = publicBookingStatus === "check_availability" ? "Check appointments" : publicBookingStatus === "contact_location" ? "Contact reception" : "View location";
   const buttonSnippet = websiteUrl ? `<a href="${websiteUrl}" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#0F6F66;color:#fff;text-decoration:none;font:600 16px system-ui,sans-serif">${websiteButtonLabel}</a>` : "";
   const websiteChecklist = websitePublicDetail ? [
     { label: "At least one doctor is listed", complete: websitePublicDetail.doctors.length > 0 },
     { label: "Online appointments are enabled", complete: publicBookingStatus === "check_availability" },
     { label: "A contact number is listed", complete: Boolean(websitePublicDetail.phone || websitePublicDetail.organization?.phone) },
-    { label: "The clinic address is listed", complete: Boolean(websitePublicDetail.address || websitePublicDetail.organization?.address) },
+    { label: "The location address is listed", complete: Boolean(websitePublicDetail.address || websitePublicDetail.organization?.address) },
     { label: "Opening hours are listed", complete: parseWeeklySchedule(websitePublicDetail.timings).hasExplicitSchedule },
     { label: "Consultation fees are clear", complete: websitePublicDetail.doctors.length > 0 && websitePublicDetail.doctors.every((doctor) => doctor.feeType === "free" || doctor.feeType === "post_consultation" || doctor.fees > 0) },
   ] : [];
 
-  const openWebsiteBooking = (clinic: Clinic) => {
+  const openWebsiteBooking = (location: Location) => {
     setWebsitePublicResponse(null);
-    setWebsiteDetailLoadingFor(clinic.id);
+    setWebsiteDetailLoadingFor(location.id);
     setWebsiteDetailErrorFor(null);
-    setWebsiteClinic(clinic);
+    setWebsiteLocation(location);
   };
   const retryWebsiteDetail = () => {
-    if (!websiteClinic) return;
+    if (!websiteLocation) return;
     setWebsitePublicResponse(null);
-    setWebsiteDetailLoadingFor(websiteClinic.id);
+    setWebsiteDetailLoadingFor(websiteLocation.id);
     setWebsiteDetailErrorFor(null);
     setWebsiteDetailRetry((value) => value + 1);
   };
 
   useEffect(() => {
-    if (!websiteClinic) return;
+    if (!websiteLocation) return;
     const controller = new AbortController();
-    api.get(scopedPath(`/public/clinics/${encodeURIComponent(websiteClinic.id)}`), { signal: controller.signal })
-      .then((response) => { if (!controller.signal.aborted) { if (response.data?.data) setWebsitePublicResponse({ clinicId: websiteClinic.id, data: response.data.data }); else setWebsiteDetailErrorFor(websiteClinic.id); } })
-      .catch(() => { if (!controller.signal.aborted) setWebsiteDetailErrorFor(websiteClinic.id); })
+    api.get(scopedPath(`/public/locations/${encodeURIComponent(websiteLocation.slug || "")}`), { signal: controller.signal })
+      .then((response) => { if (!controller.signal.aborted) { if (response.data?.data) setWebsitePublicResponse({ locationId: websiteLocation.id, data: response.data.data }); else setWebsiteDetailErrorFor(websiteLocation.id); } })
+      .catch(() => { if (!controller.signal.aborted) setWebsiteDetailErrorFor(websiteLocation.id); })
       .finally(() => { if (!controller.signal.aborted) setWebsiteDetailLoadingFor(null); });
     return () => controller.abort();
-  }, [websiteClinic, websiteDetailRetry]);
+  }, [websiteLocation, websiteDetailRetry]);
   const copyWebsiteText = async (value: string, title: string) => {
     try {
       await navigator.clipboard.writeText(value);
-      toast({ title, description: "Ready to paste into your clinic website.", variant: "success" });
+      toast({ title, description: "Ready to paste into your location website.", variant: "success" });
     } catch {
       toast({ title: "Could not copy", description: "Select and copy the text manually.", variant: "error" });
     }
@@ -124,13 +128,13 @@ export default function LocationManagement({ organizationId, embedded = false }:
     }
   }, [user, organizationId]);
 
-  // Clinic Form Validation State
-  const [clinicErrors, setClinicErrors] = useState<Record<string, string>>({});
+  // Location Form Validation State
+  const [locationErrors, setLocationErrors] = useState<Record<string, string>>({});
 
-  const validateClinicField = (field: string, value: string) => {
+  const validateLocationField = (field: string, value: string) => {
     let error = "";
     if (field === "name" && !value.trim()) {
-      error = "Clinic Name is required";
+      error = "Location Name is required";
     } else if (field === "city") {
       if (!value.trim()) {
         error = "City is required";
@@ -141,7 +145,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
       error = "Please enter a valid email address";
     }
 
-    setClinicErrors((prev) => {
+    setLocationErrors((prev) => {
       if (error) return { ...prev, [field]: error };
       const next = { ...prev };
       delete next[field];
@@ -152,8 +156,8 @@ export default function LocationManagement({ organizationId, embedded = false }:
 
   const handleFieldChange = (field: string, value: string) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
-    if (clinicErrors[field]) {
-      setClinicErrors((prev) => {
+    if (locationErrors[field]) {
+      setLocationErrors((prev) => {
         const next = { ...prev };
         delete next[field];
         return next;
@@ -161,17 +165,17 @@ export default function LocationManagement({ organizationId, embedded = false }:
     }
   };
 
-  const fetchArchivedClinics = async () => {
+  const fetchArchivedLocations = async () => {
     try {
       setArchivedError(null);
       setLoadingArchived(true);
-      const res = await api.get(scopedPath("/onboarding/clinics?status=inactive"));
+      const res = await api.get(scopedPath("/onboarding/locations?status=inactive"));
       const rawList = res.data.data || [];
       const list = rawList.map((c: any) => ({
         ...c,
         id: c.id || c._id,
       }));
-      setArchivedClinics(list);
+      setArchivedLocations(list);
     } catch {
       setArchivedError("Archived locations could not be loaded. Please try again.");
     } finally {
@@ -179,28 +183,28 @@ export default function LocationManagement({ organizationId, embedded = false }:
     }
   };
 
-  const reloadClinics = async () => {
+  const reloadLocations = async () => {
     try {
       setIsRefreshing(true);
-      await Promise.all([fetchClinics(true), fetchArchivedClinics()]);
+      await Promise.all([fetchLocations(true), fetchArchivedLocations()]);
     } catch {
-      toast({ title: "Error", description: "Failed to load clinics list", variant: "error" });
+      toast({ title: "Error", description: "Failed to load locations list", variant: "error" });
     } finally {
       setLoading(false);
       setIsRefreshing(false);
     }
   };
 
-  const handleReactivate = async (clinic: Clinic) => {
-    setReactivatingId(clinic.id);
+  const handleReactivate = async (location: Location) => {
+    setReactivatingId(location.id);
     try {
-      await api.post(scopedPath(`/onboarding/clinics/${clinic.id}/reactivate`));
+      await api.post(scopedPath(`/onboarding/locations/${location.id}/reactivate`));
       toast({
         title: "Branch Reactivated",
-        description: `${clinic.name} is now active and ready for appointments.`,
+        description: `${location.name} is now active and ready for appointments.`,
         variant: "success",
       });
-      await reloadClinics();
+      await reloadLocations();
     } catch (err: any) {
       toast({
         title: "Reactivation Failed",
@@ -213,50 +217,53 @@ export default function LocationManagement({ organizationId, embedded = false }:
   };
 
   useEffect(() => {
-    reloadClinics();
-  }, [fetchClinics]);
+    reloadLocations();
+  }, [fetchLocations]);
 
   const openModal = () => {
     setEditingId(null);
-    const defaultOrgId = organizationId || (organizations.length > 0 ? organizations[0].id || organizations[0]._id : "");
-    setFormData({ facilities: [], organizationId: defaultOrgId, upiVpa: "", merchantName: "", brandColor: "#0F6F66" });
-    setClinicErrors({});
+    const defaultOrgId = organizationId || "";
+    setFormData({ facilityType: "clinic", amenities: [], organizationId: defaultOrgId, upiVpa: "", merchantName: "", brandColor: "#0F6F66" });
+    setLocationErrors({});
     setIsModalOpen(true);
   };
 
-  const openEditModal = (row: Clinic) => {
+  const openEditModal = (row: Location) => {
     setEditingId(row.id);
     setFormData({
       ...row,
-      facilities: row.facilities || [],
+      facilityType: row.facilityType || "",
+      amenities: row.amenities || [],
       upiVpa: row.upiVpa || "",
       merchantName: row.merchantName || "",
       brandColor: row.brandColor || "#0F6F66",
       mapCoordinates: typeof row.latitude === "number" && typeof row.longitude === "number" ? `${row.latitude}, ${row.longitude}` : "",
     });
-    setClinicErrors({});
+    setLocationErrors({});
     setIsModalOpen(true);
   };
 
-  const handleFacilityChange = (facility: string, checked: boolean) => {
-    const currentFacilities = formData.facilities || [];
+  const handleAmenityChange = (facility: string, checked: boolean) => {
+    const currentAmenities = formData.amenities || [];
     if (checked) {
-      setFormData({ ...formData, facilities: [...currentFacilities, facility] });
+      setFormData({ ...formData, amenities: [...currentAmenities, facility] });
     } else {
-      setFormData({ ...formData, facilities: currentFacilities.filter((f: string) => f !== facility) });
+      setFormData({ ...formData, amenities: currentAmenities.filter((f: string) => f !== facility) });
     }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const isNameValid = validateClinicField("name", formData.name || "");
-    const isCityValid = validateClinicField("city", formData.city || "");
-    const isEmailValid = validateClinicField("email", formData.email || "");
-    const coordinates = parseClinicCoordinates(formData.mapCoordinates || "");
-    if (!coordinates) setClinicErrors(previous => ({ ...previous, mapCoordinates: "Enter valid latitude, longitude (for example: 20.5992, 72.9342)." }));
+    const isNameValid = validateLocationField("name", formData.name || "");
+    const isCityValid = validateLocationField("city", formData.city || "");
+    const isEmailValid = validateLocationField("email", formData.email || "");
+    const isOrganizationValid = !isRootUser(user) || Boolean(organizationId || formData.organizationId);
+    if (!isOrganizationValid) setLocationErrors(previous => ({ ...previous, organizationId: "Select an organization" }));
+    const coordinates = parseLocationCoordinates(formData.mapCoordinates || "");
+    if (!coordinates) setLocationErrors(previous => ({ ...previous, mapCoordinates: "Enter valid latitude, longitude (for example: 20.5992, 72.9342)." }));
 
-    if (!isNameValid || !isCityValid || !isEmailValid || !coordinates) {
+    if (!isNameValid || !isCityValid || !isEmailValid || !coordinates || !isOrganizationValid) {
       toast({ title: "Validation Error", description: "Please correct the highlighted errors.", variant: "error" });
       return;
     }
@@ -265,27 +272,28 @@ export default function LocationManagement({ organizationId, embedded = false }:
     try {
       const finalData = { ...formData, ...coordinates };
       delete finalData.mapCoordinates;
+      if (!finalData.facilityType) delete finalData.facilityType; // Leave unclassified locations unclassified during unrelated edits.
 
       // Handle deferred image upload
       if (finalData.image_url instanceof File) {
         toast({ title: "Uploading...", description: "Uploading logo to Cloudflare R2", variant: "default" });
-        const { publicUrl } = await uploadFile(finalData.image_url);
-        finalData.image_url = publicUrl;
+        const { objectKey } = await uploadFile(finalData.image_url);
+        finalData.image_url = objectKey;
       }
 
       if (editingId) {
-        await api.put(scopedPath(`/onboarding/clinics/${editingId}`), finalData);
-        toast({ title: "Success", description: "Clinic updated successfully!", variant: "success" });
+        await api.put(scopedPath(`/onboarding/locations/${editingId}`), finalData);
+        toast({ title: "Success", description: "Location updated successfully!", variant: "success" });
       } else {
-        await api.post(scopedPath("/onboarding/clinics"), finalData);
-        toast({ title: "Success", description: "Clinic added successfully!", variant: "success" });
+        await api.post(scopedPath("/onboarding/locations"), finalData);
+        toast({ title: "Success", description: "Location added successfully!", variant: "success" });
       }
       setIsModalOpen(false);
-      await reloadClinics();
+      await reloadLocations();
     } catch (err: any) {
       toast({
         title: "Error",
-        description: err.response?.data?.message || "Failed to save clinic",
+        description: err.response?.data?.message || "Failed to save location",
         variant: "error",
       });
     } finally {
@@ -296,13 +304,13 @@ export default function LocationManagement({ organizationId, embedded = false }:
   const handleDelete = async () => {
     if (!deletingId) return;
     try {
-      await api.delete(scopedPath(`/onboarding/clinics/${deletingId}`));
-      toast({ title: "Success", description: "Clinic branch deactivated and archived safely.", variant: "success" });
-      await reloadClinics();
+      await api.delete(scopedPath(`/onboarding/locations/${deletingId}`));
+      toast({ title: "Success", description: "Location deactivated and archived safely.", variant: "success" });
+      await reloadLocations();
     } catch (err: any) {
       toast({
         title: "Error",
-        description: err.response?.data?.message || "Failed to delete clinic",
+        description: err.response?.data?.message || "Failed to delete location",
         variant: "error",
       });
     } finally {
@@ -329,14 +337,14 @@ export default function LocationManagement({ organizationId, embedded = false }:
     }
   };
 
-  const uniqueCities = Array.from(new Set(clinics.map((c) => c.city).filter(Boolean)));
-  const totalFacilities = Array.from(
-    new Set(clinics.flatMap((c) => (c.facilities as string[]) || []).filter(Boolean))
+  const uniqueCities = Array.from(new Set(locations.map((c) => c.city).filter(Boolean)));
+  const availableAmenities = Array.from(
+    new Set(locations.flatMap((c) => (c.amenities as string[]) || []).filter(Boolean))
   );
 
   return (
     <div className={embedded ? "space-y-4 w-full min-w-0" : "space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12"}>
-      {(activeTab === "archived" ? archivedError : clinicLoadError) && <Alert variant="error" title="Unable to load locations" action={<Button variant="outline" size="sm" onClick={reloadClinics} loading={isRefreshing}>Try again</Button>}>Locations could not be loaded. Check your connection and try again.</Alert>}
+      {(activeTab === "archived" ? archivedError : locationLoadError) && <Alert variant="error" title="Unable to load locations" action={<Button variant="outline" size="sm" onClick={reloadLocations} loading={isRefreshing}>Try again</Button>}>Locations could not be loaded. Check your connection and try again.</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -348,11 +356,11 @@ export default function LocationManagement({ organizationId, embedded = false }:
                 Locations
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                {clinics.length === 1 ? "1 Active Location" : `${clinics.length} Active Locations`}
+                {locations.length === 1 ? "1 Active Location" : `${locations.length} Active Locations`}
               </Badge>
-              {archivedClinics.length > 0 && (
+              {archivedLocations.length > 0 && (
                 <Badge variant="neutral" size="sm" className="font-semibold">
-                  {archivedClinics.length} Archived
+                  {archivedLocations.length} Archived
                 </Badge>
               )}
             </div>
@@ -365,7 +373,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
             <Button
               variant="outline"
               size="sm"
-              onClick={reloadClinics}
+              onClick={reloadLocations}
               disabled={isRefreshing}
               className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors justify-center"
              loading={isRefreshing}>
@@ -373,7 +381,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
               Refresh
             </Button>
 
-            {canManageClinics && (
+            {canManageLocations && (
               <Button
                 variant="primary"
                 size="sm"
@@ -391,11 +399,11 @@ export default function LocationManagement({ organizationId, embedded = false }:
       {/* ──────────────────────────────────────────────────────────────────────────
           2. STATS (only show for multi-location)
          ────────────────────────────────────────────────────────────────────────── */}
-      {!embedded && clinics.length > 1 && (
+      {!embedded && locations.length > 1 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <StatCard
             label="Total Locations"
-            value={clinics.length.toString()}
+            value={locations.length.toString()}
             description="Active practice locations"
             icon={<Building2 className="w-5 h-5 text-text-secondary" />}
           />
@@ -425,7 +433,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
             )}
           >
             <Building2 className="w-3.5 h-3.5 shrink-0" />
-            <span>Active Branches ({clinics.length})</span>
+            <span>Active Branches ({locations.length})</span>
           </button>
           <button
             type="button"
@@ -439,7 +447,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
             )}
           >
             <Archive className="w-3.5 h-3.5 shrink-0" />
-            <span>Archived Branches ({archivedClinics.length})</span>
+            <span>Archived Branches ({archivedLocations.length})</span>
           </button>
         </div>
       </div>
@@ -448,11 +456,11 @@ export default function LocationManagement({ organizationId, embedded = false }:
           4. CONTENT: ACTIVE TAB vs ARCHIVED TAB
          ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "active" ? (
-        (loading || clinicsLoading) && clinics.length === 0 ? (
+        (loading || locationsLoading) && locations.length === 0 ? (
           <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
             <CardContent className="p-0"><SkeletonTable /></CardContent>
           </Card>
-        ) : clinics.length === 1 ? (
+        ) : locations.length === 1 ? (
         /* ── Smart Single-Location Card View ── */
         <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
           <CardContent className="p-5 sm:p-6">
@@ -463,10 +471,10 @@ export default function LocationManagement({ organizationId, embedded = false }:
                     <Building2 className="w-5 h-5 text-accent" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-text text-base sm:text-lg">{clinics[0].name}</h3>
+                    <h3 className="font-bold text-text text-base sm:text-lg">{locations[0].name}</h3>
                     <div className="flex items-center gap-1.5 text-xs text-text-muted">
                       <MapPin className="w-3 h-3" />
-                      <span>{clinics[0].city}{clinics[0].address ? ` — ${clinics[0].address}` : ""}</span>
+                      <span>{locations[0].city}{locations[0].address ? ` — ${locations[0].address}` : ""}</span>
                     </div>
                   </div>
                 </div>
@@ -474,21 +482,21 @@ export default function LocationManagement({ organizationId, embedded = false }:
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="flex items-center gap-2 text-xs text-text-secondary">
                     <Phone className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                    <span>{(clinics[0] as Clinic).phone || "No phone set"}</span>
+                    <span>{(locations[0] as Location).phone || "No phone set"}</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-text-secondary">
                     <Mail className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                    <span>{(clinics[0] as Clinic).email || "No email set"}</span>
+                    <span>{(locations[0] as Location).email || "No email set"}</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-text-secondary">
                     <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                    <span>{formatTimings((clinics[0] as Clinic).timings)}</span>
+                    <span>{formatTimings((locations[0] as Location).timings)}</span>
                   </div>
                 </div>
 
-                {(clinics[0] as Clinic).facilities && ((clinics[0] as Clinic).facilities as string[]).length > 0 && (
+                {(locations[0] as Location).amenities && ((locations[0] as Location).amenities as string[]).length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
-                    {((clinics[0] as Clinic).facilities as string[]).map((fac, idx) => (
+                    {((locations[0] as Location).amenities as string[]).map((fac, idx) => (
                       <Badge key={idx} variant="primary" size="sm" className="text-[10px] font-semibold">{fac}</Badge>
                     ))}
                   </div>
@@ -500,20 +508,20 @@ export default function LocationManagement({ organizationId, embedded = false }:
                   size="sm"
                   variant="outline"
                   className="rounded-xl text-xs font-semibold min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-initial justify-center"
-                  onClick={() => setQrClinic(clinics[0] as Clinic)}
+                  onClick={() => setQrLocation(locations[0] as Location)}
                 >
                   <QrCode className="w-3.5 h-3.5 mr-1 text-accent" />
                   QR Poster
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => openWebsiteBooking(clinics[0] as Clinic)} className="rounded-xl text-xs font-semibold min-h-[44px] sm:min-h-[36px]">
+                <Button size="sm" variant="outline" onClick={() => openWebsiteBooking(locations[0] as Location)} className="rounded-xl text-xs font-semibold min-h-[44px] sm:min-h-[36px]">
                   <Link2 className="w-3.5 h-3.5 mr-1" /> Website booking
                 </Button>
-                {canManageClinics && (
+                {canManageLocations && (
                   <Button
                     size="sm"
                     variant="outline"
                     className="rounded-xl text-xs font-semibold min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-initial justify-center"
-                    onClick={() => openEditModal(clinics[0] as Clinic)}
+                    onClick={() => openEditModal(locations[0] as Location)}
                   >
                     <Edit3 className="w-3.5 h-3.5 mr-1 text-text-muted" />
                     Edit
@@ -522,7 +530,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
               </div>
             </div>
 
-            {canManageClinics && (
+            {canManageLocations && (
               <div className="mt-5 pt-4 border-t border-border/60">
                 <button
                   type="button"
@@ -543,14 +551,14 @@ export default function LocationManagement({ organizationId, embedded = false }:
             <Table
               searchable
               searchPlaceholder="Search locations by name, city, or address..."
-              loading={loading || clinicsLoading || isRefreshing}
+              loading={loading || locationsLoading || isRefreshing}
               mobileCardView
               columns={[
                 {
                   key: "name",
                   header: "Location Name",
                   sortable: true,
-                  render: (row: Clinic) => (
+                  render: (row: Location) => (
                     <div className="flex items-center gap-3 min-w-[180px]">
                       <div className="w-10 h-10 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
                         {row.image_url ? (
@@ -561,6 +569,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                       </div>
                       <div className="space-y-0.5 min-w-0">
                         <span className="font-bold text-text text-xs sm:text-sm block truncate">{row.name}</span>
+                        <span className="text-xs text-text-secondary">{facilityTypeLabel(row.facilityType)}</span>
                         {row.address && (
                           <p className="text-xs text-text-muted truncate max-w-[200px]" title={row.address}>
                             {row.address}
@@ -574,7 +583,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                   key: "city",
                   header: "City",
                   sortable: true,
-                  render: (row: Clinic) => (
+                  render: (row: Location) => (
                     <div className="flex items-center gap-1 text-xs text-text-secondary">
                       <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" />
                       <span>{row.city}</span>
@@ -584,7 +593,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                 {
                   key: "phone",
                   header: "Phone",
-                  render: (row: Clinic) => (
+                  render: (row: Location) => (
                     <div className="flex items-center gap-1 text-xs text-text-secondary">
                       <Phone className="w-3 h-3 text-text-muted shrink-0" />
                       <span className="whitespace-nowrap">{row.phone || "—"}</span>
@@ -594,7 +603,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                 {
                   key: "timings",
                   header: "Hours",
-                  render: (row: Clinic) => (
+                  render: (row: Location) => (
                     <div className="flex items-center gap-1 text-xs text-text-secondary">
                       <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
                       <span>{formatTimings(row.timings)}</span>
@@ -606,18 +615,18 @@ export default function LocationManagement({ organizationId, embedded = false }:
                   header: "Actions",
                   align: "right",
                   width: "110px",
-                  render: (row: Clinic) => (
+                  render: (row: Location) => (
                     <div className="flex items-center justify-end gap-1.5">
                       <Button
                         size="xs"
                         variant="outline"
                         className="rounded-lg font-semibold text-xs min-h-[36px] px-2.5"
-                        onClick={() => setQrClinic(row)}
+                        onClick={() => setQrLocation(row)}
                       >
                         <QrCode className="w-3.5 h-3.5 mr-1 text-accent" />
                         QR
                       </Button>
-                      {canManageClinics && (
+                      {canManageLocations && (
                         <Dropdown
                           align="right"
                           trigger={
@@ -634,7 +643,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                             {
                               label: "Reception QR Code",
                               icon: <QrCode className="w-4 h-4 text-accent" />,
-                              onClick: () => setQrClinic(row),
+                              onClick: () => setQrLocation(row),
                             },
                             { label: "Website booking link", icon: <Link2 className="w-4 h-4 text-accent" />, onClick: () => openWebsiteBooking(row) },
                             {
@@ -656,9 +665,9 @@ export default function LocationManagement({ organizationId, embedded = false }:
                   ),
                 },
               ]}
-              data={clinics as Clinic[]}
-              emptyMessage={clinicLoadError ? "Locations are unavailable. Please try again." : "No locations configured yet. Click 'Add Location' to register your first branch."}
-              renderMobileCard={(row: Clinic) => (
+              data={locations as Location[]}
+              emptyMessage={locationLoadError ? "Locations are unavailable. Please try again." : "No locations configured yet. Click 'Add Location' to register your first branch."}
+              renderMobileCard={(row: Location) => (
                 <div
                   key={row.id}
                   className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
@@ -674,6 +683,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-text text-sm truncate">{row.name}</p>
+                        <p className="text-xs text-text-secondary">{facilityTypeLabel(row.facilityType)}</p>
                         <p className="text-xs text-text-muted flex items-center gap-1">
                           <MapPin className="w-3 h-3 text-text-muted shrink-0" />
                           <span className="truncate">{row.city}</span>
@@ -684,7 +694,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                       size="xs"
                       variant="outline"
                       className="rounded-xl font-semibold text-xs min-h-[36px] px-2.5 shrink-0"
-                      onClick={() => setQrClinic(row)}
+                      onClick={() => setQrLocation(row)}
                     >
                       <QrCode className="w-3.5 h-3.5 mr-1 text-accent" />
                       QR
@@ -714,7 +724,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                     </div>
                   </div>
 
-                  {canManageClinics && (
+                  {canManageLocations && (
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <Button
                         size="sm"
@@ -746,16 +756,16 @@ export default function LocationManagement({ organizationId, embedded = false }:
         </Card>
       )) : (
         /* ── Archived Locations View ── */
-        loadingArchived && archivedClinics.length === 0 ? (
+        loadingArchived && archivedLocations.length === 0 ? (
           <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
             <CardContent className="p-0"><SkeletonTable /></CardContent>
           </Card>
-        ) : archivedClinics.length === 0 ? (
+        ) : archivedLocations.length === 0 ? (
           <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs p-8 text-center">
             <Archive className="w-10 h-10 text-text-muted mx-auto mb-3 opacity-50" />
             <h3 className="font-bold text-text text-base mb-1">No Archived Branches</h3>
             <p className="text-xs text-text-muted max-w-md mx-auto leading-relaxed">
-              All registered clinic branches are currently operational. When a branch is deactivated (for example, during a plan downgrade), it will be securely archived here with all historical records preserved.
+              All registered locations are currently operational. When a branch is deactivated (for example, during a plan downgrade), it will be securely archived here with all historical records preserved.
             </p>
           </Card>
         ) : (
@@ -771,7 +781,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                     key: "name",
                     header: "Location Name",
                     sortable: true,
-                    render: (row: Clinic) => (
+                    render: (row: Location) => (
                       <div className="space-y-0.5 min-w-[150px]">
                         <div className="flex items-center gap-1.5">
                           <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
@@ -790,7 +800,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                     key: "city",
                     header: "City",
                     sortable: true,
-                    render: (row: Clinic) => (
+                    render: (row: Location) => (
                       <div className="flex items-center gap-1 text-xs text-text-secondary">
                         <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" />
                         <span>{row.city}</span>
@@ -800,7 +810,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                   {
                     key: "phone",
                     header: "Phone",
-                    render: (row: Clinic) => (
+                    render: (row: Location) => (
                       <div className="flex items-center gap-1 text-xs text-text-secondary">
                         <Phone className="w-3 h-3 text-text-muted shrink-0" />
                         <span className="whitespace-nowrap">{row.phone || "—"}</span>
@@ -812,9 +822,9 @@ export default function LocationManagement({ organizationId, embedded = false }:
                     header: "Actions",
                     align: "right",
                     width: "180px",
-                    render: (row: Clinic) => (
+                    render: (row: Location) => (
                       <div className="flex items-center justify-end gap-2">
-                        {canManageClinics && (
+                        {canManageLocations && (
                           <Button
                             size="sm"
                             variant="primary"
@@ -830,9 +840,9 @@ export default function LocationManagement({ organizationId, embedded = false }:
                     ),
                   },
                 ]}
-                data={archivedClinics}
+                data={archivedLocations}
                 emptyMessage="No archived branches found."
-                renderMobileCard={(row: Clinic) => (
+                renderMobileCard={(row: Location) => (
                   <div
                     key={row.id}
                     className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden"
@@ -859,7 +869,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                       </p>
                     )}
 
-                    {canManageClinics && (
+                    {canManageLocations && (
                       <Button
                         size="sm"
                         variant="primary"
@@ -880,13 +890,13 @@ export default function LocationManagement({ organizationId, embedded = false }:
       )}
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          4. ADD / EDIT CLINIC MODAL
+          4. ADD / EDIT LOCATION MODAL
          ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={`${editingId ? "Edit Location" : "Add New Location"}`}
-        description="Configure location details, operating hours, facilities, and contact information."
+        description="Configure location details, operating hours, amenities, and contact information."
         size="xl"
       >
         <form onSubmit={handleSave} className="space-y-4 pt-1">
@@ -895,7 +905,9 @@ export default function LocationManagement({ organizationId, embedded = false }:
             <div className="bg-primary-500/10 border border-primary-500/20 p-3.5 rounded-2xl space-y-1.5">
               <Select
                 label="Target Healthcare Organization *"
-                value={formData.organizationId || organizations[0]?.id || organizations[0]?._id}
+                value={formData.organizationId || ""}
+                required
+                error={locationErrors.organizationId}
                 onChange={(e) => setFormData({ ...formData, organizationId: e.target.value })}
                 options={organizations.map((o) => ({
                   value: o.id || o._id,
@@ -903,21 +915,22 @@ export default function LocationManagement({ organizationId, embedded = false }:
                 }))}
               />
               <p className="text-[11px] text-text-muted">
-                🛡️ <strong>Root Super-Admin Override</strong>: Select which organization tenant this clinic branch belongs to.
+                🛡️ <strong>Root Super-Admin Override</strong>: Select which organization tenant this location belongs to.
               </p>
             </div>
           )}
 
-          {/* Section 1: Clinic Media & Basic Identity */}
+          {/* Section 1: Location Media & Basic Identity */}
           <div className="space-y-3.5 border-b border-border/60 pb-4">
+            <Select label="Location type" value={formData.facilityType || ""} options={[{ value: "", label: "Unclassified healthcare facility" }, ...facilityTypeOptions]} onChange={(event) => handleFieldChange("facilityType", event.target.value)} required={!editingId} />
             <h3 className="text-xs font-bold text-accent uppercase tracking-wider">
-              1. Branding & Clinic Identity
+              1. Branding & Location Identity
             </h3>
 
             {/* Top Logo / Photo Uploader */}
             <div className="bg-surface-alt p-3.5 border border-border/80 rounded-2xl">
               <ImageUpload
-                label="Clinic Banner Photo / Logo"
+                label="Location Banner Photo / Logo"
                 value={formData.image_url || null}
                 onChange={(val) => setFormData({ ...formData, image_url: val })}
               />
@@ -925,21 +938,21 @@ export default function LocationManagement({ organizationId, embedded = false }:
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
               <Input
-                label="Clinic Name *"
+                label="Location Name *"
                 value={formData.name || ""}
                 onChange={(e) => handleFieldChange("name", e.target.value)}
-                onBlur={() => validateClinicField("name", formData.name || "")}
+                onBlur={() => validateLocationField("name", formData.name || "")}
                 placeholder="e.g. Ekavyu Central Clinic"
-                error={clinicErrors.name}
+                error={locationErrors.name}
                 required
               />
               <Input
                 label="City *"
                 value={formData.city || ""}
                 onChange={(e) => handleFieldChange("city", e.target.value)}
-                onBlur={() => validateClinicField("city", formData.city || "")}
+                onBlur={() => validateLocationField("city", formData.city || "")}
                 placeholder="e.g. San Francisco"
-                error={clinicErrors.city}
+                error={locationErrors.city}
                 required
               />
             </div>
@@ -956,9 +969,9 @@ export default function LocationManagement({ organizationId, embedded = false }:
                 type="email"
                 value={formData.email || ""}
                 onChange={(e) => handleFieldChange("email", e.target.value)}
-                onBlur={() => validateClinicField("email", formData.email || "")}
+                onBlur={() => validateLocationField("email", formData.email || "")}
                 placeholder="e.g. contact@clinic.com"
-                error={clinicErrors.email}
+                error={locationErrors.email}
               />
             </div>
 
@@ -973,8 +986,8 @@ export default function LocationManagement({ organizationId, embedded = false }:
               value={formData.mapCoordinates || ""}
               onChange={(event) => handleFieldChange("mapCoordinates", event.target.value)}
               placeholder="20.5992, 72.9342"
-              hint="Copy latitude, longitude from this clinic's pin in Google Maps to help nearby patients find you."
-              error={clinicErrors.mapCoordinates}
+              hint="Copy latitude, longitude from this location's pin in Google Maps to help nearby patients find you."
+              error={locationErrors.mapCoordinates}
             />
             <Input
               label="Branch timezone (optional)"
@@ -985,7 +998,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
             />
 
             <Input
-              label="Clinic Overview / Description"
+              label="Location Overview / Description"
               placeholder="Brief summary of clinical specialties and services..."
               value={formData.description || ""}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -1000,21 +1013,21 @@ export default function LocationManagement({ organizationId, embedded = false }:
             </label>
           </div>
 
-          {/* Section 2: Facilities & Operating Hours */}
+          {/* Section 2: Amenities & Operating Hours */}
           <div className="space-y-3.5">
             <h3 className="text-xs font-bold text-accent uppercase tracking-wider">
-              2. Facilities & Operating Hours
+              2. Amenities & Operating Hours
             </h3>
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-text block">Available Medical Facilities</label>
+              <label className="text-xs font-semibold text-text block">Amenities and services</label>
               <div className="flex flex-wrap gap-4 p-3.5 bg-surface-alt border border-border/80 rounded-2xl">
                 {["Pharmacy", "Laboratory", "Parking", "Emergency Care", "Vaccination Center"].map((fac) => (
                   <Checkbox
                     key={fac}
                     label={fac}
-                    checked={formData.facilities?.includes(fac) || false}
-                    onChange={(e) => handleFacilityChange(fac, e.target.checked)}
+                    checked={formData.amenities?.includes(fac) || false}
+                    onChange={(e) => handleAmenityChange(fac, e.target.checked)}
                   />
                 ))}
               </div>
@@ -1040,12 +1053,12 @@ export default function LocationManagement({ organizationId, embedded = false }:
               </Badge>
             </div>
             <p className="text-[11px] text-text-muted">
-              Configure your clinic branch&apos;s direct UPI VPA for countertop dynamic QR generation, mobile 1-tap intent payments, and autonomous soundbox announcements.
+              Configure your location&apos;s direct UPI VPA for countertop dynamic QR generation, mobile 1-tap intent payments, and autonomous soundbox announcements.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <Input
-                label="Clinic UPI Virtual Payment Address (VPA)"
+                label="Location UPI Virtual Payment Address (VPA)"
                 value={formData.upiVpa || ""}
                 onChange={(e) => handleFieldChange("upiVpa", e.target.value)}
                 placeholder="e.g. apollo.southmumbai@icici"
@@ -1064,7 +1077,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
               Cancel
             </Button>
             <Button type="submit" size="sm" variant="primary" loading={submitting} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs">
-              {editingId ? "Update Clinic Configuration" : "Save Clinic Location"}
+              {editingId ? "Update Location Configuration" : "Save Location"}
             </Button>
           </div>
         </form>
@@ -1077,36 +1090,36 @@ export default function LocationManagement({ organizationId, embedded = false }:
         open={!!deletingId}
         onClose={() => setDeletingId(null)}
         onConfirm={handleDelete}
-        title="Deactivate Clinic Location?"
-        description="Are you sure you want to deactivate this clinic location? All patient encounters, appointments, and medical records will remain safely preserved. You can reactivate this branch anytime from the Archived Branches tab as permitted by your subscription plan."
+        title="Deactivate Location?"
+        description="Are you sure you want to deactivate this location? All patient encounters, appointments, and medical records will remain safely preserved. You can reactivate this branch anytime from the Archived Branches tab as permitted by your subscription plan."
         variant="danger"
         confirmLabel="Deactivate"
       />
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          6. CLINIC QR POSTER MODAL (A4 STANDEE & DIRECT JOIN FLOW)
+          6. LOCATION QR POSTER MODAL (A4 STANDEE & DIRECT JOIN FLOW)
          ────────────────────────────────────────────────────────────────────────── */}
-      <ClinicQrPosterModal
-        open={!!qrClinic}
-        onClose={() => setQrClinic(null)}
-        clinic={qrClinic}
+      <LocationQrPosterModal
+        open={!!qrLocation}
+        onClose={() => setQrLocation(null)}
+        location={qrLocation}
       />
-      <Modal open={!!websiteClinic} onClose={() => setWebsiteClinic(null)} title="Website booking" description="Connect your existing website to this clinic's hosted booking page.">
+      <Modal open={!!websiteLocation} onClose={() => setWebsiteLocation(null)} title="Website booking" description="Connect your existing website to this location's hosted booking page.">
         <div className="space-y-4 text-sm">
-          <p className="text-text-secondary">Add this link to your website. Patients can view clinic information and check appointments when online booking is available.</p>
+          <p className="text-text-secondary">Add this link to your website. Patients can view location information and check appointments when online booking is available.</p>
           <div className="rounded-xl border border-border bg-surface-alt p-3" aria-live="polite">
             <p className="font-semibold text-text">Public page readiness</p>
             {websiteDetailLoading && <p className="mt-2 text-xs text-text-secondary">Checking the public page…</p>}
             {websiteDetailError && <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-secondary"><span>Could not check the public page right now.</span><Button size="sm" variant="outline" onClick={retryWebsiteDetail}>Try again</Button></div>}
             {websitePublicDetail && <>
-              <p className="mt-1 text-xs text-text-secondary">{publicBookingStatus === "check_availability" ? "Patients can check appointment times." : publicBookingStatus === "contact_clinic" ? "Patients can view the page and contact your clinic; online booking is paused." : "Patients can view the page, but no doctors are listed yet."}</p>
+              <p className="mt-1 text-xs text-text-secondary">{publicBookingStatus === "check_availability" ? "Patients can check appointment times." : publicBookingStatus === "contact_location" ? "Patients can view the page and contact your care team; online booking is paused." : "Patients can view the page, but no doctors are listed yet."}</p>
               <ul className="mt-3 grid gap-1.5 text-xs sm:grid-cols-2">{websiteChecklist.map((item) => <li key={item.label} className="flex items-start gap-2"><span aria-hidden="true" className={item.complete ? "text-success-text" : "text-warning-text"}>{item.complete ? "✓" : "○"}</span><span>{item.label}</span></li>)}</ul>
-              {websiteChecklist.some((item) => !item.complete) && <div className="mt-3 flex flex-wrap gap-3"><Button size="sm" variant="outline" onClick={() => { if (websiteClinic) { openEditModal(websiteClinic); setWebsiteClinic(null); } }}>Edit clinic details</Button><Link href="/dashboard/staff" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent hover:underline">Manage doctors</Link></div>}
+              {websiteChecklist.some((item) => !item.complete) && <div className="mt-3 flex flex-wrap gap-3"><Button size="sm" variant="outline" onClick={() => { if (websiteLocation) { openEditModal(websiteLocation); setWebsiteLocation(null); } }}>Edit location details</Button><Link href="/dashboard/staff" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent hover:underline">Manage doctors</Link></div>}
             </>}
           </div>
-          <div><label className="mb-1 block text-xs font-semibold text-text">Booking link</label><div className="flex gap-2"><input readOnly value={websiteUrl} className="min-w-0 flex-1 rounded-lg border border-border bg-surface-alt px-3 text-xs text-text" /><Button size="sm" onClick={() => copyWebsiteText(websiteUrl, "Link copied")}>Copy link</Button></div></div>
-          <div><label className="mb-1 block text-xs font-semibold text-text">Paste-in HTML button</label><textarea readOnly value={buttonSnippet} rows={4} className="w-full rounded-lg border border-border bg-surface-alt p-3 font-mono text-xs text-text" /><Button size="sm" variant="outline" onClick={() => copyWebsiteText(buttonSnippet, "Button code copied")}>Copy button code</Button></div>
-          <p className="text-xs text-text-muted">The public page stays available while the clinic is active. If online appointments are paused, patients see contact options. No script, iframe, or website rebuild is required.</p>
+          <div><label className="mb-1 block text-xs font-semibold text-text">Booking link</label><div className="flex gap-2"><input readOnly value={websiteUrl} className="min-w-0 flex-1 rounded-lg border border-border bg-surface-alt px-3 text-xs text-text" /><Button size="sm" disabled={!websiteUrl} onClick={() => copyWebsiteText(websiteUrl, "Link copied")}>Copy link</Button></div></div>
+          <div><label className="mb-1 block text-xs font-semibold text-text">Paste-in HTML button</label><textarea readOnly value={buttonSnippet} rows={4} className="w-full rounded-lg border border-border bg-surface-alt p-3 font-mono text-xs text-text" /><Button size="sm" variant="outline" disabled={!buttonSnippet} onClick={() => copyWebsiteText(buttonSnippet, "Button code copied")}>Copy button code</Button></div>
+          <p className="text-xs text-text-muted">The public page stays available while the location is active. If online appointments are paused, patients see contact options. No script, iframe, or website rebuild is required.</p>
         </div>
       </Modal>
     </div>

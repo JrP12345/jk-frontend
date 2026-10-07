@@ -49,11 +49,11 @@ const StatCard = memo(function StatCard({
   const effectiveTrend = trend || (change ? (change.positive ? "up" : "down") : "neutral");
 
   return (
-    <Card hover padding="sm" onClick={onClick} className={cn("relative overflow-hidden ", className)}>
+    <Card padding="sm" onClick={onClick} className={cn("relative overflow-hidden ", className)}>
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <p className="text-xs sm:text-sm text-text-secondary font-medium truncate select-none">{displayLabel}</p>
-          <p className="text-lg sm:text-2xl font-bold text-text mt-1 tracking-tight truncate tabular-nums">
+          <p className="text-xl sm:text-2xl font-semibold text-text mt-1 tracking-tight truncate tabular-nums">
             {value}
           </p>
 
@@ -64,8 +64,8 @@ const StatCard = memo(function StatCard({
                   className={cn(
                     "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold select-none border tracking-tight",
                     change.positive
-                      ? "bg-success-500/10 text-success-text dark:text-success-text border-success-500/20"
-                      : "bg-danger-500/10 text-danger-text dark:text-danger-text border-danger-500/20"
+                      ? "bg-success/10 text-success-text dark:text-success-text border-success/20"
+                      : "bg-danger/10 text-danger-text dark:text-danger-text border-danger/20"
                   )}
                 >
                   {effectiveTrend === "up" && (
@@ -86,7 +86,7 @@ const StatCard = memo(function StatCard({
           )}
         </div>
         {icon && (
-          <div className="shrink-0 p-2 sm:p-2.5 rounded-2xl bg-accent-subtle border border-primary-500/20 text-accent [&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5 ml-2 sm:ml-4 shadow-xs transition-transform duration-200 group-hover:scale-105">
+          <div className="shrink-0 p-2 sm:p-2.5 rounded-control bg-surface-alt border border-transparent text-accent [&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5 ml-2 sm:ml-4">
             {icon}
           </div>
         )}
@@ -96,6 +96,3 @@ const StatCard = memo(function StatCard({
 });
 
 export default StatCard;
-
-
-

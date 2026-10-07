@@ -6,16 +6,16 @@ afterEach(() => vi.restoreAllMocks());
 const points = Array.from({ length: 30 }, (_, index) => ({ label: `${index + 1} Oct`, count: index + 1 }));
 const series = [{ key: "count", name: "Bookings" }];
 
-it("retains legacy chart sizing unless responsive sizing is requested", () => {
+it("uses a stable initial width before container measurement", () => {
   const { container } = render(<BarChart data={points} series={series} height={220} />);
   expect(container.querySelector("svg")).toHaveAttribute("viewBox", "0 0 600 220");
-  expect(container.querySelector("svg")?.style.height).toBe("");
+  expect(container.querySelector("svg")?.style.height).toBe("220px");
 });
 
 it("keeps a fixed height, readable labels, and fewer ticks on narrow containers", () => {
   let width = 760;
   vi.spyOn(SVGElement.prototype, "getBoundingClientRect").mockImplementation(() => ({ width } as DOMRect));
-  const { container } = render(<BarChart responsive data={points} series={series} height={220} />);
+  const { container } = render(<BarChart data={points} series={series} height={220} />);
   const svg = container.querySelector("svg")!;
   expect(svg).toHaveAttribute("viewBox", "0 0 760 220");
   expect(svg.style.height).toBe("220px");
@@ -30,8 +30,8 @@ it("keeps a fixed height, readable labels, and fewer ticks on narrow containers"
 
 it("starts measuring after an empty chart receives data", () => {
   vi.spyOn(SVGElement.prototype, "getBoundingClientRect").mockImplementation(() => ({ width: 400 } as DOMRect));
-  const { container, rerender } = render(<BarChart responsive data={[]} series={series} />);
+  const { container, rerender } = render(<BarChart data={[]} series={series} />);
   expect(container.querySelector("svg")).toBeNull();
-  rerender(<BarChart responsive data={points} series={series} />);
+  rerender(<BarChart data={points} series={series} />);
   expect(container.querySelector("svg")).toHaveAttribute("viewBox", "0 0 400 220");
 });

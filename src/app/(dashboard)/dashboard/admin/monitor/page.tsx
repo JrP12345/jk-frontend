@@ -45,9 +45,9 @@ interface DailyTrend {
   uniqueVisitors: number;
 }
 
-interface ClinicAttribution {
-  clinicId: string | null;
-  clinicName: string;
+interface LocationAttribution {
+  locationId: string | null;
+  locationName: string;
   organizationName: string;
   city: string;
   visits: number;
@@ -92,7 +92,7 @@ export default function RootAdminMonitorPage() {
   const [trafficLoading, setTrafficLoading] = useState(true);
   const [trafficSummary, setTrafficSummary] = useState<TrafficSummary | null>(null);
   const [dailyTrends, setDailyTrends] = useState<DailyTrend[]>([]);
-  const [clinicAttribution, setClinicAttribution] = useState<ClinicAttribution[]>([]);
+  const [locationAttribution, setLocationAttribution] = useState<LocationAttribution[]>([]);
   const [topPages, setTopPages] = useState<TopPage[]>([]);
   const [deviceStats, setDeviceStats] = useState<{ name: string; count: number }[]>([]);
   const [browserStats, setBrowserStats] = useState<{ name: string; count: number }[]>([]);
@@ -123,7 +123,7 @@ export default function RootAdminMonitorPage() {
       if (data) {
         setTrafficSummary(data.summary);
         setDailyTrends(data.dailyTrends || []);
-        setClinicAttribution(data.clinicAttribution || []);
+        setLocationAttribution(data.locationAttribution || []);
         setTopPages(data.topPages || []);
         setDeviceStats(data.devices || []);
         setBrowserStats(data.browsers || []);
@@ -280,7 +280,7 @@ export default function RootAdminMonitorPage() {
                 </Badge>
               </div>
               <p className="text-xs text-text-muted mt-0.5">
-                Review active sessions and activity across clinics.
+                Review active sessions and activity across organizations.
               </p>
             </div>
           </div>
@@ -315,7 +315,7 @@ export default function RootAdminMonitorPage() {
               )}
             >
               <Globe className="w-3.5 h-3.5 text-accent" />
-              Website Traffic & Clinics
+              Website Traffic & Locations
             </button>
           </div>
 
@@ -629,7 +629,7 @@ export default function RootAdminMonitorPage() {
       )}
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          TAB 2: WEBSITE TRAFFIC & CLINIC ATTRIBUTION
+          TAB 2: WEBSITE TRAFFIC & LOCATION ATTRIBUTION
          ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "traffic" && (
         <div className="space-y-6">
@@ -638,7 +638,7 @@ export default function RootAdminMonitorPage() {
             <div>
               <h2 className="text-base font-bold text-text">Platform Visit Telemetry</h2>
               <p className="text-xs text-text-muted">
-                Daily visitor traffic, unique audience counts, and clinic-by-clinic attribution breakdown.
+                Daily visitor traffic, unique audience counts, and location-by-location attribution breakdown.
               </p>
             </div>
             <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 w-fit">
@@ -766,36 +766,36 @@ export default function RootAdminMonitorPage() {
           </Card>
 
           {/* ──────────────────────────────────────────────────────────────────────
-              CLINIC ATTRIBUTION TABLE ("Whose clinic and all")
+              LOCATION ATTRIBUTION TABLE ("Whose location and all")
              ────────────────────────────────────────────────────────────────────── */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-text">Clinic Traffic Attribution</h3>
+                <h3 className="text-sm font-bold text-text">Location Traffic Attribution</h3>
                 <p className="text-xs text-text-muted">
-                  Breakdown of patient discovery, appointments, and portal traffic by clinic branch
+                  Breakdown of patient discovery, appointments, and portal traffic by location
                 </p>
               </div>
               <Badge variant="secondary" size="sm">
-                {clinicAttribution.length} Clinic Targets
+                {locationAttribution.length} Location Targets
               </Badge>
             </div>
 
-            <Table<ClinicAttribution>
-              data={clinicAttribution}
+            <Table<LocationAttribution>
+              data={locationAttribution}
               loading={trafficLoading}
               searchable={false}
-              emptyMessage="No clinic-specific visits recorded yet."
+              emptyMessage="No location-specific visits recorded yet."
               columns={[
                 {
-                  header: "Clinic Location",
+                  header: "Location",
                   accessor: (c) => (
                     <div className="flex items-center gap-2.5 min-w-[200px]">
                       <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-accent dark:text-accent flex items-center justify-center font-bold text-xs shrink-0 border border-primary-500/20">
                         <Building2 className="w-4 h-4" />
                       </div>
                       <div>
-                        <span className="font-bold text-text text-xs sm:text-sm">{c.clinicName}</span>
+                        <span className="font-bold text-text text-xs sm:text-sm">{c.locationName}</span>
                         <div className="flex items-center gap-1 text-[11px] text-text-muted">
                           <MapPin className="w-3 h-3 shrink-0" />
                           <span>{c.city}</span>
@@ -842,12 +842,12 @@ export default function RootAdminMonitorPage() {
               ]}
               renderMobileCard={(c) => (
                 <div
-                  key={c.clinicId || "global"}
+                  key={c.locationId || "global"}
                   className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-2.5"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <span className="font-bold text-text text-sm">{c.clinicName}</span>
+                      <span className="font-bold text-text text-sm">{c.locationName}</span>
                       <p className="text-xs text-text-muted">{c.organizationName}</p>
                     </div>
                     <Badge variant="primary" size="sm" className="font-bold text-[10px]">

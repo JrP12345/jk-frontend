@@ -44,7 +44,7 @@ function mutationFingerprint(config: { url?: string; method?: string; data?: unk
   return `${config.method}:${config.url}:${typeof config.data === "string" ? config.data : JSON.stringify(config.data)}`;
 }
 
-// Active clinic/organization is a client display preference, never server-side
+// Active location/organization is a client display preference, never server-side
 // authorization context. Tenant scope is derived from the authenticated session.
 api.interceptors.request.use((config) => {
   const path = config.url || "";

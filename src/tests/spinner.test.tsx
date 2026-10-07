@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import React from "react";
-import Spinner, { PageSpinner } from "../components/ui/Spinner";
+import Spinner from "../components/ui/Spinner";
 
 describe("Spinner Component Tests", () => {
   it("renders the standard spinner with status role", () => {
@@ -32,7 +32,7 @@ describe("Spinner Component Tests", () => {
   });
 
   it("renders all variants without crashing", () => {
-    const variants = ["ring", "dots", "bars", "pulse", "orbital", "minimal"] as const;
+    const variants = ["ring", "dots", "bars"] as const;
     variants.forEach((variant) => {
       const { unmount } = render(<Spinner variant={variant} label={`Variant ${variant}`} />);
       expect(screen.getByText(`Variant ${variant}`)).toBeInTheDocument();
@@ -43,20 +43,5 @@ describe("Spinner Component Tests", () => {
   it("renders with custom color class", () => {
     const { container } = render(<Spinner color="text-cyan-400" label="Custom Color" />);
     expect(container.querySelector(".text-cyan-400")).toBeInTheDocument();
-  });
-});
-
-describe("PageSpinner Component Tests", () => {
-  it("announces page loading without declaring a modal dialog", () => {
-    render(
-      <PageSpinner
-        label="Connecting to secure consultation..."
-        description="Establishing WebRTC peer connection"
-      />
-    );
-    expect(screen.getByRole("status", { name: "Connecting to secure consultation..." })).toBeInTheDocument();
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByText("Connecting to secure consultation...")).toBeInTheDocument();
-    expect(screen.getByText("Establishing WebRTC peer connection")).toBeInTheDocument();
   });
 });

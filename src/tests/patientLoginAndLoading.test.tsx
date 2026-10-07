@@ -31,7 +31,7 @@ describe("Patient identifier sign in", () => {
     expect(screen.queryByText(/256-Bit|HIPAA/)).not.toBeInTheDocument();
   });
 
-  it("returns legacy intentional logout links to browse without an expiry warning", async () => {
+  it("returns intentional logout links to browse without an expiry warning", async () => {
     window.history.replaceState(null, "", "/login?logout=1");
     render(<LoginPage />);
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/browse"));

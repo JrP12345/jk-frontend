@@ -1,6 +1,6 @@
 # Platform owner dashboard audit
 
-Scope: ROOT view of `/dashboard`. Clinic, doctor, receptionist, and patient views retain their operational behavior.
+Scope: ROOT view of `/dashboard`. Location, doctor, receptionist, and patient views retain their operational behavior.
 
 ## Before
 
@@ -24,7 +24,7 @@ Reporting boundaries and chart buckets use UTC, disclosed on the page. 7D/30D sh
 
 ## Omitted metrics
 
-MRR/ARR, historical recurring price commitments, churn, conversion cohorts and login-based active users are not inferred from current plan prices or broad user counts. Collections are cash receipts, not recognized revenue. Clinic/patient invoice revenue is excluded from SaaS collections.
+MRR/ARR, historical recurring price commitments, churn, conversion cohorts and login-based active users are not inferred from current plan prices or broad user counts. Collections are cash receipts, not recognized revenue. Location/patient invoice revenue is excluded from SaaS collections.
 
 ## API and performance
 
@@ -42,4 +42,4 @@ Level 4: platform authorization and subscription/payment data. Focused checks co
 
 Focused backend aggregates/authorization tests, frontend dashboard/chart/table regressions, both package TypeScript checks, changed-file ESLint and diff checks passed. Browser previews used synthetic data and the real dashboard components at 1440, 820, 390 and 320 pixels, including the empty-platform state. This is component visual verification, not an authenticated browser end-to-end test.
 
-The standard backend build encountered access-denied errors writing existing dist worker files in the sandbox. In-memory esbuild bundling of the API and all five worker entry points passed instead. No full release gate or deployment was performed.
+The current backend API and four worker entry points build to five verified bundles. See the [cleanup audit](pre-production-cleanup.md) for final evidence and its scope. No full release gate or deployment was performed.

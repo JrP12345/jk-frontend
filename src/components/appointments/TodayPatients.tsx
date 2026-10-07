@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { Alert, Badge, Button, Card, Input, Pagination, Select, Spinner, Table } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useLatestRead } from "@/hooks/useLatestRead";
-import { clinicTodayRange, patientName, patientPhone, recordId, validSingleChoice, type WorkflowPatient } from "@/lib/clinicWorkflow";
-import { PatientEntryModal, type ClinicDoctorAssignment } from "./PatientEntryModal";
+import { locationTodayRange, patientName, patientPhone, recordId, validSingleChoice, type WorkflowPatient } from "@/lib/locationWorkflow";
+import { PatientEntryModal, type LocationDoctorAssignment } from "./PatientEntryModal";
 import { VisitInvoices } from "@/components/billing/VisitInvoices";
 
 interface Visit { id: string; status: string; tokenNumber?: number; appointmentType: string; patientId: WorkflowPatient; doctorId: { id: string; name: string }; appointmentTime: string }
@@ -18,9 +18,9 @@ interface Summary { appointments: number; completed: number; byStatus: Record<st
 export function TodayPatients({ onDetailedView, essentialEntry = false, currency = "INR" }: { onDetailedView: () => void; essentialEntry?: boolean; currency?: string }) {
   const router = useRouter();
   const user = useAuthStore(state => state.user);
-  const { clinics, activeClinicId, fetchClinics, error: clinicError } = useClinicStore();
-  const [clinicId, setClinicId] = useState(activeClinicId || "");
-  const [doctors, setDoctors] = useState<ClinicDoctorAssignment[]>([]);
+  const { locations, activeLocationId, fetchLocations, error: locationError } = useLocationStore();
+  const [locationId, setLocationId] = useState(activeLocationId || "");
+  const [doctors, setDoctors] = useState<LocationDoctorAssignment[]>([]);
   const [doctorId, setDoctorId] = useState("");
   const [status, setStatus] = useState("all");
   const [search, setSearch] = useState("");
@@ -36,34 +36,34 @@ export function TodayPatients({ onDetailedView, essentialEntry = false, currency
   const [paymentVisit, setPaymentVisit] = useState<Visit | null>(null);
   const beginRead = useLatestRead();
   const beginAssignments = useLatestRead();
-  const clinic = clinics.find(value => value.id === clinicId);
-  const timezone = clinic?.effectiveTimezone || clinic?.timezone || "Asia/Kolkata";
+  const location = locations.find(value => value.id === locationId);
+  const timezone = location?.effectiveTimezone || location?.timezone || "Asia/Kolkata";
   const canBook = hasAnyPermission(user, "MANAGE_APPOINTMENTS", "CREATE_APPOINTMENTS");
   const canStart = hasAnyPermission(user, "MANAGE_CLINICAL_NOTES") && hasAnyPermission(user, "MANAGE_APPOINTMENTS");
   const canQueue = hasAnyPermission(user, "MANAGE_QUEUE");
   const canPay = hasAnyPermission(user, "MANAGE_BILLING");
   useEffect(() => {
     beginRead();
-    setVisits([]); setSummary(null); setPage(1); setLoading(Boolean(clinicId));
-  }, [beginRead, clinicId, doctorId]);
-  useEffect(() => { void fetchClinics(); }, [fetchClinics]);
-  useEffect(() => { setClinicId(current => validSingleChoice(clinics, value => value.id, activeClinicId || current)); }, [clinics, activeClinicId]);
+    setVisits([]); setSummary(null); setPage(1); setLoading(Boolean(locationId));
+  }, [beginRead, locationId, doctorId]);
+  useEffect(() => { void fetchLocations(); }, [fetchLocations]);
+  useEffect(() => { setLocationId(current => validSingleChoice(locations, value => value.id, activeLocationId || current)); }, [locations, activeLocationId]);
   useEffect(() => {
     const request = beginAssignments(); setDoctors([]); setDoctorId("");
-    if (!clinicId) return;
-    api.get(`/onboarding/doctors/assignments?clinicId=${clinicId}`, { signal: request.signal }).then(response => {
+    if (!locationId) return;
+    api.get(`/onboarding/doctors/assignments?locationId=${locationId}`, { signal: request.signal }).then(response => {
       if (!request.isCurrent()) return;
-      const choices = (response.data?.data || []).filter((value: ClinicDoctorAssignment) => value.isActive !== false);
+      const choices = (response.data?.data || []).filter((value: LocationDoctorAssignment) => value.isActive !== false);
       setDoctors(choices);
-      setDoctorId(user?.role === "doctor" ? user.id : validSingleChoice(choices, (value: ClinicDoctorAssignment) => recordId(value.doctorId)));
-    }).catch(() => { if (request.isCurrent()) setError("Doctor assignments could not be loaded. Select the clinic again to retry."); });
-  }, [beginAssignments, clinicId, user?.id, user?.role]);
+      setDoctorId(user?.role === "doctor" ? user.id : validSingleChoice(choices, (value: LocationDoctorAssignment) => recordId(value.doctorId)));
+    }).catch(() => { if (request.isCurrent()) setError("Doctor assignments could not be loaded. Select the location again to retry."); });
+  }, [beginAssignments, locationId, user?.id, user?.role]);
   const load = useCallback(async () => {
     const request = beginRead();
-    if (!clinicId || !clinics.some(value => value.id === clinicId)) { setLoading(false); setVisits([]); setSummary(null); return; }
+    if (!locationId || !locations.some(value => value.id === locationId)) { setLoading(false); setVisits([]); setSummary(null); return; }
     setLoading(true); setError("");
-    const params = new URLSearchParams(clinicTodayRange(timezone));
-    params.set("clinicId", clinicId); if (doctorId) params.set("doctorId", doctorId);
+    const params = new URLSearchParams(locationTodayRange(timezone));
+    params.set("locationId", locationId); if (doctorId) params.set("doctorId", doctorId);
     const listParams = new URLSearchParams(params);
     listParams.set("page", String(page)); listParams.set("limit", "25");
     if (status !== "all") listParams.set("status", status);
@@ -74,7 +74,7 @@ export function TodayPatients({ onDetailedView, essentialEntry = false, currency
       setVisits(list.data?.data || []); setPages(Number(list.headers["x-total-pages"]) || 1); setSummary(totals.data?.data || null);
     } catch { if (request.isCurrent()) { setVisits([]); setSummary(null); setError("Today's patients could not be loaded. Refresh to retry."); } }
     finally { if (request.isCurrent()) setLoading(false); }
-  }, [beginRead, clinicId, clinics, doctorId, page, search, status, timezone]);
+  }, [beginRead, locationId, locations, doctorId, page, search, status, timezone]);
   useEffect(() => { const timer = setTimeout(() => { void load(); }, 200); return () => clearTimeout(timer); }, [load]);
   useEffect(() => {
     const timer = setInterval(() => { void load(); }, 30000);
@@ -94,10 +94,10 @@ export function TodayPatients({ onDetailedView, essentialEntry = false, currency
     finally { setBusy(""); }
   }
   async function next(confirmedAppointmentId?: string) {
-    if (!doctorId || !clinicId) return;
+    if (!doctorId || !locationId) return;
     setBusy("next"); setError("");
     try {
-      const response = await api.post("/queue/call-next", { clinicId, doctorId, requireArrivalConfirmation: true, ...(confirmedAppointmentId ? { confirmedAppointmentId } : {}) });
+      const response = await api.post("/queue/call-next", { locationId, doctorId, requireArrivalConfirmation: true, ...(confirmedAppointmentId ? { confirmedAppointmentId } : {}) });
       const visit = response.data?.data;
       if (visit) router.push(`/dashboard/consultations/${recordId(visit)}`);
       else setError("No waiting patients for this doctor today.");
@@ -117,11 +117,11 @@ export function TodayPatients({ onDetailedView, essentialEntry = false, currency
     {canPay && <Button size="sm" variant="outline" onClick={() => setPaymentVisit(visit)}>Payments</Button>}
   </div>;
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-xl font-semibold">Today's patients</h1><p className="text-sm text-text-muted">{clinic?.name || "Choose a clinic"} · {timezone}</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={load} disabled={Boolean(busy)}>Refresh</Button>{canQueue && canStart && <Button onClick={() => next()} disabled={!doctorId || Boolean(busy)}>Next patient</Button>}{canBook && <Button onClick={openEntry} disabled={!clinicId}>Add patient</Button>}</div></div>
-    {(error || clinicError) && <Alert variant="error">{error || clinicError}</Alert>}
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-xl font-semibold">Today's patients</h1><p className="text-sm text-text-muted">{location?.name || "Choose a location"} · {timezone}</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={load} disabled={Boolean(busy)}>Refresh</Button>{canQueue && canStart && <Button onClick={() => next()} disabled={!doctorId || Boolean(busy)}>Next patient</Button>}{canBook && <Button onClick={openEntry} disabled={!locationId}>Add patient</Button>}</div></div>
+    {(error || locationError) && <Alert variant="error">{error || locationError}</Alert>}
     <Card className="p-3 flex flex-wrap gap-x-6 gap-y-2 text-sm"><span>Seen today: <strong>{summary?.completed ?? "—"}</strong></span><span>Waiting: <strong>{counts["checked-in"] ?? "—"}</strong></span><span>With doctor: <strong>{counts["in-consultation"] ?? "—"}</strong></span>{summary?.financialVisible && moneyTotals.map(money => <span key={money.currency}>Collected: <strong>{new Intl.NumberFormat(undefined, { style: "currency", currency: money.currency }).format(money.collections)}</strong> · Today's invoices outstanding: <strong>{new Intl.NumberFormat(undefined, { style: "currency", currency: money.currency }).format(money.outstanding)}</strong></span>)}</Card>
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {clinics.length > 1 && <Select label="Clinic" value={clinicId} onChange={e => { setClinicId(e.target.value); setPage(1); }} options={[{ value: "", label: "Select clinic" }, ...clinics.map(value => ({ value: value.id, label: value.name }))]} />}
+      {locations.length > 1 && <Select label="Location" value={locationId} onChange={e => { setLocationId(e.target.value); setPage(1); }} options={[{ value: "", label: "Select location" }, ...locations.map(value => ({ value: value.id, label: value.name }))]} />}
       {user?.role !== "doctor" && doctors.length > 1 && <Select label="Doctor" value={doctorId} onChange={e => { setDoctorId(e.target.value); setPage(1); }} options={[{ value: "", label: "All doctors (choose one to call next)" }, ...doctors.map(value => ({ value: recordId(value.doctorId), label: typeof value.doctorId === "object" ? value.doctorId.name || "Doctor" : "Doctor" }))]} />}
       <Select label="Visit status" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} options={filters} />
       <Input label="Search patient or token" placeholder="Name, phone, MRN or token" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
@@ -133,7 +133,7 @@ export function TodayPatients({ onDetailedView, essentialEntry = false, currency
       <Pagination currentPage={page} totalPages={pages} onPageChange={setPage} />
     </>}
     <div className="flex flex-wrap gap-4 text-sm"><Button variant="ghost" onClick={onDetailedView}>Detailed consultation list</Button><Link href="/dashboard/queue" className="inline-flex min-h-11 items-center text-accent">Full queue controls</Link><Link href="/dashboard/appointments" className="inline-flex min-h-11 items-center text-accent">Scheduling</Link>{canPay && <Link href="/dashboard/billing" className="inline-flex min-h-11 items-center text-accent">Billing and receipts</Link>}</div>
-    <PatientEntryModal open={add} onClose={() => setAdd(false)} clinicId={clinicId} onBooked={() => { setAdd(false); void load(); }} onFullRegistration={() => router.push("/dashboard/appointments")} />
-    {paymentVisit && <VisitInvoices appointmentId={paymentVisit.id} patientName={patientName(paymentVisit.patientId)} clinicId={clinicId} onClose={() => setPaymentVisit(null)} onPaid={() => { void load(); }} />}
+    <PatientEntryModal open={add} onClose={() => setAdd(false)} locationId={locationId} onBooked={() => { setAdd(false); void load(); }} onFullRegistration={() => router.push("/dashboard/appointments")} />
+    {paymentVisit && <VisitInvoices appointmentId={paymentVisit.id} patientName={patientName(paymentVisit.patientId)} locationId={locationId} onClose={() => setPaymentVisit(null)} onPaid={() => { void load(); }} />}
   </div>;
 }

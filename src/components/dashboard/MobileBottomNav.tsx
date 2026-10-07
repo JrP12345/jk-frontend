@@ -66,7 +66,7 @@ export function MobileBottomNav({
           { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
           { label: "Schedule", href: "/dashboard/appointments", icon: Calendar },
           { label: "Clinicians", href: "/dashboard/staff", icon: Users },
-          { label: "Branches", href: "/dashboard/clinics", icon: Building2 },
+          { label: "Branches", href: "/dashboard/locations", icon: Building2 },
         ];
       case "nurse":
         return [

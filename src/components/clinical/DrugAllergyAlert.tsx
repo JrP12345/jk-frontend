@@ -160,7 +160,7 @@ export function DrugAllergyAlert({
   };
 
   return (
-    <div className="rounded-2xl border border-danger-500/30 bg-danger-500/10 p-3.5 space-y-2.5 animate-pulse-once shadow-sm">
+    <div className="rounded-2xl border border-danger/30 bg-danger/10 p-3.5 space-y-2.5 animate-pulse-once shadow-sm">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-danger-text dark:text-danger-text font-bold text-xs">
           <ShieldAlert className="w-4 h-4 text-danger-text dark:text-danger-text shrink-0" />
@@ -183,7 +183,7 @@ export function DrugAllergyAlert({
                 "p-2.5 rounded-xl border text-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5",
                 isOverridden
                   ? "bg-surface/80 border-border/80 text-text-muted opacity-80"
-                  : "bg-surface border-danger-500/40 text-text shadow-2xs"
+                  : "bg-surface border-danger/40 text-text shadow-2xs"
               )}
             >
               <div className="space-y-0.5">
@@ -216,7 +216,7 @@ export function DrugAllergyAlert({
                     "px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1",
                     isOverridden
                       ? "bg-success/15 text-success-text dark:text-success-text border border-success/30"
-                      : "bg-danger-600 hover:bg-danger text-background shadow-xs"
+                      : "bg-danger-text hover:bg-danger text-background shadow-xs"
                   )}
                 >
                   {isOverridden ? (

@@ -2,14 +2,12 @@ import { useState } from 'react';
 import api from '../lib/api';
 
 export interface UploadResult {
-  url: string;
-  publicUrl: string;
-  key: string;
-  intentId?: string;
+  objectKey: string;
+  intentId: string;
 }
 
 export interface UseR2UploadOptions {
-  onError?: (err: any) => void;
+  onError?: (err: unknown) => void;
   onSuccess?: (res: UploadResult) => void;
 }
 
@@ -18,7 +16,7 @@ export function useR2Upload(options?: UseR2UploadOptions) {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const uploadImage = async (file: File, context?: { patientId?: string; contentClass?: 'avatar' | 'lab_report' | 'clinical_document' }): Promise<UploadResult> => {
+  const uploadFile = async (file: File, context?: { patientId?: string; contentClass?: 'avatar' | 'lab_report' | 'clinical_document' }): Promise<UploadResult> => {
     setUploading(true);
     setProgress(30);
     setError(null);
@@ -32,14 +30,10 @@ export function useR2Upload(options?: UseR2UploadOptions) {
       });
 
       setProgress(60);
-      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-
-      const res = await api.post('/upload-base64', {
+      const res = await api.post('/uploads/base64', {
         contentType: file.type || 'image/png',
         originalFilename: file.name,
         base64Data: base64,
-        fileName,
-        folder: 'healthos',
         ...context,
       });
 
@@ -48,13 +42,14 @@ export function useR2Upload(options?: UseR2UploadOptions) {
         throw new Error(data?.message || data?.error || 'Upload failed');
       }
 
+      if (typeof data.data?.objectKey !== 'string' || !data.data.objectKey ||
+          typeof data.data?.intentId !== 'string' || !data.data.intentId) {
+        throw new Error('Upload response is incomplete');
+      }
       setProgress(100);
-      const url = data.data?.url || data.data?.publicUrl || '';
       const result: UploadResult = {
-        url,
-        publicUrl: url,
-        key: data.data?.key || data.data?.fileKey || fileName,
-        intentId: data.data?.intentId,
+        objectKey: data.data.objectKey,
+        intentId: data.data.intentId,
       };
 
       if (options?.onSuccess) {
@@ -62,8 +57,8 @@ export function useR2Upload(options?: UseR2UploadOptions) {
       }
 
       return result;
-    } catch (err: any) {
-      const message = err?.message || 'Cloud storage upload failed';
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Cloud storage upload failed';
       setError(message);
       options?.onError?.(err);
       throw err;
@@ -73,13 +68,11 @@ export function useR2Upload(options?: UseR2UploadOptions) {
   };
 
   return {
-    uploadImage,
-    uploadFile: uploadImage,
+    uploadFile,
     uploading,
-    isUploading: uploading,
     progress,
     error,
-    reset: (..._args: any[]) => {
+    reset: () => {
       setError(null);
       setProgress(0);
     }

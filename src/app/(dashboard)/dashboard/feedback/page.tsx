@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { Card, CardHeader, CardTitle, CardContent, Button, Modal, Input, Textarea, useToast, Badge, StatCard, SkeletonTable } from "@/components/ui";
 import { Plus, Target, Star, MessageSquare, Sparkles } from "lucide-react";
 
@@ -29,7 +29,7 @@ interface PatientFeedbackItem {
     name?: string;
     specialization?: string;
   };
-  clinicId: string;
+  locationId: string;
   rating: number; // 1-5
   npsScore: number; // 0-10
   comments?: string;
@@ -59,7 +59,7 @@ interface AppointmentOption {
 
 export default function PatientExperienceFeedbackPage() {
   const { user } = useAuthStore();
-  const { activeClinicId } = useClinicStore();
+  const { activeLocationId } = useLocationStore();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -91,17 +91,17 @@ export default function PatientExperienceFeedbackPage() {
   useEffect(() => {
     fetchFeedbackData();
     fetchCompletedAppointments();
-  }, [activeClinicId]);
+  }, [activeLocationId]);
 
   const fetchFeedbackData = async () => {
     try {
       setLoading(true);
-      const statsRes = await api.get(`/feedback/stats${activeClinicId ? `?clinicId=${activeClinicId}` : ""}`);
+      const statsRes = await api.get(`/feedback/stats${activeLocationId ? `?locationId=${activeLocationId}` : ""}`);
       if (statsRes.data?.success && statsRes.data?.data) {
         setStats(statsRes.data.data);
       }
 
-      const listRes = await api.get(`/feedback${activeClinicId ? `?clinicId=${activeClinicId}` : ""}`);
+      const listRes = await api.get(`/feedback${activeLocationId ? `?locationId=${activeLocationId}` : ""}`);
       if (listRes.data?.success && Array.isArray(listRes.data?.data)) {
         setFeedbacks(listRes.data.data);
       } else {
@@ -116,7 +116,7 @@ export default function PatientExperienceFeedbackPage() {
 
   const fetchCompletedAppointments = async () => {
     try {
-      const res = await api.get(`/appointments${activeClinicId ? `?clinicId=${activeClinicId}` : ""}`);
+      const res = await api.get(`/appointments${activeLocationId ? `?locationId=${activeLocationId}` : ""}`);
       if (res.data?.success && Array.isArray(res.data?.data)) {
         const opts: AppointmentOption[] = res.data.data
           .filter((a: any) => a.status === "completed")

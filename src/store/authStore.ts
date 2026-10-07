@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import api from "@/lib/api";
-import { useClinicStore } from "./clinicStore";
+import { useLocationStore } from "./locationStore";
 import { useModuleStore } from "./moduleStore";
 import { authScopeKey } from "@/lib/authScope";
 import { aiSDK } from "@/lib/aiSDK";
@@ -29,9 +29,9 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isLoggingOut: boolean;
-  
+
   // Actions
-  checkAuth: () => Promise<void>;
+  checkAuth: (options?: { allowAnonymous?: boolean }) => Promise<void>;
   login: (user: User) => void;
   logout: () => Promise<void>;
   switchOrg: (organizationId?: string) => Promise<void>;
@@ -48,7 +48,7 @@ function normalizeUser(user: User): User {
 }
 
 function resetScopedData() {
-  useClinicStore.getState().reset();
+  useLocationStore.getState().reset();
   useModuleStore.getState().reset();
   aiSDK.cancelAllStreams();
   if (typeof window !== "undefined") window.dispatchEvent(new Event("auth-context-change"));
@@ -67,8 +67,8 @@ async function changeWorkspace(loadUser: () => Promise<User>) {
     if (!user.id) throw new Error("The server did not return a valid session");
     try {
       if (typeof window !== "undefined") {
-        if (user.organization_id) localStorage.setItem("ananta_active_org_id", user.organization_id);
-        else localStorage.removeItem("ananta_active_org_id");
+        if (user.organization_id) localStorage.setItem("ekavyu_active_org_id", user.organization_id);
+        else localStorage.removeItem("ekavyu_active_org_id");
       }
     } catch { /* Server session remains authoritative when storage is unavailable. */ }
     useAuthStore.setState({ user, isAuthenticated: true, isLoading: false });
@@ -87,8 +87,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: true, // Initially true so we don't flash login page on load
   isLoggingOut: false,
 
-  checkAuth: async () => {
+  checkAuth: async (options) => {
     if (get().isLoggingOut || changingWorkspace) return;
+    if (options?.allowAnonymous && typeof document !== "undefined" && !document.cookie.split("; ").includes("ekavyu_session=1") && !get().user) {
+      set({ isLoading: false });
+      return;
+    }
     const revision = authRevision;
     const read = ++authRead;
     try {
@@ -97,23 +101,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const user = res.data.data.user;
       if (user && (user.role as string) === "guest") {
         if (typeof window !== "undefined") {
-          document.cookie = "ananta_session=guest; path=/; max-age=604800; SameSite=Lax";
+          document.cookie = "ekavyu_session=guest; path=/; max-age=604800; SameSite=Lax";
         }
         set({ user: null, isAuthenticated: false, isLoading: false });
         return;
       }
       if (typeof window !== "undefined") {
-        document.cookie = "ananta_session=1; path=/; max-age=604800; SameSite=Lax";
+        document.cookie = "ekavyu_session=1; path=/; max-age=604800; SameSite=Lax";
         if (user && (user.role === "patient" || user.role === "family_member")) {
-          localStorage.removeItem("ananta_active_org_id");
-          localStorage.removeItem("ananta_active_clinic_id");
+          localStorage.removeItem("ekavyu_active_org_id");
+          localStorage.removeItem("ekavyu_active_location_id");
         }
       }
       set({ user: user ? normalizeUser(user) : null, isAuthenticated: Boolean(user), isLoading: false });
     } catch {
       if (get().isLoggingOut || revision !== authRevision || read !== authRead) return;
-      if (typeof window !== "undefined" && !document.cookie.split("; ").includes("ananta_session=guest")) {
-        document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      if (typeof window !== "undefined" && !document.cookie.split("; ").includes("ekavyu_session=guest")) {
+        document.cookie = "ekavyu_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       }
       set({ user: null, isAuthenticated: false, isLoading: false });
     }
@@ -127,10 +131,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
     if (typeof window !== "undefined") {
-      document.cookie = "ananta_session=1; path=/; max-age=604800; SameSite=Lax";
+      document.cookie = "ekavyu_session=1; path=/; max-age=604800; SameSite=Lax";
       if (user && (user.role === "patient" || user.role === "family_member")) {
-        localStorage.removeItem("ananta_active_org_id");
-        localStorage.removeItem("ananta_active_clinic_id");
+        localStorage.removeItem("ekavyu_active_org_id");
+        localStorage.removeItem("ekavyu_active_location_id");
       }
     }
     set({ user, isAuthenticated: true, isLoading: false, isLoggingOut: false });
@@ -145,7 +149,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     aiSDK.cancelAllStreams();
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("auth-logout"));
-      try { localStorage.setItem("ananta_logout_at", String(Date.now())); } catch { /* Storage may be unavailable; this tab still signs out. */ }
+      try { localStorage.setItem("ekavyu_logout_at", String(Date.now())); } catch { /* Storage may be unavailable; this tab still signs out. */ }
     }
     try {
       await api.post("/auth/logout", {}, { timeout: 3000 });
@@ -154,7 +158,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       if (revision !== authRevision || !get().isLoggingOut) return;
       if (typeof window !== "undefined") {
-        document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "ekavyu_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         // Clear sensitive client caches during logout (Finding: Step 2.8)
         if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
           navigator.serviceWorker.controller.postMessage({ action: "CLEAR_USER_CACHE" });
@@ -201,13 +205,13 @@ useAuthStore.subscribe((state, previous) => {
 // Listen for cross-tab context changes (active org or logout)
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (e) => {
-    if (e.key === "ananta_active_org_id") {
+    if (e.key === "ekavyu_active_org_id") {
       // Re-verify auth when organization changes across tabs
       authRevision++;
       useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: true });
       useAuthStore.getState().checkAuth();
     }
-    if (e.key === "ananta_logout_at") {
+    if (e.key === "ekavyu_logout_at") {
       authRevision++;
       useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: true });
       clearRecentTracker();
@@ -226,7 +230,7 @@ if (typeof window !== "undefined") {
     handlingExpiredSession = true;
 
     if (typeof window !== "undefined") {
-      document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie = "ekavyu_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     }
 
     // Clear state so no component remains in its authentication loading state.

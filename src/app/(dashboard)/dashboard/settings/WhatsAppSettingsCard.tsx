@@ -164,7 +164,7 @@ export default function WhatsAppSettingsCard({
                   {mode === "disabled" ? "Disabled" : isLowBalance ? "Low Credits" : "Active"}
                 </Badge>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-success/10 text-success-text dark:text-success-text border-success/20">
-                  Cloud API v21.0
+                  WhatsApp Cloud API
                 </span>
               </div>
               <CardDescription className="text-xs text-text-muted">
@@ -630,7 +630,7 @@ export default function WhatsAppSettingsCard({
                 price: "₹200",
                 rate: "₹0.20 / msg",
                 volume: "~400 visits",
-                description: "Ideal for small clinics & solo practices.",
+                description: "Ideal for small locations & solo practices.",
               },
               {
                 id: "silver" as const,
@@ -640,7 +640,7 @@ export default function WhatsAppSettingsCard({
                 rate: "₹0.18 / msg",
                 volume: "~1,200 visits",
                 popular: true,
-                description: "Best for growing medical centers & multi-doc clinics.",
+                description: "Best for growing medical centers & multi-doc locations.",
               },
               {
                 id: "gold" as const,

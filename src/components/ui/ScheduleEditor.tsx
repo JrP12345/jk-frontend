@@ -150,7 +150,7 @@ const ScheduleEditor = memo(function ScheduleEditor({
     const nextDays = sameActiveDays.includes(day)
       ? sameActiveDays.filter((d) => d !== day)
       : [...sameActiveDays, day];
-    
+
     const sorted = DAYS.filter((d) => nextDays.includes(d));
     setSameActiveDays(sorted);
     applySameModeSchedule(sorted, sameHours);
@@ -259,7 +259,7 @@ const ScheduleEditor = memo(function ScheduleEditor({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-surface p-3 border border-border rounded-xl shadow-2xs">
         <div>
           {label && <label className="text-xs font-bold text-text block">{label}</label>}
-          <p className="text-[11px] text-text-muted mt-0.5">Configure clinic working hours & active operating days</p>
+          <p className="text-[11px] text-text-muted mt-0.5">Configure location working hours & active operating days</p>
         </div>
 
         <div className="flex bg-surface-alt p-1 rounded-lg border border-border gap-1 shrink-0">
@@ -578,4 +578,3 @@ const ScheduleEditor = memo(function ScheduleEditor({
 });
 
 export default ScheduleEditor;
-

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useAuthStore } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { Card, Table, Button, Modal, Input, Select, Textarea, useToast, Badge, StatCard, cn } from "@/components/ui";
 import { DICOMViewerModal, ImagingStudyItem } from "@/components/clinical/DicomViewerModal";
 import { RotateCw, Scan, Clock, CheckCircle2, Activity, Plus } from "lucide-react";
@@ -22,10 +22,10 @@ interface PatientProfile {
 
 export default function RadiologyPage() {
   const { user } = useAuthStore();
-  const { activeClinicId } = useClinicStore();
+  const { activeLocationId } = useLocationStore();
   const { toast } = useToast();
 
-  const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
+  const [selectedLocationId, setSelectedLocationId] = useState(activeLocationId || "");
   const [studies, setStudies] = useState<ImagingStudyItem[]>([]);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,8 +53,8 @@ export default function RadiologyPage() {
   const [submittingReport, setSubmittingReport] = useState(false);
 
   useEffect(() => {
-    setSelectedClinicId(activeClinicId || "");
-  }, [activeClinicId]);
+    setSelectedLocationId(activeLocationId || "");
+  }, [activeLocationId]);
 
   const fetchData = async () => {
     const request = startRead();
@@ -62,13 +62,13 @@ export default function RadiologyPage() {
     setLoadError(null);
     try {
       if (user?.role === "patient") {
-        const studiesRes = await api.get(selectedClinicId ? `/radiology/studies?clinicId=${selectedClinicId}` : "/radiology/studies", { signal: request.signal });
+        const studiesRes = await api.get(selectedLocationId ? `/radiology/studies?locationId=${selectedLocationId}` : "/radiology/studies", { signal: request.signal });
         if (!request.isCurrent()) return;
         if (!Array.isArray(studiesRes.data?.data)) throw new Error("Invalid studies response");
         setStudies(studiesRes.data?.data || []);
       } else {
         const [studiesRes, patientsRes] = await Promise.all([
-          api.get(selectedClinicId ? `/radiology/studies?clinicId=${selectedClinicId}` : "/radiology/studies", { signal: request.signal }),
+          api.get(selectedLocationId ? `/radiology/studies?locationId=${selectedLocationId}` : "/radiology/studies", { signal: request.signal }),
           api.get("/patients", { signal: request.signal }),
         ]);
 
@@ -92,7 +92,7 @@ export default function RadiologyPage() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedClinicId, user?.role]);
+  }, [selectedLocationId, user?.role]);
 
   // Order Imaging Study Submit
   const handleOrderSubmit = async (e: React.FormEvent) => {
@@ -105,7 +105,7 @@ export default function RadiologyPage() {
     try {
       setSubmittingOrder(true);
       await api.post("/radiology/studies", {
-        clinicId: selectedClinicId,
+        locationId: selectedLocationId,
         patientId,
         modality,
         studyDescription: studyDescription.trim(),

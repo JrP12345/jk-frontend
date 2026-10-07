@@ -7,7 +7,7 @@ import { AlertTriangle, UserCheck, Clock, Calendar, XCircle, CheckCircle2, Phone
 
 export interface TriageAppointment {
   id: string;
-  clinicId: string;
+  locationId: string;
   doctorId: {
     _id?: string;
     id?: string;
@@ -45,7 +45,7 @@ export interface EligibleDoctor {
 interface DisruptionTriageModalProps {
   open: boolean;
   onClose: () => void;
-  clinicId: string;
+  locationId: string;
   date: string;
   triageAppointments: TriageAppointment[];
   onActionComplete: () => Promise<void>;
@@ -54,7 +54,7 @@ interface DisruptionTriageModalProps {
 export default function DisruptionTriageModal({
   open,
   onClose,
-  clinicId,
+  locationId,
   date,
   triageAppointments,
   onActionComplete,
@@ -90,9 +90,9 @@ export default function DisruptionTriageModal({
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [submittingAction, setSubmittingAction] = useState(false);
 
-  // Fetch eligible replacement doctors whenever modal opens or clinic/date changes
+  // Fetch eligible replacement doctors whenever modal opens or location/date changes
   useEffect(() => {
-    if (!open || !clinicId) return;
+    if (!open || !locationId) return;
 
     const fetchReplacements = async () => {
       try {
@@ -113,7 +113,7 @@ export default function DisruptionTriageModal({
 
         const primaryDoctorId = affectedDoctorIds[0] || "none";
         const res = await api.get(
-          `/doctor-overrides/eligible-replacements?clinicId=${clinicId}&doctorId=${primaryDoctorId}&date=${date}`
+          `/doctor-overrides/eligible-replacements?locationId=${locationId}&doctorId=${primaryDoctorId}&date=${date}`
         );
         const docs: EligibleDoctor[] = res.data?.data || [];
         setEligibleReplacements(docs);
@@ -128,7 +128,7 @@ export default function DisruptionTriageModal({
     };
 
     fetchReplacements();
-  }, [open, clinicId, date, triageAppointments]);
+  }, [open, locationId, date, triageAppointments]);
 
   // Derived filtered lists
   const waitingPatients = triageAppointments.filter((a) => a.status === "checked-in" || a.notes?.includes("checked-in"));
@@ -340,7 +340,7 @@ export default function DisruptionTriageModal({
             <p className="font-bold text-sm">Doctor Availability Disruption Active</p>
             <p>
               Due to doctor absence or early departure, affected appointments are in triage.
-              <strong> Waiting patients</strong> physically at the clinic should be transferred to an available colleague (placed as Next Up) or rescheduled.
+              <strong> Waiting patients</strong> physically at the location should be transferred to an available colleague (placed as Next Up) or rescheduled.
               <strong> Remote patients</strong> have a 60-minute window to choose their preference via SMS/WhatsApp before automated refund.
             </p>
           </div>
@@ -372,7 +372,7 @@ export default function DisruptionTriageModal({
               )}
             >
               <UserCheck className="w-3.5 h-3.5" />
-              Waiting in Clinic ({waitingPatients.length})
+              Waiting in Location ({waitingPatients.length})
             </button>
             <button
               type="button"
@@ -528,7 +528,7 @@ export default function DisruptionTriageModal({
                           </span>
                           {isCheckedIn ? (
                             <Badge variant="danger" size="sm" className="font-bold text-[10px]">
-                              Waiting at Clinic
+                              Waiting at Location
                             </Badge>
                           ) : (
                             <Badge variant="primary" size="sm" className="font-semibold text-[10px]">

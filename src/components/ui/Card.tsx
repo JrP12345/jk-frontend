@@ -4,7 +4,7 @@ import { type ReactNode, memo } from "react";
 import { cn } from "./utils";
 import Spinner from "./Spinner";
 
-export type CardVariant = "default" | "outline" | "flat" | "glass";
+export type CardVariant = "default" | "outline" | "flat";
 export type CardPadding = "none" | "sm" | "md" | "lg";
 
 export interface CardProps {
@@ -28,10 +28,9 @@ const paddings: Record<CardPadding, string> = {
 };
 
 const variants: Record<CardVariant, string> = {
-  default: "bg-surface border border-border/80 shadow-xs hover:border-border duration-200",
+  default: "bg-surface border border-border shadow-xs",
   outline: "bg-transparent border border-border/70",
-  flat: "bg-surface-alt border border-border/40",
-  glass: "glass-surface",
+  flat: "bg-surface-alt border border-transparent",
 };
 
 const Card = memo(function Card({
@@ -46,7 +45,7 @@ const Card = memo(function Card({
   loading = false,
   loadingText,
 }: CardProps) {
-  const hasHoverEffect = hover || !!onClick;
+  const hasHoverEffect = !loading && (hover || !!onClick);
   const hasBasePadding = /(?:^|\s)p-/.test(className);
   const hasResponsivePadding = /(?:^|\s)(?:[a-z0-9-]+:)+p-/.test(className);
   const defaultPadding = hasBasePadding ? "" : hasResponsivePadding ? paddings[padding].split(" ")[0] : paddings[padding];
@@ -60,22 +59,24 @@ const Card = memo(function Card({
 
   return (
     <div
-      onClick={onClick}
-      onKeyDown={onClick && role === "button" ? handleKeyDown : undefined}
+      onClick={loading ? undefined : onClick}
+      onKeyDown={!loading && onClick && role === "button" ? handleKeyDown : undefined}
       role={role}
-      tabIndex={onClick && role === "button" ? 0 : undefined}
+      aria-busy={loading || undefined}
+      aria-disabled={role === "button" && loading ? true : undefined}
+      tabIndex={onClick && role === "button" ? loading ? -1 : 0 : undefined}
       className={cn(
-        "relative overflow-hidden rounded-2xl transition-[color,background-color,border-color,box-shadow,transform] duration-250 ease-smooth group",
+        "relative overflow-hidden rounded-container transition-[background-color,border-color,box-shadow] duration-[var(--motion-standard)] ease-smooth group",
         variants[variant],
         defaultPadding,
-        onClick &&
-          "cursor-pointer active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+        onClick && !loading &&
+          "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
         hasHoverEffect && "hover:shadow-sm hover:border-accent/50",
         className
       )}
     >
       {/* Card Content */}
-      <div className={cn("relative z-10 w-full h-full flex flex-col transition-opacity duration-200", loading && "opacity-40 pointer-events-none", contentClassName)}>
+      <div inert={loading || undefined} className={cn("relative z-10 w-full h-full flex flex-col transition-opacity duration-200", loading && "opacity-40 pointer-events-none", contentClassName)}>
         {children}
       </div>
 
@@ -100,7 +101,8 @@ export const CardHeader = memo(function CardHeader({ children, className = "" }:
 });
 
 export const CardTitle = memo(function CardTitle({ children, className = "", as: Heading = "h3" }: { children: ReactNode; className?: string; as?: "h1" | "h2" | "h3" }) {
-  return <Heading className={cn("text-base font-semibold text-text tracking-tight", className)}>{children}</Heading>;
+  const hasHeadingScale = /(?:^|\s)(?:page-title|section-title)(?=\s|$)/.test(className);
+  return <Heading className={cn(!hasHeadingScale && "text-base", "font-semibold text-text tracking-tight", className)}>{children}</Heading>;
 });
 
 export const CardDescription = memo(function CardDescription({ children, className = "" }: { children: ReactNode; className?: string }) {

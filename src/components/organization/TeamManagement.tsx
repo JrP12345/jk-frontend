@@ -7,7 +7,7 @@ import { Alert, Card, CardContent, Table, Tabs, Button, Modal, Input, useToast, 
 import { useR2Upload } from "@/hooks/useR2Upload";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
-import { useOrganizationClinics } from "@/hooks/useOrganizationClinics";
+import { useOrganizationLocations } from "@/hooks/useOrganizationLocations";
 import { organizationPath } from "@/services/organization.service";
 import { RBACPermissionMatrix } from "@/components/clinical/RBACPermissionMatrix";
 import { ExecutiveAnalytics } from "@/components/analytics/ExecutiveAnalytics";
@@ -31,8 +31,8 @@ export interface Receptionist {
   email: string;
   phone: string;
   shift: string;
-  clinicId?: string;
-  clinicName?: string;
+  locationId?: string;
+  locationName?: string;
 }
 
 export interface StaffMember {
@@ -47,8 +47,8 @@ export interface StaffMember {
   specialization?: string;
   qualification?: string;
   experience_years?: number;
-  clinicId?: string;
-  clinicName?: string;
+  locationId?: string;
+  locationName?: string;
   organizationName?: string;
   department?: string;
   shift?: string;
@@ -61,7 +61,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   const { toast } = useToast();
   const { uploadFile } = useR2Upload();
   const { user } = useAuthStore();
-  const { clinics, fetchClinics, activeClinicId } = useOrganizationClinics(organizationId);
+  const { locations, fetchLocations, activeLocationId } = useOrganizationLocations(organizationId);
   const canManageStaff = hasAnyPermission(user, "MANAGE_STAFF");
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -131,7 +131,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         ...r,
         roleType: "receptionist",
         roleLabel: "Receptionist",
-        details: r.clinicName ? `Clinic: ${r.clinicName}` : r.shift || "—",
+        details: r.locationName ? `Location: ${r.locationName}` : r.shift || "—",
       })
     );
     nurses.forEach((n) =>
@@ -139,7 +139,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         ...n,
         roleType: "nurse",
         roleLabel: "Nurse",
-        details: n.clinicName ? `Clinic: ${n.clinicName}` : n.organizationName ? `Org: ${n.organizationName}` : "Nurse Staff",
+        details: n.locationName ? `Location: ${n.locationName}` : n.organizationName ? `Org: ${n.organizationName}` : "Nurse Staff",
       })
     );
     labTechs.forEach((l) =>
@@ -147,7 +147,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         ...l,
         roleType: "lab_tech",
         roleLabel: "Lab Tech",
-        details: l.clinicName ? `Clinic: ${l.clinicName}` : l.organizationName ? `Org: ${l.organizationName}` : "Lab Technician",
+        details: l.locationName ? `Location: ${l.locationName}` : l.organizationName ? `Org: ${l.organizationName}` : "Lab Technician",
       })
     );
     pharmacists.forEach((p) =>
@@ -155,7 +155,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         ...p,
         roleType: "pharmacist",
         roleLabel: "Pharmacist",
-        details: p.clinicName ? `Clinic: ${p.clinicName}` : p.organizationName ? `Org: ${p.organizationName}` : "Pharmacist",
+        details: p.locationName ? `Location: ${p.locationName}` : p.organizationName ? `Org: ${p.organizationName}` : "Pharmacist",
       })
     );
     cashiers.forEach((c) =>
@@ -163,7 +163,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         ...c,
         roleType: "cashier",
         roleLabel: "Cashier",
-        details: c.clinicName ? `Clinic: ${c.clinicName}` : c.organizationName ? `Org: ${c.organizationName}` : "Billing Cashier",
+        details: c.locationName ? `Location: ${c.locationName}` : c.organizationName ? `Org: ${c.organizationName}` : "Billing Cashier",
       })
     );
     customStaff.forEach((s) =>
@@ -171,8 +171,8 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         ...s,
         roleType: s.role,
         roleLabel: (s.role || "").replace(/_/g, " ").toUpperCase(),
-        details: s.clinicName
-          ? `Clinic: ${s.clinicName}`
+        details: s.locationName
+          ? `Location: ${s.locationName}`
           : s.organizationName
           ? `Org: ${s.organizationName}`
           : s.department || s.specialization || "Staff Member",
@@ -229,7 +229,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
   const [newAssignment, setNewAssignment] = useState<any>({
-    clinicId: "",
+    locationId: "",
     fees: 100,
     feeType: "fixed",
     appointmentDuration: 15,
@@ -244,7 +244,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   const [loadingHolidays, setLoadingHolidays] = useState(false);
   const [savingHoliday, setSavingHoliday] = useState(false);
   const [newHoliday, setNewHoliday] = useState({
-    clinicId: "all",
+    locationId: "all",
     date: "",
     reason: "Public Holiday",
   });
@@ -254,7 +254,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
     setIsHolidaysModalOpen(true);
     setLoadingHolidays(true);
     setNewHoliday({
-      clinicId: "all",
+      locationId: "all",
       date: new Date(Date.now() + 86400000).toISOString().split("T")[0],
       reason: "Public Holiday",
     });
@@ -278,7 +278,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
     try {
       await api.post(scopedPath("/doctor-overrides"), {
         doctorId: selectedDoctorForHolidays?.id,
-        clinicId: newHoliday.clinicId,
+        locationId: newHoliday.locationId,
         date: newHoliday.date,
         status: "unavailable",
         reason: newHoliday.reason.trim(),
@@ -355,8 +355,8 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       }
     } else if (field === "specialization" && modalType === "doctor" && !val) {
       error = "Specialization is required";
-    } else if (field === "clinicId" && modalType === "receptionist" && !val) {
-      error = "Clinic assignment is required";
+    } else if (field === "locationId" && modalType === "receptionist" && !val) {
+      error = "Location assignment is required";
     }
 
     setStaffErrors((prev) => {
@@ -382,7 +382,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   const fetchStaff = async () => {
     try {
       setLoadError(null);
-      const url = activeClinicId ? `/onboarding/staff?clinicId=${activeClinicId}` : "/onboarding/staff";
+      const url = activeLocationId ? `/onboarding/staff?locationId=${activeLocationId}` : "/onboarding/staff";
       const res = await api.get(scopedPath(url));
       const data = res.data.data || {};
       setDoctors(data.doctors || []);
@@ -413,7 +413,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   const loadData = async () => {
     try {
       setIsRefreshing(true);
-      await Promise.all([fetchStaff(), fetchClinics(), fetchRoles()]);
+      await Promise.all([fetchStaff(), fetchLocations(), fetchRoles()]);
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -422,13 +422,13 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
 
   useEffect(() => {
     loadData();
-  }, [activeClinicId, organizationId]);
+  }, [activeLocationId, organizationId]);
 
   const openModal = (type: "doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier" = "doctor") => {
     setEditingId(null);
     setModalType(type);
     setFormData({
-      clinicId: clinics.length === 1 ? clinics[0].id : "",
+      locationId: locations.length === 1 ? locations[0].id : "",
       fees: 500,
       appointmentDuration: 15,
     });
@@ -456,9 +456,9 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
     const isEmailValid = validateStaffField("email", formData.email || "");
     const isPassValid = editingId ? true : validateStaffField("password", formData.password || "");
     const isSpecValid = modalType === "doctor" ? validateStaffField("specialization", formData.specialization || "") : true;
-    const isClinicValid = modalType === "receptionist" ? validateStaffField("clinicId", formData.clinicId || "") : true;
+    const isLocationValid = modalType === "receptionist" ? validateStaffField("locationId", formData.locationId || "") : true;
 
-    if (!isNameValid || !isEmailValid || !isPassValid || !isSpecValid || !isClinicValid) {
+    if (!isNameValid || !isEmailValid || !isPassValid || !isSpecValid || !isLocationValid) {
       toast({ title: "Validation Error", description: "Please correct the highlighted errors.", variant: "error" });
       return;
     }
@@ -470,8 +470,8 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       // Handle deferred image upload
       if (finalData.image_url instanceof File) {
         toast({ title: "Uploading...", description: "Uploading profile image to Cloudflare R2", variant: "default" });
-        const { publicUrl } = await uploadFile(finalData.image_url);
-        finalData.image_url = publicUrl;
+        const { objectKey } = await uploadFile(finalData.image_url);
+        finalData.image_url = objectKey;
       }
 
       if (editingId) {
@@ -483,13 +483,13 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         toast({ title: "Success", description: "Team member updated successfully!", variant: "success" });
       } else if (modalType === "doctor" || modalType === "receptionist") {
         const res = await api.post(scopedPath(`/onboarding/${modalType}`), finalData);
-        if (modalType === "doctor" && finalData.clinicId && res.data?.data?.id) {
+        if (modalType === "doctor" && finalData.locationId && res.data?.data?.id) {
           try {
             const docFeeType = finalData.feeType || "fixed";
             const docFees = docFeeType === "free" ? 0 : (Number(finalData.fees) || (docFeeType === "post_consultation" ? 0 : 500));
             const assignment = {
               doctorId: res.data.data.id,
-              clinicId: finalData.clinicId,
+              locationId: finalData.locationId,
               fees: docFees,
               feeType: docFeeType,
               appointmentDuration: Number(finalData.appointmentDuration) || 15,
@@ -500,7 +500,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
             await api.post(scopedPath("/onboarding/doctors/assignments"), assignment);
             setPendingAssignment(null);
           } catch (assignErr) {
-            toast({ title: "Doctor account created; clinic assignment failed", description: "Retry the clinic assignment below. Do not register the doctor again.", variant: "error" });
+            toast({ title: "Doctor account created; location assignment failed", description: "Retry the location assignment below. Do not register the doctor again.", variant: "error" });
             setIsModalOpen(false);
             void fetchStaff();
             return;
@@ -563,12 +563,12 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       const res = await api.get(scopedPath(`/onboarding/doctors/assignments?doctorId=${doctor.id}`));
       setAssignments(res.data.data || []);
     } catch {
-      toast({ title: "Error", description: "Failed to load clinic assignments", variant: "error" });
+      toast({ title: "Error", description: "Failed to load location assignments", variant: "error" });
     } finally {
       setAssignmentLoading(false);
     }
     setNewAssignment({
-      clinicId: "",
+      locationId: "",
       fees: 100,
       appointmentDuration: 15,
       workingHours: DEFAULT_WORKING_HOURS,
@@ -580,7 +580,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   const handleStartEditAssignment = (asg: any) => {
     setEditingAssignmentId(asg.id || asg._id);
     setNewAssignment({
-      clinicId: asg.clinicId?.id || asg.clinicId?._id || asg.clinicId,
+      locationId: asg.locationId?.id || asg.locationId?._id || asg.locationId,
       fees: asg.fees ?? 100,
       feeType: asg.feeType || "fixed",
       appointmentDuration: asg.appointmentDuration ?? 15,
@@ -593,7 +593,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   const handleCancelEditAssignment = () => {
     setEditingAssignmentId(null);
     setNewAssignment({
-      clinicId: "",
+      locationId: "",
       fees: 100,
       feeType: "fixed",
       appointmentDuration: 15,
@@ -606,10 +606,10 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   const handleAddAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     const asgFeeType = (newAssignment as any).feeType || "fixed";
-    if (!newAssignment.clinicId || (asgFeeType === "fixed" && newAssignment.fees === undefined)) {
+    if (!newAssignment.locationId || (asgFeeType === "fixed" && newAssignment.fees === undefined)) {
       toast({
         title: "Validation Error",
-        description: "Please select a clinic location and set consultation fees.",
+        description: "Please select a location and set consultation fees.",
         variant: "error",
       });
       return;
@@ -630,11 +630,11 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
           bookingMode: (newAssignment as any).bookingMode || "sequential_queue",
           maxDailyTokens: (newAssignment as any).maxDailyTokens ? Number((newAssignment as any).maxDailyTokens) : null,
         });
-        toast({ title: "Updated", description: "Doctor clinic assignment updated successfully.", variant: "success" });
+        toast({ title: "Updated", description: "Doctor location assignment updated successfully.", variant: "success" });
       } else {
         await api.post(scopedPath("/onboarding/doctors/assignments"), {
           doctorId: selectedDoctorForAssignments?.id,
-          clinicId: newAssignment.clinicId,
+          locationId: newAssignment.locationId,
           fees: asgFees,
           feeType: asgFeeType,
           appointmentDuration: Number(newAssignment.appointmentDuration),
@@ -642,13 +642,13 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
           bookingMode: (newAssignment as any).bookingMode || "sequential_queue",
           maxDailyTokens: (newAssignment as any).maxDailyTokens ? Number((newAssignment as any).maxDailyTokens) : null,
         });
-        toast({ title: "Assigned", description: "Doctor assigned to clinic branch successfully.", variant: "success" });
+        toast({ title: "Assigned", description: "Doctor assigned to location successfully.", variant: "success" });
       }
       const res = await api.get(scopedPath(`/onboarding/doctors/assignments?doctorId=${selectedDoctorForAssignments?.id}`));
       setAssignments(res.data.data || []);
       setEditingAssignmentId(null);
       setNewAssignment({
-        clinicId: "",
+        locationId: "",
         fees: 100,
         feeType: "fixed",
         appointmentDuration: 15,
@@ -670,7 +670,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       if (editingAssignmentId === assignmentId) {
         setEditingAssignmentId(null);
         setNewAssignment({
-          clinicId: "",
+          locationId: "",
           fees: 100,
           appointmentDuration: 15,
           workingHours: DEFAULT_WORKING_HOURS,
@@ -708,18 +708,18 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
     }
   };
 
-  const availableClinics = clinics.filter(
-    (c) => !assignments.some((a) => (a.clinicId?.id || a.clinicId) === c.id)
+  const availableLocations = locations.filter(
+    (c) => !assignments.some((a) => (a.locationId?.id || a.locationId) === c.id)
   );
 
   if (loading) return <TeamLoading />;
 
   return (
     <div className={embedded ? "space-y-4 w-full min-w-0" : "space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12"}>
-      {pendingAssignment && <Alert variant="error" title="Doctor needs clinic assignment" action={<Button variant="outline" size="sm" loading={retryingAssignment} onClick={async () => {
+      {pendingAssignment && <Alert variant="error" title="Doctor needs location assignment" action={<Button variant="outline" size="sm" loading={retryingAssignment} onClick={async () => {
         setRetryingAssignment(true);
-        try { await api.post(scopedPath("/onboarding/doctors/assignments"), pendingAssignment); setPendingAssignment(null); toast({ title: "Doctor assigned", description: "The existing doctor account is now assigned to the clinic.", variant: "success" }); void fetchStaff(); }
-        catch (err: any) { toast({ title: "Assignment failed", description: err.response?.data?.message || "Please retry the clinic assignment.", variant: "error" }); }
+        try { await api.post(scopedPath("/onboarding/doctors/assignments"), pendingAssignment); setPendingAssignment(null); toast({ title: "Doctor assigned", description: "The existing doctor account is now assigned to the location.", variant: "success" }); void fetchStaff(); }
+        catch (err: any) { toast({ title: "Assignment failed", description: err.response?.data?.message || "Please retry the location assignment.", variant: "error" }); }
         finally { setRetryingAssignment(false); }
       }}>Retry assignment</Button>}>The account exists, but booking setup is incomplete. Fee: {pendingAssignment.fees}; duration: {pendingAssignment.appointmentDuration} minutes; mode: sequential queue.</Alert>}
       {loadError && <Alert variant="error" title="Unable to load staff" action={<Button variant="outline" size="sm" onClick={fetchStaff}>Try again</Button>}>{loadError}</Alert>}
@@ -951,7 +951,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                                   ...(row.roleType === "doctor"
                                     ? [
                                         {
-                                          label: "Manage Clinic Assignments",
+                                          label: "Manage Location Assignments",
                                           icon: <Stethoscope className="w-4 h-4 text-accent" />,
                                           onClick: () => openAssignmentsModal(row),
                                         },
@@ -1032,7 +1032,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                                   ...(row.roleType === "doctor"
                                     ? [
                                         {
-                                          label: "Manage Clinic Assignments",
+                                          label: "Manage Location Assignments",
                                           icon: <Stethoscope className="w-4 h-4 text-accent" />,
                                           onClick: () => openAssignmentsModal(row),
                                         },
@@ -1176,7 +1176,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                 if (newRole === "doctor" && !formData.fees) {
                   setFormData((prev: any) => ({
                     ...prev,
-                    clinicId: prev.clinicId || (clinics.length === 1 ? clinics[0].id : ""),
+                    locationId: prev.locationId || (locations.length === 1 ? locations[0].id : ""),
                     fees: 500,
                   }));
                 }
@@ -1282,15 +1282,15 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
               </div>
 
               {/* Inline Location & Fee Assignment for New Doctors */}
-              {!editingId && clinics.length > 0 && (
+              {!editingId && locations.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-3.5 bg-surface-alt/60 border border-border/70 rounded-2xl">
                   <div>
                     <Select
                       label="Primary Practice Location"
-                      value={formData.clinicId || (clinics.length === 1 ? clinics[0].id : "")}
-                      onChange={(e) => handleFieldChange("clinicId", e.target.value)}
+                      value={formData.locationId || (locations.length === 1 ? locations[0].id : "")}
+                      onChange={(e) => handleFieldChange("locationId", e.target.value)}
                       placeholder="Choose primary location..."
-                      options={clinics.map((c) => ({ value: c.id, label: c.name }))}
+                      options={locations.map((c) => ({ value: c.id, label: c.name }))}
                     />
                     <p className="text-[11px] text-text-muted mt-1">Scheduled and bookable at this branch</p>
                   </div>
@@ -1321,7 +1321,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                       disabled={formData.feeType === "free"}
                     />
                     <p className="text-[11px] text-text-muted mt-1">
-                      {formData.feeType === "post_consultation" ? "Base visit fee charged at clinic + consultation decided after visit" : formData.feeType === "free" ? "No fee charged" : "Standard OPD consultation charge"}
+                      {formData.feeType === "post_consultation" ? "Base visit fee charged at location + consultation decided after visit" : formData.feeType === "free" ? "No fee charged" : "Standard OPD consultation charge"}
                     </p>
                   </div>
                 </div>
@@ -1347,11 +1347,11 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 border-t border-border/60 pt-3">
               <Select
                 label="Assign Location *"
-                value={formData.clinicId || (clinics.length === 1 ? clinics[0].id : "")}
-                onChange={(e) => handleFieldChange("clinicId", e.target.value)}
-                error={staffErrors.clinicId}
+                value={formData.locationId || (locations.length === 1 ? locations[0].id : "")}
+                onChange={(e) => handleFieldChange("locationId", e.target.value)}
+                error={staffErrors.locationId}
                 placeholder="Choose a practice location..."
-                options={clinics.map((c) => ({ value: c.id, label: c.name }))}
+                options={locations.map((c) => ({ value: c.id, label: c.name }))}
               />
               <Input
                 label="Shift Schedule"
@@ -1366,12 +1366,12 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       </Modal>
 
       {/* ──────────────────────────────────────────────────────────────────────────
-          5. DOCTOR CLINIC ASSIGNMENTS MODAL
+          5. DOCTOR LOCATION ASSIGNMENTS MODAL
          ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isAssignmentsModalOpen}
         onClose={() => setIsAssignmentsModalOpen(false)}
-        title={`Clinic Branch Assignments — Dr. ${selectedDoctorForAssignments?.name || ""}`}
+        title={`Location Assignments — Dr. ${selectedDoctorForAssignments?.name || ""}`}
         description="Link this practitioner to branch locations with custom consultation fees, slot durations, and working hours."
         size="2xl"
       >
@@ -1409,9 +1409,9 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                 <div className="w-10 h-10 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-accent">
                   <Building2 className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-text">No Clinic Branches Assigned Yet</h4>
+                <h4 className="text-xs font-bold text-text">No Locations Assigned Yet</h4>
                 <p className="text-xs text-text-muted max-w-sm">
-                  Assign this practitioner to a clinic branch below to configure fees and consultation schedules.
+                  Assign this practitioner to a location below to configure fees and consultation schedules.
                 </p>
               </div>
             ) : (
@@ -1426,7 +1426,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 font-bold text-xs text-text">
                           <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
-                          <span>{asg.clinicId?.name || "Clinic Branch"}</span>
+                          <span>{asg.locationId?.name || "Location"}</span>
                         </div>
                         <Badge
                           variant={asg.bookingMode === "sequential_queue" ? "primary" : "neutral"}
@@ -1489,7 +1489,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="border-b border-border/60 text-[10px] font-bold text-text-muted uppercase tracking-wider bg-surface-alt">
-                        <th className="p-3">Clinic Branch</th>
+                        <th className="p-3">Location</th>
                         <th className="p-3">Fee</th>
                         <th className="p-3">Slot Duration</th>
                         <th className="p-3">Booking Mode</th>
@@ -1503,7 +1503,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                           <td className="p-3 text-text font-bold whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
                               <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
-                              <span>{asg.clinicId?.name || "Clinic Branch"}</span>
+                              <span>{asg.locationId?.name || "Location"}</span>
                             </div>
                           </td>
                           <td className="p-3 font-bold whitespace-nowrap">
@@ -1566,14 +1566,14 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
           </div>
 
           {/* Add / Edit Assignment Form Card */}
-          {availableClinics.length > 0 || editingAssignmentId ? (
+          {availableLocations.length > 0 || editingAssignmentId ? (
             <form
               onSubmit={handleAddAssignment}
               className="border border-border/80 rounded-2xl p-4 space-y-3.5 bg-surface shadow-xs"
             >
               <div className="flex items-center justify-between border-b border-border/60 pb-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-text">
-                  {editingAssignmentId ? "Edit Branch Assignment & Schedule" : "Assign to New Clinic Branch"}
+                  {editingAssignmentId ? "Edit Branch Assignment & Schedule" : "Assign to New Location"}
                 </h3>
                 {editingAssignmentId && (
                   <Button type="button" variant="outline" size="xs" onClick={handleCancelEditAssignment}>
@@ -1596,23 +1596,23 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
 
                 {editingAssignmentId ? (
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-text block">Clinic Branch</label>
+                    <label className="text-xs font-semibold text-text block">Location</label>
                     <div className="p-2.5 bg-surface-alt border border-border/80 rounded-xl text-xs font-bold text-text flex items-center gap-1.5">
                       <Building2 className="w-3.5 h-3.5 text-accent" />
                       <span>
-                        {assignments.find((a) => (a.id || a._id) === editingAssignmentId)?.clinicId?.name ||
+                        {assignments.find((a) => (a.id || a._id) === editingAssignmentId)?.locationId?.name ||
                           "Selected Branch"}
                       </span>
                     </div>
                   </div>
                 ) : (
                   <Select
-                    label="Select Clinic Branch *"
-                    value={newAssignment.clinicId}
-                    onChange={(e) => setNewAssignment({ ...newAssignment, clinicId: e.target.value })}
+                    label="Select Location *"
+                    value={newAssignment.locationId}
+                    onChange={(e) => setNewAssignment({ ...newAssignment, locationId: e.target.value })}
                     options={[
-                      { value: "", label: "Choose a clinic branch..." },
-                      ...availableClinics.map((c) => ({ value: c.id, label: c.name })),
+                      { value: "", label: "Choose a location..." },
+                      ...availableLocations.map((c) => ({ value: c.id, label: c.name })),
                     ]}
                     required
                   />
@@ -1693,13 +1693,13 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                   variant="primary"
                   className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
                 >
-                  {editingAssignmentId ? "Update Branch Assignment" : "Assign Clinic Branch"}
+                  {editingAssignmentId ? "Update Branch Assignment" : "Assign Location"}
                 </Button>
               </div>
             </form>
           ) : (
             <div className="text-xs text-text-muted text-center py-4 border border-border/80 bg-surface-alt rounded-2xl font-medium">
-              Dr. {selectedDoctorForAssignments?.name} is already assigned to all active clinic branches.
+              Dr. {selectedDoctorForAssignments?.name} is already assigned to all active locations.
             </div>
           )}
         </div>
@@ -1808,14 +1808,14 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
               <div>
                 <Select
                   label="Applies To Branch"
-                  value={newHoliday.clinicId}
-                  onChange={(e) => setNewHoliday({ ...newHoliday, clinicId: e.target.value })}
+                  value={newHoliday.locationId}
+                  onChange={(e) => setNewHoliday({ ...newHoliday, locationId: e.target.value })}
                   options={[
-                    { value: "all", label: "All Clinic Locations" },
-                    ...clinics.map((c) => ({ value: c.id, label: c.name })),
+                    { value: "all", label: "All Locations" },
+                    ...locations.map((c) => ({ value: c.id, label: c.name })),
                   ]}
                 />
-                <p className="text-[10px] text-text-muted mt-1">Select specific branch or all clinics</p>
+                <p className="text-[10px] text-text-muted mt-1">Select specific branch or all locations</p>
               </div>
 
               <div>
@@ -1911,7 +1911,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
 
                       <div className="flex items-center gap-1.5 text-xs text-text-secondary">
                         <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
-                        <span>{h.clinicId?.name || "All Assigned Clinics"}</span>
+                        <span>{h.locationId?.name || "All Assigned Locations"}</span>
                       </div>
 
                       <p className="text-xs text-text font-medium bg-surface-alt/60 p-2 rounded-xl">
@@ -1923,7 +1923,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                           size="xs"
                           variant="ghost"
                           onClick={() => handleDeleteHoliday(h.id || h._id)}
-                          className="w-full text-danger-text hover:text-danger-text hover:bg-danger-500/10 rounded-xl text-xs font-semibold min-h-[38px] justify-center"
+                          className="w-full text-danger-text hover:text-danger-text hover:bg-danger/10 rounded-xl text-xs font-semibold min-h-[38px] justify-center"
                         >
                           <Trash2 className="w-3.5 h-3.5 mr-1" />
                           Cancel Holiday
@@ -1954,7 +1954,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                           <td className="p-3 text-text-secondary whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
                               <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
-                              <span>{h.clinicId?.name || "All Assigned Clinics"}</span>
+                              <span>{h.locationId?.name || "All Assigned Locations"}</span>
                             </div>
                           </td>
                           <td className="p-3 whitespace-nowrap">
@@ -1970,7 +1970,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                               size="xs"
                               variant="ghost"
                               onClick={() => handleDeleteHoliday(h.id || h._id)}
-                              className="text-danger-text hover:text-danger-text hover:bg-danger-500/10 rounded-lg text-[11px] font-semibold"
+                              className="text-danger-text hover:text-danger-text hover:bg-danger/10 rounded-lg text-[11px] font-semibold"
                             >
                               <Trash2 className="w-3.5 h-3.5 mr-1" />
                               Cancel Holiday

@@ -12,7 +12,8 @@ For normal coding, use the [risk-based verification workflow](docs/verification-
 to select affected checks; CI retains the complete quality gate.
 
 The supplied logo is `public/image.png`; regenerate exports with
-`npm run brand:assets`. The Dockerfile serves the standalone production build.
+`npm run brand:assets`, then `npm run brand:social` for the homepage share image.
+The Dockerfile serves the standalone production build.
 `NEXT_PUBLIC_API_URL` must be supplied at build time.
 Production Next configuration and Docker builds require an absolute HTTPS API
 URL without credentials/query/fragment and reject loopback hosts. Configure the
@@ -46,9 +47,8 @@ login and API requests from the deployed frontend. These are environment repairs
 a successful local build alone does not certify either deployed service.
 
 - [UI interaction patterns](docs/interaction-patterns.md)
-- [Current refinement ledger](docs/frontend-refinement.md)
+- [Pre-production cleanup](docs/pre-production-cleanup.md)
 - [Dependencies and licenses](docs/dependencies.md)
 - [Visual identity and logo exports](docs/ekavyu-visual-identity.md)
-- [Validation history](docs/production-readiness-tracker.md)
-- [Phase 1 final production gate](docs/phase1-final-production-gate.md)
+- [Release verification gates](docs/production-readiness-tracker.md)
 - [Backend repository](https://github.com/JrP12345/jk-backend)

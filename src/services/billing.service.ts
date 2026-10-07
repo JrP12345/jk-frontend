@@ -13,7 +13,7 @@ export interface SaaSPlan {
   displayOrder: number;
   isPopular: boolean;
   limits: {
-    maxClinics: number;
+    maxLocations: number;
     maxDoctors: number;
     maxStaff: number;
     maxPatients: number;
@@ -64,7 +64,7 @@ export interface SubscriptionSummary {
 
 export interface UsageInfo {
   usage: {
-    clinicsCount: number;
+    locationsCount: number;
     doctorsCount: number;
     staffCount: number;
     patientsCount: number;
@@ -81,7 +81,7 @@ export interface UsageInfo {
 }
 
 export interface DowngradeViolation {
-  resource: "clinics" | "doctors" | "staff";
+  resource: "locations" | "doctors" | "staff";
   current: number;
   allowed: number;
   excess: number;
@@ -98,11 +98,11 @@ export interface DowngradeValidationResult {
     limits: any;
   };
   currentUsage: {
-    clinics: number;
+    locations: number;
     doctors: number;
     staff: number;
   };
-  activeClinics: Array<{
+  activeLocations: Array<{
     id: string;
     name: string;
     city: string;

@@ -10,7 +10,7 @@ export interface ImagingStudyItem {
   id: string;
   studyInstanceUid: string;
   patientId: { id: string; userId?: { name: string; phone?: string } };
-  clinicId?: { id: string; name: string };
+  locationId?: { id: string; name: string };
   modality: "CR" | "DX" | "CT" | "MR" | "US" | "MG";
   studyDescription: string;
   dicomWebUrl?: string;
@@ -89,7 +89,7 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
         </div>
         {loading ? <p role="status">Loading study images...</p> : error ? (
           <Alert title="Study images unavailable" action={<Button variant="outline" onClick={() => setRetry(value => value + 1)}>Retry images</Button>}>
-            Images could not be loaded. Your clinic can check whether this study has been received by its imaging service.
+            Images could not be loaded. Your care team can check whether this study has been received by its imaging service.
           </Alert>
         ) : currentManifest && currentManifest.instances.length === 0 ? <Alert title="No images received">This study has no image instances available yet.</Alert> : instance ? <>
           <div className="flex flex-wrap items-end gap-3">

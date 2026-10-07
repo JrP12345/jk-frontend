@@ -14,7 +14,7 @@ export function ResumeTrackerLink() {
   const pathname = usePathname();
   useEffect(() => { hydrate(); }, [hydrate, pathname]);
   if (!recent?.token || recent.ownerId !== ownerId || recent.expiresAt <= Date.now() || pathname?.startsWith("/track/")) return null;
-  return <Link href={`/track/${recent.appointmentId}?t=${encodeURIComponent(recent.token)}`} prefetch={false}
+  return <Link href={`/track/${recent.appointmentId}#t=${encodeURIComponent(recent.token)}`} prefetch={false}
     aria-label="Reopen live appointment tracker" title="Reopen live tracker"
     className="flex items-center justify-center gap-2 h-11 w-11 md:w-auto md:px-3 shrink-0 rounded-xl border border-border bg-surface text-accent hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
     <Clock className="w-4 h-4" strokeWidth={1.75} />

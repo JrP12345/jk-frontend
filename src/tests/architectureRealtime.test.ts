@@ -15,7 +15,7 @@ describe("queue reconnect lifecycle", () => {
   it("reconciles on reconnect, preserves handlers and cancels pending reconnect on cleanup", async () => {
     vi.useFakeTimers(); vi.stubGlobal("WebSocket", FakeSocket);
     const reconcile = vi.fn(), message = vi.fn();
-    const connection = createReconnectingSocket("/api/queue/ws?clinicId=fixture", reconcile);
+    const connection = createReconnectingSocket("/api/queue/ws?locationId=fixture", reconcile);
     connection.onmessage = message;
     FakeSocket.sockets[0].onopen?.(new Event("open"));
     FakeSocket.sockets[0].onclose?.({ code: 1006 } as CloseEvent);

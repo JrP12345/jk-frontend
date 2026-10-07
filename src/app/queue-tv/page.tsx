@@ -7,8 +7,8 @@ import { announcePatientToken, VoiceAnnounceLanguage } from "@/utils/audioChimes
 import { createReconnectingSocket, type ReconnectingSocket } from "@/utils/websocket";
 
 export default function WaitingRoomTvQueueBoard() {
-  const [clinicName, setClinicName] = useState("Ekavyu Healthcare OPD");
-  const [clinicId, setClinicId] = useState<string>("");
+  const [locationName, setLocationName] = useState("Ekavyu Healthcare OPD");
+  const [locationId, setLocationId] = useState<string>("");
   const [doctorId, setDoctorId] = useState<string>("");
   const [activeToken, setActiveToken] = useState<any | null>(null);
   const [waitingQueue, setWaitingQueue] = useState<any[]>([]);
@@ -133,9 +133,9 @@ export default function WaitingRoomTvQueueBoard() {
     if (typeof window !== "undefined") {
       setClockReady(true);
       const search = new URLSearchParams(window.location.search);
-      const cId = search.get("clinicId") || localStorage.getItem("ananta_active_clinic_id") || localStorage.getItem("activeClinicId") || "";
+      const cId = search.get("locationId") || localStorage.getItem("ekavyu_active_location_id") || "";
       const dId = search.get("doctorId") || "";
-      setClinicId(cId);
+      setLocationId(cId);
       setDoctorId(dId);
     }
   }, []);
@@ -145,14 +145,14 @@ export default function WaitingRoomTvQueueBoard() {
     const request = new AbortController();
     fetching.current = request;
     try {
-      if (clinicId) {
+      if (locationId) {
         // Public Kiosk / TV display endpoint (no sensitive auth credentials required)
         const doctorQuery = doctorId ? `?doctorId=${doctorId}` : "";
-        const res = await api.get(`/public/queue-tv/${clinicId}${doctorQuery}`, { signal: request.signal });
+        const res = await api.get(`/public/queue-tv/${locationId}${doctorQuery}`, { signal: request.signal });
         if (request.signal.aborted) return;
         const data = res.data?.data;
         if (data) {
-          if (data.clinic?.name) setClinicName(data.clinic.name);
+          if (data.location?.name) setLocationName(data.location.name);
           const currentToken = data.activeToken;
           setActiveToken(currentToken);
           setWaitingQueue(data.waitingQueue || []);
@@ -225,7 +225,7 @@ export default function WaitingRoomTvQueueBoard() {
         setLoading(false);
       }
     }
-  }, [clinicId, doctorId, speakAnnouncement]);
+  }, [locationId, doctorId, speakAnnouncement]);
 
   useEffect(() => {
     if (!clockReady) return;
@@ -247,9 +247,9 @@ export default function WaitingRoomTvQueueBoard() {
 
     // WebSocket real-time connection for instantaneous token summon
     let ws: ReconnectingSocket | null = null;
-    if (typeof window !== "undefined" && clinicId) {
+    if (typeof window !== "undefined" && locationId) {
       try {
-        ws = createReconnectingSocket(`/api/queue/ws?clinicId=${clinicId}`, () => { void fetchQueueState(); });
+        ws = createReconnectingSocket(`/api/queue/ws?locationId=${locationId}`, () => { void fetchQueueState(); });
 
         ws.onopen = () => { connected = true; };
         ws.onclose = () => { connected = false; };
@@ -284,7 +284,7 @@ export default function WaitingRoomTvQueueBoard() {
       document.removeEventListener("visibilitychange", onVisible);
       if (ws) ws.close();
     };
-  }, [fetchQueueState, clinicId, clockReady]);
+  }, [fetchQueueState, locationId, clockReady]);
 
   return (
     <div className="min-h-screen bg-background text-text p-4 sm:p-8 lg:p-10 flex flex-col justify-between select-none animate-fade-in font-sans">
@@ -295,7 +295,7 @@ export default function WaitingRoomTvQueueBoard() {
             ⚡
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-text tracking-tight">{clinicName}</h1>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-text tracking-tight">{locationName}</h1>
             <p className="text-xs sm:text-sm font-semibold text-text-muted">Live Waiting Room Queue Display • Real-Time OPD Calls</p>
           </div>
         </div>

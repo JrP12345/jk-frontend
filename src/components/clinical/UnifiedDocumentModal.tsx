@@ -23,11 +23,11 @@ export type DocumentType =
 export interface UnifiedDocumentData {
   documentType: DocumentType;
   title: string;
-  clinicName: string;
+  locationName: string;
   currency?: string;
-  clinicAddress?: string;
-  clinicPhone?: string;
-  clinicEmail?: string;
+  locationAddress?: string;
+  locationPhone?: string;
+  locationEmail?: string;
   doctorName?: string;
   doctorSpecialization?: string;
   doctorRegistrationNumber?: string; // e.g. "MCI-48291/2014" or "DMC-19283"
@@ -39,7 +39,7 @@ export interface UnifiedDocumentData {
   patientPhone?: string;
   date: string;
   referenceNumber?: string;
-  
+
   // Specific payload sections
   prescriptions?: Array<{ name: string; dosage: string; frequency?: string; duration: string; instructions?: string }>;
   diagnoses?: Array<{ code?: string; description: string }>;
@@ -53,13 +53,13 @@ export interface UnifiedDocumentData {
   labResults?: Array<{ testName: string; result: string; unit?: string; referenceRange?: string; status: string }>;
   dischargeSummary?: { admissionDate: string; dischargeDate: string; summary: string; advice: string };
   certificateText?: string;
-  
+
   // Medico-Legal NMC Cryptographic Sealing
   isSealed?: boolean;
   prescriptionHash?: string;
   digitalSignature?: string;
   sealedAt?: string;
-  
+
   // Medico-legal & Referral payloads
   referralDetails?: {
     referredToDoctorOrHospital: string;
@@ -278,9 +278,9 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                       ? "bg-warning text-background shadow-2xs"
                       : "text-text-muted hover:text-text"
                   }`}
-                  title="Leaves top 65mm blank to feed directly into physical doctor/clinic letterhead pads"
+                  title="Leaves top 65mm blank to feed directly into physical practice letterhead pads"
                 >
-                  Preprinted clinic pad
+                  Preprinted letterhead
                 </button>
               </div>
             </div>
@@ -309,16 +309,16 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] uppercase tracking-widest font-black text-accent">
-                  Ekavyu Healthcare Clinic System
+                  Ekavyu Healthcare
                 </span>
               </div>
-              <h2 className="text-xl font-black text-text leading-tight">{document.clinicName}</h2>
-              {document.clinicAddress && <p className="text-text-muted text-[11px]">{document.clinicAddress}</p>}
-              {(document.clinicPhone || document.clinicEmail) && (
+              <h2 className="text-xl font-black text-text leading-tight">{document.locationName}</h2>
+              {document.locationAddress && <p className="text-text-muted text-[11px]">{document.locationAddress}</p>}
+              {(document.locationPhone || document.locationEmail) && (
                 <p className="text-text-muted text-[10px]">
-                  {document.clinicPhone && `Tel: ${document.clinicPhone}`}
-                  {document.clinicPhone && document.clinicEmail && " • "}
-                  {document.clinicEmail && `Email: ${document.clinicEmail}`}
+                  {document.locationPhone && `Tel: ${document.locationPhone}`}
+                  {document.locationPhone && document.locationEmail && " • "}
+                  {document.locationEmail && `Email: ${document.locationEmail}`}
                 </p>
               )}
             </div>

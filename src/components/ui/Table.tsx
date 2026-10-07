@@ -333,18 +333,18 @@ export default function Table<T extends Record<string, any>>({
     <div aria-busy={loading} className={cn("w-full flex flex-col relative", className)}>
       {/* UNIFIED PREMIUM CARD WRAPPER */}
       <div className={cn(
-        "w-full rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden flex flex-col transition-all",
+        "w-full rounded-container border border-border bg-surface overflow-hidden flex flex-col",
         variant === "bordered" && "border border-border",
         variant === "flat" && "border-none shadow-none bg-transparent"
       )}>
 
         {/* 1. TOP TOOLBAR BAR (TITLE, ACTION, PILL SEARCH & FILTER CONTROLS) */}
-        {hasToolbar && <div className="p-3.5 sm:p-4 bg-surface-alt/40 border-b border-border/80 flex flex-col gap-2.5 sm:gap-3">
+        {hasToolbar && <div className="p-3.5 sm:p-4 bg-surface border-b border-border/80 flex flex-col gap-2.5 sm:gap-3">
           {/* Title & Primary Action Row */}
           {(title || description || action) && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2.5 border-b border-border/60">
               <div>
-                {title && <h3 className="text-base sm:text-lg font-bold text-text tracking-tight">{title}</h3>}
+                {title && <h3 className="text-base sm:text-lg font-semibold text-text tracking-tight">{title}</h3>}
                 {description && <p className="text-xs text-text-muted mt-0.5">{description}</p>}
               </div>
               {action && <div className="shrink-0 flex items-center">{action}</div>}
@@ -515,7 +515,7 @@ export default function Table<T extends Record<string, any>>({
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                     className={cn(
                       "p-3.5 rounded-xl border border-border/60 bg-surface space-y-2 transition-all duration-150",
-                      onRowClick && "cursor-pointer active:scale-[0.99] hover:border-primary-500/30 hover:shadow-sm"
+                      onRowClick && "cursor-pointer hover:border-border-focus hover:bg-surface-hover"
                     )}
                   >
                     {selectable && <div onClick={(event) => event.stopPropagation()}><Checkbox aria-label={`Select row ${val ?? i}`} checked={selected.has(val)} onChange={() => toggleRow(row)} /></div>}
@@ -539,8 +539,8 @@ export default function Table<T extends Record<string, any>>({
                       }
                       return (
                         <div key={colIdx} className="flex items-start justify-between gap-2">
-                          <span className="text-[11px] font-medium text-text-muted shrink-0">{col.header}</span>
-                          <span className="text-xs font-medium text-text text-right min-w-0 break-words">{cellContent}</span>
+                          <span className="text-xs font-medium text-text-secondary shrink-0">{col.header}</span>
+                          <span className="text-sm font-medium text-text text-right min-w-0 break-words">{cellContent}</span>
                         </div>
                       );
                     })}
@@ -612,7 +612,7 @@ export default function Table<T extends Record<string, any>>({
 
               {/* Column Filter Row */}
               {showFilterRow && hasFilterableColumns && (
-                <tr className="border-b border-border bg-surface-alt/40">
+                <tr className="border-b border-border bg-surface">
                   {selectable && <th className={cn("px-3 py-1.5", variant === "bordered" && "border-r border-border/40")} />}
                   {visibleColumns.map((col, idx) => {
                     const colKey = col.key || (typeof col.accessor === "string" ? col.accessor : col.header) || String(idx);
@@ -745,7 +745,7 @@ export default function Table<T extends Record<string, any>>({
 
         {/* 3. FOOTER PAGINATION BAR (ALIGNED & RESPONSIVE) */}
         {pagination && (currentData.length > 0 || !loading) && (
-          <div className="px-4 py-3 border-t border-border/80 bg-surface-alt/40 flex flex-col xl:flex-row items-center justify-between gap-3 text-xs text-text-muted">
+          <div className="px-4 py-3 border-t border-border/80 bg-surface flex flex-col xl:flex-row items-center justify-between gap-3 text-xs text-text-muted">
             <div className="flex items-center justify-between w-full sm:w-auto gap-4 font-medium">
               <span className="shrink-0">
                 Showing {sortedData.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0} to {Math.min(currentPage * rowsPerPage, sortedData.length)} of {sortedData.length}

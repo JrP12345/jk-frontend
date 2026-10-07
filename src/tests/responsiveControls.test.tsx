@@ -39,15 +39,15 @@ describe("responsive controls", () => {
     expect(open).not.toHaveBeenCalled();
   });
   it("keeps required select validation and focuses its named visible control", async () => {
-    const { container } = render(<form><Select label="Clinic" name="clinic" required options={[{ value: "central", label: "Central" }]} /></form>);
-    const trigger = screen.getByRole("combobox", { name: "Clinic" });
+    const { container } = render(<form><Select label="Location" name="location" required options={[{ value: "central", label: "Central" }]} /></form>);
+    const trigger = screen.getByRole("combobox", { name: "Location" });
     fireEvent.invalid(container.querySelector("select")!);
     expect(trigger).toHaveFocus();
     expect(screen.getByRole("alert")).toHaveTextContent("Please choose an option.");
     expect(container.querySelector("form")!.checkValidity()).toBe(false);
     fireEvent.click(trigger);
     fireEvent.click(await screen.findByRole("option", { name: "Central" }));
-    expect(new FormData(container.querySelector("form")!).get("clinic")).toBe("central");
+    expect(new FormData(container.querySelector("form")!).get("location")).toBe("central");
     expect(container.querySelector("form")!.checkValidity()).toBe(true);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -185,6 +185,15 @@ describe("responsive controls", () => {
     fireEvent.keyDown(popup, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(trigger).toHaveFocus();
+  });
+
+  it("emits one canonical value for a selected date", async () => {
+    const onChange = vi.fn();
+    render(<DatePicker label="Visit date" name="visitDate" value="2026-09-27" onChange={onChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Visit date" }));
+    const popup = await screen.findByRole("dialog", { name: "Choose Visit date" });
+    fireEvent.click(within(popup).getByRole("button", { name: "Monday, 28 September 2026" }));
+    expect(onChange).toHaveBeenCalledExactlyOnceWith("2026-09-28");
   });
 
   it("moves tab focus, skips disabled tabs, and gives instances unique IDs", () => {

@@ -2,6 +2,7 @@
 
 import { type TextareaHTMLAttributes, forwardRef, useId, memo, useState } from "react";
 import { cn } from "./utils";
+import { fieldBase, fieldError, fieldLabel, fieldVariants } from "./controlStyles";
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
@@ -53,7 +54,7 @@ const Textarea = memo(
         <div className={cn("flex flex-col gap-1.5", fullWidth && "w-full", containerClassName)}>
           <div className="flex items-center justify-between gap-2">
             {label && (
-              <label htmlFor={id} className="text-sm font-medium text-text select-none">
+              <label htmlFor={id} className={fieldLabel}>
                 {label}
               </label>
             )}
@@ -62,7 +63,7 @@ const Textarea = memo(
                 className={cn(
                   "text-[11px] font-mono tabular-nums px-1.5 py-0.5 rounded border border-border/60 bg-surface-alt transition-colors duration-150 ml-auto select-none",
                   hasMaxLength && valueLength >= rest.maxLength!
-                    ? "text-danger-text font-semibold border-danger-500/30 bg-danger-500/10"
+                    ? "text-danger-text font-semibold border-danger/30 bg-danger/10"
                     : "text-text-muted"
                 )}
                 aria-live="polite"
@@ -92,10 +93,8 @@ const Textarea = memo(
               onInvalid?.(event);
             }}
             className={cn(
-              "w-full rounded-xl border bg-surface text-text px-3.5 py-2.5 text-base md:text-sm min-h-[88px] resize-y font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt shadow-2xs",
-              visibleError
-                ? "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:border-danger-500"
-                : "border-border hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring",
+              fieldBase, fieldVariants.default, "w-full px-3.5 py-2.5 text-base md:text-sm min-h-[88px] resize-y",
+              visibleError && fieldError,
               className
             )}
             {...rest}
@@ -118,4 +117,3 @@ const Textarea = memo(
 
 Textarea.displayName = "Textarea";
 export default Textarea;
-

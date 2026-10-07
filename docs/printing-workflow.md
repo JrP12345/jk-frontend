@@ -15,7 +15,7 @@ Every existing frontend print surface uses `PrintButton` or `PrintDialogActions`
 | SOAP note editor | Unsaved notes retain their local preview; saved prescriptions use the authenticated server endpoint | Existing clinical prescription rendering |
 | Unified clinical documents | Fixed Print/Close footer for prescription, invoice, report, discharge summary, certificate, referral, and token documents | Plain A4 or preprinted clinic pad with the existing 65mm offset |
 | Thermal token slip | Print stays disabled while its QR code loads; failed codes offer retry | 58mm and 80mm paper controls stay available above the preview |
-| Clinic QR poster | Existing preview, Copy join link, and fixed Print/Close actions | Existing A4 poster layout |
+| Location QR poster | Existing preview, Copy join link, and fixed Print/Close actions | Existing A4 poster layout |
 | ABDM standee | Print poster beside its existing scan/share actions | Existing A4 standee |
 | Patient tracker | Fetch the private prescription through its existing capability and print using the shared lifecycle | Existing server prescription rendering |
 

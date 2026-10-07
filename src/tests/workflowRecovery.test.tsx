@@ -23,7 +23,7 @@ describe("Theme toggle", () => {
     const button = screen.getByRole("button", { name: /switch to dark mode/i });
     fireEvent.click(button.querySelector("svg")!);
     expect(document.documentElement).toHaveAttribute("data-mode", "dark");
-    expect(localStorage.getItem("jk-mode")).toBe("dark");
+    expect(localStorage.getItem("ekavyu-mode")).toBe("dark");
     fireEvent.click(screen.getByRole("button", { name: /switch to light mode/i }).querySelectorAll("svg")[variant === "segmented" ? 1 : 0]);
     expect(document.documentElement).toHaveAttribute("data-mode", "light");
   });
@@ -105,11 +105,21 @@ describe("Role workflow ordering", () => {
 });
 
 describe("Tracker recovery", () => {
+  it("remembers the server's fragment capability without a query-token alias", () => {
+    rememberTrackerLink("/track/appointment#t=private-fragment", null);
+    expect(getStoredTrackerToken("appointment")).toBe("private-fragment");
+    expect(useTrackerStore.getState().recent?.appointmentId).toBe("appointment");
+  });
+  it("remembers the server's fragment capability without a query-token alias", () => {
+    rememberTrackerLink("/track/appointment#t=private-fragment", null);
+    expect(getStoredTrackerToken("appointment")).toBe("private-fragment");
+    expect(useTrackerStore.getState().recent?.appointmentId).toBe("appointment");
+  });
   it("keeps a private recovery link after the ticket closes and restores it after a page reload", () => {
     rememberTracker("appointment", "private-capability", null);
     useTrackerStore.setState({ recent: null });
     render(<ResumeTrackerLink />);
-    expect(screen.getByRole("link", { name: "Reopen live appointment tracker" })).toHaveAttribute("href", "/track/appointment?t=private-capability");
+    expect(screen.getByRole("link", { name: "Reopen live appointment tracker" })).toHaveAttribute("href", "/track/appointment#t=private-capability");
     expect(localStorage.getItem("ekavyu-recent-tracker")).toBeNull();
   });
   it("does not show another account's remembered appointment", () => {
@@ -118,8 +128,8 @@ describe("Tracker recovery", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
   it("rejects cross-origin and invalid tracker destinations", () => {
-    rememberTrackerLink("https://example.com/track/appointment?t=private", null);
-    rememberTrackerLink("/dashboard?t=private", null);
+    rememberTrackerLink("https://example.com/track/appointment#t=private", null);
+    rememberTrackerLink("/dashboard#t=private", null);
     expect(useTrackerStore.getState().recent).toBeNull();
   });
   it("removes expired recovery records and retains receipt access after completion", () => {

@@ -232,7 +232,7 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
         {/* Longitudinal Vitals Trend Analysis */}
         <ChartContainer
           title="Longitudinal Vitals Trajectory"
-          description="Track patient physiological indicators across past clinic encounters"
+          description="Track patient physiological indicators across past visits"
           timeRanges={[
             { label: "Blood Pressure", value: "bp" },
             { label: "Pulse / HR", value: "pulse" },
@@ -247,14 +247,14 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
             <LineChart
               data={vitalsHistoryData}
               series={[
-                { key: "systolic", name: "Systolic (mmHg)", color: "var(--s-chart-5)" },
-                { key: "diastolic", name: "Diastolic (mmHg)", color: "var(--s-chart-1)" },
+                { key: "systolic", name: "Systolic (mmHg)", color: "var(--chart-5)" },
+                { key: "diastolic", name: "Diastolic (mmHg)", color: "var(--chart-1)" },
               ]}
               referenceBand={{
                 min: 80,
                 max: 120,
                 label: "Target BP Range",
-                color: "var(--s-chart-2)",
+                color: "var(--chart-2)",
               }}
               height={210}
               valueFormatter={(v) => `${v} mmHg`}
@@ -265,13 +265,13 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
             <LineChart
               data={vitalsHistoryData}
               series={[
-                { key: "pulse", name: "Heart Rate (BPM)", color: "var(--s-chart-4)" },
+                { key: "pulse", name: "Heart Rate (BPM)", color: "var(--chart-4)" },
               ]}
               referenceBand={{
                 min: 60,
                 max: 100,
                 label: "Normal Resting HR",
-                color: "var(--s-chart-2)",
+                color: "var(--chart-2)",
               }}
               height={210}
               valueFormatter={(v) => `${v} bpm`}
@@ -282,13 +282,13 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
             <LineChart
               data={vitalsHistoryData}
               series={[
-                { key: "glucose", name: "Blood Glucose (mg/dL)", color: "var(--s-chart-3)" },
+                { key: "glucose", name: "Blood Glucose (mg/dL)", color: "var(--chart-3)" },
               ]}
               referenceBand={{
                 min: 70,
                 max: 140,
                 label: "Target Fasting/PP",
-                color: "var(--s-chart-2)",
+                color: "var(--chart-2)",
               }}
               height={210}
               valueFormatter={(v) => `${v} mg/dL`}
@@ -299,13 +299,13 @@ export function PatientOverviewCards({ patient, onEditProfile }: PatientOverview
             <LineChart
               data={vitalsHistoryData}
               series={[
-                { key: "spo2", name: "Blood Oxygen (SpO2 %)", color: "var(--s-chart-2)" },
+                { key: "spo2", name: "Blood Oxygen (SpO2 %)", color: "var(--chart-2)" },
               ]}
               referenceBand={{
                 min: 95,
                 max: 100,
                 label: "Optimal Oxygenation",
-                color: "var(--s-chart-2)",
+                color: "var(--chart-2)",
               }}
               height={210}
               valueFormatter={(v) => `${v}%`}

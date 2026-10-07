@@ -171,7 +171,7 @@ const Tooltip = memo(function Tooltip({
             onMouseEnter={() => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); }}
             onMouseLeave={leave}
             className={cn(
-              "fixed z-[var(--layer-tooltip)] max-w-[min(20rem,calc(100vw-1rem))] max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain px-2.5 py-1.5 text-xs font-medium leading-relaxed text-text bg-surface border border-border/80 rounded-lg shadow-lg whitespace-normal wrap-anywhere animate-scale-in transition-opacity duration-150",
+              "fixed z-[var(--layer-tooltip)] max-w-[min(20rem,calc(100vw-1rem))] max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain px-2.5 py-1.5 text-xs font-medium leading-relaxed text-text bg-surface-elevated border border-border rounded-lg shadow-md whitespace-normal wrap-anywhere animate-scale-in transition-opacity duration-150",
               !coords && "opacity-0"
             )}
             style={{

@@ -13,9 +13,9 @@ import { printElement } from "@/lib/printBrand";
 export interface ThermalTokenSlipData {
   appointmentId: string;
   tokenNumber: number | string;
-  clinicName: string;
-  clinicAddress?: string;
-  clinicPhone?: string;
+  locationName: string;
+  locationAddress?: string;
+  locationPhone?: string;
   doctorName: string;
   doctorSpecialization?: string;
   patientName: string;
@@ -137,16 +137,16 @@ export default function ThermalTokenSlipModal({
               *** OPD QUEUE TOKEN ***
             </p>
             <h3 className="font-black text-sm sm:text-base leading-tight text-black uppercase">
-              {tokenData.clinicName}
+              {tokenData.locationName}
             </h3>
-            {tokenData.clinicAddress && (
+            {tokenData.locationAddress && (
               <p className="text-[10px] text-text-secondary leading-tight">
-                {tokenData.clinicAddress}
+                {tokenData.locationAddress}
               </p>
             )}
-            {tokenData.clinicPhone && (
+            {tokenData.locationPhone && (
               <p className="text-[10px] text-text-secondary">
-                Ph: {tokenData.clinicPhone}
+                Ph: {tokenData.locationPhone}
               </p>
             )}
           </div>

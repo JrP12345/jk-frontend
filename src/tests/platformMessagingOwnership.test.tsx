@@ -62,11 +62,12 @@ describe("platform messaging ownership", () => {
     expect(api.patch).not.toHaveBeenCalled();
   });
 
-  it("redirects legacy Root organization billing settings to the exact workspace", async () => {
+  it("keeps platform settings scoped to Root and links to the organization workspace", async () => {
     window.history.replaceState(null, "", "/dashboard/settings?organizationId=org-b&tab=billing");
     mount(<SettingsPage />);
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/dashboard/organizations?organizationId=org-b&section=subscription", { scroll: false }));
-    expect(api.get).not.toHaveBeenCalled();
+    expect(screen.getByRole("link", { name: /Choose an organization/ })).toHaveAttribute("href", "/dashboard/organizations");
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(api.get).toHaveBeenCalledWith("/admin/whatsapp/health", { params: undefined });
   });
 
   it("links an organization admin to their signed-in workspace without duplicate editors", () => {

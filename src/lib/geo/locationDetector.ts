@@ -10,7 +10,7 @@ export interface DetectedLocation {
   source: "gps" | "ip" | "fallback";
 }
 
-const CACHE_KEY = "ananta_detected_geo";
+const CACHE_KEY = "ekavyu_detected_geo";
 const CACHE_AGE = 5 * 60 * 1000;
 
 export function hasLocationCoordinates(location: DetectedLocation | null): location is DetectedLocation & { latitude: number; longitude: number } {
@@ -18,8 +18,8 @@ export function hasLocationCoordinates(location: DetectedLocation | null): locat
     typeof location.longitude === "number" && Number.isFinite(location.longitude) && Math.abs(location.longitude) <= 180;
 }
 
-export function findMatchingClinicCity(detectedCity: string, clinicCities: string[]): string | null {
-  return clinicCities.find(city => city.trim().toLowerCase() === detectedCity.trim().toLowerCase()) || null;
+export function findMatchingLocationCity(detectedCity: string, locationCities: string[]): string | null {
+  return locationCities.find(city => city.trim().toLowerCase() === detectedCity.trim().toLowerCase()) || null;
 }
 
 function cache(location: DetectedLocation): DetectedLocation {

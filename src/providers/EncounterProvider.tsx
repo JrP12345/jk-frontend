@@ -7,7 +7,7 @@ import { EncounterEventBus, EncounterEvents } from "@/events/EncounterEventBus";
 interface EncounterContextType {
   encounterId: string;
   patientId: string;
-  clinicId: string;
+  locationId: string;
   doctorId: string;
   loading: boolean;
   error: string | null;
@@ -16,8 +16,8 @@ interface EncounterContextType {
 }
 const EncounterContext = createContext<EncounterContextType | undefined>(undefined);
 
-export function EncounterProvider({ encounterId, patientId, clinicId, doctorId, children }: {
-  encounterId: string; patientId: string; clinicId: string; doctorId: string; children: ReactNode;
+export function EncounterProvider({ encounterId, patientId, locationId, doctorId, children }: {
+  encounterId: string; patientId: string; locationId: string; doctorId: string; children: ReactNode;
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export function EncounterProvider({ encounterId, patientId, clinicId, doctorId, 
       unsubscribe.forEach(stop => stop());
     };
   }, [encounterId, refreshOrders]);
-  return <EncounterContext.Provider value={{ encounterId, patientId, clinicId, doctorId, loading, error, orders, refreshOrders }}>{children}</EncounterContext.Provider>;
+  return <EncounterContext.Provider value={{ encounterId, patientId, locationId, doctorId, loading, error, orders, refreshOrders }}>{children}</EncounterContext.Provider>;
 }
 export function useEncounterContext() {
   const context = useContext(EncounterContext);

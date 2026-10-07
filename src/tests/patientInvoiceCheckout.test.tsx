@@ -6,7 +6,7 @@ const fixture = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), sdk: vi.fn(), u
 vi.mock("@/lib/api", () => ({ default: { get: fixture.get, post: fixture.post } }));
 vi.mock("@/store/authStore", () => ({ useAuthStore: () => ({ user: fixture.user }) }));
 vi.mock("@/lib/razorpay", () => ({ loadRazorpayScript: fixture.sdk }));
-const invoice = { id: "invoice", appointmentId: "appointment", invoiceNumber: "INV-1", totalAmount: 250, amountPaid: 0, currency: "INR", status: "unpaid", items: [], createdAt: "2026-10-01", clinicId: { name: "Clinic" } };
+const invoice = { id: "invoice", appointmentId: "appointment", invoiceNumber: "INV-1", totalAmount: 250, amountPaid: 0, currency: "INR", status: "unpaid", items: [], createdAt: "2026-10-01", locationId: { name: "Clinic" } };
 const order = { keyId: "public-key", razorpayOrderId: "order", appointmentId: "appointment", amount: 250, currency: "INR" };
 const proof = { razorpay_order_id: "order", razorpay_payment_id: "payment", razorpay_signature: "signature" };
 let options: { handler: (value: typeof proof) => void; amount: number; modal: { ondismiss: () => void } };

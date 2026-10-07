@@ -9,7 +9,7 @@ import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { Card, Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, ImageUpload, Dropdown, ConfirmDialog, ChartContainer, DonutChart, cn } from "@/components/ui";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useR2Upload } from "@/hooks/useR2Upload";
@@ -30,7 +30,7 @@ interface DoctorUser {
 
 interface LabTestType {
   id: string;
-  clinicId: string;
+  locationId: string;
   name: string;
   code: string;
   department: string;
@@ -41,7 +41,7 @@ interface LabTestType {
 
 interface LabOrderType {
   id: string;
-  clinicId: string;
+  locationId: string;
   patientId: PatientProfile;
   doctorId: DoctorUser;
   testId: {
@@ -55,23 +55,21 @@ interface LabOrderType {
   };
   orderDate: string;
   status: "ordered" | "sample-collected" | "processing" | "result-uploaded" | "cancelled";
-  resultValue?: string;
-  resultNotes?: string;
-  attachmentUrl?: string;
-  completedDate?: string | null;
+  result?: { value: string; notes?: string; attachmentUrl?: string };
+  resultedAt?: string | null;
 }
 
 export default function LaboratoryPage() {
   const { user } = useAuthStore();
-  const { activeClinicId } = useClinicStore();
+  const { activeLocationId } = useLocationStore();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"worklist" | "catalog" | "patientVault">("worklist");
-  const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
+  const [selectedLocationId, setSelectedLocationId] = useState(activeLocationId || "");
 
   useEffect(() => {
-    setSelectedClinicId(activeClinicId || "");
-  }, [activeClinicId]);
+    setSelectedLocationId(activeLocationId || "");
+  }, [activeLocationId]);
   const [labTests, setLabTests] = useState<LabTestType[]>([]);
   const [labOrders, setLabOrders] = useState<LabOrderType[]>([]);
   const [doctors, setDoctors] = useState<DoctorUser[]>([]);
@@ -86,21 +84,21 @@ export default function LaboratoryPage() {
     setLoading(true);
     try {
       setLoadError(null);
-      const isAll = !selectedClinicId || selectedClinicId === "all";
+      const isAll = !selectedLocationId || selectedLocationId === "all";
       if (user?.role === "patient") {
         const [testsRes, ordersRes] = await Promise.all([
-          api.get(!isAll ? `/lab-tests?clinicId=${selectedClinicId}` : "/lab-tests", { signal: request.signal }),
-          api.get(!isAll ? `/lab-orders?clinicId=${selectedClinicId}` : "/lab-orders", { signal: request.signal }),
+          api.get(!isAll ? `/lab-tests?locationId=${selectedLocationId}` : "/lab-tests", { signal: request.signal }),
+          api.get(!isAll ? `/lab-orders?locationId=${selectedLocationId}` : "/lab-orders", { signal: request.signal }),
         ]);
         if (!request.isCurrent()) return;
         setLabTests(testsRes.data?.data || []);
         setLabOrders(ordersRes.data?.data || []);
       } else {
         const [testsRes, ordersRes, docRes, tatRes] = await Promise.all([
-          api.get(!isAll ? `/lab-tests?clinicId=${selectedClinicId}` : "/lab-tests", { signal: request.signal }),
-          api.get(!isAll ? `/lab-orders?clinicId=${selectedClinicId}` : "/lab-orders", { signal: request.signal }),
-          api.get(!isAll ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff", { signal: request.signal }),
-          api.get(!isAll ? `/lab/tat-metrics?clinicId=${selectedClinicId}` : "/lab/tat-metrics", { signal: request.signal }),
+          api.get(!isAll ? `/lab-tests?locationId=${selectedLocationId}` : "/lab-tests", { signal: request.signal }),
+          api.get(!isAll ? `/lab-orders?locationId=${selectedLocationId}` : "/lab-orders", { signal: request.signal }),
+          api.get(!isAll ? `/onboarding/staff?locationId=${selectedLocationId}` : "/onboarding/staff", { signal: request.signal }),
+          api.get(!isAll ? `/lab/tat-metrics?locationId=${selectedLocationId}` : "/lab/tat-metrics", { signal: request.signal }),
         ]);
 
         if (!request.isCurrent()) return;
@@ -122,9 +120,9 @@ export default function LaboratoryPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
-  const { uploadFile, isUploading, progress } = useR2Upload({
+  const { uploadFile, uploading, progress } = useR2Upload({
     onError: (err) => {
-      toast({ title: "Upload Failed", description: err.message, variant: "error" });
+      toast({ title: "Upload Failed", description: err instanceof Error ? err.message : "Upload could not be completed", variant: "error" });
     }
   });
 
@@ -193,20 +191,20 @@ export default function LaboratoryPage() {
     if (!testSampleType.trim()) newErrors.sampleType = "Sample Material Type is required";
     if (testPrice <= 0) newErrors.price = "Price must be a positive number";
     if (!testNormalRange.trim()) newErrors.normalRange = "Normal Range Reference is required";
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Workspace owns clinic metadata. Doctors come from fetchData.
+  // Workspace owns location metadata. Doctors come from fetchData.
   useEffect(() => {
-    if (user?.role === 'patient') { setActiveTab('patientVault'); setSelectedClinicId('all'); }
+    if (user?.role === 'patient') { setActiveTab('patientVault'); setSelectedLocationId('all'); }
     else if (user) {
       setActiveTab('worklist');
     }
   }, [user?.id, user?.role, user?.organization_id]);
 
-  useEffect(() => { if (user) void fetchData(); else beginDataRead(); }, [selectedClinicId, user?.id, user?.role, user?.organization_id]);
+  useEffect(() => { if (user) void fetchData(); else beginDataRead(); }, [selectedLocationId, user?.id, user?.role, user?.organization_id]);
 
   const handlePatientSearch = (val: string) => { setSelectedPatient(null); setPatientSearch(val); };
   useEffect(() => {
@@ -242,7 +240,7 @@ export default function LaboratoryPage() {
     try {
       setSubmittingOrder(true);
       await api.post("/lab-orders", {
-        clinicId: selectedClinicId,
+        locationId: selectedLocationId,
         patientId: selectedPatient.id,
         doctorId: selectedDoctorId,
         testId: selectedTestId
@@ -273,7 +271,7 @@ export default function LaboratoryPage() {
     try {
       setSubmittingTest(true);
       const payload = {
-        clinicId: selectedClinicId,
+        locationId: selectedLocationId,
         name: testName,
         code: testCode,
         department: testDepartment,
@@ -341,8 +339,8 @@ export default function LaboratoryPage() {
     try {
       setSubmittingResult(true);
       await api.put(`/lab-orders/${activeOrder.id}/result`, {
-        resultValue,
-        resultNotes,
+        value: resultValue,
+        notes: resultNotes,
         attachmentUrl
       });
 
@@ -569,11 +567,11 @@ export default function LaboratoryPage() {
                     counts[dept] = (counts[dept] || 0) + 1;
                   });
                   const colors = [
-                    "var(--s-chart-1)",
-                    "var(--s-chart-2)",
-                    "var(--s-chart-3)",
-                    "var(--s-chart-4)",
-                    "var(--s-chart-5)",
+                    "var(--chart-1)",
+                    "var(--chart-2)",
+                    "var(--chart-3)",
+                    "var(--chart-4)",
+                    "var(--chart-5)",
                     "var(--chart-6)",
                     "var(--chart-7)",
                   ];
@@ -630,8 +628,8 @@ export default function LaboratoryPage() {
                     ),
                     val: order.status === "result-uploaded" ? (
                       <div className="text-sm">
-                        <span className="font-bold text-text">{order.resultValue}</span>
-                        <span className="text-xs text-text-muted block max-w-[150px] truncate">{order.resultNotes}</span>
+                        <span className="font-bold text-text">{order.result?.value}</span>
+                        <span className="text-xs text-text-muted block max-w-[150px] truncate">{order.result?.notes}</span>
                       </div>
                     ) : (
                       <span className="text-xs text-text-muted">Awaiting fulfillment</span>
@@ -701,12 +699,12 @@ export default function LaboratoryPage() {
                             <span>{order.testId?.department}</span>
                             <span>{new Date(order.orderDate).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                           </div>
-                          {order.status === "result-uploaded" && order.resultValue && (
+                          {order.status === "result-uploaded" && order.result?.value && (
                             <div className="pt-1.5 border-t border-border/50">
                               <span className="text-[10px] font-bold uppercase text-text-muted block">Outcome:</span>
-                              <span className="font-bold text-text text-sm">{order.resultValue}</span>
-                              {order.resultNotes && (
-                                <p className="text-[11px] text-text-muted italic truncate">{order.resultNotes}</p>
+                              <span className="font-bold text-text text-sm">{order.result?.value}</span>
+                              {order.result?.notes && (
+                                <p className="text-[11px] text-text-muted italic truncate">{order.result?.notes}</p>
                               )}
                             </div>
                           )}
@@ -880,7 +878,7 @@ export default function LaboratoryPage() {
                       </div>
                     );
                   }}
-                  emptyMessage="No diagnostic tests registered in this clinic catalog."
+                  emptyMessage="No diagnostic tests registered in this location catalog."
                 />
               </Card>
             </div>
@@ -925,7 +923,7 @@ export default function LaboratoryPage() {
                       </Badge>
                     ),
                     val: order.status === "result-uploaded" ? (
-                      <span className="font-bold text-accent">{order.resultValue}</span>
+                      <span className="font-bold text-accent">{order.result?.value}</span>
                     ) : (
                       <span className="text-xs text-text-muted italic">Processing...</span>
                     ),
@@ -973,7 +971,7 @@ export default function LaboratoryPage() {
                           {order.status === "result-uploaded" ? (
                             <div className="pt-1 border-t border-border/50 flex items-center justify-between">
                               <span className="font-bold text-text-muted">Result:</span>
-                              <span className="font-bold text-accent dark:text-accent text-sm">{order.resultValue}</span>
+                              <span className="font-bold text-accent dark:text-accent text-sm">{order.result?.value}</span>
                             </div>
                           ) : (
                             <p className="text-xs text-text-muted italic pt-0.5">Report under processing in laboratory.</p>
@@ -1254,7 +1252,7 @@ export default function LaboratoryPage() {
                     setUploadedFile(val);
                     try {
                       const res = await uploadFile(val, { patientId: activeOrder?.patientId.id, contentClass: 'lab_report' });
-                      setAttachmentUrl(res.publicUrl);
+                      setAttachmentUrl(res.objectKey);
                       toast({ title: "Upload Success", description: "Lab report file uploaded successfully", variant: "success" });
                     } catch {
                       setUploadedFile(null);
@@ -1265,7 +1263,7 @@ export default function LaboratoryPage() {
                     setAttachmentUrl(val);
                   }
                 }}
-                uploading={isUploading}
+                uploading={uploading}
                 progress={progress}
                 accept="image/png, image/jpeg, image/webp, application/pdf"
                 allowedTypes={["image/", "application/pdf"]}
@@ -1335,7 +1333,7 @@ export default function LaboratoryPage() {
                         <div className="text-[10px] font-mono text-text-muted mt-0.5">{printOrder.testId?.code}</div>
                       </td>
                       <td className="border border-border p-2.5 align-top font-bold text-accent whitespace-pre-wrap break-words leading-relaxed">
-                        {printOrder.resultValue}
+                        {printOrder.result?.value}
                       </td>
                       <td className="border border-border p-2.5 align-top font-mono text-text-secondary whitespace-pre-wrap break-words">
                         {printOrder.testId?.normalRange}
@@ -1348,10 +1346,10 @@ export default function LaboratoryPage() {
                 </table>
               </div>
 
-              {printOrder.resultNotes && (
+              {printOrder.result?.notes && (
                 <div className="bg-accent-subtle/50 border-l-4 border-accent p-3 rounded-r-xl text-xs text-text leading-relaxed">
                   <strong className="text-accent block font-bold mb-0.5">Pathologist Findings & Clinical Notes:</strong>
-                  <p className="whitespace-pre-wrap italic">{printOrder.resultNotes}</p>
+                  <p className="whitespace-pre-wrap italic">{printOrder.result?.notes}</p>
                 </div>
               )}
 

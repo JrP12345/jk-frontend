@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { Card, CardContent, Table, Button, Modal, Input, DatePicker, Select, useToast, Badge, StatCard, Dropdown, ConfirmDialog, ChartContainer, DonutChart, cn } from "@/components/ui";
 import { PharmacyAlertsCenter } from "@/components/pharmacy/PharmacyAlertsCenter";
 import { playChimeSound } from "@/utils/audioChimes";
@@ -12,7 +12,7 @@ import { RotateCw, Plus, Pill, AlertTriangle, Clock, Package, MoreHorizontal, Ed
 
 interface MedicineType {
   id: string;
-  clinicId: string;
+  locationId: string;
   name: string;
   genericName: string;
   stockQuantity: number;
@@ -47,15 +47,15 @@ interface PendingPrescriptionGroup {
 
 export default function PharmacyPage() {
   const { user } = useAuthStore();
-  const { clinics, fetchClinics, activeClinicId } = useClinicStore();
+  const { locations, fetchLocations, activeLocationId } = useLocationStore();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"inventory" | "alerts" | "dispensing">("inventory");
-  const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
+  const [selectedLocationId, setSelectedLocationId] = useState(activeLocationId || "");
 
   useEffect(() => {
-    setSelectedClinicId(activeClinicId || "");
-  }, [activeClinicId]);
+    setSelectedLocationId(activeLocationId || "");
+  }, [activeLocationId]);
 
   const [medicines, setMedicines] = useState<MedicineType[]>([]);
   const [pendingPrescriptionGroups, setPendingPrescriptionGroups] = useState<PendingPrescriptionGroup[]>([]);
@@ -119,7 +119,7 @@ export default function PharmacyPage() {
     try {
       await api.post("/pharmacy/batches", {
         medicineId: batchTargetMed.id,
-        clinicId: selectedClinicId || batchTargetMed.clinicId,
+        locationId: selectedLocationId || batchTargetMed.locationId,
         batchNumber: newBatchNum.trim(),
         expiryDate: newBatchExpiry,
         quantity: newBatchQty,
@@ -218,18 +218,18 @@ export default function PharmacyPage() {
   });
 
   useEffect(() => {
-    if (user && user.role !== "patient") fetchClinics();
-  }, [user?.id, user?.role, fetchClinics]);
+    if (user && user.role !== "patient") fetchLocations();
+  }, [user?.id, user?.role, fetchLocations]);
 
   const fetchData = async () => {
     try {
       setLoadError(null);
       setIsRefreshing(true);
-      const query = selectedClinicId ? `?clinicId=${selectedClinicId}` : "";
+      const query = selectedLocationId ? `?locationId=${selectedLocationId}` : "";
       const [medsRes, pendingRes] = await Promise.all([
         api.get(`/medicines${query}`),
-        selectedClinicId
-          ? api.get(`/pharmacy/pending-prescriptions?clinicId=${selectedClinicId}`)
+        selectedLocationId
+          ? api.get(`/pharmacy/pending-prescriptions?locationId=${selectedLocationId}`)
           : Promise.resolve({ data: { data: [] } }),
       ]);
       setMedicines(medsRes.data.data || []);
@@ -247,7 +247,7 @@ export default function PharmacyPage() {
     fetchData();
 
     let ws: WebSocket | null = null;
-    if (typeof window !== "undefined" && selectedClinicId) {
+    if (typeof window !== "undefined" && selectedLocationId) {
       try {
         const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
@@ -255,7 +255,7 @@ export default function PharmacyPage() {
         if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
           wsHost = wsHost.replace("localhost", window.location.hostname).replace("127.0.0.1", window.location.hostname);
         }
-        ws = new WebSocket(`${wsProto}//${wsHost}/api/clinical/ws?clinicId=${selectedClinicId}`);
+        ws = new WebSocket(`${wsProto}//${wsHost}/api/clinical/ws?locationId=${selectedLocationId}`);
 
         ws.onmessage = (event) => {
           try {
@@ -290,7 +290,7 @@ export default function PharmacyPage() {
         ws.close();
       }
     };
-  }, [selectedClinicId]);
+  }, [selectedLocationId]);
 
   const handleMedSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -302,7 +302,7 @@ export default function PharmacyPage() {
     try {
       setSubmittingMed(true);
       const payload = {
-        clinicId: selectedClinicId,
+        locationId: selectedLocationId,
         name: medName,
         genericName,
         stockQuantity,
@@ -385,7 +385,7 @@ export default function PharmacyPage() {
     try {
       const payload: Record<string, any> = {
         patientId: activePrescriptionGroup.patientId.id,
-        clinicId: selectedClinicId,
+        locationId: selectedLocationId,
         doctorId: activePrescriptionGroup.doctorId?.id,
         prescriptionIds: activePrescriptionGroup.prescriptions.map((rx) => rx.id),
         items: validItems,
@@ -580,7 +580,7 @@ export default function PharmacyPage() {
          ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "alerts" && (
         <PharmacyAlertsCenter
-          clinicId={selectedClinicId}
+          locationId={selectedLocationId}
           medicines={medicines as any}
           onOpenAddBatch={(med) => openAddBatchModal(med as any)}
           onRefresh={fetchData}
@@ -617,9 +617,9 @@ export default function PharmacyPage() {
                   });
 
                   return [
-                    { name: "Optimal Stock", value: optimal, color: "var(--s-chart-2)" },
-                    { name: "Low Stock (<10)", value: low, color: "var(--s-chart-3)" },
-                    { name: "Out of Stock", value: outOfStock, color: "var(--s-chart-5)" },
+                    { name: "Optimal Stock", value: optimal, color: "var(--chart-2)" },
+                    { name: "Low Stock (<10)", value: low, color: "var(--chart-3)" },
+                    { name: "Out of Stock", value: outOfStock, color: "var(--chart-5)" },
                     { name: "Expired Batches", value: expired, color: "var(--danger)" },
                   ].filter((item) => item.value > 0);
                 })()}
@@ -828,7 +828,7 @@ export default function PharmacyPage() {
                     </div>
                   );
                 }}
-                emptyMessage="No medicines registered in this clinic catalog."
+                emptyMessage="No medicines registered in this location catalog."
               />
             </CardContent>
           </Card>
@@ -1030,7 +1030,7 @@ export default function PharmacyPage() {
                     </div>
                   );
                 }}
-                emptyMessage="No active prescriptions awaiting dispensing at this clinic location."
+                emptyMessage="No active prescriptions awaiting dispensing at this location."
               />
             </CardContent>
           </Card>
@@ -1103,7 +1103,7 @@ export default function PharmacyPage() {
               value={expiryDate}
               minDate={new Date()}
               onChange={(val) => {
-                const strVal = typeof val === "string" ? val : val.target.value;
+                const strVal = val;
                 setExpiryDate(strVal);
                 validateMedField("expiryDate", strVal);
               }}
@@ -1169,7 +1169,7 @@ export default function PharmacyPage() {
         open={isDispenseOpen}
         onClose={() => setIsDispenseOpen(false)}
         title="Dispensing Fulfillment Desk"
-        description="Fulfill prescribed items against clinic inventory stock and create billing charges."
+        description="Fulfill prescribed items against location inventory stock and create billing charges."
         size="lg"
         footer={
           activePrescriptionGroup ? (

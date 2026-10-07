@@ -32,7 +32,7 @@ const Skeleton = memo(function Skeleton({
       aria-hidden="true"
       style={{ width, height, ...style }}
       className={cn(
-        "skeleton-shimmer border border-border/20 shrink-0 select-none",
+        "skeleton-shimmer shrink-0 select-none",
         roundedMap[rounded],
         className
       )}
@@ -42,7 +42,7 @@ const Skeleton = memo(function Skeleton({
 
 export default Skeleton;
 
-export const SkeletonText = memo(function SkeletonText({
+const SkeletonText = memo(function SkeletonText({
   lines = 3,
   className = "",
 }: {
@@ -225,5 +225,3 @@ export const SkeletonCardGrid = memo(function SkeletonCardGrid({
     </div>
   );
 });
-
-

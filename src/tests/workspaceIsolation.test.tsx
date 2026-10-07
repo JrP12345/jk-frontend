@@ -2,7 +2,7 @@ import { act, render } from "@testing-library/react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore, type User } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { useModuleStore, type ModuleInfo } from "@/store/moduleStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { hasRoutePermission } from "@/lib/routePermissions";
@@ -33,7 +33,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   navigationFixture.pathname = "/dashboard";
   useAuthStore.setState({ user: null, isLoading: false, isAuthenticated: false, isLoggingOut: false });
-  useClinicStore.getState().reset();
+  useLocationStore.getState().reset();
   useModuleStore.getState().reset();
   localStorage.clear(); sessionStorage.clear();
 });
@@ -65,30 +65,30 @@ describe("Effective grants and workspace isolation", () => {
   it("coalesces clinic requests and makes every caller wait for the same data", async () => {
     const read = deferred<ReturnType<typeof response>>();
     vi.mocked(api.get).mockReturnValueOnce(read.promise);
-    const first = useClinicStore.getState().fetchClinics();
-    const second = useClinicStore.getState().fetchClinics(true);
+    const first = useLocationStore.getState().fetchLocations();
+    const second = useLocationStore.getState().fetchLocations(true);
     expect(first).toBe(second);
     expect(api.get).toHaveBeenCalledOnce();
-    read.resolve(response([{ _id: "clinic-a", name: "A" }, { name: "Invalid" }]));
+    read.resolve(response([{ id: "clinic-a", name: "A" }, { name: "Invalid" }]));
     expect(await second).toEqual([expect.objectContaining({ id: "clinic-a" })]);
     expect(await first).toHaveLength(1);
   });
 
   it("discards clinic and module responses from the previous organization, even if abort is ignored", async () => {
     useAuthStore.getState().login(user());
-    const clinics = deferred<ReturnType<typeof response>>(), modules = deferred<ReturnType<typeof response>>();
-    vi.mocked(api.get).mockReturnValueOnce(clinics.promise).mockReturnValueOnce(modules.promise);
-    const oldClinics = useClinicStore.getState().fetchClinics();
+    const locations = deferred<ReturnType<typeof response>>(), modules = deferred<ReturnType<typeof response>>();
+    vi.mocked(api.get).mockReturnValueOnce(locations.promise).mockReturnValueOnce(modules.promise);
+    const oldLocations = useLocationStore.getState().fetchLocations();
     const oldModules = useModuleStore.getState().fetchModules();
     const signal = vi.mocked(api.get).mock.calls[0][1]?.signal;
     useAuthStore.getState().login(user("org-b"));
     expect(signal?.aborted).toBe(true);
     vi.mocked(api.get).mockResolvedValueOnce(response([{ id: "clinic-b", name: "B" }]));
-    await useClinicStore.getState().fetchClinics();
-    clinics.resolve(response([{ id: "clinic-a", name: "A" }])); modules.resolve(response([moduleInfo]));
-    expect(await oldClinics).toEqual([]);
+    await useLocationStore.getState().fetchLocations();
+    locations.resolve(response([{ id: "clinic-a", name: "A" }])); modules.resolve(response([moduleInfo]));
+    expect(await oldLocations).toEqual([]);
     await oldModules;
-    expect(useClinicStore.getState().clinics[0].id).toBe("clinic-b");
+    expect(useLocationStore.getState().locations[0].id).toBe("clinic-b");
     expect(useModuleStore.getState().modules).toEqual([]);
   });
 
@@ -103,10 +103,10 @@ describe("Effective grants and workspace isolation", () => {
     await useModuleStore.getState().fetchModules();
     expect(useModuleStore.getState().isLoaded).toBe(true);
     vi.mocked(api.get).mockRejectedValueOnce(new Error("offline"));
-    await useClinicStore.getState().fetchClinics();
-    expect(useClinicStore.getState().isLoaded).toBe(false);
+    await useLocationStore.getState().fetchLocations();
+    expect(useLocationStore.getState().isLoaded).toBe(false);
     vi.mocked(api.get).mockResolvedValueOnce(response([{ id: "retry", name: "Retry" }]));
-    expect(await useClinicStore.getState().fetchClinics()).toHaveLength(1);
+    expect(await useLocationStore.getState().fetchLocations()).toHaveLength(1);
   });
 
   it.each(["single", "bulk"])("does not apply a late %s module mutation to the new workspace", async (mode) => {
@@ -143,17 +143,17 @@ describe("Effective grants and workspace isolation", () => {
 
   it("suspends the old workspace during a switch and commits only the verified server scope", async () => {
     useAuthStore.getState().login(user());
-    useClinicStore.setState({ clinics: [{ id: "clinic-a", name: "A", city: "" }], isLoaded: true });
+    useLocationStore.setState({ locations: [{ id: "clinic-a", name: "A", city: "" }], isLoaded: true });
     const write = deferred<ReturnType<typeof response>>();
     vi.mocked(api.post).mockReturnValueOnce(write.promise);
     vi.mocked(api.get).mockResolvedValueOnce(response({ user: user("org-b") }));
     const change = useAuthStore.getState().switchOrg("org-b");
     expect(useAuthStore.getState()).toMatchObject({ user: null, isLoading: true });
-    expect(useClinicStore.getState().clinics).toEqual([]);
+    expect(useLocationStore.getState().locations).toEqual([]);
     await expect(useAuthStore.getState().impersonate({ userId: "other" })).rejects.toThrow("already in progress");
     write.resolve(response({})); await change;
     expect(useAuthStore.getState()).toMatchObject({ user: { organization_id: "org-b" }, isLoading: false });
-    expect(localStorage.getItem("ananta_active_org_id")).toBe("org-b");
+    expect(localStorage.getItem("ekavyu_active_org_id")).toBe("org-b");
   });
 
   it("clears the old identity when a workspace switch cannot be verified", async () => {
@@ -176,7 +176,7 @@ describe("Effective grants and workspace isolation", () => {
     await useAuthStore.getState().stopImpersonation();
     expect(useAuthStore.getState().user).toMatchObject({ role: "root", impersonatedBy: null });
     expect(useModuleStore.getState().modules).toEqual([]);
-    expect(localStorage.getItem("ananta_active_org_id")).toBeNull();
+    expect(localStorage.getItem("ekavyu_active_org_id")).toBeNull();
   });
 
   it("clears the real query cache on scope/grant changes while keeping harmless profile refreshes", async () => {

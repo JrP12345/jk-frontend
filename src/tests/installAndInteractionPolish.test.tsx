@@ -5,10 +5,10 @@ import sharp from "sharp";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import BrowseClient from "@/app/browse/BrowseClient";
-import BrowseDetailClient, { type ClinicDetail } from "@/app/browse/[id]/BrowseDetailClient";
+import BrowseDetailClient, { type LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
 import { FloatingAICopilot } from "@/components/ai/FloatingAICopilot";
 import { useAuthStore } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { forceResetScrollLock, lockScroll, unlockScroll } from "@/lib/scrollLock";
 import api from "@/lib/api";
 import { printElement, printWhenReady } from "@/lib/printBrand";
@@ -26,7 +26,7 @@ beforeEach(() => {
   vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
   HTMLElement.prototype.scrollIntoView = vi.fn();
   useAuthStore.setState({ user: { id: "patient", role: "patient", name: "Patient", email: "patient@test.com", permissions: [] }, isAuthenticated: true, isLoading: false });
-  useClinicStore.setState({ activeClinicId: null });
+  useLocationStore.setState({ activeLocationId: null });
 });
 afterEach(() => { forceResetScrollLock(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -105,37 +105,37 @@ describe("Shared action and overlay behavior", () => {
 });
 
 describe("Browse and booking continuity", () => {
-  const clinic: ClinicDetail = { id: "clinic", name: "Test Clinic", city: "Surat", address: "Test street", phone: "", email: "", description: "Care", image_url: "", timings: "09:00-17:00", doctors: [{ id: "doctor", name: "Test Doctor", specialization: "General Physician", qualification: "MBBS", experience_years: 5, fees: 0, feeType: "free", timings: "09:00-17:00", working_days: "Monday-Saturday", description: "", image_url: "", bookingMode: "sequential_queue" }] };
+  const location: LocationDetail = { id: "clinic", slug: "clinic", name: "Test Clinic", city: "Surat", address: "Test street", phone: "", email: "", description: "Care", image_url: "", timings: "09:00-17:00", doctors: [{ id: "doctor", name: "Test Doctor", specialization: "General Physician", qualification: "MBBS", experience_years: 5, fees: 0, feeType: "free", timings: "09:00-17:00", working_days: "Monday-Saturday", description: "", image_url: "", bookingMode: "sequential_queue" }] };
 
   it("shows honest fee and experience states without unsupported trust claims", () => {
-    const doctor = { ...clinic.doctors[0], fees: 0, feeType: "fixed" as const, qualification: "", experience_years: 0, rating: 5, reviewsCount: 0 };
-    render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={{ ...clinic, doctors: [doctor] }} /></ToastProvider></ThemeProvider>);
-    expect(screen.getAllByText("Ask clinic for fee").length).toBeGreaterThan(0);
+    const doctor = { ...location.doctors[0], fees: 0, feeType: "fixed" as const, qualification: "", experience_years: 0, rating: 5, reviewsCount: 0 };
+    render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={{ ...location, doctors: [doctor] }} /></ToastProvider></ThemeProvider>);
+    expect(screen.getAllByText("Ask reception for fee").length).toBeGreaterThan(0);
     expect(screen.getByText("Not listed")).toBeInTheDocument();
     expect(screen.queryByText(/verified facility|accredited healthcare|cashless support/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/out of 5 from/i)).not.toBeInTheDocument();
   });
 
   it("opens directions to recorded coordinates when both are valid", () => {
-    render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={{ ...clinic, latitude: 21.17, longitude: 72.83 }} /></ToastProvider></ThemeProvider>);
+    render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={{ ...location, latitude: 21.17, longitude: 72.83 }} /></ToastProvider></ThemeProvider>);
     const link = screen.getByRole("link", { name: "Get Directions" });
     expect(new URL(link.getAttribute("href")!).searchParams.get("destination")).toBe("21.17,72.83");
     expect(link).toHaveAttribute("target", "_blank");
   });
 
   it("uses the recorded address and city when coordinates are unavailable", () => {
-    render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={{ ...clinic, latitude: 91, longitude: 72.83 }} /></ToastProvider></ThemeProvider>);
+    render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={{ ...location, latitude: 91, longitude: 72.83 }} /></ToastProvider></ThemeProvider>);
     const link = screen.getByRole("link", { name: "Get Directions" });
     expect(new URL(link.getAttribute("href")!).searchParams.get("destination")).toBe("Test street, Surat");
   });
 
   it("does not offer directions when only the city is recorded", () => {
-    render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={{ ...clinic, address: "." }} /></ToastProvider></ThemeProvider>);
+    render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={{ ...location, address: "." }} /></ToastProvider></ThemeProvider>);
     expect(screen.queryByRole("link", { name: "Get Directions" })).not.toBeInTheDocument();
   });
 
   it("renders partial records and replaces failed images without pretending that missing fees are free", () => {
-    render(<BrowseClient initialLoaded initialClinics={[{ id: "partial", name: "Partial Clinic", rating: "4.8", reviewsCount: "2", logo_url: "/broken.png", doctorCount: 1, doctorsSummary: [{ id: "doc", name: "Doctor" }], facilities: [null, "Parking"], specialties: [null] }] as never} />);
+    render(<BrowseClient initialLoaded initialLocations={[{ id: "partial", name: "Partial Clinic", rating: "4.8", reviewsCount: "2", logo_url: "/broken.png", doctorCount: 1, doctorsSummary: [{ id: "doc", name: "Doctor" }], amenities: [null, "Parking"], specialties: [null] }] as never} />);
     expect(screen.getByRole("link", { name: "Partial Clinic" })).toBeInTheDocument();
     expect(screen.getByText("Fee not listed")).toBeInTheDocument();
     expect(screen.getByText("Location not listed")).toBeInTheDocument();
@@ -147,8 +147,8 @@ describe("Browse and booking continuity", () => {
   it("uses the same loading shell during server loading without starting duplicate requests", () => {
     const request = vi.spyOn(api, "get");
     render(<BrowseClient loadingOnly />);
-    expect(screen.getByText("Finding clinics...")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Sort clinics by" })).toBeDisabled();
+    expect(screen.getByText("Finding locations...")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Sort locations by" })).toBeDisabled();
     expect(request).not.toHaveBeenCalled();
   });
 
@@ -161,7 +161,7 @@ describe("Browse and booking continuity", () => {
     vi.spyOn(api, "get").mockImplementation(() => new Promise(resolve => { available = resolve; }));
     let confirmed!: (value: unknown) => void;
     const post = vi.spyOn(api, "post").mockImplementation(() => new Promise(resolve => { confirmed = resolve; }));
-    render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={clinic} /></ToastProvider></ThemeProvider>);
+    render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={location} /></ToastProvider></ThemeProvider>);
     fireEvent.click(screen.getAllByRole("button", { name: "Check appointments" })[0]);
     const dialog = await screen.findByRole("dialog", { name: "Select Date & Time" });
     expect(document.body.style.position).toBe("fixed");
@@ -176,7 +176,7 @@ describe("Browse and booking continuity", () => {
     await act(async () => confirmed({ data: { data: { id: "appointment", status, tokenNumber: 5, paymentStatus: "paid" } } }));
     expect(screen.getByRole("dialog")).toBe(dialog);
     expect(within(dialog).getByText("#5")).toBeInTheDocument();
-    expect(within(dialog).getByText("Clinic Queue Token")).toBeInTheDocument();
+    expect(within(dialog).getByText("Appointment Token")).toBeInTheDocument();
     expect(within(dialog).getByRole("status")).toHaveTextContent(label);
     expect(within(dialog).getByText("Test Clinic")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Done" })).toBeEnabled();
@@ -186,7 +186,7 @@ describe("Browse and booking continuity", () => {
 
   it("leaves Continue disabled after availability fails and offers a local retry", async () => {
     vi.spyOn(api, "get").mockRejectedValue(new Error("Offline"));
-    render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={clinic} /></ToastProvider></ThemeProvider>);
+    render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={location} /></ToastProvider></ThemeProvider>);
     fireEvent.click(screen.getAllByRole("button", { name: "Check appointments" })[0]);
     const dialog = await screen.findByRole("dialog", { name: "Select Date & Time" });
     expect(await within(dialog).findByText("Availability could not be checked. Please try again.")).toBeInTheDocument();
@@ -196,8 +196,8 @@ describe("Browse and booking continuity", () => {
 
   it("respects an empty server slot list instead of generating bookable local slots", async () => {
     vi.spyOn(api, "get").mockResolvedValue({ data: { data: { isWorkingDay: true, bookingMode: "time_slot", slots: [] } } });
-    const timedClinic = { ...clinic, doctors: clinic.doctors.map(doctor => ({ ...doctor, bookingMode: "time_slot" })) };
-    render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={timedClinic} /></ToastProvider></ThemeProvider>);
+    const timedLocation = { ...location, doctors: location.doctors.map(doctor => ({ ...doctor, bookingMode: "time_slot" })) };
+    render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={timedLocation} /></ToastProvider></ThemeProvider>);
     fireEvent.click(screen.getAllByRole("button", { name: "Check appointments" })[0]);
     const dialog = await screen.findByRole("dialog", { name: "Select Date & Time" });
     await within(dialog).findByText("Availability updated");
@@ -207,7 +207,7 @@ describe("Browse and booking continuity", () => {
 
   it("prevents continuing when the server reports that all queue tokens are booked", async () => {
     vi.spyOn(api, "get").mockResolvedValue({ data: { data: { isWorkingDay: true, bookingMode: "sequential_queue", slots: [], nextToken: 21, maxDailyTokens: 20, tokensToday: 20 } } });
-    render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={clinic} /></ToastProvider></ThemeProvider>);
+    render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={location} /></ToastProvider></ThemeProvider>);
     fireEvent.click(screen.getAllByRole("button", { name: "Check appointments" })[0]);
     const dialog = await screen.findByRole("dialog", { name: "Select Date & Time" });
     expect(await within(dialog).findByText("All tokens are booked")).toBeInTheDocument();
@@ -227,7 +227,7 @@ describe("AI context and recovery", () => {
   });
 
   it("passes root clinic context through session creation and message send, without dropping the first question", async () => {
-    useAuthStore.setState({ user: root }); useClinicStore.setState({ activeClinicId: "chosen-clinic" });
+    useAuthStore.setState({ user: root }); useLocationStore.setState({ activeLocationId: "chosen-clinic" });
     vi.spyOn(api, "get").mockResolvedValue({ data: { data: [] } });
     const post = vi.spyOn(api, "post").mockResolvedValueOnce({ data: { data: { id: "new-chat", messages: [] } } }).mockResolvedValueOnce({ data: { data: { allMessages: [{ id: "answer", sender: "ai", text: "Ready to help", timestamp: "12:00" }] } } });
     render(<FloatingAICopilot />);
@@ -236,7 +236,7 @@ describe("AI context and recovery", () => {
     await waitFor(() => expect(input).toBeEnabled());
     fireEvent.change(input, { target: { value: "Show today's appointments" } });
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
-    await waitFor(() => expect(post).toHaveBeenCalledWith("/ai/chat/sessions/new-chat/messages?clinicId=chosen-clinic", expect.objectContaining({ query: "Show today's appointments" }), expect.anything()));
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/ai/chat/sessions/new-chat/messages?locationId=chosen-clinic", expect.objectContaining({ query: "Show today's appointments" }), expect.anything()));
     expect(await screen.findByText("Ready to help")).toBeInTheDocument();
     expect(post).toHaveBeenCalledTimes(2);
   });

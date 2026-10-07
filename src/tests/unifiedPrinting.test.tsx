@@ -141,7 +141,7 @@ describe("Shared document lifecycle", () => {
 });
 
 describe("Existing paper and template choices", () => {
-  const token = { appointmentId: "appointment", tokenNumber: 7, clinicName: "Clinic", doctorName: "Doctor", patientName: "Patient" };
+  const token = { appointmentId: "appointment", tokenNumber: 7, locationName: "Clinic", doctorName: "Doctor", patientName: "Patient" };
   it("waits for the tracking code and prints the selected thermal width", async () => {
     let qrReady!: (value: string) => void;
     vi.mocked(QRCode.toDataURL).mockImplementation(() => new Promise(resolve => { qrReady = resolve; }) as never);
@@ -165,9 +165,9 @@ describe("Existing paper and template choices", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Print token slip" })).toBeEnabled());
   });
   it("retains the existing preprinted letterhead offset and pins actions outside the preview", async () => {
-    const document: UnifiedDocumentData = { documentType: "prescription", title: "Prescription", clinicName: "Clinic", patientName: "Patient", date: "2026-09-28", prescriptions: [] };
+    const document: UnifiedDocumentData = { documentType: "prescription", title: "Prescription", locationName: "Clinic", patientName: "Patient", date: "2026-09-28", prescriptions: [] };
     render(<ToastProvider><UnifiedDocumentModal open document={document} onClose={vi.fn()} /></ToastProvider>);
-    fireEvent.click(screen.getByRole("button", { name: "Preprinted clinic pad" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preprinted letterhead" }));
     const button = screen.getByRole("button", { name: "Print prescription" });
     expect(button.closest('.overflow-y-auto')).toBeNull();
     fireEvent.click(button);

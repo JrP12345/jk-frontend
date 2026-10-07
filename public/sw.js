@@ -1,7 +1,7 @@
 // Only explicit public resources can enter the offline cache.
 const CACHE_NAME = 'ekavyu-cache-v10';
 const PUBLIC_PAGES = new Set(['/browse', '/pricing']);
-const PUBLIC_FILES = new Set(['/manifest.json', '/ekavyu-leaf.png', '/ekavyu-home-social.png', '/favicon.ico', '/favicon-16.png', '/favicon-32.png', '/app-icon-180.png', '/app-icon-192.png', '/app-icon-512.png', '/app-icon-maskable-512.png', '/logo-d.png', '/logo-w.png']);
+const PUBLIC_FILES = new Set(['/manifest.json', '/ekavyu-leaf.png', '/ekavyu-home-social.png', '/favicon.ico', '/favicon-16.png', '/favicon-32.png', '/app-icon-180.png', '/app-icon-192.png', '/app-icon-512.png', '/app-icon-maskable-512.png']);
 function allowed(url) {
   return url.origin === self.location.origin && (PUBLIC_PAGES.has(url.pathname) || PUBLIC_FILES.has(url.pathname) || url.pathname.startsWith('/_next/static/'));
 }
@@ -28,7 +28,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const names = await caches.keys();
-    await Promise.all(names.filter(name => /^(ekavyu|ananta|jk)-cache-/.test(name) && name !== CACHE_NAME).map(name => caches.delete(name)));
+    await Promise.all(names.filter(name => /^(ekavyu|healthos|jk)-cache-/.test(name) && name !== CACHE_NAME).map(name => caches.delete(name)));
     await self.clients.claim();
   })());
 });
@@ -46,6 +46,6 @@ self.addEventListener('fetch', event => {
 });
 self.addEventListener('message', event => {
   if (event.data?.action === 'CLEAR_USER_CACHE') {
-    event.waitUntil(caches.keys().then(names => Promise.all(names.filter(name => /^(ekavyu|ananta|jk)-cache-/.test(name)).map(name => caches.delete(name)))));
+    event.waitUntil(caches.keys().then(names => Promise.all(names.filter(name => /^(ekavyu|healthos|jk)-cache-/.test(name)).map(name => caches.delete(name)))));
   }
 });

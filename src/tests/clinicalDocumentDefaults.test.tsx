@@ -22,7 +22,7 @@ describe("official clinical document generator", () => {
   it("generates a referral when real identity and clinical details are supplied", () => {
     const onDocumentGenerated = vi.fn();
     render(<ToastProvider><ClinicalDocumentGeneratorModal open onClose={vi.fn()}
-      clinicName="Recorded Clinic" defaultDoctorName="Recorded Doctor" defaultDoctorRegistrationNumber="REG-123"
+      locationName="Recorded Clinic" defaultDoctorName="Recorded Doctor" defaultDoctorRegistrationNumber="REG-123"
       onDocumentGenerated={onDocumentGenerated} /></ToastProvider>);
     fireEvent.change(screen.getByRole("textbox", { name: "Patient Name" }), { target: { value: "Recorded Patient" } });
     fireEvent.change(screen.getByRole("textbox", { name: "Referred To (Doctor / Hospital / Center)" }), { target: { value: "Receiving Hospital" } });
@@ -31,7 +31,7 @@ describe("official clinical document generator", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Reason & Indication for Referral" }), { target: { value: "Specialist assessment" } });
     fireEvent.click(screen.getByRole("button", { name: /Generate & Print Certificate/ }));
     expect(onDocumentGenerated).toHaveBeenCalledWith(expect.objectContaining({
-      clinicName: "Recorded Clinic", doctorName: "Recorded Doctor", doctorRegistrationNumber: "REG-123", patientName: "Recorded Patient",
+      locationName: "Recorded Clinic", doctorName: "Recorded Doctor", doctorRegistrationNumber: "REG-123", patientName: "Recorded Patient",
     }));
   });
 });

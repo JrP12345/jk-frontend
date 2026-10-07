@@ -20,15 +20,15 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "group relative inline-flex min-w-0 max-w-full items-center justify-center font-medium leading-snug text-center select-none cursor-pointer rounded-xl transform-gpu transition-all duration-150 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:pointer-events-none disabled:transform-none active:scale-[0.98] touch-manipulation min-h-[44px] md:min-h-0";
+  "group relative inline-flex min-w-0 max-w-full items-center justify-center font-medium leading-snug text-center select-none cursor-pointer rounded-control transition-[color,background-color,border-color,box-shadow,opacity] duration-[var(--motion-fast)] ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:pointer-events-none touch-manipulation min-h-[44px] md:min-h-0";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
     "bg-primary border border-transparent shadow-xs hover:bg-primary-hover active:bg-primary-active",
   secondary:
-    "bg-surface-alt border border-border shadow-xs hover:bg-surface-hover hover:border-border hover:shadow-sm active:bg-surface-alt active:scale-[0.98]",
+    "bg-surface-alt border border-border hover:bg-surface-hover active:bg-active",
   outline:
-    "border border-border/80 bg-surface shadow-xs hover:bg-surface-hover hover:border-border active:bg-surface-alt active:scale-[0.98]",
+    "border border-input-border bg-surface hover:bg-surface-hover hover:border-border-focus active:bg-active",
   ghost:
     "hover:bg-surface-hover hover:text-text active:bg-surface-alt border border-transparent",
   danger:
@@ -51,9 +51,9 @@ const semanticForeground = /(?:^|\s)text-(?:background|accent|text(?:-primary|-s
 
 const sizes: Record<ButtonSize, string> = {
   xs: "px-2.5 py-1 text-xs gap-1.5 rounded-lg font-medium tracking-tight min-h-[44px] md:min-h-[28px]",
-  sm: "px-3.5 py-1 text-xs md:text-sm gap-1.5 rounded-xl font-medium tracking-tight min-h-[44px] md:min-h-[32px]",
-  md: "px-4 py-1.5 text-sm gap-2 rounded-xl font-medium tracking-tight min-h-[44px] md:min-h-[36px]",
-  lg: "px-5 py-2 text-base gap-2.5 rounded-xl font-medium tracking-tight min-h-[48px] md:min-h-[44px]",
+  sm: "px-3.5 py-1 text-xs md:text-sm gap-1.5 rounded-control font-medium tracking-tight min-h-[44px] md:min-h-[32px]",
+  md: "px-4 py-1.5 text-sm gap-2 rounded-control font-medium tracking-tight min-h-[44px] md:min-h-[36px]",
+  lg: "px-5 py-2 text-base gap-2.5 rounded-control font-medium tracking-tight min-h-[48px] md:min-h-[44px]",
 };
 
 const iconSizes: Record<ButtonSize, string> = {

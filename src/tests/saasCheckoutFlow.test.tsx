@@ -10,9 +10,9 @@ vi.mock("@/lib/razorpay", () => ({ loadRazorpayScript: vi.fn().mockResolvedValue
 
 const starter = { id: "starter-id", name: "Starter", slug: "starter", description: "Free", monthlyPrice: 0, annualPrice: 0,
   currency: "INR", status: "active", displayOrder: 0, isPopular: false,
-  limits: { maxClinics: 1, maxDoctors: 2, maxStaff: 5, maxPatients: 500, maxAppointments: 1000, maxStorageMB: 1024 },
+  limits: { maxLocations: 1, maxDoctors: 2, maxStaff: 5, maxPatients: 500, maxAppointments: 1000, maxStorageMB: 1024 },
   features: { analytics: false, auditLogs: false, multiBranch: false, dataExport: false, apiAccess: false, aiFeatures: false } };
-const pro = { ...starter, id: "pro-id", name: "Pro", slug: "pro", description: "Paid", monthlyPrice: 499, annualPrice: 4999 };
+const pro = { ...starter, id: "pro-id", name: "Pro", slug: "professional", description: "Paid", monthlyPrice: 499, annualPrice: 4999 };
 
 describe("SaaS Checkout UI", () => {
   let checkoutOptions: any;
@@ -34,7 +34,7 @@ describe("SaaS Checkout UI", () => {
         startedAt: "2026-09-01T00:00:00Z", expiresAt: "2026-10-15T00:00:00Z", daysRemaining: 13,
         bookingAvailable: true, paymentStatus: null, nextAction: "none" },
     });
-    vi.spyOn(billingService, "getUsage").mockResolvedValue({ usage: { clinicsCount: 0, doctorsCount: 0, staffCount: 0, patientsCount: 0, appointmentsCount: 0, storageUsedBytes: 0 },
+    vi.spyOn(billingService, "getUsage").mockResolvedValue({ usage: { locationsCount: 0, doctorsCount: 0, staffCount: 0, patientsCount: 0, appointmentsCount: 0, storageUsedBytes: 0 },
       limits: starter.limits, features: starter.features, subscriptionStatus: "trialing", planName: "Starter", planSlug: "starter",
       trialEndsAt: "2026-10-15T00:00:00Z", currentPeriodEnd: "2026-10-15T00:00:00Z" });
     vi.spyOn(billingService, "getSaaSInvoices").mockResolvedValue([]);
@@ -42,7 +42,7 @@ describe("SaaS Checkout UI", () => {
     vi.spyOn(billingService, "getBillingDetails").mockResolvedValue({ gstin: "", billingEmail: "", billingAddress: "" });
     vi.spyOn(billingService, "getCheckoutStatus").mockResolvedValue({ status: "none", success: false });
     vi.spyOn(billingService, "validatePlanDowngrade").mockResolvedValue({ canDowngrade: true, targetPlan: { id: pro.id, name: pro.name, slug: pro.slug, monthlyPrice: 499, limits: pro.limits },
-      currentUsage: { clinics: 0, doctors: 0, staff: 0 }, activeClinics: [], violations: [] });
+      currentUsage: { locations: 0, doctors: 0, staff: 0 }, activeLocations: [], violations: [] });
   });
 
   afterEach(() => { vi.restoreAllMocks(); delete (window as any).Razorpay; });

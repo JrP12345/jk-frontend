@@ -16,7 +16,7 @@ describe("Directory location detection", () => {
   });
 
   it("uses approximate IP coordinates when permission is denied and expires old caches", async () => {
-    sessionStorage.setItem("ananta_detected_geo", JSON.stringify({ city: "Old city", latitude: 0, longitude: 0, source: "gps", detectedAt: Date.now() - 600000 }));
+    sessionStorage.setItem("ekavyu_detected_geo", JSON.stringify({ city: "Old city", latitude: 0, longitude: 0, source: "gps", detectedAt: Date.now() - 600000 }));
     Object.defineProperty(navigator, "geolocation", { configurable: true, value: { getCurrentPosition: vi.fn((_success, error) => error({ code: 1 })) } });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, city: "Surat", region: "Gujarat", latitude: 21.17, longitude: 72.83 }) }));
     expect(await detectUserLocation()).toMatchObject({ city: "Surat", latitude: 21.17, longitude: 72.83, source: "ip" });

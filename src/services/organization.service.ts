@@ -7,7 +7,7 @@ export interface OrganizationRecord {
   logo_url?: string | null; image_url?: string | null; images?: string[];
   countryCode?: string; currency?: string; timezone?: string; taxId?: string; licenseNumber?: string;
   timings?: string; working_days?: string; onboardingStatus?: string;
-  maxClinics?: number; maxDoctors?: number; maxStaff?: number;
+  maxLocations?: number; maxDoctors?: number; maxStaff?: number;
   primaryAdmin?: { name: string; email?: string } | null;
   subscriptionSummary?: { label?: string; commercialState?: string; trialEndsAt?: string; nextBillingDate?: string; [key: string]: unknown };
 }
@@ -19,12 +19,10 @@ export function organizationPath(path: string, organizationId?: string) {
 export function organizationWorkspaceUrl(organizationId?: string, section = "overview") {
   return organizationId ? `${organizationPath("/dashboard/organizations", organizationId)}&section=${encodeURIComponent(section)}` : "/dashboard/organizations";
 }
-export function organizationImageUrl(value?: string | null, organizationId?: string, slot: string | number = "logo_url") {
+export function organizationImageUrl(value?: string | null) {
   if (!value) return undefined;
   if (/^(https?:|blob:|data:)/i.test(value)) return value;
-  // Same-origin proxy keeps branding compatible with the site's image CSP.
-  if (value.startsWith("/api/")) return value;
-  if (organizationId) return `/api/public/organizations/${organizationId}/branding/${slot}`;
+  if (/^\/api\/public\/organization-branding\/[a-f\d]{24}$/i.test(value)) return value;
   return undefined;
 }
 

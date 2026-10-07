@@ -21,4 +21,19 @@ describe("service worker cache privacy", () => {
     context.response.url = "https://app.test/browse";
     expect(evaluate("cacheable(response)")).toBe(true);
   });
+
+  it("erases current and retired product caches on logout", async () => {
+    const handlers: Record<string, (event: { data: { action: string }; waitUntil: (job: Promise<unknown>) => void }) => void> = {};
+    const removed: string[] = [];
+    const cacheContext = vm.createContext({
+      URL,
+      self: { location: { origin: "https://app.test" }, addEventListener: (name: string, handler: typeof handlers[string]) => { handlers[name] = handler; } },
+      caches: { keys: async () => ["ekavyu-cache-v10", "healthos-cache-v3", "jk-cache-v1", "another-app"], delete: async (name: string) => { removed.push(name); return true; } },
+    });
+    vm.runInContext(fs.readFileSync("public/sw.js", "utf8"), cacheContext);
+    let pending!: Promise<unknown>;
+    handlers.message({ data: { action: "CLEAR_USER_CACHE" }, waitUntil: job => { pending = job; } });
+    await pending;
+    expect(removed.sort()).toEqual(["ekavyu-cache-v10", "healthos-cache-v3", "jk-cache-v1"]);
+  });
 });

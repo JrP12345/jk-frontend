@@ -2,11 +2,11 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
-import { AppearancePreference, useAppearanceMenuItem } from "@/components/ui/AppearancePreference";
-import Dropdown from "@/components/ui/Dropdown";
+
+
 import Modal from "@/components/ui/Modal";
 import { ToastProvider } from "@/components/ui/Toast";
-import BrowseDetailClient, { type ClinicDetail } from "@/app/browse/[id]/BrowseDetailClient";
+import BrowseDetailClient, { type LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import { useAuthStore } from "@/store/authStore";
 import { clearRecentTracker } from "@/store/trackerStore";
@@ -40,26 +40,10 @@ function swipe(target: Element, dx: number, dy = 0, options: { pointerType?: str
   fireEvent.pointerMove(target, { ...props, clientX: startX + dx, clientY: 160 + dy });
   fireEvent.pointerUp(target, { ...props, clientX: startX + dx, clientY: 160 + dy });
 }
-function AccountMenu() {
-  return <Dropdown trigger={<button>Account</button>} items={[useAppearanceMenuItem()]} />;
-}
+
 describe("Appearance preferences", () => {
-  it("names the next appearance and persists the change from the account menu", async () => {
-    render(<ThemeProvider><AccountMenu /></ThemeProvider>);
-    fireEvent.click(screen.getByRole("button", { name: "Account" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Switch to dark appearance" }));
-    expect(document.documentElement).toHaveAttribute("data-mode", "dark");
-    expect(localStorage.getItem("jk-mode")).toBe("dark");
-    fireEvent.click(screen.getByRole("button", { name: "Account" }));
-    expect(await screen.findByRole("menuitem", { name: "Switch to light appearance" })).toBeInTheDocument();
-  });
-  it("shows the current mode beside a clear next action in mobile preferences", () => {
-    render(<ThemeProvider><AppearancePreference /></ThemeProvider>);
-    expect(screen.getByText("Light mode")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Switch to dark appearance" }));
-    expect(screen.getByText("Dark mode")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Switch to light appearance" })).toBeInTheDocument();
-  });
+
+
   it("keeps appearance and sign-in directly available to guests on Browse", () => {
     render(<ThemeProvider><MarketplaceNavbar /></ThemeProvider>);
     fireEvent.click(within(screen.getByRole("group", { name: "Mobile appearance" })).getByRole("button", { name: "Switch to dark mode" }));
@@ -79,7 +63,7 @@ describe("Appearance preferences", () => {
     fireEvent.click(screen.getByRole("button", { name: "Toggle Menu" }));
     const menu = screen.getByRole("dialog", { name: "Navigation" });
     expect(menu).toHaveClass("max-w-sm");
-    expect(within(menu).queryByRole("link", { name: "Browse Clinics" })).not.toBeInTheDocument();
+    expect(within(menu).queryByRole("link", { name: "Browse Locations" })).not.toBeInTheDocument();
     expect(within(menu).queryByRole("button", { name: /appearance/i })).not.toBeInTheDocument();
     expect(menu).toBeInTheDocument();
     expect(document.body.style.position).toBe("fixed");
@@ -173,8 +157,8 @@ describe("Booking sheet drag", () => {
 
 describe("Gallery navigation", () => {
   it("swipes through photos without closing the gallery and retains arrow and keyboard controls", () => {
-    const clinic: ClinicDetail = { id: "clinic", name: "Test Clinic", city: "Surat", address: "Test street", phone: "", email: "", description: "Care", image_url: "", timings: "09:00-17:00", doctors: [], images: ["/first.jpg", "/second.jpg"] };
-    render(<ThemeProvider><ToastProvider><BrowseDetailClient id="clinic" initialClinic={clinic} /></ToastProvider></ThemeProvider>);
+    const location: LocationDetail = { id: "clinic", slug: "clinic", name: "Test Clinic", city: "Surat", address: "Test street", phone: "", email: "", description: "Care", image_url: "", timings: "09:00-17:00", doctors: [], images: ["/first.jpg", "/second.jpg"] };
+    render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={location} /></ToastProvider></ThemeProvider>);
     fireEvent.click(screen.getByRole("button", { name: "Browse Campus Gallery" }));
     const gallery = screen.getByRole("dialog", { name: "Photo gallery" });
     swipe(within(gallery).getByRole("img", { name: "Facility showcase 1" }), -100);

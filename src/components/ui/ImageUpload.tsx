@@ -137,7 +137,7 @@ export default function ImageUpload({
           isDragging
             ? "border-primary-500 bg-primary-500/10 scale-[1.01]"
             : error
-            ? "border-danger-500 bg-danger-500/5"
+            ? "border-danger bg-danger/5"
             : "border-border bg-surface hover:bg-surface-hover hover:border-primary-500/50",
           (currentUploading || disabled) && "pointer-events-none opacity-60 cursor-not-allowed"
         )}
@@ -195,7 +195,7 @@ export default function ImageUpload({
               <button
                 type="button"
                 onClick={removeImage}
-                className="p-2 rounded-full bg-danger-500/80 hover:bg-danger-500 text-brand-mist transition-all transform-gpu scale-95 group-hover:scale-100 active:scale-90 duration-150 cursor-pointer"
+                className="p-2 rounded-full bg-danger/80 hover:bg-danger text-brand-mist transition-all transform-gpu scale-95 group-hover:scale-100 active:scale-90 duration-150 cursor-pointer"
                 aria-label="Remove file"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

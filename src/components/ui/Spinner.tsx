@@ -4,7 +4,7 @@ import { memo, type ReactNode } from "react";
 import { cn } from "./utils";
 
 export type SpinnerSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
-export type SpinnerVariant = "ring" | "dots" | "bars" | "pulse" | "orbital" | "helix" | "quantum" | "minimal";
+export type SpinnerVariant = "ring" | "dots" | "bars";
 
 export interface SpinnerProps {
   size?: SpinnerSize;
@@ -135,15 +135,6 @@ const Spinner = memo(function Spinner({
       );
     }
 
-    // ── Variant: Concentric Cardiac Pulse Beacon ──
-    if (variant === "pulse") {
-      return (
-        <div className={cn("relative flex items-center justify-center shrink-0", cfg.container, color)} aria-hidden="true">
-          <span className="absolute inset-0 rounded-full bg-current opacity-25 animate-ping" />
-          <span className="relative h-2 w-2 rounded-full bg-current  animate-pulse-beacon" />
-        </div>
-      );
-    }
 
     // One clear ring for buttons, cards, dialogs and page content.
     return (
@@ -220,73 +211,6 @@ const Spinner = memo(function Spinner({
 });
 
 export default Spinner;
-
-export interface PageSpinnerProps {
-  label?: string;
-  description?: string;
-  variant?: SpinnerVariant;
-  size?: SpinnerSize;
-  color?: string;
-  className?: string;
-}
-
-export const PageSpinner = memo(function PageSpinner({
-  label = "Loading workspace...",
-  description,
-  variant = "ring",
-  size = "xl",
-  color = "text-accent dark:text-accent",
-  className = "",
-}: PageSpinnerProps) {
-  return (
-    <div
-      className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center bg-background/70 dark:bg-black/60  animate-fade-in p-4",
-        className
-      )}
-      role="status"
-      aria-live="polite"
-      aria-label={label}
-    >
-      <div className="flex flex-col items-center justify-center max-w-sm w-full text-center p-6">
-        <div aria-hidden="true">
-          <Spinner
-            size={size}
-            variant={variant}
-            color={color}
-            label={label}
-            secondaryText={description}
-          />
-        </div>
-      </div>
-    </div>
-  );
-});
-
-export interface CardLoaderProps {
-  label?: string;
-  description?: string;
-  minHeight?: string | number;
-  className?: string;
-}
-
-export const CardLoader = memo(function CardLoader({
-  label = "Loading data...",
-  description,
-  minHeight = "180px",
-  className = "",
-}: CardLoaderProps) {
-  const minHStyle = typeof minHeight === "number" ? `${minHeight}px` : minHeight;
-  return (
-    <div
-      style={{ minHeight: minHStyle }}
-      className={cn("w-full flex flex-col items-center justify-center text-center p-6 animate-fade-in", className)}
-      role="status"
-    >
-      <Spinner size="md" label={label} secondaryText={description} />
-    </div>
-  );
-});
 
 export interface InlineLoaderProps {
   label?: ReactNode;

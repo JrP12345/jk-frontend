@@ -55,7 +55,7 @@ const ConfirmDialog = memo(function ConfirmDialog({
             className={cn(
               "p-2.5 rounded-xl h-10 w-10 flex items-center justify-center shrink-0 transform-gpu animate-scale-in shadow-2xs",
               variant === "danger"
-                ? "bg-danger-500/10 text-danger-text border border-danger-500/20 ring-4 ring-danger-500/10"
+                ? "bg-danger/10 text-danger-text border border-danger/20 ring-4 ring-danger/10"
                 : "bg-primary-500/10 text-accent border border-primary-500/20 ring-4 ring-focus-ring"
             )}
           >

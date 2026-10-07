@@ -16,7 +16,7 @@ export function getDisabledRouteModule(
 }
 
 export const ROUTE_MODULE_MAP: Array<{ prefix: string; moduleKey: string }> = [
-  // P1 — Clinic Essentials (always-on modules included for direct-URL guard parity)
+  // P1 — Location Essentials (always-on modules included for direct-URL guard parity)
   { prefix: "/dashboard", moduleKey: "dashboard" },
   { prefix: "/dashboard/notifications", moduleKey: "notifications" },
   { prefix: "/dashboard/appointments", moduleKey: "appointments" },
@@ -28,7 +28,7 @@ export const ROUTE_MODULE_MAP: Array<{ prefix: string; moduleKey: string }> = [
   { prefix: "/dashboard/billing", moduleKey: "billing" },
   { prefix: "/dashboard/pharmacy", moduleKey: "pharmacy" },
   { prefix: "/dashboard/staff", moduleKey: "staff" },
-  { prefix: "/dashboard/clinics", moduleKey: "clinics" },
+  { prefix: "/dashboard/locations", moduleKey: "locations" },
   { prefix: "/dashboard/shifts", moduleKey: "shifts" },
   { prefix: "/dashboard/settings", moduleKey: "settings" },
 

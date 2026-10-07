@@ -1,123 +1,45 @@
-# Ekavyu visual identity migration
+# Ekavyu visual identity
 
-Implemented on 2026-09-27 from the supplied brand board and the subsequent
-transparent leaf PNG in `public/image.png`. The official tagline is
-**Care That Keeps Moving**. The theme and leaf-logo replacement are implemented.
+Current identity, 2026-10-07. Product name: Ekavyu. Tagline: **Care That Keeps Moving**. The supplied transparent leaf artwork in public/image.png is the source for the application mark and install icons.
 
-## Audit and scope
+## Brand and appearance
 
-The frontend had ten selectable palettes (blue, teal, emerald, cyan, indigo,
-violet, rose, amber, bronze and slate), a duplicated system-dark fallback,
-blue/purple accents, navy hardcoded surfaces, glowing controls, blurred floating
-backgrounds, and separate print/chart colors. Pricing and public queue screens
-used fixed dark colors. The repository initially contained the previous
-geometric A mark; its active UI/browser/install assets now use the supplied leaf.
-
-Existing reusable components, the font stack, spacing, responsive layouts,
-light/dark/system preferences, form validation, routes, API calls, permissions,
-clinical flows, data formats and integrations are retained. No dependency was
-added. The main presentation pass used parsed TypeScript literal edits and
-verified that the functional AST and JSX structure were unchanged. Other edits
-are scoped to theme styling, keyboard focus for scrollable tables and copying
-print tokens into standalone documents.
-
-## Canonical design tokens
-
-The source is `src/app/globals.css`. Tailwind utilities and existing
-`--s-*` / `--p-*` names resolve through compatibility aliases rather than extra
-palettes. Use `text-accent` for branded text that adapts to the mode, and
-`bg-primary` with `text-brand-mist` for solid brand actions. Fresh Teal and Soft
-Mint are not used as small text on white.
-
-| Brand token | Exact supplied value |
+| Brand token | Value |
 | --- | --- |
-| `--brand-primary` | Deep Teal `#0F6F66` |
-| `--brand-secondary` | Fresh Teal `#49B39D` |
-| `--brand-soft` | Soft Mint `#8EDFD3` |
-| `--brand-warm` | Warm Sand `#DCC9A3` |
-| `--brand-ink` | Ink Green `#0E2A28` |
-| `--brand-mist` | Mist White `#F7F7F2` |
+| brand-primary | Deep Teal #0F6F66 |
+| brand-secondary | Fresh Teal #49B39D |
+| brand-soft | Soft Mint #8EDFD3 |
+| brand-warm | Warm Sand #DCC9A3 |
+| brand-ink | Ink Green #0E2A28 |
+| brand-mist | Mist White #F7F7F2 |
 
-| Semantic token | Light | Dark |
+Screen colors come from semantic tokens in src/app/globals.css. Brand colors identify the product; neutral surfaces keep clinical information readable. Fresh Teal and Soft Mint are not small text on white.
+
+| Semantic color | Light | Dark |
 | --- | --- | --- |
-| `--background` | `#F7F7F2` | `#0E2A28` |
-| `--surface` | `#FFFFFF` | `#143632` |
-| `--surface-muted` | `#EDF5EF` | `#102E2B` |
-| `--surface-elevated` | `#FFFFFF` | `#1B423C` |
-| `--text-primary` | `#0E2A28` | `#F7F7F2` |
-| `--text-secondary` | `#425F59` | `#C1DAD1` |
-| `--text-muted` | `#526E65` | `#99BEB1` |
-| `--border` | `#D3DED5` | `#3D635B` |
-| `--input-border` | `#7A9188` | `#648C81` |
-| `--accent` / `--focus-ring` | `#0F6F66` | `#8EDFD3` |
+| background | #F7F7F2 | #141A19 |
+| surface | #FFFFFF | #1C2422 |
+| surface-muted | #F0F2EF | #222C29 |
+| surface-elevated | #FFFFFF | #2A3531 |
+| text-primary | #202B29 | #F7F7F2 |
+| text-secondary | #505D58 | #CFD8D2 |
+| text-muted | #64716B | #AFBEB5 |
+| border | #DDE3DD | #46544D |
+| input-border | #7A8982 | #7C9186 |
+| accent/focus-ring | #0F6F66 | #8EDFD3 |
 
-Success, warning and danger have separate foreground/background pairs. Red and
-amber remain functional status colors. Charts use distinct teal, olive, sand
-and status colors with their existing labels/legends. Navigation, dialogs,
-tables, inputs, badges, loaders, toasts and buttons share semantic tokens.
+Success, warning and danger use dedicated semantic foreground/background pairs. Charts retain labels and distinct series colors. Screen controls follow [design-system.md](design-system.md). Navigation retains full-width geometry and the separate dashboard toolbar.
 
-Subtle brand washes are reserved for public/auth introductions. Decorative
-control gradients, large color glows, glass layers and cursor-tracking card
-shine were removed. Existing motion and reduced-motion support remain.
-Waiting-room labels retain full text opacity; status dots can still animate.
-Its locale-dependent clock uses a fixed-width initial placeholder until client
-mount to avoid hydration errors. Queue timing and announcement behavior remain
-unchanged.
+ThemeProvider and the hydration bootstrap store light/dark/system appearance under ekavyu-mode. There is no selectable color palette. Shared controls use canonical semantic tokens; unused surface and numbered status aliases have been removed.
 
-`ThemeProvider.tsx`, the dashboard header and UI exports no longer expose a
-palette selector. `jk-mode` still stores light/dark/system mode. Historical
-`jk-palette` values are ignored and cannot change the identity. The bootstrap
-resolves mode before paint; one DOM helper handles subsequent changes, including
-system preference changes and unavailable browser storage. Buttons honor
-callers' semantic foregrounds without competing default color utilities.
+## Assets, installation and print
 
-## Print, metadata and assets
+EkavyuLogo uses ekavyu-leaf.png with theme-aware text. Run npm run brand:assets to regenerate the transparent UI mark, favicons, Apple touch icon, application icons and maskable icon. The script resizes/composites the supplied artwork; it does not trace or recolor it. Install icons use an opaque brand mist canvas and a safe maskable circle.
 
-Print tokens remain fixed to light paper colors in both screen modes.
-`src/lib/printBrand.ts` copies the CSS values into standalone popup
-documents and the clinic QR-poster iframe. Appointment tickets/prescriptions,
-invoices/receipts, laboratory documents and the unified document modal use them.
-Thermal output retains monochrome printing, and QR/payment libraries retain
-valid HEX inputs suitable for scanning and provider APIs.
+Current assets are app-icon-192.png, app-icon-512.png, app-icon-maskable-512.png, apple-touch-icon.png and the favicon files referenced by metadata. Removed duplicate assets have no redirects. Root metadata owns manifest/icon tags once. Manifest ID is ekavyu-healthcare-pwa; start URL is /dashboard and scope is /. The service-worker cache and asset query versions are defined in public/sw.js and public/manifest.json.
 
-Browser theme color is Deep Teal, PWA launch background is Mist White, and
-manifest/root SEO/social descriptions include “Care That Keeps Moving”. The
-service-worker cache version was advanced. Manifest ID, start/scope URLs,
-cookies, storage identifiers and payment destinations are unchanged.
-Backend-generated emails/messages are outside this frontend visual change;
-their Ekavyu copy was migrated in the preceding brand-name task.
+Cookies, current application storage and infrastructure names use Ekavyu. The retired offline database name is retained solely to erase previously cached patient data. Cryptographic derivation constants remain stable because they bind existing authenticated ciphertext; they are not visible branding.
 
-The supplied `image.png` is retained unchanged as the source. Run
-`npm run brand:assets` from the frontend repository to regenerate
-the transparent 512px UI mark, 16/32px favicons, 180px Apple icon, 192/512px PWA
-icons. All OS icons use an opaque brand mist canvas with consistent padding.
-A separate 512px maskable icon fits the visible leaf within the safe circle.
-Exports only resize and composite
-the supplied artwork; no tracing, AI generation, recoloring or board cropping
-is used. The existing installed app ID and shortcut URLs remain compatible.
+PrintBrand copies fixed paper colors into standalone documents, location QR posters, tickets, prescriptions, invoices and laboratory output. Thermal output remains monochrome. QR/payment values retain provider-required formats.
 
-`EkavyuLogo.tsx` uses the transparent leaf in both modes with theme-aware text;
-compact navigation uses the symbol alone. Spacious registration, password-reset
-and email-verification views display the tagline; login retains its tagline
-badge. The install banner uses the leaf. Favicons have a new version query and
-the service-worker cache is `ekavyu-cache-v9`. Install assets use the `brand-3`
-version and refresh from the network before using an offline fallback. Legacy
-URLs `logo-d.png`, `logo-w.png`, and `app-icon-light-192.png` redirect to the
-canonical application icon; their duplicate files have been removed. Current
-UI uses `ekavyu-leaf.png` directly. Root metadata owns manifest/icon tags once.
-
-## Changed files and validation
-
-Core files: `globals.css`, `ThemeProvider.tsx`, `Button.tsx`, `Card.tsx`,
-`Badge.tsx`, `Table.tsx`, shared UI exports, root/dashboard layouts,
-`printBrand.ts`, `manifest.json`, `sw.js` and `ekavyuTheme.test.tsx`.
-Presentation changes cover auth/public/pricing pages, operational and platform
-administration pages, clinical/billing/EHR components, navigation,
-notifications, chart components and clinic-status styling. `EkavyuLogo.tsx`
-and the generated public assets now contain the supplied leaf identity.
-
-Final results are in
-[production-readiness-tracker.md](production-readiness-tracker.md).
-Browser runs use isolated mocked responses. They do not certify live provider
-transactions or production data, and their local fixture run is not a CSP
-security audit. No release was deployed.
+Cleanup validation and the remaining operational release checks are in [pre-production-cleanup.md](pre-production-cleanup.md) and [production-readiness-tracker.md](production-readiness-tracker.md). Source validation does not certify live provider transactions.

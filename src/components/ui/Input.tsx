@@ -2,6 +2,7 @@
 
 import { type InputHTMLAttributes, type ReactNode, forwardRef, useId, memo, useState } from "react";
 import { cn } from "./utils";
+import { fieldBase, fieldError, fieldLabel, fieldVariants } from "./controlStyles";
 
 export type InputSize = "sm" | "md" | "lg";
 export type InputVariant = "default" | "filled" | "flush" | "pill" | "inset";
@@ -31,13 +32,7 @@ const sizes: Record<InputSize, string> = {
   lg: "text-base px-4 min-h-[46px] md:min-h-[44px] h-11",
 };
 
-const variantStyles: Record<InputVariant, string> = {
-  default: "rounded-xl border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
-  filled: "rounded-xl border border-transparent bg-surface-alt hover:bg-surface-hover focus-visible:bg-surface focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
-  flush: "rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:border-0 py-1 min-h-0",
-  pill: "rounded-full border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
-  inset: "rounded-xl border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
-};
+const variantStyles: Record<InputVariant, string> = { ...fieldVariants, flush: `${fieldVariants.flush} py-1 min-h-0` };
 
 const iconPaddingLeft: Record<InputSize, string> = {
   sm: "pl-8",
@@ -107,13 +102,13 @@ const Input = memo(
       return (
         <div className={cn("flex flex-col gap-1.5", fullWidth && "w-full", containerClassName)}>
           {label && (
-            <label htmlFor={id} className="text-sm font-medium text-text select-none">
+            <label htmlFor={id} className={fieldLabel}>
               {label}
             </label>
           )}
-          <div className={cn(
+          <div data-invalid={visibleError ? true : undefined} className={cn(
             "group relative flex items-center w-full",
-            leadingControl && cn(variantStyles[variant], "focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-focus-ring", disabled && "opacity-50", visibleError && "border-danger-500/80 focus-within:border-danger-500 focus-within:ring-danger-500/15")
+            leadingControl && cn(variantStyles[variant], "focus-within:border-border-focus focus-within:ring-2 focus-within:ring-focus-ring", disabled && "opacity-50", visibleError && fieldError)
           )}>
             {leadingControl && <div className="flex shrink-0 self-stretch items-center border-r border-border/60">{leadingControl}</div>}
             <input
@@ -136,14 +131,14 @@ const Input = memo(
                 onInvalid?.(event);
               }}
               className={cn(
-                "w-full min-w-0 text-text font-normal transform-gpu transition-all duration-200 ease-smooth placeholder:text-text-muted focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt",
+                fieldBase, "w-full",
                 sizes[size],
                 leadingControl ? "flex-1 rounded-r-xl border-0 bg-transparent shadow-none focus-visible:ring-0" : variantStyles[variant],
                 resolvedLeftIcon && !prefix && iconPaddingLeft[size],
                 resolvedLeftIcon && prefix && (size === "sm" ? "pl-15" : size === "lg" ? "pl-18" : "pl-16"),
                 !resolvedLeftIcon && prefix && (size === "sm" ? "pl-10" : size === "lg" ? "pl-13" : "pl-11"),
                 (resolvedRightIcon || hasClear || suffix) && iconPaddingRight[size],
-                visibleError && !leadingControl && variant !== "flush" && "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500/15 focus-visible:border-danger-500",
+                visibleError && !leadingControl && fieldError,
                 className
               )}
               {...rest}

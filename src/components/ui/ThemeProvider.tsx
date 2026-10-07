@@ -41,7 +41,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const domMode = document.documentElement.getAttribute("data-mode") as Mode;
     let storedMode: string | null = null;
-    try { storedMode = localStorage.getItem("jk-mode"); } catch { /* Storage may be unavailable. */ }
+    try { storedMode = localStorage.getItem("ekavyu-mode"); } catch { /* Storage may be unavailable. */ }
     const savedMode: Mode = storedMode === "light" || storedMode === "dark" || storedMode === "system"
       ? storedMode : domMode === "dark" ? "dark" : "light";
 
@@ -68,7 +68,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setResolvedMode(nextResolved);
 
       if (typeof window !== "undefined") {
-        try { localStorage.setItem("jk-mode", newMode); } catch { /* Mode still works without persistence. */ }
+        try { localStorage.setItem("ekavyu-mode", newMode); } catch { /* Mode still works without persistence. */ }
       }
     };
 
@@ -131,7 +131,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
    Celestial Icons — Handcrafted Vector Sun & Moon
    ──────────────────────────────────────────────── */
 
-export function CelestialSun({ className = "", rotating = true }: { className?: string; rotating?: boolean }) {
+function CelestialSun({ className = "" }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -141,9 +141,8 @@ export function CelestialSun({ className = "", rotating = true }: { className?: 
     >
       {/* Radiant Solar Core */}
       <circle cx="12" cy="12" r="4.5" fill="currentColor" />
-      {/* Rotating Solar Corona Rays */}
+      {/* Solar Corona Rays */}
       <g
-        className={rotating ? "animate-celestial-spin" : ""}
         stroke="currentColor"
         strokeWidth="2.25"
         strokeLinecap="round"
@@ -161,7 +160,7 @@ export function CelestialSun({ className = "", rotating = true }: { className?: 
   );
 }
 
-export function CelestialMoon({ className = "" }: { className?: string }) {
+function CelestialMoon({ className = "" }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -178,10 +177,10 @@ export function CelestialMoon({ className = "" }: { className?: string }) {
       <path
         d="M19.5 2.5l.55 1.5 1.5.55-1.5.55-.55 1.5-.55-1.5-1.5-.55 1.5-.55.55-1.5z"
         fill="currentColor"
-        className="animate-celestial-twinkle-1"
+
       />
       {/* Ambient Starlight Point */}
-      <circle cx="20.5" cy="10" r="0.75" fill="currentColor" className="animate-celestial-twinkle-3" />
+      <circle cx="20.5" cy="10" r="0.75" fill="currentColor"  />
     </svg>
   );
 }
@@ -218,7 +217,7 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
 
   const isDark = resolvedMode === "dark";
 
-  // Segmented Variant (Linear / Raycast Style Dual Capsule)
+  // One material group with a solid, bounded selection indicator.
   if (variant === "segmented") {
     return (
       <button
@@ -226,18 +225,18 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
         onClick={toggleMode}
         className={cn(
           "group relative inline-flex items-center h-8.5 p-0.5 rounded-full cursor-pointer select-none",
-          "bg-surface hover:bg-surface  border border-border/80 hover:border-border shadow-2xs transition-all duration-300",
+          "material-glass-control material-appearance-control transition-colors duration-[var(--motion-fast)]",
           "focus-within:ring-2 focus-within:ring-focus-ring",
           className
         )}
         title={isDark ? "Switch to light mode" : "Switch to dark mode"}
         aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       >
-        {/* Sliding magnetic thumb */}
+        {/* Sliding selection thumb */}
         <span
           className={cn(
             "absolute top-0.5 bottom-0.5 w-7 rounded-full shadow-sm",
-            "transition-all duration-400 ease-[cubic-bezier(0.34,1.56,0.64,1)] pointer-events-none",
+            "transition-transform duration-[var(--motion-standard)] ease-smooth pointer-events-none",
             isDark
               ? "translate-x-[32px] bg-accent-subtle text-accent border border-border"
               : "translate-x-0.5 bg-accent-subtle text-accent border border-border"
@@ -250,11 +249,11 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
           className={cn(
             "relative z-10 flex items-center justify-center h-7.5 w-7.5 rounded-full cursor-pointer transition-all duration-300",
             !isDark
-              ? "text-accent scale-105"
-              : "text-text-muted hover:text-text-secondary hover:scale-105 active:scale-95"
+              ? "text-accent"
+              : "text-text-secondary"
           )}
         >
-          <CelestialSun className="w-4 h-4" rotating={!isDark} />
+          <CelestialSun className="w-4 h-4" />
         </span>
 
         {/* Moon indicator */}
@@ -263,8 +262,8 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
           className={cn(
             "relative z-10 flex items-center justify-center h-7.5 w-7.5 rounded-full cursor-pointer transition-all duration-300",
             isDark
-              ? "text-accent scale-105"
-              : "text-text-muted hover:text-text-secondary hover:scale-105 active:scale-95"
+              ? "text-accent"
+              : "text-text-secondary"
           )}
         >
           <CelestialMoon className="w-4 h-4" />
@@ -278,6 +277,7 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
     return (
       <button
         type="button"
+        data-material-control
         onClick={toggleMode}
         title={isDark ? "Switch to light mode" : "Switch to dark mode"}
         aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
@@ -291,14 +291,13 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
         <span className="relative w-4.5 h-4.5 flex items-center justify-center">
           <CelestialSun
             className={cn(
-              "absolute inset-0 text-accent transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+              "absolute inset-0 text-accent transition-all duration-[var(--motion-standard)] ease-smooth",
               isDark ? "opacity-0 rotate-90 scale-0 pointer-events-none" : "opacity-100 rotate-0 scale-100"
             )}
-            rotating={!isDark}
           />
           <CelestialMoon
             className={cn(
-              "absolute inset-0 text-accent transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+              "absolute inset-0 text-accent transition-all duration-[var(--motion-standard)] ease-smooth",
               isDark ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-0 pointer-events-none"
             )}
           />
@@ -307,7 +306,7 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
     );
   }
 
-  // Sliding theme toggle; dimensions and interaction stay compatible.
+  // Sliding theme toggle.
   return (
     <button
       type="button"
@@ -319,9 +318,7 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
         " transition-all duration-500 shadow-2xs overflow-hidden",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2",
         "hover:scale-[1.03] active:scale-[0.96]",
-        isDark
-          ? "bg-surface-muted border border-border hover:border-accent"
-          : "bg-surface-muted border border-border hover:border-accent",
+        "bg-surface-muted border border-border hover:border-accent",
         className
       )}
     >
@@ -334,7 +331,7 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
             isDark ? "opacity-25 group-hover:opacity-45 text-text-muted" : "opacity-0"
           )}
         >
-          <CelestialSun className="w-3.5 h-3.5" rotating={false} />
+          <CelestialSun className="w-3.5 h-3.5" />
         </span>
 
         {/* Subtle Moon Silhouette on Right */}
@@ -352,7 +349,7 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
       <span
         className={cn(
           "relative z-10 flex items-center justify-center h-7 w-7 rounded-full shadow-xs",
-          "transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+          "transition-all duration-[var(--motion-standard)] ease-smooth",
           isDark
             ? "translate-x-[30px] bg-accent-subtle text-accent ring-1 ring-border"
             : "translate-x-0 bg-accent-subtle text-accent ring-1 ring-border"
@@ -361,18 +358,17 @@ export function ModeSwitcher({ className = "", variant = "segmented" }: ModeSwit
         {/* Sun Icon (Day) */}
         <CelestialSun
           className={cn(
-            "absolute transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+            "absolute transition-all duration-[var(--motion-standard)] ease-smooth",
             isDark
               ? "opacity-0 rotate-180 scale-0 pointer-events-none"
               : "opacity-100 rotate-0 scale-100 text-accent"
           )}
-          rotating={!isDark}
         />
 
         {/* Moon Icon (Night) */}
         <CelestialMoon
           className={cn(
-            "absolute transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+            "absolute transition-all duration-[var(--motion-standard)] ease-smooth",
             isDark
               ? "opacity-100 rotate-0 scale-100 text-accent"
               : "opacity-0 -rotate-180 scale-0 pointer-events-none"

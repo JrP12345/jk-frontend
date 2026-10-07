@@ -43,7 +43,7 @@ export function EncounterWorkspace({
 }: EncounterWorkspaceProps) {
   const {
     encounterId,
-    clinicId,
+    locationId,
     doctorId,
     loading: contextLoading,
     orders,
@@ -133,12 +133,12 @@ export function EncounterWorkspace({
     if (!justCompleted && !confirmLeavingClinicalDraft()) return;
     try {
       setCallingNext(true);
-      const res = await api.post("/queue/call-next", { clinicId, doctorId, requireArrivalConfirmation: true, confirmedAppointmentId });
+      const res = await api.post("/queue/call-next", { locationId, doctorId, requireArrivalConfirmation: true, confirmedAppointmentId });
       if (res.data?.data) {
         toast({ title: "Patient Called 🩺", description: res.data.message || `Token #${res.data.data.tokenNumber} in consultation`, variant: "success" });
         const apptId = res.data.data.id || res.data.data._id;
         const pId = typeof res.data.data.patientId === "object" ? (res.data.data.patientId.id || res.data.data.patientId._id) : res.data.data.patientId;
-        router.push(`/dashboard/consultations/${apptId}?patientId=${pId}&clinicId=${clinicId || ""}`);
+        router.push(`/dashboard/consultations/${apptId}?patientId=${pId}&locationId=${locationId || ""}`);
       } else {
         toast({ title: "Queue Empty", description: res.data?.message || "No waiting patients in queue for today", variant: "default" });
       }
@@ -162,7 +162,7 @@ export function EncounterWorkspace({
       await OrdersService.placeOrder({
         encounterId,
         patientId: patient.id,
-        clinicId,
+        locationId,
         doctorId,
         testId: selectedTestId,
         priority,
@@ -355,7 +355,7 @@ export function EncounterWorkspace({
           <SOAPNoteEditor
             encounterId={encounterId}
             patientId={patient.id}
-            clinicId={clinicId}
+            locationId={locationId}
             doctorId={doctorId}
             initialNoteId={initialNoteId}
             initialNoteData={editorData}

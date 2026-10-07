@@ -7,19 +7,17 @@ vi.mock("@/store/authStore", () => ({ useAuthStore: () => ({ user: fixture.user,
 vi.mock("@/services/billing.service", () => ({ billingService: { getPlans: fixture.plans } }));
 vi.mock("@/lib/api", () => ({ default: { post: fixture.post } }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); fixture.user = null; fixture.loading = false; });
-it("prepares a request for the selected configured plan without provisioning or collecting credentials", async () => {
-  fixture.plans.mockResolvedValue([{ id: "pro-id", slug: "pro", name: "Practice Pro", trialDays: 9 }]);
+it("submits a request for the selected configured plan without provisioning or collecting credentials", async () => {
+  fixture.post.mockResolvedValue({ data: { data: null } });
+  fixture.plans.mockResolvedValue([{ id: "pro-id", slug: "professional", name: "Practice Pro", trialDays: 9 }]);
   render(<Onboarding />);
   expect(await screen.findByText(/configured plan trial is 9 days/)).toBeInTheDocument();
   expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
   for (const [label, value] of [["Organization name", "Care & Health"], ["City", "Pune"], ["Contact name", "Asha"], ["Contact email", "asha@example.test"]]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
-  fireEvent.submit(screen.getByRole("button", { name: "Prepare setup request" }).closest("form")!);
-  const url = new URL(screen.getByRole("link", { name: "Open email draft" }).getAttribute("href")!);
-  expect(url.pathname).toBe("ekavyuofficial@gmail.com");
-  expect(url.searchParams.get("body")).toContain("Organization: Care & Health");
-  expect(url.searchParams.get("body")).toContain("Requested plan: Practice Pro");
-  expect(screen.getByText(/Nothing has been sent yet/)).toBeInTheDocument();
-  expect(fixture.post).not.toHaveBeenCalled();
+  fireEvent.submit(screen.getByRole("button", { name: "Submit setup request" }).closest("form")!);
+  expect(await screen.findByRole("heading", { name: "Request received" })).toBeInTheDocument();
+  expect(fixture.post).toHaveBeenCalledWith("/public/setup-requests", expect.objectContaining({ organization: "Care & Health", email: "asha@example.test", planSlug: "professional", requestKey: expect.any(String) }));
+  expect(screen.queryByRole("link", { name: "Open email draft" })).not.toBeInTheDocument();
 });
 it("recovers failed plan loading and waits for auth before choosing a setup flow", async () => {
   fixture.loading = true;
@@ -31,4 +29,19 @@ it("recovers failed plan loading and waits for auth before choosing a setup flow
   fireEvent.click(screen.getByRole("button", { name: "Try again" }));
   await waitFor(() => expect(fixture.plans).toHaveBeenCalledTimes(2));
   await waitFor(() => expect(screen.queryByText("Plans could not be loaded")).not.toBeInTheDocument());
+});
+it("keeps the request key across transport retries and does not show success after failure", async () => {
+  fixture.plans.mockResolvedValue([]);
+  fixture.post.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ data: { data: null } });
+  render(<Onboarding />);
+  const submit = await screen.findByRole("button", { name: "Submit setup request" });
+  await waitFor(() => expect(submit).not.toBeDisabled());
+  for (const [label, value] of [["Organization name", "Care"], ["City", "Pune"], ["Contact name", "Asha"], ["Contact email", "asha@example.test"]]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  fireEvent.submit(submit.closest("form")!);
+  expect(await screen.findByText("Request not submitted")).toBeInTheDocument();
+  expect(screen.queryByText("Request received")).not.toBeInTheDocument();
+  const key = fixture.post.mock.calls[0][1].requestKey;
+  fireEvent.submit(submit.closest("form")!);
+  expect(await screen.findByText("Request received")).toBeInTheDocument();
+  expect(fixture.post.mock.calls[1][1].requestKey).toBe(key);
 });

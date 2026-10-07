@@ -41,7 +41,7 @@ export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode, 
     {health.isLoading && <p className="text-sm text-text-muted">Loading connection details…</p>}
     {health.isError && <p className="text-sm text-text-muted">Could not load connection details. <button type="button" className="underline" onClick={() => health.refetch()}>Retry</button></p>}
     {platform && <div className="space-y-3">
-      <p className="text-xs text-text-muted">Root controls the shared sender for all clinics. Blank credential fields keep the saved values.</p>
+      <p className="text-xs text-text-muted">Root controls the shared sender for all organizations. Blank credential fields keep the saved values.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Input label="Platform WABA ID" value={wabaId} placeholder={data?.connection.wabaId || "Business account ID"} onChange={e => setWabaId(e.target.value)} />
         <Input label="Platform phone number ID" value={phoneNumberId} placeholder={data?.connection.phoneNumberId || "Phone number ID"} onChange={e => setPhoneNumberId(e.target.value)} type="tel" inputMode="tel" />

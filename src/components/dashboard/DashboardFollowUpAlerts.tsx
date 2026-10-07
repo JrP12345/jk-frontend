@@ -38,7 +38,7 @@ export function DashboardFollowUpAlerts({ alerts }: DashboardFollowUpAlertsProps
                   Follow-Up Consultation with Dr. {appt.doctorId?.name || "Specialist"}
                 </h3>
                 <p className="text-xs text-text-secondary">
-                  Recommended at <span className="font-semibold text-text">{appt.clinicId?.name || "Clinic"}</span> following your consultation on{" "}
+                  Recommended at <span className="font-semibold text-text">{appt.locationId?.name || "Location"}</span> following your consultation on{" "}
                   {new Date(appt.appointmentTime).toLocaleDateString(undefined, { dateStyle: "medium" })}.
                 </p>
               </div>
@@ -48,11 +48,11 @@ export function DashboardFollowUpAlerts({ alerts }: DashboardFollowUpAlertsProps
               variant="primary"
               size="sm"
               onClick={() => {
-                const clinicId = appt.clinicId?._id || appt.clinicId?.id || (typeof appt.clinicId === "string" ? appt.clinicId : "");
+                const locationId = appt.locationId?._id || appt.locationId?.id || (typeof appt.locationId === "string" ? appt.locationId : "");
                 const doctorId = appt.doctorId?._id || appt.doctorId?.id || (typeof appt.doctorId === "string" ? appt.doctorId : "");
                 const prevApptId = appt._id || appt.id || "";
                 router.push(
-                  `/browse/${clinicId}?doctorId=${doctorId}&followUp=true&prevAppointmentId=${prevApptId}`
+                  `/browse/${locationId}?doctorId=${doctorId}&followUp=true&prevAppointmentId=${prevApptId}`
                 );
               }}
               className="rounded-xl font-semibold text-xs shrink-0 self-start md:self-center"

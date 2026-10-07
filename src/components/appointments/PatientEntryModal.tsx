@@ -3,30 +3,30 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
 import { Alert, Button, Input, Modal, Select, Spinner } from "@/components/ui";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { PatientService } from "@/services/patient.service";
-import { clinicDateKey, clinicLocalTimeToIso } from "@/lib/clinicTime";
-import { patientName, patientPhone, recordId, validSingleChoice, type WorkflowPatient } from "@/lib/clinicWorkflow";
+import { locationDateKey, locationLocalTimeToIso } from "@/lib/locationTime";
+import { patientName, patientPhone, recordId, validSingleChoice, type WorkflowPatient } from "@/lib/locationWorkflow";
 
-export interface ClinicDoctorAssignment {
+export interface LocationDoctorAssignment {
   id?: string; isActive?: boolean; fees?: number; bookingMode?: "sequential_queue" | "time_slot";
   doctorId: { id?: string; _id?: string; name?: string } | string;
 }
-interface Props { open: boolean; onClose: () => void; clinicId?: string; onBooked: (appointmentId: string) => void; onFullRegistration?: () => void }
+interface Props { open: boolean; onClose: () => void; locationId?: string; onBooked: (appointmentId: string) => void; onFullRegistration?: () => void }
 
-export function PatientEntryModal({ open, onClose, clinicId: initialClinicId, onBooked, onFullRegistration }: Props) {
+export function PatientEntryModal({ open, onClose, locationId: initialLocationId, onBooked, onFullRegistration }: Props) {
   // Remount for each entry session, retaining all successful writes during retries.
-  return open ? <PatientEntryForm onClose={onClose} initialClinicId={initialClinicId} onBooked={onBooked} onFullRegistration={onFullRegistration} /> : null;
+  return open ? <PatientEntryForm onClose={onClose} initialLocationId={initialLocationId} onBooked={onBooked} onFullRegistration={onFullRegistration} /> : null;
 }
 
-function PatientEntryForm({ onClose, initialClinicId, onBooked, onFullRegistration }: Omit<Props, "open" | "clinicId"> & { initialClinicId?: string }) {
+function PatientEntryForm({ onClose, initialLocationId, onBooked, onFullRegistration }: Omit<Props, "open" | "locationId"> & { initialLocationId?: string }) {
   const { user } = useAuthStore();
-  const { clinics, fetchClinics } = useClinicStore();
-  const [clinicId, setClinicId] = useState(initialClinicId || "");
-  const [assignments, setAssignments] = useState<ClinicDoctorAssignment[]>([]);
+  const { locations, fetchLocations } = useLocationStore();
+  const [locationId, setLocationId] = useState(initialLocationId || "");
+  const [assignments, setAssignments] = useState<LocationDoctorAssignment[]>([]);
   const [doctorId, setDoctorId] = useState("");
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [source, setSource] = useState("walk-in");
@@ -48,32 +48,32 @@ function PatientEntryForm({ onClose, initialClinicId, onBooked, onFullRegistrati
   const beginSearch = useLatestRead();
   const beginAssignments = useLatestRead();
   const beginSlots = useLatestRead();
-  const clinic = clinics.find(value => value.id === clinicId);
-  const timezone = clinic?.effectiveTimezone || clinic?.timezone || "Asia/Kolkata";
+  const location = locations.find(value => value.id === locationId);
+  const timezone = location?.effectiveTimezone || location?.timezone || "Asia/Kolkata";
   const canRegister = hasAnyPermission(user, "MANAGE_PATIENTS");
   const canCheckIn = hasAnyPermission(user, "MANAGE_APPOINTMENTS");
 
-  useEffect(() => { void fetchClinics(); }, [fetchClinics]);
-  useEffect(() => { setClinicId(current => validSingleChoice(clinics, value => value.id, current)); }, [clinics]);
-  useEffect(() => { setDate(clinicDateKey(new Date(), timezone)); }, [timezone, clinicId]);
+  useEffect(() => { void fetchLocations(); }, [fetchLocations]);
+  useEffect(() => { setLocationId(current => validSingleChoice(locations, value => value.id, current)); }, [locations]);
+  useEffect(() => { setDate(locationDateKey(new Date(), timezone)); }, [timezone, locationId]);
   useEffect(() => {
     const request = beginAssignments();
     setAssignments([]); setDoctorId(""); setSlotMode(null);
-    if (!clinicId) return;
+    if (!locationId) return;
     setAssignmentLoading(true);
-    api.get(`/onboarding/doctors/assignments?clinicId=${encodeURIComponent(clinicId)}`, { signal: request.signal }).then(response => {
+    api.get(`/onboarding/doctors/assignments?locationId=${encodeURIComponent(locationId)}`, { signal: request.signal }).then(response => {
       if (!request.isCurrent()) return;
-      const choices = (response.data?.data || []).filter((value: ClinicDoctorAssignment) => value.isActive !== false && recordId(value.doctorId));
+      const choices = (response.data?.data || []).filter((value: LocationDoctorAssignment) => value.isActive !== false && recordId(value.doctorId));
       setAssignments(choices);
-      setDoctorId(validSingleChoice(choices, (value: ClinicDoctorAssignment) => recordId(value.doctorId)));
+      setDoctorId(validSingleChoice(choices, (value: LocationDoctorAssignment) => recordId(value.doctorId)));
     }).catch(() => { if (request.isCurrent()) setError("Doctors could not be loaded. Close and retry."); })
       .finally(() => { if (request.isCurrent()) setAssignmentLoading(false); });
-  }, [beginAssignments, clinicId]);
+  }, [beginAssignments, locationId]);
   useEffect(() => {
     const request = beginSlots(); setSlots([]); setSlot(""); setSlotMode(null);
-    if (!clinicId || !doctorId || !date) return;
+    if (!locationId || !doctorId || !date) return;
     setSlotLoading(true);
-    api.get(`/doctors/${doctorId}/slots`, { params: { clinicId, date }, signal: request.signal }).then(response => {
+    api.get(`/doctors/${doctorId}/slots`, { params: { locationId, date }, signal: request.signal }).then(response => {
       if (!request.isCurrent()) return;
       const data = response.data?.data;
       if (data?.isHoliday) { setError("The doctor is unavailable on this day. Choose another day or doctor."); return; }
@@ -81,7 +81,7 @@ function PatientEntryForm({ onClose, initialClinicId, onBooked, onFullRegistrati
       setSlots((data?.slots || []).filter((value: { available?: boolean; isBooked?: boolean; lockedByOther?: boolean }) => value.available === true && !value.isBooked && !value.lockedByOther));
     }).catch(() => { if (request.isCurrent()) setError("Availability could not be loaded. Choose the doctor again to retry."); })
       .finally(() => { if (request.isCurrent()) setSlotLoading(false); });
-  }, [beginSlots, clinicId, doctorId, date]);
+  }, [beginSlots, locationId, doctorId, date]);
 
   const search = useCallback(async () => {
     const request = beginSearch(); setSearching(true); setError("");
@@ -98,21 +98,21 @@ function PatientEntryForm({ onClose, initialClinicId, onBooked, onFullRegistrati
     try {
       let savedPatient = patient;
       if (!bookedId) {
-        if (!clinicId || !doctorId || !slotMode) throw new Error("Select an available clinic and doctor.");
+        if (!locationId || !doctorId || !slotMode) throw new Error("Select an available location and doctor.");
         if (!savedPatient) {
           if (!newPatient || !canRegister || !name.trim() || !phone.trim()) throw new Error("Select a patient or enter their name and phone number.");
           savedPatient = await PatientService.createPatient({ name: name.trim(), phone: phone.trim() });
           setPatient(savedPatient); setNewPatient(false);
         }
         const appointmentTime = slotMode === "time_slot"
-          ? clinicLocalTimeToIso(date, slot, timezone)
-          : date === clinicDateKey(new Date(), timezone) ? new Date().toISOString() : clinicLocalTimeToIso(date, "00:00", timezone);
-        const response = await api.post("/appointments", { patientId: recordId(savedPatient!), clinicId, doctorId, appointmentTime, appointmentType: source });
+          ? locationLocalTimeToIso(date, slot, timezone)
+          : date === locationDateKey(new Date(), timezone) ? new Date().toISOString() : locationLocalTimeToIso(date, "00:00", timezone);
+        const response = await api.post("/appointments", { patientId: recordId(savedPatient!), locationId, doctorId, appointmentTime, appointmentType: source });
         const created = response.data?.data;
         const id = recordId(created);
         if (!id) throw new Error("Booking response is missing a visit reference. Search today's appointments before retrying.");
         setBookedId(id);
-        if (source === "walk-in" && date === clinicDateKey(new Date(), timezone) && canCheckIn && created.status !== "pending_payment") {
+        if (source === "walk-in" && date === locationDateKey(new Date(), timezone) && canCheckIn && created.status !== "pending_payment") {
           await api.put(`/appointments/${id}/status`, { status: "checked-in" });
         }
         onBooked(id);
@@ -141,10 +141,10 @@ function PatientEntryForm({ onClose, initialClinicId, onBooked, onFullRegistrati
           {newPatient && <div className="grid gap-3 sm:grid-cols-2"><Input label="Patient name" value={name} onChange={e => setName(e.target.value)} required /><Input type="tel" label="Phone number" value={phone} onChange={e => setPhone(e.target.value)} required /></div>}
         </>}
         <div className="grid gap-3 sm:grid-cols-2">
-          {clinics.length !== 1 ? <Select label="Clinic" value={clinicId} onChange={e => { setClinicId(e.target.value); setError(""); }} options={[{ value: "", label: "Select clinic" }, ...clinics.map(value => ({ value: value.id, label: value.name }))]} required /> : <p className="self-center text-sm text-text-muted">Clinic: {clinic?.name}</p>}
+          {locations.length !== 1 ? <Select label="Location" value={locationId} onChange={e => { setLocationId(e.target.value); setError(""); }} options={[{ value: "", label: "Select location" }, ...locations.map(value => ({ value: value.id, label: value.name }))]} required /> : <p className="self-center text-sm text-text-muted">Location: {location?.name}</p>}
           {assignmentLoading ? <Spinner label="Loading doctors" /> : assignments.length !== 1 ? <Select label="Doctor" value={doctorId} onChange={e => { setDoctorId(e.target.value); setError(""); }} options={[{ value: "", label: "Select doctor" }, ...assignments.map(value => ({ value: recordId(value.doctorId), label: typeof value.doctorId === "object" ? value.doctorId.name || "Doctor" : "Doctor" }))]} required /> : <p className="self-center text-sm text-text-muted">Doctor: {typeof assignments[0].doctorId === "object" ? assignments[0].doctorId.name : "Assigned doctor"}</p>}
           <Select label="Visit source" value={source} onChange={e => setSource(e.target.value)} options={[{ value: "walk-in", label: "Walk-in (patient present)" }, { value: "reception", label: "Phone / desk booking" }]} />
-          <Input type="date" label={`Visit date (${timezone})`} min={clinicDateKey(new Date(), timezone)} value={date} onChange={e => { setDate(e.target.value); setError(""); }} required />
+          <Input type="date" label={`Visit date (${timezone})`} min={locationDateKey(new Date(), timezone)} value={date} onChange={e => { setDate(e.target.value); setError(""); }} required />
           {slotMode === "time_slot" && <Select label="Available appointment time" value={slot} onChange={e => setSlot(e.target.value)} options={[{ value: "", label: "Choose time" }, ...slots.map(value => ({ value: value.time, label: value.time }))]} required />}
         </div>
         {slotLoading && <Spinner label="Checking availability" />}

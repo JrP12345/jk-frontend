@@ -7,7 +7,7 @@ import { Alert, Button, Modal, Pagination, Select, Spinner } from "@/components/
 import { useLatestRead } from "@/hooks/useLatestRead";
 
 interface Invoice { id: string; invoiceNumber: string; totalAmount: number; amountPaid?: number; balanceDue?: number; currency?: string; status: string }
-export function VisitInvoices({ appointmentId, patientName, clinicId, onClose, onPaid }: { appointmentId: string; patientName: string; clinicId: string; onClose: () => void; onPaid: () => void }) {
+export function VisitInvoices({ appointmentId, patientName, locationId, onClose, onPaid }: { appointmentId: string; patientName: string; locationId: string; onClose: () => void; onPaid: () => void }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -19,11 +19,11 @@ export function VisitInvoices({ appointmentId, patientName, clinicId, onClose, o
   const load = useCallback(async () => {
     const request = beginRead(); setLoading(true); setError("");
     try {
-      const response = await api.get("/invoices", { params: { appointmentId, clinicId, page, limit: 10 }, signal: request.signal });
+      const response = await api.get("/invoices", { params: { appointmentId, locationId, page, limit: 10 }, signal: request.signal });
       if (request.isCurrent()) { setInvoices(response.data?.data || []); setPages(Number(response.headers["x-total-pages"]) || 1); }
     } catch { if (request.isCurrent()) setError("Invoices could not be loaded. Retry before recording payment."); }
     finally { if (request.isCurrent()) setLoading(false); }
-  }, [appointmentId, clinicId, page, beginRead]);
+  }, [appointmentId, locationId, page, beginRead]);
   useEffect(() => { void load(); }, [load]);
   async function collect(invoice: Invoice) {
     setBusy(invoice.id); setError("");
@@ -38,7 +38,7 @@ export function VisitInvoices({ appointmentId, patientName, clinicId, onClose, o
     <div className="space-y-4">{error && <Alert variant="error" action={<Button disabled={Boolean(busy)} onClick={load}>Refresh</Button>}>{error}</Alert>}
       {loading ? <Spinner label="Loading visit invoices" /> : <>
         {invoices.length === 0 && <p className="text-sm text-text-muted">No invoice has been issued for this visit. Free visits need no collection. Use billing for fee review or additional charges.</p>}
-        <Select label="Payment received by" value={method} onChange={e => setMethod(e.target.value)} disabled={Boolean(busy)} options={[{ value: "cash", label: "Cash" }, { value: "card", label: "Card" }, { value: "upi", label: "UPI (INR clinics only)" }]} />
+        <Select label="Payment received by" value={method} onChange={e => setMethod(e.target.value)} disabled={Boolean(busy)} options={[{ value: "cash", label: "Cash" }, { value: "card", label: "Card" }, { value: "upi", label: "UPI (INR locations only)" }]} />
         {invoices.map(invoice => {
           const balance = invoice.balanceDue ?? Math.max(0, invoice.totalAmount - (invoice.amountPaid || 0));
           const amount = new Intl.NumberFormat(undefined, { style: "currency", currency: invoice.currency || "INR" }).format(balance);

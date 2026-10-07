@@ -4,13 +4,13 @@ import { useEffect, useState, useMemo } from "react";
 import PlatformOwnerDashboard from "@/components/dashboard/PlatformOwnerDashboard";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import api from "@/lib/api";
 import { localDateKey, todayRangeParams } from "@/lib/date";
 import { Badge, Button, useToast } from "@/components/ui";
 import { RotateCw, Plus, CalendarPlus } from "lucide-react";
-import { DashboardStatCards, DashboardAnalytics, DashboardAppointmentsQueue, DashboardQuickActions, DashboardFollowUpAlerts, DashboardClinicFacilities } from "@/components/dashboard";
+import { DashboardStatCards, DashboardAnalytics, DashboardAppointmentsQueue, DashboardQuickActions, DashboardFollowUpAlerts, DashboardLocations } from "@/components/dashboard";
 
 export default function DashboardOverview() {
   const user = useAuthStore(state => state.user);
@@ -21,7 +21,7 @@ export default function DashboardOverview() {
 
 function OperationalDashboard() {
   const { user } = useAuthStore();
-  const { clinics: clinicsList, fetchClinics } = useClinicStore();
+  const { locations: locationsList, fetchLocations } = useLocationStore();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -34,13 +34,13 @@ function OperationalDashboard() {
       "VIEW_APPOINTMENTS",
       "MANAGE_BILLING",
       "VIEW_BILLING",
-      "MANAGE_CLINICS",
-      "VIEW_CLINICS"
+      "MANAGE_LOCATIONS",
+      "VIEW_LOCATIONS"
     );
   const canManageOrg = hasAnyPermission(user, "MANAGE_ORGANIZATION");
 
   const [adminStats, setAdminStats] = useState({
-    clinics: 0,
+    locations: 0,
     doctors: 0,
     receptionists: 0,
     appointments: 0,
@@ -100,12 +100,12 @@ function OperationalDashboard() {
     return result;
   }, [appointments, trendRange]);
 
-  // Purposeful Analytics: Clinic branch throughput breakdown
-  const clinicThroughputData = useMemo(() => {
-    if (clinicsList.length === 0) return [];
-    return clinicsList.slice(0, 5).map((cl) => {
+  // Purposeful Analytics: Location branch throughput breakdown
+  const locationThroughputData = useMemo(() => {
+    if (locationsList.length === 0) return [];
+    return locationsList.slice(0, 5).map((cl) => {
       const clAppts = appointments.filter(
-        (a) => a.clinicId?.id === cl.id || a.clinicId === cl.id || a.clinicId?._id === cl.id
+        (a) => a.locationId?.id === cl.id || a.locationId === cl.id || a.locationId?._id === cl.id
       );
       const completed = clAppts.filter((a) => a.status === "completed").length;
       const waiting = clAppts.filter((a) => a.status !== "completed" && a.status !== "cancelled").length;
@@ -115,7 +115,7 @@ function OperationalDashboard() {
         waiting,
       };
     });
-  }, [clinicsList, appointments]);
+  }, [locationsList, appointments]);
 
   // Update appointment status inline
   const handleUpdateStatus = async (apptId: string, status: string) => {
@@ -147,7 +147,7 @@ function OperationalDashboard() {
           api.get("/invoices"),
           api.get(`/analytics/daily-summary?${todayRangeParams()}`),
         ]);
-        const clList = await fetchClinics();
+        const clList = await fetchLocations();
         const staffData = staffRes.status === "fulfilled" ? staffRes.value.data.data || {} : {};
         const docList = staffData.doctors || [];
         const recList = staffData.receptionists || [];
@@ -168,7 +168,7 @@ function OperationalDashboard() {
         }, 0);
 
         setAdminStats({
-          clinics: clList?.length || 0,
+          locations: clList?.length || 0,
           doctors: docList.length,
           receptionists: recList.length,
           appointments: daily?.appointments ?? apptList.filter((a: any) => localDateKey(a.appointmentTime) === todayStr).length,
@@ -259,7 +259,7 @@ function OperationalDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+              <h1 className="page-title">
                 Welcome back, {cleanUserName}
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
@@ -339,7 +339,7 @@ function OperationalDashboard() {
 
               <div className="space-y-2.5">
                 <div className="flex items-center gap-3 text-xs">
-                  <span className="w-5 h-5 rounded-full bg-success-500/15 text-success-text flex items-center justify-center text-[11px] font-bold shrink-0">
+                  <span className="w-5 h-5 rounded-full bg-success/15 text-success-text flex items-center justify-center text-[11px] font-bold shrink-0">
                     ✓
                   </span>
                   <span className="text-text-secondary line-through">Practice profile created</span>
@@ -409,7 +409,7 @@ function OperationalDashboard() {
         trendRange={trendRange}
         setTrendRange={setTrendRange}
         appointmentTrendData={appointmentTrendData}
-        clinicThroughputData={clinicThroughputData}
+        locationThroughputData={locationThroughputData}
       />
 
       {/* 5. MAIN SECTION (APPOINTMENTS QUEUE + QUICK ACTIONS) */}
@@ -428,10 +428,10 @@ function OperationalDashboard() {
         />
       </div>
 
-      {/* 6. CLINIC LOCATIONS OVERVIEW GRID (FOR ROOT & ADMINS) */}
-      <DashboardClinicFacilities
+      {/* 6. LOCATION LOCATIONS OVERVIEW GRID (FOR ROOT & ADMINS) */}
+      <DashboardLocations
         canManageOrg={canManageOrg}
-        clinics={clinicsList}
+        locations={locationsList}
       />
     </div>
   );

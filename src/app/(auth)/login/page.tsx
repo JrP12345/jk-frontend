@@ -61,7 +61,7 @@ export default function LoginPage() {
       if (params.get("expired") === "1" || params.get("error") || params.get("logout") === "1") {
         setSessionExpired(params.get("expired") === "1");
         useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
-        document.cookie = "ananta_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "ekavyu_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         if (params.get("logout") === "1") {
           router.replace("/browse");
         } else if (params.get("expired") === "1") {
@@ -279,7 +279,7 @@ export default function LoginPage() {
         >
           <NavigationPending />
           <ArrowLeft className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.25} />
-          <span>Browse Clinics</span>
+          <span>Browse Locations</span>
         </Link>
       </div>
 
@@ -318,7 +318,7 @@ export default function LoginPage() {
           {!isForgotPassword ? (
             <div className="p-4 sm:p-6 space-y-4">
               <CardHeader className="p-0 mb-3 text-center">
-                <CardTitle as="h1" className="text-2xl font-semibold text-text tracking-tight">Sign in</CardTitle>
+                <CardTitle as="h1" className="page-title">Sign in</CardTitle>
                 <CardDescription className="text-xs text-text-muted mt-1 font-medium">
                   Access your patient portal or healthcare workspace
                 </CardDescription>
@@ -381,7 +381,7 @@ export default function LoginPage() {
                       "text-[10px] px-1.5 py-0.5 rounded-md font-semibold hidden xs:inline-block",
                       authTab === "email" ? "bg-primary-500/10 text-accent dark:text-accent" : "bg-surface-alt text-text-muted"
                     )}>
-                      Clinic
+                      Team
                     </span>
                   </button>
                 </div>
@@ -623,7 +623,7 @@ export default function LoginPage() {
             /* Forgot Password Form */
             <form onSubmit={handleResetPassword} noValidate className="p-6 sm:p-7 space-y-4 animate-fade-in">
               <CardHeader className="p-0 mb-3">
-                <CardTitle as="h1" className="text-xl font-bold tracking-tight">Recover Password</CardTitle>
+                <CardTitle as="h1" className="page-title">Recover Password</CardTitle>
                 <CardDescription className="text-xs text-text-muted mt-1">
                   {!isResetSent
                     ? "Enter your email address and we will send password recovery instructions."

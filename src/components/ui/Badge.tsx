@@ -19,28 +19,28 @@ export interface BadgeProps {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: "bg-badge-default-bg text-badge-default-text border border-current/20",
-  primary: "bg-badge-primary-bg text-badge-primary-text border border-current/20",
-  secondary: "bg-badge-default-bg text-badge-default-text border border-current/20",
-  success: "bg-badge-success-bg text-badge-success-text border border-current/20",
-  warning: "bg-badge-warning-bg text-badge-warning-text border border-current/20",
-  danger:  "bg-badge-danger-bg text-badge-danger-text border border-current/20",
+  default: "bg-badge-default-bg text-badge-default-text border border-transparent",
+  primary: "bg-badge-primary-bg text-badge-primary-text border border-transparent",
+  secondary: "bg-badge-default-bg text-badge-default-text border border-transparent",
+  success: "bg-badge-success-bg text-badge-success-text border border-transparent",
+  warning: "bg-badge-warning-bg text-badge-warning-text border border-transparent",
+  danger:  "bg-badge-danger-bg text-badge-danger-text border border-transparent",
   outline: "bg-transparent text-text-secondary border border-border",
-  neutral: "bg-badge-default-bg text-badge-default-text border border-current/20",
-  error:   "bg-badge-danger-bg text-badge-danger-text border border-current/20",
-  info:    "bg-badge-info-bg text-badge-info-text border border-current/20",
+  neutral: "bg-badge-default-bg text-badge-default-text border border-transparent",
+  error:   "bg-badge-danger-bg text-badge-danger-text border border-transparent",
+  info:    "bg-badge-info-bg text-badge-info-text border border-transparent",
 };
 
 const dotColors: Record<BadgeVariant, string> = {
   default: "bg-text-muted",
   primary: "bg-primary-500",
   secondary: "bg-text-muted",
-  success: "bg-success-500",
-  warning: "bg-warning-500",
-  danger:  "bg-danger-500",
+  success: "bg-success",
+  warning: "bg-warning",
+  danger:  "bg-danger",
   outline: "bg-text-muted",
   neutral: "bg-text-muted",
-  error:   "bg-danger-500",
+  error:   "bg-danger",
   info:    "bg-primary-500",
 };
 
@@ -89,7 +89,7 @@ const Badge = memo(function Badge({
         <button
           type="button"
           onClick={onRemove}
-          className="ml-0.5 -mr-0.5 h-3.5 w-3.5 rounded-full inline-flex items-center justify-center cursor-pointer hover:bg-black/10 dark:hover:bg-white/20 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
+          className="ml-0.5 -mr-0.5 min-h-6 min-w-6 rounded-full inline-flex items-center justify-center cursor-pointer hover:bg-surface-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
           aria-label="Remove badge"
         >
           <svg className="h-2.5 w-2.5 shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -102,5 +102,3 @@ const Badge = memo(function Badge({
 });
 
 export default Badge;
-
-

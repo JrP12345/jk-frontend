@@ -46,7 +46,7 @@ export default function BillingSettingsPage({
   // Downgrade resolution state
   const [downgradeModalOpen, setDowngradeModalOpen] = useState(false);
   const [downgradeValidation, setDowngradeValidation] = useState<DowngradeValidationResult | null>(null);
-  const [deactivatingClinicId, setDeactivatingClinicId] = useState<string | null>(null);
+  const [deactivatingLocationId, setDeactivatingLocationId] = useState<string | null>(null);
 
   // Organization GST & Billing Details
   const [billingForm, setBillingForm] = useState({
@@ -170,13 +170,13 @@ export default function BillingSettingsPage({
     return () => window.clearInterval(timer);
   }, [pendingOrderId, verificationPending, refreshCheckoutStatus]);
 
-  async function handleDeactivateClinic(clinicId: string) {
-    setDeactivatingClinicId(clinicId);
+  async function handleDeactivateLocation(locationId: string) {
+    setDeactivatingLocationId(locationId);
     try {
-      await api.delete(`/clinics/${clinicId}`);
+      await api.delete(`/locations/${locationId}`);
       toast({
         title: "Branch Deactivated",
-        description: "Clinic branch has been archived. It no longer counts toward your active branch quota.",
+        description: "Location has been archived. It no longer counts toward your active branch quota.",
         variant: "success",
       });
 
@@ -200,7 +200,7 @@ export default function BillingSettingsPage({
         variant: "error",
       });
     } finally {
-      setDeactivatingClinicId(null);
+      setDeactivatingLocationId(null);
     }
   }
 
@@ -397,7 +397,7 @@ export default function BillingSettingsPage({
   };
 
   if (isRootAdmin && !effectiveOrgId && !orgsLoading) {
-    return <Card className="p-6 text-sm">Select an organization in <Link className="text-accent underline" href="/dashboard/settings?tab=billing">Organization Settings</Link> to manage its subscription.</Card>;
+    return <Card className="p-6 text-sm">Select an organization in <Link className="text-accent underline" href="/dashboard/organizations">Organizations</Link> to manage its subscription.</Card>;
   }
 
   if (loading || (isRootAdmin && orgsLoading)) {
@@ -423,7 +423,7 @@ export default function BillingSettingsPage({
 
   const currentPlan = subscription?.planId as any;
   const limits = usageInfo?.limits || currentPlan?.limits || {};
-  const usage = usageInfo?.usage || { clinicsCount: 0, doctorsCount: 0, staffCount: 0, patientsCount: 0 };
+  const usage = usageInfo?.usage || { locationsCount: 0, doctorsCount: 0, staffCount: 0, patientsCount: 0 };
   const summary = subscription?.summary;
   const isTrial = summary?.basis === "trial";
   const statusLabel = summary?.status?.replaceAll("_", " ") || "Unavailable";
@@ -547,10 +547,10 @@ export default function BillingSettingsPage({
             {/* Clinics */}
             <div className="p-4 rounded-xl border border-border/70 bg-surface-alt/30 space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold text-text">
-                <span>Clinic Branches</span>
-                <span className="font-bold text-accent">{usage.clinicsCount} / {limits.maxClinics || 1}</span>
+                <span>Locations</span>
+                <span className="font-bold text-accent">{usage.locationsCount} / {limits.maxLocations || 1}</span>
               </div>
-              <ProgressBar value={usage.clinicsCount} max={limits.maxClinics || 1} size="md" color="primary" />
+              <ProgressBar value={usage.locationsCount} max={limits.maxLocations || 1} size="md" color="primary" />
             </div>
 
             {/* Doctors */}
@@ -829,8 +829,8 @@ export default function BillingSettingsPage({
                   <div key={i} className="p-3 bg-surface-alt/60 rounded-xl border border-border space-y-1.5">
                     <div className="flex items-center justify-between text-xs font-semibold">
                       <span className="capitalize text-text flex items-center gap-1.5">
-                        {v.resource === "clinics" ? <Building2 className="w-3.5 h-3.5 text-text-muted" /> : <Users className="w-3.5 h-3.5 text-text-muted" />}
-                        <span>Active {v.resource}</span>
+                        {v.resource === "locations" ? <Building2 className="w-3.5 h-3.5 text-text-muted" /> : <Users className="w-3.5 h-3.5 text-text-muted" />}
+                        <span>Active {v.resource === "locations" ? "locations" : v.resource}</span>
                       </span>
                       <Badge variant="error" size="sm">
                         {v.current} Active / {v.allowed} Allowed ({v.excess} in excess)
@@ -865,14 +865,14 @@ export default function BillingSettingsPage({
             )}
 
             {/* Active Clinics Quick Archival Section */}
-            {downgradeValidation.activeClinics && downgradeValidation.activeClinics.length > 0 && (
+            {downgradeValidation.activeLocations && downgradeValidation.activeLocations.length > 0 && (
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-text-muted">
-                    Active Clinic Branches ({downgradeValidation.activeClinics.length})
+                    Active Locations ({downgradeValidation.activeLocations.length})
                   </span>
                   <Link
-                    href="/dashboard/clinics"
+                    href="/dashboard/locations"
                     className="text-xs text-accent dark:text-accent font-semibold hover:underline flex items-center gap-1"
                   >
                     <span>Manage All Branches</span>
@@ -880,22 +880,22 @@ export default function BillingSettingsPage({
                   </Link>
                 </div>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto touch-scroll">
-                  {downgradeValidation.activeClinics.map((clinic) => (
+                  {downgradeValidation.activeLocations.map((location) => (
                     <div
-                      key={clinic.id}
+                      key={location.id}
                       className="p-2.5 bg-surface rounded-xl border border-border flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="min-w-0">
-                        <div className="font-bold text-text truncate">{clinic.name}</div>
-                        <div className="text-[11px] text-text-muted truncate">{clinic.city} {clinic.address ? `• ${clinic.address}` : ""}</div>
+                        <div className="font-bold text-text truncate">{location.name}</div>
+                        <div className="text-[11px] text-text-muted truncate">{location.city} {location.address ? `• ${location.address}` : ""}</div>
                       </div>
                       <Button
                         variant="secondary"
                         size="xs"
-                        loading={deactivatingClinicId === clinic.id}
-                        disabled={deactivatingClinicId === clinic.id}
-                        onClick={() => handleDeactivateClinic(clinic.id)}
-                        className="text-error-600 hover:text-error-700 hover:bg-error-500/10 border-border font-semibold shrink-0 cursor-pointer"
+                        loading={deactivatingLocationId === location.id}
+                        disabled={deactivatingLocationId === location.id}
+                        onClick={() => handleDeactivateLocation(location.id)}
+                        className="text-error-text hover:text-error-text hover:bg-error/10 border-border font-semibold shrink-0 cursor-pointer"
                       >
                         Deactivate Branch
                       </Button>

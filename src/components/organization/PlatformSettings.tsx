@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bell, Building2, MessageSquare, ShieldCheck, Users } from "lucide-react";
-import { Badge, Card, CardContent, CardHeader, CardTitle, Spinner, Tabs } from "@/components/ui";
+import { Badge, Card, CardContent, CardHeader, CardTitle, Tabs } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { organizationWorkspaceUrl } from "@/services/organization.service";
 import { OrganizationNotifications } from "./OrganizationConfiguration";
@@ -14,15 +13,9 @@ export function PlatformSettings() {
   const { user } = useAuthStore();
   const params = useSearchParams();
   const router = useRouter();
-  const organizationId = params.get("organizationId");
   const tab = params.get("tab") || "messaging";
   const active = tab === "notifications" ? "notifications" : "messaging";
-  const section = tab === "billing" ? "subscription" : tab === "organization" ? "details" : "configuration";
-  useEffect(() => {
-    if (user?.role === "root" && organizationId) router.replace(organizationWorkspaceUrl(organizationId, section), { scroll: false });
-  }, [organizationId, section, router, user?.role]);
   if (user?.role !== "root") return null;
-  if (organizationId) return <Spinner label="Opening organization settings" />;
   return <div className="space-y-6 pb-8 min-w-0">
     <Card padding="lg" className="bg-gradient-to-br from-primary-500/10 via-surface to-surface border-primary-500/20">
       <div className="flex items-center gap-3"><span className="rounded-xl bg-accent-subtle p-3 text-accent"><ShieldCheck className="h-6 w-6" /></span><div><Badge variant="primary">Root administration</Badge><h1 className="mt-2 text-xl sm:text-2xl font-semibold text-text">Platform settings</h1></div></div>

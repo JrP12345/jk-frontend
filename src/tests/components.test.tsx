@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
@@ -150,6 +150,22 @@ describe("Field validation feedback", () => {
 });
 
 describe("Card Loading Overlay Tests", () => {
+  it("blocks card actions and makes nested controls inert until loading finishes", () => {
+    const onClick = vi.fn();
+    const { container, rerender } = render(<Card loading onClick={onClick}><button>Open details</button></Card>);
+    const card = container.firstElementChild!;
+    expect(card).toHaveAttribute("aria-busy", "true");
+    expect(card).toHaveAttribute("aria-disabled", "true");
+    expect(card).toHaveAttribute("tabindex", "-1");
+    expect(screen.getByText("Open details").closest("[inert]")).toBeTruthy();
+    fireEvent.click(card);
+    fireEvent.keyDown(card, { key: "Enter" });
+    expect(onClick).not.toHaveBeenCalled();
+    rerender(<Card onClick={onClick}><button>Open details</button></Card>);
+    expect(screen.getByText("Open details").closest("[inert]")).toBeNull();
+    fireEvent.keyDown(card, { key: "Enter" });
+    expect(onClick).toHaveBeenCalledOnce();
+  });
   it("lets an explicitly sized card replace the shared default padding", () => {
     const { container } = render(<Card className="p-8 sm:p-12">Preview</Card>);
     const card = container.firstElementChild;

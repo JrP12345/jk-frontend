@@ -89,17 +89,17 @@ const Checkbox = memo(
               {/* Custom Box */}
               <div
                 className={cn(
-                  "flex items-center justify-center h-4.5 w-4.5 rounded-md border border-border bg-surface text-text transform-gpu transition-all duration-200 ease-smooth active:scale-90 shadow-2xs",
+                  "flex items-center justify-center h-4.5 w-4.5 rounded-md border border-input-border bg-surface text-text transition-all duration-200 ease-smooth active:scale-90 shadow-2xs",
                   "peer-focus-visible:ring-2 peer-focus-visible:ring-focus-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface",
                   "peer-checked:bg-primary-600 peer-checked:border-primary-600 peer-checked:shadow-xs peer-checked: peer-checked:[&_svg]:scale-100",
                   indeterminate && "bg-primary-600 border-primary-600 shadow-xs  [&_svg]:scale-100",
-                  visibleError ? "border-danger-500/80" : "group-hover/chk:border-primary-500/60"
+                  visibleError ? "border-danger/80" : "group-hover/chk:border-primary-500/60"
                 )}
               >
                 {/* Checkmark or Indeterminate Icon */}
                 {indeterminate ? (
                   <svg
-                    className="h-3 w-3 shrink-0 transform-gpu scale-100 transition-transform duration-200 ease-spring"
+                    className="h-3 w-3 shrink-0 scale-100 transition-transform duration-200 ease-smooth"
                     viewBox="0 0 12 12"
                     fill="none"
                     stroke="currentColor"
@@ -111,7 +111,7 @@ const Checkbox = memo(
                   </svg>
                 ) : (
                   <svg
-                    className="h-3 w-3 shrink-0 transform-gpu scale-0 transition-transform duration-200 ease-spring"
+                    className="h-3 w-3 shrink-0 scale-0 transition-transform duration-200 ease-smooth"
                     viewBox="0 0 12 12"
                     fill="none"
                     stroke="currentColor"

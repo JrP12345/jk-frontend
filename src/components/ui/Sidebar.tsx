@@ -29,7 +29,7 @@ export default function Sidebar({ brand, items, footer, collapsed = false, class
   return (
     <aside
       className={cn(
-        "flex flex-col bg-surface dark:bg-surface  border-r border-border/70 h-full transform-gpu transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] select-none shadow-sm relative overflow-hidden",
+        "flex flex-col bg-sidebar border-r border-sidebar-border h-full transition-[width] duration-[var(--motion-standard)] ease-smooth select-none relative overflow-hidden",
         collapsed ? "w-[72px]" : "w-64",
         className
       )}
@@ -71,7 +71,7 @@ export default function Sidebar({ brand, items, footer, collapsed = false, class
             return (
               <Fragment key={i}>
                 {showSection && !collapsed && (
-                  <li className="pt-3.5 pb-1 px-3 text-[11px] font-extrabold tracking-widest text-text-muted uppercase flex items-center gap-2">
+                  <li className="pt-3.5 pb-1 px-3 text-xs font-medium tracking-wide text-text-muted uppercase flex items-center gap-2">
                     <span>{item.section}</span>
                     <span className="flex-1 h-px bg-border/40" />
                   </li>
@@ -104,11 +104,11 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
       aria-label={collapsed ? item.label : undefined}
       aria-current={item.active ? "page" : undefined}
       className={cn(
-        "group relative flex items-center gap-3 rounded-xl text-[13px] font-medium cursor-pointer transform-gpu transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring active:scale-[0.98] overflow-hidden",
-        collapsed ? "justify-center h-10 w-10 mx-auto p-0" : "px-3 py-3 sm:py-2.5",
+        "group relative flex items-center gap-3 rounded-xl text-sm font-medium cursor-pointer transition-colors duration-[var(--motion-fast)] ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring overflow-hidden",
+        collapsed ? "justify-center min-h-11 min-w-11 mx-auto p-0" : "px-3 py-3 sm:py-2.5",
         item.active
-          ? "bg-primary-500/10 dark:bg-primary-500/15 text-accent dark:text-accent font-semibold border border-primary-500/20 shadow-xs"
-          : "text-text-secondary hover:text-text hover:bg-surface-hover/80 hover:translate-x-0.5 border border-transparent"
+          ? "bg-selected text-accent font-semibold border border-transparent"
+          : "text-text-secondary hover:text-text hover:bg-surface-hover/80 border border-transparent"
       )}
     >
       {/* Active Glowing Leading Indicator Bar */}
@@ -120,7 +120,7 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
       {item.icon && (
         <span
           className={cn(
-            "shrink-0 transition-transform duration-200 group-hover:scale-105",
+            "shrink-0",
             item.active ? "text-accent dark:text-accent" : "text-text-muted group-hover:text-text-secondary"
           )}
         >
@@ -153,4 +153,3 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
     </li>
   );
 }
-

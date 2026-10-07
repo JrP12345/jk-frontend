@@ -54,7 +54,7 @@ export function PatientMedicalRecords({ patientId, accessToken }: PatientMedical
     setUnifiedDoc({
       documentType: "prescription",
       title: "PRESCRIPTION RX",
-      clinicName: note.clinicId?.name || "Ekavyu Healthcare System",
+      locationName: note.locationId?.name || "Ekavyu Healthcare System",
       doctorName: note.doctorId?.name || "Attending Physician",
       doctorSpecialization: note.doctorId?.specialization || "General Medicine",
       patientName: "My Medical Record",

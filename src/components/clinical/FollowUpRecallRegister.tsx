@@ -23,7 +23,7 @@ interface FollowUpItem {
     name: string;
     specialization: string;
   };
-  clinic: {
+  location: {
     id: string;
     name: string;
   };
@@ -42,13 +42,13 @@ interface FollowUpMetrics {
 }
 
 interface FollowUpRecallRegisterProps {
-  clinicId?: string;
+  locationId?: string;
   doctorId?: string;
   onCheckInSuccess?: () => void;
 }
 
 export function FollowUpRecallRegister({
-  clinicId,
+  locationId,
   doctorId,
   onCheckInSuccess,
 }: FollowUpRecallRegisterProps) {
@@ -70,7 +70,7 @@ export function FollowUpRecallRegister({
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (clinicId) params.append("clinicId", clinicId);
+      if (locationId) params.append("locationId", locationId);
       if (doctorId) params.append("doctorId", doctorId);
       if (timeframe !== "all") params.append("timeframe", timeframe);
       if (search.trim()) params.append("search", search.trim());
@@ -95,7 +95,7 @@ export function FollowUpRecallRegister({
 
   useEffect(() => {
     fetchFollowUps();
-  }, [clinicId, doctorId, timeframe]);
+  }, [locationId, doctorId, timeframe]);
 
   const handleSendRecall = async (item: FollowUpItem) => {
     try {

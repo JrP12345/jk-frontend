@@ -11,7 +11,7 @@ const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router, useSearchParams: () => new URLSearchParams(window.location.search) }));
 const organizations = [
   { id: "org-a", name: "Aurora Health", city: "Mumbai", plan: "starter", status: "active" },
-  { id: "org-b", name: "Willow Clinic", city: "Delhi", plan: "pro", status: "active" },
+  { id: "org-b", name: "Willow Clinic", city: "Delhi", plan: "professional", status: "active" },
 ];
 const identity = { id: "staff-1", name: "Shared Staff", email: "staff@example.test", role: "nurse", isActive: true, memberships: organizations.map(org => ({ organizationId: org.id, organizationName: org.name, role: "nurse" })) };
 function response(data: unknown) { return { data: { data } }; }

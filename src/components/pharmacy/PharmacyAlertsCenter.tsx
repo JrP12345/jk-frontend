@@ -36,14 +36,14 @@ interface MedicineSummary {
 }
 
 interface PharmacyAlertsCenterProps {
-  clinicId: string;
+  locationId: string;
   medicines: MedicineSummary[];
   onOpenAddBatch: (medicine?: MedicineSummary) => void;
   onRefresh: () => void;
 }
 
 export function PharmacyAlertsCenter({
-  clinicId,
+  locationId,
   medicines,
   onOpenAddBatch,
   onRefresh,
@@ -55,10 +55,10 @@ export function PharmacyAlertsCenter({
   const [loading, setLoading] = useState(true);
 
   const fetchExpiringBatches = async () => {
-    if (!clinicId) return;
+    if (!locationId) return;
     try {
       setLoading(true);
-      const res = await api.get(`/pharmacy/expiring?clinicId=${clinicId}&days=${daysThreshold}`);
+      const res = await api.get(`/pharmacy/expiring?locationId=${locationId}&days=${daysThreshold}`);
       setExpiringBatches(res.data?.data || []);
     } catch (err: any) {
       toast({
@@ -73,7 +73,7 @@ export function PharmacyAlertsCenter({
 
   useEffect(() => {
     fetchExpiringBatches();
-  }, [clinicId, daysThreshold]);
+  }, [locationId, daysThreshold]);
 
   // Identify low stock medicines (stockQuantity <= reorderLevel)
   const lowStockMedicines = medicines.filter((m) => {

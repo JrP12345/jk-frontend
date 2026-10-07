@@ -10,7 +10,7 @@
 export function getWebSocketUrl(path: string): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
 
-  // 1. Explicit WebSocket URL (e.g. wss://project-jk-backend.onrender.com)
+  // 1. Explicit WebSocket URL (e.g. wss://api.example.com)
   if (process.env.NEXT_PUBLIC_WS_URL) {
     const base = process.env.NEXT_PUBLIC_WS_URL.replace(/\/+$/, "");
     return `${base}${normalizedPath}`;

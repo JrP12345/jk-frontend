@@ -312,10 +312,10 @@ export default function PatientDetailPage() {
       ),
     },
     {
-      header: "Clinic & Date",
+      header: "Location & Date",
       render: (a) => (
         <div className="space-y-0.5 text-xs">
-          <p className="font-semibold text-text">{a.clinicId?.name || "Main Clinic"}</p>
+          <p className="font-semibold text-text">{a.locationId?.name || "Main Location"}</p>
           <p className="text-text-muted">{new Date(a.appointmentTime).toLocaleString()}</p>
         </div>
       ),

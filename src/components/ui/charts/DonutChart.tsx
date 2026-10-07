@@ -22,11 +22,11 @@ export interface DonutChartProps {
 }
 
 const DEFAULT_COLORS = [
-  "var(--s-chart-1)",
-  "var(--s-chart-2)",
-  "var(--s-chart-3)",
-  "var(--s-chart-4)",
-  "var(--s-chart-5)",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
   "var(--chart-6)",
   "var(--chart-7)",
   "var(--chart-8)",
@@ -106,7 +106,7 @@ export const DonutChart = memo(function DonutChart({
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="var(--s-surface-alt)"
+            stroke="var(--surface-muted)"
             strokeWidth={strokeWidth}
             className="opacity-40"
           />

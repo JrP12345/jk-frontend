@@ -22,7 +22,7 @@ export function OrganizationWorkflowPreferences({ organizationId }: { organizati
     } catch { toast({ title: "Preferences could not be saved", variant: "error" }); }
     finally { setSaving(false); }
   }
-  return <Card><CardHeader><CardTitle as="h2">Everyday clinic workflow</CardTitle><p className="text-sm text-text-muted">Choose the usual starting point. Full registration, clinical documentation and billing stay available.</p></CardHeader><CardContent className="space-y-4">
+  return <Card><CardHeader><CardTitle as="h2">Everyday workflow</CardTitle><p className="text-sm text-text-muted">Choose the usual starting point. Full registration, clinical documentation and billing stay available.</p></CardHeader><CardContent className="space-y-4">
     {loading ? <Spinner label="Loading workflow preferences" /> : error ? <Alert variant="error" action={<Button onClick={reload}>Retry</Button>}>Preferences could not be loaded.</Alert> : <>
       <div className="grid gap-4 sm:grid-cols-2">
         <Select label="Patient entry" value={registration} onChange={e => setRegistration(e.target.value as typeof registration)} options={[{ value: "full", label: "Full registration (current default)" }, { value: "essential", label: "Essential details — search, name and contact" }]} />

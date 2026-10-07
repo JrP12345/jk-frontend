@@ -65,7 +65,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
 
   // Preset Role Permission Mapping Fallbacks
   const PRESET_PERMISSIONS_MAP: Record<string, string[]> = {
-    clinic_manager: [
+    location_manager: [
       "VIEW_PATIENTS", "MANAGE_PATIENTS", "OPD_CHECKIN", "QUEUE_MANAGE",
       "VIEW_APPOINTMENTS", "MANAGE_APPOINTMENTS", "INVOICE_VIEW", "INVOICE_CREATE",
       "INVOICE_COLLECT", "PHARMACY_VIEW", "PHARMACY_DISPENSE", "LAB_VIEW", "INVENTORY_VIEW"
@@ -99,7 +99,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
       perms = PRESET_PERMISSIONS_MAP[presetRoleName];
     }
 
-    if (presetRoleName === "clinic_manager") {
+    if (presetRoleName === "location_manager") {
       const catalogManagerCodes = permissionsCatalog
         .map((p) => p.code)
         .filter((code) =>
@@ -110,7 +110,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
           code.startsWith("QUEUE_") ||
           code.startsWith("APPOINTMENT_")
         );
-      perms = Array.from(new Set([...PRESET_PERMISSIONS_MAP.clinic_manager, ...catalogManagerCodes]));
+      perms = Array.from(new Set([...PRESET_PERMISSIONS_MAP.location_manager, ...catalogManagerCodes]));
     }
 
     return perms;
@@ -194,7 +194,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
   const MANDATORY_ADMIN_PERMISSIONS = [
     "ADMINISTRATIVE_GOVERNANCE",
     "MANAGE_STAFF",
-    "MANAGE_CLINICS",
+    "MANAGE_LOCATIONS",
     "MANAGE_ORGANIZATION",
     "MANAGE_BILLING",
     "VIEW_PATIENTS",
@@ -680,7 +680,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                 { id: "nurse", label: "Nursing & Triage" },
                 { id: "doctor", label: "Doctor Clinical" },
                 { id: "lab_tech", label: "Lab Tech LIS" },
-                { id: "clinic_manager", label: "All-In-One Clinic Manager" },
+                { id: "location_manager", label: "Practice manager" },
               ].map((preset) => {
                 const active = isPresetActive(preset.id);
                 return (

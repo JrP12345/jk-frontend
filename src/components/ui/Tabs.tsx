@@ -102,13 +102,13 @@ const Tabs = memo(function Tabs({
         onKeyDown={handleKeyDown}
         className={cn(
           "relative flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar whitespace-nowrap scroll-smooth max-w-full select-none touch-manipulation [scroll-snap-type:x_mandatory]",
-          variant === "underline" ? "border-b border-border/80 pb-px" : "bg-surface-alt border border-border/70 rounded-xl p-1 shadow-2xs"
+          variant === "underline" ? "border-b border-border/80 pb-px" : "material-glass-control rounded-xl p-1"
         )}
       >
         {/* Underline Slider */}
         {variant === "underline" && (
           <div
-            className="absolute bottom-0 h-[3px] rounded-full bg-accent shadow-xs  transform-gpu transition-all duration-300 ease-spring"
+            className="absolute bottom-0 h-0.5 rounded-full bg-accent transition-[left,width,opacity] duration-[var(--motion-standard)] ease-smooth"
             style={{
               left: sliderStyle.left,
               width: sliderStyle.width,
@@ -120,7 +120,7 @@ const Tabs = memo(function Tabs({
         {/* Pills Slider */}
         {variant === "pills" && (
           <div
-            className="absolute bg-surface rounded-lg shadow-xs border border-border/70 transform-gpu transition-all duration-300 ease-spring"
+            className="absolute bg-surface rounded-lg shadow-xs border border-border transition-[left,width,opacity] duration-[var(--motion-standard)] ease-smooth"
             style={{
               top: "4px",
               bottom: "4px",
@@ -146,10 +146,10 @@ const Tabs = memo(function Tabs({
               disabled={tab.disabled}
               onClick={() => handleChange(tab.id)}
               className={cn(
-                "relative z-10 flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium cursor-pointer transform-gpu transition-all duration-200 ease-smooth disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] shrink-0 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-lg min-h-[44px] md:min-h-0 [scroll-snap-align:start]",
+                "relative z-10 flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm font-medium cursor-pointer transition-colors duration-[var(--motion-fast)] ease-smooth disabled:opacity-40 disabled:cursor-not-allowed shrink-0 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-lg min-h-[44px] md:min-h-0 [scroll-snap-align:start]",
                 variant === "underline"
-                  ? cn("-mb-px", isActive ? "text-accent dark:text-accent font-bold" : "text-text-secondary hover:text-text")
-                  : cn(isActive ? "text-text font-bold" : "text-text-secondary hover:text-text")
+                  ? cn("-mb-px", isActive ? "text-accent dark:text-accent font-semibold" : "text-text-secondary hover:text-text")
+                  : cn(isActive ? "text-text font-semibold" : "text-text-secondary hover:text-text")
               )}
             >
               {tab.icon && <span className="[&>svg]:h-4 [&>svg]:w-4 shrink-0">{tab.icon}</span>}
@@ -159,7 +159,7 @@ const Tabs = memo(function Tabs({
                   className={cn(
                     "ml-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-full leading-none transition-colors duration-200",
                     isActive
-                      ? "bg-primary-500/10 text-accent dark:text-accent"
+                      ? "bg-selected text-accent"
                       : "bg-surface-alt text-text-muted"
                   )}
                 >
@@ -176,7 +176,7 @@ const Tabs = memo(function Tabs({
           role="tabpanel"
           aria-labelledby={`${id}-tab-${activeTab.id}`}
           tabIndex={0}
-          className="pt-4 animate-fade-in transform-gpu transition-all duration-250 ease-smooth focus-visible:outline-none"
+          className="pt-4 animate-fade-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-lg"
         >
           {activeTab.content}
         </div>
@@ -186,5 +186,3 @@ const Tabs = memo(function Tabs({
 });
 
 export default Tabs;
-
-

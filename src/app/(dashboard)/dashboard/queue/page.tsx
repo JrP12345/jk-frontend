@@ -12,7 +12,7 @@ import api from "@/lib/api";
 import { createReconnectingSocket, type ReconnectingSocket } from "@/utils/websocket";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { Alert, Card, CardContent, Button, Select, Input, DatePicker, useToast, Spinner, Badge, StatCard, Modal, Textarea, Checkbox, Skeleton, SkeletonCard, ChartContainer, BarChart, cn } from "@/components/ui";
 import dynamic from "next/dynamic";
 import type { UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
@@ -28,8 +28,8 @@ const ThermalTokenSlipModal = dynamic(
   { ssr: false }
 );
 
-const ClinicQrPosterModal = dynamic(
-  () => import("@/components/dashboard/ClinicQrPosterModal"),
+const LocationQrPosterModal = dynamic(
+  () => import("@/components/dashboard/LocationQrPosterModal"),
   { ssr: false }
 );
 
@@ -142,7 +142,7 @@ const LAB_TEST_DEFAULT_PRICES: Record<string, number> = {
 
 interface Appointment {
   id: string;
-  clinicId: string;
+  locationId: string;
   doctorId: any;
   patientId: {
     id: string;
@@ -263,7 +263,7 @@ function getAppointmentBilling(appt: Appointment) {
 
 export default function QueuePage() {
   const { user } = useAuthStore();
-  const { fetchClinics, activeClinicId } = useClinicStore();
+  const { fetchLocations, activeLocationId } = useLocationStore();
   const { toast } = useToast();
 
   const [loadingFilters, setLoadingFilters] = useState(true);
@@ -280,7 +280,7 @@ export default function QueuePage() {
   const [thermalSlipOpen, setThermalSlipOpen] = useState(false);
   const [thermalSlipData, setThermalSlipData] = useState<ThermalTokenSlipData | null>(null);
   const [qrPosterOpen, setQrPosterOpen] = useState(false);
-  const [qrPosterClinic, setQrPosterClinic] = useState<any | null>(null);
+  const [qrPosterLocation, setQrPosterLocation] = useState<any | null>(null);
 
   // ABDM / ABHA Modal State
   const [abdmModalOpen, setAbdmModalOpen] = useState(false);
@@ -422,8 +422,8 @@ export default function QueuePage() {
   const [endOpdSummary, setEndOpdSummary] = useState<any | null>(null);
   const [isLoadingEndOpdSummary, setIsLoadingEndOpdSummary] = useState(false);
   const [isSubmittingEndOpd, setIsSubmittingEndOpd] = useState(false);
-  const [standbyReconcileAction, setStandbyReconcileAction] = useState<"keep_unresolved" | "cancel_refund">("keep_unresolved");
-  const [waitingReconcileAction, setWaitingReconcileAction] = useState<"cancel_refund" | "keep_unresolved">("keep_unresolved");
+  const [standbyReconcileAction, setStandbyReconcileAction] = useState<"keep_unresolved" | "cancel">("keep_unresolved");
+  const [waitingReconcileAction, setWaitingReconcileAction] = useState<"cancel" | "keep_unresolved">("keep_unresolved");
 
   // Investigation Modal State
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
@@ -485,9 +485,9 @@ export default function QueuePage() {
   const [submittingWalkIn, setSubmittingWalkIn] = useState(false);
 
   // Filter States
-  const [clinics, setClinics] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
-  const [selectedClinic, setSelectedClinic] = useState(activeClinicId || "");
+  const [selectedLocation, setSelectedLocation] = useState(activeLocationId || "");
   const [selectedDoctor, setSelectedDoctor] = useState("");
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
@@ -495,8 +495,8 @@ export default function QueuePage() {
   });
 
   useEffect(() => {
-    setSelectedClinic(activeClinicId || "");
-  }, [activeClinicId]);
+    setSelectedLocation(activeLocationId || "");
+  }, [activeLocationId]);
 
   // Queue State
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -507,28 +507,28 @@ export default function QueuePage() {
       try {
         setLoadingFilters(true);
         if (user?.role === "doctor") {
-          let uniqueClinics: any[] = [];
+          let uniqueLocations: any[] = [];
           try {
             const res = await api.get(`/onboarding/doctors/assignments?doctorId=${user.id}`);
             const assignments = res.data?.data || [];
-            uniqueClinics = assignments
-              .map((a: any) => a.clinicId)
+            uniqueLocations = assignments
+              .map((a: any) => a.locationId)
               .filter(Boolean)
               .filter((c: any, idx: number, arr: any[]) => arr.findIndex((t) => (t.id || t._id) === (c.id || c._id)) === idx);
           } catch {
-            const loadedClinics = await fetchClinics();
-            uniqueClinics = loadedClinics;
+            const loadedLocations = await fetchLocations();
+            uniqueLocations = loadedLocations;
           }
 
-          setClinics(uniqueClinics);
+          setLocations(uniqueLocations);
           setDoctors([{ id: user.id, name: user.name }]);
           setSelectedDoctor(user.id);
-          if (uniqueClinics.length > 0) {
-            setSelectedClinic(uniqueClinics[0].id || uniqueClinics[0]._id);
+          if (uniqueLocations.length > 0) {
+            setSelectedLocation(uniqueLocations[0].id || uniqueLocations[0]._id);
           }
         } else {
-          const [loadedClinics, staffRes] = await Promise.all([
-            fetchClinics(),
+          const [loadedLocations, staffRes] = await Promise.all([
+            fetchLocations(),
             api.get("/onboarding/staff").catch(() => ({ data: { data: { doctors: [] } } })),
           ]);
           const loadedDoctors = Array.isArray(staffRes.data?.data?.doctors)
@@ -537,11 +537,11 @@ export default function QueuePage() {
             ? staffRes.data.data
             : [];
 
-          setClinics(loadedClinics);
+          setLocations(loadedLocations);
           setDoctors(loadedDoctors);
 
-          if (loadedClinics.length > 0) {
-            setSelectedClinic(loadedClinics[0].id);
+          if (loadedLocations.length > 0) {
+            setSelectedLocation(loadedLocations[0].id);
           }
           if (loadedDoctors.length > 0) {
             setSelectedDoctor(loadedDoctors[0].id || loadedDoctors[0]._id);
@@ -560,9 +560,9 @@ export default function QueuePage() {
   const beginOverrideRead = useLatestRead();
   const fetchActiveOverride = async () => {
     const request = beginOverrideRead();
-    if (!selectedClinic || !selectedDoctor || !selectedDate) return;
+    if (!selectedLocation || !selectedDoctor || !selectedDate) return;
     try {
-      const res = await api.get(`/doctor-overrides?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`, { signal: request.signal });
+      const res = await api.get(`/doctor-overrides?locationId=${selectedLocation}&doctorId=${selectedDoctor}&date=${selectedDate}`, { signal: request.signal });
       if (!request.isCurrent()) return;
       const overrides = res.data?.data || [];
       setActiveOverride(overrides.length > 0 ? overrides[0] : null);
@@ -576,13 +576,13 @@ export default function QueuePage() {
   const beginTriageRead = useLatestRead();
   const fetchTriageAppointments = async () => {
     const request = beginTriageRead();
-    if (!selectedClinic) {
+    if (!selectedLocation) {
       setTriageAppointments([]);
       return;
     }
     try {
       setLoadingTriage(true);
-      const res = await api.get(`/doctor-overrides/triage?clinicId=${selectedClinic}&date=${selectedDate}`, { signal: request.signal });
+      const res = await api.get(`/doctor-overrides/triage?locationId=${selectedLocation}&date=${selectedDate}`, { signal: request.signal });
       if (!request.isCurrent()) return;
       setTriageAppointments(res.data?.data || []);
     } catch (err) {
@@ -597,12 +597,12 @@ export default function QueuePage() {
   const beginDelayRead = useLatestRead();
   const fetchDelayStatus = async () => {
     const request = beginDelayRead();
-    if (!selectedClinic || !selectedDoctor) {
+    if (!selectedLocation || !selectedDoctor) {
       setDelayStatus(null);
       return;
     }
     try {
-      const res = await api.get(`/queue/delay-status?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`, { signal: request.signal });
+      const res = await api.get(`/queue/delay-status?locationId=${selectedLocation}&doctorId=${selectedDoctor}&date=${selectedDate}`, { signal: request.signal });
       if (!request.isCurrent()) return;
       setDelayStatus(res.data?.data || null);
     } catch {
@@ -613,9 +613,10 @@ export default function QueuePage() {
 
   // Fetch queue when filters change
   const beginQueueRead = useLatestRead();
+  const loadedQueueScope = useRef<string | null>(null);
   const queueReads = useRef(new Map<string, { pending: Promise<void>; dirty: boolean }>());
   const fetchQueue = () => {
-    const key = `${selectedClinic}:${selectedDoctor}:${selectedDate}`;
+    const key = `${selectedLocation}:${selectedDoctor}:${selectedDate}`;
     const existing = queueReads.current.get(key);
     if (existing) { existing.dirty = true; return existing.pending; }
     const state = { pending: Promise.resolve(), dirty: false };
@@ -627,25 +628,27 @@ export default function QueuePage() {
   };
   const fetchQueueNow = async () => {
     const request = beginQueueRead();
-    if (!selectedClinic || !selectedDoctor) {
+    if (!selectedLocation || !selectedDoctor) {
       setAppointments([]);
       return;
     }
     try {
-      setQueueError(null);
-      setLoadingQueue(true);
+      const scope = `${selectedLocation}:${selectedDoctor}:${selectedDate}`;
+      if (loadedQueueScope.current !== scope) setLoadingQueue(true);
       const [resQueue, resStatus] = await Promise.all([
-        api.get(`/queue?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`, { signal: request.signal }),
-        api.get(`/queue/status?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`, { signal: request.signal }),
+        api.get(`/queue?locationId=${selectedLocation}&doctorId=${selectedDoctor}&date=${selectedDate}`, { signal: request.signal }),
+        api.get(`/queue/status?locationId=${selectedLocation}&doctorId=${selectedDoctor}&date=${selectedDate}`, { signal: request.signal }),
       ]);
       if (!request.isCurrent()) return;
+      setQueueError(null);
+      loadedQueueScope.current = scope;
       setAppointments(resQueue.data.data || []);
       setQueueStatusData(resStatus.data?.data || null);
       await Promise.all([fetchActiveOverride(), fetchTriageAppointments(), fetchDelayStatus()]);
     } catch (err: any) {
       if (!request.isCurrent()) return;
       setQueueError("The queue could not be loaded. Check your connection and try again.");
-      toast({
+      if (loadedQueueScope.current === null) toast({
         title: "Error Loading Queue",
         description: "The queue could not be loaded. Check your connection and try again.",
         variant: "error",
@@ -656,11 +659,11 @@ export default function QueuePage() {
   };
 
   const handleSaveOverride = async () => {
-    if (!selectedClinic || !selectedDoctor || !selectedDate) return;
+    if (!selectedLocation || !selectedDoctor || !selectedDate) return;
     try {
       setSavingOverride(true);
       await api.post("/doctor-overrides", {
-        clinicId: selectedClinic,
+        locationId: selectedLocation,
         doctorId: selectedDoctor,
         date: selectedDate,
         status: overrideStatus,
@@ -848,11 +851,11 @@ export default function QueuePage() {
   };
 
   const handleTriggerDelayAlerts = async () => {
-    if (!selectedClinic || !selectedDoctor) return;
+    if (!selectedLocation || !selectedDoctor) return;
     try {
       setSendingDelayAlerts(true);
       const res = await api.post("/queue/trigger-delay-alerts", {
-        clinicId: selectedClinic,
+        locationId: selectedLocation,
         doctorId: selectedDoctor,
         date: selectedDate,
         delayThresholdMinutes: 20,
@@ -876,11 +879,11 @@ export default function QueuePage() {
   };
 
   const handleStartOpdSession = async () => {
-    if (!selectedClinic || !selectedDoctor) return;
+    if (!selectedLocation || !selectedDoctor) return;
     setIsStartingOpd(true);
     try {
       await api.post("/queue/session/start", {
-        clinicId: selectedClinic,
+        locationId: selectedLocation,
         doctorId: selectedDoctor,
       });
       toast({
@@ -901,11 +904,11 @@ export default function QueuePage() {
   };
 
   const handleToggleDoctorBreak = async (isOnBreak: boolean, reason?: string, minutes?: number) => {
-    if (!selectedClinic || !selectedDoctor) return;
+    if (!selectedLocation || !selectedDoctor) return;
     try {
       setIsTogglingBreak(true);
       const res = await api.post("/queue/session/break", {
-        clinicId: selectedClinic,
+        locationId: selectedLocation,
         doctorId: selectedDoctor,
         isOnBreak,
         breakReason: reason || breakReasonInput,
@@ -937,11 +940,11 @@ export default function QueuePage() {
   };
 
   const handleOpenEndOpdModal = async () => {
-    if (!selectedClinic || !selectedDoctor) return;
+    if (!selectedLocation || !selectedDoctor) return;
     setIsEndOpdModalOpen(true);
     setIsLoadingEndOpdSummary(true);
     try {
-      const res = await api.get(`/queue/session/summary?clinicId=${selectedClinic}&doctorId=${selectedDoctor}&date=${selectedDate}`);
+      const res = await api.get(`/queue/session/summary?locationId=${selectedLocation}&doctorId=${selectedDoctor}&date=${selectedDate}`);
       setEndOpdSummary(res.data?.data || null);
     } catch (err: any) {
       toast({
@@ -955,11 +958,11 @@ export default function QueuePage() {
   };
 
   const handleExecuteEndOpdReconcile = async () => {
-    if (!selectedClinic || !selectedDoctor) return;
+    if (!selectedLocation || !selectedDoctor) return;
     setIsSubmittingEndOpd(true);
     try {
       const res = await api.post("/queue/session/end", {
-        clinicId: selectedClinic,
+        locationId: selectedLocation,
         doctorId: selectedDoctor,
         standbyAction: standbyReconcileAction,
         waitingAction: waitingReconcileAction,
@@ -993,13 +996,13 @@ export default function QueuePage() {
     if (!investigationAppt) return;
     setIsSubmittingInvestigation(true);
     try {
-      await api.post(`/queue/${investigationAppt.id}/send-investigation`, {
+      await api.post(`/queue/${investigationAppt.id}/order-investigations`, {
         notes: investigationNotes,
         testNames: selectedLabTests.length > 0 ? selectedLabTests : undefined,
       });
       toast({
         title: "Patient Sent for Diagnostic Tests 🔬",
-        description: `Token #${investigationAppt.tokenNumber} placed on Standby. Requisition sent to in-clinic laboratory.`,
+        description: `Token #${investigationAppt.tokenNumber} placed on Standby. Requisition sent to on-site laboratory.`,
         variant: "success",
       });
       setIsInvestigationModalOpen(false);
@@ -1042,20 +1045,21 @@ export default function QueuePage() {
     setAppointments([]);
     setQueueStatusData(null);
     queueReads.current.clear();
+    loadedQueueScope.current = null;
     setActiveOverride(null);
     setDelayStatus(null);
     setTriageAppointments([]);
     fetchQueue();
 
     const interval = setInterval(() => {
-      if (document.visibilityState === "visible" && selectedClinic && selectedDoctor) void fetchQueue();
+      if (document.visibilityState === "visible" && selectedLocation && selectedDoctor) void fetchQueue();
     }, 15000);
 
-    // Real-time WebSocket connection to Clinic OPD Queue
+    // Real-time WebSocket connection to Location OPD Queue
     let ws: ReconnectingSocket | null = null;
-    if (typeof window !== "undefined" && selectedClinic) {
+    if (typeof window !== "undefined" && selectedLocation) {
       try {
-        ws = createReconnectingSocket(`/api/clinical/ws?clinicId=${selectedClinic}`, () => { void fetchQueue(); }, true);
+        ws = createReconnectingSocket(`/api/clinical/ws?locationId=${selectedLocation}`, () => { void fetchQueue(); }, true);
 
         ws.onmessage = (event) => {
           try {
@@ -1150,7 +1154,7 @@ export default function QueuePage() {
       clearInterval(interval);
       if (ws) ws.close();
     };
-  }, [selectedClinic, selectedDoctor, selectedDate]);
+  }, [selectedLocation, selectedDoctor, selectedDate]);
 
   // Split appointments into Active, Standby, and Finished categories
   const activeStatuses = ["pending", "confirmed", "checked-in", "in-consultation"];
@@ -1169,7 +1173,7 @@ export default function QueuePage() {
 
   const [chimeType, setChimeType] = useState<ChimeType>(() => {
     if (typeof window !== "undefined") {
-      return (localStorage.getItem("ananta_queue_chime_sound") as ChimeType) || "bell";
+      return (localStorage.getItem("ekavyu_queue_chime_sound") as ChimeType) || "bell";
     }
     return "bell";
   });
@@ -1177,7 +1181,7 @@ export default function QueuePage() {
   const handleChimeChange = (newType: ChimeType) => {
     setChimeType(newType);
     if (typeof window !== "undefined") {
-      localStorage.setItem("ananta_queue_chime_sound", newType);
+      localStorage.setItem("ekavyu_queue_chime_sound", newType);
     }
     playChimeSound(newType);
   };
@@ -1205,7 +1209,7 @@ export default function QueuePage() {
     try {
       setCallingNext(true);
       const res = await api.post("/queue/call-next", {
-        clinicId: selectedClinic,
+        locationId: selectedLocation,
         doctorId: selectedDoctor,
         completePrevious,
         requireArrivalConfirmation: true,
@@ -1259,14 +1263,14 @@ export default function QueuePage() {
       if (appt.status !== "checked-in") {
         await api.put(`/appointments/${appt.id}/status`, { status: "checked-in" });
       }
-      const clinicObj = clinics.find((c) => (c.id || c._id) === selectedClinic);
+      const locationObj = locations.find((c) => (c.id || c._id) === selectedLocation);
       const doctorObj = doctors.find((d) => (d.id || d._id) === selectedDoctor);
 
       setUnifiedDoc({
         documentType: "token_slip",
         title: `TOKEN SLIP #${appt.tokenNumber}`,
-        clinicName: clinicObj?.name || "Healthcare Center",
-        clinicAddress: clinicObj?.city,
+        locationName: locationObj?.name || "Healthcare Center",
+        locationAddress: locationObj?.city,
         doctorName: doctorObj?.name || user?.name || "Doctor",
         doctorSpecialization: doctorObj?.specialization,
         patientName: appt.patientId?.userId?.name || "Patient",
@@ -1288,7 +1292,7 @@ export default function QueuePage() {
   };
 
   const openThermalSlip = (appt: Appointment) => {
-    const clinicObj = clinics.find((c) => (c.id || c._id) === selectedClinic);
+    const locationObj = locations.find((c) => (c.id || c._id) === selectedLocation);
     const doctorObj = doctors.find((d) => (d.id || d._id) === selectedDoctor || (d.id || d._id) === appt.doctorId);
     const apptIdx = activeQueue.findIndex((a) => a.id === appt.id);
     const ahead = apptIdx >= 0 ? apptIdx : 0;
@@ -1296,9 +1300,9 @@ export default function QueuePage() {
     setThermalSlipData({
       appointmentId: appt.id,
       tokenNumber: appt.tokenNumber,
-      clinicName: clinicObj?.name || "Healthcare Clinic",
-      clinicAddress: typeof clinicObj?.address === "string" ? clinicObj.address : clinicObj?.city || "",
-      clinicPhone: clinicObj?.phone || "",
+      locationName: locationObj?.name || "Healthcare facility",
+      locationAddress: typeof locationObj?.address === "string" ? locationObj.address : locationObj?.city || "",
+      locationPhone: locationObj?.phone || "",
       doctorName: doctorObj?.name || user?.name || "Doctor",
       doctorSpecialization: doctorObj?.specialization || "OPD Consultation",
       patientName: appt.patientId?.userId?.name || "Patient",
@@ -1333,8 +1337,8 @@ export default function QueuePage() {
       return;
     }
     const targetDoc = walkInDoctorId || selectedDoctor;
-    if (!targetDoc || !selectedClinic) {
-      toast({ title: "Validation Error", description: "Clinic and doctor must be selected", variant: "error" });
+    if (!targetDoc || !selectedLocation) {
+      toast({ title: "Validation Error", description: "Location and doctor must be selected", variant: "error" });
       return;
     }
 
@@ -1348,7 +1352,7 @@ export default function QueuePage() {
         setWalkInPatientId(canonicalPatientId);
       }
       const payload: any = {
-        clinicId: selectedClinic,
+        locationId: selectedLocation,
         doctorId: targetDoc,
         appointmentTime: new Date().toISOString(),
         appointmentType: "walk-in",
@@ -1381,15 +1385,15 @@ export default function QueuePage() {
       await fetchQueue();
 
       // Offer immediate Thermal Token Slip
-      const clinicObj = clinics.find((c) => (c.id || c._id) === selectedClinic);
+      const locationObj = locations.find((c) => (c.id || c._id) === selectedLocation);
       const doctorObj = doctors.find((d) => (d.id || d._id) === targetDoc);
 
       setThermalSlipData({
         appointmentId: newAppt?.id || newAppt?._id || "",
         tokenNumber: assignedToken,
-        clinicName: clinicObj?.name || "Healthcare Clinic",
-        clinicAddress: typeof clinicObj?.address === "string" ? clinicObj.address : clinicObj?.city || "",
-        clinicPhone: clinicObj?.phone || "",
+        locationName: locationObj?.name || "Healthcare facility",
+        locationAddress: typeof locationObj?.address === "string" ? locationObj.address : locationObj?.city || "",
+        locationPhone: locationObj?.phone || "",
         doctorName: doctorObj?.name || user?.name || "Doctor",
         doctorSpecialization: doctorObj?.specialization || "OPD Consultation",
         patientName: walkInName.trim(),
@@ -1478,7 +1482,7 @@ export default function QueuePage() {
       toast({ title: "Consultation Concluded", description: "Patient visit and clinical records saved.", variant: "success" });
 
       // Automatically construct and present official Prescription print slip
-      const activeClinicObj = clinics.find((c) => (c.id || c._id) === selectedClinic);
+      const activeLocationObj = locations.find((c) => (c.id || c._id) === selectedLocation);
       const activeDoctorObj = doctors.find((d) => (d.id || d._id) === selectedDoctor);
       const doctorData = (typeof apptToComplete.doctorId === "object" ? apptToComplete.doctorId : null) || activeDoctorObj;
       const patientName = apptToComplete.patientId?.userId?.name || (apptToComplete.patientId as any)?.name || "Patient";
@@ -1492,10 +1496,10 @@ export default function QueuePage() {
       const rxDoc: UnifiedDocumentData = {
         documentType: "prescription",
         title: "Official Medical Prescription (Rx)",
-        clinicName: activeClinicObj?.name || "Medical Clinic",
-        clinicAddress: [activeClinicObj?.address, activeClinicObj?.city].filter(Boolean).join(", "),
-        clinicPhone: activeClinicObj?.phone || activeClinicObj?.contactNumber,
-        clinicEmail: activeClinicObj?.email,
+        locationName: activeLocationObj?.name || "Healthcare facility",
+        locationAddress: [activeLocationObj?.address, activeLocationObj?.city].filter(Boolean).join(", "),
+        locationPhone: activeLocationObj?.phone || activeLocationObj?.contactNumber,
+        locationEmail: activeLocationObj?.email,
         doctorName: doctorData?.userId?.name || doctorData?.name || user?.name || "Attending Physician",
         doctorSpecialization: doctorData?.specialization || "General Medicine",
         doctorRegistrationNumber: doctorData?.registrationNumber || "",
@@ -1536,7 +1540,7 @@ export default function QueuePage() {
   };
 
   const handlePrintAppointmentPrescription = (appt: Appointment) => {
-    const activeClinicObj = clinics.find((c) => (c.id || c._id) === (appt.clinicId as any)?.id || (c.id || c._id) === (appt.clinicId as any) || (c.id || c._id) === selectedClinic);
+    const activeLocationObj = locations.find((c) => (c.id || c._id) === (appt.locationId as any)?.id || (c.id || c._id) === (appt.locationId as any) || (c.id || c._id) === selectedLocation);
     const activeDoctorObj = doctors.find((d) => (d.id || d._id) === (appt.doctorId as any)?.id || (d.id || d._id) === (appt.doctorId as any) || (d.id || d._id) === selectedDoctor);
     const doctorData = (typeof appt.doctorId === "object" ? appt.doctorId : null) || activeDoctorObj;
     const patientName = appt.patientId?.userId?.name || (appt.patientId as any)?.name || "Patient";
@@ -1554,10 +1558,10 @@ export default function QueuePage() {
     const rxDoc: UnifiedDocumentData = {
       documentType: "prescription",
       title: "Official Medical Prescription (Rx)",
-      clinicName: activeClinicObj?.name || "Medical Clinic",
-      clinicAddress: [activeClinicObj?.address, activeClinicObj?.city].filter(Boolean).join(", "),
-      clinicPhone: activeClinicObj?.phone || activeClinicObj?.contactNumber,
-      clinicEmail: activeClinicObj?.email,
+      locationName: activeLocationObj?.name || "Healthcare facility",
+      locationAddress: [activeLocationObj?.address, activeLocationObj?.city].filter(Boolean).join(", "),
+      locationPhone: activeLocationObj?.phone || activeLocationObj?.contactNumber,
+      locationEmail: activeLocationObj?.email,
       doctorName: doctorData?.userId?.name || doctorData?.name || user?.name || "Attending Physician",
       doctorSpecialization: doctorData?.specialization || "General Medicine",
       doctorRegistrationNumber: doctorData?.registrationNumber || "",
@@ -1587,13 +1591,13 @@ export default function QueuePage() {
   };
 
   const handlePrintTokenSlip = (appt: Appointment) => {
-    const activeClinicObj = clinics.find((c) => c.id === (appt.clinicId as any)?.id || c.id === selectedClinic);
+    const activeLocationObj = locations.find((c) => c.id === (appt.locationId as any)?.id || c.id === selectedLocation);
     const patientName = appt.patientId?.userId?.name || (appt.patientId as any)?.name || "Patient";
     const tokenDoc: UnifiedDocumentData = {
       documentType: "token_slip",
       title: "OPD Queue Token Slip",
-      clinicName: activeClinicObj?.name || "Medical Clinic",
-      clinicAddress: [activeClinicObj?.address, activeClinicObj?.city].filter(Boolean).join(", "),
+      locationName: activeLocationObj?.name || "Healthcare facility",
+      locationAddress: [activeLocationObj?.address, activeLocationObj?.city].filter(Boolean).join(", "),
       doctorName: (appt.doctorId as any)?.name || "Attending Physician",
       patientName,
       patientId: appt.patientId?.id || appt.patientId?._id,
@@ -1624,7 +1628,7 @@ export default function QueuePage() {
     try {
       const orderedAppointmentIds = updatedActive.map((a) => a.id);
       await api.put("/queue/reorder", {
-        clinicId: selectedClinic,
+        locationId: selectedLocation,
         doctorId: selectedDoctor,
         date: selectedDate,
         orderedAppointmentIds,
@@ -1681,7 +1685,7 @@ export default function QueuePage() {
         <div className="flex flex-col gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
+              <h1 className="page-title">
                 Patient queue
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
@@ -1760,14 +1764,14 @@ export default function QueuePage() {
                 size="sm"
                 documentName="poster"
                 preview
-                disabled={!selectedClinic || selectedClinic === "all"}
+                disabled={!selectedLocation || selectedLocation === "all"}
                 onPrint={() => {
-                  const currentClinic = clinics.find((c) => (c.id || c._id) === selectedClinic);
-                  setQrPosterClinic(currentClinic || { id: selectedClinic, name: "Our Clinic" });
+                  const currentLocation = locations.find((c) => (c.id || c._id) === selectedLocation);
+                  setQrPosterLocation(currentLocation || { id: selectedLocation, name: "Our location" });
                   setQrPosterOpen(true);
                 }}
                 className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
-                title="Print A4 QR poster for clinic waiting room entrance"
+                title="Print A4 QR poster for location waiting room entrance"
               >
               </PrintButton>
 
@@ -1842,12 +1846,12 @@ export default function QueuePage() {
                 variant="outline"
                 placeholder="Select Date"
                 value={selectedDate}
-                onChange={(val) => setSelectedDate(typeof val === "string" ? val : val.target.value)}
+                onChange={(val) => setSelectedDate(val)}
               />
             </div>
 
             {/* Doctor OPD Session Controls */}
-            {selectedClinic && selectedDoctor && (
+            {selectedLocation && selectedDoctor && (
               <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 flex-wrap">
                 {queueStatusData?.opdSession?.status === "active" ? (
                   <div className="flex items-center gap-2 flex-wrap">
@@ -2059,7 +2063,7 @@ export default function QueuePage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           3. STATS OVERVIEW
          ────────────────────────────────────────────────────────────────────────── */}
-      {selectedClinic && selectedDoctor && (
+      {selectedLocation && selectedDoctor && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
             label="Booked, not arrived"
@@ -2091,7 +2095,7 @@ export default function QueuePage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           4. HOURLY TRAFFIC & BOTTLENECK CHART
          ────────────────────────────────────────────────────────────────────────── */}
-      {selectedClinic && selectedDoctor && !loadingQueue && appointments.length > 0 && (
+      {selectedLocation && selectedDoctor && !loadingQueue && appointments.length > 0 && (
         <ChartContainer
           title="Hourly Patient Flow & Rush Distribution"
           description="Distribution of patient tokens across operating hours"
@@ -2115,8 +2119,8 @@ export default function QueuePage() {
               }
             )}
             series={[
-              { key: "waiting", name: "Waiting in Line", color: "var(--s-chart-3)" },
-              { key: "consulted", name: "Completed / Active", color: "var(--s-chart-2)" },
+              { key: "waiting", name: "Waiting in Line", color: "var(--chart-3)" },
+              { key: "consulted", name: "Completed / Active", color: "var(--chart-2)" },
             ]}
             layout="stacked"
             height={200}
@@ -2128,13 +2132,13 @@ export default function QueuePage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           5. MAIN QUEUE WORKSPACE (ACTIVE LIST + SERVED SIDEBAR)
          ────────────────────────────────────────────────────────────────────────── */}
-      {!selectedClinic || !selectedDoctor ? (
+      {!selectedLocation || !selectedDoctor ? (
         <Card className="text-center py-16 rounded-2xl border border-border/80 bg-surface">
           <CardContent className="space-y-3">
             <div className="mx-auto w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center text-text-secondary">
               <Stethoscope className="w-6 h-6 text-accent" />
             </div>
-            <h3 className="text-base font-bold text-text">Select Clinic and Doctor</h3>
+            <h3 className="text-base font-bold text-text">Select Location and Doctor</h3>
             <p className="text-xs text-text-muted max-w-sm mx-auto">
               Please choose a facility location and physician from the filters above to access the live queue.
             </p>
@@ -2880,7 +2884,7 @@ export default function QueuePage() {
             {/* View Tab 3: Outpatient Care-Gap & Follow-Up Recall Register */}
             {queueViewTab === "recalls" && (
               <FollowUpRecallRegister
-                clinicId={selectedClinic}
+                locationId={selectedLocation}
                 doctorId={selectedDoctor}
                 onCheckInSuccess={fetchQueue}
               />
@@ -3124,7 +3128,7 @@ export default function QueuePage() {
             currentFollowUpRecommended={recommendFollowUp}
             currentFollowUpTimeline={followUpTimeline}
             currentFollowUpNotes={followUpNotes}
-            clinicId={selectedClinic}
+            locationId={selectedLocation}
           />
 
           {/* Patient Clinical Context: Allergies & Triage Vitals Banner */}
@@ -3144,7 +3148,7 @@ export default function QueuePage() {
 
               {/* Documented Allergies Alert */}
               {apptToComplete.vitals?.allergies && apptToComplete.vitals.allergies.length > 0 && (
-                <div className="p-2 rounded-xl bg-danger-500/10 border border-danger-500/20 flex items-center gap-2 text-danger-text dark:text-danger-text text-xs font-bold">
+                <div className="p-2 rounded-xl bg-danger/10 border border-danger/20 flex items-center gap-2 text-danger-text dark:text-danger-text text-xs font-bold">
                   <AlertTriangle className="w-4 h-4 shrink-0 text-danger-text" />
                   <span>KNOWN DRUG / FOOD ALLERGIES: {apptToComplete.vitals.allergies.join(", ")}</span>
                 </div>
@@ -3191,7 +3195,7 @@ export default function QueuePage() {
                 <div className="space-y-1 pt-1 border-t border-border/40">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase text-text-muted flex items-center gap-1">
-                      <FlaskConical className="w-3 h-3 text-secondary-500" />
+                      <FlaskConical className="w-3 h-3 text-accent" />
                       Laboratory Diagnostic Findings
                     </span>
                     <button
@@ -3210,7 +3214,7 @@ export default function QueuePage() {
                         className={cn(
                           "px-2 py-0.5 rounded-lg text-xs font-semibold border",
                           inv.isAbnormal
-                            ? "bg-danger-500/10 border-danger-500/20 text-danger-text dark:text-danger-text font-bold"
+                            ? "bg-danger/10 border-danger/20 text-danger-text dark:text-danger-text font-bold"
                             : "bg-surface border-border/60 text-text"
                         )}
                       >
@@ -3558,18 +3562,18 @@ export default function QueuePage() {
         tokenData={thermalSlipData}
       />
 
-      {/* Clinic QR Poster Modal (A4 / Standee) */}
-      <ClinicQrPosterModal
+      {/* Location QR Poster Modal (A4 / Standee) */}
+      <LocationQrPosterModal
         open={qrPosterOpen}
         onClose={() => setQrPosterOpen(false)}
-        clinic={qrPosterClinic}
+        location={qrPosterLocation}
       />
 
       {/* ABDM / ABHA Modal */}
       <AbdmRegistrationModal
         open={abdmModalOpen}
         onClose={() => setAbdmModalOpen(false)}
-        clinicId={selectedClinic}
+        locationId={selectedLocation}
         doctors={doctors.map((d) => ({ id: d.id || d._id, name: d.name }))}
         selectedDoctorId={selectedDoctor}
         onPatientCheckedIn={() => {
@@ -3589,9 +3593,9 @@ export default function QueuePage() {
           setClinicalDocGenOpen(false);
           setSelectedDocGenPatient(null);
         }}
-        clinicName={clinics.find((c) => (c.id || c._id) === selectedClinic)?.name || ""}
-        clinicAddress={clinics.find((c) => (c.id || c._id) === selectedClinic)?.address}
-        clinicPhone={clinics.find((c) => (c.id || c._id) === selectedClinic)?.phone}
+        locationName={locations.find((c) => (c.id || c._id) === selectedLocation)?.name || ""}
+        locationAddress={locations.find((c) => (c.id || c._id) === selectedLocation)?.address}
+        locationPhone={locations.find((c) => (c.id || c._id) === selectedLocation)?.phone}
         defaultDoctorName={doctors.find((d) => (d.id || d._id) === selectedDoctor)?.name}
         defaultDoctorSpecialization={doctors.find((d) => (d.id || d._id) === selectedDoctor)?.specialty}
         defaultDoctorRegistrationNumber={doctors.find((d) => (d.id || d._id) === selectedDoctor)?.registrationNumber}
@@ -3802,7 +3806,7 @@ export default function QueuePage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           6. QUICK WALK-IN REGISTRATION MODAL
          ────────────────────────────────────────────────────────────────────────── */}
-      <PatientEntryModal open={isQuickWalkInOpen && preferences.registration === "essential"} onClose={() => setIsQuickWalkInOpen(false)} clinicId={selectedClinic}
+      <PatientEntryModal open={isQuickWalkInOpen && preferences.registration === "essential"} onClose={() => setIsQuickWalkInOpen(false)} locationId={selectedLocation}
         onBooked={() => { setIsQuickWalkInOpen(false); void fetchQueue(); }} />
       <Modal
         isOpen={isQuickWalkInOpen && preferences.registration !== "essential"}
@@ -3943,7 +3947,7 @@ export default function QueuePage() {
       <DisruptionTriageModal
         open={triageModalOpen}
         onClose={() => setTriageModalOpen(false)}
-        clinicId={selectedClinic}
+        locationId={selectedLocation}
         date={selectedDate}
         triageAppointments={triageAppointments}
         onActionComplete={async () => {
@@ -4269,9 +4273,9 @@ export default function QueuePage() {
                     <input
                       type="radio"
                       name="standbyAction"
-                      value="cancel_refund"
-                      checked={standbyReconcileAction === "cancel_refund"}
-                      onChange={() => setStandbyReconcileAction("cancel_refund")}
+                      value="cancel"
+                      checked={standbyReconcileAction === "cancel"}
+                      onChange={() => setStandbyReconcileAction("cancel")}
                       className="accent-primary-600"
                     />
                     <span>Cancel appointments; review invoices separately</span>
@@ -4292,9 +4296,9 @@ export default function QueuePage() {
                     <input
                       type="radio"
                       name="waitingAction"
-                      value="cancel_refund"
-                      checked={waitingReconcileAction === "cancel_refund"}
-                      onChange={() => setWaitingReconcileAction("cancel_refund")}
+                      value="cancel"
+                      checked={waitingReconcileAction === "cancel"}
+                      onChange={() => setWaitingReconcileAction("cancel")}
                       className="accent-primary-600"
                     />
                     <span>Cancel appointments; review invoices separately</span>
@@ -4334,8 +4338,8 @@ export default function QueuePage() {
 
       {/* Dynamic BharatPe / NPCI UPI QR Counter-Top Payment Modal */}
       {selectedUpiAppt && (() => {
-        const activeClinicObj = clinics.find(
-          (c) => c._id === selectedClinic || c.id === selectedClinic
+        const activeLocationObj = locations.find(
+          (c) => c._id === selectedLocation || c.id === selectedLocation
         );
         const billing = getAppointmentBilling(selectedUpiAppt);
 
@@ -4358,9 +4362,9 @@ export default function QueuePage() {
                 ? selectedUpiAppt.doctorId?.userId?.name || selectedUpiAppt.doctorId?.name
                 : undefined
             }
-            clinicName={activeClinicObj?.name || "Clinic Counter"}
-            upiVpa={activeClinicObj?.upiVpa}
-            merchantName={activeClinicObj?.merchantName}
+            locationName={activeLocationObj?.name || "Reception counter"}
+            upiVpa={activeLocationObj?.upiVpa}
+            merchantName={activeLocationObj?.merchantName}
             onPaymentSuccess={() => {
               fetchQueue();
             }}

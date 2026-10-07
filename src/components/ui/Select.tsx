@@ -4,6 +4,7 @@ import { type SelectHTMLAttributes, type ReactNode, forwardRef, useId, useState,
 import { createPortal } from "react-dom";
 import { popoverPosition } from "@/lib/popoverPosition";
 import { cn } from "./utils";
+import { fieldBase, fieldError, fieldLabel, fieldVariants } from "./controlStyles";
 
 export interface SelectOption {
   value: string;
@@ -42,12 +43,7 @@ const triggerSizes: Record<SelectSize, string> = {
   lg: "text-base px-4 gap-2.5 min-h-[46px] md:min-h-[44px] h-11",
 };
 
-const variantStyles: Record<SelectVariant, string> = {
-  default: "rounded-xl border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
-  filled: "rounded-xl border border-transparent bg-surface-alt hover:bg-surface-hover focus-visible:bg-surface focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
-  flush: "rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:border-0",
-  pill: "rounded-full border border-border bg-surface hover:border-border-focus focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-focus-ring shadow-2xs",
-};
+const variantStyles: Record<SelectVariant, string> = fieldVariants;
 
 const iconSizes: Record<SelectSize, string> = {
   sm: "[&>svg]:h-3.5 [&>svg]:w-3.5 h-3.5 w-3.5",
@@ -277,7 +273,7 @@ const Select = memo(
       return (
         <div className={cn("flex flex-col gap-1.5 relative", fullWidth && "w-full", containerClassName)}>
           {label && (
-            <label id={`${id}-label`} htmlFor={`${id}-trigger`} className="text-sm font-medium text-text select-none">
+            <label id={`${id}-label`} htmlFor={`${id}-trigger`} className={fieldLabel}>
               {label}
             </label>
           )}
@@ -342,15 +338,15 @@ const Select = memo(
               }}
               onKeyDown={handleKeyDown}
               className={cn(
-                "font-normal text-text text-left transform-gpu transition-all duration-200 ease-smooth focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-alt cursor-pointer relative",
+                fieldBase, "text-left cursor-pointer relative",
                 iconOnly
-                  ? "w-9 h-9 min-w-[36px] min-h-[36px] p-0 flex items-center justify-center rounded-xl"
+                  ? "w-11 h-11 min-w-11 min-h-11 md:w-9 md:h-9 md:min-w-9 md:min-h-9 p-0 flex items-center justify-center rounded-control"
                   : compactOnMobile
-                  ? "w-9 min-w-[36px] h-9 min-h-[36px] p-0 flex items-center justify-center rounded-xl sm:w-auto sm:min-w-0 sm:h-9 sm:px-3 sm:py-1.5 sm:gap-2 sm:justify-between sm:rounded-xl"
+                  ? "w-11 min-w-11 h-11 min-h-11 p-0 flex items-center justify-center rounded-control sm:w-auto sm:min-w-0 sm:h-9 sm:px-3 sm:py-1.5 sm:gap-2 sm:justify-between"
                   : cn("flex items-center justify-between w-full", triggerSizes[size]),
                 variantStyles[variant],
                 !iconOnly && !compactOnMobile && icon && (size === "sm" ? "pl-9" : size === "lg" ? "pl-11" : "pl-10"),
-                visibleError && variant !== "flush" && "border-danger-500/80 focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:border-danger-500",
+                visibleError && fieldError,
                 isOpen && variant !== "flush" && "border-primary-500 ring-2 ring-focus-ring",
                 className
               )}
@@ -432,7 +428,7 @@ const Select = memo(
                   zIndex: "var(--layer-popover)",
                 }}
                 className={cn(
-                  "flex flex-col rounded-2xl border border-border/80 bg-surface shadow-xl overflow-hidden  ring-1 ring-border/50 select-none transform-gpu",
+                  "material-glass-elevated flex flex-col rounded-container overflow-hidden select-none",
                   isExiting ? "animate-popover-out" : "animate-popover-in"
                 )}
               >
@@ -501,9 +497,9 @@ const Select = memo(
                           disabled={o.disabled}
                           onClick={() => handleSelectOption(o)}
                           className={cn(
-                            "flex items-center justify-between w-full text-left px-3.5 py-2.5 md:py-2 text-sm md:text-xs font-medium rounded-xl transition-all duration-150 cursor-pointer select-none min-h-[44px] md:min-h-0",
+                            "flex items-center justify-between w-full text-left px-3.5 py-2.5 md:py-2 text-sm font-medium rounded-lg transition-colors duration-[var(--motion-fast)] cursor-pointer select-none min-h-[44px] md:min-h-0",
                             isSelected
-                              ? "bg-primary-500/10 text-accent font-semibold"
+                              ? "bg-selected text-accent font-semibold"
                               : "text-text-secondary hover:bg-surface-hover hover:text-text",
                             isFocused && "bg-surface-hover text-text",
                             o.disabled && "opacity-40 cursor-not-allowed"

@@ -11,13 +11,13 @@ vi.mock("qrcode", () => ({ default: { toDataURL: vi.fn().mockResolvedValue("data
 
 beforeEach(() => {
   vi.clearAllMocks();
-  window.history.replaceState({}, "", "/track/visit?t=private-tracker-proof&action=cancel");
+  window.history.replaceState({}, "", "/track/visit?action=cancel#t=private-tracker-proof");
   vi.stubGlobal("WebSocket", class { close() {} });
   vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
   vi.mocked(api.get).mockResolvedValue({ data: { data: {
     appointmentId: "visit", tokenNumber: 1, status: "disruption_triage", patientName: "Patient", appointmentTime: new Date().toISOString(),
     appointmentType: "online", doctor: { id: "doctor", name: "Provider", specialization: "General" },
-    clinic: { id: "clinic", name: "Clinic", city: "Surat", address: "Address", phone: "919999999999", timezone: "Asia/Kolkata" },
+    location: { id: "clinic", name: "Clinic", city: "Surat", address: "Address", phone: "919999999999", timezone: "Asia/Kolkata" },
     currentlyServingToken: null, peopleAhead: 0, estimatedWaitMinutes: 0, estimatedCallTime: null, averageDuration: 15,
     isAdaptiveDuration: false, adaptiveSampleCount: 0, doctorAvailability: { status: "unavailable", isAvailable: false, reason: null, delayMinutes: 0 }, isToday: true,
   } }, headers: {} });

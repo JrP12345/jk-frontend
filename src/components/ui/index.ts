@@ -2,7 +2,7 @@
 
 export { cn } from "./utils";
 
-export { ThemeProvider, useTheme, ModeSwitcher, CelestialSun, CelestialMoon } from "./ThemeProvider";
+export { ThemeProvider, useTheme, ModeSwitcher } from "./ThemeProvider";
 
 export { default as Button } from "./Button";
 export { default as PrintButton } from "./PrintButton";
@@ -24,14 +24,14 @@ export { default as Table } from "./Table";
 export type { Column, TableBulkAction } from "./Table";
 
 export { default as Alert } from "./Alert";
-export { default as Spinner, PageSpinner, CardLoader, InlineLoader } from "./Spinner";
-export { default as Skeleton, SkeletonText, SkeletonCard, SkeletonTable, SkeletonStats, SkeletonForm, SkeletonCardGrid } from "./Skeleton";
+export { default as Spinner, InlineLoader } from "./Spinner";
+export { default as Skeleton, SkeletonCard, SkeletonTable, SkeletonStats, SkeletonForm, SkeletonCardGrid } from "./Skeleton";
 export { default as EmptyState } from "./EmptyState";
 export { default as ProgressBar } from "./ProgressBar";
 export { default as RouteProgress } from "./RouteProgress";
 export { ToastProvider, useToast } from "./Toast";
 
-export { default as Modal, ModalHeader, ModalBody, ModalFooter } from "./Modal";
+export { default as Modal } from "./Modal";
 export { default as ConfirmDialog } from "./ConfirmDialog";
 export { default as Dropdown } from "./Dropdown";
 export { default as Tooltip } from "./Tooltip";

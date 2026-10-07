@@ -1,6 +1,6 @@
 # Risk-based verification workflow
 
-This audit covers the standalone frontend and sibling backend checkouts as inspected on 2026-09-28. It changes **when** checks run during AI development, not what CI/release must pass. Production application behavior, tests, and CI gates are unchanged.
+This workflow covers the standalone frontend and sibling backend checkouts, reviewed on 2026-10-07. It defines **when** checks run during development; CI/release owns the complete gates.
 
 ## A. Current bottlenecks
 
@@ -9,11 +9,11 @@ This audit covers the standalone frontend and sibling backend checkouts as inspe
 | Frontend changed-file `npx eslint src/path/file.tsx` | Available, but broad `npm run lint` is often used instead | Usually seconds; parses only requested files | Yes for changed code when lint can catch an error |
 | Frontend `npm run lint` | CI and frequently local | Whole repository, including unrelated pages; historical warnings add output | No; CI/release |
 | Frontend `npx tsc --noEmit` | CI and often local | Whole app type graph; `src/tests` is excluded by `tsconfig.json` | No for styling; yes for changed types/shared contracts |
-| Frontend `npm test` | CI and often local | All 25 files/189 tests took about 22 seconds in a warm local run; test transforms/jsdom recur | No; target affected files locally |
-| Frontend `npm run build` | CI and often local | Next production compile, TypeScript, page-data collection and 41 route outputs; a recent local run took roughly a minute | No; config, routing, environment, dependency or release changes warrant it |
-| Backend `npm test` | Called by release auditor in CI; sometimes local | 127 test files (over 600 tests in recent recorded runs), serial by `vitest.config.ts`; `tests/setup.ts` starts/stops a MongoDB memory server per file; first run may fetch its test binary | No; select affected integration files |
+| Frontend `npm test` | CI and often local | 81 files / 477 current cases; test transforms and jsdom setup recur | No; target affected files locally |
+| Frontend `npm run build` | CI and often local | Next production compile, TypeScript, page-data collection and route output; duration depends on compiler caches and machine load | No; config, routing, environment, dependency or release changes warrant it |
+| Backend `npm test` | Called by release auditor in CI; sometimes local | 154 files / 871 current cases, serial by `vitest.config.ts`; `tests/setup.ts` starts/stops a MongoDB memory server per file; first run may fetch its test binary | No; select affected integration files |
 | Backend `npm run check:fast` | Available locally; release auditor separately invokes TypeScript | Full backend TypeScript graph, including tests and scripts; cost depends on incremental cache | No for docs; yes for changed contracts or backend logic where compiler errors matter |
-| Backend `npm run build` | CI/release, sometimes local | esbuild API plus five workers; recorded isolated build 0.57 seconds (not install/startup time) | Useful for entry/bundling changes; no need after each test-only edit |
+| Backend `npm run build` | CI/release, sometimes local | esbuild API plus four workers; recorded isolated build 0.57 seconds (not install/startup time) | Useful for entry/bundling changes; no need after each test-only edit |
 | Backend `npm run audit:release` | CI/release | Runs full TypeScript and serial full Vitest again, scans fitness rules, writes manifest/history | Never routine local development |
 | `npm ci`, `npm audit --audit-level=high` | CI; install/audit sometimes local | Install and network-bound vulnerability lookup; Mongo postinstall download is disabled, runtime test download remains possible | On dependency/security changes or CI/release |
 | `check:payments`, `check:build-install`, `check:startup`, `check:tenants` | Specific boundary, install, built-server, tenant probes | Narrow checks, but startup/tenant checks have prerequisites; CI runs first two | Run locally when their boundary changes; retain CI gates |

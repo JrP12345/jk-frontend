@@ -4,7 +4,7 @@ import { StatCard, SkeletonCard } from "@/components/ui";
 import { IndianRupee, AlertCircle, Building2, Stethoscope, Calendar, Clock, CheckCircle2, Receipt } from "lucide-react";
 
 interface AdminStats {
-  clinics: number;
+  locations: number;
   doctors: number;
   receptionists: number;
   appointments: number;
@@ -65,8 +65,8 @@ export function DashboardStatCards({
               icon={<AlertCircle className="w-5 h-5" />}
             />
             <StatCard
-              label="Active Clinics"
-              value={adminStats.clinics.toString()}
+              label="Active Locations"
+              value={adminStats.locations.toString()}
               description="Open branches"
               icon={<Building2 className="w-5 h-5" />}
             />

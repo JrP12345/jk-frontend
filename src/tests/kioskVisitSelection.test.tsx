@@ -4,13 +4,13 @@ import Kiosk from "@/app/check-in/page";
 import { ToastProvider } from "@/components/ui/Toast";
 
 const fixture = vi.hoisted(() => ({
-  get: vi.fn(), post: vi.fn(), toast: vi.fn(), fetchClinics: vi.fn(),
+  get: vi.fn(), post: vi.fn(), toast: vi.fn(), fetchLocations: vi.fn(),
   user: { id: "staff", role: "root", permissions: [] } as any,
 }));
 vi.mock("@/lib/api", () => ({ default: { get: fixture.get, post: fixture.post } }));
 vi.mock("@/store/authStore", () => ({ useAuthStore: () => ({ user: fixture.user }) }));
-vi.mock("@/store/clinicStore", () => ({ useClinicStore: () => ({
-  clinics: [{ id: "clinic", name: "Fixture clinic" }], activeClinicId: "clinic", fetchClinics: fixture.fetchClinics,
+vi.mock("@/store/locationStore", () => ({ useLocationStore: () => ({
+  locations: [{ id: "clinic", name: "Fixture clinic" }], activeLocationId: "clinic", fetchLocations: fixture.fetchLocations,
 }) }));
 vi.mock("@/components/ui", async importOriginal => ({
   ...await importOriginal<typeof import("@/components/ui")>(),
@@ -21,19 +21,19 @@ afterEach(() => { cleanup(); fixture.get.mockReset(); fixture.post.mockReset(); 
 describe("Staff kiosk visit selection", () => {
   it("scopes a phone lookup to today's clinic and waits for staff to select the matching visit", async () => {
     fixture.get.mockResolvedValue({ headers: { "x-total-pages": "1" }, data: { data: [
-      { id: "first", tokenNumber: 1, status: "confirmed", clinicId: "clinic", doctorId: { name: "One" }, patientId: { name: "Alex One" }, appointmentTime: new Date().toISOString() },
-      { id: "second", tokenNumber: 2, status: "confirmed", clinicId: "clinic", doctorId: { name: "Two" }, patientId: { name: "Alex Two" }, appointmentTime: new Date().toISOString() },
+      { id: "first", tokenNumber: 1, status: "confirmed", locationId: "clinic", doctorId: { name: "One" }, patientId: { name: "Alex One" }, appointmentTime: new Date().toISOString() },
+      { id: "second", tokenNumber: 2, status: "confirmed", locationId: "clinic", doctorId: { name: "Two" }, patientId: { name: "Alex Two" }, appointmentTime: new Date().toISOString() },
     ] } });
-    fixture.post.mockResolvedValue({ data: { data: { patientName: "Alex Two", tokenNumber: 2, doctorName: "Two", clinicName: "Fixture clinic", status: "checked-in" } } });
+    fixture.post.mockResolvedValue({ data: { data: { patientName: "Alex Two", tokenNumber: 2, doctorName: "Two", locationName: "Fixture clinic", status: "checked-in" } } });
     render(<ToastProvider><Kiosk /></ToastProvider>);
     fireEvent.click(screen.getByRole("button", { name: "By Phone Number" }));
     fireEvent.change(screen.getByPlaceholderText("e.g. 9876543210"), { target: { value: "9876543210" } });
     fireEvent.click(screen.getByRole("button", { name: /Find today/ }));
     await screen.findByRole("button", { name: /Token #2/ });
-    expect(fixture.get.mock.calls[0][0]).toMatch(/clinicId=clinic&date=\d{4}-\d{2}-\d{2}/);
+    expect(fixture.get.mock.calls[0][0]).toMatch(/locationId=clinic&date=\d{4}-\d{2}-\d{2}/);
     expect(fixture.post).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: /Token #2/ }));
-    await waitFor(() => expect(fixture.post).toHaveBeenCalledWith("/check-in/qr", { appointmentId: "second", clinicId: "clinic", tokenNumber: 2 }));
+    await waitFor(() => expect(fixture.post).toHaveBeenCalledWith("/check-in/qr", { appointmentId: "second", locationId: "clinic", tokenNumber: 2 }));
   });
 
   it("shows staff sign-in guidance instead of a working kiosk form to anonymous patients", () => {

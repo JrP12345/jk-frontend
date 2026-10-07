@@ -30,7 +30,7 @@ export interface StreamChunk {
   isComplete: boolean;
 }
 
-export class ANANTAAISDK {
+export class EkavyuAISDK {
   private activeStreams: Map<string, AbortController> = new Map();
 
   /**
@@ -38,7 +38,7 @@ export class ANANTAAISDK {
    */
   private getCsrfToken(): string | null {
     if (typeof document === "undefined") return null;
-    const match = document.cookie.match(/(?:^|;\s*)(?:_csrf|ananta_csrf|csrf_token)=([^;]+)/);
+    const match = document.cookie.match(/(?:^|;\s*)_csrf=([^;]+)/);
     return match ? decodeURIComponent(match[1]) : null;
   }
 
@@ -191,4 +191,4 @@ export class ANANTAAISDK {
   }
 }
 
-export const aiSDK = new ANANTAAISDK();
+export const aiSDK = new EkavyuAISDK();

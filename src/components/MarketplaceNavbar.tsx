@@ -33,9 +33,7 @@ export default function MarketplaceNavbar({ brand }: { brand?: { name: string; l
   };
 
   return (
-    <header data-app-header className="fixed top-0 left-0 right-0 h-16 border-b border-border/70 shadow-xs z-50 transition-all duration-300">
-      {/* Blur the background layer so fixed mobile overlays remain viewport-sized. */}
-      <div aria-hidden="true" className="glass-surface glass-navigation absolute inset-0 -z-10 pointer-events-none" />
+    <header data-app-header className="fixed top-0 left-0 right-0 h-16 bg-header border-b border-border/70 shadow-xs z-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between gap-2">
         {/* Brand/Logo */}
         {brand ? <Link href={brand.href} className="flex min-w-0 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring sm:gap-3">
@@ -43,7 +41,7 @@ export default function MarketplaceNavbar({ brand }: { brand?: { name: string; l
           {brand.logoUrl ? (
             <LoadingImage src={brand.logoUrl} alt="" fallback={brand.name.slice(0, 1)} className="h-9 w-9 shrink-0 rounded-lg border border-border bg-surface object-contain sm:h-10 sm:w-10" />
           ) : <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-500/10 text-base font-bold text-accent sm:h-10 sm:w-10">{brand.name.slice(0, 1)}</span>}
-          <span className="min-w-0"><span className="block max-w-[9rem] truncate text-sm font-bold text-text sm:max-w-[18rem]">{brand.name}</span><span className="block text-[10px] text-text-muted">Appointments powered by Ekavyu</span></span>
+          <span className="min-w-0"><span className="block max-w-[9rem] truncate text-sm font-bold text-text sm:max-w-[18rem]">{brand.name}</span><span className="block text-[10px] text-text-secondary">Appointments powered by Ekavyu</span></span>
         </Link> : <Link href="/browse" className="shrink-0">
           <NavigationPending />
           <EkavyuLogo size="md" />
@@ -118,7 +116,7 @@ export default function MarketplaceNavbar({ brand }: { brand?: { name: string; l
             onClick={() => setIsMobileMenuOpen(false)}
             aria-hidden="true"
           />
-          <div ref={menuRef} role="dialog" aria-modal="true" aria-label="Navigation" tabIndex={-1} id="mobile-nav-drawer" style={{ translate: menuGesture.offset ? `0 ${menuGesture.offset}px` : undefined, transition: menuGesture.dragging ? "none" : "translate 180ms ease" }} className="md:hidden absolute top-[4.5rem] left-3 right-3 ml-auto max-w-sm rounded-2xl border border-border bg-surface shadow-xl z-40 max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain animate-slide-down">
+          <div ref={menuRef} role="dialog" aria-modal="true" aria-label="Navigation" tabIndex={-1} id="mobile-nav-drawer" style={{ translate: menuGesture.offset ? `0 ${menuGesture.offset}px` : undefined, transition: menuGesture.dragging ? "none" : "translate 180ms ease" }} className="md:hidden absolute top-[4.5rem] left-3 right-3 ml-auto max-w-sm rounded-container border border-border bg-surface-elevated shadow-lg z-40 max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain animate-slide-down">
           <div {...menuGesture.handlers} className="flex items-center justify-between px-4 py-1.5 border-b border-border/70 [touch-action:pan-x_pinch-zoom]">
             <span className="text-sm font-semibold text-text">Account</span>
             <button type="button" aria-label="Close navigation" onClick={() => setIsMobileMenuOpen(false)} className="min-h-11 min-w-11 flex items-center justify-center text-text-secondary rounded-xl hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"><X className="h-4 w-4" /></button>
@@ -130,7 +128,7 @@ export default function MarketplaceNavbar({ brand }: { brand?: { name: string; l
               className="min-h-11 px-3 rounded-xl flex items-center text-sm font-medium text-text hover:text-accent hover:bg-surface-hover transition-colors"
             >
               <NavigationPending />
-              {"Browse Clinics"}
+              {"Browse Locations"}
             </Link>}
 
             {isRealUser && user ? (

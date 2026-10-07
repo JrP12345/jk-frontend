@@ -18,7 +18,7 @@ export default function DashboardError({
   return (
     <div className="min-h-[60vh] w-full flex items-center justify-center p-4 font-sans text-text antialiased">
       <Card className="max-w-md w-full p-5 sm:p-6 space-y-4 text-center shadow-xs rounded-xl border border-border/80 bg-surface">
-        <div className="w-12 h-12 rounded-2xl bg-danger-500/10 text-danger-text border border-danger-500/20 flex items-center justify-center mx-auto shrink-0 animate-scale-in shadow-inner">
+        <div className="w-12 h-12 rounded-2xl bg-danger/10 text-danger-text border border-danger/20 flex items-center justify-center mx-auto shrink-0 animate-scale-in shadow-inner">
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
@@ -32,7 +32,7 @@ export default function DashboardError({
         </div>
 
         {error?.message && (
-          <div className="p-3 rounded-2xl bg-danger-500/5 border border-danger-500/15 text-left font-mono text-xs text-danger-text dark:text-danger-text space-y-1">
+          <div className="p-3 rounded-2xl bg-danger/5 border border-danger/15 text-left font-mono text-xs text-danger-text dark:text-danger-text space-y-1">
             <span className="font-bold uppercase tracking-wider text-[10px] opacity-70 block font-sans">
               Summary:
             </span>

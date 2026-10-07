@@ -1,24 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { addCalendarDays, clinicClockMinutes, clinicDateKey, clinicLocalDateTimeInput, clinicLocalTimeToIso } from "@/lib/clinicTime";
+import { addCalendarDays, locationClockMinutes, locationDateKey, locationLocalDateTimeInput, locationLocalTimeToIso } from "@/lib/locationTime";
 import { detectPatientOtpTarget, patientOtpDestination } from "@/lib/patientLogin";
 import { COUNTRIES, countryOptions, phoneCountryOptions } from "@/lib/countries";
 
 describe("clinic local time", () => {
   it("uses the clinic's calendar when the browser is on another day", () => {
     const instant = new Date("2026-09-29T00:30:00Z");
-    expect(clinicDateKey(instant, "America/Los_Angeles")).toBe("2026-09-28");
-    expect(clinicClockMinutes(instant, "America/Los_Angeles")).toBe(17 * 60 + 30);
-    expect(clinicLocalDateTimeInput(instant, "America/Los_Angeles")).toBe("2026-09-28T17:30");
+    expect(locationDateKey(instant, "America/Los_Angeles")).toBe("2026-09-28");
+    expect(locationClockMinutes(instant, "America/Los_Angeles")).toBe(17 * 60 + 30);
+    expect(locationLocalDateTimeInput(instant, "America/Los_Angeles")).toBe("2026-09-28T17:30");
     expect(addCalendarDays("2026-03-08", 1)).toBe("2026-03-09");
   });
 
   it("converts clinic slots to UTC across daylight saving time", () => {
-    expect(clinicLocalTimeToIso("2026-01-15", "09:00", "America/New_York")).toBe("2026-01-15T14:00:00.000Z");
-    expect(clinicLocalTimeToIso("2026-07-15", "09:00", "America/New_York")).toBe("2026-07-15T13:00:00.000Z");
-    expect(clinicLocalTimeToIso("2026-09-29", "09:00", "Asia/Kolkata")).toBe("2026-09-29T03:30:00.000Z");
-    expect(() => clinicLocalTimeToIso("2026-03-08", "02:30", "America/New_York")).toThrow();
-    expect(() => clinicLocalTimeToIso("2026-02-30", "09:00", "America/New_York")).toThrow();
-    expect(() => clinicLocalTimeToIso("2026-09-29", "24:00", "Asia/Kolkata")).toThrow();
+    expect(locationLocalTimeToIso("2026-01-15", "09:00", "America/New_York")).toBe("2026-01-15T14:00:00.000Z");
+    expect(locationLocalTimeToIso("2026-07-15", "09:00", "America/New_York")).toBe("2026-07-15T13:00:00.000Z");
+    expect(locationLocalTimeToIso("2026-09-29", "09:00", "Asia/Kolkata")).toBe("2026-09-29T03:30:00.000Z");
+    expect(() => locationLocalTimeToIso("2026-03-08", "02:30", "America/New_York")).toThrow();
+    expect(() => locationLocalTimeToIso("2026-02-30", "09:00", "America/New_York")).toThrow();
+    expect(() => locationLocalTimeToIso("2026-09-29", "24:00", "Asia/Kolkata")).toThrow();
   });
 });
 

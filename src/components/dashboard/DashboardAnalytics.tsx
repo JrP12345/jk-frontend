@@ -13,7 +13,7 @@ interface DashboardAnalyticsProps {
     scheduled: number;
     cancelled: number;
   }>;
-  clinicThroughputData: Array<{
+  locationThroughputData: Array<{
     label: string;
     completed: number;
     waiting: number;
@@ -26,7 +26,7 @@ export function DashboardAnalytics({
   trendRange,
   setTrendRange,
   appointmentTrendData,
-  clinicThroughputData,
+  locationThroughputData,
 }: DashboardAnalyticsProps) {
   if (role === "patient") return null;
 
@@ -52,9 +52,9 @@ export function DashboardAnalytics({
         <AreaChart
           data={appointmentTrendData}
           series={[
-            { key: "completed", name: "Completed Visits", color: "var(--s-chart-2)" },
-            { key: "scheduled", name: "Scheduled", color: "var(--s-chart-1)" },
-            { key: "cancelled", name: "Cancelled", color: "var(--s-chart-5)" },
+            { key: "completed", name: "Completed Visits", color: "var(--chart-2)" },
+            { key: "scheduled", name: "Scheduled", color: "var(--chart-1)" },
+            { key: "cancelled", name: "Cancelled", color: "var(--chart-5)" },
           ]}
           height={220}
           valueFormatter={(v) => `${v} visits`}
@@ -62,21 +62,21 @@ export function DashboardAnalytics({
       </ChartContainer>
 
       <ChartContainer
-        title="Clinic Branch Throughput"
-        description="Visits distributed by clinic branch"
+        title="Location Throughput"
+        description="Visits distributed by location"
         className="lg:col-span-1"
         loading={loading}
         empty={
-          clinicThroughputData.length === 0 ||
-          clinicThroughputData.every((d) => d.completed === 0 && d.waiting === 0)
+          locationThroughputData.length === 0 ||
+          locationThroughputData.every((d) => d.completed === 0 && d.waiting === 0)
         }
         emptyMessage="No branch throughput records."
       >
         <BarChart
-          data={clinicThroughputData}
+          data={locationThroughputData}
           series={[
-            { key: "completed", name: "Completed", color: "var(--s-chart-2)" },
-            { key: "waiting", name: "Scheduled", color: "var(--s-chart-1)" },
+            { key: "completed", name: "Completed", color: "var(--chart-2)" },
+            { key: "waiting", name: "Scheduled", color: "var(--chart-1)" },
           ]}
           layout="stacked"
           height={220}

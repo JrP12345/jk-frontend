@@ -3,29 +3,34 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { locationPath, doctorPath, hasMultipleLocations } from "@/lib/publicPaths";
 import api from "@/lib/api";
+import { facilityTypeLabel, type FacilityType } from "@/lib/facility";
 import { Alert, Button, Input, Select, Card, EmptyState } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
-import ClinicCardSkeletons from "@/components/ui/ClinicCardSkeletons";
+import LocationCardSkeletons from "@/components/ui/LocationCardSkeletons";
 import LoadingImage from "@/components/ui/LoadingImage";
 import { Search, MapPin, ChevronRight, Building2, Users, CreditCard, Camera, Star, Stethoscope, ArrowUpDown } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
-import { ClinicStatusBadge } from "@/components/ui/ClinicStatusBadge";
+import { LocationStatusBadge } from "@/components/ui/LocationStatusBadge";
 import { getPublicBookingStatus, type PublicBookingStatus } from "@/lib/publicBooking";
-import { parseWeeklySchedule } from "@/lib/timing/clinicStatus";
+import { parseWeeklySchedule } from "@/lib/timing/locationStatus";
 import { detectUserLocation, hasLocationCoordinates, distanceBandLabel, type DetectedLocation } from "@/lib/geo/locationDetector";
 
 interface DoctorSummary {
   id: string;
+  slug?: string;
   name: string;
   specialization: string;
   fees?: number;
   feeType?: "fixed" | "free" | "post_consultation";
 }
 
-export interface Clinic {
+export interface Location {
   id: string;
+  slug?: string;
   name: string;
+  facilityType?: FacilityType | null;
   city: string;
   address: string;
   phone: string;
@@ -35,9 +40,10 @@ export interface Clinic {
   logo_url?: string;
   images?: string[];
   organizationName?: string;
+  organizationLocationCount?: number;
   currency?: string;
   timings: string;
-  facilities?: string[];
+  amenities?: string[];
   doctorCount?: number;
   minFee?: number | null;
   rating?: number | null;
@@ -49,7 +55,7 @@ export interface Clinic {
   bookingStatus?: PublicBookingStatus;
 }
 
-export interface ClinicFilters {
+export interface LocationFilters {
   cities: string[];
   specialties: string[];
 }
@@ -64,22 +70,22 @@ function directoryMinimumFeeLabel(fee: number, currency: string): string {
   return fee === 0 ? "Free consultation available" : `From ${formatCurrency(fee, currency)}`;
 }
 
-function ClinicImage({ src, name }: { src: string | undefined; name: string }) {
+function LocationImage({ src, name }: { src: string | undefined; name: string }) {
   const [failedSrc, setFailedSrc] = useState<string>();
   return src && failedSrc !== src ? (
     <LoadingImage src={src} alt={name} width={48} height={48} loading="lazy" onError={() => setFailedSrc(src)} className="w-full h-full object-contain rounded-xl" />
-  ) : <Building2 aria-label="Clinic image unavailable" className="w-5 h-5 text-text-muted" strokeWidth={1.75} />;
+  ) : <Building2 aria-label="Location image unavailable" className="w-5 h-5 text-text-muted" strokeWidth={1.75} />;
 }
 
-function filtersFromClinics(clinics: Clinic[]): ClinicFilters {
+function filtersFromLocations(locations: Location[]): LocationFilters {
   return {
-    cities: Array.from(new Set(clinics.map(c => c.city).filter(Boolean))).sort(),
-    specialties: Array.from(new Set(clinics.flatMap(c => c.specialties?.length ? c.specialties : c.doctorsSummary?.map(d => d.specialization) || []).map(s => s.trim()).filter(s => s && s !== "Specialty not listed"))).sort(),
+    cities: Array.from(new Set(locations.map(c => c.city).filter(Boolean))).sort(),
+    specialties: Array.from(new Set(locations.flatMap(c => c.specialties?.length ? c.specialties : c.doctorsSummary?.map(d => d.specialization) || []).map(s => s.trim()).filter(s => s && s !== "Specialty not listed"))).sort(),
   };
 }
 
 /** Keep incomplete directory records readable without inventing availability. */
-export function normalizeClinics(input: unknown): Clinic[] {
+export function normalizeLocations(input: unknown): Location[] {
   if (!Array.isArray(input)) return [];
   const string = (value: unknown) => typeof value === "string" ? value.trim() : "";
   const strings = (value: unknown) => Array.isArray(value) ? value.map(string).filter(Boolean) : [];
@@ -87,15 +93,15 @@ export function normalizeClinics(input: unknown): Clinic[] {
   const seen = new Set<string>();
   return input.flatMap(raw => {
     if (!raw || typeof raw !== "object") return [];
-    const id = string(raw.id || raw._id);
+    const id = string(raw.id);
     if (!id || seen.has(id)) return [];
     seen.add(id);
-    return [{ ...raw, id, name: string(raw.name) || "Healthcare facility", city: string(raw.city), address: string(raw.address), phone: string(raw.phone), email: string(raw.email), description: string(raw.description), image_url: string(raw.image_url), logo_url: string(raw.logo_url), organizationName: string(raw.organizationName), currency: /^[A-Z]{3}$/.test(string(raw.currency).toUpperCase()) ? string(raw.currency).toUpperCase() : "INR", timings: typeof raw.timings === "object" && raw.timings ? JSON.stringify(raw.timings) : string(raw.timings), images: strings(raw.images), facilities: strings(raw.facilities), specialties: strings(raw.specialties), doctorCount: number(raw.doctorCount), minFee: number(raw.minFee), rating: number(raw.rating), reviewsCount: number(raw.reviewsCount), onlineBookingAvailable: typeof raw.onlineBookingAvailable === "boolean" ? raw.onlineBookingAvailable : undefined, bookingStatus: getPublicBookingStatus({ bookingStatus: raw.bookingStatus, onlineBookingAvailable: raw.onlineBookingAvailable, doctorCount: number(raw.doctorCount) }), doctorsSummary: Array.isArray(raw.doctorsSummary) ? raw.doctorsSummary.filter((doc: DoctorSummary) => doc && string(doc.id) && string(doc.name)).map((doc: DoctorSummary) => ({ ...doc, name: string(doc.name), specialization: string(doc.specialization) || "Specialty not listed", fees: number(doc.fees), feeType: doc.feeType })) : [] }];
+    return [{ ...raw, id, name: string(raw.name) || "Healthcare facility", city: string(raw.city), address: string(raw.address), phone: string(raw.phone), email: string(raw.email), description: string(raw.description), image_url: string(raw.image_url), logo_url: string(raw.logo_url), organizationName: string(raw.organizationName), currency: /^[A-Z]{3}$/.test(string(raw.currency).toUpperCase()) ? string(raw.currency).toUpperCase() : "INR", timings: typeof raw.timings === "object" && raw.timings ? JSON.stringify(raw.timings) : string(raw.timings), images: strings(raw.images), amenities: strings(raw.amenities), specialties: strings(raw.specialties), doctorCount: number(raw.doctorCount), minFee: number(raw.minFee), rating: number(raw.rating), reviewsCount: number(raw.reviewsCount), onlineBookingAvailable: typeof raw.onlineBookingAvailable === "boolean" ? raw.onlineBookingAvailable : undefined, bookingStatus: getPublicBookingStatus({ bookingStatus: raw.bookingStatus, onlineBookingAvailable: raw.onlineBookingAvailable, doctorCount: number(raw.doctorCount) }), doctorsSummary: Array.isArray(raw.doctorsSummary) ? raw.doctorsSummary.filter((doc: DoctorSummary) => doc && string(doc.id) && string(doc.name)).map((doc: DoctorSummary) => ({ ...doc, name: string(doc.name), specialization: string(doc.specialization) || "Specialty not listed", fees: number(doc.fees), feeType: doc.feeType })) : [] }];
   });
 }
 
-function normalizeFilters(filters: ClinicFilters | undefined, clinics: Clinic[]): ClinicFilters {
-  const fallback = filtersFromClinics(clinics);
+function normalizeFilters(filters: LocationFilters | undefined, locations: Location[]): LocationFilters {
+  const fallback = filtersFromLocations(locations);
   const values = (input: unknown, defaults: string[]) => Array.isArray(input) ? Array.from(new Set(input.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).map(value => value.trim()))).sort() : defaults;
   return { cities: values(filters?.cities, fallback.cities), specialties: values(filters?.specialties, fallback.specialties) };
 }
@@ -109,23 +115,23 @@ const DISCOVERY_KEY = "ekavyu_browse_discovery";
 type DiscoveryState = { search: string; city: string; specialty: string; sort: string; scrollY: number };
 
 export default function BrowseClient({
-  initialClinics = [],
+  initialLocations = [],
   initialLoaded = false,
   initialFilters,
   initialNextCursor = null,
   loadingOnly = false,
 }: {
-  initialClinics?: Clinic[];
+  initialLocations?: Location[];
   initialLoaded?: boolean;
-  initialFilters?: ClinicFilters;
+  initialFilters?: LocationFilters;
   initialNextCursor?: string | null;
   loadingOnly?: boolean;
 } = {}) {
   const router = useRouter();
-  const [clinics, setClinics] = useState<Clinic[]>(() => normalizeClinics(initialClinics));
-  const [loading, setLoading] = useState(!initialLoaded && initialClinics.length === 0);
+  const [locations, setLocations] = useState<Location[]>(() => normalizeLocations(initialLocations));
+  const [loading, setLoading] = useState(!initialLoaded && initialLocations.length === 0);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [hasLoaded, setHasLoaded] = useState(initialLoaded || initialClinics.length > 0);
+  const [hasLoaded, setHasLoaded] = useState(initialLoaded || initialLocations.length > 0);
   const [retryKey, setRetryKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -145,7 +151,7 @@ export default function BrowseClient({
   const latitude = hasLocationCoordinates(detectedLocation) ? detectedLocation.latitude : undefined;
   const longitude = hasLocationCoordinates(detectedLocation) ? detectedLocation.longitude : undefined;
   const effectiveSort = sortBy === "nearby" && latitude === undefined ? "rating" : sortBy;
-  const [filters, setFilters] = useState<ClinicFilters>(() => normalizeFilters(initialFilters, normalizeClinics(initialClinics)));
+  const [filters, setFilters] = useState<LocationFilters>(() => normalizeFilters(initialFilters, normalizeLocations(initialLocations)));
   const allCities = filters.cities;
   const quickSpecialties = [{ value: "", label: "All Care" }, ...filters.specialties.map(value => ({ value, label: value }))];
 
@@ -173,11 +179,11 @@ export default function BrowseClient({
   }, [loadingOnly]);
 
   useEffect(() => {
-    if (!restored || loading || restoringResults.current || restoreScroll.current === null || !clinics.length) return;
+    if (!restored || loading || restoringResults.current || restoreScroll.current === null || !locations.length) return;
     const position = restoreScroll.current;
     restoreScroll.current = null;
     requestAnimationFrame(() => window.scrollTo({ top: position, behavior: "instant" }));
-  }, [restored, loading, clinics.length]);
+  }, [restored, loading, locations.length]);
 
   const rememberPosition = () => {
     try {
@@ -222,12 +228,12 @@ export default function BrowseClient({
     if (loadingOnly || !restored) return;
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      if (effectiveSort !== "nearby" && !restoredFilters.current && (initialLoaded || initialClinics.length > 0)) return;
+      if (effectiveSort !== "nearby" && !restoredFilters.current && (initialLoaded || initialLocations.length > 0)) return;
     }
     moreRequest.current?.abort();
     setLoadingMore(false);
     const controller = new AbortController();
-    const fetchClinics = async () => {
+    const fetchLocations = async () => {
     try {
       setLoading(true);
       setFetchError(null);
@@ -240,30 +246,21 @@ export default function BrowseClient({
         params.set("latitude", String(latitude));
         params.set("longitude", String(longitude));
       }
-      const res = await api.get(`/public/clinics${params.toString() ? `?${params}` : ""}`, { signal: controller.signal });
+      const res = await api.get(`/public/locations${params.toString() ? `?${params}` : ""}`, { signal: controller.signal });
       if (controller.signal.aborted) return;
-      if (!Array.isArray(res.data.data)) throw new Error("Invalid clinic response");
-      const data = normalizeClinics(res.data.data);
-      if (res.data.data.length && !data.length) throw new Error("Invalid clinic records");
+      if (!Array.isArray(res.data.data)) throw new Error("Invalid location response");
+      const data = normalizeLocations(res.data.data);
+      if (res.data.data.length && !data.length) throw new Error("Invalid location records");
 
       // Full-directory metadata remains available when results are filtered or empty.
-      // Older servers fall back to actual clinic data rather than invented choices.
-      setFilters((prev) => {
-        const supplied = res.data.filters;
-        if (supplied && Array.isArray(supplied.cities) && Array.isArray(supplied.specialties)) return normalizeFilters(supplied, data);
-        const found = filtersFromClinics(data);
-        return {
-          cities: Array.from(new Set([...prev.cities, ...found.cities])).sort(),
-          specialties: Array.from(new Set([...prev.specialties, ...found.specialties])).sort(),
-        };
-      });
+      if (res.data.filters) setFilters(normalizeFilters(res.data.filters, []));
 
-      setClinics(data);
+      setLocations(data);
       setNextCursor(res.headers?.["x-next-cursor"] || null);
       setLoadMoreError(false);
       setHasLoaded(true);
     } catch {
-      if (!controller.signal.aborted) setFetchError("We couldn't load clinics. Please try again.");
+      if (!controller.signal.aborted) setFetchError("We couldn't load locations. Please try again.");
     } finally {
       if (!controller.signal.aborted) {
         restoringResults.current = false;
@@ -271,7 +268,7 @@ export default function BrowseClient({
       }
     }
     };
-    void fetchClinics();
+    void fetchLocations();
     return () => controller.abort();
   }, [debouncedSearch, selectedCity, selectedSpecialty, retryKey, effectiveSort, latitude, longitude, loadingOnly, restored]);
 
@@ -290,13 +287,13 @@ export default function BrowseClient({
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (selectedCity) params.set("city", selectedCity);
       if (selectedSpecialty) params.set("specialization", selectedSpecialty);
-      const res = await api.get(`/public/clinics?${params}`, { signal: controller.signal });
+      const res = await api.get(`/public/locations?${params}`, { signal: controller.signal });
       if (controller.signal.aborted) return;
-      const raw = Array.isArray(res.data.data) ? res.data.data : res.data.data?.items;
-      if (!Array.isArray(raw)) throw new Error("Invalid clinic response");
-      const page = normalizeClinics(raw);
-      setClinics(current => [...current, ...page.filter(item => !current.some(existing => existing.id === item.id))]);
-      setNextCursor(res.data.data?.nextCursor || res.headers?.["x-next-cursor"] || null);
+      const raw = res.data.data;
+      if (!Array.isArray(raw)) throw new Error("Invalid location response");
+      const page = normalizeLocations(raw);
+      setLocations(current => [...current, ...page.filter(item => !current.some(existing => existing.id === item.id))]);
+      setNextCursor(res.headers?.["x-next-cursor"] || null);
     } catch {
       if (!controller.signal.aborted) setLoadMoreError(true);
     } finally {
@@ -304,7 +301,7 @@ export default function BrowseClient({
     }
   };
 
-  const sortedClinics = useMemo(() => [...clinics].sort((a, b) => {
+  const sortedLocations = useMemo(() => [...locations].sort((a, b) => {
         if (effectiveSort === "nearby") return 0; // Server ranks the full directory before pagination.
         if (effectiveSort === "fee_low") {
           if (a.minFee == null) return b.minFee == null ? 0 : 1;
@@ -314,25 +311,25 @@ export default function BrowseClient({
         if (a.rating == null) return b.rating == null ? 0 : 1;
         if (b.rating == null) return -1;
         return b.rating - a.rating;
-      }), [clinics, effectiveSort]);
+      }), [locations, effectiveSort]);
 
   const handleCitySelect = (city: string) => {
     try {
-      sessionStorage.setItem("ananta_user_city_choice", "true");
+      sessionStorage.setItem("ekavyu_user_city_choice", "true");
     } catch {}
     setSelectedCity(city);
   };
 
   const handleShowAllCities = () => {
     try {
-      sessionStorage.setItem("ananta_user_city_choice", "true");
+      sessionStorage.setItem("ekavyu_user_city_choice", "true");
     } catch {}
     setSelectedCity("");
   };
 
   const resetAllFilters = () => {
     try {
-      sessionStorage.setItem("ananta_user_city_choice", "true");
+      sessionStorage.setItem("ekavyu_user_city_choice", "true");
     } catch {}
     setSearchQuery("");
     setSelectedCity("");
@@ -353,12 +350,12 @@ export default function BrowseClient({
       {/* Hero Header Section - Clean Modern Healthcare Design */}
       <section className="pt-20 sm:pt-24 pb-4 sm:pb-5 bg-surface border-b border-border">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <h1 className="text-center text-2xl sm:text-3xl font-semibold text-text tracking-tight mb-2 leading-tight text-balance" suppressHydrationWarning>
+          <h1 className="page-title text-center mb-2" suppressHydrationWarning>
             {"Find and book"}{" "}
             <span className="text-accent" suppressHydrationWarning>{"care that fits your needs"}</span>
           </h1>
           <p className="text-center text-text-secondary text-sm mb-4 leading-relaxed" suppressHydrationWarning>
-            {"Compare clinics and doctors, then book a visit that suits you."}
+            {"Compare locations and doctors, then book a visit that suits you."}
           </p>
 
           {/* Unified Streamlined Search Console: Search + City Selector */}
@@ -371,13 +368,13 @@ export default function BrowseClient({
                   disabled={loadingOnly}
                   size="md"
                   icon={<Search className="w-5 h-5 text-accent/80 shrink-0" strokeWidth={2} />}
-                  placeholder={"Search clinics, doctors or specialties"}
+                  placeholder={"Search locations, doctors or specialties"}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onClear={() => setSearchQuery("")}
                   className="text-sm sm:text-base font-normal py-2.5 sm:py-3 pl-11 sm:pl-12 pr-3 min-h-[48px] sm:min-h-[52px]"
                   containerClassName="w-full"
-                  aria-label="Search by doctor, clinic name, or specialty"
+                  aria-label="Search by doctor, location name, or specialty"
                 />
               </div>
 
@@ -405,19 +402,19 @@ export default function BrowseClient({
 
       {/* Main Listing Section */}
       <main aria-busy={loading} className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-20">
-        {fetchError && clinics.length > 0 && <Alert variant="error" title="Unable to update results" className="mb-4" action={<Button size="sm" loading={loading} onClick={() => setRetryKey((key) => key + 1)}>Try again</Button>}>Showing the last available clinics. Try again to refresh the list.</Alert>}
+        {fetchError && locations.length > 0 && <Alert variant="error" title="Unable to update results" className="mb-4" action={<Button size="sm" loading={loading} onClick={() => setRetryKey((key) => key + 1)}>Try again</Button>}>Showing the last available locations. Try again to refresh the list.</Alert>}
         {/* Minimalist Compact Results & Sort Bar */}
-        {(!fetchError || clinics.length > 0) && <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border/60 pb-3 mb-4 sm:mb-6 text-xs">
+        {(!fetchError || locations.length > 0) && <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border/60 pb-3 mb-4 sm:mb-6 text-xs">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0 flex-1">
             <p role="status" className="font-semibold text-text-secondary min-h-5 min-w-0">
               {loading ? (
-                clinics.length ? "Updating results. Showing previous clinics." : "Finding clinics..."
+                locations.length ? "Updating results. Showing previous locations." : "Finding locations..."
               ) : fetchError ? (
-                clinics.length ? "Previous clinics shown. Results could not be updated." : "Results unavailable"
+                locations.length ? "Previous locations shown. Results could not be updated." : "Results unavailable"
               ) : (
                 <span>
-                  <strong className="text-text font-bold">{clinics.length}</strong>{" "}
-                  {clinics.length === 1 ? "clinic" : "clinics"}{nextCursor ? " shown" : <span className="hidden sm:inline"> available</span>}
+                  <strong className="text-text font-bold">{locations.length}</strong>{" "}
+                  {locations.length === 1 ? "location" : "locations"}{nextCursor ? " shown" : <span className="hidden sm:inline"> available</span>}
                   {hasActiveFilters && (
                     <span className="text-text-muted font-normal ml-1">
                       {"(filtered)"}
@@ -478,20 +475,20 @@ export default function BrowseClient({
               align="right"
               minMenuWidth={180}
               className="rounded-xl font-medium"
-              aria-label="Sort clinics by"
+              aria-label="Sort locations by"
             />
           </div>
         </div>}
 
         {/* Clinics Listing Cards */}
-        {loading && clinics.length === 0 ? (
-          <ClinicCardSkeletons />
-        ) : clinics.length === 0 && hasLoaded && !fetchError ? (
+        {loading && locations.length === 0 ? (
+          <LocationCardSkeletons />
+        ) : locations.length === 0 && hasLoaded && !fetchError ? (
           <Card className="p-4 sm:p-8 text-center border-dashed rounded-3xl bg-surface">
             <EmptyState
               className="py-6 sm:py-8"
-              title={"No clinics found"}
-              description={hasActiveFilters ? "No clinics match your current search criteria. Try choosing another city or clearing your filters." : "There are no clinics available to browse yet. Please check again later."}
+              title={"No locations found"}
+              description={hasActiveFilters ? "No locations match your current search criteria. Try choosing another city or clearing your filters." : "There are no locations available to browse yet. Please check again later."}
               action={hasActiveFilters ?
                 <Button
                   variant="primary"
@@ -504,37 +501,37 @@ export default function BrowseClient({
               }
             />
           </Card>
-        ) : clinics.length === 0 ? <Card className="min-h-[220px] flex items-center justify-center p-4 sm:p-8 rounded-2xl border border-border bg-surface"><EmptyState className="py-5 sm:py-7" title="We couldn't load clinics" description="Check your connection and try again to see available care." action={<Button size="sm" loading={loading} onClick={() => setRetryKey((key) => key + 1)}>Try again</Button>} /></Card> : (
-          /* Modern Healthcare Clinic Card Grid */
-          <div className={`grid grid-cols-1 gap-4 sm:gap-6 ${sortedClinics.length === 1 ? "md:mx-auto md:max-w-[360px]" : sortedClinics.length === 2 ? "md:grid-cols-2 lg:mx-auto lg:max-w-[744px]" : "md:grid-cols-2 lg:grid-cols-3"}`}>
-            {sortedClinics.map((clinic) => {
-              const bookingStatus = getPublicBookingStatus(clinic);
-              const hasSingleDoctor = clinic.doctorCount === 1 && clinic.doctorsSummary && clinic.doctorsSummary.length === 1;
-              const singleDoctor = hasSingleDoctor ? clinic.doctorsSummary![0] : null;
+        ) : locations.length === 0 ? <Card className="min-h-[220px] flex items-center justify-center p-4 sm:p-8 rounded-2xl border border-border bg-surface"><EmptyState className="py-5 sm:py-7" title="We couldn't load locations" description="Check your connection and try again to see available care." action={<Button size="sm" loading={loading} onClick={() => setRetryKey((key) => key + 1)}>Try again</Button>} /></Card> : (
+          /* Modern Healthcare Location Card Grid */
+          <div className={`grid grid-cols-1 gap-4 sm:gap-6 ${sortedLocations.length === 1 ? "md:mx-auto md:max-w-[360px]" : sortedLocations.length === 2 ? "md:grid-cols-2 lg:mx-auto lg:max-w-[744px]" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+            {sortedLocations.map((location) => {
+              const bookingStatus = getPublicBookingStatus(location);
+              const hasSingleDoctor = location.doctorCount === 1 && location.doctorsSummary && location.doctorsSummary.length === 1;
+              const singleDoctor = hasSingleDoctor ? location.doctorsSummary![0] : null;
               const bookingHref = bookingStatus === "check_availability" && singleDoctor
-                ? `/doctor/${encodeURIComponent(singleDoctor.id)}?clinicId=${encodeURIComponent(clinic.id)}&openBooking=true`
-                : `/browse/${clinic.id}`;
-              const hasClinicHours = parseWeeklySchedule(clinic.timings).hasExplicitSchedule;
+                ? `${doctorPath(singleDoctor, location)}&openBooking=true`
+                : locationPath(location);
+              const hasLocationHours = parseWeeklySchedule(location.timings).hasExplicitSchedule;
               const doctorMatches = debouncedSearch.trim().toLocaleLowerCase();
               const previewDoctors = doctorMatches
-                ? [...(clinic.doctorsSummary || [])].sort((a, b) => Number(b.name.toLocaleLowerCase().includes(doctorMatches) || b.specialization.toLocaleLowerCase().includes(doctorMatches)) - Number(a.name.toLocaleLowerCase().includes(doctorMatches) || a.specialization.toLocaleLowerCase().includes(doctorMatches)))
-                : clinic.doctorsSummary || [];
+                ? [...(location.doctorsSummary || [])].sort((a, b) => Number(b.name.toLocaleLowerCase().includes(doctorMatches) || b.specialization.toLocaleLowerCase().includes(doctorMatches)) - Number(a.name.toLocaleLowerCase().includes(doctorMatches) || a.specialization.toLocaleLowerCase().includes(doctorMatches)))
+                : location.doctorsSummary || [];
 
               return (
                 <Card
-                  key={clinic.id}
+                  key={location.id}
                   role="group"
-                  onClick={() => { rememberPosition(); router.push(`/browse/${clinic.id}`); }}
+                  onClick={() => { rememberPosition(); router.push(locationPath(location)); }}
                   className="group cursor-pointer hover:border-accent/40 p-4 rounded-xl border border-border bg-surface flex flex-col"
                   contentClassName="flex-1 justify-between gap-3"
                 >
                   <div>
-                    {/* Clinic identity */}
+                    {/* Location identity */}
                     <div className="flex items-start justify-between gap-2.5 mb-3">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-12 h-12 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs group-hover:border-primary-500/30 transition-colors overflow-hidden">
-                          {clinic.logo_url || clinic.image_url ? (
-                            <ClinicImage src={clinic.logo_url || clinic.image_url} name={clinic.name} />
+                          {location.logo_url || location.image_url ? (
+                            <LocationImage src={location.logo_url || location.image_url} name={location.name} />
                           ) : (
                             <Building2 className="w-5 h-5 text-text-muted group-hover:text-accent transition-colors" strokeWidth={1.75} />
                           )}
@@ -543,31 +540,32 @@ export default function BrowseClient({
                           <div className="flex items-center gap-1.5">
                             <h2
                               className="text-base font-semibold text-text group-hover:text-accent transition-colors min-w-0"
-                              title={clinic.name}
+                              title={location.name}
                             >
-                              <Link href={`/browse/${clinic.id}`} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block line-clamp-2 break-words focus-visible:outline-none focus-visible:underline">{clinic.name}</Link>
+                              <Link href={locationPath(location)} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block line-clamp-2 break-words focus-visible:outline-none focus-visible:underline">{location.name}</Link>
                             </h2>
                           </div>
-                          {clinic.organizationName && clinic.organizationName !== clinic.name && (
+                          {hasMultipleLocations(location) && location.organizationName && location.organizationName !== location.name && (
                             <p className="text-[10px] text-text-muted font-medium truncate">
-                              {"Part of"} {clinic.organizationName}
+                              {"Part of"} {location.organizationName}
                             </p>
                           )}
                           <p className="text-xs text-text-muted flex flex-wrap items-center gap-1.5 mt-0.5">
-                            <span className="truncate">{clinic.city || "Location not listed"}</span>
-                            {effectiveSort === "nearby" && typeof clinic.distanceKm === "number" && Number.isFinite(clinic.distanceKm) && clinic.distanceKm >= 0 && (
-                              <span className="text-accent font-medium">{distanceBandLabel(clinic.distanceKm, detectedLocation?.source === "ip" || (detectedLocation?.accuracy ?? 0) > 1000)}</span>
+                            <span>{facilityTypeLabel(location.facilityType)}</span><span aria-hidden="true">·</span>
+                            <span className="truncate">{location.city || "Location not listed"}</span>
+                            {effectiveSort === "nearby" && typeof location.distanceKm === "number" && Number.isFinite(location.distanceKm) && location.distanceKm >= 0 && (
+                              <span className="text-accent font-medium">{distanceBandLabel(location.distanceKm, detectedLocation?.source === "ip" || (detectedLocation?.accuracy ?? 0) > 1000)}</span>
                             )}
-                            {hasClinicHours && <><span aria-hidden="true">•</span><ClinicStatusBadge timings={clinic.timings} compact className="max-w-full flex-wrap" /></>}
+                            {hasLocationHours && <><span aria-hidden="true">•</span><LocationStatusBadge timings={location.timings} compact className="max-w-full flex-wrap" /></>}
                           </p>
                         </div>
                       </div>
 
                       <div className="flex flex-col items-end gap-1 shrink-0">
-                        {clinic.images && clinic.images.length > 0 && (
+                        {location.images && location.images.length > 0 && (
                           <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-medium text-text-muted">
                             <Camera className="w-2.5 h-2.5 text-accent" />
-                            <span>{clinic.images.length} {"photos"}</span>
+                            <span>{location.images.length} {"photos"}</span>
                           </span>
                         )}
                       </div>
@@ -578,61 +576,61 @@ export default function BrowseClient({
                       <span className="font-medium text-text-secondary flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
                         <span>
-                          {clinic.doctorCount
-                            ? `${clinic.doctorCount} ${
-                                clinic.doctorCount === 1
+                          {location.doctorCount
+                            ? `${location.doctorCount} ${
+                                location.doctorCount === 1
                                   ? "Doctor"
                                   : "Doctors"
                               }`
-                            : clinic.doctorCount === 0 ? "No doctors listed" : "Doctor details pending"}
+                            : location.doctorCount === 0 ? "No doctors listed" : "Doctor details pending"}
                         </span>
                       </span>
 
-                      {!(hasSingleDoctor && singleDoctor?.fees != null) && !(clinic.doctorsSummary && clinic.doctorsSummary.length > 1) && clinic.minFee !== undefined && clinic.minFee !== null && (
+                      {!(hasSingleDoctor && singleDoctor?.fees != null) && !(location.doctorsSummary && location.doctorsSummary.length > 1) && location.minFee !== undefined && location.minFee !== null && (
                         <span className="font-medium text-text flex items-center gap-1">
                           <CreditCard className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
                           <span>
-                            {directoryMinimumFeeLabel(clinic.minFee, clinic.currency || "INR")}
+                            {directoryMinimumFeeLabel(location.minFee, location.currency || "INR")}
                           </span>
                         </span>
                       )}
-                      {clinic.rating != null && (clinic.reviewsCount || 0) > 0 && (
-                        <span className="font-semibold text-text flex items-center gap-1" aria-label={`${clinic.rating.toFixed(1)} out of 5 from ${clinic.reviewsCount} reviews`}>
+                      {location.rating != null && (location.reviewsCount || 0) > 0 && (
+                        <span className="font-semibold text-text flex items-center gap-1" aria-label={`${location.rating.toFixed(1)} out of 5 from ${location.reviewsCount} reviews`}>
                           <Star className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} aria-hidden="true" />
-                          {clinic.rating.toFixed(1)} <span className="text-text-muted">({clinic.reviewsCount})</span>
+                          {location.rating.toFixed(1)} <span className="text-text-muted">({location.reviewsCount})</span>
                         </span>
                       )}
                     </div>
 
                     {/* Single Doctor Highlight or Multi-Doctor Preview */}
                     {hasSingleDoctor && singleDoctor ? (
-                      <Link href={`/doctor/${encodeURIComponent(singleDoctor.id)}?clinicId=${encodeURIComponent(clinic.id)}`} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block bg-surface-alt/70 p-3 rounded-xl text-xs mb-3 space-y-1 hover:bg-primary-500/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                      <Link href={doctorPath(singleDoctor, location)} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block bg-surface-alt/70 p-3 rounded-xl text-xs mb-3 space-y-1 hover:bg-primary-500/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="text-[11px] font-medium text-text-muted">
                             {"Practicing Specialist"}
                           </span>
                           <span className="text-[11px] font-bold text-success-text dark:text-success-text">
-                            {directoryDoctorFeeLabel(singleDoctor, clinic.currency || "INR")}
+                            {directoryDoctorFeeLabel(singleDoctor, location.currency || "INR")}
                           </span>
                         </div>
                         <p className="text-sm font-semibold text-text break-words">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
                         <p className="text-xs text-text-secondary leading-relaxed">{singleDoctor.specialization}</p>
                       </Link>
-                    ) : clinic.doctorsSummary && clinic.doctorsSummary.length > 1 ? (
+                    ) : location.doctorsSummary && location.doctorsSummary.length > 1 ? (
                       <div className="bg-surface-alt/70 p-3 rounded-xl text-xs mb-3 space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="text-[11px] font-medium text-text-muted">
-                            {clinic.doctorsSummary.length} {"Consulting Doctors"}
+                            {location.doctorsSummary.length} {"Consulting Doctors"}
                           </span>
-                          {clinic.minFee !== undefined && clinic.minFee !== null && (
+                          {location.minFee !== undefined && location.minFee !== null && (
                             <span className="text-[11px] font-bold text-success-text dark:text-success-text">
-                              {directoryMinimumFeeLabel(clinic.minFee, clinic.currency || "INR")}
+                              {directoryMinimumFeeLabel(location.minFee, location.currency || "INR")}
                             </span>
                           )}
                         </div>
                         <div className="space-y-1">
                           {previewDoctors.slice(0, 2).map((doc) => (
-                            <Link key={doc.id} href={`/doctor/${encodeURIComponent(doc.id)}?clinicId=${encodeURIComponent(clinic.id)}`} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block space-y-0.5 rounded-lg text-xs hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                            <Link key={doc.id} href={doctorPath(doc, location)} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block space-y-0.5 rounded-lg text-xs hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
                               <span className="block font-medium text-text break-words">
                                 Dr. {doc.name.replace(/^Dr\.?\s*/i, "")}
                               </span>
@@ -641,23 +639,23 @@ export default function BrowseClient({
                               </span>
                             </Link>
                           ))}
-                          {clinic.doctorsSummary.length > 2 && (
+                          {location.doctorsSummary.length > 2 && (
                             <p className="text-[10px] text-accent font-semibold pt-0.5">
-                              +{clinic.doctorsSummary.length - 2} {"more doctors available"}
+                              +{location.doctorsSummary.length - 2} {"more doctors available"}
                             </p>
                           )}
                         </div>
                       </div>
                     ) : (
                       <p className="text-xs text-text-muted line-clamp-2 leading-relaxed mb-3">
-                        {clinic.description || "Doctor and clinic details are available on the profile."}
+                        {location.description || "Doctor and location details are available on the profile."}
                       </p>
                     )}
 
                     {/* Facilities / Specialty Tags */}
-                    {clinic.facilities && clinic.facilities.length > 0 && (
+                    {location.amenities && location.amenities.length > 0 && (
                       <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3">
-                        {clinic.facilities.slice(0, 3).map((fac, idx) => (
+                        {location.amenities.slice(0, 3).map((fac, idx) => (
                           <span
                             key={idx}
                             className="text-[11px] text-text-muted"
@@ -665,9 +663,9 @@ export default function BrowseClient({
                             {fac}
                           </span>
                         ))}
-                        {clinic.facilities.length > 3 && (
+                        {location.amenities.length > 3 && (
                           <span className="text-[10px] text-text-muted self-center font-medium">
-                            +{clinic.facilities.length - 3}
+                            +{location.amenities.length - 3}
                           </span>
                         )}
                       </div>
@@ -676,27 +674,27 @@ export default function BrowseClient({
 
                   <div>
                     {/* Keep the card footer focused on useful location details. */}
-                    {clinic.address && clinic.address.trim() !== "." && (
+                    {location.address && location.address.trim() !== "." && (
                       <div className="text-xs text-text-secondary border-t border-border/60 pt-2.5 mb-3">
                         <div className="flex items-center gap-1.5 truncate">
                           <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
-                          <span className="truncate">{clinic.address}</span>
+                          <span className="truncate">{location.address}</span>
                         </div>
                       </div>
                     )}
 
                     {/* Actions Bar */}
                     <div className="flex items-center gap-2">
-                      {bookingStatus === "contact_clinic" && clinic.phone ? <a href={`tel:${clinic.phone.replace(/\s+/g, "")}`} onClick={(event) => event.stopPropagation()} className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-3.5 text-sm font-bold text-brand-mist shadow-xs hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Call clinic about appointments</a> : <Link
+                      {bookingStatus === "contact_location" && location.phone ? <a href={`tel:${location.phone.replace(/\s+/g, "")}`} onClick={(event) => event.stopPropagation()} className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-3.5 text-sm font-bold text-brand-mist shadow-xs hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Call reception about appointments</a> : <Link
                         href={bookingHref}
                         onClick={(event) => { event.stopPropagation(); rememberPosition(); }}
                         className="group/btn inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-3.5 text-sm font-bold text-brand-mist shadow-xs hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                       >
                         <span className="min-w-0 text-center">
-                          {bookingStatus === "contact_clinic"
+                          {bookingStatus === "contact_location"
                             ? "View contact options"
                             : bookingStatus === "no_doctors"
-                            ? "View clinic"
+                            ? "View location"
                             : "Book Appointment"}
                         </span>
                         <ChevronRight className="w-4 h-4 shrink-0 group-hover/btn:translate-x-0.5 transition-transform" strokeWidth={2} />
@@ -709,8 +707,8 @@ export default function BrowseClient({
           </div>
         )}
         {nextCursor && !loading && searchQuery === debouncedSearch && !fetchError && <div className="mt-6 flex flex-col items-center gap-2">
-          <Button variant="outline" onClick={loadMore} loading={loadingMore} className="min-h-11 min-w-40">Load more clinics</Button>
-          {loadMoreError && <p role="alert" className="text-sm text-danger-text">More clinics could not be loaded. Please try again.</p>}
+          <Button variant="outline" onClick={loadMore} loading={loadingMore} className="min-h-11 min-w-40">Load more locations</Button>
+          {loadMoreError && <p role="alert" className="text-sm text-danger-text">More locations could not be loaded. Please try again.</p>}
         </div>}
       </main>
     </div>

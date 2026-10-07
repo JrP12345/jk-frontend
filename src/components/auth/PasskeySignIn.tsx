@@ -27,6 +27,7 @@ export default function PasskeySignIn({ onTwoFactor }: { onTwoFactor: (token: st
     });
   }, []);
   const signIn = async () => {
+    if (loading) return;
     setLoading(true);
     try {
       const options = await api.post("/auth/passkeys/login/options");
@@ -38,7 +39,11 @@ export default function PasskeySignIn({ onTwoFactor }: { onTwoFactor: (token: st
       toast({ title: "Signed in with passkey", variant: "success" });
       router.push("/dashboard");
     } catch (error: any) {
-      if (error.name !== "NotAllowedError" && error.name !== "AbortError") toast({ title: "Passkey sign-in failed", description: error.response?.data?.message || "Please try again or use your usual sign-in method.", variant: "error" });
+      if (error.name === "NotAllowedError" || error.name === "AbortError") {
+        toast({ title: "Passkey sign-in was not completed", description: "Choose a passkey already added to your account, or sign in with your usual method. You can add a passkey from Account security.", variant: "warning" });
+      } else {
+        toast({ title: "Passkey sign-in failed", description: error.response?.data?.message || error.message || "Please try again or use your usual sign-in method.", variant: "error" });
+      }
     } finally { setLoading(false); }
   };
   if (!support.checked) return null;

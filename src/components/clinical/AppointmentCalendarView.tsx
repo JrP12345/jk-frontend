@@ -17,7 +17,7 @@ interface AppointmentItem {
     name: string;
     specialization?: string;
   };
-  clinicId?: {
+  locationId?: {
     name: string;
   };
 }
@@ -290,7 +290,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
               <p className="font-bold text-text text-sm">{selectedAppt.patientId?.userId?.name}</p>
               <p className="text-text-secondary">Phone: {selectedAppt.patientId?.userId?.phone || "N/A"}</p>
               <p className="text-text-secondary">Doctor: Dr. {selectedAppt.doctorId?.name}</p>
-              <p className="text-text-secondary">Clinic: {selectedAppt.clinicId?.name}</p>
+              <p className="text-text-secondary">Location: {selectedAppt.locationId?.name}</p>
               <p className="text-text-secondary">Time: {new Date(selectedAppt.appointmentTime).toLocaleString()}</p>
             </div>
 

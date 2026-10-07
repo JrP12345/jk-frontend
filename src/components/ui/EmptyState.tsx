@@ -21,8 +21,8 @@ const EmptyState = memo(function EmptyState({
   className = "",
 }: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center text-center py-8 px-4", className)}>
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-surface-alt border border-border/70 text-accent">
+    <div className={cn("flex flex-col items-center justify-center text-center py-10 px-4", className)}>
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-surface-alt border border-border/70 text-text-secondary">
         {icon ? (
           <span className="[&>svg]:h-5 [&>svg]:w-5">{icon}</span>
         ) : (
@@ -35,7 +35,7 @@ const EmptyState = memo(function EmptyState({
       </div>
 
       <h3 className="text-base font-semibold text-text tracking-tight">{title}</h3>
-      {description && <p className="mt-1.5 text-xs sm:text-sm text-text-secondary max-w-md leading-relaxed">{description}</p>}
+      {description && <p className="mt-1.5 text-sm text-text-secondary max-w-md leading-relaxed">{description}</p>}
 
       {(action || secondaryAction) && (
         <div className="mt-4 flex items-center gap-2 flex-wrap justify-center">
@@ -48,4 +48,3 @@ const EmptyState = memo(function EmptyState({
 });
 
 export default EmptyState;
-

@@ -26,7 +26,7 @@ interface AuditLogEntry {
 
 interface FilterState {
   organizationId: string;
-  clinicId: string;
+  locationId: string;
   doctorId: string;
   category: string;
   action: string;
@@ -36,7 +36,7 @@ interface FilterState {
 
 const EMPTY_FILTERS: FilterState = {
   organizationId: "",
-  clinicId: "",
+  locationId: "",
   doctorId: "",
   category: "",
   action: "",
@@ -67,7 +67,7 @@ export default function AuditLogsPage() {
 
   // Dropdown data
   const [organizations, setOrganizations] = useState<any[]>([]);
-  const [clinics, setClinics] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [orgsLoading, setOrgsLoading] = useState(false);
 
@@ -87,22 +87,22 @@ export default function AuditLogsPage() {
       .finally(() => setOrgsLoading(false));
   }, [user]);
 
-  // Load clinics when org changes
+  // Load locations when org changes
   useEffect(() => {
     if (!canViewAuditLogs(user)) return;
     const controller = new AbortController();
-    setClinics([]);
+    setLocations([]);
     const orgParam = filters.organizationId
       ? `?organizationId=${filters.organizationId}`
       : "";
     api
-      .get(`/onboarding/clinics${orgParam}`, { signal: controller.signal })
+      .get(`/onboarding/locations${orgParam}`, { signal: controller.signal })
       .then((res) => {
         if (controller.signal.aborted) return;
-        const clinicList = res.data.data || [];
-        setClinics(clinicList);
+        const locationList = res.data.data || [];
+        setLocations(locationList);
       })
-      .catch(() => { if (!controller.signal.aborted) setClinics([]); });
+      .catch(() => { if (!controller.signal.aborted) setLocations([]); });
     return () => controller.abort();
   }, [user, filters.organizationId]);
 
@@ -138,7 +138,7 @@ export default function AuditLogsPage() {
       setLoadError(null);
       const params = new URLSearchParams();
       if (activeFilters.organizationId) params.set("organizationId", activeFilters.organizationId);
-      if (activeFilters.clinicId) params.set("clinicId", activeFilters.clinicId);
+      if (activeFilters.locationId) params.set("locationId", activeFilters.locationId);
       if (activeFilters.doctorId) params.set("doctorId", activeFilters.doctorId);
       if (activeFilters.category) params.set("category", activeFilters.category);
       if (activeFilters.action) params.set("action", activeFilters.action);
@@ -181,7 +181,7 @@ export default function AuditLogsPage() {
     const updated = { ...filters, [key]: value };
     // Reset dependent filters
     if (key === "organizationId") {
-      updated.clinicId = "";
+      updated.locationId = "";
       updated.doctorId = "";
     }
     setFilters(updated);
@@ -335,7 +335,7 @@ export default function AuditLogsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-sm">Filter Audit Logs</CardTitle>
-                <CardDescription className="text-xs">Narrow down events by organization, clinic, doctor, or category.</CardDescription>
+                <CardDescription className="text-xs">Narrow down events by organization, location, doctor, or category.</CardDescription>
               </div>
               {activeFilterCount > 0 && (
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-text-muted hover:text-danger-text">
@@ -364,19 +364,19 @@ export default function AuditLogsPage() {
                 ]}
               />
 
-              {/* Clinic */}
+              {/* Location */}
               <Select
                 size="sm"
-                label="Clinic"
+                label="Location"
                 icon={<Building2 className="h-3.5 w-3.5" />}
-                placeholder="All Clinics"
-                value={filters.clinicId}
-                onChange={(e) => updateFilter("clinicId", e.target.value)}
+                placeholder="All Locations"
+                value={filters.locationId}
+                onChange={(e) => updateFilter("locationId", e.target.value)}
                 options={[
-                  { value: "", label: "All Clinics" },
-                  ...clinics.map((c: any) => ({
+                  { value: "", label: "All Locations" },
+                  ...locations.map((c: any) => ({
                     value: c.id || c._id,
-                    label: c.name || c.clinicName || "Unnamed Clinic",
+                    label: c.name || c.locationName || "Unnamed Location",
                   })),
                 ]}
               />
@@ -484,7 +484,7 @@ export default function AuditLogsPage() {
               }));
             })()}
             series={[
-              { key: "count", name: "Events Logged", color: "var(--s-chart-1)" },
+              { key: "count", name: "Events Logged", color: "var(--chart-1)" },
             ]}
             height={180}
             valueFormatter={(v) => `${v} events`}

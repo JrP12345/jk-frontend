@@ -16,7 +16,7 @@ export interface UpiPaymentModalProps {
   patientName: string;
   tokenNumber?: number | string;
   doctorName?: string;
-  clinicName?: string;
+  locationName?: string;
   upiVpa?: string;
   merchantName?: string;
   amount: number;
@@ -33,7 +33,7 @@ export default function UpiPaymentModal({
   patientName,
   tokenNumber,
   doctorName,
-  clinicName = "Ekavyu Health Clinic",
+  locationName = "Ekavyu Healthcare",
   upiVpa,
   merchantName,
   amount,
@@ -48,8 +48,8 @@ export default function UpiPaymentModal({
   const [copied, setCopied] = useState(false);
 
   // Dynamic NPCI UPI VPA & Merchant Name
-  const vpa = upiVpa?.trim() || "ananta.health@icici";
-  const businessName = merchantName?.trim() || clinicName || "Ekavyu Health Clinic";
+  const vpa = upiVpa?.trim() || "";
+  const businessName = merchantName?.trim() || locationName || "Ekavyu Healthcare";
   const note = `Token #${tokenNumber || "OPD"} ${patientName} Consultation`;
   const upiPayload = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(
     businessName
@@ -60,6 +60,10 @@ export default function UpiPaymentModal({
   useEffect(() => {
     if (!open) {
       setPaidSuccess(false);
+      return;
+    }
+    if (!vpa) {
+      setQrDataUrl("");
       return;
     }
 
@@ -73,7 +77,7 @@ export default function UpiPaymentModal({
     })
       .then((url) => setQrDataUrl(url))
       .catch((err) => console.error("UPI QR Generation Error:", err));
-  }, [open, upiPayload]);
+  }, [open, upiPayload, vpa]);
 
   const triggerSoundboxAnnouncement = (amt: number, token?: number | string) => {
     try {
@@ -213,10 +217,12 @@ export default function UpiPaymentModal({
                     className="w-52 h-52 object-contain"
                   />
                 </div>
-              ) : (
+              ) : vpa ? (
                 <div className="w-52 h-52 flex items-center justify-center bg-surface-alt dark:bg-surface-alt rounded-xl text-xs text-muted">
                   Generating UPI QR...
                 </div>
+              ) : (
+                <p className="max-w-52 text-center text-sm text-text-secondary">UPI is not configured for this location. Contact reception or use another payment method.</p>
               )}
 
               <div className="mt-2 text-[11px] font-mono font-semibold text-text-muted text-center truncate max-w-full px-2">
@@ -229,7 +235,7 @@ export default function UpiPaymentModal({
               </div>
 
               {/* Mobile 1-Tap Intent Deep Link */}
-              <a
+              {vpa && <a
                 href={upiPayload}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -237,13 +243,14 @@ export default function UpiPaymentModal({
               >
                 <Smartphone className="w-3.5 h-3.5" />
                 Pay via UPI App (GPay / PhonePe)
-              </a>
+              </a>}
 
               <Button
                 variant="ghost"
                 size="sm"
                 className="mt-1.5 text-xs text-accent dark:text-accent"
                 onClick={copyUpiLink}
+                disabled={!vpa}
               >
                 <Copy className="w-3 h-3 mr-1" />
                 {copied ? "Copied UPI URI!" : "Copy UPI Link"}
@@ -308,7 +315,7 @@ export default function UpiPaymentModal({
                   variant="primary"
                   className="w-full justify-between h-11 bg-primary hover:bg-primary text-brand-mist shadow-sm font-bold"
                   onClick={() => handleRecordPayment("upi")}
-                  disabled={submitting}
+                  disabled={submitting || !vpa}
                 >
                   <span className="flex items-center gap-2">
                     <Smartphone className="w-4 h-4" />

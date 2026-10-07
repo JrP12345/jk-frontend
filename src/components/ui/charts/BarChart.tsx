@@ -24,16 +24,14 @@ export interface BarChartProps {
   showLegend?: boolean;
   benchmark?: { value: number; label: string; color?: string };
   className?: string;
-  /** Keep the requested height and readable labels as the container resizes. */
-  responsive?: boolean;
 }
 
 const DEFAULT_COLORS = [
-  "var(--s-chart-1)",
-  "var(--s-chart-2)",
-  "var(--s-chart-3)",
-  "var(--s-chart-4)",
-  "var(--s-chart-5)",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
 ];
 
 export const BarChart = memo(function BarChart({
@@ -46,7 +44,6 @@ export const BarChart = memo(function BarChart({
   showLegend = true,
   benchmark,
   className = "",
-  responsive = false,
 }: BarChartProps) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -54,7 +51,7 @@ export const BarChart = memo(function BarChart({
 
   useEffect(() => {
     const svg = svgRef.current;
-    if (!responsive || !svg) return;
+    if (!svg) return;
     const update = () => {
       const width = Math.round(svg.getBoundingClientRect().width);
       if (width > 0) setMeasuredWidth(Math.max(240, width));
@@ -64,10 +61,10 @@ export const BarChart = memo(function BarChart({
     observer?.observe(svg);
     window.addEventListener("resize", update);
     return () => { observer?.disconnect(); window.removeEventListener("resize", update); };
-  }, [responsive, data.length]);
+  }, [data.length]);
 
-  const padding = { top: 16, right: 14, bottom: 28, left: responsive ? 58 : 42 };
-  const viewBoxWidth = responsive ? measuredWidth : 600;
+  const padding = { top: 16, right: 14, bottom: 28, left: 58 };
+  const viewBoxWidth = measuredWidth;
   const viewBoxHeight = height;
 
   const chartWidth = viewBoxWidth - padding.left - padding.right;
@@ -142,7 +139,7 @@ export const BarChart = memo(function BarChart({
         <svg
           ref={svgRef}
           viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-          style={responsive ? { height } : undefined}
+          style={{ height }}
           className="w-full h-auto overflow-visible cursor-pointer [touch-action:pan-y_pinch-zoom]"
           onMouseMove={(e) => handlePointerPos(e.clientX)}
           onMouseLeave={() => setHoverIndex(null)}
@@ -163,7 +160,7 @@ export const BarChart = memo(function BarChart({
                       y1={y}
                       x2={padding.left + chartWidth}
                       y2={y}
-                      stroke="var(--s-border)"
+                      stroke="var(--border)"
                       strokeDasharray="4 4"
                       strokeWidth="1"
                       className="opacity-35"
@@ -173,8 +170,8 @@ export const BarChart = memo(function BarChart({
                       y={y + 3.5}
                       textAnchor="end"
                       fontSize="9"
-                      style={responsive ? { fontSize: 11 } : undefined}
-                      fill="var(--s-text-muted)"
+                      style={{ fontSize: 11 }}
+                      fill="var(--text-muted)"
                       className="font-mono font-medium text-[9px]"
                     >
                       {valueFormatter(val)}
@@ -193,7 +190,7 @@ export const BarChart = memo(function BarChart({
                 y1={getY(benchmark.value)}
                 x2={padding.left + chartWidth}
                 y2={getY(benchmark.value)}
-                stroke={benchmark.color || "var(--s-danger-500)"}
+                stroke={benchmark.color || "var(--danger)"}
                 strokeWidth="1.5"
                 strokeDasharray="3 3"
                 className="opacity-80"
@@ -203,7 +200,7 @@ export const BarChart = memo(function BarChart({
                 y={getY(benchmark.value) - 4}
                 textAnchor="end"
                 fontSize="9"
-                fill={benchmark.color || "var(--s-danger-500)"}
+                fill={benchmark.color || "var(--danger)"}
                 className="font-bold uppercase tracking-wider text-[8.5px]"
               >
                 {benchmark.label} ({valueFormatter(benchmark.value)})
@@ -312,10 +309,10 @@ export const BarChart = memo(function BarChart({
           {/* X Axis Labels */}
           <g className="x-axis-labels">
             {data.map((d, i) => {
-              const maxLabels = responsive ? Math.max(2, Math.floor(chartWidth / 64)) : 7;
-              const skip = responsive || data.length > 10 ? Math.max(1, Math.ceil(data.length / maxLabels)) : 1;
+              const maxLabels = Math.max(2, Math.floor(chartWidth / 64));
+              const skip = Math.max(1, Math.ceil(data.length / maxLabels));
               if (i % skip !== 0 && i !== data.length - 1) return null;
-              if (responsive && i > 0 && i !== data.length - 1 && data.length - 1 - i < skip) return null;
+              if (i > 0 && i !== data.length - 1 && data.length - 1 - i < skip) return null;
 
               const x = padding.left + i * groupWidth + groupWidth / 2;
               return (
@@ -325,8 +322,8 @@ export const BarChart = memo(function BarChart({
                   y={viewBoxHeight - 6}
                   textAnchor="middle"
                   fontSize="9.5"
-                  style={responsive ? { fontSize: 11 } : undefined}
-                  fill="var(--s-text-muted)"
+                  style={{ fontSize: 11 }}
+                  fill="var(--text-muted)"
                   className="font-semibold text-[9px] tracking-tight"
                 >
                   {d.label}
@@ -336,7 +333,7 @@ export const BarChart = memo(function BarChart({
           </g>
         </svg>
 
-        {/* Ultra-Luxury Frosted Glass Tooltip */}
+        {/* Chart tooltip */}
         {activeDataPoint && hoverIndex !== null && (
           <div
             style={{

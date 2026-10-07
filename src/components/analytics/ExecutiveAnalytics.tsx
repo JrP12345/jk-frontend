@@ -63,11 +63,11 @@ export function ExecutiveAnalytics() {
       });
 
       const colors = [
-        "var(--s-chart-1)",
-        "var(--s-chart-2)",
-        "var(--s-chart-3)",
-        "var(--s-chart-4)",
-        "var(--s-chart-5)",
+        "var(--chart-1)",
+        "var(--chart-2)",
+        "var(--chart-3)",
+        "var(--chart-4)",
+        "var(--chart-5)",
         "var(--chart-6)",
         "var(--chart-7)",
       ];
@@ -190,7 +190,7 @@ export function ExecutiveAnalytics() {
           <AreaChart
             data={metrics?.trendData || []}
             series={[
-              { key: "visits", name: "Patient Encounters", color: "var(--s-chart-1)" },
+              { key: "visits", name: "Patient Encounters", color: "var(--chart-1)" },
             ]}
             height={210}
             valueFormatter={(v) => `${v} visits`}
@@ -237,7 +237,7 @@ export function ExecutiveAnalytics() {
                   <p className="text-xs text-text-secondary line-clamp-2">{dept.description || "General specialty department"}</p>
                   <div className="pt-2 border-t border-border/50 text-[11px] flex justify-between text-text-muted">
                     <span>Head: {dept.headDoctorId?.name || "Unassigned"}</span>
-                    <span>Facility: {dept.clinicId?.name || "All Facilities"}</span>
+                    <span>Facility: {dept.locationId?.name || "All Facilities"}</span>
                   </div>
                 </div>
               ))}
@@ -315,4 +315,3 @@ export function ExecutiveAnalyticsSkeleton() {
     </div>
   );
 }
-

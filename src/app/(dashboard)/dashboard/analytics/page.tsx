@@ -6,7 +6,7 @@ import { canViewAnalytics } from "@/lib/permissions";
 import { Alert, Card, CardHeader, CardTitle, CardContent, Button, Table, useToast, Badge, StatCard, SkeletonCard, SkeletonTable, ChartContainer, DonutChart } from "@/components/ui";
 import { RotateCw, IndianRupee, AlertCircle, Building2, Boxes } from "lucide-react";
 
-interface ClinicPerformance {
+interface LocationPerformance {
   id: string;
   name: string;
   city: string;
@@ -27,7 +27,7 @@ interface AnalyticsData {
     bedOccupancyRate: number;
     lowStockWarnings: number;
   };
-  clinicsPerformance: ClinicPerformance[];
+  locationsPerformance: LocationPerformance[];
   doctorSpecializations: SpecCount[];
   referralStats: {
     totalReferrals: number;
@@ -117,7 +117,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  const { overall, clinicsPerformance, doctorSpecializations, referralStats } = data;
+  const { overall, locationsPerformance, doctorSpecializations, referralStats } = data;
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Compare revenue, bed use, and referrals across clinics.
+              Compare revenue, bed use, and referrals across locations.
             </p>
           </div>
 
@@ -186,50 +186,50 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Comparative Clinic Table (Takes 2 columns) */}
+        {/* Comparative Location Table (Takes 2 columns) */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader className="py-4 px-5 border-b border-border">
-              <CardTitle className="text-lg font-bold text-text">Multi-Clinic Performance Comparison</CardTitle>
+              <CardTitle className="text-lg font-bold text-text">Multi-Location Performance Comparison</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table
                 loading={loading}
                 mobileCardView={true}
                 columns={[
-                  { 
-                    header: "Clinic Name", 
+                  {
+                    header: "Location Name",
                     key: "name",
                     sortable: true,
-                    render: (row: ClinicPerformance) => <span className="font-bold text-text">{row.name}</span>
+                    render: (row: LocationPerformance) => <span className="font-bold text-text">{row.name}</span>
                   },
-                  { 
-                    header: "Location City", 
+                  {
+                    header: "Location City",
                     key: "city",
                     sortable: true,
-                    render: (row: ClinicPerformance) => <Badge variant="default" className="text-xs">{row.city}</Badge>
+                    render: (row: LocationPerformance) => <Badge variant="default" className="text-xs">{row.city}</Badge>
                   },
-                  { 
-                    header: "Total Visits", 
+                  {
+                    header: "Total Visits",
                     key: "appointmentCount",
                     sortable: true,
-                    render: (row: ClinicPerformance) => <span className="text-text font-semibold">{row.appointmentCount}</span>
+                    render: (row: LocationPerformance) => <span className="text-text font-semibold">{row.appointmentCount}</span>
                   },
-                  { 
-                    header: "Revenue Collections", 
+                  {
+                    header: "Revenue Collections",
                     key: "revenue",
                     sortable: true,
-                    render: (row: ClinicPerformance) => <span className="text-success-text font-bold">₹{row.revenue.toLocaleString()}</span>
+                    render: (row: LocationPerformance) => <span className="text-success-text font-bold">₹{row.revenue.toLocaleString()}</span>
                   },
-                  { 
-                    header: "Outstanding Balance", 
+                  {
+                    header: "Outstanding Balance",
                     key: "outstanding",
                     sortable: true,
-                    render: (row: ClinicPerformance) => <span className="text-danger-text font-semibold">₹{row.outstanding.toLocaleString()}</span>
+                    render: (row: LocationPerformance) => <span className="text-danger-text font-semibold">₹{row.outstanding.toLocaleString()}</span>
                   }
                 ]}
-                data={clinicsPerformance}
-                renderMobileCard={(row: ClinicPerformance) => (
+                data={locationsPerformance}
+                renderMobileCard={(row: LocationPerformance) => (
                   <div
                     key={row.id}
                     className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
@@ -260,7 +260,7 @@ export default function AnalyticsPage() {
                     </div>
                   </div>
                 )}
-                emptyMessage="No comparative clinic metrics found."
+                emptyMessage="No comparative location metrics found."
               />
             </CardContent>
           </Card>
@@ -306,7 +306,7 @@ export default function AnalyticsPage() {
                   <span className="font-bold text-text">Loop Completion Rate:</span>
                   <span className="font-extrabold text-accent">{referralStats.completionRate}%</span>
                 </div>
-                
+
                 {/* Visual Progress Bar */}
                 <div className="w-full bg-surface-alt h-3.5 rounded-full overflow-hidden border border-border">
                   <div

@@ -7,15 +7,15 @@ import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
 
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
-import { patientName as appointmentPatientName, patientPhone as appointmentPatientPhone } from "@/lib/clinicWorkflow";
+import { patientName as appointmentPatientName, patientPhone as appointmentPatientPhone } from "@/lib/locationWorkflow";
 import { PatientEntryModal } from "@/components/appointments/PatientEntryModal";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
-import { clinicDateKey, clinicLocalDateTimeInput, clinicLocalTimeToIso } from "@/lib/clinicTime";
+import { useLocationStore } from "@/store/locationStore";
+import { locationDateKey, locationLocalDateTimeInput, locationLocalTimeToIso } from "@/lib/locationTime";
 import { Alert, Card, CardContent, Table, Button, Modal, Input, DatePicker, Select, Textarea, useToast, Spinner, Badge, ConfirmDialog, Stepper, Dropdown, Checkbox, cn } from "@/components/ui";
 import dynamic from "next/dynamic";
 import { RotateCw, Plus, LayoutList, Calendar, Search, Ticket, FileText, MoreHorizontal, Stethoscope, MapPin, User, Clock, UserPlus, ArrowRight, ArrowLeft, CheckCircle2, XCircle, CalendarClock, Phone, Building2, Mail, CalendarOff } from "lucide-react";
@@ -68,7 +68,7 @@ const BOOKING_STEPS = [
 
 interface Appointment {
   id: string;
-  clinicId: { id: string; name: string; city: string; address: string };
+  locationId: { id: string; name: string; city: string; address: string };
   doctorId: { id: string; name: string; email: string; phone: string; specialization: string };
   patientId: {
     id: string;
@@ -93,8 +93,8 @@ export default function AppointmentsPage() {
   const { user } = useAuthStore();
   const { preferences } = useWorkflowPreferences();
   const [isEssentialEntryOpen, setIsEssentialEntryOpen] = useState(false);
-  const { clinics, fetchClinics, activeClinicId } = useClinicStore();
-  const timezoneForClinic = (clinicId: string) => clinics.find(clinic => clinic.id === clinicId)?.effectiveTimezone || "Asia/Kolkata";
+  const { locations, fetchLocations, activeLocationId } = useLocationStore();
+  const timezoneForLocation = (locationId: string) => locations.find(location => location.id === locationId)?.effectiveTimezone || "Asia/Kolkata";
   const canManageAppointments = hasAnyPermission(user, "MANAGE_APPOINTMENTS");
   const { toast } = useToast();
 
@@ -118,15 +118,15 @@ export default function AppointmentsPage() {
     return `${year}-${month}-${day}`;
   };
 
-  const [filterClinic, setFilterClinic] = useState(activeClinicId || "");
+  const [filterLocation, setFilterLocation] = useState(activeLocationId || "");
   const [filterDoctor, setFilterDoctor] = useState("");
   const [filterDate, setFilterDate] = useState(user?.role === "patient" ? "" : getTodayISO());
   const [filterStatus, setFilterStatus] = useState("");
   const [reviewOnly, setReviewOnly] = useState(false);
 
   useEffect(() => {
-    setFilterClinic(activeClinicId || "");
-  }, [activeClinicId]);
+    setFilterLocation(activeLocationId || "");
+  }, [activeLocationId]);
 
   useEffect(() => {
     if (user?.role === "patient") {
@@ -162,7 +162,7 @@ export default function AppointmentsPage() {
   });
 
   // Doctor & Slot Booking Details
-  const [bookingClinicId, setBookingClinicId] = useState("");
+  const [bookingLocationId, setBookingLocationId] = useState("");
   const [bookingDoctorId, setBookingDoctorId] = useState("");
   const [doctorAssignments, setDoctorAssignments] = useState<any[]>([]);
   const [bookingTime, setBookingTime] = useState("");
@@ -196,7 +196,7 @@ export default function AppointmentsPage() {
     const fetchSlots = async () => {
       try {
         setFetchingSlots(true);
-        const res = await api.get(`/doctors/${bookingDoctorId}/slots?clinicId=${bookingClinicId}&date=${selectedSlotDate}`);
+        const res = await api.get(`/doctors/${bookingDoctorId}/slots?locationId=${bookingLocationId}&date=${selectedSlotDate}`);
         const data = res.data?.data;
         const slotsData = data?.slots || [];
         setAvailableSlots(slotsData);
@@ -223,7 +223,7 @@ export default function AppointmentsPage() {
       }
     };
     fetchSlots();
-  }, [bookingDoctorId, bookingClinicId, selectedSlotDate]);
+  }, [bookingDoctorId, bookingLocationId, selectedSlotDate]);
 
   // Status Update State
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
@@ -301,11 +301,11 @@ export default function AppointmentsPage() {
 
   const handleOpenRescheduleModal = (appt: Appointment) => {
     setRescheduleTargetAppt(appt);
-    const clinicId = (appt.clinicId as any)?.id || (appt.clinicId as any)?._id || "";
-    setRescheduleTime(appt.appointmentTime ? clinicLocalDateTimeInput(new Date(appt.appointmentTime), timezoneForClinic(clinicId)) : "");
+    const locationId = (appt.locationId as any)?.id || (appt.locationId as any)?._id || "";
+    setRescheduleTime(appt.appointmentTime ? locationLocalDateTimeInput(new Date(appt.appointmentTime), timezoneForLocation(locationId)) : "");
     setRescheduleReason("");
     setBookingDoctorId((appt.doctorId as any)?.id || (appt.doctorId as any)?._id || "");
-    setBookingClinicId((appt.clinicId as any)?.id || (appt.clinicId as any)?._id || "");
+    setBookingLocationId((appt.locationId as any)?.id || (appt.locationId as any)?._id || "");
   };
 
   const handleRescheduleSubmit = async (e: React.FormEvent) => {
@@ -322,7 +322,7 @@ export default function AppointmentsPage() {
     setSubmittingReschedule(true);
     try {
       const res = await api.patch(`/appointments/${rescheduleTargetAppt.id}/reschedule`, {
-        newTime: clinicLocalTimeToIso(rescheduleTime.slice(0, 10), rescheduleTime.slice(11, 16), timezoneForClinic((rescheduleTargetAppt.clinicId as any)?.id || (rescheduleTargetAppt.clinicId as any)?._id || "")),
+        newTime: locationLocalTimeToIso(rescheduleTime.slice(0, 10), rescheduleTime.slice(11, 16), timezoneForLocation((rescheduleTargetAppt.locationId as any)?.id || (rescheduleTargetAppt.locationId as any)?._id || "")),
         reason: rescheduleReason,
         ...(currentLockId ? { lockId: currentLockId } : {}),
       });
@@ -384,8 +384,8 @@ export default function AppointmentsPage() {
       patientName: appointmentPatientName(appt.patientId),
       doctorName: appt.doctorId?.name || "Doctor",
       doctorSpecialty: appt.doctorId?.specialization || "General Medicine",
-      clinicName: appt.clinicId?.name || "Healthcare Facility",
-      clinicAddress: appt.clinicId?.address || "Clinic Address",
+      locationName: appt.locationId?.name || "Healthcare Facility",
+      locationAddress: appt.locationId?.address || "Location Address",
       appointmentTime: appt.appointmentTime,
       status: appt.status,
     });
@@ -432,7 +432,7 @@ export default function AppointmentsPage() {
             .ticket { background: white; border: 1px solid var(--print-border); border-radius: 16px; padding: 32px; width: 380px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); text-align: left; }
             .header { text-align: center; border-bottom: 2px dashed var(--print-border); padding-bottom: 20px; margin-bottom: 20px; }
             .brand { font-size: 12px; font-weight: 800; color: var(--print-accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
-            .clinic-name { font-size: 18px; font-weight: 700; color: #1f2937; margin: 0; }
+            .location-name { font-size: 18px; font-weight: 700; color: #1f2937; margin: 0; }
             .token-box { text-align: center; margin: 16px 0; }
             .token-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--print-muted); font-weight: 600; }
             .token-num { font-size: 48px; font-weight: 800; color: var(--print-accent); margin: 4px 0; line-height: 1; }
@@ -451,8 +451,8 @@ export default function AppointmentsPage() {
           <div class="ticket">
             <div class="header">
               <div class="brand">Ekavyu</div>
-              <h1 class="clinic-name">${ticketData.clinicName}</h1>
-              <p style="margin: 4px 0 0; font-size: 12px; color: var(--print-muted);">${ticketData.clinicAddress}</p>
+              <h1 class="location-name">${ticketData.locationName}</h1>
+              <p style="margin: 4px 0 0; font-size: 12px; color: var(--print-muted);">${ticketData.locationAddress}</p>
             </div>
             <div class="token-box">
               <span class="token-label">Queue Token Number</span>
@@ -492,7 +492,7 @@ export default function AppointmentsPage() {
       setLoadError(null);
       setIsRefreshing(true);
       const queryParams = [`page=${listPage}`, "limit=50", `search=${encodeURIComponent(listSearch)}`];
-      if (filterClinic) queryParams.push(`clinicId=${filterClinic}`);
+      if (filterLocation) queryParams.push(`locationId=${filterLocation}`);
       if (filterDoctor) queryParams.push(`doctorId=${filterDoctor}`);
       if (filterStatus) queryParams.push(`status=${filterStatus}`);
       if (reviewOnly && user && !["patient", "family_member"].includes(user.role)) queryParams.push("reviewOnly=1");
@@ -529,47 +529,47 @@ export default function AppointmentsPage() {
     }
   };
 
-  const fetchClinicsAndDoctors = async () => {
+  const fetchLocationsAndDoctors = async () => {
     if (!user || user.role === "patient") return;
     try {
-      const [, staffRes] = await Promise.all([fetchClinics(), api.get("/onboarding/staff")]);
+      const [, staffRes] = await Promise.all([fetchLocations(), api.get("/onboarding/staff")]);
       setDoctors(staffRes.data.data.doctors || []);
     } catch (err) {
-      console.error("Failed to load clinics or doctors", err);
+      console.error("Failed to load locations or doctors", err);
     }
   };
 
-  useEffect(() => { setListPage(1); setAppointments([]); }, [filterClinic, filterDoctor, filterDate, filterStatus, listSearch, reviewOnly]);
+  useEffect(() => { setListPage(1); setAppointments([]); }, [filterLocation, filterDoctor, filterDate, filterStatus, listSearch, reviewOnly]);
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === "visible") void fetchAppointments(); };
     const initial = window.setTimeout(refresh, 250);
     const timer = window.setInterval(refresh, 15000);
     document.addEventListener("visibilitychange", refresh);
     return () => { window.clearTimeout(initial); window.clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
-  }, [filterClinic, filterDoctor, filterDate, filterStatus, listPage, listSearch, reviewOnly]);
+  }, [filterLocation, filterDoctor, filterDate, filterStatus, listPage, listSearch, reviewOnly]);
 
   useEffect(() => {
     if (user) {
-      fetchClinicsAndDoctors();
+      fetchLocationsAndDoctors();
     }
   }, [user?.id, user?.role]);
 
-  // Fetch doctor assignments when booking clinic changes
+  // Fetch doctor assignments when booking location changes
   useEffect(() => {
-    if (!bookingClinicId) {
+    if (!bookingLocationId) {
       setDoctorAssignments([]);
       return;
     }
     const fetchAssignments = async () => {
       try {
-        const res = await api.get(`/onboarding/doctors/assignments?clinicId=${bookingClinicId}`);
+        const res = await api.get(`/onboarding/doctors/assignments?locationId=${bookingLocationId}`);
         setDoctorAssignments(res.data.data || []);
       } catch (err) {
         console.error("Failed to load doctor assignments", err);
       }
     };
     fetchAssignments();
-  }, [bookingClinicId]);
+  }, [bookingLocationId]);
 
   const handlePatientSearch = async () => {
     if (!patientSearch) return;
@@ -622,9 +622,9 @@ export default function AppointmentsPage() {
     setSubmitting(true);
     try {
       const bookingData: any = {
-        clinicId: bookingClinicId,
+        locationId: bookingLocationId,
         doctorId: bookingDoctorId,
-        appointmentTime: clinicLocalTimeToIso(bookingTime.slice(0, 10), bookingTime.slice(11, 16), timezoneForClinic(bookingClinicId)),
+        appointmentTime: locationLocalTimeToIso(bookingTime.slice(0, 10), bookingTime.slice(11, 16), timezoneForLocation(bookingLocationId)),
         appointmentType: bookingType,
         notes: bookingNotes,
         ...(currentLockId ? { lockId: currentLockId } : {}),
@@ -684,7 +684,7 @@ export default function AppointmentsPage() {
       conditions: "",
       medicalNotes: "",
     });
-    setBookingClinicId("");
+    setBookingLocationId("");
     setBookingDoctorId("");
     setBookingTime("");
     setBookingType("reception");
@@ -693,11 +693,11 @@ export default function AppointmentsPage() {
   };
 
   const releaseCurrentLock = async () => {
-    if (currentLockId && lockedSlotTime && bookingClinicId && bookingDoctorId) {
+    if (currentLockId && lockedSlotTime && bookingLocationId && bookingDoctorId) {
       try {
         await api.delete("/appointments/lock-slot", {
           data: {
-            clinicId: bookingClinicId,
+            locationId: bookingLocationId,
             doctorId: bookingDoctorId,
             slotTime: lockedSlotTime,
             lockId: currentLockId,
@@ -714,7 +714,7 @@ export default function AppointmentsPage() {
   const handleSlotClick = async (slot: SlotInfo) => {
     if (!slot.available || slot.lockedByOther) return;
     const fullSlotLocal = `${selectedSlotDate}T${slot.time}`;
-    const fullSlotISO = clinicLocalTimeToIso(selectedSlotDate, slot.time, timezoneForClinic(bookingClinicId));
+    const fullSlotISO = locationLocalTimeToIso(selectedSlotDate, slot.time, timezoneForLocation(bookingLocationId));
 
     if (lockedSlotTime === fullSlotISO && currentLockId) {
       setBookingTime(fullSlotLocal);
@@ -726,7 +726,7 @@ export default function AppointmentsPage() {
     setLockingSlot(true);
     try {
       const res = await api.post("/appointments/lock-slot", {
-        clinicId: bookingClinicId,
+        locationId: bookingLocationId,
         doctorId: bookingDoctorId,
         slotTime: fullSlotISO,
       });
@@ -739,7 +739,7 @@ export default function AppointmentsPage() {
       toast({ title: "Slot Unavailable", description: msg, variant: "error" });
       setFetchingSlots(true);
       try {
-        const res = await api.get(`/doctors/${bookingDoctorId}/slots?clinicId=${bookingClinicId}&date=${selectedSlotDate}`);
+        const res = await api.get(`/doctors/${bookingDoctorId}/slots?locationId=${bookingLocationId}&date=${selectedSlotDate}`);
         setAvailableSlots(res.data?.data?.slots || []);
       } catch {
         /* ignore */
@@ -870,7 +870,7 @@ export default function AppointmentsPage() {
       ? [
           {
             label: "Mark Checked-In",
-            icon: <CheckCircle2 className="w-4 h-4 text-info-500" />,
+            icon: <CheckCircle2 className="w-4 h-4 text-info" />,
             onClick: () => {
               setUpdatingStatusId(row.id);
               setConfirmStatus("checked-in");
@@ -985,15 +985,15 @@ export default function AppointmentsPage() {
           ["pending", "confirmed", "checked-in", "in-consultation"].includes(a.status) && a.reviewState !== "unresolved"
         );
         if (!activeAppt) return null;
-        const clinicObj = activeAppt.clinicId as any;
+        const locationObj = activeAppt.locationId as any;
         const doctorObj = activeAppt.doctorId as any;
-        const resolvedClinicId = clinicObj?._id || clinicObj?.id || (typeof clinicObj === "string" ? clinicObj : "");
+        const resolvedLocationId = locationObj?._id || locationObj?.id || (typeof locationObj === "string" ? locationObj : "");
         const resolvedDoctorId = doctorObj?._id || doctorObj?.id || (typeof doctorObj === "string" ? doctorObj : "");
-        if (!resolvedClinicId || !resolvedDoctorId) return null;
+        if (!resolvedLocationId || !resolvedDoctorId) return null;
         return (
           <PatientQueueTracker
             appointmentId={activeAppt.id || (activeAppt as any)._id}
-            clinicId={resolvedClinicId}
+            locationId={resolvedLocationId}
             doctorId={resolvedDoctorId}
           />
         );
@@ -1080,7 +1080,7 @@ export default function AppointmentsPage() {
                         mode="range"
                         placeholder="Filter Date..."
                         value={filterDate}
-                        onChange={(val) => { setReviewOnly(false); setFilterDate(typeof val === "string" ? val : val.target.value); }}
+                        onChange={(val) => { setReviewOnly(false); setFilterDate(val); }}
                       />
                     </div>
                     {doctors.length > 1 && (
@@ -1154,7 +1154,7 @@ export default function AppointmentsPage() {
                       {row.status.replace("-", " ")}
                     </Badge>
                     {row.reviewState && <span className="block text-[11px] text-warning-text">
-                      {user?.role === "patient" ? "Please contact the clinic" : row.reviewState === "unresolved" ? "Unresolved · review needed" : "Overdue · verify attendance"}
+                      {user?.role === "patient" ? "Please contact reception" : row.reviewState === "unresolved" ? "Unresolved · review needed" : "Overdue · verify attendance"}
                     </span>}
                   </div>
 
@@ -1182,7 +1182,7 @@ export default function AppointmentsPage() {
                       </div>
                     </div>
 
-                    {/* Date, Time & Clinic Location */}
+                    {/* Date, Time & Location Location */}
                     <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 pt-2 border-t border-border/50 text-xs text-text-secondary">
                       <div className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
@@ -1190,7 +1190,7 @@ export default function AppointmentsPage() {
                       </div>
                       <div className="flex items-center gap-1.5 min-w-0">
                         <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                        <span className="truncate">{row.clinicId?.name || "Clinic"}</span>
+                        <span className="truncate">{row.locationId?.name || "Location"}</span>
                       </div>
                     </div>
                   </div>
@@ -1274,13 +1274,13 @@ export default function AppointmentsPage() {
                   ),
                 },
                 {
-                  key: "clinic",
+                  key: "location",
                   header: "Location",
                   sortable: true,
                   render: (row: Appointment) => (
                     <div className="flex items-center gap-1.5 text-xs text-text-secondary min-w-[120px]">
                       <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                      <span>{row.clinicId?.name || "Clinic"}</span>
+                      <span>{row.locationId?.name || "Location"}</span>
                     </div>
                   ),
                 },
@@ -1336,7 +1336,7 @@ export default function AppointmentsPage() {
                       {row.status.replace("-", " ")}
                     </Badge>
                     {row.reviewState && <p className="text-[11px] text-warning-text">
-                      {user?.role === "patient" ? "Please contact the clinic" : row.reviewState === "unresolved" ? "Unresolved · review needed" : "Overdue · verify attendance"}
+                      {user?.role === "patient" ? "Please contact reception" : row.reviewState === "unresolved" ? "Unresolved · review needed" : "Overdue · verify attendance"}
                     </p>}
                     </div>
                   ),
@@ -1395,7 +1395,7 @@ export default function AppointmentsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           4. BOOK APPOINTMENT MODAL (3-STEP STEPPER WIZARD)
          ────────────────────────────────────────────────────────────────────────── */}
-      <PatientEntryModal open={isEssentialEntryOpen} onClose={() => setIsEssentialEntryOpen(false)} clinicId={filterClinic}
+      <PatientEntryModal open={isEssentialEntryOpen} onClose={() => setIsEssentialEntryOpen(false)} locationId={filterLocation}
         onBooked={() => { setIsEssentialEntryOpen(false); fetchAppointments(); }}
         onFullRegistration={() => { setIsEssentialEntryOpen(false); openBookModal(); }} />
       <Modal
@@ -1485,7 +1485,7 @@ export default function AppointmentsPage() {
                       value={newPatientForm.dob}
                       maxDate={new Date()}
                       onChange={(val) => {
-                        const strVal = typeof val === "string" ? val : val.target.value;
+                        const strVal = val;
                         handleNewPatientChange("dob", strVal);
                         validateNewPatientField("dob", strVal);
                       }}
@@ -1559,13 +1559,13 @@ export default function AppointmentsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <Select
                     icon={<Building2 className="w-4 h-4 text-text-muted" />}
-                    label="Choose Clinic Location *"
-                    value={bookingClinicId}
+                    label="Choose Location *"
+                    value={bookingLocationId}
                     onChange={(e) => {
-                      setBookingClinicId(e.target.value);
-                      setSelectedSlotDate(clinicDateKey(new Date(), timezoneForClinic(e.target.value)));
+                      setBookingLocationId(e.target.value);
+                      setSelectedSlotDate(locationDateKey(new Date(), timezoneForLocation(e.target.value)));
                     }}
-                    options={[{ value: "", label: "Select clinic facility..." }, ...clinics.map((c) => ({ value: c.id, label: c.name }))]}
+                    options={[{ value: "", label: "Select location..." }, ...locations.map((c) => ({ value: c.id, label: c.name }))]}
                     required
                   />
                   <Select
@@ -1580,7 +1580,7 @@ export default function AppointmentsPage() {
                         label: `Dr. ${a.doctorId?.name} (${a.doctorId?.specialization || "General"})`,
                       })),
                     ]}
-                    disabled={!bookingClinicId}
+                    disabled={!bookingLocationId}
                     required
                   />
                 </div>
@@ -1596,7 +1596,7 @@ export default function AppointmentsPage() {
                   size="sm"
                   variant="primary"
                   onClick={handleStep2Next}
-                  disabled={!bookingClinicId || !bookingDoctorId}
+                  disabled={!bookingLocationId || !bookingDoctorId}
                   className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
                 >
                   Configure Schedule
@@ -1616,7 +1616,7 @@ export default function AppointmentsPage() {
                   label="Select Date *"
                   mode="date"
                   value={selectedSlotDate}
-                  onChange={(val) => setSelectedSlotDate(typeof val === "string" ? val : val.target.value)}
+                  onChange={(val) => setSelectedSlotDate(val)}
                   fullWidth
                 />
 
@@ -1720,7 +1720,7 @@ export default function AppointmentsPage() {
                       label="Selected DateTime *"
                       mode="datetime"
                       value={bookingTime}
-                      onChange={(val) => setBookingTime(typeof val === "string" ? val : val.target.value)}
+                      onChange={(val) => setBookingTime(val)}
                       fullWidth
                     />
                   </div>
@@ -1752,7 +1752,7 @@ export default function AppointmentsPage() {
                 <p className="text-text-muted">
                   <strong>Patient:</strong> {isNewPatient ? newPatientForm.name : appointmentPatientName(selectedPatient)} &bull;{" "}
                   <strong>Doctor:</strong> Dr. {doctors.find((d) => d.id === bookingDoctorId)?.name} &bull;{" "}
-                  <strong>Location:</strong> {clinics.find((c) => c.id === bookingClinicId)?.name}
+                  <strong>Location:</strong> {locations.find((c) => c.id === bookingLocationId)?.name}
                 </p>
               </div>
 
@@ -1809,8 +1809,8 @@ export default function AppointmentsPage() {
                 <span className="text-[10px] font-bold text-accent dark:text-accent tracking-wider uppercase block">
                   Healthcare System
                 </span>
-                <h3 className="text-base font-bold text-text mt-0.5">{createdTicket.clinicName}</h3>
-                <p className="text-[10px] text-text-muted mt-0.5">{createdTicket.clinicAddress}</p>
+                <h3 className="text-base font-bold text-text mt-0.5">{createdTicket.locationName}</h3>
+                <p className="text-[10px] text-text-muted mt-0.5">{createdTicket.locationAddress}</p>
               </div>
 
               <div className="text-center my-2">
@@ -1909,9 +1909,9 @@ export default function AppointmentsPage() {
         footer={<PrintDialogActions documentName="prescription" onPrint={async () => {
                   if (!activeRecord) return;
 
-                  const clinicName = activeRecord.clinicId?.name || "Healthcare Facility";
-                  const clinicAddress =
-                    [activeRecord.clinicId?.address, activeRecord.clinicId?.city].filter(Boolean).join(", ") ||
+                  const locationName = activeRecord.locationId?.name || "Healthcare Facility";
+                  const locationAddress =
+                    [activeRecord.locationId?.address, activeRecord.locationId?.city].filter(Boolean).join(", ") ||
                     "Main Facility Campus";
                   const patientName = appointmentPatientName(activeRecord.patientId);
                   const rawDoctorName = activeRecord.doctorId?.name || "Practitioner";
@@ -1948,8 +1948,8 @@ export default function AppointmentsPage() {
                           * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                           body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: var(--print-text); background: #ffffff; margin: 0; padding: 10px; line-height: 1.4; font-size: 12px; }
                           .header-bar { border-bottom: 3px solid var(--print-accent); padding-bottom: 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-start; }
-                          .clinic-title { font-size: 20px; font-weight: 800; color: var(--print-accent); margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
-                          .clinic-sub { font-size: 11px; color: var(--print-muted); margin-top: 3px; }
+                          .location-title { font-size: 20px; font-weight: 800; color: var(--print-accent); margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+                          .location-sub { font-size: 11px; color: var(--print-muted); margin-top: 3px; }
                           .token-badge { background: var(--print-accent); color: #ffffff; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 12px; display: inline-block; }
                           .meta-box { background: var(--print-background); border: 1px solid var(--print-border); border-radius: 8px; padding: 12px; margin-bottom: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; }
                           .meta-label { font-weight: 600; color: var(--print-muted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
@@ -1967,8 +1967,8 @@ export default function AppointmentsPage() {
                       <body>
                         <div class="header-bar">
                           <div>
-                            <h1 class="clinic-title">${clinicName}</h1>
-                            <div class="clinic-sub">${clinicAddress}</div>
+                            <h1 class="location-title">${locationName}</h1>
+                            <div class="location-sub">${locationAddress}</div>
                           </div>
                           <div>
                             <span class="token-badge">Token #${tokenNo}</span>
@@ -2048,10 +2048,10 @@ export default function AppointmentsPage() {
               <div className="border-b border-border/60 pb-3 flex justify-between items-start">
                 <div>
                   <h2 className="text-base sm:text-lg font-bold text-accent dark:text-accent uppercase tracking-wide">
-                    {activeRecord.clinicId?.name || "Healthcare Facility"}
+                    {activeRecord.locationId?.name || "Healthcare Facility"}
                   </h2>
                   <p className="text-xs text-text-muted mt-0.5">
-                    {[activeRecord.clinicId?.address, activeRecord.clinicId?.city].filter(Boolean).join(", ") ||
+                    {[activeRecord.locationId?.address, activeRecord.locationId?.city].filter(Boolean).join(", ") ||
                       "Main Facility Campus"}
                   </p>
                 </div>
@@ -2164,7 +2164,7 @@ export default function AppointmentsPage() {
             label="New Date & Time *"
             mode="datetime"
             value={rescheduleTime}
-            onChange={(val) => setRescheduleTime(typeof val === "string" ? val : val.target.value)}
+            onChange={(val) => setRescheduleTime(val)}
             fullWidth
           />
 

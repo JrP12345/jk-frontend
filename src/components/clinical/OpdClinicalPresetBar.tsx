@@ -157,7 +157,7 @@ interface OpdClinicalPresetBarProps {
   currentFollowUpRecommended?: boolean;
   currentFollowUpTimeline?: string;
   currentFollowUpNotes?: string;
-  clinicId?: string;
+  locationId?: string;
 }
 
 export function OpdClinicalPresetBar({
@@ -168,7 +168,7 @@ export function OpdClinicalPresetBar({
   currentFollowUpRecommended = false,
   currentFollowUpTimeline = "1 week",
   currentFollowUpNotes = "",
-  clinicId,
+  locationId,
 }: OpdClinicalPresetBarProps) {
   const { toast } = useToast();
   const [systemPresets, setSystemPresets] = useState<OpdPresetItem[]>(FALLBACK_SYSTEM_PRESETS);
@@ -240,7 +240,7 @@ export function OpdClinicalPresetBar({
         followUpRecommended: currentFollowUpRecommended,
         followUpTimeline: currentFollowUpTimeline,
         followUpNotes: currentFollowUpNotes,
-        clinicId,
+        locationId,
       });
 
       toast({
@@ -329,7 +329,7 @@ export function OpdClinicalPresetBar({
               <button
                 type="button"
                 onClick={(e) => handleDeleteCustomPreset(e, preset.id, preset.title)}
-                className="opacity-0 group-hover:opacity-100 p-1 mr-1 rounded text-text-muted hover:text-danger-text focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger-500 transition-opacity cursor-pointer"
+                className="opacity-0 group-hover:opacity-100 p-1 mr-1 rounded text-text-muted hover:text-danger-text focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-danger transition-opacity cursor-pointer"
                 title={`Delete ${preset.title} preset`}
                 aria-label={`Delete ${preset.title} preset`}
               >

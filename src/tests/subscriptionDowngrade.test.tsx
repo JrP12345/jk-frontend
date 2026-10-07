@@ -4,7 +4,7 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 interface Violation {
-  resource: "clinics" | "doctors" | "staff";
+  resource: "locations" | "doctors" | "staff";
   current: number;
   allowed: number;
   excess: number;
@@ -14,12 +14,12 @@ interface Violation {
 const DowngradeResolutionDemoModal: React.FC<{
   isOpen: boolean;
   violations: Violation[];
-  activeClinics: Array<{ id: string; name: string; city: string }>;
+  activeLocations: Array<{ id: string; name: string; city: string }>;
   canDowngrade: boolean;
-  onDeactivateClinic: (id: string) => void;
+  onDeactivateLocation: (id: string) => void;
   onProceed: () => void;
   onClose: () => void;
-}> = ({ isOpen, violations, activeClinics, canDowngrade, onDeactivateClinic, onProceed, onClose }) => {
+}> = ({ isOpen, violations, activeLocations, canDowngrade, onDeactivateLocation, onProceed, onClose }) => {
   if (!isOpen) return null;
 
   return (
@@ -36,13 +36,13 @@ const DowngradeResolutionDemoModal: React.FC<{
         ))}
       </div>
 
-      <div data-testid="active-clinics-list">
-        {activeClinics.map((clinic) => (
-          <div key={clinic.id} data-testid={`clinic-row-${clinic.id}`}>
-            <span>{clinic.name} ({clinic.city})</span>
+      <div data-testid="active-locations-list">
+        {activeLocations.map((location) => (
+          <div key={location.id} data-testid={`clinic-row-${location.id}`}>
+            <span>{location.name} ({location.city})</span>
             <button
-              data-testid={`deactivate-btn-${clinic.id}`}
-              onClick={() => onDeactivateClinic(clinic.id)}
+              data-testid={`deactivate-btn-${location.id}`}
+              onClick={() => onDeactivateLocation(location.id)}
             >
               Deactivate Branch
             </button>
@@ -67,7 +67,7 @@ const DowngradeResolutionDemoModal: React.FC<{
 describe("Subscription Plan Downgrade Resolution Modal", () => {
   const mockViolations: Violation[] = [
     {
-      resource: "clinics",
+      resource: "locations",
       current: 4,
       allowed: 1,
       excess: 3,
@@ -75,14 +75,14 @@ describe("Subscription Plan Downgrade Resolution Modal", () => {
     },
   ];
 
-  const mockActiveClinics = [
+  const mockActiveLocations = [
     { id: "c1", name: "Indiranagar Branch", city: "Bengaluru" },
     { id: "c2", name: "Koramangala Branch", city: "Bengaluru" },
     { id: "c3", name: "Whitefield Branch", city: "Bengaluru" },
     { id: "c4", name: "Jayanagar Branch", city: "Bengaluru" },
   ];
 
-  it("renders violations and active clinics correctly when downgrade is blocked", () => {
+  it("renders violations and active locations correctly when downgrade is blocked", () => {
     const handleDeactivate = vi.fn();
     const handleProceed = vi.fn();
     const handleClose = vi.fn();
@@ -91,16 +91,16 @@ describe("Subscription Plan Downgrade Resolution Modal", () => {
       <DowngradeResolutionDemoModal
         isOpen={true}
         violations={mockViolations}
-        activeClinics={mockActiveClinics}
+        activeLocations={mockActiveLocations}
         canDowngrade={false}
-        onDeactivateClinic={handleDeactivate}
+        onDeactivateLocation={handleDeactivate}
         onProceed={handleProceed}
         onClose={handleClose}
       />
     );
 
     expect(screen.getByTestId("downgrade-modal")).toBeInTheDocument();
-    expect(screen.getByTestId("violation-clinics")).toHaveTextContent("Active clinics: 4 / 1 Allowed (3 in excess)");
+    expect(screen.getByTestId("violation-locations")).toHaveTextContent("Active locations: 4 / 1 Allowed (3 in excess)");
     expect(screen.getByTestId("clinic-row-c1")).toBeInTheDocument();
     expect(screen.getByTestId("clinic-row-c2")).toBeInTheDocument();
     expect(screen.getByTestId("clinic-row-c3")).toBeInTheDocument();
@@ -123,9 +123,9 @@ describe("Subscription Plan Downgrade Resolution Modal", () => {
       <DowngradeResolutionDemoModal
         isOpen={true}
         violations={[]}
-        activeClinics={[{ id: "c1", name: "Indiranagar Branch", city: "Bengaluru" }]}
+        activeLocations={[{ id: "c1", name: "Indiranagar Branch", city: "Bengaluru" }]}
         canDowngrade={true}
-        onDeactivateClinic={handleDeactivate}
+        onDeactivateLocation={handleDeactivate}
         onProceed={handleProceed}
         onClose={handleClose}
       />

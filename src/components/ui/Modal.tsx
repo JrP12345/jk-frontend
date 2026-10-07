@@ -151,10 +151,10 @@ export default function Modal({
         aria-label={ariaLabel || (!ariaLabelledBy && (!title || header) ? title || "Dialog" : undefined)}
         style={{ translate: sheetGesture.offset ? `0 ${sheetGesture.offset}px` : undefined, transition: sheetGesture.dragging ? "none" : "translate 180ms ease" }}
         className={cn(
-          "relative w-full bg-surface shadow-lg border border-border/80 ring-1 ring-border/50 flex flex-col focus:outline-none overflow-hidden md:max-h-[min(90dvh,100%)] transform-gpu",
+          "relative w-full bg-surface-elevated shadow-xl border border-border flex flex-col focus:outline-none overflow-hidden md:max-h-[min(90dvh,100%)]",
           presentation === "sheet"
-            ? "rounded-t-3xl md:rounded-2xl max-h-[min(92dvh,100%)] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0"
-            : "rounded-2xl max-h-full",
+            ? "rounded-t-overlay md:rounded-overlay max-h-[min(92dvh,100%)] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-0"
+            : "rounded-overlay max-h-full",
           presentation === "sheet"
             ? isExiting ? "animate-sheet-out" : "animate-sheet-in"
             : isExiting ? "animate-dialog-out" : "animate-dialog-in",
@@ -170,7 +170,7 @@ export default function Modal({
         {/* Sticky Header Section */}
         {hasHeader && (
           <div className={cn(
-            "px-4 md:px-6 pt-4 pb-3 md:pb-3.5 shrink-0 border-b border-border/70 bg-surface-alt/40 relative pr-14",
+            "px-4 md:px-6 pt-4 pb-3 md:pb-3.5 shrink-0 border-b border-border/70 bg-surface-elevated relative pr-14",
             headerClassName
           )}>
             {header ? (
@@ -178,7 +178,7 @@ export default function Modal({
             ) : (
               <>
                 {title && (
-                  <h2 id={titleId} className="text-sm md:text-base font-bold text-text tracking-tight leading-snug">
+                  <h2 id={titleId} className="text-base font-semibold text-text tracking-tight leading-snug">
                     {title}
                   </h2>
                 )}
@@ -216,7 +216,7 @@ export default function Modal({
         {/* Sticky Footer Section — Buttons stay pinned without requiring scroll */}
         {footer && (
           <div className={cn(
-            "px-4 md:px-6 py-3 md:py-3.5 shrink-0 flex flex-col-reverse md:flex-row items-stretch md:items-center justify-end gap-2 md:gap-2.5 border-t border-border/80 bg-surface-alt  z-10",
+            "px-4 md:px-6 py-3 md:py-3.5 shrink-0 flex flex-col-reverse md:flex-row items-stretch md:items-center justify-end gap-2 md:gap-2.5 border-t border-border/80 bg-surface-elevated z-10",
             footerClassName
           )}>
             {footer}
@@ -229,7 +229,7 @@ export default function Modal({
             type="button"
             onClick={onClose}
             disabled={blocked}
-            className="absolute top-2 right-2 md:top-3 md:right-3 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-xl cursor-pointer text-text-muted hover:text-text hover:bg-surface-hover active:scale-95 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring z-20 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="absolute top-2 right-2 md:top-3 md:right-3 w-11 h-11 md:w-8 md:h-8 flex items-center justify-center rounded-control cursor-pointer text-text-muted hover:text-text hover:bg-surface-hover transition-colors duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring z-20 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label="Close modal"
           >
             <svg className="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -240,47 +240,5 @@ export default function Modal({
       </div>
     </div>,
     document.body
-  );
-}
-
-export function ModalHeader({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("px-4 md:px-6 pt-3 pb-3 border-b border-border/70 shrink-0 bg-surface-alt/40", className)}>
-      {children}
-    </div>
-  );
-}
-
-export function ModalBody({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("flex-1 min-h-0 overflow-y-auto p-4 md:p-5", className)}>
-      {children}
-    </div>
-  );
-}
-
-export function ModalFooter({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("px-4 md:px-6 py-3 shrink-0 flex flex-col-reverse md:flex-row items-stretch md:items-center justify-end gap-2 md:gap-2.5 border-t border-border/80 bg-surface-alt  z-10", className)}>
-      {children}
-    </div>
   );
 }

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Alert, Button, Modal } from "@/components/ui";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { userFacingError } from "@/lib/userFacingError";
 import { useAuthStore } from "@/store/authStore";
@@ -113,16 +113,16 @@ export function FloatingAICopilot() {
   const { user } = useAuthStore();
 
   const [isOpen, setIsOpen] = useState(false);
-  const { activeClinicId } = useClinicStore();
+  const { activeLocationId } = useLocationStore();
   const permitted = hasAnyPermission(user, "MANAGE_CLINICAL_NOTES", "MANAGE_EHR", "VIEW_EHR");
-  const hasContext = Boolean(user?.organization_id || (user?.role === "root" && activeClinicId));
+  const hasContext = Boolean(user?.organization_id || (user?.role === "root" && activeLocationId));
   const contextVersion = useRef(0);
   const sessionBusy = useRef(false);
   const sendBusy = useRef(false);
   const requestController = useRef<AbortController | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
-  const chatUrl = (path: string) => user?.role === "root" && !user.organization_id && activeClinicId ? path + "?clinicId=" + encodeURIComponent(activeClinicId) : path;
+  const chatUrl = (path: string) => user?.role === "root" && !user.organization_id && activeLocationId ? path + "?locationId=" + encodeURIComponent(activeLocationId) : path;
   const reportError = (error: any) => setChatError(error.response?.status === 403 ? userFacingError(error.response?.data?.message, "AI assistance is unavailable for your account. Contact your organization administrator.") : "AI assistance could not connect. Check your connection and try again.");
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -162,7 +162,7 @@ export function FloatingAICopilot() {
     setInputQuery("");
     if (isOpen && permitted && hasContext) void loadSessions();
     return () => { contextVersion.current++; requestController.current?.abort(); recognitionRef.current?.stop(); };
-  }, [isOpen, user?.id, user?.organization_id, activeClinicId, permitted, hasContext]);
+  }, [isOpen, user?.id, user?.organization_id, activeLocationId, permitted, hasContext]);
 
   const createSession = async (version: number): Promise<string | null> => {
     const res = await api.post(chatUrl("/ai/chat/sessions"), { initialTitle: "New Clinical Session" }, { signal: requestController.current?.signal });
@@ -557,7 +557,7 @@ export function FloatingAICopilot() {
                   Patient Roster
                 </button>
                 <button
-                  onClick={() => handleSendMessage(undefined, "What are our clinic appointments and queue metrics for today?")}
+                  onClick={() => handleSendMessage(undefined, "What are today’s appointment and queue metrics?")}
                   className="px-2.5 py-1 bg-surface-alt/50 hover:bg-surface-hover text-text-muted hover:text-text rounded-lg transition-colors whitespace-nowrap cursor-pointer"
                 >
                   Appointments & Queue

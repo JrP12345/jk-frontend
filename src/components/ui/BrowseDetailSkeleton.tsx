@@ -1,7 +1,7 @@
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 
 export default function BrowseDetailSkeleton() {
-  return <div className="min-h-screen bg-surface-alt pt-16 text-text" role="status" aria-label="Loading clinic and doctor details">
+  return <div className="min-h-screen bg-surface-alt pt-16 text-text" role="status" aria-label="Loading location and doctor details">
     <MarketplaceNavbar />
     <div className="border-b border-border/40 bg-surface px-4 py-3 sm:px-6">
       <div className="mx-auto h-4 w-44 max-w-6xl animate-pulse rounded bg-surface-alt" />

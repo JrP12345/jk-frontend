@@ -14,13 +14,13 @@ import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
 interface ConsultationClientWorkspaceProps {
   appointmentId: string;
   initialPatientId?: string;
-  initialClinicId?: string;
+  initialLocationId?: string;
 }
 
 export function ConsultationClientWorkspace({
   appointmentId,
   initialPatientId,
-  initialClinicId,
+  initialLocationId,
 }: ConsultationClientWorkspaceProps) {
   const router = useRouter();
   const { preferences, loading: preferencesLoading } = useWorkflowPreferences();
@@ -33,7 +33,7 @@ export function ConsultationClientWorkspace({
 
   const [encounterId, setEncounterId] = useState<string | null>(null);
   const [patientId, setPatientId] = useState<string>(initialPatientId || "");
-  const [clinicId, setClinicId] = useState<string>(initialClinicId || "");
+  const [locationId, setLocationId] = useState<string>(initialLocationId || "");
   const [doctorId, setDoctorId] = useState<string>("");
 
   const [patientData, setPatientData] = useState<PatientHeaderData | null>(null);
@@ -45,16 +45,16 @@ export function ConsultationClientWorkspace({
         setLoading(true);
         setError(null);
 
-        // 1. Fetch appointment details directly by ID to resolve real patientId, clinicId, doctorId
+        // 1. Fetch appointment details directly by ID to resolve real patientId, locationId, doctorId
         const apptRes = await api.get(`/appointments/${appointmentId}`);
         const appt = apptRes.data?.data || apptRes.data;
-        if (!appt?.patientId || !appt.clinicId || !appt.doctorId) throw new Error("The visit is missing its patient, clinic or doctor reference.");
+        if (!appt?.patientId || !appt.locationId || !appt.doctorId) throw new Error("The visit is missing its patient, location or doctor reference.");
         if (!isMounted) return;
         setAppointmentStatus(appt.status || "");
         setVisitNotes(appt.notes || "");
 
         let resolvedPatientId = patientId;
-        let resolvedClinicId = clinicId;
+        let resolvedLocationId = locationId;
         let resolvedDoctorId = doctorId;
         let patientName = "Patient Profile";
         let patientGender = "Unknown";
@@ -65,7 +65,7 @@ export function ConsultationClientWorkspace({
 
         if (appt) {
           const pObj = appt.patientId;
-          const cObj = appt.clinicId;
+          const cObj = appt.locationId;
           const dObj = appt.doctorId;
 
           if (pObj) {
@@ -79,7 +79,7 @@ export function ConsultationClientWorkspace({
           }
 
           if (cObj) {
-            resolvedClinicId = typeof cObj === "object" ? (cObj.id || cObj._id) : cObj;
+            resolvedLocationId = typeof cObj === "object" ? (cObj.id || cObj._id) : cObj;
           }
 
           if (dObj) {
@@ -89,7 +89,7 @@ export function ConsultationClientWorkspace({
 
         if (!isMounted) return;
         setPatientId(resolvedPatientId);
-        setClinicId(resolvedClinicId);
+        setLocationId(resolvedLocationId);
         setDoctorId(resolvedDoctorId);
 
         setPatientData({
@@ -104,7 +104,7 @@ export function ConsultationClientWorkspace({
 
         // 2. Start or lookup active encounter for this appointment
         const encRes = await api.post("/encounters", {
-          clinicId: resolvedClinicId,
+          locationId: resolvedLocationId,
           patientId: resolvedPatientId,
           appointmentId,
           encounterType: "opd",
@@ -212,7 +212,7 @@ export function ConsultationClientWorkspace({
     <EncounterProvider
       encounterId={encounterId}
       patientId={patientId}
-      clinicId={clinicId}
+      locationId={locationId}
       doctorId={doctorId}
     >
       <h1 className="sr-only">Consultation: {patientData.name}</h1>

@@ -25,9 +25,9 @@ export function getPrintErrorMessage(error: unknown): string {
     if (error.reason === "assets") return "The document could not finish loading. Check your connection and try again.";
   }
   const status = (error as { response?: { status?: number } } | null)?.response?.status;
-  if (status === 401 || status === 403) return "You don’t have access to print this document. Refresh the page or contact your clinic.";
+  if (status === 401 || status === 403) return "You don’t have access to print this document. Refresh the page or contact your care team.";
   if (status === 404 || status === 410) return "This document is not available. Refresh the page and try again.";
-  if (status === 422) return "This document is missing details required for printing. Ask your clinic to update it.";
+  if (status === 422) return "This document is missing details required for printing. Ask your care team to update it.";
   return "The print dialog could not be opened. Please try again.";
 }
 

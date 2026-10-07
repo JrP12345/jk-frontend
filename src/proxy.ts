@@ -50,16 +50,16 @@ export function proxy(request: NextRequest) {
     const response = NextResponse.redirect(new URL("/browse", request.url));
     response.cookies.delete("refresh_token");
     response.cookies.delete("access_token");
-    response.cookies.delete("ananta_session");
+    response.cookies.delete("ekavyu_session");
     return response;
   }
 
-  // Check for the presence of auth tokens (refresh_token, access_token) or session cookie (ananta_session)
-  const isBookingGuest = request.cookies.get("ananta_session")?.value === "guest";
+  // Check for the presence of auth tokens (refresh_token, access_token) or session cookie (ekavyu_session)
+  const isBookingGuest = request.cookies.get("ekavyu_session")?.value === "guest";
   const hasAuthToken = !isBookingGuest && (
     request.cookies.has("refresh_token") ||
     request.cookies.has("access_token") ||
-    request.cookies.has("ananta_session"));
+    request.cookies.has("ekavyu_session"));
 
   // ── Protect dashboard routes ────────────────────────────────────
   if (pathname.startsWith("/dashboard")) {
@@ -70,8 +70,8 @@ export function proxy(request: NextRequest) {
 
   // ── Protect /onboarding ─────────────────────────────────────────
   // Public onboarding prepares a setup request. The page mounts provisioning
-  // only for Root; the backend authorizes every organization write. Legacy
-  // account activation still requires an authenticated session.
+  // only for Root; the backend authorizes every organization write.
+  // Invitation activation requires an authenticated session.
   if (pathname === "/onboarding" && searchParams.has("key") && !hasAuthToken) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
@@ -89,7 +89,7 @@ export function proxy(request: NextRequest) {
       const response = nextWithContentSecurityPolicy(request);
       response.cookies.delete("refresh_token");
       response.cookies.delete("access_token");
-      response.cookies.delete("ananta_session");
+      response.cookies.delete("ekavyu_session");
       return response;
     }
 

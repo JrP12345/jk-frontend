@@ -47,7 +47,7 @@ export default function AdminBillingPage() {
     status: "active",
     isPopular: false,
     limits: {
-      maxClinics: 1,
+      maxLocations: 1,
       maxDoctors: 2,
       maxStaff: 5,
       maxPatients: 500,
@@ -269,7 +269,7 @@ export default function AdminBillingPage() {
                   status: "active",
                   isPopular: false,
                   limits: {
-                    maxClinics: 1,
+                    maxLocations: 1,
                     maxDoctors: 2,
                     maxStaff: 5,
                     maxPatients: 500,
@@ -432,9 +432,9 @@ export default function AdminBillingPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2.5 rounded-xl border border-border/80 bg-surface-alt">
-                    <span className="text-text-muted text-[10px] block">Clinics</span>
+                    <span className="text-text-muted text-[10px] block">Locations</span>
                     <strong className="text-text font-bold text-xs sm:text-sm">
-                      {plan.limits?.maxClinics} Branch{plan.limits?.maxClinics !== 1 ? "es" : ""}
+                      {plan.limits?.maxLocations} Branch{plan.limits?.maxLocations !== 1 ? "es" : ""}
                     </strong>
                   </div>
                   <div className="p-2.5 rounded-xl border border-border/80 bg-surface-alt">
@@ -795,7 +795,7 @@ export default function AdminBillingPage() {
               label="Plan Summary & Value Proposition"
               value={editingPlan.description || ""}
               onChange={(e) => setEditingPlan({ ...editingPlan, description: e.target.value })}
-              placeholder="e.g. Designed for growing multi-doctor practices and multi-branch clinics."
+              placeholder="e.g. Designed for growing multi-doctor practices and multi-branch locations."
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
@@ -825,13 +825,13 @@ export default function AdminBillingPage() {
               <h4 className="text-xs font-bold text-text uppercase tracking-wider">Resource Quota Limits</h4>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <Input
-                  label="Max Clinics"
+                  label="Max Locations"
                   type="number"
-                  value={editingPlan.limits?.maxClinics || 1}
+                  value={editingPlan.limits?.maxLocations || 1}
                   onChange={(e) =>
                     setEditingPlan({
                       ...editingPlan,
-                      limits: { ...editingPlan.limits!, maxClinics: Number(e.target.value) },
+                      limits: { ...editingPlan.limits!, maxLocations: Number(e.target.value) },
                     })
                   }
                 />

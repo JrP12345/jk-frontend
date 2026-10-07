@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useAuthStore } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { Alert, Card, CardContent, Button, Modal, Input, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
 import { RotateCw, Plus, ShieldCheck, IndianRupee, Clock, AlertCircle, FileText, CheckCircle2, FileCheck } from "lucide-react";
 
@@ -28,7 +28,7 @@ interface DoctorUser {
 export interface PreAuthItem {
   id: string;
   preAuthNumber: string;
-  clinicId?: { id: string; name: string };
+  locationId?: { id: string; name: string };
   patientId: {
     id: string;
     userId?: { name: string; email?: string; phone?: string };
@@ -52,7 +52,7 @@ export interface ClaimItem {
   _id?: string;
   id: string;
   claimNumber: string;
-  clinicId?: { id: string; name: string } | string;
+  locationId?: { id: string; name: string } | string;
   patientId: {
     _id?: string;
     id: string;
@@ -88,11 +88,11 @@ interface InvoiceItem {
 
 export default function InsurancePage() {
   const { user } = useAuthStore();
-  const { activeClinicId } = useClinicStore();
+  const { activeLocationId } = useLocationStore();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"preAuth" | "claims">("preAuth");
-  const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
+  const [selectedLocationId, setSelectedLocationId] = useState(activeLocationId || "");
   const [preAuths, setPreAuths] = useState<PreAuthItem[]>([]);
   const [claims, setClaims] = useState<ClaimItem[]>([]);
   const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
@@ -148,8 +148,8 @@ export default function InsurancePage() {
   const [submittingAdjudicate, setSubmittingAdjudicate] = useState(false);
 
   useEffect(() => {
-    setSelectedClinicId(activeClinicId || "");
-  }, [activeClinicId]);
+    setSelectedLocationId(activeLocationId || "");
+  }, [activeLocationId]);
 
   const fetchData = async () => {
     const request = beginRead();
@@ -157,11 +157,11 @@ export default function InsurancePage() {
     setLoadError(false);
     try {
       const [preAuthRes, claimsRes, patientsRes, staffRes, invoicesRes] = await Promise.all([
-        api.get(selectedClinicId ? `/pre-auth?clinicId=${selectedClinicId}` : "/pre-auth", { signal: request.signal }),
-        api.get(selectedClinicId ? `/billing/claims?clinicId=${selectedClinicId}` : "/billing/claims", { signal: request.signal }),
+        api.get(selectedLocationId ? `/pre-auth?locationId=${selectedLocationId}` : "/pre-auth", { signal: request.signal }),
+        api.get(selectedLocationId ? `/billing/claims?locationId=${selectedLocationId}` : "/billing/claims", { signal: request.signal }),
         api.get("/patients", { signal: request.signal }),
-        api.get(selectedClinicId ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff", { signal: request.signal }),
-        api.get(selectedClinicId ? `/invoices?clinicId=${selectedClinicId}` : "/invoices", { signal: request.signal }),
+        api.get(selectedLocationId ? `/onboarding/staff?locationId=${selectedLocationId}` : "/onboarding/staff", { signal: request.signal }),
+        api.get(selectedLocationId ? `/invoices?locationId=${selectedLocationId}` : "/invoices", { signal: request.signal }),
       ]);
 
       if (!request.isCurrent()) return;
@@ -185,7 +185,7 @@ export default function InsurancePage() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedClinicId]);
+  }, [selectedLocationId]);
 
   // Handle Pre-Auth Submission
   const handlePreAuthSubmit = async (e: React.FormEvent) => {
@@ -198,7 +198,7 @@ export default function InsurancePage() {
     try {
       setSubmittingRequest(true);
       await api.post("/pre-auth", {
-        clinicId: selectedClinicId,
+        locationId: selectedLocationId,
         patientId,
         doctorId,
         tpaName: tpaName.trim(),
@@ -297,7 +297,7 @@ export default function InsurancePage() {
     try {
       setSubmittingClaim(true);
       await api.post("/billing/claims", {
-        clinicId: selectedClinicId,
+        locationId: selectedLocationId,
         patientId: claimPatientId,
         invoiceId: claimInvoiceId || undefined,
         payerName: claimPayerName.trim(),

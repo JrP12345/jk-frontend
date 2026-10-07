@@ -18,10 +18,10 @@ interface PatientContext {
 interface ClinicalDocumentGeneratorModalProps {
   open: boolean;
   onClose: () => void;
-  clinicName?: string;
-  clinicAddress?: string;
-  clinicPhone?: string;
-  clinicEmail?: string;
+  locationName?: string;
+  locationAddress?: string;
+  locationPhone?: string;
+  locationEmail?: string;
   defaultDoctorName?: string;
   defaultDoctorSpecialization?: string;
   defaultDoctorRegistrationNumber?: string;
@@ -36,10 +36,10 @@ type DocCategory = "referral" | "leave" | "fitness";
 export function ClinicalDocumentGeneratorModal({
   open,
   onClose,
-  clinicName = "",
-  clinicAddress = "",
-  clinicPhone = "",
-  clinicEmail = "",
+  locationName = "",
+  locationAddress = "",
+  locationPhone = "",
+  locationEmail = "",
   defaultDoctorName = "",
   defaultDoctorSpecialization = "",
   defaultDoctorRegistrationNumber = "",
@@ -136,8 +136,8 @@ export function ClinicalDocumentGeneratorModal({
   };
 
   const handleGenerate = () => {
-    if (!clinicName.trim() || !docName.trim() || !docRegNo.trim()) {
-      toast({ title: "Document details required", description: "Select a clinic and enter the doctor's name and registration number.", variant: "error" });
+    if (!locationName.trim() || !docName.trim() || !docRegNo.trim()) {
+      toast({ title: "Document details required", description: "Select a location and enter the doctor's name and registration number.", variant: "error" });
       return;
     }
     if (!patientName.trim()) {
@@ -164,10 +164,10 @@ export function ClinicalDocumentGeneratorModal({
     let generated: UnifiedDocumentData;
 
     const baseData = {
-      clinicName,
-      clinicAddress,
-      clinicPhone,
-      clinicEmail,
+      locationName,
+      locationAddress,
+      locationPhone,
+      locationEmail,
       doctorName: docName,
       doctorSpecialization: docSpecialty,
       doctorRegistrationNumber: docRegNo,

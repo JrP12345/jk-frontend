@@ -20,9 +20,9 @@ export interface ProgressBarProps {
 
 const colors: Record<ProgressBarColor, string> = {
   primary: "bg-primary-600",
-  success: "bg-success-500",
-  warning: "bg-warning-500",
-  danger: "bg-danger-500",
+  success: "bg-success",
+  warning: "bg-warning",
+  danger: "bg-danger",
 };
 
 const sizes: Record<ProgressBarSize, string> = {
@@ -84,5 +84,3 @@ const ProgressBar = memo(function ProgressBar({
 });
 
 export default ProgressBar;
-
-

@@ -37,7 +37,7 @@ export class SOAPService {
   }
 
   public static async overrideCDSEvaluation(payload: {
-    clinicId: string;
+    locationId: string;
     patientId: string;
     encounterId?: string;
     prescriptionIds?: string[];

@@ -35,7 +35,7 @@ export default function PricingPage() {
       <main className="mx-auto w-full max-w-6xl px-4 pt-24 pb-10 sm:px-6">
         <header className="mb-8 space-y-3">
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Plans for your practice</h1>
-          <p className="text-sm text-text-secondary max-w-2xl">Compare clinic capacity and features. Trial duration and pricing depend on the selected plan.</p>
+          <p className="text-sm text-text-secondary max-w-2xl">Compare location capacity and features. Trial duration and pricing depend on the selected plan.</p>
           <BillingCycleSwitch value={billingCycle} onChange={setBillingCycle} />
         </header>
         {loading ? (

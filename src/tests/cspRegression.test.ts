@@ -4,13 +4,13 @@ import { proxy } from "../proxy";
 
 describe("Content Security Policy (CSP) Regression Tests", () => {
   it("clears stale cookies after intentional logout and lands on the clean browse URL", () => {
-    const response = proxy(new NextRequest("https://ananta.health/browse?logout=1", { headers: { cookie: "refresh_token=stale; access_token=stale; ananta_session=1" } }));
-    expect(response.headers.get("location")).toBe("https://ananta.health/browse");
-    for (const name of ["refresh_token", "access_token", "ananta_session"]) {
+    const response = proxy(new NextRequest("https://ekavyu.health/browse?logout=1", { headers: { cookie: "refresh_token=stale; access_token=stale; ekavyu_session=1" } }));
+    expect(response.headers.get("location")).toBe("https://ekavyu.health/browse");
+    for (const name of ["refresh_token", "access_token", "ekavyu_session"]) {
       expect(response.cookies.get(name)?.value).toBe("");
       expect(response.cookies.get(name)?.expires?.getTime()).toBe(0);
     }
-    expect(proxy(new NextRequest("https://ananta.health/dashboard" )).headers.get("location")).toBe("https://ananta.health/login");
+    expect(proxy(new NextRequest("https://ekavyu.health/dashboard" )).headers.get("location")).toBe("https://ekavyu.health/login");
   });
   const originalEnv = process.env.NODE_ENV;
 
@@ -20,7 +20,7 @@ describe("Content Security Policy (CSP) Regression Tests", () => {
 
   it("generates strict CSP without unsafe-inline or unsafe-eval in production mode", () => {
     process.env.NODE_ENV = "production";
-    const request = new NextRequest("https://ananta.health/browse");
+    const request = new NextRequest("https://ekavyu.health/browse");
     const response = proxy(request);
 
     const csp = response.headers.get("Content-Security-Policy");
@@ -46,7 +46,7 @@ describe("Content Security Policy (CSP) Regression Tests", () => {
 
   it("allows unsafe-inline styles and unsafe-eval in development mode for Next devtools and React overlay", () => {
     process.env.NODE_ENV = "development";
-    const request = new NextRequest("https://ananta.health/browse");
+    const request = new NextRequest("https://ekavyu.health/browse");
     const response = proxy(request);
 
     const csp = response.headers.get("Content-Security-Policy");
@@ -60,12 +60,12 @@ describe("Content Security Policy (CSP) Regression Tests", () => {
 
   it("generates unique cryptographic nonces across requests", () => {
     process.env.NODE_ENV = "production";
-    const req1 = new NextRequest("https://ananta.health/browse");
+    const req1 = new NextRequest("https://ekavyu.health/browse");
     const res1 = proxy(req1);
     const nonce1 = res1.headers.get("x-nonce") || "";
     const cspNonce1 = res1.headers.get("Content-Security-Policy")?.match(/'nonce-([^']+)'/)?.[1];
 
-    const req2 = new NextRequest("https://ananta.health/browse");
+    const req2 = new NextRequest("https://ekavyu.health/browse");
     const res2 = proxy(req2);
     const nonce2 = res2.headers.get("x-nonce") || "";
     const cspNonce2 = res2.headers.get("Content-Security-Policy")?.match(/'nonce-([^']+)'/)?.[1];

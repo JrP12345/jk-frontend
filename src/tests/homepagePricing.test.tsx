@@ -11,7 +11,7 @@ const plan: SaaSPlan = {
   id: "configured", slug: "configured", name: "Configured practice", description: "A plan for your team",
   monthlyPrice: 90, annualPrice: 960, currency: "USD", trialDays: 7,
   status: "active", displayOrder: 1, isPopular: false,
-  limits: { maxClinics: 3, maxDoctors: 8, maxStaff: 0, maxPatients: 700, maxAppointments: 900, maxStorageMB: 512 },
+  limits: { maxLocations: 3, maxDoctors: 8, maxStaff: 0, maxPatients: 700, maxAppointments: 900, maxStorageMB: 512 },
   features: { analytics: true, auditLogs: false, multiBranch: true, dataExport: false, apiAccess: false, aiFeatures: false },
 };
 

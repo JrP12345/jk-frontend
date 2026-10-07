@@ -18,6 +18,7 @@ export function NotificationBell() {
     <div className="relative">
       <button
         type="button"
+        data-material-control
         onClick={() => setIsOpen(!isOpen)}
         className="touch-target relative p-2 rounded-xl text-text-secondary hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
         aria-label="Open Notifications"

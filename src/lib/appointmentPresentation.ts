@@ -3,7 +3,7 @@ export function appointmentPaymentLabel(paymentStatus?: string): string {
   switch (paymentStatus) {
     case "paid": return "Paid";
     case "not_required": return "No prepayment required";
-    case "pay_at_clinic": return "Payment due at reception";
+    case "pay_at_location": return "Payment due at reception";
     default: return "Payment pending";
   }
 }

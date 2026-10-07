@@ -14,7 +14,7 @@ import { Sparkles, History, Save, Lock, CheckCircle2, Edit3, FileSpreadsheet, Ch
 
 interface SOAPNoteEditorProps {
   patientId: string;
-  clinicId: string;
+  locationId: string;
   encounterId?: string;
   appointmentId?: string;
   doctorId?: string;
@@ -24,7 +24,7 @@ interface SOAPNoteEditorProps {
   onSaved?: () => void;
 }
 
-export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncounterId, appointmentId, doctorId, initialNoteId, initialNoteData, onSaved, onSigned }: SOAPNoteEditorProps) {
+export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEncounterId, appointmentId, doctorId, initialNoteId, initialNoteData, onSaved, onSigned }: SOAPNoteEditorProps) {
   const [encounterId, setEncounterId] = useState<string | null>(initialEncounterId || null);
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(initialNoteId || null);
   const [isSigned, setIsSigned] = useState(initialNoteData?.status === "signed");
@@ -69,12 +69,10 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
   };
 
   const [activePatientId, setActivePatientId] = useState<string>(patientId || "");
-  const [activeClinicId, setActiveClinicId] = useState<string>(clinicId || "");
+  const [activeLocationId, setActiveLocationId] = useState<string>(locationId || "");
 
   // Draft recovery is intentionally memory-only; browser persistence of SOAP
   // notes, medications, symptoms, and vitals is prohibited.
-  const [recoveredDraft, setRecoveredDraft] = useState<any | null>(null);
-  const [lastAutoSavedAt, setLastAutoSavedAt] = useState<string | null>(null);
   const draftStorageKey = `soap_draft_${appointmentId || initialEncounterId || patientId}`;
 
   // History Drawer State
@@ -92,7 +90,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
   const [draftRevision, setDraftRevision] = useState<number>(initialNoteData?.revision || 0);
   const [historyOfPresentIllness, setHistoryOfPresentIllness] = useState(initialNoteData?.subjective?.historyOfPresentIllness || "");
   const [symptomsText, setSymptomsText] = useState<string>((initialNoteData?.subjective?.symptoms || []).join(", "));
-  
+
   // Vitals State
   const recordedVital = (code: string) => String(initialNoteData?.objective?.observationIds?.find((value: any) => value.code === code)?.value || "");
   const [bpSystolic, setBpSystolic] = useState(recordedVital("BP").split("/")[0] || "");
@@ -286,7 +284,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
     setUnifiedDoc({
       documentType: "prescription",
       title: "PRESCRIPTION RX",
-      clinicName: "Ekavyu Healthcare System",
+      locationName: "Ekavyu Healthcare System",
       doctorName: "Attending Physician",
       doctorSpecialization: "Outpatient General Medicine",
       patientName: "Patient Profile",
@@ -305,62 +303,29 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
     setPrintModalOpen(true);
   };
 
-  // Remove legacy browser-stored SOAP drafts on first use.
+  // Remove persisted patient drafts; clinical content stays in memory or on the server.
   useEffect(() => {
     try {
       localStorage.removeItem(draftStorageKey);
     } catch {
       // Storage may be disabled by the browser.
     }
-    setRecoveredDraft(null);
   }, [draftStorageKey]);
 
-  // Keep drafts only in React memory until explicitly saved to the server.
   useEffect(() => {
-    setLastAutoSavedAt(null);
-  }, [isSigned, chiefComplaint]);
-
-  const handleApplyRecoveredDraft = () => {
-    if (!recoveredDraft) return;
-    setChiefComplaint(recoveredDraft.chiefComplaint || "");
-    setHistoryOfPresentIllness(recoveredDraft.historyOfPresentIllness || "");
-    setSymptomsText(recoveredDraft.symptomsText || "");
-    setBpSystolic(recoveredDraft.bpSystolic || "");
-    setBpDiastolic(recoveredDraft.bpDiastolic || "");
-    setPulseRate(recoveredDraft.pulseRate || "");
-    setSpO2(recoveredDraft.spO2 || "");
-    setTemperatureF(recoveredDraft.temperatureF || "");
-    setPhysicalExamination(recoveredDraft.physicalExamination || "");
-    setPrimaryDiagnosis(recoveredDraft.primaryDiagnosis || "");
-    setIcdCode(recoveredDraft.icdCode || "");
-    setSeverity(recoveredDraft.severity || "moderate");
-    setTreatmentPlan(recoveredDraft.treatmentPlan || "");
-    setPrescriptions(recoveredDraft.prescriptions || []);
-    setRecoveredDraft(null);
-    setMessage({ type: "success", text: "Recovered unsaved draft" });
-  };
-
-  const handleDiscardRecoveredDraft = () => {
-    try {
-      localStorage.removeItem(draftStorageKey);
-    } catch {}
-    setRecoveredDraft(null);
-  };
-
-  useEffect(() => {
-    if (appointmentId && (!activePatientId || !activeClinicId)) {
+    if (appointmentId && (!activePatientId || !activeLocationId)) {
       api.get("/appointments").then((res) => {
         const list = res.data?.data || [];
         const appt = list.find((a: any) => a.id === appointmentId || a._id === appointmentId);
         if (appt) {
           const pId = appt.patientId?.id || appt.patientId?._id || appt.patientId;
-          const cId = appt.clinicId?.id || appt.clinicId?._id || appt.clinicId;
+          const cId = appt.locationId?.id || appt.locationId?._id || appt.locationId;
           if (pId) setActivePatientId(typeof pId === "object" ? (pId.id || pId._id) : pId);
-          if (cId) setActiveClinicId(typeof cId === "object" ? (cId.id || cId._id) : cId);
+          if (cId) setActiveLocationId(typeof cId === "object" ? (cId.id || cId._id) : cId);
         }
       }).catch(() => {});
     }
-  }, [appointmentId, activePatientId, activeClinicId]);
+  }, [appointmentId, activePatientId, activeLocationId]);
 
   const handleAddMedication = () => {
     if (!medName.trim() || !medDosage.trim()) return;
@@ -385,7 +350,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
     if (encounterId) return encounterId;
     try {
       const res = await api.post("/encounters", {
-        clinicId: activeClinicId || clinicId,
+        locationId: activeLocationId || locationId,
         patientId: activePatientId || patientId,
         appointmentId,
         encounterType: "opd",
@@ -420,7 +385,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
 
       const payload = {
         expectedRevision: draftRevision,
-        clinicId: activeClinicId || clinicId,
+        locationId: activeLocationId || locationId,
         encounterId: activeEncounterId,
         patientId: activePatientId || patientId,
         chiefComplaint,
@@ -447,7 +412,7 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
         setCurrentNoteId(savedNote.id || savedNote._id);
       }
 
-      // Clear any legacy browser draft after successful server save.
+      // Remove any persisted patient draft after successful server save.
       try { localStorage.removeItem(draftStorageKey); } catch {}
 
       setMessage({ type: "success", text: "Draft SOAP note saved successfully" });
@@ -599,12 +564,6 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
 
           {!isSigned ? (
             <div className="flex flex-wrap items-center gap-2">
-              {lastAutoSavedAt && (
-                <span className="text-[11px] text-text-muted hidden md:inline-flex items-center gap-1 font-medium bg-surface-alt/60 px-2.5 py-1 rounded-lg border border-border/50">
-                  <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                  Auto-saved {lastAutoSavedAt}
-                </span>
-              )}
               <Button
                 size="sm"
                 variant="primary"
@@ -649,23 +608,6 @@ export function SOAPNoteEditor({ patientId, clinicId, encounterId: initialEncoun
           )}
         </div>
       </div>
-
-      {/* Recovered Unsaved Local Draft Banner */}
-      {recoveredDraft && (
-        <div className="p-3 bg-warning/10 border border-warning/30 rounded-xl flex items-center justify-between text-xs text-warning-text dark:text-warning-text">
-          <div>
-            <b>Unsaved Local Draft Detected:</b> Saved locally at {new Date(recoveredDraft.savedAt).toLocaleTimeString()}.
-          </div>
-          <div className="flex gap-2">
-            <button type="button" onClick={handleApplyRecoveredDraft} className="px-3 py-1 bg-warning hover:bg-warning text-background rounded-lg font-bold text-[11px] shadow-xs cursor-pointer">
-              Restore Draft
-            </button>
-            <button type="button" onClick={handleDiscardRecoveredDraft} className="px-2.5 py-1 bg-surface border border-border/80 text-text hover:bg-surface-hover rounded-lg font-medium text-[11px] cursor-pointer shadow-xs">
-              Discard
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Main 2-Column Consultation Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

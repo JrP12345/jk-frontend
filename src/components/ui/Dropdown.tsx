@@ -172,7 +172,7 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
     <div ref={containerRef} onKeyDown={handleKeyDown} className={cn("relative inline-flex", className)}>
       <div
         onClick={handleToggle}
-        className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-lg touch-manipulation active:scale-[0.98] transition-transform duration-100"
+        className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-lg touch-manipulation transition-colors duration-[var(--motion-fast)]"
       >
         {isValidElement(trigger) ? cloneElement(trigger as ReactElement<Record<string, unknown>>, { "aria-haspopup": "menu", "aria-expanded": open, "aria-controls": open ? id : undefined }) : trigger}
       </div>
@@ -198,7 +198,7 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
               pointerEvents: isExiting ? "none" : undefined,
             }}
             className={cn(
-              "bg-surface rounded-2xl border border-border/80 shadow-xl p-1.5 focus:outline-none  ring-1 ring-border/50 transform-gpu select-none overflow-y-auto",
+              "material-glass-elevated rounded-container p-1.5 focus:outline-none select-none overflow-y-auto",
               isExiting ? "animate-dropdown-out" : "animate-dropdown-in",
               width
             )}
@@ -226,9 +226,9 @@ const Dropdown = memo(function Dropdown({ trigger, items, align = "left", width 
                   className={cn(
                     "w-full flex items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-left cursor-pointer transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring focus-visible:bg-surface-hover min-h-[44px]",
                     item.danger || item.variant === "danger"
-                      ? "text-danger-text hover:bg-danger-500/10 dark:hover:bg-danger-500/20 font-semibold"
+                      ? "text-danger-text hover:bg-danger/10 dark:hover:bg-danger/20 font-semibold"
                       : item.variant === "warning"
-                      ? "text-warning-text dark:text-warning-text hover:bg-warning-500/10"
+                      ? "text-warning-text dark:text-warning-text hover:bg-warning/10"
                       : item.variant === "primary"
                       ? "text-accent dark:text-accent hover:bg-primary-500/10"
                       : "text-text hover:bg-surface-hover hover:text-text",

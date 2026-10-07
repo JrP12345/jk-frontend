@@ -6,28 +6,28 @@ import { Card, CardContent, Badge, Button, Skeleton } from "@/components/ui";
 
 interface PatientQueueTrackerProps {
   appointmentId: string;
-  clinicId: string;
+  locationId: string;
   doctorId: string;
 }
 
-export function PatientQueueTracker({ appointmentId, clinicId, doctorId }: PatientQueueTrackerProps) {
+export function PatientQueueTracker({ appointmentId, locationId, doctorId }: PatientQueueTrackerProps) {
   const [queueInfo, setQueueInfo] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const cleanClinicId = typeof clinicId === "object" ? (clinicId as any)?._id || (clinicId as any)?.id || "" : (clinicId && clinicId !== "[object Object]" ? String(clinicId) : "");
+  const cleanLocationId = typeof locationId === "object" ? (locationId as any)?._id || (locationId as any)?.id || "" : (locationId && locationId !== "[object Object]" ? String(locationId) : "");
   const cleanDoctorId = typeof doctorId === "object" ? (doctorId as any)?._id || (doctorId as any)?.id || "" : (doctorId && doctorId !== "[object Object]" ? String(doctorId) : "");
   const cleanApptId = typeof appointmentId === "object" ? (appointmentId as any)?._id || (appointmentId as any)?.id || "" : String(appointmentId || "");
 
   const fetchQueueInfo = async () => {
-    if (!cleanClinicId || !cleanDoctorId) {
+    if (!cleanLocationId || !cleanDoctorId) {
       setLoading(false);
       return;
     }
     try {
       setLoading(true);
-      const res = await api.get(`/queue?clinicId=${cleanClinicId}&doctorId=${cleanDoctorId}`);
+      const res = await api.get(`/queue?locationId=${cleanLocationId}&doctorId=${cleanDoctorId}`);
       const queueList: any[] = res.data?.data || [];
-      
+
       const currentPatientAppt = queueList.find((a) => (a.id || a._id) === cleanApptId);
       const inConsultationAppt = queueList.find((a) => a.status === "in-consultation");
 
@@ -46,14 +46,14 @@ export function PatientQueueTracker({ appointmentId, clinicId, doctorId }: Patie
   };
 
   useEffect(() => {
-    if (cleanApptId && cleanClinicId && cleanDoctorId) {
+    if (cleanApptId && cleanLocationId && cleanDoctorId) {
       fetchQueueInfo();
       const interval = setInterval(fetchQueueInfo, 10000); // Live poll every 10 sec
       return () => clearInterval(interval);
     } else {
       setLoading(false);
     }
-  }, [cleanApptId, cleanClinicId, cleanDoctorId]);
+  }, [cleanApptId, cleanLocationId, cleanDoctorId]);
 
   if (loading && !queueInfo) {
     return (

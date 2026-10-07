@@ -197,7 +197,7 @@ function ToastItem({ title, description, variant, duration, timestamp, onDismiss
   }, [exiting, timestamp]);
   return <div role="group" aria-label={title}
     {...gesture.handlers}
-    className={cn("relative flex items-start gap-3 border rounded-2xl p-3 bg-surface-elevated shadow-xl ring-1 ring-border/50 overflow-hidden [touch-action:pan-y_pinch-zoom] transition-all duration-200", variantBorders[variant], exiting ? "animate-toast-exit opacity-0" : "animate-toast-enter")}
+    className={cn("relative flex items-start gap-3 border rounded-2xl p-3 bg-surface-elevated shadow-lg overflow-hidden [touch-action:pan-y_pinch-zoom] transition-[opacity,transform] duration-[var(--motion-standard)]", variantBorders[variant], exiting ? "animate-toast-exit opacity-0" : "animate-toast-enter")}
     style={{ translate: gesture.offset ? `${gesture.offset}px 0` : undefined, transition: gesture.dragging ? "none" : undefined }}>
     {icons[variant]}
     <div className="flex-1 min-w-0 pt-0.5 break-words">

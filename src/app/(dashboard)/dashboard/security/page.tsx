@@ -37,7 +37,7 @@ export default function AccountSecurityPage() {
   };
   useEffect(() => {
     setSupported(window.isSecureContext && browserSupportsWebAuthn());
-    setHaptics(localStorage.getItem("ananta_haptics") !== "off");
+    setHaptics(localStorage.getItem("ekavyu_haptics") !== "off");
     if (user && !user.impersonatedBy) void load();
     else setLoading(false);
   }, [user?.id]);
@@ -50,7 +50,7 @@ export default function AccountSecurityPage() {
       await load();
       toast({ title: "Passkey added", description: "You can now sign in using your device's screen lock.", variant: "success" });
     } catch (error: any) {
-      if (error.name !== "NotAllowedError" && error.name !== "AbortError") toast({ title: "Could not add passkey", description: error.response?.data?.message || "Please try again on a supported device.", variant: "error" });
+      toast({ title: "Could not add passkey", description: error.response?.data?.message || (error.name === "NotAllowedError" || error.name === "AbortError" ? "Passkey setup was cancelled or timed out. Try again and complete your device's screen-lock prompt." : error.message || "Please try again on a supported device."), variant: "error" });
     } finally { setBusy(null); }
   };
   const removeKey = async (id: string) => {
@@ -84,7 +84,7 @@ export default function AccountSecurityPage() {
       <Button icon={<KeyRound />} className="w-full sm:w-auto shrink-0" onClick={addKey} disabled={!supported || busy !== null || loading} loading={busy === "add"}>Add passkey</Button>
       {!supported && <p className="text-xs text-text-muted">Open this page in a browser that supports passkeys over HTTPS.</p>}
     </Card>
-    <Card className="p-4 sm:p-6"><Toggle label="Vibration feedback" checked={haptics} onChange={(value) => { setHaptics(value); localStorage.setItem("ananta_haptics", value ? "on" : "off"); }} /><p className="text-xs text-text-muted mt-2">Brief feedback for confirmations and errors on supported devices.</p></Card>
+    <Card className="p-4 sm:p-6"><Toggle label="Vibration feedback" checked={haptics} onChange={(value) => { setHaptics(value); localStorage.setItem("ekavyu_haptics", value ? "on" : "off"); }} /><p className="text-xs text-text-muted mt-2">Brief feedback for confirmations and errors on supported devices.</p></Card>
     {user?.role === "root" && <Card className="p-4 sm:p-6" contentClassName="gap-4">
       <h2 className="font-bold flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-accent" />Organization owner sessions</h2>
       <p className="text-sm text-text-secondary">Owners have unlimited sessions by default. Lowering a limit signs out the oldest sessions above that limit.</p>

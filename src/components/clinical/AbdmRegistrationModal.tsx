@@ -25,7 +25,7 @@ interface AbdmProfile {
 interface AbdmRegistrationModalProps {
   open: boolean;
   onClose: () => void;
-  clinicId: string;
+  locationId: string;
   doctors?: Array<{ id: string; name: string }>;
   selectedDoctorId?: string;
   onPatientCheckedIn?: (data: any) => void;
@@ -34,7 +34,7 @@ interface AbdmRegistrationModalProps {
 export function AbdmRegistrationModal({
   open,
   onClose,
-  clinicId,
+  locationId,
   doctors = [],
   selectedDoctorId,
   onPatientCheckedIn,
@@ -88,15 +88,15 @@ export function AbdmRegistrationModal({
   }, [selectedDoctorId, doctors]);
 
   useEffect(() => {
-    if (open && activeTab === "standee" && clinicId) {
+    if (open && activeTab === "standee" && locationId) {
       fetchStandeeData();
     }
-  }, [open, activeTab, clinicId]);
+  }, [open, activeTab, locationId]);
 
   const fetchStandeeData = async () => {
     try {
       setLoadingStandee(true);
-      const res = await api.get(`/abdm/qr-standee/${clinicId}`);
+      const res = await api.get(`/abdm/qr-standee/${locationId}`);
       setStandeeData(res.data?.data || null);
     } catch {
       // Fallback
@@ -201,7 +201,7 @@ export function AbdmRegistrationModal({
   };
 
   const handleIssueTokenForProfile = async (profile: AbdmProfile) => {
-    if (!clinicId || !targetDoctorId) {
+    if (!locationId || !targetDoctorId) {
       toast({ title: "Selection Error", description: "Please select an attending doctor.", variant: "error" });
       return;
     }
@@ -209,7 +209,7 @@ export function AbdmRegistrationModal({
     try {
       setIsIssuingToken(true);
       const res = await api.post("/abdm/scan-share", {
-        clinicId,
+        locationId,
         doctorId: targetDoctorId,
         abhaProfile: profile,
         appointmentType: "qr",
@@ -604,7 +604,7 @@ export function AbdmRegistrationModal({
         {activeTab === "standee" && (
           <div id="abdm-standee-print" className="p-4 rounded-2xl bg-surface border border-border space-y-4 text-center">
             <div className="space-y-1">
-              <h4 className="font-bold text-sm text-text">Clinic Reception Counter Scan & Share Standee</h4>
+              <h4 className="font-bold text-sm text-text">Reception counter Scan & Share Standee</h4>
               <p className="text-xs text-text-muted">
                 Patients scan this QR code with their Aarogya Setu or ABHA App. Reception receives verified demographics instantly in 3 seconds.
               </p>

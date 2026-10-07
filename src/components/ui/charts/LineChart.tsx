@@ -36,11 +36,11 @@ export interface LineChartProps {
 }
 
 const DEFAULT_COLORS = [
-  "var(--s-chart-1)",
-  "var(--s-chart-2)",
-  "var(--s-chart-3)",
-  "var(--s-chart-4)",
-  "var(--s-chart-5)",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
 ];
 
 function createSmoothPath(points: { x: number; y: number }[]): string {
@@ -179,7 +179,7 @@ export const LineChart = memo(function LineChart({
                 y={getY(referenceBand.max)}
                 width={chartWidth}
                 height={Math.max(0, getY(referenceBand.min) - getY(referenceBand.max))}
-                fill={referenceBand.color || "var(--s-success-500)"}
+                fill={referenceBand.color || "var(--success)"}
                 opacity="0.09"
                 rx="4"
               />
@@ -188,7 +188,7 @@ export const LineChart = memo(function LineChart({
                 y1={getY(referenceBand.max)}
                 x2={padding.left + chartWidth}
                 y2={getY(referenceBand.max)}
-                stroke={referenceBand.color || "var(--s-success-500)"}
+                stroke={referenceBand.color || "var(--success)"}
                 strokeWidth="1"
                 strokeDasharray="3 3"
                 opacity="0.4"
@@ -198,7 +198,7 @@ export const LineChart = memo(function LineChart({
                 y1={getY(referenceBand.min)}
                 x2={padding.left + chartWidth}
                 y2={getY(referenceBand.min)}
-                stroke={referenceBand.color || "var(--s-success-500)"}
+                stroke={referenceBand.color || "var(--success)"}
                 strokeWidth="1"
                 strokeDasharray="3 3"
                 opacity="0.4"
@@ -208,7 +208,7 @@ export const LineChart = memo(function LineChart({
                 y={getY(referenceBand.max) + 12}
                 textAnchor="end"
                 fontSize="9"
-                fill={referenceBand.color || "var(--s-success-600)"}
+                fill={referenceBand.color || "var(--success-text)"}
                 className="font-bold tracking-tight opacity-80 uppercase text-[8.5px]"
               >
                 {referenceBand.label} ({referenceBand.min} - {referenceBand.max})
@@ -228,7 +228,7 @@ export const LineChart = memo(function LineChart({
                       y1={y}
                       x2={padding.left + chartWidth}
                       y2={y}
-                      stroke="var(--s-border)"
+                      stroke="var(--border)"
                       strokeDasharray="4 4"
                       strokeWidth="1"
                       className="opacity-35"
@@ -238,7 +238,7 @@ export const LineChart = memo(function LineChart({
                       y={y + 3.5}
                       textAnchor="end"
                       fontSize="9"
-                      fill="var(--s-text-muted)"
+                      fill="var(--text-muted)"
                       className="font-mono font-medium text-[9px]"
                     >
                       {valueFormatter(val)}
@@ -263,7 +263,7 @@ export const LineChart = memo(function LineChart({
                   y={viewBoxHeight - 6}
                   textAnchor="middle"
                   fontSize="9.5"
-                  fill="var(--s-text-muted)"
+                  fill="var(--text-muted)"
                   className="font-semibold text-[9px] tracking-tight"
                 >
                   {d.label}
@@ -312,7 +312,7 @@ export const LineChart = memo(function LineChart({
                         cy={pt.y}
                         r={isHovered ? 5 : 3}
                         fill={color}
-                        stroke="var(--s-surface)"
+                        stroke="var(--surface)"
                         strokeWidth="2"
                         className="transition-all duration-150 shadow-xs"
                       />
@@ -340,7 +340,7 @@ export const LineChart = memo(function LineChart({
           )}
         </svg>
 
-        {/* Ultra-Luxury Frosted Glass Tooltip */}
+        {/* Chart tooltip */}
         {activeDataPoint && hoverIndex !== null && (
           <div
             style={{

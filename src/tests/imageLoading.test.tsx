@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import LoadingImage from "@/components/ui/LoadingImage";
 import Avatar from "@/components/ui/Avatar";
-import BrowseDetailClient from "@/app/browse/[id]/BrowseDetailClient";
-import BrowseDetailLoading from "@/app/browse/[id]/loading";
+import BrowseDetailClient from "@/app/browse/[slug]/BrowseDetailClient";
+import BrowseDetailLoading from "@/app/browse/[slug]/loading";
 import { useAuthStore } from "@/store/authStore";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
@@ -67,7 +67,7 @@ it("uses identical clinic loading markup for route navigation and the client req
   useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
   const { container, rerender } = render(<BrowseDetailLoading />);
   const routeSkeleton = container.innerHTML;
-  rerender(<BrowseDetailClient id="pending-clinic" />);
+  rerender(<BrowseDetailClient slug="pending-clinic" />);
   expect(container.innerHTML).toBe(routeSkeleton);
-  expect(screen.getAllByRole("status", { name: "Loading clinic and doctor details" })).toHaveLength(1);
+  expect(screen.getAllByRole("status", { name: "Loading location and doctor details" })).toHaveLength(1);
 });

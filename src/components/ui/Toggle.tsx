@@ -70,14 +70,14 @@ const Toggle = memo(
             onClick={toggle}
             onKeyDown={handleKeyDown}
             className={cn(
-              "relative inline-flex shrink-0 items-center rounded-full cursor-pointer transform-gpu transition-all duration-200 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 shadow-2xs",
+              "relative inline-flex shrink-0 items-center rounded-full cursor-pointer transition-colors duration-[var(--motion-fast)] ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:cursor-not-allowed",
               isSm ? "w-8 h-[18px]" : isLg ? "w-12 h-7" : "w-10 h-[22px]",
-              isChecked ? "bg-primary-600 shadow-xs  border border-primary-500/30" : "bg-surface-alt border border-border hover:border-border-focus hover:bg-surface-hover"
+              isChecked ? "bg-primary-600 shadow-xs  border border-primary-500/30" : "bg-surface-alt border border-input-border hover:border-border-focus hover:bg-surface-hover"
             )}
           >
             <span
               className={cn(
-                "inline-block rounded-full bg-white shadow-sm transform-gpu transition-transform duration-250 ease-spring",
+                "inline-block rounded-full bg-white shadow-sm transform-gpu transition-transform duration-250 ease-smooth",
                 isSm ? "h-3.5 w-3.5" : isLg ? "h-5.5 w-5.5" : "h-4.5 w-4.5",
                 isChecked
                   ? isSm
@@ -115,4 +115,3 @@ const Toggle = memo(
 
 Toggle.displayName = "Toggle";
 export default Toggle;
-

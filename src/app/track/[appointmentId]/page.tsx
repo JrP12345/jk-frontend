@@ -4,7 +4,7 @@ import LoadingImage from "@/components/ui/LoadingImage";
 import PrintButton from "@/components/ui/PrintButton";
 import { printHtml } from "@/lib/printBrand";
 import { formatCurrency } from "@/lib/currency";
-import { addCalendarDays, clinicDateKey } from "@/lib/clinicTime";
+import { addCalendarDays, locationDateKey } from "@/lib/locationTime";
 
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { rememberTracker, getStoredTrackerToken, clearRecentTracker } from "@/store/trackerStore";
@@ -86,7 +86,7 @@ interface TrackerData {
     name: string;
     specialization: string;
   };
-  clinic: {
+  location: {
     id: string;
     name: string;
     city: string;
@@ -155,7 +155,7 @@ export default function PublicLiveQueueTracker() {
   const getTrackerHeaders = useCallback(() => {
     if (typeof window === "undefined") return {};
     const token =
-      new URLSearchParams(window.location.search).get("t") ||
+      new URLSearchParams(window.location.hash.slice(1)).get("t") ||
       getStoredTrackerToken(appointmentId);
     return token ? { "x-tracker-token": token } : {};
   }, [appointmentId]);
@@ -182,8 +182,8 @@ export default function PublicLiveQueueTracker() {
   const [trackerQrDataUrl, setTrackerQrDataUrl] = useState<string>("");
   const [copiedUpi, setCopiedUpi] = useState(false);
 
-  const trackerVpa = data?.clinic?.upiVpa?.trim() || "";
-  const trackerMerchant = data?.clinic?.merchantName?.trim() || data?.clinic?.name || "";
+  const trackerVpa = data?.location?.upiVpa?.trim() || "";
+  const trackerMerchant = data?.location?.merchantName?.trim() || data?.location?.name || "";
   const trackerDueAmt = data?.billing?.balanceDue || 0;
   const trackerInvoiceNum = data?.billing?.invoiceNumber || "INV-OPD";
   const canUseTrackerUpi = data?.billing?.currency === "INR" && Boolean(trackerVpa);
@@ -195,15 +195,15 @@ export default function PublicLiveQueueTracker() {
 
   useEffect(() => {
     if (typeof window === "undefined" || !appointmentId) return;
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(window.location.hash.slice(1));
     const token = params.get("t");
     if (!token) return;
 
     try { window.sessionStorage.setItem(`tracker-capability:${appointmentId}`, token); } catch { /* The URL still carries the capability. */ }
     rememberTracker(appointmentId, token, useAuthStore.getState().user?.id || null);
     params.delete("t");
-    const search = params.toString();
-    const cleanUrl = `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`;
+    const hash = params.toString();
+    const cleanUrl = `${window.location.pathname}${window.location.search}${hash ? `#${hash}` : ""}`;
     window.history.replaceState(window.history.state, "", cleanUrl);
   }, [appointmentId]);
 
@@ -227,8 +227,8 @@ export default function PublicLiveQueueTracker() {
     tomorrow.setDate(tomorrow.getDate() + 1);
     return tomorrow.toISOString().slice(0, 10);
   });
-  const clinicTomorrow = addCalendarDays(clinicDateKey(new Date(), data?.clinic?.timezone || "Asia/Kolkata"), 1);
-  const effectiveRescheduleDate = rescheduleTargetDate >= clinicTomorrow ? rescheduleTargetDate : clinicTomorrow;
+  const locationTomorrow = addCalendarDays(locationDateKey(new Date(), data?.location?.timezone || "Asia/Kolkata"), 1);
+  const effectiveRescheduleDate = rescheduleTargetDate >= locationTomorrow ? rescheduleTargetDate : locationTomorrow;
   const [isSubmittingDisruption, setIsSubmittingDisruption] = useState(false);
 
   // Standby "I'm Back" Notification State
@@ -354,9 +354,9 @@ export default function PublicLiveQueueTracker() {
       if (!isBackground) {
         const status = err.response?.status;
         const fallback = status === 404 || status === 410
-          ? "This tracking link is no longer active. Contact the clinic if you still need help."
+          ? "This tracking link is no longer active. Contact reception if you still need help."
           : status === 401 || status === 403
-            ? "This tracking link cannot be opened. Use the link sent by your clinic."
+            ? "This tracking link cannot be opened. Use the link sent by your care team."
             : "We could not connect to live tracking. Check your connection and try again.";
         setError(userFacingError(err.response?.data?.message, fallback));
       }
@@ -407,13 +407,13 @@ export default function PublicLiveQueueTracker() {
     };
   }, [fetchTrackerData]);
 
-  // Real-time WebSocket connection to clinic updates
+  // Real-time WebSocket connection to location updates
   useEffect(() => {
     let ws: ReconnectingSocket | null = null;
-    const clinicId = data?.clinic?.id;
-    if (typeof window !== "undefined" && clinicId) {
+    const locationId = data?.location?.id;
+    if (typeof window !== "undefined" && locationId) {
       try {
-        ws = createReconnectingSocket(`/api/queue/ws?clinicId=${clinicId}`, () => { void fetchTrackerData(true); });
+        ws = createReconnectingSocket(`/api/queue/ws?locationId=${locationId}`, () => { void fetchTrackerData(true); });
 
         ws.onopen = () => {
           consecutiveFailuresRef.current = 0;
@@ -455,7 +455,7 @@ export default function PublicLiveQueueTracker() {
     return () => {
       if (ws) ws.close();
     };
-  }, [data?.clinic?.id, appointmentId, fetchTrackerData]);
+  }, [data?.location?.id, appointmentId, fetchTrackerData]);
 
   // Two-tone cheerful medical chime using standard Web Audio API
   const playChimeSound = useCallback(() => {
@@ -515,7 +515,7 @@ export default function PublicLiveQueueTracker() {
     prevStatusRef.current = currentStatus;
 
     if (currentStatus === "in-consultation" && prevStatus && prevStatus !== "in-consultation") {
-      const storageKey = `ananta_call_alert_${appointmentId}`;
+      const storageKey = `ekavyu_call_alert_${appointmentId}`;
       const alreadyNotified = typeof window !== "undefined" ? sessionStorage.getItem(storageKey) : null;
       if (!alreadyNotified) {
         if (typeof window !== "undefined") {
@@ -571,7 +571,7 @@ export default function PublicLiveQueueTracker() {
     const base = getApiUrl().replace(/\/+$/, "");
     const token = typeof window === "undefined"
       ? null
-      : new URLSearchParams(window.location.search).get("t") || getStoredTrackerToken(appointmentId);
+      : new URLSearchParams(window.location.hash.slice(1)).get("t") || getStoredTrackerToken(appointmentId);
     return `${base}/public/track/${appointmentId}/prescription/print${token ? `?trackerToken=${encodeURIComponent(token)}` : ""}`;
   };
 
@@ -585,7 +585,7 @@ export default function PublicLiveQueueTracker() {
     return (
       <div className="min-h-screen bg-surface-alt font-sans text-text antialiased p-4 sm:p-6" aria-busy="true" aria-label="Connecting to Live Queue Tracker">
         <div className="max-w-2xl mx-auto space-y-5 animate-fade-in">
-          {/* Clinic Brand Header Skeleton */}
+          {/* Location Brand Header Skeleton */}
           <div className="p-4 sm:p-5 bg-surface border border-border/80 rounded-3xl shadow-xs flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Skeleton width="3rem" height="3rem" rounded="2xl" />
@@ -618,7 +618,7 @@ export default function PublicLiveQueueTracker() {
             </div>
           </div>
 
-          {/* Doctor & Clinic Info Card Skeleton */}
+          {/* Doctor & Location Info Card Skeleton */}
           <div className="p-5 bg-surface border border-border/80 rounded-3xl shadow-xs space-y-3">
             <Skeleton height="1.25rem" width="40%" rounded="md" />
             <Skeleton height="0.875rem" width="75%" rounded="sm" />
@@ -633,7 +633,7 @@ export default function PublicLiveQueueTracker() {
       <div className="min-h-dvh bg-surface-alt text-text flex flex-col">
         <header data-app-header className="bg-surface border-b border-border/70 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="max-w-lg mx-auto flex items-center justify-between gap-3">
-            <Link href="/browse" aria-label="Browse clinics" className="inline-flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+            <Link href="/browse" aria-label="Browse locations" className="inline-flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
               <EkavyuIcon className="h-8 w-8" />
               <span className="text-sm font-bold text-text">Ekavyu</span>
             </Link>
@@ -654,7 +654,7 @@ export default function PublicLiveQueueTracker() {
             </p>
             <div className="w-full flex flex-col sm:flex-row gap-2.5">
               <Button variant="primary" size="sm" loading={refreshing} icon={<RotateCw className="w-4 h-4" />} onClick={() => fetchTrackerData(false)} className="w-full sm:w-auto min-h-11 justify-center">Try again</Button>
-              <Link href="/browse" className="inline-flex items-center justify-center w-full sm:w-auto min-h-11 px-4 rounded-xl border border-border bg-surface text-sm font-medium text-text hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Browse clinics</Link>
+              <Link href="/browse" className="inline-flex items-center justify-center w-full sm:w-auto min-h-11 px-4 rounded-xl border border-border bg-surface text-sm font-medium text-text hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Browse locations</Link>
             </div>
           </Card>
         </main>
@@ -700,7 +700,7 @@ export default function PublicLiveQueueTracker() {
       {/* Top Floating App Bar */}
       <header data-app-header className="sticky top-0 z-40 bg-surface/90  border-b border-border/70 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="max-w-lg mx-auto flex items-center justify-between">
-          <Link href="/browse" aria-label="Return to clinics" className="flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+          <Link href="/browse" aria-label="Return to locations" className="flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
             <EkavyuIcon className="h-8 w-8 shadow-xs" />
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-text">Ekavyu</span>
@@ -799,7 +799,7 @@ export default function PublicLiveQueueTracker() {
                       <span className="font-bold flex items-center gap-1.5 text-xs text-accent dark:text-accent">
                         <span>🔬</span> Ordered Diagnostic Tests ({data.investigationResults.length})
                       </span>
-                      <span className="text-[10px] text-text-muted font-medium">In-Clinic Lab</span>
+                      <span className="text-[10px] text-text-muted font-medium">On-site laboratory</span>
                     </div>
                     <div className="space-y-1.5">
                       {data.investigationResults.map((r, i) => {
@@ -877,7 +877,7 @@ export default function PublicLiveQueueTracker() {
               <p className="font-bold">Doctor Running Behind Schedule (~{data.lastNotifiedDelayMinutes} mins)</p>
               <p className="opacity-90 leading-relaxed">
                 Earlier consultations are taking longer than scheduled. Your revised estimated call time is{" "}
-                <span className="font-bold">{callTimeFormatted || "updated below"}</span>. No need to rush to the clinic prematurely!
+                <span className="font-bold">{callTimeFormatted || "updated below"}</span>. No need to rush to the location prematurely!
               </p>
             </div>
           </div>
@@ -949,12 +949,12 @@ export default function PublicLiveQueueTracker() {
 
         {data.reviewState && !isCancelled && <div role="status" className="rounded-2xl border border-warning/30 bg-warning-subtle p-4 text-sm text-text-secondary">
           <p className="font-semibold text-text">{data.reviewState === "unresolved" ? "Your visit needs a status update" : "Your scheduled time has passed"}</p>
-          <p className="mt-1">The recorded appointment status has not changed. Please contact the clinic to confirm what happens next.{data.clinic.phone && <> <a className="font-medium text-accent underline" href={`tel:${data.clinic.phone.replace(/\s+/g, "")}`}>Call clinic</a></>}</p>
+          <p className="mt-1">The recorded appointment status has not changed. Please contact reception to confirm what happens next.{data.location.phone && <> <a className="font-medium text-accent underline" href={`tel:${data.location.phone.replace(/\s+/g, "")}`}>Call reception</a></>}</p>
         </div>}
 
         {/* Cancellation Notice Banner */}
         {isCancelled && (
-          <div className="p-4 rounded-2xl bg-danger-500/10 border border-danger-500/30 text-danger-text dark:text-danger-text text-xs flex items-start gap-3">
+          <div className="p-4 rounded-2xl bg-danger/10 border border-danger/30 text-danger-text dark:text-danger-text text-xs flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-danger-text shrink-0" />
             <div>
               <p className="font-bold">Appointment {data.status === "no-show" ? "Marked No-Show" : "Cancelled"}</p>
@@ -1195,7 +1195,7 @@ export default function PublicLiveQueueTracker() {
                   <p className="text-[11px] leading-relaxed text-text-muted">
                     {data.pharmacyStatus === "dispensed"
                       ? "Your prescribed medications have been prepared and batch-verified. Please proceed to Pharmacy Counter 2 for collection."
-                      : "Your doctor has routed your e-prescription to the clinic pharmacy desk. Medicines are being prepared and verified."}
+                      : "Your doctor has routed your e-prescription to the location pharmacy desk. Medicines are being prepared and verified."}
                   </p>
                 </div>
               )}
@@ -1397,7 +1397,7 @@ export default function PublicLiveQueueTracker() {
                     </p>
                   </div>
                 ) : data.billing.balanceDue > 0 ? (
-                  <p className="text-xs text-text-muted pt-2">Payment options for this clinic are available at reception.</p>
+                  <p className="text-xs text-text-muted pt-2">Payment options for this location are available at reception.</p>
                 ) : (
                   <div className="p-3 rounded-2xl bg-success/10 border border-success/20 flex items-center justify-between text-xs text-success-text dark:text-success-text">
                     <span className="flex items-center gap-1.5 font-bold">
@@ -1536,13 +1536,13 @@ export default function PublicLiveQueueTracker() {
               </div>
             )}
 
-            {/* PROMINENT ACTION: "I HAVE ARRIVED AT THE CLINIC" */}
+            {/* PROMINENT ACTION: "I HAVE ARRIVED AT THE LOCATION" */}
             {!isCheckedIn && !isCancelled && (
               <div className="bg-surface rounded-3xl border border-primary-500/30 p-5 shadow-md space-y-3">
                 <div>
-                  <h3 className="text-sm font-bold text-text">Are you at the clinic?</h3>
+                  <h3 className="text-sm font-bold text-text">Are you at the location?</h3>
                   <p className="text-xs text-text-muted mt-0.5">
-                    Tap below once you enter the clinic lounge to notify reception and doctor.
+                    Tap below once you enter the location lounge to notify reception and doctor.
                   </p>
                 </div>
 
@@ -1555,7 +1555,7 @@ export default function PublicLiveQueueTracker() {
                   disabled={doctorUnavailable}
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  I Have Arrived at the Clinic
+                  I Have Arrived at the Location
                 </Button>
               </div>
             )}
@@ -1576,7 +1576,7 @@ export default function PublicLiveQueueTracker() {
           </>
         )}
 
-        {/* CLINIC & DOCTOR DETAILS CARD */}
+        {/* LOCATION & DOCTOR DETAILS CARD */}
         <div className="bg-surface rounded-3xl border border-border/80 p-5 shadow-xs space-y-4 text-xs">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-primary-600/10 text-accent flex items-center justify-center font-bold shrink-0">
@@ -1592,15 +1592,15 @@ export default function PublicLiveQueueTracker() {
             <div className="flex items-start gap-2 text-text-muted">
               <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0 mt-0.5" />
               <div>
-                <strong className="text-text font-semibold">{data.clinic.name}</strong>
-                <p className="text-[11px] text-text-muted mt-0.5">{data.clinic.address || data.clinic.city}</p>
+                <strong className="text-text font-semibold">{data.location.name}</strong>
+                <p className="text-[11px] text-text-muted mt-0.5">{data.location.address || data.location.city}</p>
               </div>
             </div>
 
-            {data.clinic.phone && (
+            {data.location.phone && (
               <div className="flex items-center gap-2 text-text-muted pt-1">
                 <Phone className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                <span>Reception: {data.clinic.phone}</span>
+                <span>Reception: {data.location.phone}</span>
               </div>
             )}
           </div>
@@ -1710,7 +1710,7 @@ export default function PublicLiveQueueTracker() {
                 setIsPayModalOpen(false);
                 toast({
                   title: "Payment verification required",
-                  description: "Please complete payment at the clinic or through the verified checkout. Reception will update your invoice after verification.",
+                  description: "Please complete payment at the location or through the verified checkout. Reception will update your invoice after verification.",
                   variant: "info",
                 });
               }}
@@ -1740,7 +1740,7 @@ export default function PublicLiveQueueTracker() {
                 <input
                   type="date"
                   value={effectiveRescheduleDate}
-                  min={clinicTomorrow}
+                  min={locationTomorrow}
                   onChange={(e) => setRescheduleTargetDate(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-border bg-surface text-text text-sm focus:outline-hidden focus:ring-2 focus:ring-focus-ring"
                 />

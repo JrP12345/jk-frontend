@@ -12,7 +12,7 @@ import { getDisabledRouteModule, requiresTenantModules } from "@/lib/routeModule
 import dynamic from "next/dynamic";
 import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import { useModuleStore } from "@/store/moduleStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
 import { hasAnyPermission } from "@/lib/permissions";
 import { ClinicalScreenLock } from "@/components/auth/ClinicalScreenLock";
@@ -42,7 +42,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isExiting, setIsExiting] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   useOverlayFocus(mobileMenuOpen, drawerRef, () => setMobileMenuOpen(false));
-  const { clinics: headerClinics, fetchClinics, activeClinicId, setActiveClinic } = useClinicStore();
+  const { locations: headerLocations, fetchLocations, activeLocationId, setActiveLocation } = useLocationStore();
   const { preferences: workflowPreferences, loading: workflowPreferencesLoading } = useWorkflowPreferences();
   const { toast } = useToast();
   const { isLoaded: modulesLoaded, fetchModules, isModuleEnabled } = useModuleStore();
@@ -50,25 +50,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isImpersonating = Boolean(user?.impersonatedBy && user.impersonatedBy.id);
   const isRootAdmin = user?.role === "root" && !isImpersonating;
 
-  // Track site traffic & clinic attribution asynchronously
-  useTrafficTracker(activeClinicId || undefined, user?.organization_id);
+  // Track site traffic & location attribution asynchronously
+  useTrafficTracker(activeLocationId || undefined, user?.organization_id);
 
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
-    // Only fetch clinics if the user is operating within a clinic/tenant workspace
+    // Only fetch locations if the user is operating within a location/tenant workspace
     if (!isLoading && requiresTenantModules(user)) {
       if (workflowPreferencesLoading) return;
-      fetchClinics().then((list) => {
-        if (list.length > 0 && (!activeClinicId || !list.some((c) => c.id === activeClinicId))) {
+      fetchLocations().then((list) => {
+        if (list.length > 0 && activeLocationId !== "all" && (!activeLocationId || !list.some((c) => c.id === activeLocationId))) {
           const focused = workflowPreferences.registration === "essential" || workflowPreferences.consultation === "focused";
-          setActiveClinic(!focused || list.length === 1 ? list[0].id : null);
+          setActiveLocation(!focused || list.length === 1 ? list[0].id : null);
         }
       });
     }
-  }, [user, isLoading, fetchClinics, activeClinicId, setActiveClinic, workflowPreferencesLoading, workflowPreferences.registration, workflowPreferences.consultation]);
+  }, [user, isLoading, fetchLocations, activeLocationId, setActiveLocation, workflowPreferencesLoading, workflowPreferences.registration, workflowPreferences.consultation]);
 
   // Fetch module toggle states once user is loaded
   useEffect(() => {
@@ -229,7 +229,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // 5. Administration & Facilities
     { section: "Administration & Facilities", label: "Organization", href: "/dashboard/organizations", icon: <Building2 className="w-5 h-5" /> },
-    { section: "Administration & Facilities", label: "Locations", href: "/dashboard/clinics", icon: <Building2 className="w-5 h-5" />, moduleKey: "clinics" },
+    { section: "Administration & Facilities", label: "Locations", href: "/dashboard/locations", icon: <Building2 className="w-5 h-5" />, moduleKey: "locations" },
     { section: "Administration & Facilities", label: "Team", href: "/dashboard/staff", icon: <Users className="w-5 h-5" />, moduleKey: "staff" },
     { section: "Administration & Facilities", label: "Shift Roster", href: "/dashboard/shifts", icon: <Clock className="w-5 h-5" />, moduleKey: "shifts" },
     { section: "Administration & Facilities", label: "Patient Feedback", href: "/dashboard/feedback", icon: <MessageSquare className="w-5 h-5" />, moduleKey: "feedback" },
@@ -259,15 +259,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return true;
       }), user.role);
 
-  const clinicSelector = user && user.role !== "patient" && !isRootAdmin && headerClinics.length > 0 ? <Select
+  const locationSelector = user && user.role !== "patient" && !isRootAdmin && headerLocations.length > 1 ? <Select
     size="sm"
-    aria-label="Active clinic"
+    aria-label="Active location"
     options={[
-      ...(headerClinics.length > 1 || hasAnyPermission(user, "MANAGE_CLINICS", "VIEW_CLINICS") ? [{ value: "all", label: "All Clinics" }] : []),
-      ...headerClinics.map((clinic) => ({ value: clinic.id, label: clinic.name })),
+      { value: "all", label: "All locations" },
+      ...headerLocations.map((location) => ({ value: location.id, label: location.name })),
     ]}
-    value={activeClinicId || headerClinics[0]?.id || "all"}
-    onChange={(event) => setActiveClinic(event.target.value)}
+    value={activeLocationId || "all"}
+    onChange={(event) => setActiveLocation(event.target.value)}
   /> : null;
 
   if (isLoggingOut) return <div role="status" aria-live="polite" className="min-h-dvh flex items-center justify-center bg-background text-text-secondary text-sm">Signing out…</div>;
@@ -319,7 +319,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              {clinicSelector && <div className="lg:hidden mt-3">{clinicSelector}</div>}
+              {locationSelector && <div className="lg:hidden mt-3">{locationSelector}</div>}
               </div>
             )
           }
@@ -401,8 +401,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 xl:gap-4 min-w-0 shrink-0">
-            {/* Only show Clinic selector when in operational clinic/tenant workspace */}
-            {clinicSelector && <div className="hidden lg:block lg:w-48 xl:w-64 shrink-0">{clinicSelector}</div>}
+            {/* Only show Location selector when in operational location/tenant workspace */}
+            {locationSelector && <div className="hidden lg:block lg:w-48 xl:w-64 shrink-0">{locationSelector}</div>}
             <NotificationBell />
             <div className="hidden lg:block"><ModeSwitcher variant="icon" /></div>
             <div className="w-px h-6 bg-border mx-0.5 sm:mx-1 md:mx-2 hidden xl:block" />
@@ -418,8 +418,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   </button>
                 }
                 items={[
-                  { 
-                    label: "Profile & Settings", 
+                  {
+                    label: "Profile & Settings",
                     onClick: () => router.push(user.role === "patient" ? "/dashboard/patient-portal" : "/dashboard/settings"),
                     icon: <User className="w-4 h-4" />
                   },
@@ -432,9 +432,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     }
                   ] : []),
                   { divider: true, label: "" },
-                  { 
-                    label: "Sign out", 
-                    onClick: handleLogout, 
+                  {
+                    label: "Sign out",
+                    onClick: handleLogout,
                     danger: true,
                     icon: <LogOut className="w-4 h-4 text-danger" />
                   }

@@ -5,7 +5,7 @@ import { ToastProvider } from "@/components/ui/Toast";
 const fixture = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), clipboard: vi.fn(), media: vi.fn(), user: { id: "doctor", role: "doctor" } }));
 vi.mock("@/lib/api", () => ({ default: fixture }));
 vi.mock("@/store/authStore", () => ({ useAuthStore: () => ({ user: fixture.user }) }));
-vi.mock("@/store/clinicStore", () => ({ useClinicStore: () => ({ activeClinicId: "clinic" }) }));
+vi.mock("@/store/locationStore", () => ({ useLocationStore: () => ({ activeLocationId: "clinic" }) }));
 const appointment = { id: "appointment", appointmentTime: "2026-10-03T10:00:00Z", appointmentType: "online", status: "confirmed", patientId: { id: "patient", userId: { name: "Recorded patient" } }, doctorId: { id: "doctor", name: "Doctor" } };
 const session = { id: "session", sessionRoomId: "TELE-random", status: "active", meetingUrl: "https://jitsi.example/TELE-random" };
 beforeEach(() => {
@@ -25,9 +25,9 @@ it("uses the configured meeting URL and reports a clipboard failure accurately",
   expect(await screen.findByText("Could not copy link")).toBeInTheDocument();
   expect(fixture.clipboard).toHaveBeenCalledWith(session.meetingUrl);
 });
-it("shows an unavailable meeting for the legacy relative placeholder", async () => {
-  const legacy = { ...session, meetingUrl: "/dashboard/teleconsultation?room=old" };
-  fixture.get.mockImplementation(async (url: string) => ({ data: { data: url.startsWith("/appointments") ? [appointment] : legacy } })); fixture.put.mockResolvedValue({ data: { data: legacy } });
+it("shows an unavailable meeting for an invalid relative meeting placeholder", async () => {
+  const invalidSession = { ...session, meetingUrl: "/dashboard/teleconsultation?room=old" };
+  fixture.get.mockImplementation(async (url: string) => ({ data: { data: url.startsWith("/appointments") ? [appointment] : invalidSession } })); fixture.put.mockResolvedValue({ data: { data: invalidSession } });
   render(<ToastProvider><Teleconsultation /></ToastProvider>);
   fireEvent.click((await screen.findAllByRole("button", { name: "Open consultation" }))[0]);
   expect(await screen.findByText("Video meeting unavailable")).toBeInTheDocument();

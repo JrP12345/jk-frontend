@@ -6,7 +6,7 @@ import { getPrintBrandStyles, printHtml } from "@/lib/printBrand";
 
 import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button, Input, Card, CardContent, useToast, ModeSwitcher, Select, cn } from "@/components/ui";
@@ -16,22 +16,22 @@ import { Phone, Hash, CheckCircle2, ArrowRight, Stethoscope, Clock } from "lucid
 export default function PublicSelfCheckInKiosk() {
   const { toast } = useToast();
   const { user } = useAuthStore();
-  const { clinics, activeClinicId, fetchClinics } = useClinicStore();
-  useEffect(() => { if (hasAnyPermission(user, "MANAGE_QUEUE")) void fetchClinics(); }, [user, fetchClinics]);
+  const { locations, activeLocationId, fetchLocations } = useLocationStore();
+  useEffect(() => { if (hasAnyPermission(user, "MANAGE_QUEUE")) void fetchLocations(); }, [user, fetchLocations]);
   const [candidates, setCandidates] = useState<any[]>([]);
 
   const [mode, setMode] = useState<"token" | "phone">("token");
   const [inputToken, setInputToken] = useState("");
   const [inputAppointmentId, setInputAppointmentId] = useState("");
   const [inputPhone, setInputPhone] = useState("");
-  const [inputClinicId, setInputClinicId] = useState(activeClinicId || "");
+  const [inputLocationId, setInputLocationId] = useState(activeLocationId || "");
   const [submitting, setSubmitting] = useState(false);
   const [checkInResult, setCheckInResult] = useState<any | null>(null);
 
   const handleCheckInByToken = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputToken.trim() || !inputAppointmentId.trim() || !inputClinicId.trim()) {
-      toast({ title: "Check-in details needed", description: "Enter the appointment, clinic, and queue token to continue.", variant: "error" });
+    if (!inputToken.trim() || !inputAppointmentId.trim() || !inputLocationId.trim()) {
+      toast({ title: "Check-in details needed", description: "Enter the appointment, location, and queue token to continue.", variant: "error" });
       return;
     }
 
@@ -42,7 +42,7 @@ export default function PublicSelfCheckInKiosk() {
       const res = await api.post("/check-in/qr", {
         appointmentId: inputAppointmentId.trim(),
         tokenNumber: Number(inputToken),
-        clinicId: inputClinicId.trim(),
+        locationId: inputLocationId.trim(),
       });
 
       const data = res.data?.data;
@@ -77,10 +77,10 @@ export default function PublicSelfCheckInKiosk() {
     setCheckInResult(null);
 
     try {
-      if (!inputClinicId.trim()) throw new Error("Select the clinic before looking up a patient");
+      if (!inputLocationId.trim()) throw new Error("Select the location before looking up a patient");
       const now = new Date();
       const date = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
-      const query = `search=${encodeURIComponent(inputPhone.trim())}&clinicId=${encodeURIComponent(inputClinicId.trim())}&date=${date}&limit=100`;
+      const query = `search=${encodeURIComponent(inputPhone.trim())}&locationId=${encodeURIComponent(inputLocationId.trim())}&date=${date}&limit=100`;
       const apptsRes = await api.get(`/appointments?${query}`);
       const list = [...(apptsRes.data?.data || [])];
       const pages = Number(apptsRes.headers["x-total-pages"]) || 1;
@@ -90,7 +90,7 @@ export default function PublicSelfCheckInKiosk() {
       }
       const eligible = list.filter((a: any) => ["pending", "confirmed", "checked-in", "in-consultation"].includes(a.status));
       setCandidates(eligible);
-      if (!eligible.length) toast({ title: "No eligible visit today", description: "Check the phone number and clinic, or register at reception.", variant: "warning" });
+      if (!eligible.length) toast({ title: "No eligible visit today", description: "Check the phone number and location, or register at reception.", variant: "warning" });
       return;
     } catch (err: any) {
       toast({ title: "Appointments unavailable", description: err.response?.data?.message || err.message || "Could not find today's appointments. Please try again.", variant: "error" });
@@ -100,19 +100,19 @@ export default function PublicSelfCheckInKiosk() {
   const checkInSelectedVisit = async (todayAppt: any) => {
     setSubmitting(true);
     try {
-      const appointmentClinicId =
-        typeof todayAppt.clinicId === "string"
-          ? todayAppt.clinicId
-          : todayAppt.clinicId?.id || todayAppt.clinicId?._id;
-      if (!appointmentClinicId) {
-        throw new Error("The appointment is missing its clinic reference");
+      const appointmentLocationId =
+        typeof todayAppt.locationId === "string"
+          ? todayAppt.locationId
+          : todayAppt.locationId?.id || todayAppt.locationId?._id;
+      if (!appointmentLocationId) {
+        throw new Error("The appointment is missing its location reference");
       }
 
       // Check-in via appointment id
       const checkInRes = await api.post("/check-in/qr", {
         appointmentId: todayAppt.id || todayAppt._id,
         tokenNumber: todayAppt.tokenNumber,
-        clinicId: appointmentClinicId,
+        locationId: appointmentLocationId,
       });
 
       const data = checkInRes.data?.data || {
@@ -173,7 +173,7 @@ export default function PublicSelfCheckInKiosk() {
         </head>
         <body>
           <div class="slip">
-            <h2 class="title">Ekavyu CLINIC RECEPTION</h2>
+            <h2 class="title">Ekavyu LOCATION RECEPTION</h2>
             <p class="subtitle">Outpatient Self Check-In Kiosk</p>
             <div class="divider"></div>
             <div class="token-box">
@@ -192,7 +192,7 @@ export default function PublicSelfCheckInKiosk() {
     `);
   };
 
-  if (!hasAnyPermission(user, "MANAGE_QUEUE")) return <main className="p-6 max-w-lg mx-auto"><Card><CardContent><h1 className="text-xl font-bold">Staff reception kiosk</h1><p className="my-4">Sign in with a staff account authorized to manage this clinic's queue. Patients can check arrival using their private appointment tracker.</p><Link href="/login">Staff sign in</Link></CardContent></Card></main>;
+  if (!hasAnyPermission(user, "MANAGE_QUEUE")) return <main className="p-6 max-w-lg mx-auto"><Card><CardContent><h1 className="text-xl font-bold">Staff reception kiosk</h1><p className="my-4">Sign in with a staff account authorized to manage this location's queue. Patients can check arrival using their private appointment tracker.</p><Link href="/login">Staff sign in</Link></CardContent></Card></main>;
 
   return (
     <div className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-3 sm:p-6 py-8 sm:py-12 animate-fade-in font-sans">
@@ -203,7 +203,7 @@ export default function PublicSelfCheckInKiosk() {
             href="/browse"
             className="text-xs font-semibold text-text-secondary hover:text-text flex items-center gap-1.5 bg-surface/80  px-3.5 py-2 sm:py-1.5 rounded-full border border-border/70 transition-all hover:border-border min-h-[44px] sm:min-h-0"
           >
-            ← Browse Clinics
+            ← Browse Locations
           </Link>
           <ModeSwitcher variant="icon" />
         </div>
@@ -268,14 +268,14 @@ export default function PublicSelfCheckInKiosk() {
                         autoFocus
                         required
                       />
-                      <label htmlFor="reception-clinic" className="text-sm font-medium text-text-secondary">Clinic ID</label>
+                      <label htmlFor="reception-location" className="text-sm font-medium text-text-secondary">Location ID</label>
                       <Input
-                        id="reception-clinic"
+                        id="reception-location"
                         type="text"
-                        placeholder="Clinic reference"
+                        placeholder="Location reference"
                         className="text-center font-mono text-sm h-12 rounded-xl border border-primary-500/40 focus:border-primary-500"
-                        value={inputClinicId}
-                        onChange={(e) => setInputClinicId(e.target.value)}
+                        value={inputLocationId}
+                        onChange={(e) => setInputLocationId(e.target.value)}
                         required
                       />
                       <label htmlFor="reception-token" className="text-sm font-medium text-text-secondary">Queue token</label>
@@ -288,7 +288,7 @@ export default function PublicSelfCheckInKiosk() {
                         onChange={(e) => setInputToken(e.target.value)}
                         required
                       />
-                      <p className="text-[11px] text-text-muted">Confirm the appointment, clinic, and token against the patient booking.</p>
+                      <p className="text-[11px] text-text-muted">Confirm the appointment, location, and token against the patient booking.</p>
                     </div>
 
                     <Button
@@ -303,7 +303,7 @@ export default function PublicSelfCheckInKiosk() {
                   </form>
                 ) : (
                   <form onSubmit={handleCheckInByPhone} className="space-y-6">
-                    <Select label="Clinic" placeholder="Select the appointment clinic" value={inputClinicId} options={clinics.map(c => ({ value: c.id, label: c.name }))} onChange={e => { setInputClinicId(e.target.value); setCandidates([]); }} required />
+                    <Select label="Location" placeholder="Select the appointment location" value={inputLocationId} options={locations.map(c => ({ value: c.id, label: c.name }))} onChange={e => { setInputLocationId(e.target.value); setCandidates([]); }} required />
                     <div className="text-center space-y-2">
                       <label htmlFor="reception-phone" className="text-sm font-medium text-text-secondary">
                         Enter Patient Mobile Number
@@ -320,7 +320,7 @@ export default function PublicSelfCheckInKiosk() {
                         autoFocus
                         required
                       />
-                      <p className="text-[11px] text-text-muted">Select the correct visit from today's appointments for this clinic.</p>
+                      <p className="text-[11px] text-text-muted">Select the correct visit from today's appointments for this location.</p>
                     </div>
 
                     <Button
@@ -383,7 +383,7 @@ export default function PublicSelfCheckInKiosk() {
                     setCheckInResult(null);
                     setInputToken("");
                     setInputAppointmentId("");
-                    setInputClinicId("");
+                    setInputLocationId("");
                     setInputPhone("");
                   }}
                 >

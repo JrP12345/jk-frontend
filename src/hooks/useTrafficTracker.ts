@@ -7,10 +7,10 @@ import api from "@/lib/api";
 function getOrCreateVisitorId(): string {
   if (typeof window === "undefined") return "";
   try {
-    let vid = localStorage.getItem("ananta_vid");
+    let vid = localStorage.getItem("ekavyu_vid");
     if (!vid) {
       vid = "v_" + Math.random().toString(36).substring(2, 12) + "_" + Date.now().toString(36);
-      localStorage.setItem("ananta_vid", vid);
+      localStorage.setItem("ekavyu_vid", vid);
     }
     return vid;
   } catch {
@@ -18,7 +18,7 @@ function getOrCreateVisitorId(): string {
   }
 }
 
-export function useTrafficTracker(clinicId?: string, organizationId?: string) {
+export function useTrafficTracker(locationId?: string, organizationId?: string) {
   const pathname = usePathname();
   const lastTrackedPath = useRef<string | null>(null);
 
@@ -36,7 +36,7 @@ export function useTrafficTracker(clinicId?: string, organizationId?: string) {
         api
           .post("/public/track-visit", {
             path: routePath,
-            clinicId,
+            locationId,
             organizationId,
             visitorId,
             referrer,
@@ -50,5 +50,5 @@ export function useTrafficTracker(clinicId?: string, organizationId?: string) {
     }, 500);
 
     return () => clearTimeout(timeout);
-  }, [pathname, clinicId, organizationId]);
+  }, [pathname, locationId, organizationId]);
 }

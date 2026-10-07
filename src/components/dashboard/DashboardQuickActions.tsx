@@ -227,7 +227,7 @@ export function DashboardQuickActions({
 
                 <button
                   type="button"
-                  onClick={() => router.push("/dashboard/clinics")}
+                  onClick={() => router.push("/dashboard/locations")}
                   className="w-full flex items-center justify-between p-3 rounded-xl border border-border/80 bg-surface-alt hover:bg-surface-hover hover:border-primary-500/40 transition-all duration-200 group/btn text-left cursor-pointer min-h-[48px] active:scale-[0.98] shadow-2xs hover:shadow-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -236,7 +236,7 @@ export function DashboardQuickActions({
                     </div>
                     <div className="min-w-0">
                       <span className="text-xs font-semibold text-text group-hover/btn:text-accent transition-colors block truncate">
-                        Clinic Branches
+                        Locations
                       </span>
                       <span className="text-[10px] text-text-muted block truncate">
                         Multi-facility branch locations
@@ -431,4 +431,3 @@ export function DashboardQuickActions({
     </Card>
   );
 }
-

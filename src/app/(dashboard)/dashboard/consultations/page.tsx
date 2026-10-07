@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { todayRangeParams } from "@/lib/date";
 import { useAuthStore } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { Alert, Card, CardContent, Button, Modal, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, cn } from "@/components/ui";
 import { RotateCw, Plus, Calendar, Clock, Stethoscope, CheckCircle2, Search, Ticket, Phone, ArrowRight } from "lucide-react";
@@ -48,7 +48,7 @@ export interface OPDQueueAppointment {
     dob?: string;
   };
   doctorId: { id: string; name: string; specialization?: string };
-  clinicId?: { id: string; name: string };
+  locationId?: { id: string; name: string };
   chiefComplaint?: string;
   notes?: string;
 }
@@ -64,11 +64,11 @@ export default function ConsultationsPage() {
 function DetailedConsultationsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { activeClinicId } = useClinicStore();
+  const { activeLocationId } = useLocationStore();
   const canStartConsultation = hasAnyPermission(user, "MANAGE_CLINICAL_NOTES");
   const { toast } = useToast();
 
-  const [selectedClinicId, setSelectedClinicId] = useState(activeClinicId || "");
+  const [selectedLocationId, setSelectedLocationId] = useState(activeLocationId || "");
   const [queueList, setQueueList] = useState<OPDQueueAppointment[]>([]);
   const [dailyCounts, setDailyCounts] = useState<{ appointments: number; byStatus: Record<string, number> } | null>(null);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
@@ -89,8 +89,8 @@ function DetailedConsultationsPage() {
   const [walkInBookedId, setWalkInBookedId] = useState("");
 
   useEffect(() => {
-    setSelectedClinicId(activeClinicId || "");
-  }, [activeClinicId]);
+    setSelectedLocationId(activeLocationId || "");
+  }, [activeLocationId]);
 
   const fetchData = async () => {
     try {
@@ -101,10 +101,10 @@ function DetailedConsultationsPage() {
         setQueueList(apptsRes.data?.data || apptsRes.data || []);
       } else {
         const [apptsRes, patientsRes, staffRes, summaryRes] = await Promise.all([
-          api.get(`/appointments?${todayRangeParams()}${selectedClinicId ? `&clinicId=${selectedClinicId}` : ""}`),
+          api.get(`/appointments?${todayRangeParams()}${selectedLocationId ? `&locationId=${selectedLocationId}` : ""}`),
           api.get("/patients"),
-          api.get(selectedClinicId ? `/onboarding/staff?clinicId=${selectedClinicId}` : "/onboarding/staff"),
-          api.get(`/analytics/daily-summary?${todayRangeParams()}${selectedClinicId ? `&clinicId=${selectedClinicId}` : ""}`),
+          api.get(selectedLocationId ? `/onboarding/staff?locationId=${selectedLocationId}` : "/onboarding/staff"),
+          api.get(`/analytics/daily-summary?${todayRangeParams()}${selectedLocationId ? `&locationId=${selectedLocationId}` : ""}`),
         ]);
 
         const rawAppts = apptsRes.data?.data || apptsRes.data || [];
@@ -128,7 +128,7 @@ function DetailedConsultationsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedClinicId]);
+  }, [selectedLocationId]);
 
   // Handle Start Walk-in Consultation Submit
   const handleStartWalkIn = async (e: React.FormEvent) => {
@@ -145,7 +145,7 @@ function DetailedConsultationsPage() {
     try {
       setStartingEncounter(true);
       const apptRes = walkInBookedId ? await api.get(`/appointments/${walkInBookedId}`) : await api.post("/appointments", {
-        clinicId: selectedClinicId,
+        locationId: selectedLocationId,
         patientId,
         doctorId,
         appointmentTime: new Date().toISOString(),

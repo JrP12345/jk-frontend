@@ -66,9 +66,9 @@ export function DoctorCopilotCard({ patientName, briefing, isLoading = false }: 
     switch (trajectory) {
       case "worsening":
       case "increased":
-        return "bg-error-500/10 text-error-700 dark:text-error-400 border-error-500/20";
+        return "bg-error/10 text-error-text dark:text-error-text border-error/20";
       case "improving":
-        return "bg-success-500/10 text-success-text dark:text-success-text border-success-500/20";
+        return "bg-success/10 text-success-text dark:text-success-text border-success/20";
       default:
         return "bg-surface-hover text-text-secondary border-border";
     }

@@ -28,11 +28,11 @@ export interface AreaChartProps {
 }
 
 const DEFAULT_COLORS = [
-  "var(--s-chart-1)",
-  "var(--s-chart-2)",
-  "var(--s-chart-3)",
-  "var(--s-chart-4)",
-  "var(--s-chart-5)",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
 ];
 
 function createSmoothPath(points: { x: number; y: number }[]): string {
@@ -203,7 +203,7 @@ export const AreaChart = memo(function AreaChart({
                       y1={y}
                       x2={padding.left + chartWidth}
                       y2={y}
-                      stroke="var(--s-border)"
+                      stroke="var(--border)"
                       strokeDasharray="4 4"
                       strokeWidth="1"
                       className="opacity-35"
@@ -213,7 +213,7 @@ export const AreaChart = memo(function AreaChart({
                       y={y + 3.5}
                       textAnchor="end"
                       fontSize="9"
-                      fill="var(--s-text-muted)"
+                      fill="var(--text-muted)"
                       className="font-mono font-medium text-[9px]"
                     >
                       {valueFormatter(val)}
@@ -238,7 +238,7 @@ export const AreaChart = memo(function AreaChart({
                   y={viewBoxHeight - 6}
                   textAnchor="middle"
                   fontSize="9.5"
-                  fill="var(--s-text-muted)"
+                  fill="var(--text-muted)"
                   className="font-semibold text-[9px] tracking-tight"
                 >
                   {d.label}
@@ -315,7 +315,7 @@ export const AreaChart = memo(function AreaChart({
                       cy={pt.y}
                       r="4"
                       fill={color}
-                      stroke="var(--s-surface)"
+                      stroke="var(--surface)"
                       strokeWidth="2"
                       className="shadow-sm"
                     />
@@ -336,7 +336,7 @@ export const AreaChart = memo(function AreaChart({
                     cy={pt.y}
                     r="2.5"
                     fill={color}
-                    stroke="var(--s-surface)"
+                    stroke="var(--surface)"
                     strokeWidth="1.5"
                     className="opacity-80"
                   />
@@ -346,7 +346,7 @@ export const AreaChart = memo(function AreaChart({
           )}
         </svg>
 
-        {/* Ultra-Luxury Frosted Glass Tooltip */}
+        {/* Chart tooltip */}
         {activeDataPoint && hoverIndex !== null && (
           <div
             style={{

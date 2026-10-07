@@ -48,7 +48,7 @@ export function rememberTrackerLink(link: string, ownerId: string | null, appoin
     const url = new URL(link, window.location.origin);
     const match = url.pathname.match(/^\/track\/([a-zA-Z0-9_-]{1,128})\/?$/);
     if (url.origin !== window.location.origin || !match) return;
-    rememberTracker(match[1], url.searchParams.get("t") || getStoredTrackerToken(match[1]), ownerId, appointmentTime);
+    rememberTracker(match[1], new URLSearchParams(url.hash.slice(1)).get("t") || getStoredTrackerToken(match[1]), ownerId, appointmentTime);
   } catch { /* A malformed link never becomes a navigation destination. */ }
 }
 

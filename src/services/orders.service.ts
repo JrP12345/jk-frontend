@@ -3,8 +3,8 @@ import { EncounterEventBus, EncounterEvents } from "@/events/EncounterEventBus";
 
 export class OrdersService {
   public static async placeOrder(
-    encounterIdOrPayload: string | { encounterId?: string; patientId: string; testId: string; priority?: string; clinicalReason?: string; clinicId?: string; doctorId?: string },
-    payloadArg?: { patientId: string; testId: string; priority?: string; clinicalReason?: string; clinicId?: string; doctorId?: string }
+    encounterIdOrPayload: string | { encounterId?: string; patientId: string; testId: string; priority?: string; clinicalReason?: string; locationId?: string; doctorId?: string },
+    payloadArg?: { patientId: string; testId: string; priority?: string; clinicalReason?: string; locationId?: string; doctorId?: string }
   ) {
     let encounterId: string;
     let payload: any;

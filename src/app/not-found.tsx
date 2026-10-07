@@ -34,7 +34,7 @@ export default function NotFound() {
           Page Not Found
         </h1>
         <p className="text-text-muted text-sm sm:text-base mb-8 max-w-md mx-auto leading-relaxed">
-          The medical workspace, patient record, or clinic resource you are trying to access does not exist or has moved.
+          The medical workspace, patient record, or location resource you are trying to access does not exist or has moved.
         </p>
 
         <Card className="border-border/60 shadow-lg  bg-surface/90 mb-6 text-left">
@@ -48,7 +48,7 @@ export default function NotFound() {
                 className="flex items-center gap-2.5 p-3 sm:p-2.5 rounded-xl hover:bg-surface-hover transition-colors text-sm font-medium text-text min-h-[44px] sm:min-h-0"
               >
                 <Compass className="w-4 h-4 text-accent dark:text-accent shrink-0" />
-                <span>Find Doctors & Clinics</span>
+                <span>Find doctors and care locations</span>
               </Link>
               <Link
                 href="/login"

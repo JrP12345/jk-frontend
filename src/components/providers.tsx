@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider, ToastProvider, RouteProgress, PWAInstallBanner } from "@/components/ui";
@@ -16,6 +16,7 @@ export function Providers({
 }) {
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const pathname = usePathname();
+  const initialPathname = useRef(pathname);
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -29,7 +30,7 @@ export function Providers({
   );
 
   useEffect(() => {
-    checkAuth();
+    void checkAuth({ allowAnonymous: !initialPathname.current.startsWith("/dashboard") });
   }, [checkAuth]);
 
   useEffect(() => {

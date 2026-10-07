@@ -14,7 +14,7 @@ vi.mock("@/lib/api", () => ({ default: { get: vi.fn() } }));
 vi.mock("@/components/dashboard", () => ({
   DashboardStatCards: () => <div>Clinic operational metrics</div>, DashboardAnalytics: () => null,
   DashboardAppointmentsQueue: () => null, DashboardQuickActions: () => null,
-  DashboardFollowUpAlerts: () => null, DashboardClinicFacilities: () => null,
+  DashboardFollowUpAlerts: () => null, DashboardLocations: () => null,
 }));
 let client: QueryClient;
 function mount(view = <DashboardOverview />) {

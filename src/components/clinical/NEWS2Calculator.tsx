@@ -141,7 +141,7 @@ export function NEWS2Calculator({ encounterId, patientId }: NEWS2CalculatorProps
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* High Risk Active Alert Emergency Banner */}
       {activeAlert && !activeAlert.acknowledged && (
-        <div className="p-4 rounded-xl bg-error-500/15 border-2 border-error-500 text-error-800 dark:text-error-200 animate-pulse flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-error/15 border-2 border-error text-error-text dark:text-error-text animate-pulse flex items-center justify-between">
           <div className="space-y-1">
             <div className="font-extrabold text-base flex items-center gap-2">
               ⚠️ HIGH-RISK CLINICAL DETERIORATION ALERT

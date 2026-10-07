@@ -1,7 +1,7 @@
 import { isPrivilegedRole } from "./permissions";
 
 export const routePermissions: Record<string, string[]> = {
-  // ── Clinic Essentials (P1) ──────────────────────────────────────
+  // ── Location Essentials (P1) ──────────────────────────────────────
   "/dashboard/patients":            ["VIEW_PATIENTS", "MANAGE_PATIENTS"],
   "/dashboard/appointments":        ["MANAGE_APPOINTMENTS", "VIEW_APPOINTMENTS"],
   "/dashboard/queue":               ["MANAGE_QUEUE", "MANAGE_APPOINTMENTS", "VIEW_APPOINTMENTS"],
@@ -10,7 +10,7 @@ export const routePermissions: Record<string, string[]> = {
   "/dashboard/billing/services":    ["MANAGE_BILLING", "VIEW_BILLING"],
   "/dashboard/pharmacy":            ["MANAGE_MEDICINES", "VIEW_EHR"],
   "/dashboard/staff":               ["MANAGE_STAFF", "VIEW_STAFF"],
-  "/dashboard/clinics":             ["MANAGE_CLINICS", "VIEW_CLINICS"],
+  "/dashboard/locations":             ["MANAGE_LOCATIONS", "VIEW_LOCATIONS"],
   "/dashboard/shifts":              ["MANAGE_STAFF"],
 
   // ── Administration ─────────────────────────────────────────────
@@ -45,6 +45,7 @@ export function hasRoutePermission(
 
   // Platform Root Super-Admin exclusive routes
   const ROOT_ONLY_ROUTES = [
+    "/dashboard/admin/setup-requests",
     "/dashboard/admin/billing",
     "/dashboard/admin/users",
     "/dashboard/admin/monitor",

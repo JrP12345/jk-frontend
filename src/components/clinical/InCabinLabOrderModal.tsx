@@ -120,7 +120,7 @@ export function InCabinLabOrderModal({
         {/* Quick Test Chips Picker */}
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-            <FlaskConical className="w-3.5 h-3.5 text-secondary-500" />
+            <FlaskConical className="w-3.5 h-3.5 text-accent" />
             Select Diagnostic Investigations
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -134,11 +134,11 @@ export function InCabinLabOrderModal({
                   className={cn(
                     "px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border shadow-2xs",
                     isSelected
-                      ? "bg-secondary-500/15 border-secondary-500/40 text-secondary-800 dark:text-secondary-200 font-bold ring-1 ring-secondary-500/30"
+                      ? "bg-accent/15 border-accent/40 text-accent dark:text-accent font-bold ring-1 ring-accent/30"
                       : "bg-surface border-border/80 text-text-secondary hover:bg-surface-hover hover:text-text"
                   )}
                 >
-                  {isSelected && <Check className="w-3 h-3 text-secondary-600" />}
+                  {isSelected && <Check className="w-3 h-3 text-accent" />}
                   <span>{test}</span>
                 </button>
               );
@@ -252,10 +252,10 @@ export function InCabinLabOrderModal({
         </div>
 
         {/* Standby Workflow Explanation Alert */}
-        <div className="p-3 rounded-2xl bg-secondary-500/10 border border-secondary-500/20 text-secondary-900 dark:text-secondary-200 text-xs flex items-center gap-2.5">
-          <Sparkles className="w-4 h-4 text-secondary-600 shrink-0" />
+        <div className="p-3 rounded-2xl bg-accent/10 border border-accent/20 text-accent dark:text-accent text-xs flex items-center gap-2.5">
+          <Sparkles className="w-4 h-4 text-accent shrink-0" />
           <span>
-            Placing this order automatically moves Token #{tokenNumber} to the <strong>Standby</strong> queue without queue penalty, dispatches electronic orders to the clinic laboratory desk, and sends a WhatsApp alert to the patient.
+            Placing this order automatically moves Token #{tokenNumber} to the <strong>Standby</strong> queue without queue penalty, dispatches electronic orders to the location laboratory desk, and sends a WhatsApp alert to the patient.
           </span>
         </div>
 
@@ -270,7 +270,7 @@ export function InCabinLabOrderModal({
             onClick={handleSubmitOrder}
             loading={submitting}
             disabled={selectedTests.length === 0}
-            className="bg-secondary-600 hover:bg-secondary-700 text-brand-mist font-bold rounded-xl shadow-xs"
+            className="bg-primary hover:bg-primary-hover text-brand-mist font-semibold rounded-control shadow-xs"
           >
             <FlaskConical className="w-4 h-4 mr-1.5" />
             Order & Move Patient to Standby

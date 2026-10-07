@@ -69,7 +69,7 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
           user: {
             id: "user-123",
             name: "Dr. Aarti Sharma",
-            email: "aarti@anant.health",
+            email: "aarti@ekavyu.com",
             role: "doctor",
             organization_id: "org-1",
             permissions: ["VIEW_APPOINTMENTS", "MANAGE_APPOINTMENTS", "VIEW_EHR", "MANAGE_CLINICAL_NOTES"],
@@ -88,7 +88,7 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
 
   it("enforces route permissions for doctors correctly", () => {
     const doctorPermissions = ["VIEW_APPOINTMENTS", "MANAGE_APPOINTMENTS", "VIEW_EHR", "MANAGE_CLINICAL_NOTES"];
-    
+
     // Doctor should access consultations and appointments
     expect(hasRoutePermission("/dashboard/consultations", "doctor", doctorPermissions)).toBe(true);
     expect(hasRoutePermission("/dashboard/appointments", "doctor", doctorPermissions)).toBe(true);
@@ -108,7 +108,7 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
 
     // Patients cannot access staff/admin pages
     expect(hasRoutePermission("/dashboard/staff", "patient", patientPermissions)).toBe(false);
-    expect(hasRoutePermission("/dashboard/clinics", "patient", patientPermissions)).toBe(false);
+    expect(hasRoutePermission("/dashboard/locations", "patient", patientPermissions)).toBe(false);
     expect(hasRoutePermission("/dashboard/organizations", "patient", patientPermissions)).toBe(false);
   });
 

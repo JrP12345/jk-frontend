@@ -21,10 +21,9 @@ function Probe() {
 }
 const mount = () => render(<ThemeProvider><Probe /></ThemeProvider>);
 
-describe("Ekavyu mode compatibility", () => {
-  it("keeps a saved dark mode and ignores the retired palette preference", () => {
-    localStorage.setItem("jk-mode", "dark");
-    localStorage.setItem("jk-palette", "violet");
+describe("Ekavyu appearance", () => {
+  it("restores saved dark appearance", () => {
+    localStorage.setItem("ekavyu-mode", "dark");
     mount();
     expect(screen.getByRole("status")).toHaveTextContent("dark:dark");
     expect(document.documentElement).toHaveClass("dark");
@@ -33,14 +32,14 @@ describe("Ekavyu mode compatibility", () => {
   });
   it("honors explicit light mode even when the OS and stale DOM are dark", () => {
     media.matches = true;
-    localStorage.setItem("jk-mode", "light");
+    localStorage.setItem("ekavyu-mode", "light");
     document.documentElement.classList.add("dark");
     mount();
     expect(document.documentElement).toHaveAttribute("data-mode", "light");
     expect(document.documentElement).not.toHaveClass("dark");
   });
   it("follows system preference changes and removes its listener on unmount", () => {
-    localStorage.setItem("jk-mode", "system");
+    localStorage.setItem("ekavyu-mode", "system");
     const view = mount();
     const handler = media.addEventListener.mock.calls[0][1];
     act(() => handler({ matches: true }));
@@ -49,20 +48,20 @@ describe("Ekavyu mode compatibility", () => {
     view.unmount();
     expect(media.removeEventListener).toHaveBeenCalledWith("change", handler);
   });
-  it("toggles, persists the existing key and keeps accessible labels in sync", () => {
+  it("toggles, persists the appearance preference and keeps accessible labels in sync", () => {
     mount();
     fireEvent.click(screen.getByRole("button", { name: "Switch to dark mode" }));
-    expect(localStorage.getItem("jk-mode")).toBe("dark");
+    expect(localStorage.getItem("ekavyu-mode")).toBe("dark");
     expect(document.documentElement.style.colorScheme).toBe("dark");
     fireEvent.click(screen.getByRole("button", { name: "Switch to light mode" }));
-    expect(localStorage.getItem("jk-mode")).toBe("light");
+    expect(localStorage.getItem("ekavyu-mode")).toBe("light");
     expect(document.documentElement.style.colorScheme).toBe("light");
   });
   it("can select system mode without a color selector", () => {
     media.matches = true;
     mount();
     fireEvent.click(screen.getByRole("button", { name: "Use system" }));
-    expect(localStorage.getItem("jk-mode")).toBe("system");
+    expect(localStorage.getItem("ekavyu-mode")).toBe("system");
     expect(document.documentElement).toHaveAttribute("data-mode", "dark");
   });
   it("continues working when browser storage is denied", () => {
@@ -72,10 +71,9 @@ describe("Ekavyu mode compatibility", () => {
     fireEvent.click(screen.getByRole("button", { name: "Switch to dark mode" }));
     expect(document.documentElement).toHaveAttribute("data-mode", "dark");
   });
-  it("resolves the saved system mode before hydration without the retired palette", () => {
+  it("resolves system appearance before hydration", () => {
     media.matches = true;
-    localStorage.setItem("jk-mode", "system");
-    localStorage.setItem("jk-palette", "blue");
+    localStorage.setItem("ekavyu-mode", "system");
     const layout = readFileSync("src/app/layout.tsx", "utf8");
     const bootstrap = layout.match(/__html: `([^`]+)`/)?.[1];
     expect(bootstrap).toBeTruthy();

@@ -36,6 +36,8 @@ describe("organization management", () => {
     const dialog = await screen.findByRole("dialog", { name: "Add organization" });
     fireEvent.change(within(dialog).getByLabelText(/Organization name/), { target: { value: "New Clinic" } });
     fireEvent.change(within(dialog).getByLabelText(/City/), { target: { value: "Mumbai" } });
+    fireEvent.click(within(dialog).getByRole("combobox", { name: "Primary location type" }));
+    fireEvent.click(screen.getByRole("option", { name: "Hospital" }));
     fireEvent.click(within(dialog).getByRole("combobox", { name: "Free trial duration" }));
     fireEvent.click(screen.getByRole("option", { name: "Custom duration" }));
     fireEvent.change(within(dialog).getByLabelText(/Custom trial days/), { target: { value: "23" } });
@@ -46,7 +48,7 @@ describe("organization management", () => {
     fireEvent.change(within(dialog).getByLabelText(/Administrator email/), { target: { value: "admin@clinic.example" } });
     fireEvent.change(within(dialog).getByLabelText(/Administrator password/), { target: { value: "Password123!" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Create organization" }));
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/onboarding/organization", expect.objectContaining({ org_name: "New Clinic", trialDays: 23, logo_url: ref }), { timeout: 60000 }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith("/onboarding/organization", expect.objectContaining({ org_name: "New Clinic", facilityType: "hospital", trialDays: 23, logo_url: ref }), { timeout: 60000 }));
     expect(api.post).toHaveBeenCalledWith("/organizations/branding/uploads", expect.objectContaining({ contentType: "image/png", forCreation: true }), { timeout: 60000 });
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/dashboard/organizations?organizationId=org-1&section=overview", { scroll: false }));
   });
@@ -87,7 +89,7 @@ describe("organization management", () => {
     await waitFor(() => expect(api.put).toHaveBeenCalledWith("/organizations/org-1", expect.objectContaining({ logo_url: null, email: null })));
   });
   it("retains Root capacity overrides and excludes them from organization-admin saves", async () => {
-    const organization = { ...org, maxClinics: 2, maxDoctors: 5, maxStaff: 10 };
+    const organization = { ...org, maxLocations: 2, maxDoctors: 5, maxStaff: 10 };
     const view = mount(<OrganizationDetails organization={organization} onSaved={vi.fn()} />);
     expect(screen.getByText("Platform quota overrides")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Doctor limit"), { target: { value: "7" } });

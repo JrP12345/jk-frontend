@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
-import { useClinicStore } from "@/store/clinicStore";
+import { useLocationStore } from "@/store/locationStore";
 import { formatCurrency } from "@/lib/currency";
 import { Card, CardContent, Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, Dropdown, ChartContainer, AreaChart, DonutChart, cn } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
@@ -31,7 +31,7 @@ interface Invoice {
   appointmentId?: string;
   refundPending?: boolean;
   patientId: { id: string; userId: { name: string; email: string; phone: string } };
-  clinicId: { id: string; name: string; city: string; address: string };
+  locationId: { id: string; name: string; city: string; address: string };
   doctorId: { id: string; name: string; specialization: string };
   items: InvoiceItem[];
   subtotal: number;
@@ -53,7 +53,7 @@ export const roundCurrency = (val: number): number => {
 export default function BillingPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { clinics, fetchClinics } = useClinicStore();
+  const { locations, fetchLocations } = useLocationStore();
   const { toast } = useToast();
   const canManageBilling = hasAnyPermission(user, "MANAGE_BILLING");
 
@@ -63,13 +63,13 @@ export default function BillingPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filters State
-  const [filterClinic, setFilterClinic] = useState("");
+  const [filterLocation, setFilterLocation] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Create Invoice Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedClinicId, setSelectedClinicId] = useState("");
+  const [selectedLocationId, setSelectedLocationId] = useState("");
   const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const [doctorAssignments, setDoctorAssignments] = useState<any[]>([]);
 
@@ -106,10 +106,10 @@ export default function BillingPage() {
 
   // Cashier Till Reconciliation & Z-Report State
   const [isTillModalOpen, setIsTillModalOpen] = useState(false);
-  const [tillClinicId, setTillClinicId] = useState("");
+  const [tillLocationId, setTillLocationId] = useState("");
   const [tillSummary, setTillSummary] = useState<{
     date: string;
-    clinicId: string;
+    locationId: string;
     systemTotals: {
       cash: number;
       upi: number;
@@ -183,11 +183,11 @@ export default function BillingPage() {
   };
 
   const fetchOpdAppointments = async () => {
-    const cId = filterClinic || clinics[0]?.id || "";
+    const cId = filterLocation || locations[0]?.id || "";
     setLoadingOpdAppointments(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const res = await api.get(`/appointments?clinicId=${cId}&startDate=${today}&endDate=${today}`);
+      const res = await api.get(`/appointments?locationId=${cId}&startDate=${today}&endDate=${today}`);
       const list = res.data?.data || [];
       const activeAppts = list.filter((a: any) =>
         ["confirmed", "checked-in", "in-consultation", "completed"].includes(a.status)
@@ -247,8 +247,8 @@ export default function BillingPage() {
         documentType: "invoice",
         currency: invoiceData?.currency || "INR",
         title: "Tax Invoice & OPD Settlement Receipt",
-        clinicName: appt?.clinicId?.name || "Medical Clinic",
-        clinicAddress: appt?.clinicId?.address || "",
+        locationName: appt?.locationId?.name || "Healthcare facility",
+        locationAddress: appt?.locationId?.address || "",
         doctorName: (appt?.doctorId as any)?.name || "Attending Physician",
         doctorSpecialization: (appt?.doctorId as any)?.specialization || "General Medicine",
         patientName,
@@ -284,11 +284,11 @@ export default function BillingPage() {
     }
   };
 
-  const fetchTillSummary = async (clinicIdToFetch: string) => {
-    if (!clinicIdToFetch) return;
+  const fetchTillSummary = async (locationIdToFetch: string) => {
+    if (!locationIdToFetch) return;
     setLoadingTillSummary(true);
     try {
-      const res = await api.get(`/billing/till/summary?clinicId=${clinicIdToFetch}`);
+      const res = await api.get(`/billing/till/summary?locationId=${locationIdToFetch}`);
       const data = res.data?.data || res.data;
       setTillSummary(data);
     } catch (err: any) {
@@ -303,8 +303,8 @@ export default function BillingPage() {
   };
 
   const handleOpenTillModal = () => {
-    const activeCId = String(filterClinic || clinics[0]?.id || "");
-    setTillClinicId(activeCId);
+    const activeCId = String(filterLocation || locations[0]?.id || "");
+    setTillLocationId(activeCId);
     setActualCashCounted("");
     setVarianceReason("");
     setHandoverNotes("");
@@ -317,8 +317,8 @@ export default function BillingPage() {
 
   const handleCloseTill = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tillClinicId) {
-      toast({ title: "Validation Error", description: "Please select a clinic for till closeout.", variant: "error" });
+    if (!tillLocationId) {
+      toast({ title: "Validation Error", description: "Please select a location for till closeout.", variant: "error" });
       return;
     }
     const counted = Number(actualCashCounted);
@@ -342,7 +342,7 @@ export default function BillingPage() {
     setSubmittingTillClose(true);
     try {
       const res = await api.post("/billing/till/close", {
-        clinicId: tillClinicId,
+        locationId: tillLocationId,
         actualCashCounted: counted,
         varianceReason: varianceReason.trim() || undefined,
         handoverNotes: handoverNotes.trim() || undefined,
@@ -438,8 +438,8 @@ export default function BillingPage() {
     setUnifiedDoc({
       documentType: "invoice",
       title: `INVOICE #${inv.invoiceNumber}`,
-      clinicName: inv.clinicId?.name || "Healthcare Center",
-      clinicAddress: inv.clinicId?.address || inv.clinicId?.city,
+      locationName: inv.locationId?.name || "Healthcare Center",
+      locationAddress: inv.locationId?.address || inv.locationId?.city,
       doctorName: inv.doctorId?.name,
       doctorSpecialization: inv.doctorId?.specialization,
       patientName: inv.patientId?.userId?.name || "Patient Profile",
@@ -474,8 +474,8 @@ export default function BillingPage() {
     currentTax = taxAmount
   ) => {
     let error = "";
-    if (field === "clinicId" && !value) {
-      error = "Clinic Location is required";
+    if (field === "locationId" && !value) {
+      error = "Location is required";
     } else if (field === "doctorId" && !value) {
       error = "Doctor is required";
     } else if (field === "patient" && !value) {
@@ -514,7 +514,7 @@ export default function BillingPage() {
   const validateInvoiceForm = () => {
     const newErrors: Record<string, string> = {};
     if (!selectedPatient) newErrors.patient = "Patient selection is required";
-    if (!selectedClinicId) newErrors.clinicId = "Clinic Location is required";
+    if (!selectedLocationId) newErrors.locationId = "Location is required";
     if (!selectedDoctorId) newErrors.doctorId = "Doctor is required";
     if (!invoiceItems || invoiceItems.length === 0) {
       newErrors.items = "At least one invoice line item is required";
@@ -544,15 +544,15 @@ export default function BillingPage() {
   };
 
   useEffect(() => {
-    if (user && user.role !== "patient") fetchClinics();
-  }, [user?.id, user?.role, fetchClinics]);
+    if (user && user.role !== "patient") fetchLocations();
+  }, [user?.id, user?.role, fetchLocations]);
 
   const fetchInvoices = async () => {
     try {
       setLoadError(null);
       setIsRefreshing(true);
       const queryParams = [];
-      if (filterClinic) queryParams.push(`clinicId=${filterClinic}`);
+      if (filterLocation) queryParams.push(`locationId=${filterLocation}`);
       if (filterStatus) queryParams.push(`status=${filterStatus}`);
       const queryString = queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
 
@@ -569,26 +569,26 @@ export default function BillingPage() {
 
   useEffect(() => {
     if (user) fetchInvoices();
-  }, [user, filterClinic, filterStatus]);
+  }, [user, filterLocation, filterStatus]);
 
   useEffect(() => {
-    if (!selectedClinicId) {
+    if (!selectedLocationId) {
       setDoctorAssignments([]);
       return;
     }
     const fetchAssignments = async () => {
       try {
-        const res = await api.get(`/onboarding/doctors/assignments?clinicId=${selectedClinicId}`);
+        const res = await api.get(`/onboarding/doctors/assignments?locationId=${selectedLocationId}`);
         setDoctorAssignments(res.data.data || []);
       } catch (err) {
         console.error("Failed to load doctor assignments", err);
       }
     };
     fetchAssignments();
-  }, [selectedClinicId]);
+  }, [selectedLocationId]);
 
   useEffect(() => {
-    if (!selectedDoctorId || !selectedClinicId) return;
+    if (!selectedDoctorId || !selectedLocationId) return;
     const activeAssign = doctorAssignments.find((a) => (a.doctorId?.id || a.doctorId) === selectedDoctorId);
     if (activeAssign) {
       const fee = activeAssign.fees || 200;
@@ -598,7 +598,7 @@ export default function BillingPage() {
         return updated;
       });
     }
-  }, [selectedDoctorId, selectedClinicId, doctorAssignments]);
+  }, [selectedDoctorId, selectedLocationId, doctorAssignments]);
 
   // Debounced Patient Lookup
   useEffect(() => {
@@ -698,7 +698,7 @@ export default function BillingPage() {
       setSubmittingInvoice(true);
       await api.post("/invoices", {
         patientId: selectedPatient.id,
-        clinicId: selectedClinicId,
+        locationId: selectedLocationId,
         doctorId: selectedDoctorId,
         items: invoiceItems,
         tax: taxAmount,
@@ -716,7 +716,7 @@ export default function BillingPage() {
   };
 
   const resetCreateForm = () => {
-    setSelectedClinicId("");
+    setSelectedLocationId("");
     setSelectedDoctorId("");
     setSelectedPatient(null);
     setPatientSearch("");
@@ -775,8 +775,8 @@ export default function BillingPage() {
           <div class="receipt">
             <div class="center">
               <h3 class="title">Ekavyu HEALTHCARE SYSTEM</h3>
-              <p style="margin:2px 0; font-size:11px;">${ticketData.clinicId?.name}</p>
-              <p style="margin:2px 0; font-size:10px;">${ticketData.clinicId?.address}, ${ticketData.clinicId?.city}</p>
+              <p style="margin:2px 0; font-size:11px;">${ticketData.locationId?.name}</p>
+              <p style="margin:2px 0; font-size:10px;">${ticketData.locationId?.address}, ${ticketData.locationId?.city}</p>
             </div>
             <div class="border-dashed"></div>
             <div class="flex-between"><span class="bold">Receipt No:</span><span>${ticketData.invoiceNumber}</span></div>
@@ -901,10 +901,10 @@ export default function BillingPage() {
     });
 
     const colors: Record<string, string> = {
-      UPI: "var(--s-chart-1)",
-      Card: "var(--s-chart-4)",
-      Cash: "var(--s-chart-2)",
-      "Insurance / TPA": "var(--s-chart-3)",
+      UPI: "var(--chart-1)",
+      Card: "var(--chart-4)",
+      Cash: "var(--chart-2)",
+      "Insurance / TPA": "var(--chart-3)",
       "Net Banking": "var(--chart-6)",
     };
 
@@ -1046,8 +1046,8 @@ export default function BillingPage() {
           <AreaChart
             data={cashflowTrendData}
             series={[
-              { key: "collected", name: "Collections Inflow", color: "var(--s-chart-2)" },
-              { key: "pending", name: "Outstanding Aging", color: "var(--s-chart-3)" },
+              { key: "collected", name: "Collections Inflow", color: "var(--chart-2)" },
+              { key: "pending", name: "Outstanding Aging", color: "var(--chart-3)" },
             ]}
             height={210}
             valueFormatter={(v) => `₹${v.toLocaleString("en-IN")}`}
@@ -1083,14 +1083,14 @@ export default function BillingPage() {
             loading={loading}
             toolbarFilters={
               <>
-                {clinics.length > 1 && (
+                {locations.length > 1 && (
                   <div className="flex-1 min-w-[130px] sm:max-w-[160px]">
                     <Select
                       size="sm"
-                      placeholder="All Clinics"
-                      value={filterClinic}
-                      onChange={(e) => setFilterClinic(e.target.value)}
-                      options={[{ value: "", label: "All Clinics" }, ...clinics.map((c) => ({ value: c.id, label: c.name }))]}
+                      placeholder="All Locations"
+                      value={filterLocation}
+                      onChange={(e) => setFilterLocation(e.target.value)}
+                      options={[{ value: "", label: "All Locations" }, ...locations.map((c) => ({ value: c.id, label: c.name }))]}
                     />
                   </div>
                 )}
@@ -1136,12 +1136,12 @@ export default function BillingPage() {
                 ),
               },
               {
-                key: "clinic",
+                key: "location",
                 header: "Facility",
                 render: (row: Invoice) => (
                   <div className="flex items-center gap-1.5 text-xs text-text-secondary min-w-[120px]">
                     <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                    <span>{row.clinicId?.name || "Clinic"}</span>
+                    <span>{row.locationId?.name || "Location"}</span>
                   </div>
                 ),
               },
@@ -1323,9 +1323,9 @@ export default function BillingPage() {
                     <div className="flex items-center justify-between gap-2 text-text-secondary">
                       <span className="flex items-center gap-1 text-text-muted">
                         <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                        <span>Clinic:</span>
+                        <span>Location:</span>
                       </span>
-                      <span className="truncate">{row.clinicId?.name || "Clinic"}</span>
+                      <span className="truncate">{row.locationId?.name || "Location"}</span>
                     </div>
 
                     <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40 text-xs">
@@ -1476,19 +1476,19 @@ export default function BillingPage() {
             )}
           </div>
 
-          {/* Step 2: Clinic & Doctor Details */}
+          {/* Step 2: Location & Doctor Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 border-b border-border/60 pb-4">
             <Select
-              label="Choose Clinic Location *"
-              value={selectedClinicId}
+              label="Choose Location *"
+              value={selectedLocationId}
               onChange={(e) => {
                 const val = e.target.value;
-                setSelectedClinicId(val);
+                setSelectedLocationId(val);
                 setSelectedDoctorId("");
-                validateInvoiceField("clinicId", val);
+                validateInvoiceField("locationId", val);
               }}
-              options={[{ value: "", label: "Select clinic..." }, ...clinics.map((c) => ({ value: c.id, label: c.name }))]}
-              error={errors.clinicId}
+              options={[{ value: "", label: "Select location..." }, ...locations.map((c) => ({ value: c.id, label: c.name }))]}
+              error={errors.locationId}
               required
             />
             <Select
@@ -1508,7 +1508,7 @@ export default function BillingPage() {
                   return { value: a.doctorId?.id || a.doctorId, label: `${formattedName}${spec}` };
                 }),
               ]}
-              disabled={!selectedClinicId}
+              disabled={!selectedLocationId}
               error={errors.doctorId}
               required
             />
@@ -1639,7 +1639,7 @@ export default function BillingPage() {
               size="sm"
               variant="primary"
               loading={submittingInvoice}
-              disabled={!selectedPatient || !selectedClinicId || !selectedDoctorId}
+              disabled={!selectedPatient || !selectedLocationId || !selectedDoctorId}
               className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]"
             >
               Generate Invoice
@@ -1730,9 +1730,9 @@ export default function BillingPage() {
             <div className="border border-border/80 rounded-2xl p-5 bg-surface-alt font-mono text-xs space-y-3">
               <div className="text-center border-b border-border/60 border-dashed pb-3 mb-2">
                 <h3 className="font-bold text-sm tracking-tight text-text">HEALTHCARE RECEIPT</h3>
-                <p className="text-[11px] text-text-muted mt-0.5">{receiptInvoice.clinicId?.name}</p>
+                <p className="text-[11px] text-text-muted mt-0.5">{receiptInvoice.locationId?.name}</p>
                 <p className="text-[10px] text-text-muted">
-                  {receiptInvoice.clinicId?.address}, {receiptInvoice.clinicId?.city}
+                  {receiptInvoice.locationId?.address}, {receiptInvoice.locationId?.city}
                 </p>
               </div>
 
@@ -1914,7 +1914,7 @@ export default function BillingPage() {
             <div id="z-report-print" className="p-4 rounded-2xl bg-surface border border-border/80 space-y-3 font-mono text-xs">
               <div className="text-center border-b border-dashed border-border/80 pb-3">
                 <h3 className="font-bold text-sm tracking-wide uppercase text-text">
-                  {clinics.find((c) => c.id === tillClinicId)?.name || "Ekavyu HEALTH CLINIC"}
+                  {locations.find((c) => c.id === tillLocationId)?.name || "Ekavyu Healthcare"}
                 </h3>
                 <p className="text-[11px] text-text-muted">OFFICIAL END-OF-DAY Z-REPORT SLIP</p>
                 <p className="text-[10px] text-text-muted mt-0.5">
@@ -2021,15 +2021,15 @@ export default function BillingPage() {
           </div>
         ) : (
           <form onSubmit={handleCloseTill} className="space-y-4 pt-1">
-            {clinics.length > 1 && (
+            {locations.length > 1 && (
               <Select
-                label="Select Clinic Counter *"
-                value={tillClinicId}
+                label="Select Reception counter *"
+                value={tillLocationId}
                 onChange={(e) => {
-                  setTillClinicId(e.target.value);
+                  setTillLocationId(e.target.value);
                   fetchTillSummary(e.target.value);
                 }}
-                options={clinics.map((c) => ({ value: String(c.id), label: c.name }))}
+                options={locations.map((c) => ({ value: String(c.id), label: c.name }))}
                 required
               />
             )}

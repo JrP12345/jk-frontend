@@ -15,7 +15,7 @@ const invoice = {
   id: "invoice", appointmentId: "appointment", invoiceNumber: "USD-1", currency: "USD", totalAmount: 125, subtotal: 125, tax: 0, discount: 0,
   balanceDue: 125, status: "unpaid", createdAt: "2026-09-29T12:00:00Z",
   items: [{ description: "Consultation", amount: 125, quantity: 1 }],
-  clinicId: { id: "clinic", name: "US Clinic", city: "New York", address: "Real Street" },
+  locationId: { id: "clinic", name: "US Clinic", city: "New York", address: "Real Street" },
   doctorId: { id: "doctor", name: "Real Doctor" }, patientId: { userId: { name: "Real Patient" } },
 };
 
@@ -27,11 +27,11 @@ describe("patient invoice currency", () => {
     render(<ToastProvider><PatientBillsPage /></ToastProvider>);
     expect(await screen.findAllByText("$125")).not.toHaveLength(0);
     expect(screen.queryByRole("button", { name: /Pay Online|Pay Balance/ })).not.toBeInTheDocument();
-    expect(screen.getAllByText("Pay at clinic reception")).not.toHaveLength(0);
+    expect(screen.getAllByText("Pay at reception")).not.toHaveLength(0);
     expect(screen.queryByText(/₹125/)).not.toBeInTheDocument();
   });
 
-  it("preserves the payment action for legacy INR invoices", async () => {
+  it("preserves the payment action for INR invoices", async () => {
     vi.spyOn(api, "get").mockResolvedValue({ data: { data: [{ ...invoice, currency: undefined }] } });
     render(<ToastProvider><PatientBillsPage /></ToastProvider>);
     expect(await screen.findAllByRole("button", { name: /Pay Online/ })).not.toHaveLength(0);
