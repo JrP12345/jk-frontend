@@ -20,6 +20,7 @@
 | Unused homepage, appearance, loading and modal wrappers | Remove unreachable modules, five wrappers, unused exports/variants, stale cases and their obsolete styles |
 | Slug values named as IDs in public page parameters and booking fallbacks | Rename browse/doctor route folders and client props to slug; require the resolved location for availability and booking |
 | Eight unused animation rules and stale domain guidance | Remove animations with no callers; update management, AI, messaging, printing and deployment documentation to current names and worker counts |
+| Deployment examples still declaring the previous encryption variable | Use DATA_ENCRYPTION_KEY in both deployment examples; document preserving the existing secret when configuring Render and sharing it across API/workers |
 
 The canonical commercial plan key is professional. Session-close cancellation uses cancel and does not imply a refund. Tracker links use fragment capabilities and the page consumes the same format. UPI actions require configured merchant details. Navigation keeps the original full-width geometry and separate dashboard toolbar.
 
@@ -36,7 +37,7 @@ Highest risk is Level 4: domain contracts, sessions, tenant permissions, booking
 | Check | Final evidence |
 | --- | --- |
 | Frontend tests | 81 files / 477 current cases verified: 472 passed in the broad run; the corrected spinner file passed its five remaining cases. Final shared-control consumers also passed 60 cases. Final route cleanup passed 89 cases across 11 affected files; the two updated booking/mobile consumers then passed their 22-case rerun. |
-| Backend tests | 154 files / 871 current cases verified across the broad run and affected reruns. Three stale fixture failures were corrected. Final lab/history regressions passed 87 cases; the added canonical-payload case passed in the seven-case laboratory rerun. |
+| Backend tests | 154 files / 872 current cases verified across the broad run and affected reruns. Three stale fixture failures were corrected. Final lab/history regressions passed 87 cases; the added canonical-payload case passed in the seven-case laboratory rerun. Encryption/configuration regressions passed 12 cases, including the added requirement for the canonical environment variable. |
 | Types and bundles | Backend package TypeScript passes. Next production compilation/types pass. Backend API and four workers build to five verified executable bundles. |
 | Lint and boundaries | 217 changed frontend code files pass ESLint with existing warnings; final affected files pass with warnings. Route and consumer lint passes without errors. Patient payment boundary and both repositories' diff checks pass. |
 | Repository audit | No broken local Markdown links, unused public assets or unused environment-example settings found. Framework entries/configs, current generators and verification scripts are retained with identified callers. |
