@@ -1,5 +1,5 @@
 import LoadingState from "@/components/ui/LoadingState";
 
-export default function RootLoading() {
+export default function AuthLoading() {
   return <LoadingState fullPage />;
 }

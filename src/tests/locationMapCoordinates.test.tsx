@@ -53,4 +53,34 @@ describe("Clinic map pin configuration", () => {
     fireEvent.submit(dialog.querySelector("form")!);
     await waitFor(() => expect(api.put).toHaveBeenCalledWith("/onboarding/locations/clinic-1?organizationId=org-1", expect.objectContaining({ latitude: null, longitude: null })));
   });
+
+  it("saves an explicit publishing choice with the scoped location edit", async () => {
+    render(<ToastProvider><LocationManagement organizationId="org-1" embedded /></ToastProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit Location" });
+    const publish = within(dialog).getByRole("checkbox", { name: "Publish location on Ekavyu" });
+    expect(publish).toBeChecked();
+    fireEvent.click(publish);
+    fireEvent.submit(dialog.querySelector("form")!);
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/onboarding/locations/clinic-1?organizationId=org-1", expect.objectContaining({ isPublished: false })));
+  });
+
+  it("preserves a saved public logo during an unrelated location edit", async () => {
+    const reference = "/api/public/organization-branding/012345678901234567890123";
+    Object.assign(fixtures.location, { logo: reference });
+    try {
+      render(<ToastProvider><LocationManagement organizationId="org-1" embedded /></ToastProvider>);
+      fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+      const dialog = await screen.findByRole("dialog", { name: "Edit Location" });
+      fireEvent.submit(dialog.querySelector("form")!);
+      await waitFor(() => expect(api.put).toHaveBeenCalledWith("/onboarding/locations/clinic-1?organizationId=org-1", expect.objectContaining({ logo: reference, image_url: reference })));
+    } finally { delete (fixtures.location as { logo?: string }).logo; }
+  });
+
+  it("unpublishes through the dedicated scoped action even when the public page cannot load", async () => {
+    render(<ToastProvider><LocationManagement organizationId="org-1" embedded /></ToastProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: "Website booking" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Unpublish page" }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/onboarding/locations/clinic-1/publication?organizationId=org-1", { isPublished: false }));
+  });
 });

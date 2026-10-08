@@ -38,6 +38,9 @@ function nextWithContentSecurityPolicy(request: NextRequest) {
   });
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("x-nonce", nonce);
+  const path = request.nextUrl.pathname;
+  const publicPage = path === "/" || path === "/pricing" || path === "/browse" || path.startsWith("/browse/") || path.startsWith("/doctor/");
+  if (!publicPage) response.headers.set("X-Robots-Tag", "noindex, nofollow");
   return response;
 }
 

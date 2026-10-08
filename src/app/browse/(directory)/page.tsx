@@ -1,10 +1,8 @@
 import { Metadata } from "next";
 import BrowseClient, { Location, LocationFilters } from "../BrowseClient";
+import { profileMetadata } from "@/lib/publicSeo";
 
-export const metadata: Metadata = {
-  title: "Browse healthcare locations | Ekavyu Healthcare",
-  description: "Find and book appointments with top doctors across our network of healthcare locations.",
-};
+export const metadata: Metadata = profileMetadata("Browse healthcare locations | Ekavyu", "Find healthcare locations and doctors, compare practice details, and check appointment options.", "/browse");
 
 export const dynamic = "force-dynamic";
 

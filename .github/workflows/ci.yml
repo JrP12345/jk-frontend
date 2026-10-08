@@ -41,7 +41,10 @@ jobs:
       - name: Next.js production build
         run: npm run build
         env:
+          # Verification origins only; rebuild release images for their real domain.
+          APP_URL: https://app.example.invalid
           NEXT_PUBLIC_API_URL: https://api.example.invalid/api
+          BACKEND_INTERNAL_URL: http://backend:5000
           NODE_ENV: production
       - name: Upload Next.js build artifact
         uses: actions/upload-artifact@v4

@@ -1,0 +1,47 @@
+# Independent discovery production-readiness review
+
+[Focused release-verification results](discovery-release-verification.md) now record executed regressions, production-mode smoke checks and outstanding production gates.
+
+2026-10-08. Reviewed source, database schemas, booking authority, deployment manifests, installed Next.js guides and current official policy independently of the prior implementation summary.
+
+**Verdict: conditional readiness for staging; production approval remains pending.** Verified blockers are fixed in source. The new booking guards need runtime regression evidence and the deployed mobile/Google flow needs review. No full suite or large build was repeated.
+
+## Classified findings
+
+| Classification | Verified issue and action |
+| --- | --- |
+| Launch Blocker ? fixed | Frontend Docker lacked APP_URL at build/runtime and a runtime backend address. This produced noindex/missing sitemap and localhost SSR requests inside its container. [Dockerfile](../Dockerfile), [production Compose](../../backend/deploy/docker-compose.production.yml), [development Compose](../../backend/deploy/docker-compose.yml) now wire these explicitly. Development discovery stays noindex by default. |
+| Launch Blocker ? fixed | Hidden/disabled doctors remained reachable through retained booking IDs; missing slot assignments inherited default hours. [Booking service](../../backend/services/AppointmentService.ts), [slot service](../../backend/services/SlotService.ts), [QR controller](../../backend/controllers/public.ts) now check active practitioner/assignment and branch ownership before new bookings. Existing appointment access remains separate. |
+| Launch Blocker ? fixed | Consumer bookings retained the session organization when another organization's branch was chosen. [Appointment controller](../../backend/controllers/appointment.ts) now uses the authorized branch organization and isolates that booking's tenant context without changing the signed session or self/family checks. |
+| Important Improvement ? fixed | Directory summaries, specialty facets and fee ranking lacked consistent assignment ownership checks. [Controller](../../backend/controllers/public.ts) and [catalog lookups](../../backend/utilities/publicLocationCatalog.ts) now match branch ownership and omit doctor email/phone reads. No corrupt production row is claimed. |
+| Important Improvement ? fixed | Doctor profiles repeated subscription/location checks and slug queries per branch, and asserted General Medicine for a missing specialty. [Controller](../../backend/controllers/public.ts) now shares organization booking access, batches slugs and leaves missing specialty blank. |
+| Important Improvement ? fixed | Unchanged private logo keys prevented unrelated owner edits. [Branding validation](../../backend/services/OrganizationBranding.ts) retains unchanged legacy values, still rejects newly supplied private keys and hides them in public responses. Reupload to display an old logo. |
+| Important Improvement ? fixed | API-wide robots rules blocked public branding images; production origins could be HTTP/loopback; homepage lacked a missing-origin noindex fallback. [Robots](../src/app/robots.ts), [origin helper](../src/lib/siteUrl.ts), [root metadata](../src/app/layout.tsx) now handle these cases. |
+| Important Improvement ? fixed | Owner readiness accepted headquarters as a branch address, and guidance omitted Google's one-link-per-domain rule. [Owner dialog](../src/components/organization/LocationManagement.tsx), [Google instructions](../src/components/organization/GoogleBookingLinks.tsx) corrected. |
+| Optional | Sitemap requests rebuild the full paginated catalog; provider responses contain live queue/availability work. SSR requests share a server IP under the backend's 500/minute production default. Measure latency, DB work and 429s before adding caching/partitioning or changing limits. Preserve live booking checks and abuse controls. |
+
+## Already Correct
+
+- Persisted slug uniqueness preserves renamed URLs; provider routes reject raw IDs. Doctor canonicals/sitemap retain meaningful selected-location context and omit follow-up parameters. [Paths](../src/lib/publicPaths.ts), [slugs](../../backend/utilities/publicLinks.ts), [doctor page](../src/app/doctor/[slug]/page.tsx).
+- Provider lookups precede loading boundaries, share reads, call notFound only on real 404 and throw on upstream failures. Installed Next.js documents blocking metadata and non-streamed 404 semantics. This is static evidence of intended behavior, not a new hosted HTTP measurement. [Profile reader](../src/lib/publicProfile.ts), [facility page](../src/app/browse/[slug]/page.tsx), [configuration](../next.config.ts).
+- JSON-LD uses saved branch information, explicit valid hours, escaped scripts and CSP nonce. No rating, credential or guaranteed booking action is fabricated. [SEO helper](../src/lib/publicSeo.ts), [JSON-LD](../src/components/PublicStructuredData.tsx).
+- Publishing defaults true for compatibility, including new branches. It is an owner setting, not medical verification or completed onboarding. No-doctor/expired-plan states have fallbacks, and owners can change publication after expiry. Organization activation is distinct; active organization business contacts remain accessible through legacy organization endpoints. [Location](../../backend/models/Location.ts), [publication route](../../backend/routes/locations.ts), [subscription access](../../backend/services/billing/SubscriptionAccess.ts).
+- Public DTOs allowlist fields. Tracker capabilities and patient permissions remain independent of robots. Public uploaded branding requires an attached asset and active published reference; cleanup preserves referenced assets for restoration. [DTOs](../../backend/types/publicDtos.ts), [branding routes](../../backend/routes/organizationBranding.ts).
+- Guest booking can proceed without login on provider pages. Date/full-capacity/error states recover, sharing excludes patient parameters, and copy fields have labels/status with existing modal focus handling. Touch, keyboard, contrast and actual mobile rendering remain manual checks.
+
+## Necessary release checks
+
+1. Configure confirmed HTTPS APP_URL at **build and runtime**, plus NEXT_PUBLIC_API_URL at build. Native/Vercel hosting needs equivalent settings and a direct runtime backend address; never rewrite /api back to the frontend itself. Rebuild through normal release CI; prior build evidence predates these fixes.
+2. Confirm apex versus booking domain, DNS/TLS, cookies/CORS and API routing. Coming-soon HTML advertises ekavyu.com; the checked-in development stack targets dev.ekavyu.com. Local frontend environment has localhost backend URLs and no APP_URL. Unsuccessful read-only web probes do not establish hosted DNS/configuration.
+3. Check deployed provider 200, missing/unpublished 404/noindex, upstream 5xx, correct canonical/social origins, accessible branding/CSS/JS under CSP/WAF, and complete sitemap. Validate Search Console and live markup.
+4. Execute the added focused regressions for disabled accounts/profiles/assignments, missing/foreign assignments, legacy-logo preservation and cross-organization patient booking. They are in [public discovery tests](../../backend/tests/publicDiscovery.test.ts) and [booking tests](../../backend/tests/browseBookingSecurityPolish.test.ts); **not executed during this static-only review**.
+5. Finish signed-out facility/practitioner booking through confirmation on a real phone, including deployed guest cookies and payment where applicable. Check no-doctor, full/unavailable schedule, expired-plan and unpublished states, and owner publication after expiry. Review true branch contacts/hours/fees/schedules before sharing.
+6. Verify eligible Google Business Profiles; use the correct branch/practitioner URL and one action link per domain per profile. Remove appointment links while booking is paused. Google-BusinessLinkVerification must load the same public content/resources without login, CAPTCHA, geoblocking or obstructive throttling. No Google approval/ranking is certified.
+
+## Static verification performed
+
+Level 4 for tenant/booking edits. Frontend and backend TypeScript passed; backend covers its test types, frontend excludes src/tests. Changed frontend ESLint passed with zero errors and four existing LocationManagement warnings. Both Compose manifests passed read-only config validation without interpolation/environment resolution; Docker emitted sandbox user-config warnings, not manifest errors. Static assertions also verified matching build/runtime origins, the internal backend target and parent-organization lookup variables. Diff checks passed. No database operation, runtime test, build, browser E2E, deployment or live Google action was performed.
+
+## Authoritative sources
+
+[Google action-link policies](https://support.google.com/business/answer/13769188?hl=en), [business/practitioner eligibility](https://support.google.com/business/answer/3038177?hl=en), [canonical guidance](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls), [noindex](https://developers.google.com/search/docs/crawling-indexing/block-indexing), [Schema.org MedicalClinic](https://schema.org/MedicalClinic), [ProfilePage](https://schema.org/ProfilePage). Installed Next.js metadata, htmlLimitedBots, not-found, sitemap and JSON-LD guides governed the framework review.

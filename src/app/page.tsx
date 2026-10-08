@@ -9,19 +9,10 @@ import EkavyuLogo from "@/components/ui/EkavyuLogo";
 import HomeNavigation from "./home/HomeNavigation";
 import HomePricing from "./home/HomePricing";
 import styles from "./home/home.module.css";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 const title = "Ekavyu — Practice management for healthcare teams";
 const description = "Practice management software for doctors, locations, hospitals and healthcare teams. Manage appointments, reception and consultations, with connected patient booking and visit information.";
-function getSiteUrl() {
-  try {
-    const value = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
-    if (!value) return undefined;
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:" ? url : undefined;
-  } catch {
-    return undefined;
-  }
-}
 const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {

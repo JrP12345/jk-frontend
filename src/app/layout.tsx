@@ -2,10 +2,13 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 const brandDescription = "Ekavyu — Care That Keeps Moving. Integrated digital health for patients and healthcare teams.";
 
 export const metadata: Metadata = {
+  metadataBase: getSiteUrl(),
+  robots: { index: Boolean(getSiteUrl()), follow: true },
   title: "Ekavyu — Healthcare Platform",
   description: brandDescription,
   applicationName: "Ekavyu",

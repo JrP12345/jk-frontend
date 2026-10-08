@@ -3,6 +3,7 @@ import { facilityTypeLabel, type FacilityType } from "@/lib/facility";
 
 import { locationPath, doctorPath, hasMultipleLocations } from "@/lib/publicPaths";
 import LoadingImage from "@/components/ui/LoadingImage";
+import PublicProfileShare from "@/components/PublicProfileShare";
 import BrowseDetailSkeleton from "@/components/ui/BrowseDetailSkeleton";
 import PrintButton from "@/components/ui/PrintButton";
 
@@ -25,7 +26,7 @@ import { getPublicBookingStatus, type PublicBookingStatus } from "@/lib/publicBo
 import { useAuthStore } from "@/store/authStore";
 import { Card, CardContent, CardHeader, CardTitle, Button, Modal, Input, Select, useToast, Badge, Breadcrumbs, LoadingState, SkeletonForm } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
-import { AlertCircle, MapPin, Phone, Clock, Building2, Calendar, ExternalLink, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, Star, UserCheck, User, Smartphone, Share2, Mail, FileText, CalendarOff, Camera, X, ChevronLeft, MessageSquare, Search } from "lucide-react";
+import { AlertCircle, MapPin, Phone, Clock, Building2, Calendar, ExternalLink, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, Star, UserCheck, User, Smartphone, Mail, FileText, CalendarOff, Camera, X, ChevronLeft, MessageSquare, Search } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { detectPatientOtpTarget } from "@/lib/patientLogin";
 import { LocationStatusBadge } from "@/components/ui/LocationStatusBadge";
@@ -1238,32 +1239,7 @@ export default function BrowseDetailClient({
 
               {/* Quick Action Buttons Bar */}
               <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap xl:shrink-0 xl:flex-nowrap">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof navigator !== "undefined" && navigator.share) {
-                      navigator.share({
-                        title: location.name,
-                        text: `Check out ${location.name} on Ekavyu`,
-                        url: window.location.href,
-                      }).catch(() => {});
-                    } else if (typeof navigator !== "undefined" && navigator.clipboard) {
-                      navigator.clipboard.writeText(window.location.href);
-                      toast({
-                        title: "Link Copied",
-                        description: "Location profile link copied to clipboard",
-                        variant: "success",
-                        duration: 2500,
-                      });
-                    }
-                  }}
-                  className="inline-flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-text shadow-2xs hover:bg-surface-hover cursor-pointer"
-                  title="Share Location Profile"
-                  aria-label="Share Location Profile"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
-                  <span>{"Share"}</span>
-                </button>
+                <PublicProfileShare title={location.name} path={locationPath(location)} />
                 {directionsUrl && (
                   <a
                     href={directionsUrl}

@@ -4,3 +4,10 @@ node_modules
 .env.*
 !.env.example
 *.log
+
+# Keep nested environment files and private keys out of build layers.
+**/.env
+**/.env.*
+**/keys/
+**/*.pem
+**/*.key

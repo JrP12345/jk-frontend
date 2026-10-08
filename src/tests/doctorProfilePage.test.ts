@@ -8,8 +8,8 @@ it("loads the current doctor profile representation", async () => {
   expect(await getDoctor("asha", "care")).toMatchObject({ ...profile, name: "Dr. Asha" });
   expect(request).toHaveBeenCalledTimes(1);
 });
-it("returns an unavailable profile when the profile API fails", async () => {
-  const request = vi.fn().mockResolvedValue({ ok: false });
+it("returns an unavailable profile when the profile API returns 404", async () => {
+  const request = vi.fn().mockResolvedValue({ ok: false, status: 404 });
   vi.stubGlobal("fetch", request);
   expect(await getDoctor("asha", "care")).toBeNull();
   expect(request).toHaveBeenCalledTimes(1);

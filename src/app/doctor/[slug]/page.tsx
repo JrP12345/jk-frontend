@@ -2,6 +2,12 @@ import { locationPath, doctorPath, hasMultipleLocations } from "@/lib/publicPath
 import { facilityTypeLabel, type FacilityType } from "@/lib/facility";
 import LoadingImage from "@/components/ui/LoadingImage";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { getPublicProfile, publicBackendUrl } from "@/lib/publicProfile";
+import { profileMetadata, publicImageUrl } from "@/lib/publicSeo";
+import { absolutePublicUrl } from "@/lib/siteUrl";
+import PublicStructuredData from "@/components/PublicStructuredData";
+import PublicProfileShare from "@/components/PublicProfileShare";
 import { Suspense, cache } from "react";
 import { LoadingState, SkeletonForm } from "@/components/ui";
 import Link from "next/link";
@@ -35,31 +41,18 @@ type DoctorProfile = {
   }>;
 };
 
-function backendUrl() {
-  return process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_BACKEND_URL ||
-    process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") || "http://localhost:5000";
-}
-
 function doctorDisplayName(name: string) {
   return /^Dr\.?\s/i.test(name) ? name : `Dr. ${name}`;
 }
 
 export const getDoctor = cache(async function getDoctor(slug: string, locationSlug?: string): Promise<DoctorProfile | null> {
-  try {
-    const response = await fetch(`${backendUrl()}/api/public/doctors/${encodeURIComponent(slug)}/profile${locationSlug ? `?location=${encodeURIComponent(locationSlug)}` : ""}`, {
-      cache: "no-store", signal: AbortSignal.timeout(3000),
-    });
-    if (response.ok) {
-      const result = await response.json();
-      if (result.data) return { ...result.data, name: doctorDisplayName(result.data.name) };
-    }
-  } catch { /* A failed profile request renders the recovery view. */ }
-  return null;
+  const data = await getPublicProfile(`doctors/${encodeURIComponent(slug)}/profile${locationSlug ? `?location=${encodeURIComponent(locationSlug)}` : ""}`);
+  return data ? { ...data, name: doctorDisplayName(data.name) } : null;
 });
 
 async function getLocationForBooking(locationSlug: string, doctorSlug: string): Promise<LocationDetail | null> {
   try {
-    const response = await fetch(`${backendUrl()}/api/public/locations/${encodeURIComponent(locationSlug)}?doctorId=${encodeURIComponent(doctorSlug)}`, {
+    const response = await fetch(`${publicBackendUrl()}/api/public/locations/${encodeURIComponent(locationSlug)}?doctorId=${encodeURIComponent(doctorSlug)}`, {
       cache: "no-store", signal: AbortSignal.timeout(3000),
     });
     if (!response.ok) return null;
@@ -82,10 +75,9 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
   const query = await searchParams;
   const locationSlug = query.location;
   const doctor = await getDoctor(slug, locationSlug);
-  return {
-    title: doctor ? `${doctor.name} | Book an appointment` : "Doctor profile unavailable",
-    description: doctor ? `View ${doctor.name}'s practice locations and book an appointment.` : "This doctor profile is unavailable.",
-  };
+  if (!doctor) notFound();
+  const location = doctor.locations.find((item) => item.slug === locationSlug) || doctor.locations[0];
+  return profileMetadata(`${doctor.name}${location ? ` at ${location.name}` : ""} | Ekavyu`, `${doctor.specialization ? `${doctor.specialization}. ` : ""}View ${doctor.name}'s practice details${location ? ` at ${location.name}, ${location.city}` : ""} and appointment options.`, location ? doctorPath(doctor, location) : `/doctor/${encodeURIComponent(slug)}`, doctor.imageUrl);
 }
 
 export default async function DoctorPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ location?: string; openBooking?: string }> }) {
@@ -96,13 +88,17 @@ export default async function DoctorPage({ params, searchParams }: { params: Pro
     getDoctor(slug, locationSlug),
     locationSlug ? getLocationForBooking(locationSlug, slug) : Promise.resolve(null),
   ]);
+  if (!doctor) notFound();
   const locations = doctor?.locations || [];
   const selectedLocation = locations.find((location) => location.slug === locationSlug) || locations[0];
   const bookingLocation = selectedLocation
     ? selectedLocation.slug === locationSlug ? requestedLocation : await getLocationForBooking(selectedLocation.slug!, doctor!.slug!)
     : null;
+  const profileUrl = selectedLocation ? absolutePublicUrl(doctorPath(doctor, selectedLocation)) : undefined;
+  const profileImage = publicImageUrl(doctor.imageUrl);
 
   return <div className="min-h-screen bg-surface-alt text-text">
+    <PublicStructuredData data={profileUrl ? { "@context": "https://schema.org", "@type": "ProfilePage", url: profileUrl, mainEntity: { "@type": "Person", "@id": `${profileUrl}#doctor`, name: doctor.name, url: profileUrl, ...(profileImage ? { image: profileImage } : {}), ...(doctor.description ? { description: doctor.description } : {}), workLocation: locations.map((location) => ({ "@type": "Place", name: location.name, url: absolutePublicUrl(locationPath(location)) })) } } : null} />
     <MarketplaceNavbar brand={selectedLocation ? { name: doctor && hasMultipleLocations(doctor) ? doctor.organizationName : selectedLocation.name, logoUrl: doctor?.organizationLogo || selectedLocation.logo, href: locationPath(selectedLocation) } : undefined} />
     <main className="mx-auto max-w-6xl px-4 pb-28 pt-24 sm:px-6 sm:pt-28 lg:pb-16">
       {!doctor ? <section className="rounded-3xl border border-border bg-surface p-8">
@@ -131,6 +127,7 @@ export default async function DoctorPage({ params, searchParams }: { params: Pro
                 ) : <div aria-hidden="true" className="flex h-16 w-16 sm:h-24 sm:w-24 shrink-0 items-center justify-center rounded-xl bg-primary-500/10 text-2xl font-semibold text-accent">{doctor.name.slice(0, 1)}</div>}
                 <div className="min-w-0 flex-1">
                   <h1 className="text-xl font-semibold sm:text-2xl break-words">{doctor.name}</h1>
+                  {selectedLocation && <div className="mt-3"><PublicProfileShare title={doctor.name} path={doctorPath(doctor, selectedLocation)} /></div>}
                   <p className="mt-1 text-base font-medium text-accent">{doctor.specialization}</p>
                   <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-secondary">
                     {doctor.qualification && <span>{doctor.qualification}</span>}

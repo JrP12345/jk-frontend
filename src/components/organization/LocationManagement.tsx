@@ -6,16 +6,16 @@ import Link from "next/link";
 import api from "@/lib/api";
 import type { LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
 import { getPublicBookingStatus } from "@/lib/publicBooking";
-import { locationPath } from "@/lib/publicPaths";
+import { locationPath, doctorPath } from "@/lib/publicPaths";
+import GoogleBookingLinks from "@/components/organization/GoogleBookingLinks";
 import { parseWeeklySchedule } from "@/lib/timing/locationStatus";
 import { parseLocationCoordinates } from "@/lib/geo/locationCoordinates";
 import { Alert, Card, CardContent, Table, Button, Modal, Input, useToast, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, LoadingState, SkeletonTable, Dropdown, StatCard, cn } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { useOrganizationLocations } from "@/hooks/useOrganizationLocations";
-import { organizationPath } from "@/services/organization.service";
+import { organizationPath, saveWithBranding } from "@/services/organization.service";
 import { facilityTypeLabel, facilityTypeOptions, type FacilityType } from "@/lib/facility";
 import { hasAnyPermission, isRootUser } from "@/lib/permissions";
-import { useR2Upload } from "@/hooks/useR2Upload";
 import { RotateCw, Plus, Building2, MapPin, Phone, Mail, QrCode, MoreHorizontal, Edit3, Trash2, Archive, RotateCcw, Clock, Link2 } from "lucide-react";
 import LocationQrPosterModal from "@/components/dashboard/LocationQrPosterModal";
 
@@ -23,7 +23,9 @@ const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 interface Location {
   id: string;
+  organizationId?: string;
   slug?: string;
+  isPublished?: boolean;
   name: string;
   city: string;
   facilityType?: FacilityType | null;
@@ -34,6 +36,7 @@ interface Location {
   description?: string;
   brandColor?: string;
   image_url?: string;
+  logo?: string;
   timings?: string;
   amenities?: string[];
   upiVpa?: string;
@@ -56,6 +59,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [qrLocation, setQrLocation] = useState<Location | null>(null);
   const [websiteLocation, setWebsiteLocation] = useState<Location | null>(null);
+  const [publicationSaving, setPublicationSaving] = useState(false);
   const [websitePublicResponse, setWebsitePublicResponse] = useState<{ locationId: string; data: LocationDetail } | null>(null);
   const [websiteDetailLoadingFor, setWebsiteDetailLoadingFor] = useState<string | null>(null);
   const [websiteDetailErrorFor, setWebsiteDetailErrorFor] = useState<string | null>(null);
@@ -66,7 +70,6 @@ export default function LocationManagement({ organizationId, embedded = false }:
   const [activeTab, setActiveTab] = useState<"active" | "archived">("active");
   const [reactivatingId, setReactivatingId] = useState<string | null>(null);
   const { toast } = useToast();
-  const { uploadFile } = useR2Upload();
   const websitePublicDetail = websitePublicResponse && websitePublicResponse.locationId === websiteLocation?.id ? websitePublicResponse.data : null;
   const websiteUrl = websitePublicDetail && typeof window !== "undefined" ? `${window.location.origin}${locationPath(websitePublicDetail)}` : "";
   const websiteDetailLoading = websiteDetailLoadingFor === websiteLocation?.id;
@@ -78,7 +81,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
     { label: "At least one doctor is listed", complete: websitePublicDetail.doctors.length > 0 },
     { label: "Online appointments are enabled", complete: publicBookingStatus === "check_availability" },
     { label: "A contact number is listed", complete: Boolean(websitePublicDetail.phone || websitePublicDetail.organization?.phone) },
-    { label: "The location address is listed", complete: Boolean(websitePublicDetail.address || websitePublicDetail.organization?.address) },
+    { label: "The location address is listed", complete: Boolean(websitePublicDetail.address) },
     { label: "Opening hours are listed", complete: parseWeeklySchedule(websitePublicDetail.timings).hasExplicitSchedule },
     { label: "Consultation fees are clear", complete: websitePublicDetail.doctors.length > 0 && websitePublicDetail.doctors.every((doctor) => doctor.feeType === "free" || doctor.feeType === "post_consultation" || doctor.fees > 0) },
   ] : [];
@@ -101,7 +104,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
     if (!websiteLocation) return;
     const controller = new AbortController();
     api.get(scopedPath(`/public/locations/${encodeURIComponent(websiteLocation.slug || "")}`), { signal: controller.signal })
-      .then((response) => { if (!controller.signal.aborted) { if (response.data?.data) setWebsitePublicResponse({ locationId: websiteLocation.id, data: response.data.data }); else setWebsiteDetailErrorFor(websiteLocation.id); } })
+      .then((response) => { if (!controller.signal.aborted) { const data = response.data?.data; if (data?.slug === websiteLocation.slug && Array.isArray(data?.doctors)) setWebsitePublicResponse({ locationId: websiteLocation.id, data }); else setWebsiteDetailErrorFor(websiteLocation.id); } })
       .catch(() => { if (!controller.signal.aborted) setWebsiteDetailErrorFor(websiteLocation.id); })
       .finally(() => { if (!controller.signal.aborted) setWebsiteDetailLoadingFor(null); });
     return () => controller.abort();
@@ -109,10 +112,23 @@ export default function LocationManagement({ organizationId, embedded = false }:
   const copyWebsiteText = async (value: string, title: string) => {
     try {
       await navigator.clipboard.writeText(value);
-      toast({ title, description: "Ready to paste into your location website.", variant: "success" });
+      toast({ title, description: "Ready to paste into your website or business profile.", variant: "success" });
     } catch {
       toast({ title: "Could not copy", description: "Select and copy the text manually.", variant: "error" });
     }
+  };
+  const changePublication = async () => {
+    if (!websiteLocation || publicationSaving) return;
+    setPublicationSaving(true);
+    try {
+      const isPublished = websiteLocation.isPublished === false;
+      await api.put(organizationPath(`/onboarding/locations/${websiteLocation.id}/publication`, organizationId || websiteLocation.organizationId), { isPublished });
+      toast({ title: isPublished ? "Public page published" : "Public page unpublished", description: isPublished ? "Review your public details before sharing." : "Remove the booking link from your website and Google Business Profile.", variant: "success" });
+      setWebsiteLocation(null);
+      await fetchLocations(true);
+    } catch {
+      toast({ title: "Could not change publication", description: "Please try again.", variant: "error" });
+    } finally { setPublicationSaving(false); }
   };
 
   // Load organizations list for Root Super-Admin selection
@@ -232,6 +248,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
     setEditingId(row.id);
     setFormData({
       ...row,
+      image_url: row.logo || row.image_url || null,
       facilityType: row.facilityType || "",
       amenities: row.amenities || [],
       upiVpa: row.upiVpa || "",
@@ -274,20 +291,14 @@ export default function LocationManagement({ organizationId, embedded = false }:
       delete finalData.mapCoordinates;
       if (!finalData.facilityType) delete finalData.facilityType; // Leave unclassified locations unclassified during unrelated edits.
 
-      // Handle deferred image upload
-      if (finalData.image_url instanceof File) {
-        toast({ title: "Uploading...", description: "Uploading logo to Cloudflare R2", variant: "default" });
-        const { objectKey } = await uploadFile(finalData.image_url);
-        finalData.image_url = objectKey;
-      }
-
-      if (editingId) {
-        await api.put(scopedPath(`/onboarding/locations/${editingId}`), finalData);
-        toast({ title: "Success", description: "Location updated successfully!", variant: "success" });
-      } else {
-        await api.post(scopedPath("/onboarding/locations"), finalData);
-        toast({ title: "Success", description: "Location added successfully!", variant: "success" });
-      }
+      await saveWithBranding([finalData.image_url], organizationId || finalData.organizationId || user?.organization_id, async ([reference]) => {
+        finalData.image_url = reference;
+        // An explicit logo also makes clearing an existing image unambiguous.
+        finalData.logo = reference;
+        if (editingId) await api.put(scopedPath(`/onboarding/locations/${editingId}`), finalData);
+        else await api.post(scopedPath("/onboarding/locations"), finalData);
+      });
+      toast({ title: "Success", description: editingId ? "Location updated successfully!" : "Location added successfully!", variant: "success" });
       setIsModalOpen(false);
       await reloadLocations();
     } catch (err: any) {
@@ -1039,6 +1050,10 @@ export default function LocationManagement({ organizationId, embedded = false }:
                 value={formData.timings || ""}
                 onChange={(val) => setFormData({ ...formData, timings: val })}
               />
+              <div className="rounded-xl border border-border bg-surface-alt p-4">
+                <Checkbox label="Publish location on Ekavyu" checked={formData.isPublished !== false} onChange={(event) => setFormData({ ...formData, isPublished: event.target.checked })} />
+                <p className="mt-2 text-xs text-text-secondary">Published locations appear in the directory and can be shared. Unpublishing hides the public page, doctor links at this location and patient booking. Staff workflows and existing appointments remain available. Remove external appointment links when unpublishing.</p>
+              </div>
             </div>
           </div>
 
@@ -1104,9 +1119,10 @@ export default function LocationManagement({ organizationId, embedded = false }:
         onClose={() => setQrLocation(null)}
         location={qrLocation}
       />
-      <Modal open={!!websiteLocation} onClose={() => setWebsiteLocation(null)} title="Website booking" description="Connect your existing website to this location's hosted booking page.">
+      <Modal open={!!websiteLocation} onClose={() => setWebsiteLocation(null)} title="Website booking" description="Share this location on your website, Google Search and Maps.">
         <div className="space-y-4 text-sm">
           <p className="text-text-secondary">Add this link to your website. Patients can view location information and check appointments when online booking is available.</p>
+          <div className="rounded-xl border border-border p-3"><p className="font-semibold">{websiteLocation?.isPublished === false ? "Public page unpublished" : "Public page published"}</p><p className="mt-1 text-xs text-text-secondary">You can change publication even when your plan has expired. Existing appointments and staff access are preserved.</p>{canManageLocations && <Button className="mt-3" size="sm" variant="outline" loading={publicationSaving} onClick={changePublication}>{websiteLocation?.isPublished === false ? "Publish page" : "Unpublish page"}</Button>}</div>
           <div className="rounded-xl border border-border bg-surface-alt p-3" aria-live="polite">
             <p className="font-semibold text-text">Public page readiness</p>
             {websiteDetailLoading && <p className="mt-2 text-xs text-text-secondary">Checking the public page…</p>}
@@ -1117,9 +1133,10 @@ export default function LocationManagement({ organizationId, embedded = false }:
               {websiteChecklist.some((item) => !item.complete) && <div className="mt-3 flex flex-wrap gap-3"><Button size="sm" variant="outline" onClick={() => { if (websiteLocation) { openEditModal(websiteLocation); setWebsiteLocation(null); } }}>Edit location details</Button><Link href="/dashboard/staff" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent hover:underline">Manage doctors</Link></div>}
             </>}
           </div>
-          <div><label className="mb-1 block text-xs font-semibold text-text">Booking link</label><div className="flex gap-2"><input readOnly value={websiteUrl} className="min-w-0 flex-1 rounded-lg border border-border bg-surface-alt px-3 text-xs text-text" /><Button size="sm" disabled={!websiteUrl} onClick={() => copyWebsiteText(websiteUrl, "Link copied")}>Copy link</Button></div></div>
-          <div><label className="mb-1 block text-xs font-semibold text-text">Paste-in HTML button</label><textarea readOnly value={buttonSnippet} rows={4} className="w-full rounded-lg border border-border bg-surface-alt p-3 font-mono text-xs text-text" /><Button size="sm" variant="outline" disabled={!buttonSnippet} onClick={() => copyWebsiteText(buttonSnippet, "Button code copied")}>Copy button code</Button></div>
-          <p className="text-xs text-text-muted">The public page stays available while the location is active. If online appointments are paused, patients see contact options. No script, iframe, or website rebuild is required.</p>
+          <div><label htmlFor="location-booking-url" className="mb-1 block text-xs font-semibold text-text">Booking link</label><div className="flex gap-2"><input id="location-booking-url" readOnly value={websiteUrl} className="min-w-0 flex-1 rounded-lg border border-border bg-surface-alt px-3 text-xs text-text" /><Button size="sm" disabled={!websiteUrl} onClick={() => copyWebsiteText(websiteUrl, "Link copied")}>Copy link</Button></div></div>
+          <div><label htmlFor="location-booking-html" className="mb-1 block text-xs font-semibold text-text">Paste-in HTML button</label><textarea id="location-booking-html" readOnly value={buttonSnippet} rows={4} className="w-full rounded-lg border border-border bg-surface-alt p-3 font-mono text-xs text-text" /><Button size="sm" variant="outline" disabled={!buttonSnippet} onClick={() => copyWebsiteText(buttonSnippet, "Button code copied")}>Copy button code</Button></div>
+          <GoogleBookingLinks locationUrl={websiteUrl} available={publicBookingStatus === "check_availability"} doctors={websitePublicDetail?.doctors.map((doctor) => ({ id: doctor.id, name: doctor.name, url: `${window.location.origin}${doctorPath(doctor, websitePublicDetail)}` })) || []} onCopy={copyWebsiteText} />
+          <p className="text-xs text-text-muted">The public page stays available while the location is active and published. If online appointments are paused, patients see contact options. No script, iframe, or website rebuild is required.</p>
         </div>
       </Modal>
     </div>
