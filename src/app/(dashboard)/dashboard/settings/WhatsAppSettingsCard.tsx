@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Toggle, Badge, useToast, cn, SkeletonForm, LoadingState } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Toggle, Badge, useToast, cn, SkeletonForm, LoadingState, ProgressBar } from "@/components/ui";
 import Modal from "@/components/ui/Modal";
 import WhatsAppConnectionPanel from "./WhatsAppConnectionPanel";
 import { whatsappSettingsService } from "@/services/whatsappSettings.service";
@@ -174,7 +174,7 @@ export default function WhatsAppSettingsCard({
                 variant="secondary"
                 size="sm"
                 onClick={() => setIsTopUpModalOpen(true)}
-                className="font-semibold rounded-xl gap-1.5 cursor-pointer shadow-xs text-success-text dark:text-success-text border-success/30 hover:bg-success/10 flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
+                className="font-semibold gap-1.5 cursor-pointer shadow-xs text-success-text dark:text-success-text border-success/30 hover:bg-success/10 flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <Zap className="w-3.5 h-3.5 fill-current" />
                 Top-Up Credits
@@ -184,7 +184,7 @@ export default function WhatsAppSettingsCard({
                 size="sm"
                 onClick={() => saveMutation.mutate()}
                 loading={saveMutation.isPending}
-                className="font-semibold rounded-xl gap-1.5 cursor-pointer shadow-xs flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
+                className="font-semibold gap-1.5 cursor-pointer flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <Save className="w-3.5 h-3.5" />
                 Save Settings
@@ -210,7 +210,7 @@ export default function WhatsAppSettingsCard({
                 variant="primary"
                 size="sm"
                 onClick={() => setIsTopUpModalOpen(true)}
-                className="shrink-0 text-xs rounded-xl py-1 px-3 bg-warning hover:bg-warning text-background font-semibold cursor-pointer"
+                className="shrink-0 text-xs py-1 px-3 bg-warning hover:bg-warning text-background font-semibold cursor-pointer"
               >
                 Add Credits
               </Button>
@@ -243,17 +243,7 @@ export default function WhatsAppSettingsCard({
                 </span>
               </div>
               {/* Progress Bar */}
-              <div className="w-full h-2 rounded-full bg-border/80 overflow-hidden">
-                <div
-                  className={cn(
-                    "h-full transition-all duration-300 rounded-full",
-                    usagePercentage >= 90
-                      ? "bg-warning"
-                      : "bg-primary  "
-                  )}
-                  style={{ width: `${usagePercentage}%` }}
-                />
-              </div>
+              <ProgressBar value={usagePercentage} size="sm" color={usagePercentage >= 90 ? "warning" : "primary"} label="Monthly WhatsApp credit usage" />
               <p className="text-[11px] text-text-muted">
                 Resets on the 1st of every calendar month
               </p>
@@ -599,7 +589,7 @@ export default function WhatsAppSettingsCard({
                 variant="secondary"
                 size="sm"
                 onClick={() => setIsTopUpModalOpen(false)}
-                className="rounded-xl font-semibold cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+                className="font-semibold cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 Cancel
               </Button>
@@ -608,7 +598,7 @@ export default function WhatsAppSettingsCard({
                 size="sm"
                 loading={topUpMutation.isPending}
                 onClick={() => topUpMutation.mutate(selectedPack)}
-                className="rounded-xl font-semibold gap-1.5 cursor-pointer shadow-xs bg-success hover:bg-success text-background w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+                className="font-semibold gap-1.5 cursor-pointer bg-success hover:bg-success text-background w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <Zap className="w-3.5 h-3.5 fill-current" />
                 Confirm & Top-Up

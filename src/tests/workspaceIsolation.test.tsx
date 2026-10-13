@@ -53,6 +53,25 @@ it("keeps the homepage clear of the install offer and restores it on the directo
 });
 
 describe("Effective grants and workspace isolation", () => {
+  it("accepts a verified patient session when browser storage is blocked", async () => {
+    const patient: User = { ...user(), role: "patient" };
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => { throw new DOMException("Blocked", "SecurityError"); });
+    expect(() => useAuthStore.getState().login(patient)).not.toThrow();
+    expect(useAuthStore.getState()).toMatchObject({ user: patient, isAuthenticated: true });
+    vi.mocked(api.get).mockResolvedValue(response({ user: patient }));
+    await useAuthStore.getState().checkAuth();
+    expect(useAuthStore.getState()).toMatchObject({ user: patient, isAuthenticated: true });
+  });
+
+  it("finishes logout when session-storage cleanup is blocked", async () => {
+    useAuthStore.getState().login(user());
+    vi.mocked(api.post).mockResolvedValue(response(null));
+    vi.spyOn(Storage.prototype, "clear").mockImplementation(() => { throw new DOMException("Blocked", "SecurityError"); });
+    await expect(useAuthStore.getState().logout()).resolves.toBeUndefined();
+    expect(api.post).toHaveBeenCalledWith("/auth/logout", {}, { timeout: 3000 });
+    expect(useAuthStore.getState()).toMatchObject({ user: null, isAuthenticated: false });
+  });
+
   it("uses explicit admin grants, preserves platform root authority and family self-service", () => {
     expect(hasAnyPermission(user("org-a", []), "MANAGE_BILLING")).toBe(false);
     expect(hasRoutePermission("/dashboard/billing", "admin", [])).toBe(false);

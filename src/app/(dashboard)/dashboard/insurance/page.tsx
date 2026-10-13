@@ -466,7 +466,7 @@ export default function InsurancePage() {
               size="sm"
               onClick={fetchData}
               disabled={loading}
-              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors cursor-pointer"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] text-xs font-semibold transition-colors cursor-pointer"
              loading={loading}>
               <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh Desk
@@ -477,7 +477,7 @@ export default function InsurancePage() {
                 variant="primary"
                 size="sm"
                 onClick={() => setIsSubmitModalOpen(true)}
-                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs cursor-pointer"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Submit Pre-Auth Request
@@ -487,7 +487,7 @@ export default function InsurancePage() {
                 variant="primary"
                 size="sm"
                 onClick={() => setIsClaimModalOpen(true)}
-                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs cursor-pointer"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Submit Insurance Claim

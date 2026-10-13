@@ -136,6 +136,7 @@ interface TrackerData {
     appointmentTime: string;
     status: string;
   } | null;
+  followUpRecommendation?: { status: string; dueAt: string | null } | null;
   billing?: BillingSummary | null;
   investigationResults?: Array<{
     testId?: string;
@@ -285,9 +286,11 @@ export default function PublicLiveQueueTracker() {
         reason: "Patient selected choice via live tracker",
       }, { headers: getTrackerHeaders() });
       toast({
-        title: disruptionActionType === "reschedule" ? "Rescheduled with Priority" : "Appointment Cancelled",
+        title: disruptionActionType === "reschedule" ? "Reschedule recorded" : "Appointment Cancelled",
         description: disruptionActionType === "reschedule"
-          ? "Your appointment has been booked for the selected date with high priority."
+          ? response.data.data?.newAppt?.status === "pending_payment"
+            ? "The replacement booking is recorded. Payment is required before confirmation."
+            : "The replacement booking is recorded. Review its current status with reception."
           : response.data.data?.paymentStatus === "refunded"
             ? "Your appointment is cancelled and the refund has been processed."
             : response.data.data?.paymentStatus === "refund_pending"
@@ -734,7 +737,7 @@ export default function PublicLiveQueueTracker() {
               type="button"
               onClick={() => fetchTrackerData(false)}
               disabled={refreshing}
-              className="p-2.5 rounded-xl bg-surface border border-border/70 hover:bg-surface-alt transition-colors text-text-muted hover:text-text cursor-pointer min-h-11 min-w-11 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              className="p-2.5 bg-surface border border-border/70 hover:bg-surface-alt transition-colors text-text-muted hover:text-text cursor-pointer min-h-11 min-w-11 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               title="Refresh Queue"
               aria-label="Refresh Queue Data"
              loading={refreshing}>
@@ -896,8 +899,9 @@ export default function PublicLiveQueueTracker() {
                 </p>
                 {data.disruptionResponseDeadline && (
                   <p className="mt-2 text-[11px] font-semibold text-danger-text dark:text-danger-text">
-                    ⏱ Your appointment will be cancelled if no action is taken by{" "}
+                    Reception will review unanswered requests after{" "}
                     {new Date(data.disruptionResponseDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.
+                    {' '}Contact reception if you need help. Your booking will not be cancelled automatically.
                   </p>
                 )}
               </div>
@@ -906,7 +910,7 @@ export default function PublicLiveQueueTracker() {
               <Button
                 variant="primary"
                 size="sm"
-                className="w-full sm:w-auto bg-primary-600 hover:bg-primary-700 text-brand-mist font-semibold cursor-pointer"
+                className="w-full sm:w-auto bg-primary-600 hover:bg-primary-700 font-semibold cursor-pointer"
                 onClick={() => {
                   setDisruptionActionType("reschedule");
                   setIsDisruptionModalOpen(true);
@@ -1275,27 +1279,28 @@ export default function PublicLiveQueueTracker() {
               )}
 
               {/* Follow-up recommendation & Confirmed Booking Card */}
-              {data.consultationSummary?.followUp && (
+              {(data.consultationSummary?.followUp || data.followUpRecommendation || data.followUpAppointment) && (
                 <div className="p-3.5 rounded-2xl bg-success/10 border border-success/20 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 text-success-text dark:text-success-text font-bold text-xs">
                       <Calendar className="w-3.5 h-3.5" />
-                      Follow-Up Scheduled
+                      Care follow-up
                     </div>
                     {data.followUpAppointment && (
                       <Badge variant="success" size="sm" dot className="font-bold text-[10px]">
-                        Token #{data.followUpAppointment.tokenNumber} Confirmed
+                        Token #{data.followUpAppointment.tokenNumber} · {data.followUpAppointment.status === "pending_payment" ? "Payment pending" : data.followUpAppointment.status.replaceAll("-", " ").replaceAll("_", " ")}
                       </Badge>
                     )}
                   </div>
                   <p className="text-xs text-success-text dark:text-success-text">
-                    Target Date: <strong>{new Date(data.consultationSummary.followUp.date).toLocaleDateString()}</strong>
+                    {(data.followUpRecommendation?.dueAt || data.consultationSummary?.followUp?.date) && <>Recommended date: <strong>{new Date(data.followUpRecommendation?.dueAt || data.consultationSummary!.followUp!.date).toLocaleDateString()}</strong></>}
+                    {!data.followUpAppointment && <span className="block">{data.followUpRecommendation?.status === "review_required" ? "Contact the clinic to review the recommended timing." : "Contact the clinic to arrange the recommended follow-up."}</span>}
                     {data.followUpAppointment && (
                       <span className="block text-[11px] font-semibold text-success-text dark:text-success-text mt-1">
-                        ✅ Your review consultation is scheduled in the doctor's calendar (Token #{data.followUpAppointment.tokenNumber}).
+                        {data.followUpAppointment.status === "pending_payment" ? "Payment is required before this booking is confirmed." : `Booking status: ${data.followUpAppointment.status.replaceAll("-", " ").replaceAll("_", " ")}.`}
                       </span>
                     )}
-                    {data.consultationSummary.followUp.instructions && (
+                    {data.consultationSummary?.followUp?.instructions && (
                       <span className="block mt-1 text-[11px] opacity-90">
                         Instructions: {data.consultationSummary.followUp.instructions}
                       </span>
@@ -1696,7 +1701,7 @@ export default function PublicLiveQueueTracker() {
               type="button"
               variant="outline"
               size="md"
-              className="flex-1 rounded-xl min-h-[44px] flex items-center justify-center"
+              className="flex-1 min-h-[44px] flex items-center justify-center"
               onClick={() => setIsPayModalOpen(false)}
             >
               Cancel
@@ -1705,7 +1710,7 @@ export default function PublicLiveQueueTracker() {
               type="button"
               variant="primary"
               size="md"
-              className="flex-1 rounded-xl font-bold shadow-md min-h-[44px] flex items-center justify-center"
+              className="flex-1 font-bold shadow-md min-h-[44px] flex items-center justify-center"
               onClick={() => {
                 setIsPayModalOpen(false);
                 toast({
@@ -1758,7 +1763,7 @@ export default function PublicLiveQueueTracker() {
               type="button"
               variant="outline"
               size="md"
-              className="flex-1 rounded-xl min-h-[44px] flex items-center justify-center"
+              className="flex-1 min-h-[44px] flex items-center justify-center"
               onClick={() => setIsDisruptionModalOpen(false)}
             >
               Close

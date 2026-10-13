@@ -277,7 +277,7 @@ function OperationalDashboard() {
               size="sm"
               onClick={fetchDashboardData}
               disabled={isRefreshing}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors flex-1 sm:flex-initial justify-center min-h-[44px] sm:min-h-[36px]"
+              className="text-xs font-semibold transition-colors flex-1 sm:flex-initial justify-center min-h-[44px] sm:min-h-[36px]"
              loading={isRefreshing}>
               <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary " />
               Refresh
@@ -288,7 +288,7 @@ function OperationalDashboard() {
                 variant="primary"
                 size="sm"
                 onClick={() => router.push("/dashboard/appointments")}
-                className="rounded-xl text-xs font-semibold shadow-xs flex-1 sm:flex-initial justify-center min-h-[44px] sm:min-h-[36px]"
+                className="text-xs font-semibold flex-1 sm:flex-initial justify-center min-h-[44px] sm:min-h-[36px]"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 New Booking
@@ -300,7 +300,7 @@ function OperationalDashboard() {
                 variant="primary"
                 size="sm"
                 onClick={() => router.push("/browse")}
-                className="rounded-xl text-xs font-semibold shadow-xs flex-1 sm:flex-initial justify-center min-h-[44px] sm:min-h-[36px]"
+                className="text-xs font-semibold flex-1 sm:flex-initial justify-center min-h-[44px] sm:min-h-[36px]"
               >
                 <CalendarPlus className="h-3.5 w-3.5 mr-1.5" />
                 Book Consultation
@@ -316,18 +316,14 @@ function OperationalDashboard() {
         adminStats.doctors + adminStats.receptionists === 0 &&
         !setupDismissed && (
           <div className="relative overflow-hidden rounded-2xl border border-primary-500/20 bg-primary-500/5 p-5 sm:p-6 shadow-xs animate-fade-in">
-            <button
-              type="button"
-              onClick={() => {
+            <Button type="button" onClick={() => {
                 setSetupDismissed(true);
                 try {
                   localStorage.setItem("anant_setup_dismissed", "1");
                 } catch {}
-              }}
-              className="absolute top-3 right-3 text-text-muted hover:text-text text-xs font-semibold cursor-pointer"
-            >
+              }} variant="ghost" size="xs" className="absolute top-3 right-3">
               Dismiss
-            </button>
+            </Button>
 
             <div className="space-y-4">
               <div className="space-y-1">
@@ -369,7 +365,7 @@ function OperationalDashboard() {
                   variant="primary"
                   size="sm"
                   onClick={() => router.push("/dashboard/staff")}
-                  className="rounded-xl text-xs font-semibold min-h-[36px] shadow-xs"
+                  className="text-xs font-semibold min-h-[36px]"
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />
                   Add Team Member
@@ -378,7 +374,7 @@ function OperationalDashboard() {
                   variant="outline"
                   size="sm"
                   onClick={() => router.push("/dashboard/settings")}
-                  className="rounded-xl text-xs font-semibold min-h-[36px]"
+                  className="text-xs font-semibold min-h-[36px]"
                 >
                   Configure Practice
                 </Button>

@@ -7,7 +7,7 @@ import { useUnsavedClinicalChanges } from "@/hooks/useUnsavedClinicalChanges";
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { SOAPService } from "@/services/soap.service";
-import { Modal, Button, Badge, Spinner, Textarea, Select, Dropdown } from "@/components/ui";
+import { Modal, Button, Badge, Spinner, Textarea, Select, Dropdown, Input } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "./UnifiedDocumentModal";
 import { PreviousVisitsSidebar } from "./PreviousVisitsSidebar";
 import { Sparkles, History, Save, Lock, CheckCircle2, Edit3, FileSpreadsheet, ChevronDown } from "lucide-react";
@@ -512,7 +512,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
                 variant="primary"
                 disabled={generatingAI}
                 onClick={handleGenerateAISOAP}
-                className="font-semibold rounded-xl shadow-xs min-h-[38px]"
+                className="font-semibold min-h-[38px]"
                loading={generatingAI}>
                 <Sparkles className="w-3.5 h-3.5 mr-1.5" />
                 <span>{generatingAI ? "Generating AI SOAP..." : "AI Auto-Draft SOAP"}</span>
@@ -523,7 +523,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
                   <Button
                     size="sm"
                     variant="outline"
-                    className="font-semibold rounded-xl shadow-xs text-xs gap-1.5 hover:bg-surface-hover min-h-[38px]"
+                    className="font-semibold shadow-xs text-xs gap-1.5 min-h-[38px]"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-text-secondary" />
                     <span>Load Clinical Template...</span>
@@ -556,7 +556,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
             size="sm"
             variant="outline"
             onClick={handleFetchHistory}
-            className="rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs min-h-[38px]"
+            className="text-xs font-semibold shadow-xs min-h-[38px]"
           >
             <History className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
             Version History
@@ -569,7 +569,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
                 variant="primary"
                 onClick={handleSaveDraft}
                 disabled={loading || signing}
-                className="font-semibold rounded-xl shadow-xs min-h-[38px]"
+                className="font-semibold min-h-[38px]"
                loading={loading}>
                 <Save className="w-3.5 h-3.5 mr-1.5" />
                 {loading ? "Saving..." : "Save Draft SOAP"}
@@ -629,37 +629,16 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
             S — Subjective (Patient Complaints)
           </h3>
           <div>
-            <label className="text-xs font-semibold text-text-secondary">Chief Complaint *</label>
-            <input
-              type="text"
-              placeholder="e.g. High fever, productive cough for 3 days"
-              value={chiefComplaint}
-              onChange={(e) => setChiefComplaint(e.target.value)}
-              disabled={isSigned}
-              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
-            />
+
+            <Input type="text" placeholder="e.g. High fever, productive cough for 3 days" value={chiefComplaint} onChange={(e) => setChiefComplaint(e.target.value)} disabled={isSigned} label="Chief Complaint *" size="sm" />
           </div>
           <div>
-            <label className="text-xs font-semibold text-text-secondary">Symptoms (comma-separated)</label>
-            <input
-              type="text"
-              placeholder="Fever, Cough, Myalgia"
-              value={symptomsText}
-              onChange={(e) => setSymptomsText(e.target.value)}
-              disabled={isSigned}
-              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
-            />
+
+            <Input type="text" placeholder="Fever, Cough, Myalgia" value={symptomsText} onChange={(e) => setSymptomsText(e.target.value)} disabled={isSigned} label="Symptoms (comma-separated)" size="sm" />
           </div>
           <div>
-            <label className="text-xs font-semibold text-text-secondary">History of Present Illness (HPI)</label>
-            <textarea
-              rows={2}
-              placeholder="Detailed clinical history..."
-              value={historyOfPresentIllness}
-              onChange={(e) => setHistoryOfPresentIllness(e.target.value)}
-              disabled={isSigned}
-              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
-            />
+
+            <Textarea rows={2} placeholder="Detailed clinical history..." value={historyOfPresentIllness} onChange={(e) => setHistoryOfPresentIllness(e.target.value)} disabled={isSigned} label="History of Present Illness (HPI)" />
           </div>
         </div>
 
@@ -671,36 +650,29 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             <div>
-              <label className="text-[11px] font-semibold text-text-secondary">BP Systolic</label>
-              <input type="number" placeholder="120" value={bpSystolic} onChange={(e) => setBpSystolic(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text" />
+
+              <Input type="number" placeholder="120" value={bpSystolic} onChange={(e) => setBpSystolic(e.target.value)} disabled={isSigned} label="BP Systolic" size="sm" />
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-text-secondary">BP Diastolic</label>
-              <input type="number" placeholder="80" value={bpDiastolic} onChange={(e) => setBpDiastolic(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text" />
+
+              <Input type="number" placeholder="80" value={bpDiastolic} onChange={(e) => setBpDiastolic(e.target.value)} disabled={isSigned} label="BP Diastolic" size="sm" />
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-text-secondary">Heart Rate</label>
-              <input type="number" placeholder="72" value={pulseRate} onChange={(e) => setPulseRate(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text" />
+
+              <Input type="number" placeholder="72" value={pulseRate} onChange={(e) => setPulseRate(e.target.value)} disabled={isSigned} label="Heart Rate" size="sm" />
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-text-secondary">SpO₂ (%)</label>
-              <input type="number" placeholder="98" value={spO2} onChange={(e) => setSpO2(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text" />
+
+              <Input type="number" placeholder="98" value={spO2} onChange={(e) => setSpO2(e.target.value)} disabled={isSigned} label="SpO₂ (%)" size="sm" />
             </div>
             <div className="col-span-2 sm:col-span-1">
-              <label className="text-[11px] font-semibold text-text-secondary">Temp (°F)</label>
-              <input type="number" step="0.1" placeholder="98.6" value={temperatureF} onChange={(e) => setTemperatureF(e.target.value)} disabled={isSigned} className="w-full mt-1 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text" />
+
+              <Input type="number" step="0.1" placeholder="98.6" value={temperatureF} onChange={(e) => setTemperatureF(e.target.value)} disabled={isSigned} label="Temp (°F)" size="sm" />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold text-text-secondary">Physical Examination Notes</label>
-            <textarea
-              rows={2}
-              placeholder="Systemic examination findings..."
-              value={physicalExamination}
-              onChange={(e) => setPhysicalExamination(e.target.value)}
-              disabled={isSigned}
-              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
-            />
+
+            <Textarea rows={2} placeholder="Systemic examination findings..." value={physicalExamination} onChange={(e) => setPhysicalExamination(e.target.value)} disabled={isSigned} label="Physical Examination Notes" />
           </div>
         </div>
 
@@ -711,27 +683,13 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
             A — Assessment (Diagnosis & Coding)
           </h3>
           <div>
-            <label className="text-xs font-semibold text-text-secondary">Primary Diagnosis</label>
-            <input
-              type="text"
-              placeholder="e.g. Acute Bronchitis"
-              value={primaryDiagnosis}
-              onChange={(e) => setPrimaryDiagnosis(e.target.value)}
-              disabled={isSigned}
-              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
-            />
+
+            <Input type="text" placeholder="e.g. Acute Bronchitis" value={primaryDiagnosis} onChange={(e) => setPrimaryDiagnosis(e.target.value)} disabled={isSigned} label="Primary Diagnosis" size="sm" />
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
-              <label className="text-xs font-semibold text-text-secondary">ICD-10 Code</label>
-              <input
-                type="text"
-                placeholder="J20.9"
-                value={icdCode}
-                onChange={(e) => setIcdCode(e.target.value)}
-                disabled={isSigned}
-                className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
-              />
+
+              <Input type="text" placeholder="J20.9" value={icdCode} onChange={(e) => setIcdCode(e.target.value)} disabled={isSigned} label="ICD-10 Code" size="sm" />
             </div>
             <div className="w-1/2">
               <Select
@@ -758,15 +716,8 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
             P — Plan (Treatment & Rx Builder)
           </h3>
           <div>
-            <label className="text-xs font-semibold text-text-secondary">Treatment Plan</label>
-            <textarea
-              rows={2}
-              placeholder="Clinical recommendations..."
-              value={treatmentPlan}
-              onChange={(e) => setTreatmentPlan(e.target.value)}
-              disabled={isSigned}
-              className="w-full mt-1 px-3 py-2 text-xs sm:text-sm bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 transition-all text-text"
-            />
+
+            <Textarea rows={2} placeholder="Clinical recommendations..." value={treatmentPlan} onChange={(e) => setTreatmentPlan(e.target.value)} disabled={isSigned} label="Treatment Plan" />
           </div>
 
           {/* Rx Medication Add Bar with Catalog Autocomplete */}
@@ -782,15 +733,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
 
             <div className="flex flex-wrap sm:flex-nowrap gap-2 relative">
               <div className="flex-1 min-w-0 w-full sm:min-w-[200px] relative">
-                <input
-                  type="text"
-                  placeholder="Search Drug Name or Generic..."
-                  value={medName}
-                  onChange={(e) => setMedName(e.target.value)}
-                  onFocus={() => { if (medicineResults.length > 0) setShowMedDropdown(true); }}
-                  disabled={isSigned}
-                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text min-h-[38px]"
-                />
+                <Input aria-label="Search medication catalog" type="text" placeholder="Search Drug Name or Generic..." value={medName} onChange={(e) => setMedName(e.target.value)} onFocus={() => { if (medicineResults.length > 0) setShowMedDropdown(true); }} disabled={isSigned} size="sm" />
 
                 {/* Autocomplete Dropdown Overlay */}
                 {showMedDropdown && (
@@ -824,8 +767,8 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
                 )}
               </div>
 
-              <input type="text" placeholder="Dosage" value={medDosage} onChange={(e) => setMedDosage(e.target.value)} disabled={isSigned} className="w-full sm:w-24 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text min-h-[38px]" />
-              <input type="text" placeholder="Duration" value={medDuration} onChange={(e) => setMedDuration(e.target.value)} disabled={isSigned} className="w-full sm:w-20 px-2.5 py-1.5 text-xs bg-surface border border-border rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring disabled:opacity-60 text-text min-h-[38px]" />
+              <Input aria-label="Medication dosage" type="text" placeholder="Dosage" value={medDosage} onChange={(e) => setMedDosage(e.target.value)} disabled={isSigned} containerClassName="sm:w-24" size="sm" />
+              <Input aria-label="Medication duration" type="text" placeholder="Duration" value={medDuration} onChange={(e) => setMedDuration(e.target.value)} disabled={isSigned} containerClassName="sm:w-20" size="sm" />
               <Button size="xs" variant="primary" onClick={handleAddMedication} disabled={isSigned} className="w-full sm:w-auto rounded-xl font-bold min-h-[38px]">Add Rx</Button>
             </div>
 
@@ -835,13 +778,9 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
                   <div key={i} className="text-xs text-text bg-surface px-3 py-2 rounded-xl border border-border flex justify-between items-center shadow-2xs">
                     <span><b>{i + 1}.</b> {p.name} — {p.dosage} ({p.duration})</span>
                     {!isSigned && (
-                      <button
-                        type="button"
-                        onClick={() => setPrescriptions((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="text-danger-text hover:text-danger-text text-xs font-bold cursor-pointer"
-                      >
+                      <Button type="button" onClick={() => setPrescriptions((prev) => prev.filter((_, idx) => idx !== i))} variant="ghost" size="xs" className="text-danger-text">
                         ✕ Remove
-                      </button>
+                      </Button>
                     )}
                   </div>
                 ))}

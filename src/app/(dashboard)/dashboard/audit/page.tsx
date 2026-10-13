@@ -317,7 +317,7 @@ export default function AuditLogsPage() {
               size="sm"
               onClick={() => fetchLogs()}
               disabled={loading}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+              className="text-xs font-semibold transition-colors w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
              loading={loading}>
               <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh Logs
@@ -448,7 +448,7 @@ export default function AuditLogsPage() {
                 size="sm"
                 onClick={applyFilters}
                 disabled={loading}
-                className="rounded-xl text-xs font-semibold px-6"
+                className="text-xs font-semibold px-6"
               >
                 <Filter className="h-3.5 w-3.5 mr-1.5" />
                 Apply Filters

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Alert, Button, Modal } from "@/components/ui";
+import { Alert, Button, Modal, Input } from "@/components/ui";
 import { useLocationStore } from "@/store/locationStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { userFacingError } from "@/lib/userFacingError";
@@ -360,7 +360,7 @@ export function FloatingAICopilot() {
                 disabled={isThinking || isLoadingSession || !hasContext}
                 onClick={() => handleNewChatSession()}
                 title="New Chat Session"
-                className="p-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-text-muted hover:text-text transition-colors cursor-pointer"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -614,15 +614,7 @@ export function FloatingAICopilot() {
                 </svg>
               </button>
 
-              <input
-                type="text"
-                aria-label="Message to AI Copilot"
-                disabled={isLoadingSession || !hasContext || !activeSessionId}
-                value={inputQuery}
-                onChange={(e) => setInputQuery(e.target.value)}
-                placeholder={isVoiceActive ? "Listening..." : "Ask Ekavyu AI..."}
-                className="min-w-0 flex-1 bg-transparent text-base sm:text-xs text-text placeholder:text-text-muted focus:outline-none px-2 py-1.5"
-              />
+              <Input type="text" aria-label="Message to AI Copilot" disabled={isLoadingSession || !hasContext || !activeSessionId} value={inputQuery} onChange={(e) => setInputQuery(e.target.value)} placeholder={isVoiceActive ? "Listening..." : "Ask Ekavyu AI..."} containerClassName="min-w-0 flex-1" size="sm" variant="flush" />
 
               <Button type="submit" variant="ghost" size="sm" loading={isThinking} disabled={!inputQuery.trim() || isLoadingSession || !hasContext || !activeSessionId} aria-label={isThinking ? "Sending message" : "Send message"} icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>} />
             </form>

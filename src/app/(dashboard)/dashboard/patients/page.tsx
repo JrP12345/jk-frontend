@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { PatientService } from "@/services/patient.service";
+import { AssociatePatientModal } from "@/components/patients/AssociatePatientModal";
+import { hasAnyPermission } from "@/lib/permissions";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, Column, Button, Input, Select, Modal, useToast, Badge, StatCard, Dropdown } from "@/components/ui";
 import { UserPlus, RotateCw, Search, Users, FileText, User, UserCheck, MoreHorizontal, AlertCircle, CalendarPlus, Activity, ArrowLeft, ArrowRight, Mail, Phone, Droplets } from "lucide-react";
 
@@ -21,7 +23,10 @@ interface PatientUser {
 interface PatientRecord {
   _id: string;
   id: string;
-  userId: PatientUser;
+  userId?: PatientUser;
+  name?: string;
+  phone?: string;
+  email?: string;
   organizationId?: string;
   dob?: string;
   gender?: string;
@@ -51,8 +56,11 @@ export default function PatientsDirectoryPage() {
 
   // Register New Patient Modal State
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [isAssociationOpen, setIsAssociationOpen] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<any | null>(null);
+  const [distinctPersonReason, setDistinctPersonReason] = useState("");
+  const [registrationRequestId, setRegistrationRequestId] = useState(() => crypto.randomUUID());
   const [registerForm, setRegisterForm] = useState({
     name: "",
     phone: "",
@@ -90,10 +98,17 @@ export default function PatientsDirectoryPage() {
       emergencyContactRelation: "Spouse",
     });
     setDuplicateWarning(null);
+    setDistinctPersonReason("");
+    setRegistrationRequestId(crypto.randomUUID());
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent, forceIgnoreDuplicate = false) => {
     if (e) e.preventDefault();
+    if (registerLoading) return;
+    if (forceIgnoreDuplicate && !distinctPersonReason.trim()) {
+      toast({ title: "Identity review required", description: "Record why this is a different person before creating a separate patient.", variant: "error" });
+      return;
+    }
     if (!registerForm.name.trim() || (!registerForm.phone.trim() && !registerForm.email.trim())) {
       toast({
         title: "Validation Error",
@@ -119,6 +134,8 @@ export default function PatientsDirectoryPage() {
         allergies: registerForm.allergies ? registerForm.allergies.split(",").map((s) => s.trim()).filter(Boolean) : [],
         conditions: registerForm.conditions ? registerForm.conditions.split(",").map((s) => s.trim()).filter(Boolean) : [],
         ignoreDuplicate: forceIgnoreDuplicate,
+        clientRequestId: registrationRequestId,
+        ...(forceIgnoreDuplicate ? { distinctPersonReason: distinctPersonReason.trim() } : {}),
       };
 
       if (registerForm.emergencyContactName.trim() && registerForm.emergencyContactPhone.trim()) {
@@ -241,9 +258,9 @@ export default function PatientsDirectoryPage() {
     {
       header: "Patient Identity",
       render: (p) => {
-        const uName = p.userId?.name || "Patient Profile";
-        const uEmail = p.userId?.email || "";
-        const uPhone = p.userId?.phone || "";
+        const uName = p.name || p.userId?.name || "Patient Profile";
+        const uEmail = p.email ?? p.userId?.email ?? "";
+        const uPhone = p.phone ?? p.userId?.phone ?? "";
         return (
           <div className="space-y-0.5 min-w-[160px]">
             <p className="font-bold text-text text-xs sm:text-sm">{uName}</p>
@@ -342,7 +359,7 @@ export default function PatientsDirectoryPage() {
                   variant="outline"
                   size="xs"
                   className="min-h-11 min-w-11 p-0 rounded-lg text-text-secondary hover:text-text cursor-pointer"
-                  aria-label={`Actions for ${p.userId?.name || "patient"}`}
+                  aria-label={`Actions for ${p.name || p.userId?.name || "patient"}`}
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
@@ -398,7 +415,7 @@ export default function PatientsDirectoryPage() {
               size="sm"
               onClick={fetchPatients}
               disabled={isRefreshing}
-              className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="flex-1 sm:flex-initial min-h-[40px] text-xs font-semibold transition-colors"
              loading={isRefreshing}>
               <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
@@ -411,11 +428,12 @@ export default function PatientsDirectoryPage() {
                 resetRegisterForm();
                 setIsRegisterOpen(true);
               }}
-              className="flex-1 sm:flex-initial min-h-[40px] font-semibold rounded-xl shadow-xs cursor-pointer"
+              className="flex-1 sm:flex-initial min-h-[40px] font-semibold cursor-pointer"
             >
               <UserPlus className="h-3.5 w-3.5 mr-1" />
               Register Patient
             </Button>
+            {hasAnyPermission(user, "REVIEW_PATIENT_IDENTITY") && hasAnyPermission(user, "MANAGE_PATIENTS") && <Button variant="outline" size="sm" onClick={() => setIsAssociationOpen(true)}>Use existing patient record</Button>}
           </div>
         </div>
       </div>
@@ -474,7 +492,7 @@ export default function PatientsDirectoryPage() {
               variant="primary"
               size="sm"
               disabled={loading}
-              className="font-semibold rounded-xl shrink-0 shadow-xs min-h-[40px] px-4"
+              className="font-semibold shrink-0 min-h-[40px] px-4"
              loading={loading}>
               Search
             </Button>
@@ -527,9 +545,9 @@ export default function PatientsDirectoryPage() {
             mobileCardView={true}
             renderMobileCard={(p: PatientRecord) => {
               const pid = p.id || p._id;
-              const name = p.userId?.name || "Patient Profile";
-              const phone = p.userId?.phone;
-              const email = p.userId?.email;
+              const name = p.name || p.userId?.name || "Patient Profile";
+              const phone = p.phone ?? p.userId?.phone;
+              const email = p.email ?? p.userId?.email;
               const age = p.dob ? calculateAge(p.dob) : null;
               const allergies = p.allergies || [];
               const conditions = p.conditions || [];
@@ -621,7 +639,7 @@ export default function PatientsDirectoryPage() {
                       size="sm"
                       variant="outline"
                       onClick={() => router.push(`/dashboard/patients/${pid}`)}
-                      className="flex-1 font-semibold text-xs rounded-xl min-h-[40px] justify-center"
+                      className="flex-1 font-semibold text-xs min-h-[40px] justify-center"
                     >
                       <User className="w-3.5 h-3.5 mr-1" />
                       View Profile
@@ -630,7 +648,7 @@ export default function PatientsDirectoryPage() {
                       size="sm"
                       variant="primary"
                       onClick={() => router.push(`/dashboard/appointments?patientId=${pid}`)}
-                      className="flex-1 font-semibold text-xs rounded-xl min-h-[40px] justify-center shadow-xs"
+                      className="flex-1 font-semibold text-xs min-h-[40px] justify-center"
                     >
                       <CalendarPlus className="w-3.5 h-3.5 mr-1" />
                       Book Visit
@@ -641,7 +659,7 @@ export default function PatientsDirectoryPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-[40px] w-[40px] min-h-[40px] min-w-[40px] p-0 rounded-xl text-text-secondary hover:text-text cursor-pointer shrink-0 flex items-center justify-center"
+                          className="h-[40px] w-[40px] min-h-[40px] min-w-[40px] p-0 text-text-secondary hover:text-text cursor-pointer shrink-0 flex items-center justify-center"
                           aria-label="More options"
                         >
                           <MoreHorizontal className="h-4 w-4" />
@@ -680,7 +698,7 @@ export default function PatientsDirectoryPage() {
               size="sm"
               disabled={page <= 1 || loading}
               onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-              className="min-h-[40px] rounded-xl text-xs font-semibold"
+              className="min-h-[40px] text-xs font-semibold"
             >
               <ArrowLeft className="w-3.5 h-3.5 mr-1" />
               Previous
@@ -690,7 +708,7 @@ export default function PatientsDirectoryPage() {
               size="sm"
               disabled={page >= totalPages || loading}
               onClick={() => setPage((prev) => prev + 1)}
-              className="min-h-[40px] rounded-xl text-xs font-semibold"
+              className="min-h-[40px] text-xs font-semibold"
             >
               Next
               <ArrowRight className="w-3.5 h-3.5 ml-1" />
@@ -721,6 +739,8 @@ export default function PatientsDirectoryPage() {
               <p className="text-text-secondary leading-relaxed">
                 One or more patient profiles match the provided details (Name, Phone, or Email). Please verify if this patient is already enrolled.
               </p>
+              {[...(duplicateWarning.highConfidenceMatches || []), ...(duplicateWarning.mediumConfidenceMatches || [])].map((candidate: { id: string; name?: string; phone?: string; mrn?: string }) => <Link key={candidate.id} href={`/dashboard/patients/${candidate.id}`} className="block min-h-11 rounded-lg border border-border p-2 text-primary hover:underline">Review {candidate.name || "existing patient"} · {candidate.phone || candidate.mrn}</Link>)}
+              <Input label="Why this is a different patient" value={distinctPersonReason} maxLength={500} onChange={event => setDistinctPersonReason(event.target.value)} placeholder="For example, a different family member sharing the contact number" />
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-1">
                 <Button
                   type="button"
@@ -737,9 +757,10 @@ export default function PatientsDirectoryPage() {
                   variant="primary"
                   onClick={(e) => handleRegisterSubmit(e, true)}
                   loading={registerLoading}
+                  disabled={!distinctPersonReason.trim() || registerLoading}
                   className="w-full sm:w-auto min-h-[38px] bg-warning hover:bg-warning text-background font-bold"
                 >
-                  Proceed Anyway (Create Walk-in)
+                  Create separate patient after review
                 </Button>
               </div>
             </div>
@@ -899,13 +920,14 @@ export default function PatientsDirectoryPage() {
               size="sm"
               variant="primary"
               loading={registerLoading}
-              className="w-full sm:w-auto min-h-[44px] font-semibold rounded-xl shadow-xs"
+              className="w-full sm:w-auto min-h-[44px] font-semibold"
             >
               Enroll Patient Profile
             </Button>
           </div>
         </form>
       </Modal>
+      {isAssociationOpen && <AssociatePatientModal onClose={() => setIsAssociationOpen(false)} onAssociated={patientId => { setIsAssociationOpen(false); router.push(`/dashboard/patients/${patientId}`); }} />}
     </div>
   );
 }

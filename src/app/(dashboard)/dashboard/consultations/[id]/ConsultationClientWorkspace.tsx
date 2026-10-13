@@ -189,7 +189,7 @@ export function ConsultationClientWorkspace({
             variant="outline"
             size="sm"
             onClick={() => router.push("/dashboard/queue")}
-            className="w-full sm:w-auto min-h-[44px] rounded-xl font-semibold text-xs gap-1.5"
+            className="w-full sm:w-auto min-h-[44px] font-semibold text-xs gap-1.5"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Return to Outpatient Queue</span>
@@ -198,7 +198,7 @@ export function ConsultationClientWorkspace({
             variant="primary"
             size="sm"
             onClick={() => setRetryCount((c) => c + 1)}
-            className="w-full sm:w-auto min-h-[44px] rounded-xl font-bold text-xs gap-1.5"
+            className="w-full sm:w-auto min-h-[44px] font-bold text-xs gap-1.5"
           >
             <RotateCw className="w-3.5 h-3.5" />
             <span>Retry Connection</span>

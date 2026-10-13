@@ -1,4 +1,6 @@
 "use client";
+import { disruptionPresence } from "@/lib/disruptionPresence";
+import { patientName as canonicalPatientName } from "@/lib/locationWorkflow";
 
 import PrintButton from "@/components/ui/PrintButton";
 
@@ -10,10 +12,11 @@ import { PatientService } from "@/services/patient.service";
 import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
 import { createReconnectingSocket, type ReconnectingSocket } from "@/utils/websocket";
+import { authScopeKey } from "@/lib/authScope";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
-import { Alert, Card, CardContent, Button, Select, Input, DatePicker, useToast, Spinner, Badge, StatCard, Modal, Textarea, Checkbox, Skeleton, SkeletonCard, ChartContainer, BarChart, cn } from "@/components/ui";
+import { Alert, Card, CardContent, Button, Select, Input, DatePicker, useToast, Spinner, Badge, StatCard, Modal, Textarea, Checkbox, Skeleton, SkeletonCard, ChartContainer, BarChart, cn, ConfirmDialog } from "@/components/ui";
 import dynamic from "next/dynamic";
 import type { UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
 import type { ThermalTokenSlipData } from "@/components/clinical/ThermalTokenSlipModal";
@@ -263,6 +266,11 @@ function getAppointmentBilling(appt: Appointment) {
 
 export default function QueuePage() {
   const { user } = useAuthStore();
+  return <QueueWorkspace key={authScopeKey(user)} />;
+}
+
+function QueueWorkspace() {
+  const { user } = useAuthStore();
   const { fetchLocations, activeLocationId } = useLocationStore();
   const { toast } = useToast();
 
@@ -275,6 +283,7 @@ export default function QueuePage() {
   const [tokenModalOpen, setTokenModalOpen] = useState(false);
   const [unifiedDoc, setUnifiedDoc] = useState<UnifiedDocumentData | null>(null);
   const [callingNext, setCallingNext] = useState(false);
+  const [arrivalConfirmation, setArrivalConfirmation] = useState<{ id: string; tokenNumber: number; completePrevious: boolean; locationId: string; doctorId: string; scope: string } | null>(null);
 
   // Thermal Slip & QR Poster State
   const [thermalSlipOpen, setThermalSlipOpen] = useState(false);
@@ -350,7 +359,9 @@ export default function QueuePage() {
   const [isResendRxModalOpen, setIsResendRxModalOpen] = useState(false);
   const [resendRxAppt, setResendRxAppt] = useState<Appointment | null>(null);
   const [resendRxPhone, setResendRxPhone] = useState("");
-  const [resendRxChannel, setResendRxChannel] = useState<"whatsapp" | "sms">("whatsapp");
+  const resendRxChannel = 'whatsapp' as const;
+  const [resendRxReviewed, setResendRxReviewed] = useState(false), [resendRxLocked, setResendRxLocked] = useState(false);
+  const resendRxRequestId = useRef(''), resendRxSubmission = useRef<{ phone?: string; channel: 'whatsapp'; clientRequestId: string } | null>(null);
   const [resendingRx, setResendingRx] = useState(false);
 
   const openResendRxModal = (appt: Appointment) => {
@@ -360,21 +371,20 @@ export default function QueuePage() {
       appt.patientId?.userId?.phone ||
       "";
     setResendRxPhone(existingPhone);
-    setResendRxChannel("whatsapp");
+    setResendRxReviewed(false); setResendRxLocked(false); resendRxSubmission.current = null; resendRxRequestId.current = crypto.randomUUID();
     setIsResendRxModalOpen(true);
   };
 
   const handleResendRxSubmit = async () => {
-    if (!resendRxAppt) return;
+    if (!resendRxAppt || !resendRxReviewed || resendingRx) return;
     try {
       setResendingRx(true);
-      const res = await api.post(`/appointments/${resendRxAppt.id}/resend-rx`, {
-        phone: resendRxPhone.trim() || undefined,
-        channel: resendRxChannel,
-      });
+      resendRxSubmission.current ??= { phone: resendRxPhone.trim() || undefined, channel: resendRxChannel, clientRequestId: resendRxRequestId.current };
+      setResendRxLocked(true);
+      const res = await api.post(`/appointments/${resendRxAppt.id}/resend-rx`, resendRxSubmission.current);
       toast({
-        title: "Prescription sent",
-        description: res.data?.message || `Digital e-Prescription sent via ${resendRxChannel.toUpperCase()}`,
+        title: "Prescription message queued",
+        description: res.data?.message || "Prescription message queued; delivery is not confirmed",
         variant: "success",
       });
       setIsResendRxModalOpen(false);
@@ -464,8 +474,13 @@ export default function QueuePage() {
   const [isResendTrackerModalOpen, setIsResendTrackerModalOpen] = useState(false);
   const [resendTrackerAppt, setResendTrackerAppt] = useState<Appointment | null>(null);
   const [resendPhone, setResendPhone] = useState("");
-  const [resendChannel, setResendChannel] = useState<"whatsapp" | "sms">("whatsapp");
   const [resendingTracker, setResendingTracker] = useState(false);
+  const [resendLocked, setResendLocked] = useState(false), [resendError, setResendError] = useState("");
+  const resendBusy = useRef(false), resendMounted = useRef(true);
+  const resendErrorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { resendMounted.current = true; return () => { resendMounted.current = false; }; }, []);
+  useEffect(() => { if (resendError && !resendingTracker) resendErrorRef.current?.focus(); }, [resendError, resendingTracker]);
+  const resendCommand = useRef<{ appointmentId: string; phone: string; channel: "whatsapp"; clientRequestId: string } | null>(null);
 
   // Proactive Queue Delay State
   const [delayStatus, setDelayStatus] = useState<{ isDelayed: boolean; maxDelayMinutes: number; affectedCount: number; delayedPatients: any[] } | null>(null);
@@ -480,6 +495,7 @@ export default function QueuePage() {
   const [walkInPriority, setWalkInPriority] = useState<"normal" | "emergency">("normal");
   const [walkInGender, setWalkInGender] = useState<"" | "male" | "female" | "other">("");
   const [walkInPatientId, setWalkInPatientId] = useState("");
+  const walkInRegistrationRequest = useRef("");
   const [walkInAppointmentId, setWalkInAppointmentId] = useState("");
   const [walkInNotes, setWalkInNotes] = useState("");
   const [submittingWalkIn, setSubmittingWalkIn] = useState(false);
@@ -792,40 +808,53 @@ export default function QueuePage() {
   };
 
   const openResendTrackerModal = (appt: Appointment) => {
+    if (resendCommand.current && resendCommand.current.appointmentId !== appt.id) {
+      toast({ title: "Resolve the pending tracker request first", variant: "warning" });
+      return;
+    }
     setResendTrackerAppt(appt);
     const existingPhone =
       (appt.patientId && typeof appt.patientId === "object" ? (appt.patientId as any).phone : "") ||
       appt.patientId?.userId?.phone ||
       "";
-    setResendPhone(existingPhone);
-    setResendChannel("whatsapp");
+    setResendPhone(resendCommand.current?.phone ?? existingPhone);
+    if (!resendCommand.current) setResendError("");
     setIsResendTrackerModalOpen(true);
   };
 
   const handleResendTrackerSubmit = async () => {
-    if (!resendTrackerAppt) return;
+    if (!resendTrackerAppt || resendBusy.current) return;
+    resendBusy.current = true;
     try {
       setResendingTracker(true);
-      const res = await api.post(`/queue/${resendTrackerAppt.id}/resend-tracker`, {
-        phone: resendPhone.trim() || undefined,
-        channel: resendChannel,
-      });
+      setResendError("");
+      resendCommand.current ??= { appointmentId: resendTrackerAppt.id, phone: resendPhone.trim(), channel: "whatsapp", clientRequestId: crypto.randomUUID() };
+      setResendLocked(true);
+      const { appointmentId, ...payload } = resendCommand.current;
+      const res = await api.post(`/queue/${appointmentId}/resend-tracker`, payload);
+      if (!resendMounted.current) return;
 
       toast({
-        title: "Tracking link sent",
-        description: res.data?.message || `Live tracking link successfully sent via ${resendChannel.toUpperCase()}`,
+        title: `Tracker message ${res.data?.data?.status || "recorded"}`,
+        description: res.data?.message || "The recorded message state is available. Delivery is reported separately.",
         variant: "success",
       });
       setIsResendTrackerModalOpen(false);
       setResendTrackerAppt(null);
+      resendCommand.current = null; setResendLocked(false);
     } catch (err: any) {
+      if (!resendMounted.current) return;
+      const definite = [400, 403, 404, 409, 422].includes(err.response?.status);
+      if (definite) { resendCommand.current = null; setResendLocked(false); }
+      setResendError(err.response?.data?.message || "The result could not be confirmed. Retry the same submitted request.");
       toast({
         title: "Tracking link could not be sent",
         description: err.response?.data?.message || "Please try again.",
         variant: "error",
       });
     } finally {
-      setResendingTracker(false);
+      resendBusy.current = false;
+      if (resendMounted.current) setResendingTracker(false);
     }
   };
 
@@ -1240,7 +1269,8 @@ export default function QueuePage() {
     } catch (err: any) {
       if ((err.response?.data?.error || err.response?.data?.details) === "ARRIVAL_CONFIRMATION_REQUIRED") {
         const candidate = err.response.data.data;
-        if (window.confirm(`Token #${candidate.tokenNumber} has not checked in. Call this booked patient now?`)) await handleCallNext(completePrevious, candidate.id);
+        setArrivalConfirmation({ id: candidate.id, tokenNumber: candidate.tokenNumber, completePrevious,
+          locationId: selectedLocation, doctorId: selectedDoctor, scope: authScopeKey(user) });
       } else if (err.response?.status === 409 && (err.response?.data?.error || err.response?.data?.details) === "ACTIVE_CONSULTATION_IN_PROGRESS") {
         const docObj = doctors.find((d) => (d.id || d._id) === selectedDoctor);
         setConflictDoctorName(docObj?.name || user?.name || "Doctor");
@@ -1273,7 +1303,7 @@ export default function QueuePage() {
         locationAddress: locationObj?.city,
         doctorName: doctorObj?.name || user?.name || "Doctor",
         doctorSpecialization: doctorObj?.specialization,
-        patientName: appt.patientId?.userId?.name || "Patient",
+        patientName: canonicalPatientName(appt.patientId),
         patientId: appt.patientId?.id,
         date: new Date(appt.appointmentTime).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
         referenceNumber: `TKN-${appt.tokenNumber}`,
@@ -1305,7 +1335,7 @@ export default function QueuePage() {
       locationPhone: locationObj?.phone || "",
       doctorName: doctorObj?.name || user?.name || "Doctor",
       doctorSpecialization: doctorObj?.specialization || "OPD Consultation",
-      patientName: appt.patientId?.userId?.name || "Patient",
+      patientName: canonicalPatientName(appt.patientId),
       appointmentTime: new Date(appt.appointmentTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       patientsAhead: ahead,
       date: new Date(appt.appointmentTime).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
@@ -1314,6 +1344,7 @@ export default function QueuePage() {
   };
 
   const openQuickWalkInModal = () => {
+    walkInRegistrationRequest.current = crypto.randomUUID();
     setWalkInName("");
     setWalkInPhone("");
     setWalkInDoctorId(selectedDoctor || (doctors[0]?.id || doctors[0]?._id || ""));
@@ -1347,7 +1378,7 @@ export default function QueuePage() {
       const isEmergency = walkInPriority === "emergency";
       let canonicalPatientId = walkInPatientId;
       if (!canonicalPatientId && !walkInAppointmentId) {
-        const patient = await PatientService.createPatient({ name: walkInName.trim(), phone: cleanPhone, ...(walkInGender ? { gender: walkInGender } : {}) });
+        const patient = await PatientService.createPatient({ name: walkInName.trim(), phone: cleanPhone, locationId: selectedLocation, clientRequestId: walkInRegistrationRequest.current, ...(walkInGender ? { gender: walkInGender } : {}) });
         canonicalPatientId = patient.id || patient._id;
         setWalkInPatientId(canonicalPatientId);
       }
@@ -1674,9 +1705,23 @@ export default function QueuePage() {
   if (!user) return null;
 
   const canManageQueue = hasAnyPermission(user, "MANAGE_QUEUE");
+  const canCommunicatePatients = hasAnyPermission(user, "COMMUNICATE_PATIENTS");
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+      <ConfirmDialog open={Boolean(arrivalConfirmation)} title="Confirm booked patient arrival"
+        description={`Token #${arrivalConfirmation?.tokenNumber ?? ''} has not checked in. Call this booked patient now?`}
+        confirmLabel="Confirm arrival and call" loading={callingNext}
+        onClose={() => { if (!callingNext) setArrivalConfirmation(null); }}
+        onConfirm={() => {
+          const pending = arrivalConfirmation;
+          if (!pending || pending.locationId !== selectedLocation || pending.doctorId !== selectedDoctor || pending.scope !== authScopeKey(user)) {
+            setArrivalConfirmation(null);
+            return;
+          }
+          setArrivalConfirmation(null);
+          void handleCallNext(pending.completePrevious, pending.id);
+        }} />
       {queueError && <Alert variant="error" title="Unable to load queue" action={<Button variant="outline" size="sm" onClick={fetchQueue} loading={loadingQueue}>Try again</Button>}>{queueError}</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP HEADER BANNER
@@ -1704,7 +1749,7 @@ export default function QueuePage() {
                 variant="primary"
                 size="sm"
                 onClick={openQuickWalkInModal}
-                className="font-bold rounded-xl shadow-xs bg-success hover:bg-success text-background border-none justify-center min-h-[42px] sm:min-h-[36px]"
+                className="font-bold bg-success hover:bg-success text-background border-none justify-center min-h-[42px] sm:min-h-[36px]"
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
                 <span>Walk-In (+)</span>
@@ -1715,7 +1760,7 @@ export default function QueuePage() {
                 size="sm"
                 onClick={() => handleCallNext(false)}
                 loading={callingNext}
-                className="font-semibold rounded-xl shadow-xs justify-center min-h-[42px] sm:min-h-[36px]"
+                className="font-semibold justify-center min-h-[42px] sm:min-h-[36px]"
               >
                 <Megaphone className="w-3.5 h-3.5 mr-1.5" />
                 <span>Call Next</span>
@@ -1738,7 +1783,7 @@ export default function QueuePage() {
                   size="xs"
                   type="button"
                   onClick={() => playChimeSound(chimeType)}
-                  className="text-xs font-semibold rounded-lg px-2 text-text-secondary hover:text-text min-h-[34px] min-w-[34px] flex items-center justify-center"
+                  className="text-xs font-semibold rounded-lg px-2 hover:text-text min-h-[34px] min-w-[34px] flex items-center justify-center"
                   title="Test Chime Sound"
                   aria-label="Test chime sound"
                 >
@@ -1753,7 +1798,7 @@ export default function QueuePage() {
                   fetchActiveOverride();
                   setIsAvailabilityModalOpen(true);
                 }}
-                className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
+                className="font-semibold border-border/80 whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
               >
                 <CalendarClock className="w-3.5 h-3.5 mr-1.5 text-accent" />
                 Availability
@@ -1779,7 +1824,7 @@ export default function QueuePage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setAbdmModalOpen(true)}
-                className="font-bold rounded-xl border-accent/40 text-accent hover:bg-accent-subtle dark:hover:bg-primary/30 dark:text-accent whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
+                className="font-bold border-accent/40 text-accent hover:bg-accent-subtle dark:hover:bg-primary/30 dark:text-accent whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
                 title="Ayushman Bharat Digital Mission (ABHA) & 3-Second Counter Scan & Share"
               >
                 <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-accent dark:text-accent" />
@@ -1793,7 +1838,7 @@ export default function QueuePage() {
                   setSelectedDocGenPatient(null);
                   setClinicalDocGenOpen(true);
                 }}
-                className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
+                className="font-semibold border-border/80 whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
                 title="Generate Hospital Referral Letter, Medical Sick Leave, or Fitness Certificate"
               >
                 <FileText className="w-3.5 h-3.5 mr-1.5 text-success-text" />
@@ -1805,7 +1850,7 @@ export default function QueuePage() {
                 size="sm"
                 onClick={fetchQueue}
                 loading={loadingQueue}
-                className="font-semibold rounded-xl hover:bg-surface-hover whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
+                className="font-semibold whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
               >
                 <RotateCw className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
                 Refresh
@@ -1882,7 +1927,7 @@ export default function QueuePage() {
                             variant="primary"
                             onClick={() => handleToggleDoctorBreak(false)}
                             loading={isTogglingBreak}
-                            className="font-bold text-xs rounded-xl bg-success hover:bg-success text-background shadow-xs"
+                            className="font-bold text-xs rounded-xl bg-success hover:bg-success text-background"
                           >
                             <span>▶</span> Resume OPD
                           </Button>
@@ -1936,7 +1981,7 @@ export default function QueuePage() {
                         variant="primary"
                         onClick={handleStartOpdSession}
                         loading={isStartingOpd}
-                        className="font-bold text-xs rounded-xl bg-success hover:bg-success text-background shadow-xs"
+                        className="font-bold text-xs rounded-xl bg-success hover:bg-success text-background"
                       >
                         <span>🟢</span> Start OPD Session
                       </Button>
@@ -2000,7 +2045,7 @@ export default function QueuePage() {
                   </Badge>
                 </div>
                 <p className="text-xs text-danger-text/90 dark:text-danger-text/90 max-w-2xl leading-relaxed">
-                  A physician schedule disruption was processed today. {triageAppointments.filter((a) => a.status === "checked-in" || a.notes?.includes("checked-in")).length} waiting patient(s) need immediate transfer to an available colleague to avoid clinical abandonment.
+                  A physician schedule disruption was processed today. {triageAppointments.filter((a) => disruptionPresence(a) === "waiting").length} waiting patient(s) need immediate transfer to an available colleague to avoid clinical abandonment.
                 </p>
               </div>
             </div>
@@ -2010,7 +2055,7 @@ export default function QueuePage() {
                 variant="primary"
                 size="sm"
                 onClick={() => setTriageModalOpen(true)}
-                className="bg-danger hover:bg-danger text-background font-bold rounded-xl shadow-xs flex items-center gap-2 cursor-pointer"
+                className="bg-danger hover:bg-danger text-background font-bold flex items-center gap-2 cursor-pointer"
               >
                 <Stethoscope className="w-4 h-4" />
                 Open Triage Cockpit ({triageAppointments.length})
@@ -2052,7 +2097,7 @@ export default function QueuePage() {
             size="xs"
             onClick={handleTriggerDelayAlerts}
             loading={sendingDelayAlerts}
-            className="bg-warning hover:bg-warning text-background font-bold rounded-xl shrink-0 text-xs shadow-xs"
+            className="bg-warning hover:bg-warning text-background font-bold rounded-xl shrink-0 text-xs"
           >
             <Phone className="w-3.5 h-3.5 mr-1" />
             Send WhatsApp Delay Alerts ({delayStatus.affectedCount})
@@ -2299,7 +2344,7 @@ export default function QueuePage() {
                               <div className="space-y-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-bold text-text text-sm truncate">
-                                    {appt.patientId?.userId?.name || "Patient Profile"}
+                                    {canonicalPatientName(appt.patientId)}
                                   </span>
                                   {isEmergency && (
                                     <Badge variant="danger" size="sm" pulse className="font-bold text-[10px] uppercase">
@@ -2380,16 +2425,12 @@ export default function QueuePage() {
                                       </Badge>
                                     )}
                                     {canManageQueue && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
+                                      <Button type="button" onClick={() => {
                                           setSelectedVitalsAppt(appt);
                                           setVitalsModalOpen(true);
-                                        }}
-                                        className="text-[10px] text-accent dark:text-accent hover:underline font-semibold cursor-pointer"
-                                      >
+                                        }} variant="ghost" size="xs" className="text-accent">
                                         Edit Vitals
-                                      </button>
+                                      </Button>
                                     )}
                                   </div>
                                 )}
@@ -2422,7 +2463,7 @@ export default function QueuePage() {
                                           setEmergencyReason(`Critical Vitals MEWS Triage: ${criticalVitalsAlert.join(", ")}`);
                                           setStatModalOpen(true);
                                         }}
-                                        className="shrink-0 bg-danger hover:bg-danger text-background font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                                        className="shrink-0 bg-danger hover:bg-danger text-background font-bold text-xs rounded-xl cursor-pointer"
                                       >
                                         <Zap className="w-3 h-3 mr-1 fill-white" />
                                         Escalate to STAT Next
@@ -2452,15 +2493,10 @@ export default function QueuePage() {
                                         </span>
                                       ))}
                                     </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => openInvestigationViewer(appt)}
-                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary/15 hover:bg-primary/25 text-accent dark:text-accent font-bold text-[11px] transition-all cursor-pointer shadow-2xs border border-accent/30"
-                                      title="Open in-cabin viewer & compare past diagnostic trends"
-                                    >
+                                    <Button type="button" onClick={() => openInvestigationViewer(appt)} title="Open in-cabin viewer & compare past diagnostic trends" variant="outline" size="xs" className="text-accent">
                                       <Sparkles className="w-3 h-3 text-warning-text" />
                                       <span>View Reports & Trends</span>
-                                    </button>
+                                    </Button>
                                   </div>
                                 )}
                               </div>
@@ -2480,35 +2516,20 @@ export default function QueuePage() {
                               {canManageQueue && (
                                 <div className="flex flex-wrap items-center gap-1.5">
                                   {!isInConsultation && (
-                                    <button
-                                      type="button"
-                                      onClick={() => openParkModal(appt)}
-                                      className="px-2.5 py-1.5 text-xs font-semibold rounded-xl text-warning-text dark:text-warning-text bg-warning/10 hover:bg-warning/20 border border-warning/20 transition-colors cursor-pointer flex items-center gap-1.5 min-h-[36px]"
-                                      title="Patient stepped out: Hold in Standby"
-                                    >
+                                    <Button type="button" onClick={() => openParkModal(appt)} title="Patient stepped out: Hold in Standby" variant="outline" size="xs">
                                       <PauseCircle className="w-3.5 h-3.5" />
                                       Park
-                                    </button>
+                                    </Button>
                                   )}
 
-                                  <button
-                                    type="button"
-                                    onClick={() => handleBumpBack(appt.id)}
-                                    className="px-2.5 py-1.5 text-xs font-semibold rounded-xl text-warning-text dark:text-warning-text bg-warning/10 hover:bg-warning/20 border border-warning/20 transition-colors cursor-pointer min-h-[36px]"
-                                    title="Late Arrival: Move 2 positions back in queue"
-                                  >
+                                  <Button type="button" onClick={() => handleBumpBack(appt.id)} title="Late Arrival: Move 2 positions back in queue" variant="outline" size="xs">
                                     Bump (+2)
-                                  </button>
+                                  </Button>
 
-                                  <button
-                                    type="button"
-                                    onClick={() => openResendTrackerModal(appt)}
-                                    className="px-2.5 py-1.5 text-xs font-semibold rounded-xl text-success-text dark:text-success-text bg-success/10 hover:bg-success/20 border border-success/20 transition-colors cursor-pointer flex items-center gap-1.5 min-h-[36px]"
-                                    title="Resend live queue tracking link via WhatsApp / SMS"
-                                  >
+                                  {canCommunicatePatients && <Button type="button" onClick={() => openResendTrackerModal(appt)} title="Queue live tracking link via WhatsApp" variant="outline" size="xs">
                                     <Send className="w-3.5 h-3.5" />
                                     Tracker
-                                  </button>
+                                  </Button>}
 
                                   <div className="flex items-center bg-surface-alt border border-border/80 rounded-xl p-0.5">
                                     <button
@@ -2548,11 +2569,11 @@ export default function QueuePage() {
                                     size="xs"
                                     onClick={() => {
                                       const pId = typeof appt.patientId === "object" ? appt.patientId.id : appt.patientId;
-                                      const pName = appt.patientId?.userId?.name || "Patient";
+                                      const pName = canonicalPatientName(appt.patientId);
                                       setTimelinePatient({ id: pId, name: pName });
                                       setTimelineModalOpen(true);
                                     }}
-                                    className="font-semibold text-xs rounded-xl border-border/80 text-text-secondary hover:bg-surface-hover hover:text-text cursor-pointer"
+                                    className="font-semibold text-xs rounded-xl border-border/80 text-text-secondary hover:text-text cursor-pointer"
                                     title="View Patient's Longitudinal Medical History & Clinical Timeline"
                                   >
                                     <History className="w-3 h-3 mr-1 text-accent dark:text-accent" />
@@ -2679,7 +2700,7 @@ export default function QueuePage() {
                                         size="xs"
                                         onClick={() => openCompleteModal(appt)}
                                         loading={updatingStatus === appt.id}
-                                        className="bg-success hover:bg-success text-background font-bold text-xs rounded-xl shadow-xs"
+                                        className="bg-success hover:bg-success text-background font-bold text-xs rounded-xl"
                                       >
                                         <CheckCircle2 className="w-3 h-3 mr-1" />
                                         Conclude Visit
@@ -2700,7 +2721,7 @@ export default function QueuePage() {
                                         });
                                       }}
                                       loading={updatingStatus === appt.id}
-                                      className="font-bold text-xs rounded-xl shadow-xs bg-primary-600 hover:bg-primary-700 text-brand-mist"
+                                      className="font-bold text-xs rounded-xl bg-primary-600 hover:bg-primary-700"
                                     >
                                       <Stethoscope className="w-3 h-3 mr-1" />
                                       Call In
@@ -2765,7 +2786,7 @@ export default function QueuePage() {
                           <div className="space-y-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-bold text-text text-sm truncate">
-                                {appt.patientId?.userId?.name || "Patient Profile"}
+                                {canonicalPatientName(appt.patientId)}
                               </span>
                               {isReturned ? (
                                 <Badge variant="success" size="sm" pulse dot className="font-bold text-[10px] bg-success/15 text-success-text dark:text-success-text border border-success/30">
@@ -2802,15 +2823,10 @@ export default function QueuePage() {
                                       </span>
                                     ))}
                                   </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => openInvestigationViewer(appt)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary/20 hover:bg-primary/30 text-accent dark:text-accent font-bold text-[11px] transition-all cursor-pointer shadow-2xs border border-accent/30"
-                                    title="Open in-cabin viewer & compare past trends"
-                                  >
+                                  <Button type="button" onClick={() => openInvestigationViewer(appt)} title="Open in-cabin viewer & compare past trends" variant="outline" size="xs" className="text-accent">
                                     <Sparkles className="w-3 h-3 text-warning-text" />
                                     <span>Compare Trends</span>
-                                  </button>
+                                  </Button>
                                 </div>
                               )}
                             </div>
@@ -2831,15 +2847,10 @@ export default function QueuePage() {
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => openResendTrackerModal(appt)}
-                            className="px-2 py-1 text-[10px] font-semibold rounded-lg text-success-text dark:text-success-text bg-success/10 hover:bg-success/20 border border-success/20 transition-colors cursor-pointer flex items-center gap-1"
-                            title="Resend live queue tracking link via WhatsApp / SMS"
-                          >
+                          {canCommunicatePatients && <Button type="button" onClick={() => openResendTrackerModal(appt)} title="Queue live tracking link via WhatsApp" variant="outline" size="xs">
                             <Send className="w-3 h-3" />
                             Tracker
-                          </button>
+                          </Button>}
                           <Button
                             size="xs"
                             variant="outline"
@@ -2856,7 +2867,7 @@ export default function QueuePage() {
                               variant="primary"
                               onClick={() => handleResumeForReportReview(appt.id, appt.tokenNumber)}
                               loading={updatingStatus === appt.id}
-                              className="bg-primary hover:bg-primary text-brand-mist font-bold text-xs rounded-xl shadow-xs"
+                              className="hover:bg-primary font-bold text-xs rounded-xl"
                             >
                               <span>🔬</span> Resume for Report Review
                             </Button>
@@ -2866,7 +2877,7 @@ export default function QueuePage() {
                               variant="primary"
                               onClick={() => handleResumePatient(appt.id)}
                               loading={updatingStatus === appt.id}
-                              className="bg-success hover:bg-success text-background font-bold text-xs rounded-xl shadow-xs"
+                              className="bg-success hover:bg-success text-background font-bold text-xs rounded-xl"
                             >
                               <Play className="w-3 h-3 mr-1 fill-current" />
                               Resume (Next Up!)
@@ -2927,7 +2938,7 @@ export default function QueuePage() {
                             </Badge>
                           </div>
                           <p className="text-xs font-bold text-text truncate">
-                            {appt.patientId?.userId?.name || "Patient Profile"}
+                            {canonicalPatientName(appt.patientId)}
                           </p>
                           <div className="flex items-center gap-1 text-[10px] text-text-muted">
                             <Clock className="w-3 h-3 text-text-muted" />
@@ -2950,15 +2961,10 @@ export default function QueuePage() {
                                 title="Print Official Prescription (Rx)" documentName="prescription" preview
                               >
               </PrintButton>
-                              <button
-                                type="button"
-                                onClick={() => openResendRxModal(appt)}
-                                className="px-2.5 py-1 text-[11px] font-bold rounded-xl border border-success/30 text-success-text dark:text-success-text hover:bg-success/10 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                                title="Send prescription by WhatsApp or SMS"
-                              >
+                              <Button type="button" onClick={() => openResendRxModal(appt)} title="Queue the prescription for the reviewed WhatsApp recipient" variant="outline" size="xs">
                                 <Send className="w-3.5 h-3.5" />
                                 Send Rx
-                              </button>
+                              </Button>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -3019,7 +3025,7 @@ export default function QueuePage() {
         open={completeModalOpen}
         onClose={() => setCompleteModalOpen(false)}
         title="Complete Clinical Consultation"
-        description={`Document medical diagnosis, prescriptions, and follow-up plan for ${apptToComplete?.patientId?.userId?.name || "Patient"} (Token #${apptToComplete?.tokenNumber}).`}
+        description={`Document medical diagnosis, prescriptions, and follow-up plan for ${canonicalPatientName(apptToComplete?.patientId)} (Token #${apptToComplete?.tokenNumber}).`}
         size="lg"
         footer={
           <>
@@ -3029,7 +3035,7 @@ export default function QueuePage() {
               size="sm"
               onClick={() => setCompleteModalOpen(false)}
               disabled={completingSubmitting}
-              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
+              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
             </Button>
@@ -3039,7 +3045,7 @@ export default function QueuePage() {
               variant="primary"
               size="sm"
               loading={completingSubmitting}
-              className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
+              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Conclude Visit & Save Record
             </Button>
@@ -3052,12 +3058,12 @@ export default function QueuePage() {
             <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-primary-500/10 border border-primary-500/20">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-primary-600 text-brand-mist font-bold text-sm flex items-center justify-center shadow-xs">
-                  {apptToComplete.patientId?.userId?.name?.[0]?.toUpperCase() || "P"}
+                  {canonicalPatientName(apptToComplete.patientId)[0].toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-text">
-                      {apptToComplete.patientId?.userId?.name || "Patient Record"}
+                      {canonicalPatientName(apptToComplete.patientId)}
                     </span>
                     <Badge variant="primary" size="sm" className="font-mono">
                       Token #{apptToComplete.tokenNumber}
@@ -3074,7 +3080,7 @@ export default function QueuePage() {
                   variant="outline"
                   size="xs"
                   onClick={() => openInvestigationViewer(apptToComplete)}
-                  className="font-bold text-xs rounded-xl bg-surface border-accent/40 text-accent dark:text-accent hover:bg-primary/15 cursor-pointer shadow-xs shrink-0"
+                  className="font-bold text-xs rounded-xl border-accent/40 text-accent dark:text-accent hover:bg-primary/15 cursor-pointer shadow-xs shrink-0"
                 >
                   <FlaskConical className="w-3.5 h-3.5 mr-1 text-accent" />
                   Lab Reports & Compare
@@ -3085,11 +3091,11 @@ export default function QueuePage() {
                   size="xs"
                   onClick={() => {
                     const pId = typeof apptToComplete.patientId === "object" ? apptToComplete.patientId.id : apptToComplete.patientId;
-                    const pName = apptToComplete.patientId?.userId?.name || "Patient";
+                    const pName = canonicalPatientName(apptToComplete.patientId);
                     setTimelinePatient({ id: pId, name: pName });
                     setTimelineModalOpen(true);
                   }}
-                  className="font-bold text-xs rounded-xl bg-surface border-primary-500/40 text-accent dark:text-accent hover:bg-primary-500/15 cursor-pointer shadow-xs shrink-0"
+                  className="font-bold text-xs rounded-xl border-primary-500/40 text-accent dark:text-accent hover:bg-primary-500/15 cursor-pointer shadow-xs shrink-0"
                 >
                   <History className="w-3.5 h-3.5 mr-1 text-accent" />
                   View Longitudinal EHR History
@@ -3439,7 +3445,7 @@ export default function QueuePage() {
           <div className="p-3 bg-surface-alt rounded-xl border border-border/80">
             <Checkbox
               id="recommendFollowUp"
-              label="Recommend follow-up appointment consultation?"
+              label="Recommend a care follow-up?"
               checked={recommendFollowUp}
               onChange={(e) => setRecommendFollowUp(e.target.checked)}
             />
@@ -3447,6 +3453,7 @@ export default function QueuePage() {
 
           {recommendFollowUp && (
             <div className="space-y-3.5 animate-fade-in p-3.5 rounded-2xl bg-warning/[0.04] border border-warning/20">
+              <p className="text-sm text-text-muted">This records a recommendation and a staff task. Reception must arrange a booking with the patient; no confirmed appointment is created.</p>
               <Select
                 label="Recommended Timeframe *"
                 value={followUpTimeline}
@@ -3531,7 +3538,7 @@ export default function QueuePage() {
               size="sm"
               onClick={() => setIsBreakModalOpen(false)}
               disabled={isTogglingBreak}
-              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
+              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
             </Button>
@@ -3540,7 +3547,7 @@ export default function QueuePage() {
               size="sm"
               onClick={() => handleToggleDoctorBreak(true, breakReasonInput, breakMinutes)}
               loading={isTogglingBreak}
-              className="font-bold rounded-xl bg-warning hover:bg-warning text-background shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
+              className="font-bold bg-warning hover:bg-warning text-background min-h-[44px] w-full sm:w-auto justify-center"
             >
               Start Break ({breakMinutes}m)
             </Button>
@@ -3636,7 +3643,7 @@ export default function QueuePage() {
             </p>
             <p>
               This action interrupts the scheduled queue sequence for Token #{apptToStatEmergency?.tokenNumber} (
-              {apptToStatEmergency?.patientId?.userId?.name || "Patient"}), moving them to Position 0 (Stat Next) and sounding the waiting room emergency alert.
+              {canonicalPatientName(apptToStatEmergency?.patientId)}), moving them to Position 0 (Stat Next) and sounding the waiting room emergency alert.
             </p>
           </div>
 
@@ -3785,7 +3792,7 @@ export default function QueuePage() {
                 size="sm"
                 onClick={() => setIsAvailabilityModalOpen(false)}
                 disabled={savingOverride}
-                className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
+                className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
               >
                 Cancel
               </Button>
@@ -3794,7 +3801,7 @@ export default function QueuePage() {
                 variant="primary"
                 size="sm"
                 loading={savingOverride}
-                className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
+                className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
               >
                 Save Availability
               </Button>
@@ -3922,7 +3929,7 @@ export default function QueuePage() {
               size="sm"
               onClick={() => setIsQuickWalkInOpen(false)}
               disabled={submittingWalkIn}
-              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
+              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
             </Button>
@@ -3984,7 +3991,7 @@ export default function QueuePage() {
               variant="outline"
               size="sm"
               onClick={() => setConflictModalOpen(false)}
-              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
+              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Keep Current & Dismiss
             </Button>
@@ -3993,7 +4000,7 @@ export default function QueuePage() {
               size="sm"
               onClick={() => handleCallNext(true)}
               loading={callingNext}
-              className="rounded-xl font-bold bg-primary-600 hover:bg-primary-700 text-brand-mist min-h-[44px] w-full sm:w-auto justify-center"
+              className="font-bold bg-primary-600 hover:bg-primary-700 min-h-[44px] w-full sm:w-auto justify-center"
             >
               Complete & Call Next
             </Button>
@@ -4004,7 +4011,8 @@ export default function QueuePage() {
       {/* Resend Live Tracker Modal (P3) */}
       <Modal
         open={isResendTrackerModalOpen}
-        onClose={() => setIsResendTrackerModalOpen(false)}
+        busy={resendingTracker}
+        onClose={() => { if (!resendBusy.current) setIsResendTrackerModalOpen(false); }}
         title={`Resend Live Queue Tracker (Token #${resendTrackerAppt?.tokenNumber})`}
         size="sm"
       >
@@ -4014,7 +4022,7 @@ export default function QueuePage() {
             <div>
               <p className="font-bold text-sm">Live Token Tracking Link</p>
               <p className="mt-0.5 leading-relaxed">
-                Sends a link to the patient or attendee so they can follow their place in the queue.
+                Queues a link for the current authorized patient recipient after checking consent. Delivery is reported separately.
               </p>
             </div>
           </div>
@@ -4032,47 +4040,21 @@ export default function QueuePage() {
             <strong className="text-text">#{resendTrackerAppt?.tokenNumber}</strong>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="font-semibold text-text">Send by</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setResendChannel("whatsapp")}
-                className={cn(
-                  "py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
-                  resendChannel === "whatsapp"
-                    ? "bg-success text-background border-success shadow-xs"
-                    : "bg-surface-alt hover:bg-surface border-border text-text-secondary"
-                )}
-              >
-                <span>💬</span> WhatsApp (Default)
-              </button>
-              <button
-                type="button"
-                onClick={() => setResendChannel("sms")}
-                className={cn(
-                  "py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer",
-                  resendChannel === "sms"
-                    ? "bg-success text-background border-success shadow-xs"
-                    : "bg-surface-alt hover:bg-surface border-border text-text-secondary"
-                )}
-              >
-                <span>📱</span> SMS Message
-              </button>
-            </div>
-          </div>
+          {resendError && <div ref={resendErrorRef} tabIndex={-1}><Alert variant="error">{resendError}</Alert></div>}
+          <p>WhatsApp uses the current authorized recipient and purpose-specific consent.</p>
 
           <div className="space-y-1.5">
-            <label className="font-semibold text-text">Recipient Mobile Phone *</label>
             <Input
+              label="Recipient Mobile Phone"
               type="tel"
               placeholder="+919876543210"
               value={resendPhone}
+              disabled={resendLocked || resendingTracker}
               onChange={(e) => setResendPhone(e.target.value)}
               className="text-xs"
             />
             <p className="text-[11px] text-text-muted">
-              Pre-filled with patient's registered phone. You can update this to an attendant or alternate number if requested.
+              Use the current patient recipient. Reception must review contact corrections before sending to a different number.
             </p>
           </div>
 
@@ -4081,7 +4063,8 @@ export default function QueuePage() {
               variant="outline"
               size="sm"
               onClick={() => setIsResendTrackerModalOpen(false)}
-              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
+              disabled={resendingTracker}
+              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
             </Button>
@@ -4090,11 +4073,11 @@ export default function QueuePage() {
               size="sm"
               onClick={handleResendTrackerSubmit}
               loading={resendingTracker}
-              disabled={!resendPhone.trim()}
-              className="rounded-xl font-bold bg-success hover:bg-success text-background min-h-[44px] w-full sm:w-auto justify-center"
+              disabled={!resendPhone.trim() || resendingTracker}
+              className="font-bold bg-success hover:bg-success text-background min-h-[44px] w-full sm:w-auto justify-center"
             >
               <Send className="w-3.5 h-3.5 mr-1.5" />
-              Send Live Tracker
+              {resendLocked ? "Retry submitted tracker" : "Queue Live Tracker"}
             </Button>
           </div>
         </div>
@@ -4109,7 +4092,7 @@ export default function QueuePage() {
       >
         <div className="space-y-4 pt-1 font-sans text-xs">
           <p className="text-text-secondary leading-relaxed">
-            Move <strong>{parkingAppt?.patientId?.userId?.name || "Patient"}</strong> to Standby. This will temporarily hold their token without blocking the queue. When they return, you can resume them directly as <strong>Next Up</strong>.
+            Move <strong>{canonicalPatientName(parkingAppt?.patientId)}</strong> to Standby. This will temporarily hold their token without blocking the queue. When they return, you can resume them directly as <strong>Next Up</strong>.
           </p>
 
           <div className="space-y-1.5">
@@ -4132,7 +4115,7 @@ export default function QueuePage() {
               variant="outline"
               size="sm"
               onClick={() => setIsParkModalOpen(false)}
-              className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto justify-center"
+              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
             </Button>
@@ -4141,7 +4124,7 @@ export default function QueuePage() {
               size="sm"
               onClick={handleParkPatient}
               loading={submittingPark}
-              className="rounded-xl font-bold bg-warning hover:bg-warning text-background min-h-[44px] w-full sm:w-auto justify-center"
+              className="font-bold bg-warning hover:bg-warning text-background min-h-[44px] w-full sm:w-auto justify-center"
             >
               Hold in Standby
             </Button>
@@ -4186,14 +4169,8 @@ export default function QueuePage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-text">Additional Requisition Notes / Clinical Instructions</label>
-            <input
-              type="text"
-              placeholder="e.g. STAT Fasting sample, urgent lipid panel, fever workup"
-              value={investigationNotes}
-              onChange={(e) => setInvestigationNotes(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-surface text-text focus:outline-hidden focus:ring-2 focus:ring-focus-ring"
-            />
+
+            <Input type="text" placeholder="e.g. STAT Fasting sample, urgent lipid panel, fever workup" value={investigationNotes} onChange={(e) => setInvestigationNotes(e.target.value)} label="Additional Requisition Notes / Clinical Instructions" size="sm" />
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-border">
@@ -4205,7 +4182,7 @@ export default function QueuePage() {
               size="sm"
               onClick={handleSendToInvestigation}
               loading={isSubmittingInvestigation}
-              className="bg-primary hover:bg-primary text-brand-mist font-bold rounded-xl min-h-[44px] w-full sm:w-auto justify-center"
+              className="hover:bg-primary font-bold min-h-[44px] w-full sm:w-auto justify-center"
             >
               <span>🔬</span> Send for Tests & Free Room
             </Button>
@@ -4326,7 +4303,7 @@ export default function QueuePage() {
                   size="sm"
                   onClick={handleExecuteEndOpdReconcile}
                   loading={isSubmittingEndOpd}
-                  className="bg-danger hover:bg-danger text-background font-bold rounded-xl min-h-[44px] w-full sm:w-auto justify-center"
+                  className="bg-danger hover:bg-danger text-background font-bold min-h-[44px] w-full sm:w-auto justify-center"
                 >
                   <span>🛑</span> Confirm & Close OPD Shift
                 </Button>
@@ -4353,7 +4330,7 @@ export default function QueuePage() {
             appointmentId={selectedUpiAppt.id}
             invoiceId={selectedUpiAppt.invoiceId}
             invoiceNumber={selectedUpiAppt.invoiceNumber}
-            patientName={selectedUpiAppt.patientId?.userId?.name || "Patient Profile"}
+            patientName={canonicalPatientName(selectedUpiAppt.patientId)}
             tokenNumber={selectedUpiAppt.tokenNumber}
             amount={billing.totalAmount}
             items={billing.items}
@@ -4460,38 +4437,13 @@ export default function QueuePage() {
               <span>📄</span> Official Digital Rx WhatsApp Delivery
             </div>
             <p className="text-success-text/80 dark:text-success-text/80 text-[11px]">
-              Patient receives an instant interactive summary including medication dosages, instructions, dietary advice, follow-up timeline, and a tamper-evident digital prescription link.
+              The existing prescription is queued for the reviewed patient recipient. Provider acceptance, delivery and read states are recorded separately.
             </p>
           </div>
 
           <div>
             <label className="text-xs font-bold text-text mb-1.5 block">Delivery Channel</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setResendRxChannel("whatsapp")}
-                className={cn(
-                  "py-2.5 px-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-2",
-                  resendRxChannel === "whatsapp"
-                    ? "border-success bg-success/15 text-success-text dark:text-success-text ring-2 ring-success/20"
-                    : "border-border hover:bg-surface-hover text-text-secondary"
-                )}
-              >
-                <span>💬 WhatsApp Official</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setResendRxChannel("sms")}
-                className={cn(
-                  "py-2.5 px-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-2",
-                  resendRxChannel === "sms"
-                    ? "border-primary-500 bg-primary-500/15 text-accent dark:text-accent ring-2 ring-focus-ring"
-                    : "border-border hover:bg-surface-hover text-text-secondary"
-                )}
-              >
-                <span>📱 SMS Notification</span>
-              </button>
-            </div>
+            <p className="text-sm">WhatsApp, subject to current recorded consent.</p>
           </div>
 
           <div>
@@ -4499,16 +4451,18 @@ export default function QueuePage() {
               Recipient Mobile Number ({resendRxChannel.toUpperCase()})
             </label>
             <Input
+              disabled={resendRxLocked || resendingRx}
               value={resendRxPhone}
               onChange={(e) => setResendRxPhone(e.target.value)}
               placeholder="e.g. 9876543210 (10 digits)"
               className="font-mono text-sm"
             />
             <p className="text-[10px] text-text-muted mt-1">
-              Leave blank to default to patient registered profile number.
+              Leave blank to use the current organization contact. Correct changed contacts through the patient record before sending.
             </p>
           </div>
 
+          <Checkbox disabled={resendRxLocked || resendingRx} checked={resendRxReviewed} onChange={event => setResendRxReviewed(event.target.checked)} label="I reviewed the selected patient and current prescription recipient." />
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 border-t border-border/60 pt-3">
             <Button
               variant="outline"
@@ -4518,7 +4472,7 @@ export default function QueuePage() {
                 setResendRxAppt(null);
               }}
               disabled={resendingRx}
-              className="rounded-xl font-semibold cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
+              className="font-semibold cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
             </Button>
@@ -4526,11 +4480,12 @@ export default function QueuePage() {
               variant="primary"
               size="sm"
               onClick={handleResendRxSubmit}
+              disabled={!resendRxReviewed}
               loading={resendingRx}
-              className="bg-success hover:bg-success text-background font-bold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
+              className="bg-success hover:bg-success text-background font-bold flex items-center gap-1.5 cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
             >
               <Send className="w-3.5 h-3.5" />
-              Send prescription
+              {resendRxLocked ? 'Retry submitted prescription message' : 'Queue reviewed prescription'}
             </Button>
           </div>
         </div>

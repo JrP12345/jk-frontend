@@ -461,7 +461,7 @@ export function InCabinInvestigationViewerModal({
             size="sm"
             onClick={handleCopySummary}
             disabled={!activeTest}
-            className="font-bold text-xs rounded-xl border-accent/30 text-accent dark:text-accent hover:bg-primary/10 cursor-pointer"
+            className="font-bold text-xs border-accent/30 text-accent dark:text-accent hover:bg-primary/10 cursor-pointer"
           >
             {copied ? (
               <>
@@ -484,7 +484,7 @@ export function InCabinInvestigationViewerModal({
                 size="sm"
                 onClick={handleRecallToCabin}
                 loading={recalling}
-                className="bg-success hover:bg-success text-background font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                className="bg-success hover:bg-success text-background font-bold text-xs cursor-pointer"
               >
                 <Volume2 className="w-3.5 h-3.5 mr-1.5" />
                 Recall Patient to Cabin (Chime)
@@ -496,7 +496,7 @@ export function InCabinInvestigationViewerModal({
               variant="outline"
               size="sm"
               onClick={onClose}
-              className="font-semibold text-xs rounded-xl"
+              className="font-semibold text-xs"
             >
               Close Viewer
             </Button>

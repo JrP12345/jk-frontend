@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import { Button, Input, ImageUpload, ScheduleEditor, Alert, useToast } from "@/components/ui";
+import { Button, Input, ImageUpload, ScheduleEditor, Alert, useToast, Textarea } from "@/components/ui";
 import { organizationImageUrl, saveWithBranding, type OrganizationRecord } from "@/services/organization.service";
 
 type ImageValue = File | string | null;
@@ -43,7 +43,7 @@ export function OrganizationDetails({ organization, onSaved }: { organization: O
     <fieldset disabled={saving} className="space-y-4">
       <legend className="text-base font-semibold mb-3">Organization details</legend>
       <div className="grid gap-4 sm:grid-cols-2">{field("name", "Organization name", "text", true)}{field("city", "City", "text", true)}{field("email", "Contact email", "email")}{field("phone", "Contact phone", "tel")}{field("address", "Address")}{field("timezone", "Operating timezone")}</div>
-      <label className="block text-sm font-medium">Description<textarea className="mt-2 block w-full rounded-xl border border-border p-3 bg-surface text-text" rows={3} value={form.description || ""} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
+      <Textarea rows={3} value={form.description || ""} onChange={(e) => setForm({ ...form, description: e.target.value })} label="Description" />
       <details className="border-t border-border pt-3"><summary className="cursor-pointer py-2 text-sm font-medium">Legal information</summary><div className="grid gap-4 sm:grid-cols-2 pt-3">{field("taxId", "Tax ID / GSTIN")}{field("licenseNumber", "License number")}<p className="text-sm text-text-muted sm:col-span-2">Country: {form.countryCode || "Not configured"} · Currency: {form.currency || "INR"}. Changing legal country requires a reviewed migration.</p></div></details>
     </fieldset>
     <fieldset disabled={saving} className="space-y-4 border-t border-border pt-5">

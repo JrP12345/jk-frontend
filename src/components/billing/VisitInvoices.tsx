@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
 import { Alert, Button, Modal, Pagination, Select, LoadingState, SkeletonCardGrid } from "@/components/ui";
+import { formatCurrency } from '@/lib/currency';
 import { useLatestRead } from "@/hooks/useLatestRead";
 
 interface Invoice { id: string; invoiceNumber: string; totalAmount: number; amountPaid?: number; balanceDue?: number; currency?: string; status: string }
@@ -41,7 +42,7 @@ export function VisitInvoices({ appointmentId, patientName, locationId, onClose,
         <Select label="Payment received by" value={method} onChange={e => setMethod(e.target.value)} disabled={Boolean(busy)} options={[{ value: "cash", label: "Cash" }, { value: "card", label: "Card" }, { value: "upi", label: "UPI (INR locations only)" }]} />
         {invoices.map(invoice => {
           const balance = invoice.balanceDue ?? Math.max(0, invoice.totalAmount - (invoice.amountPaid || 0));
-          const amount = new Intl.NumberFormat(undefined, { style: "currency", currency: invoice.currency || "INR" }).format(balance);
+          const amount = formatCurrency(balance, invoice.currency || "INR", { minimumFractionDigits: invoice.currency === 'JPY' ? 0 : 2 });
           const payable = ["unpaid", "partially_paid"].includes(invoice.status) && balance > 0;
           return <div key={invoice.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-3"><div><p className="font-medium">{invoice.invoiceNumber}</p><p className="text-sm text-text-muted">{payable ? `${amount} outstanding` : invoice.status.replaceAll("_", " ")}</p></div>{payable && <Button disabled={Boolean(busy) || (method === "upi" && invoice.currency !== "INR")} loading={busy === invoice.id} onClick={() => collect(invoice)}>Record {amount}</Button>}</div>;
         })}

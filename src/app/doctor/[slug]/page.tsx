@@ -7,6 +7,7 @@ import { getPublicProfile, publicBackendUrl } from "@/lib/publicProfile";
 import { profileMetadata, publicImageUrl } from "@/lib/publicSeo";
 import { absolutePublicUrl } from "@/lib/siteUrl";
 import PublicStructuredData from "@/components/PublicStructuredData";
+import PublicBrandStyles from "@/components/PublicBrandStyles";
 import PublicProfileShare from "@/components/PublicProfileShare";
 import { Suspense, cache } from "react";
 import { LoadingState, SkeletonForm } from "@/components/ui";
@@ -98,6 +99,7 @@ export default async function DoctorPage({ params, searchParams }: { params: Pro
   const profileImage = publicImageUrl(doctor.imageUrl);
 
   return <div className="min-h-screen bg-surface-alt text-text">
+    <PublicBrandStyles color={selectedLocation?.brandColor} />
     <PublicStructuredData data={profileUrl ? { "@context": "https://schema.org", "@type": "ProfilePage", url: profileUrl, mainEntity: { "@type": "Person", "@id": `${profileUrl}#doctor`, name: doctor.name, url: profileUrl, ...(profileImage ? { image: profileImage } : {}), ...(doctor.description ? { description: doctor.description } : {}), workLocation: locations.map((location) => ({ "@type": "Place", name: location.name, url: absolutePublicUrl(locationPath(location)) })) } } : null} />
     <MarketplaceNavbar brand={selectedLocation ? { name: doctor && hasMultipleLocations(doctor) ? doctor.organizationName : selectedLocation.name, logoUrl: doctor?.organizationLogo || selectedLocation.logo, href: locationPath(selectedLocation) } : undefined} />
     <main className="mx-auto max-w-6xl px-4 pb-28 pt-24 sm:px-6 sm:pt-28 lg:pb-16">
@@ -119,7 +121,7 @@ export default async function DoctorPage({ params, searchParams }: { params: Pro
         </nav>
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)]">
           <div className="contents">
-            <section className="order-1 min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-6 lg:col-start-1 lg:row-start-1" style={selectedLocation ? { borderTop: `4px solid ${selectedLocation.brandColor}` } : undefined}>
+            <section className={`${selectedLocation ? "public-brand-border " : ""}order-1 min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-6 lg:col-start-1 lg:row-start-1`}>
               <p className="text-xs font-semibold uppercase tracking-wide text-accent">Doctor profile</p>
               <div className="mt-3 flex items-start gap-3 sm:gap-4">
                 {doctor.imageUrl ? (

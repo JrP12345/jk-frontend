@@ -4,6 +4,7 @@ import { useAuthStore } from "@/store/authStore";
 import { Sidebar, Button, Spinner, Dropdown, Avatar, useToast, EkavyuLogo, EkavyuIcon, Select, Badge, cn, ModeSwitcher } from "@/components/ui";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import StaffWorkspaceSwitcher from "@/components/auth/StaffWorkspaceSwitcher";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { hasRoutePermission } from "@/lib/routePermissions";
@@ -58,7 +59,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     // Only fetch locations if the user is operating within a location/tenant workspace
-    if (!isLoading && requiresTenantModules(user)) {
+    if (!isLoading && requiresTenantModules(user) && hasAnyPermission(user, "VIEW_LOCATIONS")) {
       if (workflowPreferencesLoading) return;
       fetchLocations().then((list) => {
         if (list.length > 0 && activeLocationId !== "all" && (!activeLocationId || !list.some((c) => c.id === activeLocationId))) {
@@ -193,11 +194,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { section: "My Health Care", label: "My Appointments", href: "/dashboard/appointments", icon: <Calendar className="w-5 h-5" /> },
     { section: "My Health Care", label: "Patient Portal & Records", href: "/dashboard/patient-portal", icon: <User className="w-5 h-5" /> },
     { section: "My Health Care", label: "My Bills & Invoices", href: "/dashboard/bills", icon: <CreditCard className="w-5 h-5" /> },
+    { section: "My Health Care", label: "Visit Feedback", href: "/dashboard/feedback", icon: <MessageSquare className="w-5 h-5" /> },
     { section: "Account & Settings", label: "Notifications", href: "/dashboard/notifications", icon: <Bell className="w-5 h-5" /> },
   ] : isRootAdmin ? [
     // Platform Root Superadmin Navigation (Free of tenant clinical clutter)
     { section: "Platform Console", label: "Platform Overview", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
     { section: "Organization management", label: "Organizations", href: "/dashboard/organizations", icon: <Building2 className="w-5 h-5" /> },
+    { section: "Organization management", label: "Patient relationships", href: "/dashboard/crm", icon: <MessageSquare className="w-5 h-5" /> },
     { section: "Organization management", label: "Global users", href: "/dashboard/admin/users", icon: <Users className="w-5 h-5" /> },
     { section: "Live supervision", label: "Live activity", href: "/dashboard/admin/monitor", icon: <Activity className="w-5 h-5" /> },
     { section: "Billing & revenue", label: "Plans & subscriptions", href: "/dashboard/admin/billing", icon: <CreditCard className="w-5 h-5" /> },
@@ -215,6 +218,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { section: "Outpatient (OPD)", label: workflowPreferences.registration === "essential" || workflowPreferences.consultation === "focused" ? "Today's patients" : "Consultations", href: "/dashboard/consultations", icon: <FileText className="w-5 h-5" />, moduleKey: "consultations" },
     { section: "Outpatient (OPD)", label: "Teleconsultation", href: "/dashboard/teleconsultation", icon: <Video className="w-5 h-5" />, moduleKey: "teleconsultation" },
     { section: "Outpatient (OPD)", label: "Patients Directory", href: "/dashboard/patients", icon: <User className="w-5 h-5" />, moduleKey: "patients" },
+    { section: "Outpatient (OPD)", label: "Patient relationships", href: "/dashboard/crm", icon: <MessageSquare className="w-5 h-5" /> },
 
     // 3. Diagnostics & Pharmacy
     { section: "Diagnostics & Pharmacy", label: "Laboratory & LIS", href: "/dashboard/laboratory", icon: <FlaskConical className="w-5 h-5" />, moduleKey: "laboratory" },
@@ -258,7 +262,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return true;
       }), user.role);
 
-  const locationSelector = user && user.role !== "patient" && !isRootAdmin && headerLocations.length > 1 ? <Select
+  const locationSelector = user && hasAnyPermission(user, "VIEW_LOCATIONS") && user.role !== "patient" && !isRootAdmin && headerLocations.length > 1 ? <Select
     size="sm"
     aria-label="Active location"
     options={[
@@ -400,6 +404,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 xl:gap-4 min-w-0 shrink-0">
+            <StaffWorkspaceSwitcher />
             {/* Only show Location selector when in operational location/tenant workspace */}
             {locationSelector && <div className="hidden lg:block lg:w-48 xl:w-64 shrink-0">{locationSelector}</div>}
             <NotificationBell />

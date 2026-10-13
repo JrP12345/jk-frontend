@@ -494,7 +494,7 @@ export default function BrowseClient({
                   variant="primary"
                   size="sm"
                   onClick={resetAllFilters}
-                  className="rounded-xl font-bold px-5 min-h-[44px] flex items-center justify-center"
+                  className="font-bold px-5 min-h-[44px] flex items-center justify-center"
                 >
                   {"Reset all filters"}
                 </Button> : undefined

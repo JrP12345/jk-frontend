@@ -421,7 +421,7 @@ export default function NotificationsInboxPage() {
                 onClick={handleTestTrigger}
                 loading={isTestLoading}
                 icon={<Sparkles className="h-3.5 w-3.5 text-text-secondary" />}
-                className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
+                className="text-xs font-semibold transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 Send test notification
               </Button>
@@ -432,7 +432,7 @@ export default function NotificationsInboxPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => markAllAsRead()}
-                className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
+                className="text-xs font-semibold transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <CheckCheck className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
                 Mark all read
@@ -444,7 +444,7 @@ export default function NotificationsInboxPage() {
                 variant="primary"
                 size="sm"
                 onClick={() => setIsSendModalOpen(true)}
-                className="rounded-xl text-xs font-semibold shadow-xs flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
+                className="text-xs font-semibold flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <Send className="h-3.5 w-3.5 mr-1.5" />
                 New notification
@@ -460,15 +460,8 @@ export default function NotificationsInboxPage() {
       <Card className="p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
           <div className="relative sm:col-span-7 lg:col-span-8">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search notifications"
-              aria-label="Search notifications"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 transition-all"
-            />
+
+            <Input icon={<Search />} type="text" placeholder="Search notifications" aria-label="Search notifications" value={search} onChange={(e) => setSearch(e.target.value)} size="sm" variant="filled" />
           </div>
 
           <div className="sm:col-span-5 lg:col-span-4">
@@ -850,7 +843,7 @@ export default function NotificationsInboxPage() {
               variant="outline"
               size="sm"
               onClick={() => setIsSendModalOpen(false)}
-              className="rounded-xl font-semibold w-full sm:w-auto min-h-[44px] sm:min-h-[36px]"
+              className="font-semibold w-full sm:w-auto min-h-[44px] sm:min-h-[36px]"
             >
               Cancel
             </Button>
@@ -860,7 +853,7 @@ export default function NotificationsInboxPage() {
               size="sm"
               loading={isSending}
               icon={<Send className="w-3.5 h-3.5" />}
-              className="font-semibold rounded-xl shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px]"
+              className="font-semibold w-full sm:w-auto min-h-[44px] sm:min-h-[36px]"
             >
               Send notification
             </Button>
@@ -923,7 +916,7 @@ export default function NotificationsInboxPage() {
                     setViewingNotification(null);
                     router.push(url);
                   }}
-                  className="font-semibold rounded-xl shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+                  className="font-semibold w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
                 >
                   Open related page
                   <ArrowRight className="w-3.5 h-3.5 ml-1.5" />

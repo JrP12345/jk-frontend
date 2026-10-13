@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { AlertTriangle, AlertCircle, ShieldAlert, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
-import { Badge, cn } from "@/components/ui";
+import { Badge, cn, Checkbox } from "@/components/ui";
 
 export interface DrugInteractionWarning {
   id: string;
@@ -244,17 +244,7 @@ export function DrugInteractionAlert({ prescriptions, onOverrideChange }: DrugIn
 
           {/* Doctor Clinical Override Checkbox */}
           <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-3 flex-wrap">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={acknowledged}
-                onChange={handleToggleAcknowledge}
-                className="w-4 h-4 rounded text-accent focus:ring-focus-ring border-border"
-              />
-              <span className="font-bold text-xs">
-                I have reviewed these pharmacological interactions and acknowledge clinical responsibility
-              </span>
-            </label>
+            <Checkbox checked={acknowledged} onChange={handleToggleAcknowledge} label="I have reviewed these pharmacological interactions and acknowledge clinical responsibility" />
 
             {acknowledged && (
               <Badge variant="success" size="sm" className="font-bold text-[10px] flex items-center gap-1">

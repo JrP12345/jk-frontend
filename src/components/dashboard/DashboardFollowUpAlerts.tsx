@@ -55,7 +55,7 @@ export function DashboardFollowUpAlerts({ alerts }: DashboardFollowUpAlertsProps
                   `/browse/${locationId}?doctorId=${doctorId}&followUp=true&prevAppointmentId=${prevApptId}`
                 );
               }}
-              className="rounded-xl font-semibold text-xs shrink-0 self-start md:self-center"
+              className="font-semibold text-xs shrink-0 self-start md:self-center"
             >
               Schedule Now
               <ArrowRight className="w-3.5 h-3.5 ml-1.5" />

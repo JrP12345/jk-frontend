@@ -249,7 +249,7 @@ export default function AdminBillingPage() {
               onClick={loadAdminData}
               loading={isRefreshing}
               icon={<RotateCw className="h-3.5 w-3.5 text-text-secondary" />}
-              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] text-xs font-semibold transition-colors"
             >
               Refresh
             </Button>
@@ -257,7 +257,7 @@ export default function AdminBillingPage() {
             <Button
               variant="primary"
               size="sm"
-              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold"
               onClick={() => {
                 setEditingPlan({
                   name: "",
@@ -384,15 +384,8 @@ export default function AdminBillingPage() {
 
         {activeTab === "subscriptions" && (
           <div className="relative w-full sm:w-64 shrink-0">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search by organization..."
-              aria-label="Search organization subscriptions"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-1.5 bg-surface-alt border border-border/80 rounded-xl text-xs sm:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 transition-all"
-            />
+
+            <Input icon={<Search />} type="text" placeholder="Search by organization..." aria-label="Search organization subscriptions" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} size="sm" variant="filled" />
           </div>
         )}
       </div>
@@ -485,7 +478,7 @@ export default function AdminBillingPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full font-semibold rounded-xl"
+                  className="w-full font-semibold"
                   onClick={() => {
                     setEditingPlan(plan);
                     setPlanModalOpen(true);
@@ -587,7 +580,7 @@ export default function AdminBillingPage() {
                             variant="primary"
                             size="xs"
                             onClick={() => { setManualGrantSub(row); setManualGrantReason(""); }}
-                            className="font-semibold rounded-lg shadow-xs min-h-[32px] px-2.5"
+                            className="font-semibold rounded-lg min-h-[32px] px-2.5"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
                             Grant access
@@ -629,7 +622,7 @@ export default function AdminBillingPage() {
                 variant="primary"
                 size="sm"
                 loading={savingRazorpay}
-                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs shrink-0"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold shrink-0"
               >
                 <KeyRound className="w-3.5 h-3.5 mr-1.5" />
                 Save Gateway Keys
@@ -730,7 +723,7 @@ export default function AdminBillingPage() {
                 size="sm"
                 loading={savingTrial}
                 onClick={handleExtendTrial}
-                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold"
               >
                 Confirm Extension
               </Button>
@@ -917,7 +910,7 @@ export default function AdminBillingPage() {
               <Button type="button" variant="outline" size="sm" onClick={() => setPlanModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" size="sm" loading={savingPlan} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs">
+              <Button type="submit" variant="primary" size="sm" loading={savingPlan} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold">
                 Save Plan Configuration
               </Button>
             </div>

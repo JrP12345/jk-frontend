@@ -1,7 +1,7 @@
 "use client";
 
 import { Share2 } from "lucide-react";
-import { useToast } from "@/components/ui";
+import { useToast, Button } from "@/components/ui";
 
 export default function PublicProfileShare({ title, path }: { title: string; path: string }) {
   const { toast } = useToast();
@@ -18,5 +18,5 @@ export default function PublicProfileShare({ title, path }: { title: string; pat
       toast({ title: "Could not share", description: "Copy the public profile address from your browser.", variant: "error" });
     }
   };
-  return <button type="button" onClick={share} aria-label={`Share ${title}`} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-text hover:bg-surface-hover"><Share2 className="h-3.5 w-3.5" aria-hidden="true" />Share</button>;
+  return <Button type="button" onClick={share} aria-label={`Share ${title}`} variant="outline" size="xs"><Share2 className="h-3.5 w-3.5" aria-hidden="true" />Share</Button>;
 }

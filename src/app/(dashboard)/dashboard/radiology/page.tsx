@@ -230,7 +230,7 @@ export default function RadiologyPage() {
               size="sm"
               onClick={fetchData}
               disabled={loading}
-              className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="flex-1 sm:flex-initial min-h-[40px] text-xs font-semibold transition-colors"
              loading={loading}>
               <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
@@ -240,7 +240,7 @@ export default function RadiologyPage() {
               variant="primary"
               size="sm"
               onClick={() => setIsOrderModalOpen(true)}
-              className="flex-1 sm:flex-initial min-h-[40px] font-semibold rounded-xl shadow-xs cursor-pointer"
+              className="flex-1 sm:flex-initial min-h-[40px] font-semibold cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
               Order Imaging Study
@@ -525,7 +525,7 @@ export default function RadiologyPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => setActiveViewerStudy(study)}
-                    className="w-full font-bold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5 hover:border-primary-500 hover:text-accent"
+                    className="w-full font-bold text-xs min-h-[42px] flex items-center justify-center gap-1.5 hover:border-primary-500 hover:text-accent"
                   >
                     <span>🖼️</span> View DICOM
                   </Button>
@@ -537,7 +537,7 @@ export default function RadiologyPage() {
                       setRadiologyReportText(study.radiologyReport || "");
                       setIsReportModalOpen(true);
                     }}
-                    className="w-full font-bold text-xs min-h-[42px] rounded-xl text-success-text hover:bg-success/10 border-success/30 flex items-center justify-center gap-1.5"
+                    className="w-full font-bold text-xs min-h-[42px] text-success-text hover:bg-success/10 border-success/30 flex items-center justify-center gap-1.5"
                   >
                     <span>📝</span> Report
                   </Button>
@@ -548,7 +548,7 @@ export default function RadiologyPage() {
                     size="sm"
                     variant="ghost"
                     onClick={() => handleUpdateStatus(study.id, "in_progress")}
-                    className="w-full font-semibold text-xs min-h-[38px] rounded-xl text-text-secondary hover:text-text border border-border/50"
+                    className="w-full font-semibold text-xs min-h-[38px] hover:text-text border border-border/50"
                   >
                     ▶ Start Scan
                   </Button>

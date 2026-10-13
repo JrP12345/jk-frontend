@@ -945,7 +945,7 @@ export default function BillingPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => router.push("/dashboard/billing/services")}
-                className="rounded-xl text-xs font-semibold hover:bg-surface-hover min-h-[38px] sm:min-h-[36px] shrink-0"
+                className="text-xs font-semibold min-h-[38px] sm:min-h-[36px] shrink-0"
               >
                 <FileText className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
                 Rate Cards
@@ -956,7 +956,7 @@ export default function BillingPage() {
                 size="sm"
                 onClick={fetchInvoices}
                 disabled={isRefreshing}
-                className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-[38px] sm:min-h-[36px] shrink-0"
+                className="text-xs font-semibold transition-colors min-h-[38px] sm:min-h-[36px] shrink-0"
                loading={isRefreshing}>
                 <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
                 Refresh
@@ -967,7 +967,7 @@ export default function BillingPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleOpenTillModal}
-                  className="rounded-xl text-xs font-semibold border-warning/40 text-warning-text dark:text-warning-text hover:bg-warning/10 transition-colors shadow-2xs min-h-[38px] sm:min-h-[36px] shrink-0"
+                  className="text-xs font-semibold border-warning/40 text-warning-text dark:text-warning-text hover:bg-warning/10 transition-colors shadow-2xs min-h-[38px] sm:min-h-[36px] shrink-0"
                   title="Reconcile Cash Drawer & Close Daily Shift (Z-Report)"
                 >
                   <Banknote className="h-3.5 w-3.5 mr-1 text-warning-text dark:text-warning-text" />
@@ -983,7 +983,7 @@ export default function BillingPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleOpenCheckoutModal}
-                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold rounded-xl border-primary-500/40 text-accent dark:text-accent hover:bg-primary-500/10 transition-colors shadow-2xs justify-center"
+                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold border-primary-500/40 text-accent dark:text-accent hover:bg-primary-500/10 transition-colors shadow-2xs justify-center"
                   title="Combine consultation, tests and prescriptions for checkout"
                 >
                   <Receipt className="h-3.5 w-3.5 mr-1 text-accent" />
@@ -994,7 +994,7 @@ export default function BillingPage() {
                   variant="primary"
                   size="sm"
                   onClick={() => setIsCreateOpen(true)}
-                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs justify-center"
+                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold justify-center"
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />
                   Create Invoice
@@ -1202,7 +1202,7 @@ export default function BillingPage() {
                         size="xs"
                         variant="primary"
                         onClick={() => openPartialPaymentModal(row)}
-                        className="shrink-0 font-semibold rounded-lg shadow-xs min-h-[36px]"
+                        className="shrink-0 font-semibold rounded-lg min-h-[36px]"
                       >
                         <CreditCard className="w-3.5 h-3.5 mr-1" />
                         Pay {formatCurrency((row.balanceDue !== undefined
@@ -1352,7 +1352,7 @@ export default function BillingPage() {
                         size="sm"
                         variant="primary"
                         onClick={() => openPartialPaymentModal(row)}
-                        className="w-full font-bold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
+                        className="w-full font-bold text-xs min-h-[42px] flex items-center justify-center gap-1.5"
                       >
                         <CreditCard className="w-4 h-4" />
                         <span>Pay {formatCurrency(dueAmount, row.currency)}</span>
@@ -1402,8 +1402,8 @@ export default function BillingPage() {
             <h3 className="text-xs font-bold uppercase tracking-wider text-text">1. Choose Patient</h3>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-                <Input
+
+                <Input icon={<Search />}
                   placeholder="Search patient name, email, or mobile..."
                   value={patientSearch}
                   onChange={(e) => setPatientSearch(e.target.value)}
@@ -1411,7 +1411,7 @@ export default function BillingPage() {
                   className="pl-9"
                 />
               </div>
-              <Button type="button" onClick={handlePatientSearch} loading={searchLoading} className="font-semibold rounded-xl">
+              <Button type="button" onClick={handlePatientSearch} loading={searchLoading} className="font-semibold">
                 Search
               </Button>
             </div>
@@ -1458,16 +1458,12 @@ export default function BillingPage() {
                     {selectedPatient.userId?.phone} &bull; {selectedPatient.userId?.email}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
+                <Button type="button" onClick={() => {
                     setSelectedPatient(null);
                     validateInvoiceField("patient", null);
-                  }}
-                  className="text-xs font-bold text-danger-text hover:underline cursor-pointer"
-                >
+                  }} variant="ghost" size="xs" className="text-danger-text">
                   Change
-                </button>
+                </Button>
               </div>
             )}
 
@@ -1640,7 +1636,7 @@ export default function BillingPage() {
               variant="primary"
               loading={submittingInvoice}
               disabled={!selectedPatient || !selectedLocationId || !selectedDoctorId}
-              className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]"
+              className="w-full sm:w-auto font-semibold min-h-[44px]"
             >
               Generate Invoice
             </Button>
@@ -1702,7 +1698,7 @@ export default function BillingPage() {
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submittingPayment} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
+            <Button type="submit" size="sm" variant="primary" loading={submittingPayment} className="w-full sm:w-auto font-semibold min-h-[44px]">
               Record Settlement
             </Button>
           </div>
@@ -1885,7 +1881,7 @@ export default function BillingPage() {
             <Button variant="outline" size="sm" type="button" onClick={() => setIsPartialModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submittingPartial} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
+            <Button type="submit" size="sm" variant="primary" loading={submittingPartial} className="w-full sm:w-auto font-semibold min-h-[44px]">
               Record Installment
             </Button>
           </div>
@@ -2186,7 +2182,7 @@ export default function BillingPage() {
                     size="sm"
                     variant="primary"
                     loading={submittingTillClose}
-                    className="w-full sm:w-auto min-h-[44px] font-bold shadow-xs bg-warning hover:bg-warning text-background"
+                    className="w-full sm:w-auto min-h-[44px] font-bold bg-warning hover:bg-warning text-background"
                   >
                     <Banknote className="w-3.5 h-3.5 mr-1.5" />
                     Reconcile & Generate Z-Report
@@ -2265,22 +2261,10 @@ export default function BillingPage() {
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className="font-bold text-text">₹</span>
-                      <input
-                        type="number"
-                        min={0}
-                        value={checkoutCustomConsultFee}
-                        onChange={(e) => setCheckoutCustomConsultFee(e.target.value)}
-                        onBlur={(e) => fetchCheckoutPreview(selectedCheckoutApptId, Number(e.target.value) || 0)}
-                        className="w-24 px-2 py-1 bg-surface border border-border rounded-lg text-xs font-bold text-text focus:ring-1 focus:ring-focus-ring"
-                        placeholder="Amount"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => fetchCheckoutPreview(selectedCheckoutApptId, Number(checkoutCustomConsultFee) || 0)}
-                        className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-surface border border-border text-text hover:bg-surface-hover cursor-pointer"
-                      >
+                      <Input type="number" min={0} value={checkoutCustomConsultFee} onChange={(e) => setCheckoutCustomConsultFee(e.target.value)} onBlur={(e) => fetchCheckoutPreview(selectedCheckoutApptId, Number(e.target.value) || 0)} placeholder="Amount" fullWidth={false} containerClassName="w-24" size="sm" />
+                      <Button type="button" onClick={() => fetchCheckoutPreview(selectedCheckoutApptId, Number(checkoutCustomConsultFee) || 0)} variant="outline" size="xs">
                         Apply
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -2397,7 +2381,7 @@ export default function BillingPage() {
               size="sm"
               onClick={() => setIsCheckoutModalOpen(false)}
               disabled={submittingCheckout}
-              className="w-full sm:w-auto rounded-xl font-semibold min-h-[44px]"
+              className="w-full sm:w-auto font-semibold min-h-[44px]"
             >
               Cancel
             </Button>
@@ -2407,7 +2391,7 @@ export default function BillingPage() {
               type="submit"
               loading={submittingCheckout}
               disabled={!checkoutPreview || loadingCheckoutPreview}
-              className="w-full sm:w-auto font-bold rounded-xl bg-primary-600 hover:bg-primary-700 text-brand-mist shadow-xs min-h-[44px]"
+              className="w-full sm:w-auto font-bold bg-primary-600 hover:bg-primary-700 min-h-[44px]"
             >
               <span>⚡</span> Settle & Issue Invoice
             </Button>

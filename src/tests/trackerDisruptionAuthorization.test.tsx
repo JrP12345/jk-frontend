@@ -31,6 +31,22 @@ it("sends the private tracker proof when confirming a disruption cancellation", 
   await waitFor(() => expect(api.post).toHaveBeenCalledWith("/doctor-overrides/patient-action", expect.objectContaining({ appointmentId: "visit", action: "cancel" }), { headers: { "x-tracker-token": "private-tracker-proof" } }));
 });
 
+it('reports payment pending after a disruption reschedule', async () => {
+  window.history.replaceState({}, '', '/track/visit?action=reschedule#t=private-tracker-proof');
+  vi.mocked(api.post).mockResolvedValueOnce({ data: { data: { newAppt: { status: 'pending_payment' } } } });
+  render(<ThemeProvider><ToastProvider><Tracker /></ToastProvider></ThemeProvider>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Confirm Reschedule' }));
+  expect(await screen.findByText('The replacement booking is recorded. Payment is required before confirmation.')).toBeInTheDocument();
+});
+
+it('keeps unanswered disruption available for a patient decision without an automatic cancellation threat', async () => {
+  window.history.replaceState({}, '', '/track/visit#t=private-tracker-proof');
+  render(<ThemeProvider><ToastProvider><Tracker /></ToastProvider></ThemeProvider>);
+  expect(await screen.findByText(/select how you would like to proceed/i)).toBeInTheDocument();
+  expect(screen.queryByText(/will be cancelled if no action/i)).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /reschedule/i })).toBeEnabled();
+});
+
 it.each([
   ["refunded", "Your appointment is cancelled and the refund has been processed."],
   ["refund_pending", "Your appointment is cancelled. Contact reception to confirm the pending refund."],

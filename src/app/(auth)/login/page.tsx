@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useAuthStore, type User } from "@/store/authStore";
 import api from "@/lib/api";
 import PasskeySignIn from "@/components/auth/PasskeySignIn";
+import LoginWorkspacePicker from "@/components/auth/LoginWorkspacePicker";
+import type { WorkspaceSelection } from "@/types/workspace";
 import { detectPatientOtpTarget, patientOtpDestination, type PatientOtpTarget } from "@/lib/patientLogin";
 import { COUNTRIES, phoneCountryOptions, type CountryCode } from "@/lib/countries";
 import { NavigationPending } from "@/components/ui/RouteProgress";
@@ -45,6 +47,7 @@ export default function LoginPage() {
   const [twoFactorToken, setTwoFactorToken] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const [workspaceSelection, setWorkspaceSelection] = useState<WorkspaceSelection | null>(null);
   const [resetEmail, setResetEmail] = useState("");
   const [resetEmailError, setResetEmailError] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
@@ -71,6 +74,18 @@ export default function LoginPage() {
     if (!useAuthStore.getState().isAuthenticated) throw new Error("Sign-in did not establish a session");
     setSessionExpired(false);
     openDashboard();
+  };
+
+  const acceptSignIn = (data: { user?: User; workspaceRequired?: boolean } & Partial<WorkspaceSelection>) => {
+    if (data.workspaceRequired) {
+      if (!data.workspaceToken || !data.workspaces?.length) throw new Error("No organization workspace is available");
+      setIsTwoFactorModalOpen(false);
+      setTwoFactorToken("");
+      setOtpCode("");
+      setWorkspaceSelection(data as WorkspaceSelection);
+      return;
+    }
+    completeSignIn(data.user!);
   };
 
   useEffect(() => {
@@ -167,7 +182,7 @@ export default function LoginPage() {
         setIsTwoFactorModalOpen(true);
         return;
       }
-      completeSignIn(res.data.data.user);
+      acceptSignIn(res.data.data);
     } catch (err: any) {
       triggerShake();
       toast({
@@ -231,7 +246,7 @@ export default function LoginPage() {
         return;
       }
 
-      completeSignIn(res.data.data.user);
+      acceptSignIn(res.data.data);
     } catch (err: any) {
       triggerShake();
       toast({
@@ -454,7 +469,7 @@ export default function LoginPage() {
                       loading={otpLoading}
                       loadingText="Sending code…"
                       size="lg"
-                      className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
+                      className="font-bold min-h-[46px] shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group"
                     >
                       <span>Send Verification OTP</span>
                       <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
@@ -473,14 +488,9 @@ export default function LoginPage() {
                           </span>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        disabled={otpLoading}
-                        onClick={() => { setOtpSent(false); setPhoneOtp(""); setOtpTarget(null); setResendTimer(0); }}
-                        className="text-xs font-semibold text-accent dark:text-accent hover:underline cursor-pointer px-2.5 py-1 rounded-lg hover:bg-primary-500/10 transition-colors shrink-0"
-                      >
+                      <Button type="button" disabled={otpLoading} onClick={() => { setOtpSent(false); setPhoneOtp(""); setOtpTarget(null); setResendTimer(0); }} variant="primary" size="xs" className="shrink-0 text-accent">
                         Change
-                      </button>
+                      </Button>
                     </div>
 
                     <Input
@@ -525,7 +535,7 @@ export default function LoginPage() {
                       loading={otpLoading}
                       loadingText={isNavigating ? "Opening dashboard…" : otpAction === "sending" ? "Sending code…" : "Verifying…"}
                       size="lg"
-                      className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
+                      className="font-bold min-h-[46px] shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group"
                     >
                       <span>Verify & Sign In</span>
                       <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
@@ -585,21 +595,17 @@ export default function LoginPage() {
                         }
                       />
                       <div className="flex justify-end pt-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
+                        <Button type="button" onClick={() => {
                             setIsForgotPassword(true);
                             setIsResetSent(false);
                             setResetEmail("");
                             setResetEmailError("");
-                          }}
-                          className="text-xs font-semibold text-accent dark:text-accent hover:underline cursor-pointer"
-                        >
+                          }} variant="ghost" size="xs" className="text-accent">
                           Forgot Password?
-                        </button>
+                        </Button>
                       </div>
                     </div>
-                  <div className="pt-4"><PasskeySignIn onSuccess={completeSignIn} disabled={loading || twoFactorLoading || isNavigating || isTwoFactorModalOpen} onTwoFactor={(token) => { setTwoFactorToken(token); setIsTwoFactorModalOpen(true); }} /></div>
+                  <div className="pt-4"><PasskeySignIn onSuccess={completeSignIn} onWorkspace={setWorkspaceSelection} disabled={loading || twoFactorLoading || isNavigating || isTwoFactorModalOpen || Boolean(workspaceSelection)} onTwoFactor={(token) => { setTwoFactorToken(token); setIsTwoFactorModalOpen(true); }} /></div>
               </CardContent>
 
                   <CardFooter className="p-0 pt-2 flex flex-col gap-3">
@@ -609,7 +615,7 @@ export default function LoginPage() {
                       loading={loading}
                       loadingText={isNavigating ? "Opening dashboard…" : "Signing in…"}
                       size="lg"
-                      className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
+                      className="font-bold min-h-[46px] shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group"
                     >
                       <span>Sign In to Dashboard</span>
                       <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
@@ -675,20 +681,16 @@ export default function LoginPage() {
                     loading={resetLoading}
                     loadingText="Sending link…"
                     size="md"
-                    className="rounded-xl font-bold min-h-[44px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
+                    className="font-bold min-h-[44px] shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group"
                   >
                     <span>Send Recovery Link</span>
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
                   </Button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => setIsForgotPassword(false)}
-                  className="text-xs font-semibold text-text-secondary hover:text-text transition-colors cursor-pointer flex items-center justify-center gap-1.5 py-1 min-h-[36px]"
-                >
+                <Button type="button" onClick={() => setIsForgotPassword(false)} variant="ghost" size="xs">
                   <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2} />
                   <span>Back to Sign In</span>
-                </button>
+                </Button>
               </CardFooter>
             </form>
           )}
@@ -699,6 +701,8 @@ export default function LoginPage() {
       </div>
 
       {/* 2FA OTP Verification Modal */}
+      {workspaceSelection && <LoginWorkspacePicker selection={workspaceSelection} onSuccess={completeSignIn}
+        onCancel={() => { setWorkspaceSelection(null); setPassword(""); }} />}
       {isTwoFactorModalOpen && (
         <Modal
           open={isTwoFactorModalOpen}
@@ -719,7 +723,7 @@ export default function LoginPage() {
                   twoFactorToken,
                   otp: otpCode.trim(),
                 });
-                completeSignIn(res.data.data.user);
+                acceptSignIn(res.data.data);
               } catch (err: any) {
                 const msg = err.response?.data?.message || "";
                 const isExpired = msg.toLowerCase().includes("expired") || msg.toLowerCase().includes("challenge");
@@ -762,7 +766,7 @@ export default function LoginPage() {
               loadingText={isNavigating ? "Opening dashboard…" : "Verifying…"}
               fullWidth
               size="lg"
-              className="rounded-xl font-bold min-h-[46px] shadow-md  hover:shadow-lg  transition-all flex items-center justify-center gap-2 group"
+              className="font-bold min-h-[46px] shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group"
             >
               <span>Verify & Sign In</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />

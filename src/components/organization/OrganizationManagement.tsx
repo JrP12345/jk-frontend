@@ -14,6 +14,7 @@ import { organizationImageUrl, organizationWorkspaceUrl, type OrganizationRecord
 import { CreateOrganization } from "./CreateOrganization";
 import { OrganizationDetails } from "./OrganizationDetails";
 import { OrganizationMembers } from "./OrganizationMembers";
+import { OrganizationBookingSetup } from "./OrganizationBookingSetup";
 import { OrganizationNotifications, OrganizationAISettings } from "./OrganizationConfiguration";
 import { OrganizationModules } from "./OrganizationModules";
 import { OrganizationWorkflowPreferences } from "./OrganizationWorkflowPreferences";
@@ -57,6 +58,7 @@ export default function OrganizationManagement() {
   const queryCreate = params.get("create") === "1";
   const [selectedId, setSelectedId] = useState(queryId);
   const [section, setSection] = useState(querySection);
+  const [clinicalSetup, setClinicalSetup] = useState(false);
   const [create, setCreate] = useState(queryCreate);
   const scope = authScopeKey(user);
   const [organizationRecords, setOrganizations] = useState<OrganizationRecord[]>([]);
@@ -98,7 +100,8 @@ export default function OrganizationManagement() {
     { id: "configuration", label: "Configuration", icon: <Settings2 className="h-4 w-4" />, allowed: canManage },
   ].filter(item => item.allowed);
   const active = sections.some(item => item.id === section) ? section : "overview";
-  function navigate(id: string, nextSection = "overview") {
+  function navigate(id: string, nextSection = "overview", openClinicalSetup = false) {
+    setClinicalSetup(openClinicalSetup);
     setSelectedId(id); setSection(nextSection);
     router.push(organizationWorkspaceUrl(id, nextSection), { scroll: false });
   }
@@ -161,6 +164,7 @@ export default function OrganizationManagement() {
       {root && <Link href={`/dashboard/admin/users?organizationId=${encodeURIComponent(organization.id)}`} className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-accent hover:underline"><Users className="h-4 w-4" />Review global identities for this organization</Link>}
       <section key={organization.id} aria-label={sections.find(item => item.id === active)?.label} className="min-w-0">
         {active === "overview" && <div className="space-y-5">
+          <OrganizationBookingSetup key={`${organization.id}:${scope}`} organizationId={organization.id} onNavigate={nextSection => navigate(organization.id, nextSection, nextSection === "members")} />
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Card><CardHeader><CardTitle as="h2" className="text-sm">Primary administrator</CardTitle></CardHeader><CardContent><p className="font-medium break-words">{organization.primaryAdmin?.name || "No administrator linked"}</p><p className="text-sm text-text-muted break-all mt-1">{organization.primaryAdmin?.email || "Contact not provided"}</p></CardContent></Card>
             <Card><CardHeader><CardTitle as="h2" className="text-sm">Subscription</CardTitle></CardHeader><CardContent><p className="font-medium capitalize">{subscriptionLabel(organization)}</p><p className="text-sm text-text-muted mt-1">Review commercial terms in Subscription.</p></CardContent></Card>
@@ -171,7 +175,7 @@ export default function OrganizationManagement() {
           {root && <Card><details><summary className="text-sm font-semibold cursor-pointer py-2">Platform status and deletion</summary><p className="text-sm text-text-muted my-3">Suspension blocks organization access. Deletion permanently removes linked clinical and operational records.</p><div className="flex flex-wrap gap-3"><Button variant="outline" onClick={() => openAction("status")}>{suspended(organization) ? "Reactivate organization" : "Suspend organization"}</Button><Button variant="danger" onClick={() => openAction("delete")}>Delete organization</Button></div></details></Card>}
         </div>}
         {active === "details" && <Card padding="lg"><OrganizationDetails organization={organization} onSaved={updated => setOrganizations(list => list.map(org => org.id === updated.id ? updated : org))} /></Card>}
-        {active === "members" && <Card padding="lg"><OrganizationMembers organizationId={organization.id} /></Card>}
+        {active === "members" && <Card padding="lg"><OrganizationMembers organizationId={organization.id} initialClinicalSetup={clinicalSetup} /></Card>}
         {active === "access" && <Access organizationId={organization.id} />}
         {active === "locations" && <LocationManagement organizationId={organization.id} embedded />}
         {active === "subscription" && <BillingSettingsPage selectedOrgId={organization.id} isRoot={root} />}

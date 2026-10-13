@@ -36,12 +36,21 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET' || !allowed(new URL(request.url))) return;
   event.respondWith((async () => {
-    const cache = await caches.open(CACHE_NAME);
     try {
       const response = await fetch(request);
-      await store(cache, request, response);
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await store(cache, request, response);
+      } catch { /* Cache storage must not replace a successful network response. */ }
       return response;
-    } catch { return (await cache.match(request)) || new Response('Offline', { status: 503 }); }
+    } catch {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(request);
+        if (cached) return cached;
+      } catch { /* Storage can be unavailable in private or restricted contexts. */ }
+      return new Response('Offline', { status: 503 });
+    }
   })());
 });
 self.addEventListener('message', event => {

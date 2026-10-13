@@ -16,8 +16,9 @@ export function PWAInstallBanner({ suppressed = false }: { suppressed?: boolean 
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const isDismissed = sessionStorage.getItem("pwa_install_dismissed") === "1";
-      setDismissed(isDismissed);
+      try {
+        setDismissed(sessionStorage.getItem("pwa_install_dismissed") === "1");
+      } catch { setDismissed(false); }
     }
   }, []);
 
@@ -26,7 +27,7 @@ export function PWAInstallBanner({ suppressed = false }: { suppressed?: boolean 
   const handleDismiss = () => {
     setDismissed(true);
     if (typeof window !== "undefined") {
-      sessionStorage.setItem("pwa_install_dismissed", "1");
+      try { sessionStorage.setItem("pwa_install_dismissed", "1"); } catch { /* Dismissal still applies in this page. */ }
     }
   };
 

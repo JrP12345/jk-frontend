@@ -375,7 +375,7 @@ export function AbdmRegistrationModal({
                       <Button
                         type="submit"
                         loading={isSendingOtp}
-                        className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shadow-xs cursor-pointer"
+                        className="bg-success hover:bg-success text-background font-bold text-xs cursor-pointer"
                       >
                         <Smartphone className="w-3.5 h-3.5 mr-1" />
                         Send Aadhaar OTP
@@ -434,17 +434,13 @@ export function AbdmRegistrationModal({
                       </div>
                     </div>
                     <div className="flex justify-between items-center pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setTxnId(null)}
-                        className="text-xs text-text-muted hover:text-text font-semibold underline cursor-pointer"
-                      >
+                      <Button type="button" onClick={() => setTxnId(null)} variant="ghost" size="xs">
                         Change Aadhaar Number
-                      </button>
+                      </Button>
                       <Button
                         type="submit"
                         loading={isVerifyingOtp}
-                        className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shadow-xs cursor-pointer"
+                        className="bg-success hover:bg-success text-background font-bold text-xs cursor-pointer"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
                         Verify OTP & Issue ABHA Card
@@ -507,7 +503,7 @@ export function AbdmRegistrationModal({
                       setTxnId(null);
                       setAadhaarNumber("");
                     }}
-                    className="rounded-xl font-semibold text-xs"
+                    className="font-semibold text-xs"
                   >
                     Register Another Patient
                   </Button>
@@ -516,7 +512,7 @@ export function AbdmRegistrationModal({
                     size="sm"
                     onClick={() => handleIssueTokenForProfile(generatedProfile)}
                     loading={isIssuingToken}
-                    className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shadow-xs cursor-pointer"
+                    className="bg-success hover:bg-success text-background font-bold text-xs cursor-pointer"
                   >
                     <Zap className="w-3.5 h-3.5 mr-1" />
                     Issue Instant OPD Queue Token (3s)
@@ -545,7 +541,7 @@ export function AbdmRegistrationModal({
                 <Button
                   type="submit"
                   loading={isSearching}
-                  className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shrink-0 cursor-pointer shadow-xs"
+                  className="bg-success hover:bg-success text-background font-bold text-xs shrink-0 cursor-pointer"
                 >
                   <Search className="w-3.5 h-3.5 mr-1" />
                   Search
@@ -589,7 +585,7 @@ export function AbdmRegistrationModal({
                     size="sm"
                     onClick={() => handleIssueTokenForProfile(searchedProfile)}
                     loading={isIssuingToken}
-                    className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shadow-xs cursor-pointer"
+                    className="bg-success hover:bg-success text-background font-bold text-xs cursor-pointer"
                   >
                     <Zap className="w-3.5 h-3.5 mr-1" />
                     Link to Live Queue & Issue Token
@@ -631,7 +627,7 @@ export function AbdmRegistrationModal({
                 size="sm"
                 onClick={handleSimulateScanAndShare}
                 loading={isSimulatingScan}
-                className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shadow-xs cursor-pointer"
+                className="bg-success hover:bg-success text-background font-bold text-xs cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5 mr-1" />
                 Simulate Patient Mobile Scan (3s Token Check-In)
@@ -694,7 +690,7 @@ export function AbdmRegistrationModal({
                     }
                   }}
                   loading={m3Loading}
-                  className="bg-success hover:bg-success text-background font-bold rounded-xl text-xs shrink-0 cursor-pointer"
+                  className="bg-success hover:bg-success text-background font-bold text-xs shrink-0 cursor-pointer"
                 >
                   <Search className="w-3.5 h-3.5 mr-1" />
                   Load Care Contexts
@@ -757,7 +753,7 @@ export function AbdmRegistrationModal({
                                 setM3Loading(false);
                               }
                             }}
-                            className="text-[11px] rounded-xl font-semibold cursor-pointer"
+                            className="text-[11px] font-semibold cursor-pointer"
                           >
                             <FileCode className="w-3.5 h-3.5 mr-1 text-success-text" />
                             View FHIR R4 Bundle
@@ -803,7 +799,7 @@ export function AbdmRegistrationModal({
                       }
                     }}
                     loading={isRequestingConsent}
-                    className="bg-primary hover:bg-primary text-brand-mist font-bold rounded-xl text-xs shadow-xs cursor-pointer"
+                    className="hover:bg-primary font-bold text-xs cursor-pointer"
                   >
                     <Share2 className="w-3.5 h-3.5 mr-1" />
                     Request health records
@@ -835,7 +831,7 @@ export function AbdmRegistrationModal({
                           toast({ title: "Health record data could not be copied", description: "Try downloading the file instead.", variant: "error" });
                         }
                       }}
-                      className="text-[11px] rounded-xl font-semibold cursor-pointer"
+                      className="text-[11px] font-semibold cursor-pointer"
                     >
                       {m3Copied ? (
                         <>
@@ -860,7 +856,7 @@ export function AbdmRegistrationModal({
                         a.click();
                         URL.revokeObjectURL(url);
                       }}
-                      className="text-[11px] rounded-xl font-semibold cursor-pointer"
+                      className="text-[11px] font-semibold cursor-pointer"
                     >
                       <Download className="w-3 h-3 mr-1" /> Download data
                     </Button>

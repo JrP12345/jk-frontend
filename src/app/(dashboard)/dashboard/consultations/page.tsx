@@ -7,7 +7,7 @@ import { todayRangeParams } from "@/lib/date";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
 import { hasAnyPermission } from "@/lib/permissions";
-import { Alert, Card, CardContent, Button, Modal, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, cn, LoadingState } from "@/components/ui";
+import { Alert, Card, CardContent, Button, Modal, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, cn, LoadingState, Input, ConfirmDialog } from "@/components/ui";
 import { RotateCw, Plus, Calendar, Clock, Stethoscope, CheckCircle2, Search, Ticket, Phone, ArrowRight } from "lucide-react";
 import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
 import { TodayPatients } from "@/components/appointments/TodayPatients";
@@ -70,6 +70,8 @@ function DetailedConsultationsPage() {
 
   const [selectedLocationId, setSelectedLocationId] = useState(activeLocationId || "");
   const [queueList, setQueueList] = useState<OPDQueueAppointment[]>([]);
+  const [arrivalConfirmation, setArrivalConfirmation] = useState<OPDQueueAppointment | null>(null);
+  const [openingConsultation, setOpeningConsultation] = useState(false);
   const [dailyCounts, setDailyCounts] = useState<{ appointments: number; byStatus: Record<string, number> } | null>(null);
   const [patients, setPatients] = useState<PatientProfile[]>([]);
   const [doctors, setDoctors] = useState<DoctorUser[]>([]);
@@ -181,15 +183,22 @@ function DetailedConsultationsPage() {
   };
 
   // Filter Queue
-  async function openConsultation(item: OPDQueueAppointment) {
+  async function openConsultation(item: OPDQueueAppointment, arrivalConfirmed = false) {
+    if (openingConsultation) return;
+    if (["pending", "confirmed"].includes(item.status) && !arrivalConfirmed) {
+      setArrivalConfirmation(item);
+      return;
+    }
+    setOpeningConsultation(true);
     try {
       if (["pending", "confirmed"].includes(item.status)) {
-        if (!window.confirm("Is this patient present and ready? Mark arrival and start the consultation?")) return;
         await api.put(`/appointments/${item.id}/status`, { status: "checked-in" });
       }
       if (["pending", "confirmed", "checked-in"].includes(item.status)) await api.put(`/appointments/${item.id}/status`, { status: "in-consultation" });
+      setArrivalConfirmation(null);
       router.push(`/dashboard/consultations/${item.id}`);
     } catch (error: any) { toast({ title: "Consultation could not be opened", description: error.response?.data?.message || "Refresh the list before retrying.", variant: "error" }); }
+    finally { setOpeningConsultation(false); }
   }
   const filteredQueue = queueList.filter((item) => {
     const matchesStatus = statusFilter === "all" || item.status === statusFilter;
@@ -212,6 +221,11 @@ function DetailedConsultationsPage() {
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+      <ConfirmDialog open={Boolean(arrivalConfirmation)} title="Confirm patient arrival"
+        description="Is this patient present and ready? Mark arrival and start the consultation?"
+        confirmLabel="Mark arrival and start" loading={openingConsultation}
+        onClose={() => { if (!openingConsultation) setArrivalConfirmation(null); }}
+        onConfirm={() => { if (arrivalConfirmation) void openConsultation(arrivalConfirmation, true); }} />
       {loadError && <Alert variant="error" title="Unable to load consultations" action={<Button variant="outline" size="sm" onClick={fetchData}>Try again</Button>}>{loadError}</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
@@ -238,7 +252,7 @@ function DetailedConsultationsPage() {
               size="sm"
               onClick={fetchData}
               disabled={isRefreshing}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
+              className="text-xs font-semibold transition-colors min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
              loading={isRefreshing}>
               <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
@@ -249,7 +263,7 @@ function DetailedConsultationsPage() {
                 variant="primary"
                 size="sm"
                 onClick={() => { setWalkInBookedId(""); setIsWalkInModalOpen(true); }}
-                className="font-semibold rounded-xl shadow-xs min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
+                className="font-semibold min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Start Walk-in Consultation
@@ -332,15 +346,8 @@ function DetailedConsultationsPage() {
 
           {/* Search Input */}
           <div className="relative w-full sm:w-72 shrink-0">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search patient, doctor, complaint..."
-              aria-label="Search consultations by patient, doctor or complaint"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full min-h-11 pl-10 pr-4 py-2 bg-surface-alt border border-border/80 rounded-xl text-base md:text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 transition-all"
-            />
+
+            <Input icon={<Search />} type="text" placeholder="Search patient, doctor, complaint..." aria-label="Search consultations by patient, doctor or complaint" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} size="sm" variant="filled" />
           </div>
         </div>
       </Card>
@@ -367,7 +374,7 @@ function DetailedConsultationsPage() {
                 setStatusFilter("all");
                 setSearchQuery("");
               }}
-              className="rounded-xl font-semibold text-xs"
+              className="font-semibold text-xs"
             >
               Reset Filters
             </Button>
@@ -523,7 +530,7 @@ function DetailedConsultationsPage() {
               variant="primary"
               size="sm"
               loading={startingEncounter}
-              className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
+              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Start Clinical Encounter
               <ArrowRight className="w-3.5 h-3.5 ml-1.5" />

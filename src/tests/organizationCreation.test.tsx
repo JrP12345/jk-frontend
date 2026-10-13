@@ -75,6 +75,15 @@ describe("organization management", () => {
     expect(hasRoutePermission("/dashboard/admin/users", "admin")).toBe(false);
     expect(hasRoutePermission("/dashboard/organizations", "nurse", [])).toBe(false);
   });
+  it("opens clinical setup directly from the public booking checklist", async () => {
+    const location = { id: "branch", slug: "care-branch", name: "Care branch", isActive: true, isPublished: true };
+    vi.mocked(api.get).mockImplementation(async path => ({ data: { data: path === "/organizations" ? [org] : String(path).includes("/public/locations/") ? { ...location, organization: { id: org.id }, doctors: [], timings: "", onlineBookingAvailable: true } : String(path).includes("/members") ? { members: [] } : String(path).includes("/staff") ? { doctors: [] } : String(path).includes("/locations") ? [location] : [] } }));
+    useAuthStore.setState({ user: { id: "admin-1", name: "Admin", email: "admin@test", role: "admin", organization_id: org.id, permissions: ["MANAGE_ORGANIZATION", "MANAGE_STAFF", "VIEW_STAFF", "VIEW_LOCATIONS"] } });
+    mount(<OrganizationsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Open clinical team setup" }));
+    expect(await screen.findByRole("button", { name: "Set up myself as a doctor" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close clinical team setup" })).toHaveAttribute("aria-expanded", "true");
+  });
   it("renders a saved image after remount and sends explicit removal and cleared contact fields", async () => {
     const saved = { ...org, logo_url: ref, email: "old@example.test" };
     const onSaved = vi.fn();

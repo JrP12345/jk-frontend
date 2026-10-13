@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { Card, CardContent, Table, StatCard, Badge, Button, Input, Select, Modal, useToast } from "@/components/ui";
+import { Card, CardContent, Table, StatCard, Badge, Button, Input, Select, Modal, useToast, Textarea } from "@/components/ui";
 import { Clock, UserCheck, Users, Building2, Plus, Search, CheckCircle2, FileText, RefreshCw, Moon, Sun, Sunset, Stethoscope } from "lucide-react";
 
 interface ShiftRosterItem {
@@ -227,7 +227,7 @@ export default function NursingShiftRosterPage() {
               variant="outline"
               size="sm"
               onClick={fetchShifts}
-              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] text-xs font-semibold transition-colors"
             >
               <RefreshCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
@@ -237,7 +237,7 @@ export default function NursingShiftRosterPage() {
               variant="primary"
               size="sm"
               onClick={() => setIsAssignModalOpen(true)}
-              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold"
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
               Assign Shift Roster
@@ -383,7 +383,7 @@ export default function NursingShiftRosterPage() {
                     <Button
                       variant="primary"
                       size="sm"
-                      className="flex-1 min-h-[42px] font-bold text-xs rounded-xl shadow-xs justify-center"
+                      className="flex-1 min-h-[42px] font-bold text-xs justify-center"
                       onClick={() => handleStatusUpdate(s.id, "checked_in")}
                     >
                       <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
@@ -394,7 +394,7 @@ export default function NursingShiftRosterPage() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      className="flex-1 min-h-[42px] font-bold text-xs rounded-xl justify-center"
+                      className="flex-1 min-h-[42px] font-bold text-xs justify-center"
                       onClick={() => handleStatusUpdate(s.id, "checked_out")}
                     >
                       <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
@@ -404,7 +404,7 @@ export default function NursingShiftRosterPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 min-h-[42px] font-semibold text-xs rounded-xl justify-center"
+                    className="flex-1 min-h-[42px] font-semibold text-xs justify-center"
                     onClick={() => {
                       setActiveShiftForHandover(s);
                       setHandoverText(s.handoverNotes || "");
@@ -576,7 +576,7 @@ export default function NursingShiftRosterPage() {
             <Button variant="outline" type="button" onClick={() => setIsAssignModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
-            <Button variant="primary" type="submit" className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs">
+            <Button variant="primary" type="submit" className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold">
               Confirm Shift Schedule
             </Button>
           </div>
@@ -593,22 +593,15 @@ export default function NursingShiftRosterPage() {
       >
         <form onSubmit={handleHandoverSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-text-secondary mb-1">Clinical Transition & Patient Care Notes</label>
-            <textarea
-              rows={4}
-              required
-              placeholder="e.g. Bed 3 ventilator pressure adjusted. Meds administered at 14:00."
-              value={handoverText}
-              onChange={(e) => setHandoverText(e.target.value)}
-              className="w-full p-3 bg-surface-alt border border-border rounded-xl text-sm text-text focus:outline-none focus:ring-2 focus:ring-focus-ring"
-            />
+
+            <Textarea rows={4} required placeholder="e.g. Bed 3 ventilator pressure adjusted. Meds administered at 14:00." value={handoverText} onChange={(e) => setHandoverText(e.target.value)} label="Clinical Transition & Patient Care Notes" />
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2 border-t border-border/60">
             <Button variant="outline" type="button" onClick={() => setIsHandoverModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
-            <Button variant="primary" type="submit" className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs">
+            <Button variant="primary" type="submit" className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold">
               Save Clinical Handover
             </Button>
           </div>

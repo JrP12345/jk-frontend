@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { canViewAnalytics } from "@/lib/permissions";
-import { Alert, Card, CardHeader, CardTitle, CardContent, Button, Table, useToast, Badge, StatCard, SkeletonCard, SkeletonTable, ChartContainer, DonutChart } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardContent, Button, Table, useToast, Badge, StatCard, SkeletonCard, SkeletonTable, ChartContainer, DonutChart, ProgressBar } from "@/components/ui";
 import { RotateCw, IndianRupee, AlertCircle, Building2, Boxes } from "lucide-react";
 
 interface LocationPerformance {
@@ -146,7 +146,7 @@ export default function AnalyticsPage() {
               size="sm"
               onClick={fetchAnalytics}
               disabled={loading}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+              className="text-xs font-semibold transition-colors w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
              loading={loading}>
               <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh analytics
@@ -308,12 +308,7 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Visual Progress Bar */}
-                <div className="w-full bg-surface-alt h-3.5 rounded-full overflow-hidden border border-border">
-                  <div
-                    className="bg-primary-600 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${referralStats.completionRate}%` }}
-                  />
-                </div>
+                <ProgressBar value={referralStats.completionRate} size="lg" label="Loop completion rate" />
                 <p className="text-[10px] text-text-muted italic mt-1 text-center">
                   Completion measures appointments linked to diagnostic referrals that transitioned to completed status.
                 </p>

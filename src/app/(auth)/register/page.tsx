@@ -235,7 +235,7 @@ export default function RegisterPage() {
               </CardContent>
 
               <CardFooter className="p-0 pt-2 flex flex-col gap-3">
-                <Button type="submit" fullWidth loading={loading} size="lg" className="rounded-xl font-bold">
+                <Button type="submit" fullWidth loading={loading} size="lg" className="font-bold">
                   Send Verification OTP
                 </Button>
                 <div className="text-center text-xs text-text-muted mt-1">
@@ -267,13 +267,9 @@ export default function RegisterPage() {
                   required
                 />
                 <div className="flex items-center justify-between text-xs px-1">
-                  <button
-                    type="button"
-                    onClick={() => setOtpSent(false)}
-                    className="text-text-muted hover:text-text cursor-pointer underline"
-                  >
+                  <Button type="button" onClick={() => setOtpSent(false)} variant="ghost" size="xs">
                     Change Details
-                  </button>
+                  </Button>
                   {resendTimer > 0 ? (
                     <span className="text-text-muted font-medium">Resend in {resendTimer}s</span>
                   ) : (
@@ -291,10 +287,10 @@ export default function RegisterPage() {
 
               <CardFooter className="p-0 pt-2 flex flex-col gap-3">
                 <div className="flex gap-2 w-full">
-                  <Button type="button" variant="outline" onClick={() => setOtpSent(false)} className="rounded-xl">
+                  <Button type="button" variant="outline" onClick={() => setOtpSent(false)} >
                     Back
                   </Button>
-                  <Button type="submit" fullWidth loading={loading} size="lg" className="rounded-xl font-bold flex-1">
+                  <Button type="submit" fullWidth loading={loading} size="lg" className="font-bold flex-1">
                     Complete Registration
                   </Button>
                 </div>

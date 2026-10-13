@@ -66,6 +66,11 @@ export default function LaboratoryPage() {
 
   const [activeTab, setActiveTab] = useState<"worklist" | "catalog" | "patientVault">("worklist");
   const [selectedLocationId, setSelectedLocationId] = useState(activeLocationId || "");
+  const [linkedOrderId, setLinkedOrderId] = useState("");
+  useEffect(() => {
+    const reference = new URLSearchParams(window.location.search).get("orderId");
+    if (reference && /^[a-fA-F0-9]{24}$/.test(reference)) setLinkedOrderId(reference);
+  }, []);
 
   useEffect(() => {
     setSelectedLocationId(activeLocationId || "");
@@ -88,7 +93,7 @@ export default function LaboratoryPage() {
       if (user?.role === "patient") {
         const [testsRes, ordersRes] = await Promise.all([
           api.get(!isAll ? `/lab-tests?locationId=${selectedLocationId}` : "/lab-tests", { signal: request.signal }),
-          api.get(!isAll ? `/lab-orders?locationId=${selectedLocationId}` : "/lab-orders", { signal: request.signal }),
+          api.get(linkedOrderId ? `/lab-orders?orderId=${linkedOrderId}${!isAll ? `&locationId=${selectedLocationId}` : ""}` : !isAll ? `/lab-orders?locationId=${selectedLocationId}` : "/lab-orders", { signal: request.signal }),
         ]);
         if (!request.isCurrent()) return;
         setLabTests(testsRes.data?.data || []);
@@ -96,7 +101,7 @@ export default function LaboratoryPage() {
       } else {
         const [testsRes, ordersRes, docRes, tatRes] = await Promise.all([
           api.get(!isAll ? `/lab-tests?locationId=${selectedLocationId}` : "/lab-tests", { signal: request.signal }),
-          api.get(!isAll ? `/lab-orders?locationId=${selectedLocationId}` : "/lab-orders", { signal: request.signal }),
+          api.get(linkedOrderId ? `/lab-orders?orderId=${linkedOrderId}${!isAll ? `&locationId=${selectedLocationId}` : ""}` : !isAll ? `/lab-orders?locationId=${selectedLocationId}` : "/lab-orders", { signal: request.signal }),
           api.get(!isAll ? `/onboarding/staff?locationId=${selectedLocationId}` : "/onboarding/staff", { signal: request.signal }),
           api.get(!isAll ? `/lab/tat-metrics?locationId=${selectedLocationId}` : "/lab/tat-metrics", { signal: request.signal }),
         ]);
@@ -204,7 +209,7 @@ export default function LaboratoryPage() {
     }
   }, [user?.id, user?.role, user?.organization_id]);
 
-  useEffect(() => { if (user) void fetchData(); else beginDataRead(); }, [selectedLocationId, user?.id, user?.role, user?.organization_id]);
+  useEffect(() => { if (user) void fetchData(); else beginDataRead(); }, [selectedLocationId, linkedOrderId, user?.id, user?.role, user?.organization_id]);
 
   const handlePatientSearch = (val: string) => { setSelectedPatient(null); setPatientSearch(val); };
   useEffect(() => {
@@ -406,6 +411,7 @@ export default function LaboratoryPage() {
 
   return (
     <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-32 sm:pb-12">
+      {linkedOrderId && <Card><div className="p-4 flex flex-wrap items-center gap-3"><p className="text-sm">Showing the linked diagnostic order within your current authority and branch filter.</p><Button variant="outline" onClick={() => { setLinkedOrderId(""); window.history.replaceState(null, "", window.location.pathname); }}>Show all authorized orders</Button></div></Card>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -433,7 +439,7 @@ export default function LaboratoryPage() {
                   size="sm"
                   onClick={fetchData}
                   disabled={loading}
-                  className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+                  className="flex-1 sm:flex-initial min-h-[40px] text-xs font-semibold transition-colors"
                  loading={loading}>
                   <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
                   Refresh
@@ -454,7 +460,7 @@ export default function LaboratoryPage() {
                       setErrors({});
                       setIsTestModalOpen(true);
                     }}
-                    className="flex-1 sm:flex-initial min-h-[40px] font-semibold rounded-xl shadow-xs cursor-pointer"
+                    className="flex-1 sm:flex-initial min-h-[40px] font-semibold cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5 mr-1" />
                     Add Test to Catalog
@@ -464,7 +470,7 @@ export default function LaboratoryPage() {
                     variant="primary"
                     size="sm"
                     onClick={() => { setSelectedPatient(null); setPatientSearch(""); setSelectedTestId(""); setSelectedDoctorId(""); setIsOrderOpen(true); }}
-                    className="flex-1 sm:flex-initial min-h-[40px] font-semibold rounded-xl shadow-xs cursor-pointer"
+                    className="flex-1 sm:flex-initial min-h-[40px] font-semibold cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5 mr-1" />
                     Place Lab Order
@@ -716,7 +722,7 @@ export default function LaboratoryPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleCollectSample(order.id)}
-                              className="w-full font-bold text-xs rounded-xl min-h-[42px] justify-center"
+                              className="w-full font-bold text-xs min-h-[42px] justify-center"
                             >
                               Collect {order.testId?.sampleType || "Specimen"}
                             </Button>
@@ -733,7 +739,7 @@ export default function LaboratoryPage() {
                                 setUploadedFile(null);
                                 setIsResultOpen(true);
                               }}
-                              className="w-full font-bold text-xs rounded-xl min-h-[42px] justify-center shadow-xs"
+                              className="w-full font-bold text-xs min-h-[42px] justify-center"
                             >
                               Upload Results
                             </Button>
@@ -862,7 +868,7 @@ export default function LaboratoryPage() {
                               setErrors({});
                               setIsTestModalOpen(true);
                             }}
-                            className="flex-1 font-semibold text-xs rounded-xl min-h-[40px] justify-center"
+                            className="flex-1 font-semibold text-xs min-h-[40px] justify-center"
                           >
                             Edit Test
                           </Button>

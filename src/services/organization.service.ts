@@ -11,7 +11,8 @@ export interface OrganizationRecord {
   primaryAdmin?: { name: string; email?: string } | null;
   subscriptionSummary?: { label?: string; commercialState?: string; trialEndsAt?: string; nextBillingDate?: string; [key: string]: unknown };
 }
-export interface OrganizationMember { id: string; name: string; email: string; phone?: string; role: string; isActive: boolean; source?: string }
+export interface OrganizationMember { id: string; name: string; email: string; phone?: string; role: string; isActive: boolean; source?: string;
+  locationAccess?: { mode: "all" | "selected"; locationIds: string[] } | null; accessRevision?: number }
 
 export function organizationPath(path: string, organizationId?: string) {
   return organizationId ? `${path}${path.includes("?") ? "&" : "?"}organizationId=${encodeURIComponent(organizationId)}` : path;

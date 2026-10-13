@@ -33,6 +33,13 @@ describe("StatCard Component Tests", () => {
 });
 
 describe("Table Component Tests", () => {
+  it('names an operational table for assistive technology without adding toolbar actions', () => {
+    render(<Table caption='Recorded inquiry sources' fitContent columns={[{ header: 'Source', key: 'source' }]}
+      data={[{ id: 'phone', source: 'Phone' }]} searchable={false} showColumnVisibility={false}
+      pagination={false} mobileCardView={false} />);
+    expect(screen.getByRole('table', { name: 'Recorded inquiry sources' })).toHaveTextContent('Phone');
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
   it("renders table headers and row values correctly", () => {
     const columns = [
       { header: "Name", key: "name" },

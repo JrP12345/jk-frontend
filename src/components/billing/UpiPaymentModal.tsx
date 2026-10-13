@@ -193,7 +193,7 @@ export default function UpiPaymentModal({
                   Print Receipt Slip
                 </a>
               )}
-              <Button variant="primary" size="sm" onClick={onClose} className="rounded-xl font-bold">
+              <Button variant="primary" size="sm" onClick={onClose} className="font-bold">
                 Done
               </Button>
             </div>
@@ -313,7 +313,7 @@ export default function UpiPaymentModal({
 
                 <Button
                   variant="primary"
-                  className="w-full justify-between h-11 bg-primary hover:bg-primary text-brand-mist shadow-sm font-bold"
+                  className="w-full justify-between h-11 hover:bg-primary shadow-sm font-bold"
                   onClick={() => handleRecordPayment("upi")}
                   disabled={submitting || !vpa}
                 >

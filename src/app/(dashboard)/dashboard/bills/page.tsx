@@ -235,7 +235,7 @@ export default function PatientBillsPage() {
               size="sm"
               onClick={fetchPatientBills}
               disabled={loading}
-              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] text-xs font-semibold transition-colors"
              loading={loading}>
               <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
@@ -352,7 +352,7 @@ export default function PatientBillsPage() {
                       disabled={submittingPayment || !!pendingProof || !!paymentIssue}
                       size="sm"
                       variant="primary"
-                      className="w-full min-h-[44px] font-bold text-xs rounded-xl shadow-xs justify-center cursor-pointer"
+                      className="w-full min-h-[44px] font-bold text-xs justify-center cursor-pointer"
                       onClick={() => {
                         setActiveInvoice(row);
                         setCheckoutOpen(true);

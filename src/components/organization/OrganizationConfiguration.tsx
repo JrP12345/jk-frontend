@@ -146,7 +146,7 @@ export function OrganizationNotifications({
             size="sm"
             onClick={() => updatePrefMutation.mutate()}
             loading={updatePrefMutation.isPending}
-            className="font-semibold rounded-xl gap-1.5 cursor-pointer shrink-0 shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+            className="font-semibold gap-1.5 cursor-pointer shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
           >
             <Save className="w-3.5 h-3.5" />
             Save Preferences
@@ -239,7 +239,7 @@ export function OrganizationNotifications({
               size="sm"
               onClick={() => updateSmtpMutation.mutate()}
               loading={updateSmtpMutation.isPending}
-              className="font-semibold rounded-xl gap-1.5 cursor-pointer shrink-0 shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+              className="font-semibold gap-1.5 cursor-pointer shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
             >
               <Save className="w-3.5 h-3.5" />
               Save Gateway
@@ -330,7 +330,7 @@ export function OrganizationNotifications({
                   onClick={handleSendTestEmail}
                   loading={testingEmail}
                   disabled={!!selectedOrgId && !testEmail.trim()}
-                  className="rounded-xl cursor-pointer shrink-0 font-semibold gap-1.5 shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+                  className="cursor-pointer shrink-0 font-semibold gap-1.5 shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
                 >
                   <Send className="w-3.5 h-3.5" />
                   Send Test
@@ -463,7 +463,7 @@ export function OrganizationAISettings({
                 size="sm"
                 onClick={() => updateMutation.mutate()}
                 loading={updateMutation.isPending}
-                className="font-semibold rounded-xl gap-1.5 cursor-pointer shrink-0 shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+                className="font-semibold gap-1.5 cursor-pointer shrink-0 w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
               >
                 <Save className="w-3.5 h-3.5" />
                 Save AI Config

@@ -521,7 +521,7 @@ export default function BillingSettingsPage({
               <Button
                 variant="primary"
                 size="md"
-                className="font-bold rounded-xl gap-2 shadow-xs cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+                className="font-bold gap-2 cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
                 onClick={() => setCheckoutModalOpen(true)}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -664,7 +664,7 @@ export default function BillingSettingsPage({
                   Tax information printed on your commercial SaaS invoices.
                 </CardDescription>
               </div>
-              <Button type="submit" variant="primary" size="sm" loading={savingBilling} className="font-bold rounded-xl cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
+              <Button type="submit" variant="primary" size="sm" loading={savingBilling} className="font-bold cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 Save Details
               </Button>
             </div>
@@ -895,7 +895,7 @@ export default function BillingSettingsPage({
                         loading={deactivatingLocationId === location.id}
                         disabled={deactivatingLocationId === location.id}
                         onClick={() => handleDeactivateLocation(location.id)}
-                        className="text-error-text hover:text-error-text hover:bg-error/10 border-border font-semibold shrink-0 cursor-pointer"
+                        className="text-error-text hover:text-error-text hover:bg-error/10 font-semibold shrink-0 cursor-pointer"
                       >
                         Deactivate Branch
                       </Button>

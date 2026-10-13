@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { Modal, Button, Input, Badge, Checkbox, useToast, cn } from "@/components/ui";
+import { disruptionPresence } from "@/lib/disruptionPresence";
+import { patientName, patientPhone } from "@/lib/locationWorkflow";
+import { Modal, Button, Input, Badge, Checkbox, useToast, cn, Select } from "@/components/ui";
 import { AlertTriangle, UserCheck, Clock, Calendar, XCircle, CheckCircle2, Phone, Stethoscope, RefreshCw } from "lucide-react";
 
 export interface TriageAppointment {
@@ -17,17 +19,22 @@ export interface TriageAppointment {
   } | string;
   patientId: {
     id: string;
+    name?: string;
+    phone?: string;
     dob?: string;
     gender?: string;
-    userId: { name: string; email?: string; phone?: string };
+    userId?: { name: string; email?: string; phone?: string };
   };
   appointmentTime: string;
   appointmentType: string;
   status: string;
+  disruptionOriginalStatus?: string;
   tokenNumber: number;
   queuePosition: number;
   notes?: string;
   disruptionResponseDeadline?: string;
+  disruptionReviewDueAt?: string;
+  disruptionReviewRequiredAt?: string;
   triageAction?: string;
 }
 
@@ -131,8 +138,9 @@ export default function DisruptionTriageModal({
   }, [open, locationId, date, triageAppointments]);
 
   // Derived filtered lists
-  const waitingPatients = triageAppointments.filter((a) => a.status === "checked-in" || a.notes?.includes("checked-in"));
-  const remotePatients = triageAppointments.filter((a) => a.status !== "checked-in" && !a.notes?.includes("checked-in"));
+  const waitingPatients = triageAppointments.filter((a) => disruptionPresence(a) === "waiting");
+  const remotePatients = triageAppointments.filter((a) => disruptionPresence(a) === "remote");
+  const unknownPresenceCount = triageAppointments.filter((a) => disruptionPresence(a) === "unknown").length;
 
   const displayedAppointments =
     selectedTab === "waiting"
@@ -165,9 +173,9 @@ export default function DisruptionTriageModal({
   const formatTimeRemaining = (deadlineStr?: string) => {
     if (!deadlineStr) return null;
     const diff = new Date(deadlineStr).getTime() - Date.now();
-    if (diff <= 0) return "Expired (Auto-refund pending)";
+    if (diff <= 0) return "Staff review due";
     const mins = Math.ceil(diff / (60 * 1000));
-    return `${mins} min${mins === 1 ? "" : "s"} remaining`;
+    return `Staff review in ${mins} min${mins === 1 ? "" : "s"}`;
   };
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -254,8 +262,8 @@ export default function DisruptionTriageModal({
       });
 
       toast({
-        title: "Appointment Cancelled & Refunded",
-        description: "Full refund processed and patient notified.",
+        title: "Appointment cancellation recorded",
+        description: "Review the invoice and actual refund status in billing. Message delivery is tracked separately.",
         variant: "success",
       });
 
@@ -341,8 +349,9 @@ export default function DisruptionTriageModal({
             <p>
               Due to doctor absence or early departure, affected appointments are in triage.
               <strong> Waiting patients</strong> physically at the location should be transferred to an available colleague (placed as Next Up) or rescheduled.
-              <strong> Remote patients</strong> have a 60-minute window to choose their preference via SMS/WhatsApp before automated refund.
+              <strong> Remote patients</strong> can choose their preference or contact reception. Unanswered messages require staff review; cancellation and refunds require an explicit decision.
             </p>
+            {unknownPresenceCount > 0 && <p role="status">Presence needs review for {unknownPresenceCount} visit(s). Confirm whether the patient is at the location before arranging the next step.</p>}
           </div>
         </div>
 
@@ -418,15 +427,11 @@ export default function DisruptionTriageModal({
               {selectedIds.length > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-text-secondary">Batch Action:</span>
-                  <select
-                    value={batchActionType}
-                    onChange={(e) => setBatchActionType(e.target.value as any)}
-                    className="bg-surface border border-border rounded-lg px-2.5 py-1 text-xs font-semibold text-text"
-                  >
-                    <option value="transfer">Transfer to Available Doctor</option>
-                    <option value="reschedule">Priority Reschedule</option>
-                    <option value="cancel">Cancel & Full Refund</option>
-                  </select>
+                  <Select value={batchActionType} onChange={event => setBatchActionType(event.target.value as typeof batchActionType)} aria-label="Batch recovery action" size="sm" fullWidth={false} options={[
+                    { value: "transfer", label: "Transfer to Available Doctor" },
+                    { value: "reschedule", label: "Priority Reschedule" },
+                    { value: "cancel", label: "Cancel and review payments" },
+                  ]} />
                 </div>
               )}
             </div>
@@ -436,18 +441,10 @@ export default function DisruptionTriageModal({
               <div className="pt-2 border-t border-border/60 flex flex-wrap items-center gap-3">
                 {batchActionType === "transfer" && (
                   <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-                    <select
-                      value={batchDoctorId}
-                      onChange={(e) => setBatchDoctorId(e.target.value)}
-                      className="w-full bg-surface border border-border rounded-xl px-3 py-1.5 text-xs font-semibold text-text"
-                    >
-                      <option value="" disabled>Select Replacement Doctor</option>
-                      {eligibleReplacements.map((doc) => (
-                        <option key={doc.doctorId} value={doc.doctorId}>
-                          {doc.name} ({doc.specialization || "General"}) — {doc.currentBookingsCount} queued — Fee: ₹{doc.fees} (Courtesy Absorbed)
-                        </option>
-                      ))}
-                    </select>
+                    <Select value={batchDoctorId} onChange={event => setBatchDoctorId(event.target.value)} aria-label="Batch replacement doctor" size="sm" options={[
+                      { value: "", label: "Select Replacement Doctor", disabled: true },
+                      ...eligibleReplacements.map(doc => ({ value: doc.doctorId, label: `${doc.name} (${doc.specialization || "General"}) — ${doc.currentBookingsCount} queued — Fee: ₹${doc.fees} (Courtesy Absorbed)` })),
+                    ]} />
                   </div>
                 )}
 
@@ -486,10 +483,11 @@ export default function DisruptionTriageModal({
         ) : (
           <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
             {displayedAppointments.map((appt) => {
-              const isCheckedIn = appt.status === "checked-in" || appt.notes?.includes("checked-in");
+              const presence = disruptionPresence(appt);
+              const isCheckedIn = presence === "waiting";
               const isSelected = selectedIds.includes(appt.id);
               const doctorName = getDoctorName(appt.doctorId);
-              const timeRemaining = formatTimeRemaining(appt.disruptionResponseDeadline);
+              const timeRemaining = appt.disruptionReviewRequiredAt ? 'Staff review required' : formatTimeRemaining(appt.disruptionReviewDueAt || appt.disruptionResponseDeadline);
 
               return (
                 <div
@@ -524,24 +522,24 @@ export default function DisruptionTriageModal({
                       <div className="space-y-0.5 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-text text-sm">
-                            {appt.patientId?.userId?.name || "Patient"}
+                            {patientName(appt.patientId)}
                           </span>
                           {isCheckedIn ? (
                             <Badge variant="danger" size="sm" className="font-bold text-[10px]">
                               Waiting at Location
                             </Badge>
                           ) : (
-                            <Badge variant="primary" size="sm" className="font-semibold text-[10px]">
-                              Remote / Confirmed
+                            <Badge variant={presence === "unknown" ? "warning" : "primary"} size="sm" className="font-semibold text-[10px]">
+                              {presence === "remote" ? "Remote / Pending" : "Presence needs review"}
                             </Badge>
                           )}
                         </div>
 
                         <div className="flex items-center gap-2 text-xs text-text-muted flex-wrap">
-                          {appt.patientId?.userId?.phone && (
+                          {patientPhone(appt.patientId) && (
                             <span className="inline-flex items-center gap-1">
                               <Phone className="w-3 h-3" />
-                              {appt.patientId?.userId?.phone}
+                              {patientPhone(appt.patientId)}
                             </span>
                           )}
                           <span>&bull;</span>
@@ -602,7 +600,7 @@ export default function DisruptionTriageModal({
                         className="rounded-lg font-semibold text-xs text-danger-text hover:text-danger-text hover:bg-danger/10 flex items-center gap-1"
                       >
                         <XCircle className="w-3 h-3" />
-                        Refund
+                        Cancel / payment review
                       </Button>
                     </div>
                   </div>
@@ -617,20 +615,9 @@ export default function DisruptionTriageModal({
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <select
-                          value={activeTransferDocId || eligibleReplacements[0]?.doctorId || ""}
-                          onChange={(e) => setActiveTransferDocId(e.target.value)}
-                          className="flex-1 bg-surface-alt border border-border rounded-lg px-3 py-1.5 text-xs font-semibold text-text"
-                        >
-                          {eligibleReplacements.length === 0 && (
-                            <option value="">No other doctors available today</option>
-                          )}
-                          {eligibleReplacements.map((doc) => (
-                            <option key={doc.doctorId} value={doc.doctorId}>
-                              {doc.name} ({doc.specialization || "General Practice"}) — {doc.currentBookingsCount} active patient(s) — Fee: ₹{doc.fees} (Courtesy Absorbed)
-                            </option>
-                          ))}
-                        </select>
+                        <Select value={activeTransferDocId || eligibleReplacements[0]?.doctorId || ""} onChange={event => setActiveTransferDocId(event.target.value)} aria-label="Replacement doctor" size="sm" options={eligibleReplacements.length === 0
+                          ? [{ value: "", label: "No other doctors available today" }]
+                          : eligibleReplacements.map(doc => ({ value: doc.doctorId, label: `${doc.name} (${doc.specialization || "General Practice"}) — ${doc.currentBookingsCount} active patient(s) — Fee: ₹${doc.fees} (Courtesy Absorbed)` }))} />
                         <Button
                           variant="primary"
                           size="xs"
@@ -666,18 +653,10 @@ export default function DisruptionTriageModal({
                           onChange={(e) => setActiveRescheduleDate(e.target.value)}
                           className="w-40 text-xs"
                         />
-                        <select
-                          value={activeRescheduleDocId}
-                          onChange={(e) => setActiveRescheduleDocId(e.target.value)}
-                          className="flex-1 min-w-[180px] bg-surface-alt border border-border rounded-lg px-3 py-1.5 text-xs font-semibold text-text"
-                        >
-                          <option value="">Same Doctor (Next Available)</option>
-                          {eligibleReplacements.map((doc) => (
-                            <option key={doc.doctorId} value={doc.doctorId}>
-                              Dr. {doc.name} ({doc.specialization || "General"})
-                            </option>
-                          ))}
-                        </select>
+                        <Select value={activeRescheduleDocId} onChange={event => setActiveRescheduleDocId(event.target.value)} aria-label="Reschedule doctor" size="sm" options={[
+                          { value: "", label: "Same Doctor (Next Available)" },
+                          ...eligibleReplacements.map(doc => ({ value: doc.doctorId, label: `Dr. ${doc.name} (${doc.specialization || "General"})` })),
+                        ]} />
                         <Button
                           variant="primary"
                           size="xs"
@@ -703,10 +682,10 @@ export default function DisruptionTriageModal({
                   {cancellingId === appt.id && (
                     <div className="p-3 bg-danger/10 rounded-xl border border-danger/30 space-y-3 animate-fade-in text-xs text-danger-text dark:text-danger-text">
                       <div className="font-semibold">
-                        Confirm Cancellation & Full Refund for Patient #{appt.tokenNumber}?
+                        Confirm cancellation for Patient #{appt.tokenNumber}?
                       </div>
                       <p className="text-[11px] opacity-90">
-                        This will issue a 100% full refund through the original payment gateway, release the token, and send a WhatsApp notification to the patient.
+                        Cancel this visit and release its queue token. Review the existing invoice and refund status in billing; message delivery is recorded separately.
                       </p>
                       <div className="flex items-center gap-2">
                         <Button
@@ -716,7 +695,7 @@ export default function DisruptionTriageModal({
                           loading={submittingAction}
                           className="font-bold rounded-lg"
                         >
-                          Yes, Cancel & Refund
+                          Confirm cancellation
                         </Button>
                         <Button
                           variant="ghost"
@@ -744,7 +723,7 @@ export default function DisruptionTriageModal({
             variant="outline"
             size="sm"
             onClick={onClose}
-            className="rounded-xl font-semibold"
+            className="font-semibold"
           >
             Close Cockpit
           </Button>

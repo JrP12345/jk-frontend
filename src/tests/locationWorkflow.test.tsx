@@ -1,6 +1,7 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
@@ -36,6 +37,70 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); router.push.mockReset(); });
 
 describe("Shared patient entry", () => {
+  it('does not continue a late registration into a different workspace', async () => {
+    let finish: ((value: unknown) => void) | undefined;
+    vi.mocked(api.post).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    const onBooked = vi.fn(), previous = useAuthStore.getState().user;
+    mount(<PatientEntryModal open onClose={vi.fn()} onBooked={onBooked} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add visit' })).toBeEnabled(), { timeout: 3000 });
+    fireEvent.click(screen.getByRole('button', { name: 'Register a new patient' }));
+    fireEvent.change(screen.getByLabelText('Patient name'), { target: { value: 'Private old workspace patient' } });
+    fireEvent.change(screen.getByLabelText('Phone number'), { target: { value: '9876500011' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add visit' }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+    try {
+      await act(async () => { useAuthStore.setState({ user: { ...previous!, organization_id: 'different-org' } }); });
+      await act(async () => { finish!({ data: { data: patient } }); });
+      expect(vi.mocked(api.post).mock.calls.some(call => call[0] === '/appointments')).toBe(false);
+      expect(onBooked).not.toHaveBeenCalled();
+      expect(screen.queryByText('Canonical walk-in')).not.toBeInTheDocument();
+    } finally { useAuthStore.setState({ user: previous }); }
+  });
+  it('preserves one immutable visit request after booking response loss and close/resume', async () => {
+    let bookingAttempts = 0;
+    vi.mocked(api.post).mockImplementation(async path => {
+      if (path === '/patients') return { data: { data: patient } };
+      if (++bookingAttempts === 1) throw new Error('Committed booking response lost');
+      return { data: { data: { id: 'same-recorded-visit', status: 'pending_payment' } } };
+    });
+    const onBooked = vi.fn();
+    function Entry() {
+      const [open, setOpen] = useState(true);
+      return <><PatientEntryModal open={open} onClose={() => setOpen(false)} onBooked={onBooked} /><button onClick={() => setOpen(true)}>Resume desk entry</button></>;
+    }
+    mount(<Entry />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add visit' })).toBeEnabled(), { timeout: 3000 });
+    fireEvent.click(screen.getByRole('button', { name: 'Register a new patient' }));
+    fireEvent.change(screen.getByLabelText('Patient name'), { target: { value: 'Canonical walk-in' } });
+    fireEvent.change(screen.getByLabelText('Phone number'), { target: { value: '9876500011' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add visit' }));
+    await screen.findByText(/Committed booking response lost/);
+    const original = vi.mocked(api.post).mock.calls.find(call => call[0] === '/appointments')![1];
+    expect(document.querySelector('fieldset')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Resume desk entry' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry submitted visit' }));
+    await waitFor(() => expect(onBooked).toHaveBeenCalledWith('same-recorded-visit'));
+    const bookings = vi.mocked(api.post).mock.calls.filter(call => call[0] === '/appointments');
+    expect(bookings).toHaveLength(2);
+    expect(bookings[1][1]).toEqual(original);
+    expect(vi.mocked(api.post).mock.calls.filter(call => call[0] === '/patients')).toHaveLength(1);
+    expect(api.put).not.toHaveBeenCalled();
+  });
+  it("retries uncertain registration using the same request identifier", async () => {
+    vi.mocked(api.post).mockRejectedValueOnce(new Error("Registration response lost"));
+    mount(<PatientEntryModal open onClose={vi.fn()} onBooked={vi.fn()} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add visit" })).toBeEnabled(), { timeout: 3000 });
+    fireEvent.click(screen.getByRole("button", { name: "Register a new patient" }));
+    fireEvent.change(screen.getByLabelText("Patient name"), { target: { value: "Canonical walk-in" } });
+    fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "9876500011" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add visit" }));
+    expect(await screen.findByText(/Registration response lost/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry submitted visit" }));
+    await waitFor(() => expect(vi.mocked(api.post).mock.calls.filter(call => call[0] === "/patients")).toHaveLength(2));
+    const registrations = vi.mocked(api.post).mock.calls.filter(call => call[0] === "/patients");
+    expect(registrations[1][1]).toEqual(registrations[0][1]);
+  });
   it("infers only valid single options and retains minimum patient and booked visit after arrival failure", async () => {
     vi.mocked(api.put).mockRejectedValueOnce({ response: { data: { message: "Arrival temporarily unavailable" } } }).mockResolvedValue({ data: { data: {} } });
     const onBooked = vi.fn();
@@ -48,7 +113,7 @@ describe("Shared patient entry", () => {
     fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "9876500011" } });
     fireEvent.click(screen.getByRole("button", { name: "Add visit" }));
     expect(await screen.findByText(/Arrival temporarily unavailable/)).toBeInTheDocument();
-    expect(api.post).toHaveBeenCalledWith("/patients", { name: "Canonical walk-in", phone: "9876500011" });
+    expect(api.post).toHaveBeenCalledWith("/patients", { name: "Canonical walk-in", phone: "9876500011", locationId: "clinic", clientRequestId: expect.any(String) });
     expect(api.post).toHaveBeenCalledWith("/appointments", expect.objectContaining({ patientId: "patient", locationId: "clinic", doctorId: "doctor", appointmentType: "walk-in" }));
     fireEvent.click(screen.getByRole("button", { name: "Retry arrival" }));
     await waitFor(() => expect(onBooked).toHaveBeenCalledWith("appointment"));

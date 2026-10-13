@@ -20,6 +20,13 @@ This workflow covers the standalone frontend and sibling backend checkouts, revi
 
 The frontend CI runs payment boundary, dependency audit, full TypeScript, full lint, full Vitest, and Next build on PRs and pushes to `main`/`develop`. Backend CI runs install behavior, dependency audit, bundle build and `repo_auditor.js` (full TypeScript, serial Vitest and fitness checks); tag release repeats the backend release gate. Those are already the broad safety net. The frontend CI uses `npm test`; the package script owns Vitest worker and file-parallelism limits. Frontend CI's standalone TypeScript check and Next build overlap in type work but catch failures at different stages, so they remain in CI.
 
+Backend CI and tag release also run `check:startup:source` and `check:startup`.
+These isolated probes verify native Node 24 TypeScript and production bundles,
+including configuration rejection, readiness, duplicate-port protection and clean
+shutdown. Run both for startup/runtime changes; they do not connect to deployed
+services. Backend `erasableSyntaxOnly` prevents unsupported native TypeScript
+syntax from passing the existing type gate.
+
 There is no tracked Playwright/Cypress E2E command, no formatting or pre-commit hook script, and no backend ESLint script. Do not claim automated E2E, formatting, or backend lint coverage. Browser verification is a focused manual/available-tool check today. Database migrations, seeding, backup/restore, MFA provisioning and replay scripts are operational actions, never routine validation.
 
 ## B. Fast development workflow

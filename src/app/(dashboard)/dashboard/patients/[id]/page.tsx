@@ -12,6 +12,9 @@ import dynamic from "next/dynamic";
 import PatientHistoryAccess from "@/components/ehr/PatientHistoryAccess";
 import { PatientHeader } from "@/components/clinical/PatientHeader";
 import { PatientOverviewCards } from "@/components/clinical/PatientOverviewCards";
+import { PatientIdentityControls } from "@/components/patients/PatientIdentityControls";
+import { PatientPrivacyControls } from "@/components/patients/PatientPrivacyControls";
+import { PatientRelationshipPanel } from "@/components/patients/PatientRelationshipPanel";
 
 const PatientTimeline = dynamic(
   () => import("@/components/ehr/PatientTimeline").then((mod) => mod.PatientTimeline),
@@ -47,6 +50,9 @@ export default function PatientDetailPage() {
   const patientId = params.id as string;
 
   const canManagePatients = hasAnyPermission(user, "MANAGE_PATIENTS");
+  const canEditClinical = hasAnyPermission(user, "MANAGE_EHR", "MANAGE_CLINICAL_NOTES");
+  const canReadClinical = hasAnyPermission(user, "VIEW_EHR");
+  const canReadBilling = hasAnyPermission(user, "VIEW_BILLING", "MANAGE_BILLING");
 
   const [patientData, setPatientData] = useState<any>(null);
   const [recordAccessToken, setRecordAccessToken] = useState<string | null>(null);
@@ -120,8 +126,8 @@ export default function PatientDetailPage() {
 
       // Load lab orders & invoices asynchronously
       Promise.all([
-        api.get(`/lab-orders?patientId=${encodeURIComponent(patientId)}`).catch(() => ({ data: { data: [] } })),
-        api.get(`/invoices?patientId=${encodeURIComponent(patientId)}`).catch(() => ({ data: { data: [] } })),
+        canReadClinical ? api.get(`/lab-orders?patientId=${encodeURIComponent(patientId)}`).catch(() => ({ data: { data: [] } })) : Promise.resolve({ data: { data: [] } }),
+        canReadBilling ? api.get(`/invoices?patientId=${encodeURIComponent(patientId)}`).catch(() => ({ data: { data: [] } })) : Promise.resolve({ data: { data: [] } }),
       ]).then(([labRes, invRes]) => {
         if (requestId !== profileRequest.current) return;
         const labs = labRes.data?.data || [];
@@ -158,15 +164,16 @@ export default function PatientDetailPage() {
       setEditLoading(true);
       const payload = {
         name: editForm.name,
-        phone: editForm.phone,
         dob: editForm.dob || undefined,
         gender: editForm.gender,
-        bloodGroup: editForm.bloodGroup || undefined,
         address: editForm.address,
+        ...(canEditClinical ? {
+        bloodGroup: editForm.bloodGroup || undefined,
         allergies: editForm.allergies ? editForm.allergies.split(",").map((s) => s.trim()).filter(Boolean) : [],
         conditions: editForm.conditions ? editForm.conditions.split(",").map((s) => s.trim()).filter(Boolean) : [],
         medicalNotes: editForm.medicalNotes,
         abdmHealthId: editForm.abdmHealthId || undefined,
+        } : {}),
       };
 
       await PatientService.updatePatientProfile(patientId, payload);
@@ -256,7 +263,7 @@ export default function PatientDetailPage() {
           <div className="pt-2">
             {loadError && <Button variant="outline" onClick={loadPatientDetails} className="mb-3 w-full">Try again</Button>}
             <Link href="/dashboard/patients">
-              <Button variant="outline" size="sm" className="rounded-xl font-semibold">
+              <Button variant="outline" size="sm" className="font-semibold">
                 Back to Patient Directory
               </Button>
             </Link>
@@ -398,7 +405,10 @@ export default function PatientDetailPage() {
 
       {/* Sticky Patient Banner */}
       <PatientHeader patient={headerData} />
-      <PatientHistoryAccess patientId={patientId} token={recordAccessToken} onChange={changeRecordAccess} />
+      <PatientIdentityControls patientId={patientId} />
+      <PatientPrivacyControls patientId={patientId} />
+      <PatientRelationshipPanel patientId={patientId} />
+      {canReadClinical && <PatientHistoryAccess patientId={patientId} token={recordAccessToken} onChange={changeRecordAccess} />}
 
       {/* Main Tabbed Interface */}
       <Tabs
@@ -611,7 +621,7 @@ export default function PatientDetailPage() {
             label: "Signed Health Documents",
             content: <PatientMedicalRecords patientId={patientId} accessToken={recordAccessToken} />,
           },
-        ]}
+        ].filter(tab => !["clinical", "laboratory", "documents"].includes(tab.id) || canReadClinical).filter(tab => tab.id !== "billing" || canReadBilling)}
       />
 
       {/* Edit Profile Modal */}
@@ -631,7 +641,7 @@ export default function PatientDetailPage() {
             <Input
               label="Contact Phone"
               value={editForm.phone}
-              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} type="tel" inputMode="tel"
+              readOnly type="tel" inputMode="tel" hint="Use organization contact correction above to update the contact."
             />
           </div>
 
@@ -654,6 +664,7 @@ export default function PatientDetailPage() {
             />
             <Select
               label="Blood Group"
+              disabled={!canEditClinical}
               value={editForm.bloodGroup}
               onChange={(e) => setEditForm({ ...editForm, bloodGroup: e.target.value })}
               options={[
@@ -676,6 +687,7 @@ export default function PatientDetailPage() {
             onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
           />
 
+          <fieldset disabled={!canEditClinical} className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Allergies (comma-separated)"
@@ -705,6 +717,7 @@ export default function PatientDetailPage() {
             value={editForm.abdmHealthId}
             onChange={(e) => setEditForm({ ...editForm, abdmHealthId: e.target.value })}
           />
+          </fieldset>
 
           <div className="pt-3 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => setEditModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">

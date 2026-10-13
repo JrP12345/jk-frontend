@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -9,6 +9,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function usePWA() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const pendingInstall = useRef<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
@@ -33,39 +34,49 @@ export function usePWA() {
     // Capture install prompt
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
+      pendingInstall.current = e as BeforeInstallPromptEvent;
       setInstallPrompt(e as BeforeInstallPromptEvent);
     };
 
     // Detect if already running in standalone display mode
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
     setIsInstalled(isStandalone);
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
-    window.addEventListener("appinstalled", () => {
+    const handleInstalled = () => {
       setIsInstalled(true);
+      pendingInstall.current = null;
       setInstallPrompt(null);
-    });
+    };
+    window.addEventListener("appinstalled", handleInstalled);
 
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+      window.removeEventListener("appinstalled", handleInstalled);
+      pendingInstall.current = null;
     };
   }, []);
 
   const installApp = useCallback(async () => {
-    if (!installPrompt) return false;
-    await installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === "accepted") {
-      setInstallPrompt(null);
-      setIsInstalled(true);
-      return true;
-    }
+    const prompt = pendingInstall.current;
+    if (!prompt) return false;
+    // Each browser event can be used once, even when dismissed or rejected.
+    pendingInstall.current = null;
+    setInstallPrompt(null);
+    try {
+      await prompt.prompt();
+      const { outcome } = await prompt.userChoice;
+      if (outcome === "accepted") {
+        setIsInstalled(true);
+        return true;
+      }
+    } catch { /* Browser installation remains available through its own menu. */ }
     return false;
-  }, [installPrompt]);
+  }, []);
 
   return {
     isInstallable: Boolean(installPrompt && !isInstalled),

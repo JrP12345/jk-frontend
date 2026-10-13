@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
   // Allow mobile devices on LAN (hotspot/Wi-Fi) to access dev resources (HMR, hot reload)
   // Configure LAN origins through ALLOWED_DEV_ORIGINS.
   output: "standalone",
+  distDir: process.env.EKAVYU_NEXT_DIST_DIR || ".next",
   allowedDevOrigins: process.env.ALLOWED_DEV_ORIGINS?.split(",").map(origin => origin.trim()).filter(Boolean) ?? [],
   experimental: {
     optimizePackageImports: ["lucide-react", "@tanstack/react-query", "zustand", "axios"],

@@ -225,7 +225,7 @@ export default function ServiceCatalogPage() {
                 size="sm"
                 onClick={handleSeedDefaults}
                 disabled={seeding}
-                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] text-xs font-semibold transition-colors"
               >
                 Add default services
               </Button>
@@ -235,7 +235,7 @@ export default function ServiceCatalogPage() {
                 variant="primary"
                 size="sm"
                 onClick={handleOpenAddModal}
-                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Add Service Item
@@ -449,7 +449,7 @@ export default function ServiceCatalogPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => handleOpenEditModal(row)}
-                    className="min-h-[38px] text-xs font-semibold rounded-xl flex-1 justify-center"
+                    className="min-h-[38px] text-xs font-semibold flex-1 justify-center"
                   >
                     Edit Rates & Tax
                   </Button>
@@ -458,7 +458,7 @@ export default function ServiceCatalogPage() {
                       size="sm"
                       variant="ghost"
                       onClick={() => handleDeactivate(row)}
-                      className="min-h-[38px] text-xs font-semibold text-danger hover:bg-danger/10 rounded-xl px-3"
+                      className="min-h-[38px] text-xs font-semibold text-danger hover:bg-danger/10 px-3"
                     >
                       Deactivate
                     </Button>

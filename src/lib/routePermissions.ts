@@ -1,6 +1,9 @@
 import { isPrivilegedRole } from "./permissions";
 
 export const routePermissions: Record<string, string[]> = {
+  "/dashboard/crm": ["VIEW_CRM"],
+  "/dashboard/crm/overview": ["VIEW_CRM_ANALYTICS"],
+  "/dashboard/crm/settings": ["MANAGE_CRM_SETTINGS"],
   // ── Location Essentials (P1) ──────────────────────────────────────
   "/dashboard/patients":            ["VIEW_PATIENTS", "MANAGE_PATIENTS"],
   "/dashboard/appointments":        ["MANAGE_APPOINTMENTS", "VIEW_APPOINTMENTS"],
@@ -25,7 +28,7 @@ export const routePermissions: Record<string, string[]> = {
   "/dashboard/radiology":           ["MANAGE_LAB_TESTS", "MANAGE_ORDERS", "VIEW_EHR"],
   "/dashboard/teleconsultation":    ["VIEW_EHR", "MANAGE_APPOINTMENTS"],
   "/dashboard/insurance":           ["MANAGE_BILLING", "VIEW_BILLING"],
-  "/dashboard/feedback":            ["VIEW_EHR"],
+  "/dashboard/feedback":            ["MANAGE_CRM_TASKS", "VIEW_CRM_ANALYTICS", "VIEW_ANALYTICS"],
 };
 
 /**
@@ -63,6 +66,7 @@ export function hasRoutePermission(
   if (route === "/dashboard/consultations" && userPermissions.some(permission => ["VIEW_APPOINTMENTS", "MANAGE_APPOINTMENTS"].includes(permission))) return true;
 
   if (userRole === "patient" || userRole === "family_member") {
+    if (userRole === 'patient' && (route === '/dashboard/feedback' || route.startsWith('/dashboard/feedback/'))) return true;
     const patientAllowed = [
       "/dashboard",
       "/dashboard/notifications",

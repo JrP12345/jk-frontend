@@ -286,18 +286,13 @@ export function OpdClinicalPresetBar({
           <span>1-Click OPD Clinical Presets (Autofill 5-Sec Consultation)</span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
+        <Button type="button" onClick={() => {
             setNewPresetTitle(currentDiagnosis ? `${currentDiagnosis} Combo` : "");
             setSaveModalOpen(true);
-          }}
-          className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-primary-600 hover:bg-primary-700 text-brand-mist shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
-          title="Save current prescription as a custom reusable preset"
-        >
+          }} title="Save current prescription as a custom reusable preset" variant="primary" size="xs">
           <Star className="w-3 h-3 text-warning-text fill-warning" />
           <span>Save Current as Custom Preset</span>
-        </button>
+        </Button>
       </div>
 
       {/* Preset Chips Scroll Container */}
@@ -404,7 +399,7 @@ export function OpdClinicalPresetBar({
               size="sm"
               onClick={() => setSaveModalOpen(false)}
               disabled={savingPreset}
-              className="rounded-xl font-semibold"
+              className="font-semibold"
             >
               Cancel
             </Button>
@@ -413,7 +408,7 @@ export function OpdClinicalPresetBar({
               variant="primary"
               size="sm"
               loading={savingPreset}
-              className="bg-primary-600 hover:bg-primary-700 text-brand-mist font-bold rounded-xl shadow-xs"
+              className="bg-primary-600 hover:bg-primary-700 font-bold"
             >
               Save Custom Preset
             </Button>

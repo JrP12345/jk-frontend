@@ -2,7 +2,7 @@
 import { useState } from "react";
 import api from "@/lib/api";
 import { facilityTypeOptions } from "@/lib/facility";
-import { Alert, Button, ImageUpload, Input, Modal, Select } from "@/components/ui";
+import { Alert, Button, ImageUpload, Input, Modal, Select, Checkbox } from "@/components/ui";
 import { saveWithBranding } from "@/services/organization.service";
 import { COUNTRIES, countryOptions, type CountryCode } from "@/lib/countries";
 
@@ -58,7 +58,7 @@ export function CreateOrganization({ open, onClose, onCreated }: { open: boolean
           <Input label="Administrator name" required value={form.admin_name} onChange={(e) => change("admin_name", e.target.value)} />
           <Input label="Administrator email" required type="email" value={form.admin_email} onChange={(e) => change("admin_email", e.target.value)} />
           <Input label="Administrator password" required type="password" autoComplete="new-password" minLength={8} hint="Use uppercase, lowercase, a number and a symbol." value={form.admin_password} onChange={(e) => change("admin_password", e.target.value)} />
-          <label className="flex gap-3 items-start text-sm py-2"><input type="checkbox" checked={form.sendWelcomeEmail} onChange={(e) => setForm({ ...form, sendWelcomeEmail: e.target.checked })} className="mt-1" /><span>Send a welcome email with the login link. Share the chosen password with the administrator separately.</span></label>
+          <Checkbox checked={form.sendWelcomeEmail} onChange={(e) => setForm({ ...form, sendWelcomeEmail: e.target.checked })} label="Send a welcome email with the login link. Share the chosen password with the administrator separately." />
           <p className="text-sm text-text-muted">Default roles, modules, a primary location and the selected subscription are created automatically. The administrator configures MFA from their own account.</p>
         </>}
       </fieldset>

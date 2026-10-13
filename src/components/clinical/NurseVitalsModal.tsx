@@ -8,6 +8,7 @@ import Badge from "../ui/Badge";
 import { useToast } from "../ui/Toast";
 import api from "@/lib/api";
 import { AlertTriangle, Flame, HeartPulse, Stethoscope } from "lucide-react";
+import { Select } from "@/components/ui";
 
 export interface VitalsRecord {
   bpSystolic?: number;
@@ -395,15 +396,7 @@ export function NurseVitalsModal({
                   value={bloodSugar}
                   onChange={(e) => setBloodSugar(e.target.value)}
                 />
-                <select
-                  value={bloodSugarType}
-                  onChange={(e) => setBloodSugarType(e.target.value as any)}
-                  className="rounded-xl border border-border bg-surface text-text text-xs px-2.5 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-focus-ring"
-                >
-                  <option value="random">Random (RBS)</option>
-                  <option value="fasting">Fasting (FBS)</option>
-                  <option value="post_prandial">Post-Prandial (PPBS)</option>
-                </select>
+                <Select value={String(bloodSugarType)} onChange={(e) => setBloodSugarType(e.target.value as any)} aria-label="Blood sugar measurement type" size="sm" fullWidth={false} options={[({ value: String("random"), label: "Random (RBS)" }), ({ value: String("fasting"), label: "Fasting (FBS)" }), ({ value: String("post_prandial"), label: "Post-Prandial (PPBS)" })]} />
               </div>
             </div>
 

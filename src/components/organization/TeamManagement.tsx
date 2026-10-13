@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import Link from "next/link";
 import api from "@/lib/api";
 import TeamLoading from "@/app/(dashboard)/dashboard/staff/loading";
 import { Alert, Card, CardContent, Table, Tabs, Button, Modal, Input, useToast, Spinner, ImageUpload, ConfirmDialog, ScheduleEditor, Select, Dropdown, Badge, Avatar, StatCard, cn } from "@/components/ui";
@@ -8,7 +9,11 @@ import { useR2Upload } from "@/hooks/useR2Upload";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useOrganizationLocations } from "@/hooks/useOrganizationLocations";
-import { organizationPath } from "@/services/organization.service";
+import { organizationPath, organizationWorkspaceUrl } from "@/services/organization.service";
+import { recordId, validSingleChoice } from "@/lib/locationWorkflow";
+import { authScopeKey } from "@/lib/authScope";
+import { useLatestRead } from "@/hooks/useLatestRead";
+import { InviteOrganizationMember } from "./InviteOrganizationMember";
 import { RBACPermissionMatrix } from "@/components/clinical/RBACPermissionMatrix";
 import { ExecutiveAnalytics } from "@/components/analytics/ExecutiveAnalytics";
 import { RotateCw, Plus, UserPlus, UserCheck, Users, Stethoscope, ShieldCheck, MoreHorizontal, Edit3, Trash2, Building2, Mail, Phone, Eye, EyeOff, CalendarOff, Calendar } from "lucide-react";
@@ -23,6 +28,8 @@ export interface Doctor {
   specialization: string;
   qualification: string;
   experience_years: number;
+  fees?: number;
+  feeType?: "fixed" | "post_consultation" | "free";
 }
 
 export interface Receptionist {
@@ -61,8 +68,20 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   const { toast } = useToast();
   const { uploadFile } = useR2Upload();
   const { user } = useAuthStore();
-  const { locations, fetchLocations, activeLocationId } = useOrganizationLocations(organizationId);
+  const { locations: organizationLocations, fetchLocations, activeLocationId } = useOrganizationLocations(organizationId);
+  const locations = useMemo(() => organizationLocations.filter(location => location.isActive !== false), [organizationLocations]);
   const canManageStaff = hasAnyPermission(user, "MANAGE_STAFF");
+  const targetOrganizationId = organizationId || user?.organization_id;
+  const context = `${organizationId || ""}:${authScopeKey(user)}`;
+  const scope = authScopeKey(user);
+  const currentContext = useRef(context);
+  useEffect(() => { currentContext.current = context; return () => { currentContext.current = ""; }; }, [context]);
+  const beginAssignmentRead = useLatestRead();
+  const beginSetupRead = useLatestRead();
+  const [memberChoiceOpen, setMemberChoiceOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [setupAssignments, setSetupAssignments] = useState<any[] | null>(null);
+  const [setupError, setSetupError] = useState(false);
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [receptionists, setReceptionists] = useState<Receptionist[]>([]);
@@ -227,6 +246,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   const [isAssignmentsModalOpen, setIsAssignmentsModalOpen] = useState(false);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [assignmentError, setAssignmentError] = useState(false);
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
   const [newAssignment, setNewAssignment] = useState<any>({
     locationId: "",
@@ -255,7 +275,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
     setLoadingHolidays(true);
     setNewHoliday({
       locationId: "all",
-      date: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+      date: new Date(new Date().getTime() + 86400000).toISOString().split("T")[0],
       reason: "Public Holiday",
     });
     try {
@@ -315,23 +335,27 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       return;
     }
     setSavingAdminDoctor(true);
+    const submittedContext = context;
     try {
-      await api.post(scopedPath("/onboarding/admin/enable-doctor-profile"), adminDoctorData);
+      const response = await api.post(scopedPath("/onboarding/admin/enable-doctor-profile"), adminDoctorData);
+      if (currentContext.current !== submittedContext || authScopeKey(useAuthStore.getState().user) !== authScopeKey(user)) return;
       toast({
         title: "Doctor Profile Linked",
-        description: "Clinical doctor profile has been linked to your admin account.",
+        description: "Next, review your location, consultation hours and fees. A location assignment is required for public listing.",
         variant: "success",
       });
       setIsAdminDoctorModalOpen(false);
-      fetchStaff();
+      void fetchStaff();
+      await openAssignmentsModal({ ...adminDoctorData, ...response.data?.data, id: user!.id, name: user!.name, email: user!.email, phone: "" });
     } catch (err: any) {
+      if (currentContext.current !== submittedContext) return;
       toast({
         title: "Unable to Link Profile",
         description: err.response?.data?.message || "Failed to link doctor profile. Please try again.",
         variant: "error",
       });
     } finally {
-      setSavingAdminDoctor(false);
+      if (currentContext.current === submittedContext) setSavingAdminDoctor(false);
     }
   };
 
@@ -410,10 +434,22 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
     }
   };
 
+  const fetchSetupAssignments = async () => {
+    if (!targetOrganizationId || !hasAnyPermission(user, "VIEW_LOCATIONS", "MANAGE_LOCATIONS")) return;
+    const request = beginSetupRead();
+    const readContext = context;
+    setSetupError(false);
+    try {
+      const response = await api.get(scopedPath("/onboarding/doctors/assignments"), { signal: request.signal });
+      if (!Array.isArray(response.data?.data)) throw new Error("Incomplete assignment response");
+      if (request.isCurrent() && currentContext.current === readContext) setSetupAssignments(response.data?.data || []);
+    } catch { if (request.isCurrent() && currentContext.current === readContext) { setSetupAssignments(null); setSetupError(true); } }
+  };
+
   const loadData = async () => {
     try {
       setIsRefreshing(true);
-      await Promise.all([fetchStaff(), fetchLocations(), fetchRoles()]);
+      await Promise.all([fetchStaff(), fetchLocations(), fetchRoles(), fetchSetupAssignments()]);
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -421,8 +457,15 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   };
 
   useEffect(() => {
+    setSetupAssignments(null);
+    setIsAssignmentsModalOpen(false);
+    setIsAdminDoctorModalOpen(false);
+    setInviteOpen(false);
+    setMemberChoiceOpen(false);
+    setSavingAdminDoctor(false);
+    setSavingAssignment(false);
     loadData();
-  }, [activeLocationId, organizationId]);
+  }, [activeLocationId, organizationId, scope]);
 
   const openModal = (type: "doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier" = "doctor") => {
     setEditingId(null);
@@ -554,27 +597,34 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   });
 
   // Assignments Handlers
+  const assignmentDefaults = (doctor: Doctor | StaffMember | null, currentAssignments: any[] = []) => {
+    const choices = locations.filter(location => location.isActive !== false && !currentAssignments.some(assignment => recordId(assignment.locationId) === location.id));
+    const feeType = doctor?.feeType || "fixed";
+    return { locationId: validSingleChoice(choices, location => location.id), fees: feeType === "free" ? 0 : doctor?.fees ?? 100, feeType, appointmentDuration: 15, workingHours: DEFAULT_WORKING_HOURS, bookingMode: "sequential_queue", maxDailyTokens: "" };
+  };
+
   const openAssignmentsModal = async (doctor: Doctor | StaffMember) => {
+    const request = beginAssignmentRead();
+    const readContext = context;
     setSelectedDoctorForAssignments(doctor);
+    setAssignments([]);
+    setNewAssignment(assignmentDefaults(doctor));
     setIsAssignmentsModalOpen(true);
     setAssignmentLoading(true);
+    setAssignmentError(false);
     setEditingAssignmentId(null);
     try {
-      const res = await api.get(scopedPath(`/onboarding/doctors/assignments?doctorId=${doctor.id}`));
-      setAssignments(res.data.data || []);
+      const res = await api.get(scopedPath(`/onboarding/doctors/assignments?doctorId=${doctor.id}`), { signal: request.signal });
+      if (!request.isCurrent() || currentContext.current !== readContext) return;
+      if (!Array.isArray(res.data?.data)) throw new Error("Incomplete assignment response");
+      const currentAssignments = res.data.data || [];
+      setAssignments(currentAssignments);
+      setNewAssignment(assignmentDefaults(doctor, currentAssignments));
     } catch {
-      toast({ title: "Error", description: "Failed to load location assignments", variant: "error" });
+      if (request.isCurrent() && currentContext.current === readContext) setAssignmentError(true);
     } finally {
-      setAssignmentLoading(false);
+      if (request.isCurrent() && currentContext.current === readContext) setAssignmentLoading(false);
     }
-    setNewAssignment({
-      locationId: "",
-      fees: 100,
-      appointmentDuration: 15,
-      workingHours: DEFAULT_WORKING_HOURS,
-      bookingMode: "sequential_queue",
-      maxDailyTokens: "",
-    });
   };
 
   const handleStartEditAssignment = (asg: any) => {
@@ -592,19 +642,14 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
 
   const handleCancelEditAssignment = () => {
     setEditingAssignmentId(null);
-    setNewAssignment({
-      locationId: "",
-      fees: 100,
-      feeType: "fixed",
-      appointmentDuration: 15,
-      workingHours: DEFAULT_WORKING_HOURS,
-      bookingMode: "sequential_queue",
-      maxDailyTokens: "",
-    });
+    setNewAssignment(assignmentDefaults(selectedDoctorForAssignments, assignments));
   };
 
   const handleAddAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingAssignment || !selectedDoctorForAssignments) return;
+    const submittedContext = context;
+    const doctorId = selectedDoctorForAssignments.id;
     const asgFeeType = (newAssignment as any).feeType || "fixed";
     if (!newAssignment.locationId || (asgFeeType === "fixed" && newAssignment.fees === undefined)) {
       toast({
@@ -633,7 +678,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         toast({ title: "Updated", description: "Doctor location assignment updated successfully.", variant: "success" });
       } else {
         await api.post(scopedPath("/onboarding/doctors/assignments"), {
-          doctorId: selectedDoctorForAssignments?.id,
+          doctorId,
           locationId: newAssignment.locationId,
           fees: asgFees,
           feeType: asgFeeType,
@@ -644,22 +689,18 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         });
         toast({ title: "Assigned", description: "Doctor assigned to location successfully.", variant: "success" });
       }
-      const res = await api.get(scopedPath(`/onboarding/doctors/assignments?doctorId=${selectedDoctorForAssignments?.id}`));
+      if (currentContext.current !== submittedContext || authScopeKey(useAuthStore.getState().user) !== scope) return;
+      const res = await api.get(scopedPath(`/onboarding/doctors/assignments?doctorId=${doctorId}`));
+      if (currentContext.current !== submittedContext || authScopeKey(useAuthStore.getState().user) !== scope) return;
       setAssignments(res.data.data || []);
       setEditingAssignmentId(null);
-      setNewAssignment({
-        locationId: "",
-        fees: 100,
-        feeType: "fixed",
-        appointmentDuration: 15,
-        workingHours: DEFAULT_WORKING_HOURS,
-        bookingMode: "sequential_queue",
-        maxDailyTokens: "",
-      });
+      setNewAssignment(assignmentDefaults(selectedDoctorForAssignments, res.data.data || []));
+      void fetchSetupAssignments();
     } catch (err: any) {
+      if (currentContext.current !== submittedContext) return;
       toast({ title: "Error", description: err.response?.data?.message || "Failed to save assignment", variant: "error" });
     } finally {
-      setSavingAssignment(false);
+      if (currentContext.current === submittedContext) setSavingAssignment(false);
     }
   };
 
@@ -669,17 +710,11 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       toast({ title: "Removed", description: "Doctor assignment removed successfully.", variant: "success" });
       if (editingAssignmentId === assignmentId) {
         setEditingAssignmentId(null);
-        setNewAssignment({
-          locationId: "",
-          fees: 100,
-          appointmentDuration: 15,
-          workingHours: DEFAULT_WORKING_HOURS,
-          bookingMode: "sequential_queue",
-          maxDailyTokens: "",
-        });
       }
       const res = await api.get(scopedPath(`/onboarding/doctors/assignments?doctorId=${selectedDoctorForAssignments?.id}`));
       setAssignments(res.data.data || []);
+      setNewAssignment(assignmentDefaults(selectedDoctorForAssignments, res.data.data || []));
+      void fetchSetupAssignments();
     } catch (err: any) {
       toast({
         title: "Error",
@@ -709,8 +744,10 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   };
 
   const availableLocations = locations.filter(
-    (c) => !assignments.some((a) => (a.locationId?.id || a.locationId) === c.id)
+    (c) => c.isActive !== false && !assignments.some((a) => recordId(a.locationId) === c.id)
   );
+  const ownDoctor = doctors.find(doctor => doctor.id === user?.id);
+  const unassignedDoctors = setupAssignments === null ? [] : doctors.filter(doctor => !setupAssignments.some(assignment => assignment.isActive !== false && recordId(assignment.doctorId) === doctor.id));
 
   if (loading) return <TeamLoading />;
 
@@ -723,6 +760,8 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         finally { setRetryingAssignment(false); }
       }}>Retry assignment</Button>}>The account exists, but booking setup is incomplete. Fee: {pendingAssignment.fees}; duration: {pendingAssignment.appointmentDuration} minutes; mode: sequential queue.</Alert>}
       {loadError && <Alert variant="error" title="Unable to load staff" action={<Button variant="outline" size="sm" onClick={fetchStaff}>Try again</Button>}>{loadError}</Alert>}
+      {canManageStaff && setupError && <Alert variant="warning" title="Booking setup could not be checked" action={<Button variant="outline" size="sm" onClick={fetchSetupAssignments}>Retry setup check</Button>}>Your team remains available. Retry to check which doctors need location assignments.</Alert>}
+      {canManageStaff && unassignedDoctors.length > 0 && <Alert variant="warning" title="Location assignment required"><p>These doctor profiles need a location, consultation hours and fees before they can appear on a public booking page.</p><div className="mt-3 flex flex-wrap gap-2">{unassignedDoctors.map(doctor => <Button key={doctor.id} variant="outline" size="sm" onClick={() => openAssignmentsModal(doctor)}>Finish setup for {doctor.name}</Button>)}</div></Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -748,19 +787,19 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={!!organizationId && user?.role === "root"}
-                  onClick={() => setIsAdminDoctorModalOpen(true)}
-                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover justify-center"
+                  disabled={user?.role === "root" || (!!organizationId && organizationId !== user?.organization_id)}
+                  onClick={() => ownDoctor ? openAssignmentsModal(ownDoctor) : setIsAdminDoctorModalOpen(true)}
+                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] text-xs font-semibold justify-center"
                 >
                   <UserCheck className="w-3.5 h-3.5 mr-1.5 text-accent" />
-                  Link Admin
+                  {ownDoctor ? "My doctor setup" : "Set up myself as a doctor"}
                 </Button>
 
                 <Button
                   variant="primary"
                   size="sm"
-                  onClick={() => openModal("doctor")}
-                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs justify-center"
+                  onClick={() => setMemberChoiceOpen(true)}
+                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold justify-center"
                 >
                   <UserPlus className="h-3.5 w-3.5 mr-1" />
                   Add Member
@@ -773,7 +812,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
               size="sm"
               onClick={loadData}
               disabled={isRefreshing}
-              className="w-full sm:w-auto min-h-[40px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors justify-center order-2 sm:order-1"
+              className="w-full sm:w-auto min-h-[40px] sm:min-h-[36px] text-xs font-semibold transition-colors justify-center order-2 sm:order-1"
              loading={isRefreshing}>
               <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
@@ -781,6 +820,16 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
           </div>
         </div>
       </div>
+
+      {canManageStaff && user?.role === "root" && <p className="text-sm text-text-muted">To set up an administrator as a doctor, use their organization session through Login as administrator.</p>}
+
+      <Modal open={memberChoiceOpen} onClose={() => setMemberChoiceOpen(false)} title="Add a team member" description="Choose how this person joins your organization." size="md">
+        <div className="space-y-4">
+          <div><Button disabled={!targetOrganizationId} onClick={() => { setMemberChoiceOpen(false); setInviteOpen(true); }}>Use an existing account</Button><p className="mt-2 text-sm text-text-muted">Invite them by email. Their existing account and other organization memberships are retained.</p></div>
+          <div><Button variant="outline" onClick={() => { setMemberChoiceOpen(false); openModal("doctor"); }}>Create a new account</Button><p className="mt-2 text-sm text-text-muted">Register a new team member and configure their clinical profile.</p></div>
+        </div>
+      </Modal>
+      {inviteOpen && targetOrganizationId && <InviteOrganizationMember key={targetOrganizationId} organizationId={targetOrganizationId} onClose={() => setInviteOpen(false)} />}
 
       {/* ──────────────────────────────────────────────────────────────────────────
           2. WORKFORCE KPI STATS CARDS
@@ -1089,7 +1138,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                                 size="sm"
                                 variant="outline"
                                 onClick={() => openAssignmentsModal(row)}
-                                className="w-full font-semibold text-xs min-h-[40px] rounded-xl flex items-center justify-center gap-1"
+                                className="w-full font-semibold text-xs min-h-[40px] flex items-center justify-center gap-1"
                               >
                                 <Stethoscope className="w-3.5 h-3.5 text-accent" />
                                 <span>Assignments</span>
@@ -1098,7 +1147,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                                 size="sm"
                                 variant="outline"
                                 onClick={() => openHolidaysModal(row)}
-                                className="w-full font-semibold text-xs min-h-[40px] rounded-xl flex items-center justify-center gap-1 text-warning-text hover:bg-warning/10 border-warning/30"
+                                className="w-full font-semibold text-xs min-h-[40px] flex items-center justify-center gap-1 text-warning-text hover:bg-warning/10 border-warning/30"
                               >
                                 <CalendarOff className="w-3.5 h-3.5" />
                                 <span>Leave</span>
@@ -1158,7 +1207,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
             <Button variant="outline" size="sm" type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
-            <Button form="staff-form" type="submit" size="sm" variant="primary" loading={submitting} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs">
+            <Button form="staff-form" type="submit" size="sm" variant="primary" loading={submitting} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold">
               {editingId ? "Update Profile" : "Add Team Member"}
             </Button>
           </>
@@ -1186,20 +1235,16 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
           )}
 
           {/* Staff Profile Photo Upload */}
-          <div className="flex items-center gap-4 p-3 bg-surface-alt/40 rounded-xl border border-border/60">
-            <div className="shrink-0 w-20 h-20">
-              <ImageUpload
-                value={formData.image_url || ""}
-                onChange={(url) => setFormData((prev: any) => ({ ...prev, image_url: url }))}
-                label="Photo"
-              />
-            </div>
-            <div className="space-y-1 min-w-0">
-              <p className="text-xs font-semibold text-text">Profile Picture</p>
-              <p className="text-[11px] text-text-muted leading-relaxed">
-                Upload a professional staff photo. Displayed on patient portals, appointments, and staff directories.
-              </p>
-            </div>
+          <div className="space-y-2">
+            <ImageUpload
+              value={formData.image_url || null}
+              onChange={(value) => handleFieldChange("image_url", value)}
+              label="Profile photo"
+              disabled={submitting}
+            />
+            <p className="text-xs text-text-muted">
+              Upload a professional staff photo. Displayed on patient portals, appointments, and staff directories.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1327,13 +1372,6 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                 </div>
               )}
 
-              <div className="bg-surface-alt p-3.5 border border-border/80 rounded-2xl">
-                <ImageUpload
-                  label="Practitioner Profile Photo"
-                  value={formData.image_url || null}
-                  onChange={(val) => handleFieldChange("image_url", val)}
-                />
-              </div>
               <Input
                 label="Short Biography / Overview"
                 placeholder="About practitioner's background and achievements..."
@@ -1370,12 +1408,17 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
          ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isAssignmentsModalOpen}
-        onClose={() => setIsAssignmentsModalOpen(false)}
+        onClose={() => { if (!savingAssignment) setIsAssignmentsModalOpen(false); }}
+        busy={savingAssignment}
         title={`Location Assignments — Dr. ${selectedDoctorForAssignments?.name || ""}`}
         description="Link this practitioner to branch locations with custom consultation fees, slot durations, and working hours."
         size="2xl"
       >
         <div className="space-y-4 pt-1">
+          <ol aria-label="Doctor setup steps" className="flex flex-wrap gap-3 text-sm text-text-secondary"><li>1. Profile linked</li><li aria-current="step">2. Location, hours & fees</li><li>3. Public preview</li></ol>
+          {assignmentError && <Alert variant="error" title="Location assignments could not be loaded" action={<Button variant="outline" onClick={() => selectedDoctorForAssignments && openAssignmentsModal(selectedDoctorForAssignments)}>Retry assignments</Button>}>Retry before creating an assignment.</Alert>}
+          {!assignmentLoading && !assignmentError && !locations.length && <Alert variant="warning" title="Create a location first">A doctor needs an active location before public booking can be configured. <Link className="text-accent hover:underline" href={organizationWorkspaceUrl(targetOrganizationId, "locations")}>Open location setup</Link></Alert>}
+          {!assignmentLoading && !assignmentError && assignments.length > 0 && <Alert variant="success" title="Location assignment saved">Review publication and online booking availability before sharing. <Link className="text-accent hover:underline" href={organizationWorkspaceUrl(targetOrganizationId)}>Review public booking setup</Link></Alert>}
           {/* Active Assignments Card */}
           <div className="border border-border/80 rounded-2xl p-4 space-y-3 bg-surface-alt/30">
             <div className="flex items-center justify-between">
@@ -1393,7 +1436,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                   setIsAssignmentsModalOpen(false);
                   openHolidaysModal(selectedDoctorForAssignments);
                 }}
-                className="rounded-xl text-xs font-semibold hover:bg-surface-hover gap-1.5"
+                className="rounded-xl text-xs font-semibold gap-1.5"
               >
                 <CalendarOff className="w-3.5 h-3.5 text-warning-text" />
                 Holidays & Leaves
@@ -1566,7 +1609,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
           </div>
 
           {/* Add / Edit Assignment Form Card */}
-          {availableLocations.length > 0 || editingAssignmentId ? (
+          {!assignmentLoading && !assignmentError && (availableLocations.length > 0 || editingAssignmentId) ? (
             <form
               onSubmit={handleAddAssignment}
               className="border border-border/80 rounded-2xl p-4 space-y-3.5 bg-surface shadow-xs"
@@ -1691,17 +1734,17 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                   loading={savingAssignment}
                   size="sm"
                   variant="primary"
-                  className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
+                  className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold"
                 >
                   {editingAssignmentId ? "Update Branch Assignment" : "Assign Location"}
                 </Button>
               </div>
             </form>
-          ) : (
+          ) : !assignmentLoading && !assignmentError && locations.length > 0 ? (
             <div className="text-xs text-text-muted text-center py-4 border border-border/80 bg-surface-alt rounded-2xl font-medium">
               Dr. {selectedDoctorForAssignments?.name} is already assigned to all active locations.
             </div>
-          )}
+          ) : null}
         </div>
       </Modal>
 
@@ -1711,8 +1754,9 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       <Modal
         open={isAdminDoctorModalOpen}
         onClose={() => setIsAdminDoctorModalOpen(false)}
-        title="Link Clinical Doctor Profile to Admin Account"
-        description="Enable a Clinical Doctor Profile on your Admin account to conduct OPD consultations and issue prescriptions."
+        title="Set up myself as a doctor"
+        description="Step 1 of 3: confirm your clinical profile. Next, choose a location and review consultation hours and fees before previewing the public page."
+        busy={savingAdminDoctor}
         size="lg"
       >
         <form onSubmit={handleEnableAdminDoctorProfile} className="space-y-4 pt-1">
@@ -1770,7 +1814,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsAdminDoctorModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
+            <Button variant="outline" size="sm" type="button" disabled={savingAdminDoctor} onClick={() => setIsAdminDoctorModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
             <Button
@@ -1778,9 +1822,9 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
               size="sm"
               type="submit"
               loading={savingAdminDoctor}
-              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs"
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold"
             >
-              Link Clinical Doctor Profile
+              Save profile & continue
             </Button>
           </div>
         </form>
@@ -1859,7 +1903,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                 size="sm"
                 variant="primary"
                 loading={savingHoliday}
-                className="font-bold rounded-xl text-xs gap-1.5 shadow-xs"
+                className="font-bold text-xs gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Declare Holiday Override

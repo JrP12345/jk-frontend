@@ -9,10 +9,12 @@ import { useLatestRead } from "@/hooks/useLatestRead";
 import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
 import { patientName as appointmentPatientName, patientPhone as appointmentPatientPhone } from "@/lib/locationWorkflow";
 import { PatientEntryModal } from "@/components/appointments/PatientEntryModal";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { AppointmentLinkSummary } from "@/components/appointments/AppointmentLinkSummary";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
+import { canRecordNoShow } from "@/lib/appointmentNoShow";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
 import { locationDateKey, locationLocalDateTimeInput, locationLocalTimeToIso } from "@/lib/locationTime";
@@ -835,6 +837,16 @@ export default function AppointmentsPage() {
       icon: <FileText className="w-4 h-4 text-text-muted" />,
       onClick: () => handleOpenRecordModal(row),
     },
+    ...(canRecordNoShow(user, row)
+      ? [{
+          label: "Record no-show",
+          icon: <CalendarOff className="w-4 h-4 text-warning" />,
+          onClick: () => {
+            setUpdatingStatusId(row.id);
+            setConfirmStatus("no-show");
+          },
+        }]
+      : []),
     ...(row.status !== "completed" && row.status !== "cancelled"
       ? [
           {
@@ -922,6 +934,7 @@ export default function AppointmentsPage() {
 
   return (
     <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-16">
+      <Suspense fallback={<p role="status">Loading linked booking...</p>}><AppointmentLinkSummary key={`${user.organization_id}:${user.id}`} /></Suspense>
       {loadError && <Alert variant="error" title="Unable to load appointments" action={<Button variant="outline" size="sm" onClick={fetchAppointments}>Try again</Button>}>{loadError}</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
@@ -948,7 +961,7 @@ export default function AppointmentsPage() {
               size="sm"
               onClick={fetchAppointments}
               disabled={isRefreshing}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
+              className="text-xs font-semibold transition-colors min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
              loading={isRefreshing}>
               <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
@@ -959,7 +972,7 @@ export default function AppointmentsPage() {
                 variant="primary"
                 size="sm"
                 onClick={() => router.push("/browse")}
-                className="font-semibold rounded-xl shadow-xs min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
+                className="font-semibold min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Book Consultation
@@ -969,7 +982,7 @@ export default function AppointmentsPage() {
                 variant="primary"
                 size="sm"
                 onClick={() => preferences.registration === "essential" ? setIsEssentialEntryOpen(true) : openBookModal()}
-                className="font-semibold rounded-xl shadow-xs min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
+                className="font-semibold min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 New Appointment
@@ -1427,7 +1440,7 @@ export default function AppointmentsPage() {
                   onKeyDown={(e) => e.key === "Enter" && handlePatientSearch()}
                   fullWidth
                 />
-                <Button onClick={handlePatientSearch} loading={searchLoading} className="font-semibold rounded-xl min-h-[44px] w-full sm:w-auto justify-center shrink-0">
+                <Button onClick={handlePatientSearch} loading={searchLoading} className="font-semibold min-h-[44px] w-full sm:w-auto justify-center shrink-0">
                   Search
                 </Button>
               </div>
@@ -1456,7 +1469,7 @@ export default function AppointmentsPage() {
               <div className="text-center py-6 border border-dashed border-border/80 rounded-2xl bg-surface-alt/50 space-y-2 px-4">
                 <UserPlus className="w-8 h-8 mx-auto text-text-muted" />
                 <p className="text-xs text-text-muted">Cannot find existing record? Register a new patient profile.</p>
-                <Button variant="outline" size="sm" onClick={handleCreateNewPatient} className="rounded-xl font-semibold min-h-[44px] w-full sm:w-auto">
+                <Button variant="outline" size="sm" onClick={handleCreateNewPatient} className="font-semibold min-h-[44px] w-full sm:w-auto">
                   Register New Patient
                 </Button>
               </div>
@@ -1597,7 +1610,7 @@ export default function AppointmentsPage() {
                   variant="primary"
                   onClick={handleStep2Next}
                   disabled={!bookingLocationId || !bookingDoctorId}
-                  className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
+                  className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
                 >
                   Configure Schedule
                   <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
@@ -1766,7 +1779,7 @@ export default function AppointmentsPage() {
                   size="sm"
                   variant="primary"
                   loading={submitting}
-                  className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center"
+                  className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
                 >
                   Confirm & Schedule
                 </Button>
@@ -1787,7 +1800,7 @@ export default function AppointmentsPage() {
         }}
         onConfirm={handleUpdateStatus}
         title="Change Appointment Status?"
-        description={`Mark this appointment as ${confirmStatus}? Staff and the patient will see the updated status.`}
+        description={confirmStatus === "no-show" ? "Confirm that this patient did not attend the scheduled visit. Reception will receive a recovery task; invoices and payments require separate review." : `Mark this appointment as ${confirmStatus}? Staff and the patient will see the updated status.`}
         variant={confirmStatus === "cancelled" || confirmStatus === "no-show" ? "danger" : "primary"}
         confirmLabel={confirmStatus === "cancelled" ? "Cancel appointment" : confirmStatus === "no-show" ? "Mark no-show" : "Update status"}
       />
@@ -1888,7 +1901,7 @@ export default function AppointmentsPage() {
             <Button variant="outline" size="sm" type="button" onClick={() => setReviewModalOpen(false)} className="min-h-[44px] w-full sm:w-auto justify-center">
               Cancel
             </Button>
-            <Button type="submit" size="sm" variant="primary" loading={reviewSubmitting} className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center">
+            <Button type="submit" size="sm" variant="primary" loading={reviewSubmitting} className="font-semibold min-h-[44px] w-full sm:w-auto justify-center">
               Submit Review
             </Button>
           </div>
@@ -2180,7 +2193,7 @@ export default function AppointmentsPage() {
             <Button variant="outline" type="button" size="sm" onClick={() => setRescheduleTargetAppt(null)} className="min-h-[44px] w-full sm:w-auto justify-center">
               Cancel
             </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submittingReschedule} className="font-semibold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center">
+            <Button type="submit" size="sm" variant="primary" loading={submittingReschedule} className="font-semibold min-h-[44px] w-full sm:w-auto justify-center">
               Confirm Reschedule
             </Button>
           </div>

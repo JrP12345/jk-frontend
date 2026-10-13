@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import LoadingImage from "@/components/ui/LoadingImage";
 import Avatar from "@/components/ui/Avatar";
 import BrowseDetailClient from "@/app/browse/[slug]/BrowseDetailClient";
-import BrowseDetailLoading from "@/app/browse/[slug]/loading";
+import BrowseDetailLoading from "@/components/ui/BrowseDetailSkeleton";
 import { useAuthStore } from "@/store/authStore";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
@@ -63,7 +63,7 @@ describe("Shared image loading", () => {
   });
 });
 
-it("uses identical clinic loading markup for route navigation and the client request", () => {
+it("uses identical clinic loading markup for the shared skeleton and the client request", () => {
   useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
   const { container, rerender } = render(<BrowseDetailLoading />);
   const routeSkeleton = container.innerHTML;

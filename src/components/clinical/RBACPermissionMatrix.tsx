@@ -405,7 +405,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                       variant="primary"
                       onClick={handleSaveMatrixPermissions}
                       loading={savingMatrix}
-                      className="rounded-xl font-bold shrink-0"
+                      className="font-bold shrink-0"
                     >
                       Save Matrix Changes
                     </Button>
@@ -706,13 +706,9 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                 <span className="font-bold text-success-text dark:text-success-text">
                   ✓ {newRolePermissions.length} Total Permissions Selected
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setNewRolePermissions([])}
-                  className="text-danger-text hover:underline font-semibold cursor-pointer"
-                >
+                <Button type="button" onClick={() => setNewRolePermissions([])} variant="ghost" size="xs" className="text-danger-text">
                   Clear All
-                </button>
+                </Button>
               </div>
             )}
           </div>

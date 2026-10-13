@@ -251,7 +251,7 @@ export default function RootAdminMonitorPage() {
           variant="outline"
           size="sm"
           onClick={() => router.push("/dashboard")}
-          className="rounded-xl font-semibold"
+          className="font-semibold"
         >
           Return to Dashboard
         </Button>
@@ -327,7 +327,7 @@ export default function RootAdminMonitorPage() {
               else fetchTraffic();
             }}
             loading={activeTab === "sessions" ? sessionsLoading : trafficLoading}
-            className="rounded-xl shrink-0 min-h-[36px]"
+            className="shrink-0 min-h-[36px]"
           >
             <RotateCw className="w-3.5 h-3.5" />
           </Button>

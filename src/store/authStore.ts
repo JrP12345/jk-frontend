@@ -6,7 +6,7 @@ import { authScopeKey } from "@/lib/authScope";
 import { aiSDK } from "@/lib/aiSDK";
 import { clearRecentTracker } from "./trackerStore";
 
-export type Role = "root" | "admin" | "doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier" | "patient" | "family_member";
+export type Role = "root" | "admin" | "doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier" | "location_manager" | "patient" | "family_member" | (string & {});
 
 export interface User {
   id: string;
@@ -109,8 +109,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (typeof window !== "undefined") {
         document.cookie = "ekavyu_session=1; path=/; max-age=604800; SameSite=Lax";
         if (user && (user.role === "patient" || user.role === "family_member")) {
-          localStorage.removeItem("ekavyu_active_org_id");
-          localStorage.removeItem("ekavyu_active_location_id");
+          try {
+            localStorage.removeItem("ekavyu_active_org_id");
+            localStorage.removeItem("ekavyu_active_location_id");
+          } catch { /* Browser preferences do not determine the verified session. */ }
         }
       }
       set({ user: user ? normalizeUser(user) : null, isAuthenticated: Boolean(user), isLoading: false });
@@ -133,8 +135,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (typeof window !== "undefined") {
       document.cookie = "ekavyu_session=1; path=/; max-age=604800; SameSite=Lax";
       if (user && (user.role === "patient" || user.role === "family_member")) {
-        localStorage.removeItem("ekavyu_active_org_id");
-        localStorage.removeItem("ekavyu_active_location_id");
+        try {
+          localStorage.removeItem("ekavyu_active_org_id");
+          localStorage.removeItem("ekavyu_active_location_id");
+        } catch { /* Browser preferences do not determine the verified session. */ }
       }
     }
     set({ user, isAuthenticated: true, isLoading: false, isLoggingOut: false });
@@ -161,12 +165,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         document.cookie = "ekavyu_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         // Clear sensitive client caches during logout (Finding: Step 2.8)
         if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
-          navigator.serviceWorker.controller.postMessage({ action: "CLEAR_USER_CACHE" });
+          try { navigator.serviceWorker.controller.postMessage({ action: "CLEAR_USER_CACHE" }); } catch { /* Continue other cleanup if the worker is unavailable. */ }
         }
         if ("caches" in window) {
-          caches.keys().then((names) => names.forEach((name) => caches.delete(name)));
+          void caches.keys().then((names) => Promise.all(names.map((name) => caches.delete(name)))).catch(() => {});
         }
-        sessionStorage.clear();
+        try { sessionStorage.clear(); } catch { /* Private in-memory state was already cleared. */ }
       }
       set({ user: null, isAuthenticated: false, isLoading: false });
     }
@@ -175,6 +179,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   switchOrg: (organizationId?: string) => changeWorkspace(async () => {
     await api.post("/auth/switch-org", { organizationId });
     const res = await api.get("/auth/me");
+    if ((res.data.data.user?.organization_id || undefined) !== organizationId) {
+      throw new Error("The server workspace changed during verification; sign in again");
+    }
     return res.data.data.user;
   }),
 

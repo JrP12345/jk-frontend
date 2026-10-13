@@ -42,3 +42,31 @@ it("shows recovery when a location has no published slug", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent(/Could not generate QR/);
   expect(QRCode.toDataURL).not.toHaveBeenCalled();
 });
+
+it("freezes an uncertain QR request and retries the same command with truthful payment pending copy", async () => {
+  vi.spyOn(api, "get").mockResolvedValue({ data: { success: true, data: { id: "branch", name: "Care", doctors: [{ id: "doctor", name: "Asha", isAvailable: true }] } } });
+  const write = vi.spyOn(api, "post").mockRejectedValueOnce({ response: { status: 503, data: { message: "Response unavailable" } } }).mockResolvedValueOnce({ data: { success: true, data: { appointmentId: "visit", status: "pending_payment", paymentStatus: "pending", tokenNumber: 3, trackingUrl: "/track/visit#t=original" } } });
+  render(<ThemeProvider><ToastProvider><JoinLocationQueuePage /></ToastProvider></ThemeProvider>);
+  fireEvent.change(await screen.findByLabelText(/Full Name/), { target: { value: "Walk-in patient" } });
+  fireEvent.change(screen.getByLabelText(/Mobile Number/), { target: { value: "9876543210" } });
+  fireEvent.click(screen.getByRole("button", { name: /Join Queue & Get Token/ }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(/outcome is unknown/);
+  expect(screen.getByLabelText(/Full Name/)).toBeDisabled();
+  const original = write.mock.calls[0][1]; expect(original.clientRequestId).toMatch(/^[\da-f-]{36}$/);
+  fireEvent.click(screen.getByRole("button", { name: "Retry Submitted Visit" }));
+  expect(await screen.findByRole("heading", { name: "Payment Pending" })).toBeInTheDocument();
+  expect(write.mock.calls[1][1]).toEqual(original);
+  expect(screen.getByText(/Ask reception to complete the required payment/)).toBeInTheDocument();
+  expect(screen.queryByText("You're in the Queue!")).not.toBeInTheDocument();
+});
+
+it("allows a reviewed correction after a definitive QR rejection", async () => {
+  vi.spyOn(api, "get").mockResolvedValue({ data: { success: true, data: { id: "branch", name: "Care", doctors: [{ id: "doctor", name: "Asha", isAvailable: true }] } } });
+  vi.spyOn(api, "post").mockRejectedValue({ response: { status: 409, data: { message: "Contact requires reception identity review" } } });
+  render(<ThemeProvider><ToastProvider><JoinLocationQueuePage /></ToastProvider></ThemeProvider>);
+  fireEvent.change(await screen.findByLabelText(/Full Name/), { target: { value: "Walk-in patient" } });
+  fireEvent.change(screen.getByLabelText(/Mobile Number/), { target: { value: "9876543210" } });
+  fireEvent.click(screen.getByRole("button", { name: /Join Queue & Get Token/ }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(/reception identity review/);
+  expect(screen.getByLabelText(/Full Name/)).not.toBeDisabled();
+});

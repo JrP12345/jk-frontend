@@ -53,7 +53,9 @@ export function useOverlayFocus(
         return element.tabIndex >= 0 && !element.closest('[aria-hidden="true"]');
       });
     const timer = window.setTimeout(() => {
-      if (overlays.at(-1) === overlay) (focusable()[0] || overlay).focus();
+      const focused = document.activeElement;
+      if (overlays.at(-1) === overlay && !overlay.contains(focused)
+        && !ownedPopups().some(popup => popup.contains(focused))) (focusable()[0] || overlay).focus();
     }, 0);
     const keydown = (event: KeyboardEvent) => {
       if (overlays.at(-1) !== overlay || event.defaultPrevented) return;

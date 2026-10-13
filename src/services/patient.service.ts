@@ -12,7 +12,7 @@ export class PatientService {
   }
 
   public static async createPatient(payload: Record<string, unknown>) {
-    const res = await api.post("/patients", payload);
+    const res = await api.post("/patients", { ...payload, clientRequestId: payload.clientRequestId || crypto.randomUUID() });
     return res.data?.data || res.data;
   }
 }

@@ -38,6 +38,9 @@ export interface TableProps<T> {
   data: T[];
   keyField?: string;
   title?: string;
+  caption?: string;
+  /** Compact reports use natural dimensions; operational tables keep their defaults. */
+  fitContent?: boolean;
   description?: string;
   action?: ReactNode;
   onAddClick?: () => void;
@@ -91,6 +94,8 @@ export default function Table<T extends Record<string, any>>({
   data,
   keyField = "id",
   title,
+  caption,
+  fitContent = false,
   description,
   action,
   onAddClick,
@@ -556,8 +561,9 @@ export default function Table<T extends Record<string, any>>({
           </div>
         )}
 
-        <div tabIndex={0} role="region" aria-label="Table results" className={cn("w-full overflow-x-auto min-h-[220px] touch-scroll scroll-smooth", mobileCardView && "hidden md:block")}>
-          <table className="w-full text-sm border-collapse text-left min-w-[650px] sm:min-w-full">
+        <div tabIndex={0} role="region" aria-label="Table results" className={cn("w-full overflow-x-auto touch-scroll scroll-smooth", !fitContent && "min-h-[220px]", mobileCardView && "hidden md:block")}>
+          <table className={cn("w-full text-sm border-collapse text-left", !fitContent && "min-w-[650px] sm:min-w-full")}>
+            {caption && <caption className="sr-only">{caption}</caption>}
             <thead>
               <tr className={cn(
                 "border-b border-border/80 bg-surface-alt/70 text-text-secondary text-xs font-semibold",

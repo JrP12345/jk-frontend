@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { externalServiceUrl } from "@/lib/externalServiceUrl";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
-import { Alert, Card, CardContent, Button, Modal, Input, Select, useToast, Badge, StatCard, SkeletonCardGrid, cn, LoadingState } from "@/components/ui";
+import { Alert, Card, CardContent, Button, Modal, Input, Select, useToast, Badge, StatCard, SkeletonCardGrid, cn, LoadingState, Textarea } from "@/components/ui";
 import { RotateCw, Plus, Video, Clock, Activity, CheckCircle2 } from "lucide-react";
 
 export interface TeleconsultationAppointment {
@@ -354,7 +354,7 @@ export default function TeleconsultationPage() {
               size="sm"
               onClick={fetchData}
               disabled={loading}
-              className="rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
+              className="text-xs font-semibold transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
              loading={loading}>
               <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh Desk
@@ -364,7 +364,7 @@ export default function TeleconsultationPage() {
               variant="primary"
               size="sm"
               onClick={() => setIsLaunchModalOpen(true)}
-              className="font-semibold rounded-xl shadow-xs flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
+              className="font-semibold flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
               Create consultation session
@@ -561,7 +561,7 @@ export default function TeleconsultationPage() {
                     size="sm"
                     variant="primary"
                     onClick={() => handleJoinVideoCall(item)}
-                    className="font-bold text-xs rounded-xl w-full gap-2 bg-primary hover:bg-primary text-brand-mist cursor-pointer min-h-[44px] justify-center shadow-xs"
+                    className="font-bold text-xs w-full gap-2 hover:bg-primary cursor-pointer min-h-[44px] justify-center"
                   >
                     <Video className="w-4 h-4" />
                     <span>{isInCall ? "Resume consultation" : "Open consultation"}</span>
@@ -618,7 +618,7 @@ export default function TeleconsultationPage() {
                     variant="primary"
                     onClick={handleEndCall}
                     loading={submittingEndCall}
-                    className="bg-danger hover:bg-danger text-background font-bold rounded-xl text-xs gap-1.5 px-4 cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
+                    className="bg-danger hover:bg-danger text-background font-bold text-xs gap-1.5 px-4 cursor-pointer w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
                   >
                     <span>Complete consultation</span>
                   </Button>
@@ -730,14 +730,8 @@ export default function TeleconsultationPage() {
                       </div>
 
                       <div className="space-y-1">
-                        <label className="font-bold text-text text-[11px]">Clinical Observations & Diagnosis Notes</label>
-                        <textarea
-                          rows={4}
-                          placeholder="Type clinical consultation summary, symptoms, physical examination findings..."
-                          value={clinicalNotesInput}
-                          onChange={(e) => setClinicalNotesInput(e.target.value)}
-                          className="w-full p-2.5 bg-surface border border-border rounded-xl text-xs focus:ring-2 focus:ring-accent outline-none transition-all"
-                        />
+
+                        <Textarea rows={4} placeholder="Type clinical consultation summary, symptoms, physical examination findings..." value={clinicalNotesInput} onChange={(e) => setClinicalNotesInput(e.target.value)} label="Clinical Observations & Diagnosis Notes" />
                       </div>
 
                       <Button
@@ -745,7 +739,7 @@ export default function TeleconsultationPage() {
                         variant="primary"
                         onClick={handleSaveNotes}
                         loading={savingNotes}
-                        className="w-full font-bold bg-primary hover:bg-primary text-brand-mist rounded-xl text-xs min-h-[44px] sm:min-h-[36px] cursor-pointer"
+                        className="w-full font-bold hover:bg-primary text-xs min-h-[44px] sm:min-h-[36px] cursor-pointer"
                       >
                         Save Notes & Vitals
                       </Button>
@@ -806,7 +800,7 @@ export default function TeleconsultationPage() {
                         size="sm"
                         variant="primary"
                         loading={savingRx}
-                        className="w-full font-bold bg-success hover:bg-success text-background rounded-xl text-xs mt-1 min-h-[44px] sm:min-h-[36px] cursor-pointer"
+                        className="w-full font-bold bg-success hover:bg-success text-background text-xs mt-1 min-h-[44px] sm:min-h-[36px] cursor-pointer"
                       >
                         Add to consultation notes
                       </Button>
@@ -829,7 +823,7 @@ export default function TeleconsultationPage() {
             <Button type="button" variant="outline" size="sm" onClick={() => setIsLaunchModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
-            <Button type="submit" form="launch-session-form" variant="primary" size="sm" loading={launchingSession} className="bg-primary hover:bg-primary text-brand-mist w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
+            <Button type="submit" form="launch-session-form" variant="primary" size="sm" loading={launchingSession} className="hover:bg-primary w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Create session
             </Button>
           </div>

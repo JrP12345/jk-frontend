@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { authScopeKey } from "@/lib/authScope";
 import api from "@/lib/api";
 import { Alert, Button, Input, Modal, Select, LoadingState, Skeleton, InlineLoader } from "@/components/ui";
 import { useLocationStore } from "@/store/locationStore";
@@ -16,21 +17,34 @@ export interface LocationDoctorAssignment {
   doctorId: { id?: string; _id?: string; name?: string } | string;
 }
 interface Props { open: boolean; onClose: () => void; locationId?: string; onBooked: (appointmentId: string) => void; onFullRegistration?: () => void }
-
-export function PatientEntryModal({ open, onClose, locationId: initialLocationId, onBooked, onFullRegistration }: Props) {
-  // Remount for each entry session, retaining all successful writes during retries.
-  return open ? <PatientEntryForm onClose={onClose} initialLocationId={initialLocationId} onBooked={onBooked} onFullRegistration={onFullRegistration} /> : null;
+interface EntryCommand {
+  patient?: WorkflowPatient;
+  registration?: { name: string; phone: string; locationId: string; clientRequestId: string };
+  booking: { patientId: string; locationId: string; doctorId: string; appointmentTime: string; appointmentType: string; clientRequestId: string };
+  date: string;
+  timezone: string;
+  bookedId?: string;
 }
 
-function PatientEntryForm({ onClose, initialLocationId, onBooked, onFullRegistration }: Omit<Props, "open" | "locationId"> & { initialLocationId?: string }) {
+export function PatientEntryModal(props: Props) {
+  const user = useAuthStore(state => state.user);
+  return <PatientEntrySession key={authScopeKey(user)} {...props} />;
+}
+function PatientEntrySession({ open, onClose, locationId: initialLocationId, onBooked, onFullRegistration }: Props) {
+  const [command, setCommand] = useState<EntryCommand | null>(null);
+  return open ? <PatientEntryForm initialCommand={command} onSubmitted={setCommand} onClose={onClose} initialLocationId={initialLocationId}
+    onBooked={id => { setCommand(null); onBooked(id); }} onFullRegistration={onFullRegistration} /> : null;
+}
+
+function PatientEntryForm({ onClose, initialLocationId, onBooked, onFullRegistration, initialCommand, onSubmitted }: Omit<Props, "open" | "locationId"> & { initialLocationId?: string; initialCommand: EntryCommand | null; onSubmitted: (command: EntryCommand | null) => void }) {
   const { user } = useAuthStore();
   const { locations, fetchLocations } = useLocationStore();
-  const [locationId, setLocationId] = useState(initialLocationId || "");
+  const [locationId, setLocationId] = useState(initialCommand?.booking.locationId || initialLocationId || "");
   const [assignments, setAssignments] = useState<LocationDoctorAssignment[]>([]);
-  const [doctorId, setDoctorId] = useState("");
+  const [doctorId, setDoctorId] = useState(initialCommand?.booking.doctorId || "");
   const [assignmentLoading, setAssignmentLoading] = useState(false);
-  const [source, setSource] = useState("walk-in");
-  const [date, setDate] = useState("");
+  const [source, setSource] = useState(initialCommand?.booking.appointmentType || "walk-in");
+  const [date, setDate] = useState(initialCommand?.date || "");
   const [slot, setSlot] = useState("");
   const [slots, setSlots] = useState<Array<{ time: string; available?: boolean; isBooked?: boolean; lockedByOther?: boolean }>>([]);
   const [slotMode, setSlotMode] = useState<"sequential_queue" | "time_slot" | null>(null);
@@ -38,13 +52,17 @@ function PatientEntryForm({ onClose, initialLocationId, onBooked, onFullRegistra
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<WorkflowPatient[]>([]);
   const [searching, setSearching] = useState(false);
-  const [patient, setPatient] = useState<WorkflowPatient | null>(null);
-  const [newPatient, setNewPatient] = useState(false);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [patient, setPatient] = useState<WorkflowPatient | null>(initialCommand?.patient || null);
+  const [newPatient, setNewPatient] = useState(!!initialCommand?.registration && !initialCommand.patient);
+  const [name, setName] = useState(initialCommand?.registration?.name || "");
+  const [phone, setPhone] = useState(initialCommand?.registration?.phone || "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [bookedId, setBookedId] = useState("");
+  const [bookedId, setBookedId] = useState(initialCommand?.bookedId || "");
+  const [locked, setLocked] = useState(!!initialCommand);
+  const submitted = useRef<EntryCommand | null>(initialCommand), writing = useRef(false), mounted = useRef(true), errorSummary = useRef<HTMLDivElement | null>(null);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => { if (error && !busy) errorSummary.current?.focus(); }, [error, busy]);
   const beginSearch = useLatestRead();
   const beginAssignments = useLatestRead();
   const beginSlots = useLatestRead();
@@ -54,18 +72,18 @@ function PatientEntryForm({ onClose, initialLocationId, onBooked, onFullRegistra
   const canCheckIn = hasAnyPermission(user, "MANAGE_APPOINTMENTS");
 
   useEffect(() => { void fetchLocations(); }, [fetchLocations]);
-  useEffect(() => { setLocationId(current => validSingleChoice(locations, value => value.id, current)); }, [locations]);
-  useEffect(() => { setDate(locationDateKey(new Date(), timezone)); }, [timezone, locationId]);
+  useEffect(() => { if (!submitted.current) setLocationId(current => validSingleChoice(locations, value => value.id, current)); }, [locations]);
+  useEffect(() => { if (!submitted.current) setDate(locationDateKey(new Date(), timezone)); }, [timezone, locationId]);
   useEffect(() => {
     const request = beginAssignments();
-    setAssignments([]); setDoctorId(""); setSlotMode(null);
+    setAssignments([]); setDoctorId(submitted.current?.booking.doctorId || ""); setSlotMode(null);
     if (!locationId) return;
     setAssignmentLoading(true);
     api.get(`/onboarding/doctors/assignments?locationId=${encodeURIComponent(locationId)}`, { signal: request.signal }).then(response => {
       if (!request.isCurrent()) return;
       const choices = (response.data?.data || []).filter((value: LocationDoctorAssignment) => value.isActive !== false && recordId(value.doctorId));
       setAssignments(choices);
-      setDoctorId(validSingleChoice(choices, (value: LocationDoctorAssignment) => recordId(value.doctorId)));
+      if (!submitted.current) setDoctorId(validSingleChoice(choices, (value: LocationDoctorAssignment) => recordId(value.doctorId)));
     }).catch(() => { if (request.isCurrent()) setError("Doctors could not be loaded. Close and retry."); })
       .finally(() => { if (request.isCurrent()) setAssignmentLoading(false); });
   }, [beginAssignments, locationId]);
@@ -93,47 +111,65 @@ function PatientEntryForm({ onClose, initialLocationId, onBooked, onFullRegistra
   }, [beginSearch, query]);
 
   async function submit(event: React.FormEvent) {
-    event.preventDefault(); if (busy) return;
+    event.preventDefault(); if (writing.current) return;
+    writing.current = true;
     setBusy(true); setError("");
     try {
-      let savedPatient = patient;
-      if (!bookedId) {
+      let command = submitted.current;
+      if (!command) {
         if (!locationId || !doctorId || !slotMode) throw new Error("Select an available location and doctor.");
-        if (!savedPatient) {
+        if (!patient) {
           if (!newPatient || !canRegister || !name.trim() || !phone.trim()) throw new Error("Select a patient or enter their name and phone number.");
-          savedPatient = await PatientService.createPatient({ name: name.trim(), phone: phone.trim() });
-          setPatient(savedPatient); setNewPatient(false);
         }
         const appointmentTime = slotMode === "time_slot"
           ? locationLocalTimeToIso(date, slot, timezone)
           : date === locationDateKey(new Date(), timezone) ? new Date().toISOString() : locationLocalTimeToIso(date, "00:00", timezone);
-        const response = await api.post("/appointments", { patientId: recordId(savedPatient!), locationId, doctorId, appointmentTime, appointmentType: source });
+        command = { patient: patient || undefined,
+          registration: patient ? undefined : { name: name.trim(), phone: phone.trim(), locationId, clientRequestId: crypto.randomUUID() },
+          booking: { patientId: recordId(patient || undefined), locationId, doctorId, appointmentTime, appointmentType: source, clientRequestId: crypto.randomUUID() }, date, timezone };
+        submitted.current = command; onSubmitted(command); setLocked(true);
+      }
+      if (!command.patient) {
+        const saved = await PatientService.createPatient(command.registration!);
+        if (!mounted.current) return;
+        if (!recordId(saved)) throw new Error("Registration is recorded without a patient reference. Review the patient list before another registration.");
+        command = { ...command, patient: saved, booking: { ...command.booking, patientId: recordId(saved) } };
+        submitted.current = command; onSubmitted(command); setPatient(saved); setNewPatient(false);
+      }
+      if (!command.bookedId) {
+        const response = await api.post("/appointments", command.booking);
+        if (!mounted.current) return;
         const created = response.data?.data;
         const id = recordId(created);
         if (!id) throw new Error("Booking response is missing a visit reference. Search today's appointments before retrying.");
+        command = { ...command, bookedId: id };
+        submitted.current = command; onSubmitted(command);
         setBookedId(id);
-        if (source === "walk-in" && date === locationDateKey(new Date(), timezone) && canCheckIn && created.status !== "pending_payment") {
+        if (command.booking.appointmentType === "walk-in" && command.date === locationDateKey(new Date(), command.timezone) && canCheckIn && ["pending", "confirmed"].includes(created.status)) {
           await api.put(`/appointments/${id}/status`, { status: "checked-in" });
         }
-        onBooked(id);
+        if (mounted.current) onBooked(id);
       } else {
-        await api.put(`/appointments/${bookedId}/status`, { status: "checked-in" });
-        onBooked(bookedId);
+        await api.put(`/appointments/${command.bookedId}/status`, { status: "checked-in" });
+        if (mounted.current) onBooked(command.bookedId);
       }
     } catch (failure: unknown) {
+      if (!mounted.current) return;
       const details = failure as { message?: string; response?: { status?: number; data?: { message?: string; details?: { highConfidenceMatches?: WorkflowPatient[]; mediumConfidenceMatches?: WorkflowPatient[] } } } };
       const matches = details.response?.data?.details;
       if (matches) { setResults([...(matches.highConfidenceMatches || []), ...(matches.mediumConfidenceMatches || [])]); setNewPatient(false); }
+      if (!submitted.current?.bookedId && (matches || [400, 403, 404, 422].includes(details.response?.status || 0))) { submitted.current = null; onSubmitted(null); setLocked(false); }
       setError(details.response?.data?.message || details.message || "Entry failed. Search existing records before retrying if the response was lost.");
-    } finally { setBusy(false); }
+    } finally { writing.current = false; if (mounted.current) setBusy(false); }
   }
 
   return <Modal open onClose={() => { if (!busy) onClose(); }} title="Add patient" size="lg" busy={busy} closeOnOverlay={!busy}
     description="Search an existing patient or register essential details, then add the visit."
-    footer={<div className="flex flex-wrap justify-end gap-2"><Button variant="outline" disabled={busy} onClick={onClose}>Close</Button>{bookedId && <Button variant="outline" disabled={busy} onClick={() => onBooked(bookedId)}>View booked visit</Button>}<Button form="patient-entry-form" type="submit" loading={busy} disabled={busy || assignmentLoading || slotLoading || (!bookedId && !slotMode)}>{bookedId ? "Retry arrival" : "Add visit"}</Button></div>}>
+    footer={<div className="flex flex-wrap justify-end gap-2"><Button variant="outline" disabled={busy} onClick={onClose}>Close</Button>{bookedId && <Button variant="outline" disabled={busy} onClick={() => onBooked(bookedId)}>View booked visit</Button>}<Button form="patient-entry-form" type="submit" loading={busy} disabled={busy || (!locked && (assignmentLoading || slotLoading || !slotMode))}>{bookedId ? "Retry arrival" : locked ? "Retry submitted visit" : "Add visit"}</Button></div>}>
     <form id="patient-entry-form" onSubmit={submit} className="space-y-4">
-      {error && <Alert variant="error">{error}{bookedId && " The visit is already booked. Retry arrival or view the visit; do not book it again."}</Alert>}
-      <fieldset disabled={busy || Boolean(bookedId)} className="space-y-4 disabled:opacity-60">
+      {locked && <p className="text-sm text-text-muted">Submitted details stay fixed. Closing keeps this request available to resume; retrying restores the same patient and visit.</p>}
+      {error && <div ref={errorSummary} tabIndex={-1}><Alert variant="error">{error}{bookedId && " The visit is already booked. Retry arrival or view the visit; do not book it again."}</Alert></div>}
+      <fieldset disabled={busy || locked || Boolean(bookedId)} className="min-w-0 space-y-4 disabled:opacity-60">
         {patient ? <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border p-3"><div><p className="font-medium">{patientName(patient)}</p><p className="text-sm text-text-muted">{patientPhone(patient)} · {patient.mrn || "Registered patient"}</p></div><Button variant="ghost" onClick={() => setPatient(null)}>Change patient</Button></div> : <>
           <div className="flex items-end gap-2"><Input className="flex-1" label="Search name, phone or patient identifier" value={query} onChange={e => setQuery(e.target.value)} /><Button variant="outline" onClick={search} loading={searching} disabled={!query.trim() || searching}>Search</Button></div>
           <div className="space-y-1">{results.map(value => <Button key={recordId(value)} variant="outline" className="w-full justify-start whitespace-normal text-left" onClick={() => { setPatient(value); setNewPatient(false); }}>{patientName(value)} · {patientPhone(value)} {value.mrn && `· ${value.mrn}`}</Button>)}</div>

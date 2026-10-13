@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
-import { Button, Input, Toggle, Badge, useToast, InlineLoader } from "@/components/ui";
+import { Button, Input, Toggle, Badge, useToast, InlineLoader, Table } from "@/components/ui";
 
 export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode, scope = "organization" }: { organizationId?: string; isRoot: boolean; mode: string; scope?: "organization" | "platform" }) {
   const { user } = useAuthStore();
@@ -69,14 +69,23 @@ export default function WhatsAppConnectionPanel({ organizationId, isRoot, mode, 
       <span>Last webhook: {data?.lastWebhookAt ? new Date(data.lastWebhookAt).toLocaleString() : "None yet"}</span>
     </div>
     {!!data?.templates?.length && <div className="max-h-52 overflow-auto">
-      <table className="w-full text-left text-xs"><thead><tr><th className="p-2">Template</th><th className="p-2">Language</th><th className="p-2">Status</th></tr></thead>
-        <tbody>{data.templates.map((row: any) => <tr key={`${row.name}:${row.language}`}><td className="p-2 break-all">{row.name}</td><td className="p-2">{row.language}</td><td className="p-2">{row.status}</td></tr>)}</tbody>
-      </table>
+      <Table caption="WhatsApp templates" density="compact" variant="flat" fitContent
+        searchable={false} showColumnVisibility={false} pagination={false} mobileCardView={false}
+        data={data.templates.map((row: any) => ({ ...row, id: `${row.name}:${row.language}` }))}
+        columns={[
+          { header: "Template", render: row => <span className="break-all">{row.name}</span> },
+          { header: "Language", accessor: "language" }, { header: "Status", accessor: "status" },
+        ]} />
     </div>}
     {!!data?.messages?.length && <details><summary className="cursor-pointer text-sm font-medium">Recent message delivery</summary>
-      <div className="max-h-64 overflow-auto"><table className="w-full text-left text-xs"><thead><tr><th className="p-2">Time</th><th className="p-2">Recipient</th><th className="p-2">Status</th><th className="p-2">Detail</th></tr></thead>
-        <tbody>{data.messages.map((row: any) => <tr key={row._id}><td className="p-2 whitespace-nowrap">{new Date(row.createdAt).toLocaleString()}</td><td className="p-2">{row.recipientPhone}</td><td className="p-2">{row.status}</td><td className="p-2 break-all">{row.errorReason || row.templateId}</td></tr>)}</tbody>
-      </table></div>
+      <div className="max-h-64 overflow-auto"><Table caption="Recent WhatsApp message delivery" density="compact" variant="flat" fitContent
+        searchable={false} showColumnVisibility={false} pagination={false} mobileCardView={false}
+        keyField="_id" data={data.messages}
+        columns={[
+          { header: "Time", render: row => <span className="whitespace-nowrap">{new Date(row.createdAt).toLocaleString()}</span> },
+          { header: "Recipient", accessor: "recipientPhone" }, { header: "Status", accessor: "status" },
+          { header: "Detail", render: row => <span className="break-all">{row.errorReason || row.templateId}</span> },
+        ]} /></div>
     </details>}
   </div>;
 }

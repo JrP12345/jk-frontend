@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/store/authStore";
-import { Alert, Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, Skeleton, SkeletonCard, Input, DatePicker, Select, useToast, Modal, cn } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, Skeleton, SkeletonCard, Input, Select, useToast, Modal, cn } from "@/components/ui";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { Link2, Plus } from "lucide-react";
+import { PatientPrivacyControls } from "@/components/patients/PatientPrivacyControls";
+import { useLatestRead } from "@/hooks/useLatestRead";
+import { locationDateKey, locationLocalTimeToIso } from "@/lib/locationTime";
+import { authScopeKey } from '@/lib/authScope';
 
 interface PatientProfile {
   id: string;
@@ -21,14 +25,20 @@ interface PatientProfile {
 
 export default function PatientPortalPage() {
   const { user } = useAuthStore();
+  return <PatientPortal key={authScopeKey(user)} />;
+}
+
+function PatientPortal() {
+  const { user } = useAuthStore();
   const router = useRouter();
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<"profile" | "family" | "records" | "refills" | "timeline">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "family" | "records" | "refills" | "timeline">(user?.role === 'family_member' ? 'family' : 'profile');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [patient, setPatient] = useState<PatientProfile | null>(null);
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const [familyPrivacyId, setFamilyPrivacyId] = useState<string | null>(null);
 
   // Family Members modal state
   const [addFamilyModalOpen, setAddFamilyModalOpen] = useState(false);
@@ -53,7 +63,7 @@ export default function PatientPortalPage() {
       const res = await api.get("/family");
       setFamilyMembers(res.data?.data || []);
     } catch {
-      // Non-critical
+      if (user?.role === 'family_member') setLoadError('Family profiles could not be loaded. Please try again.');
     }
   };
 
@@ -98,30 +108,43 @@ export default function PatientPortalPage() {
   const [selfNotes, setSelfNotes] = useState("");
   const [submittingSelfBook, setSubmittingSelfBook] = useState(false);
   const [selfDoctorBookingInfo, setSelfDoctorBookingInfo] = useState<any | null>(null);
+  const [selfBookingError, setSelfBookingError] = useState("");
+  const [selfBookingLocked, setSelfBookingLocked] = useState(false);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const submittedBooking = useRef<Record<string, unknown> | null>(null);
+  const bookingBusy = useRef(false), mounted = useRef(true);
+  const beginAvailability = useLatestRead();
+  const selectedBookingLocation = selfLocations.find(row => (row.id || row._id) === selfLocationId);
+  const bookingTimezone = selectedBookingLocation?.timezone || "Asia/Kolkata";
+  const bookingDate = selfApptTime.split("T")[0] || locationDateKey(new Date(), bookingTimezone);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   useEffect(() => {
-    if (!selfDoctorId || !selfLocationId) return;
+    const request = beginAvailability();
+    if (!selfDoctorId || !selfLocationId || selfBookingLocked) return;
     const checkMode = async () => {
+      setAvailabilityLoading(true); setSelfDoctorBookingInfo(null);
       try {
-        const todayStr = new Date().toISOString().split("T")[0];
-        const res = await api.get(`/doctors/${selfDoctorId}/slots?locationId=${selfLocationId}&date=${todayStr}`);
+        const res = await api.get(`/doctors/${selfDoctorId}/slots?locationId=${selfLocationId}&date=${bookingDate}`, { signal: request.signal });
+        if (!request.isCurrent()) return;
         const data = res.data?.data;
         setSelfDoctorBookingInfo(data);
-        if (data?.bookingMode === "sequential_queue") {
-          setSelfApptTime(`${todayStr}T00:00:00`);
-        }
+        setSelfBookingError(data?.isHoliday ? "The doctor is unavailable on this day. Choose another day or doctor." : "");
       } catch {
-        // Fallback
-      }
+        if (request.isCurrent()) setSelfBookingError("Availability could not be loaded. Reopen booking to retry.");
+      } finally { if (request.isCurrent()) setAvailabilityLoading(false); }
     };
     checkMode();
-  }, [selfDoctorId, selfLocationId]);
+  }, [beginAvailability, selfDoctorId, selfLocationId, bookingDate, selfBookingLocked]);
 
-  const openSelfBookModal = async () => {
+  const openSelfBookModal = async (forPatientId = "") => {
     setIsSelfBookOpen(true);
+    if (submittedBooking.current) return;
+    setSelectedForPatientId(forPatientId);
     setSelfDoctorBookingInfo(null);
     try {
       const res = await api.get("/public/locations");
+      if (!mounted.current) return;
       const list = res.data?.data || [];
       setSelfLocations(list);
       if (list.length > 0) {
@@ -134,9 +157,7 @@ export default function PatientPortalPage() {
           setSelfDoctorId(docs[0].id || docs[0]._id);
         }
       }
-    } catch {
-      // Non-critical
-    }
+    } catch { if (mounted.current) setSelfBookingError("Booking locations could not be loaded. Close and reopen to retry."); }
   };
 
   const handleSelfLocationChange = (cid: string) => {
@@ -149,35 +170,59 @@ export default function PatientPortalPage() {
 
   const handleSelfBookSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selfLocationId || !selfDoctorId || !selfApptTime) {
+    if (bookingBusy.current) return;
+    if (!submittedBooking.current && (!selfLocationId || !selfDoctorId || !selfDoctorBookingInfo || selfDoctorBookingInfo.isHoliday || (selfDoctorBookingInfo.bookingMode === "time_slot" && !selfApptTime.includes("T")))) {
       toast({ title: "Validation Error", description: "Please select location, doctor, and appointment time", variant: "error" });
       return;
     }
 
-    setSubmittingSelfBook(true);
+    bookingBusy.current = true; setSubmittingSelfBook(true); setSelfBookingError("");
     try {
-      const res = await api.post("/patient-portal/self-book", {
+      if (!submittedBooking.current) {
+        const appointmentTime = selfDoctorBookingInfo.bookingMode === "time_slot" ? locationLocalTimeToIso(bookingDate, selfApptTime.split("T")[1], bookingTimezone)
+          : bookingDate === locationDateKey(new Date(), bookingTimezone) ? new Date().toISOString() : locationLocalTimeToIso(bookingDate, "12:00", bookingTimezone);
+        let lockId: string | undefined;
+        if (selfDoctorBookingInfo.bookingMode === "time_slot") {
+          const lock = await api.post("/appointments/lock-slot", { locationId: selfLocationId, doctorId: selfDoctorId, slotTime: appointmentTime });
+          lockId = lock.data?.data?.lockId;
+          if (!lockId) throw new Error("The appointment slot could not be reserved.");
+        }
+        submittedBooking.current = {
+        clientRequestId: crypto.randomUUID(),
         locationId: selfLocationId,
         doctorId: selfDoctorId,
-        appointmentTime: selfApptTime,
+        appointmentTime,
+        ...(lockId ? { lockId } : {}),
+        ...(selectedForPatientId ? { forPatientId: selectedForPatientId } : {}),
         notes: selfNotes,
-      });
+        }; setSelfBookingLocked(true);
+      }
+      const res = await api.post("/patient-portal/self-book", submittedBooking.current);
+      if (!mounted.current) return;
+      const appointment = res.data?.data?.appointment;
+      if (!appointment?.id) throw new Error("The booking response could not be confirmed.");
 
       const token = res.data?.data?.tokenNumber;
       toast({
-        title: "Appointment Confirmed",
-        description: `Your appointment has been booked. Queue Token: #${token}`,
+        title: appointment.status === "pending_payment" ? "Payment Pending" : "Visit Recorded",
+        description: `Token #${token}. Booking status: ${appointment.status}. Payment status: ${appointment.paymentStatus}.`,
         variant: "success",
       });
 
       setIsSelfBookOpen(false);
+      submittedBooking.current = null; setSelfBookingLocked(false);
       setSelfApptTime("");
       setSelfNotes("");
       router.push("/dashboard/bills");
     } catch (err: any) {
-      toast({ title: "Booking Unsuccessful", description: err.response?.data?.message || "Unable to book appointment. Please select another time slot.", variant: "error" });
+      if (!mounted.current) return;
+      const definitive = [400, 403, 404, 409, 422].includes(err.response?.status);
+      if (definitive) { submittedBooking.current = null; setSelfBookingLocked(false); }
+      const message = err.response?.data?.message || err.message || "The booking result could not be confirmed.";
+      setSelfBookingError(submittedBooking.current ? `${message} Retry the submitted booking before creating another visit.` : message);
+      toast({ title: "Booking Needs Review", description: message, variant: "error" });
     } finally {
-      setSubmittingSelfBook(false);
+      bookingBusy.current = false; if (mounted.current) setSubmittingSelfBook(false);
     }
   };
 
@@ -185,6 +230,7 @@ export default function PatientPortalPage() {
     try {
       setLoadError(null);
       setLoading(true);
+      if (user?.role === 'family_member') { await fetchFamilyMembers(); return; }
       const res = await api.get("/patient/me");
       const p = res.data.data?.patient;
       setPatient(p);
@@ -359,8 +405,9 @@ export default function PatientPortalPage() {
 
     setClaiming(true);
     try {
-      await api.post("/family/claim", { patientId: claimPatientId.trim() });
-      toast({ title: "Record Claimed! 🔗", description: "Successfully linked patient record to your account.", variant: "success" });
+      const response = await api.post("/family/claim", { patientId: claimPatientId.trim() });
+      const alreadyLinked = response.data?.data?.status === "active";
+      toast({ title: alreadyLinked ? "Record already linked" : "Identity review requested", description: alreadyLinked ? "An authorized relationship already exists for this record." : "The organization must verify your identity before linking this medical record. A shared phone or email does not grant access.", variant: "success" });
       setClaimModalOpen(false);
       setClaimPatientId("");
       fetchPatientData();
@@ -424,12 +471,12 @@ export default function PatientPortalPage() {
         </div>
 
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full md:w-auto">
-          <Button size="sm" onClick={openSelfBookModal} className="flex-1 md:flex-initial min-h-[40px] rounded-xl font-bold">
+          <Button size="sm" onClick={() => openSelfBookModal()} className="flex-1 md:flex-initial min-h-[40px] font-bold">
             Book Appointment
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setEditProfileModalOpen(true)} className="flex-1 md:flex-initial min-h-[40px] rounded-xl font-semibold">
+          {user?.role !== 'family_member' && <Button variant="outline" size="sm" onClick={() => setEditProfileModalOpen(true)} className="flex-1 md:flex-initial min-h-[40px] font-semibold">
             Edit Medical Info
-          </Button>
+          </Button>}
         </div>
       </div>
 
@@ -441,7 +488,7 @@ export default function PatientPortalPage() {
           { key: "records", label: "Download Medical Records" },
           { key: "refills", label: `Refill Requests (${refillRequests.length})` },
           { key: "timeline", label: "PHR Health Timeline" },
-        ].map((tab) => (
+        ].filter(tab => user?.role !== 'family_member' || tab.key === 'family').map((tab) => (
           <button
             key={tab.key}
             type="button"
@@ -462,6 +509,7 @@ export default function PatientPortalPage() {
       {/* TAB 1: Profile */}
       {activeTab === "profile" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {patient?.id && <div className="md:col-span-2"><PatientPrivacyControls patientId={patient.id} /></div>}
           <Card>
             <CardHeader>
               <CardTitle className="text-base font-bold flex items-center justify-between">
@@ -550,11 +598,11 @@ export default function PatientPortalPage() {
               <p className="text-xs text-text-muted mt-0.5">Manage family profiles and book appointments on their behalf</p>
             </div>
             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
-              <Button size="sm" variant="outline" onClick={() => setClaimModalOpen(true)} className="flex-1 sm:flex-initial min-h-[38px] rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs">
+              <Button size="sm" variant="outline" onClick={() => setClaimModalOpen(true)} className="flex-1 sm:flex-initial min-h-[38px] text-xs font-semibold shadow-xs">
                 <Link2 className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
                 Claim Existing Record
               </Button>
-              <Button size="sm" onClick={() => setAddFamilyModalOpen(true)} className="flex-1 sm:flex-initial min-h-[38px] font-semibold rounded-xl shadow-xs">
+              <Button size="sm" onClick={() => setAddFamilyModalOpen(true)} className="flex-1 sm:flex-initial min-h-[38px] font-semibold">
                 <Plus className="w-3.5 h-3.5 mr-1" />
                 Add Family Member
               </Button>
@@ -583,16 +631,15 @@ export default function PatientPortalPage() {
                   <div className="text-xs text-text-muted space-y-1 border-t border-border/50 pt-2">
                     {p?.dob && <div>DOB: {new Date(p.dob).toLocaleDateString()}</div>}
                     {p?.gender && <div>Gender: <span className="capitalize">{p.gender}</span></div>}
-                    {p?.bloodGroup && <div>Blood Group: {p.bloodGroup}</div>}
                     {p?.mrn && <div>MRN: {p.mrn}</div>}
                   </div>
 
-                  <div className="pt-2 border-t border-border/50 flex justify-end">
+                  <div className="pt-2 border-t border-border/50 flex flex-wrap justify-end gap-2">
+                    {fm.organizationPrivacyAvailable && p?.id && <Button size="xs" variant="outline" onClick={() => setFamilyPrivacyId(p.id)}>Privacy choices for {p.name?.split(' ')[0] || 'Member'}</Button>}
                     <Button
                       size="xs"
                       onClick={() => {
-                        setSelectedForPatientId(p?.id || p?._id);
-                        openSelfBookModal();
+                        openSelfBookModal(p?.id || p?._id);
                       }}
                     >
                       Book for {p?.name?.split(" ")[0] || "Member"}
@@ -602,6 +649,7 @@ export default function PatientPortalPage() {
               );
             })}
           </div>
+          {familyPrivacyId && familyMembers.some(member => member.organizationPrivacyAvailable && member.patient?.id === familyPrivacyId) && <section className="space-y-3"><Button variant="outline" onClick={() => setFamilyPrivacyId(null)}>Close family privacy choices</Button><PatientPrivacyControls patientId={familyPrivacyId} /></section>}
         </div>
       )}
 
@@ -915,8 +963,10 @@ export default function PatientPortalPage() {
       )}
 
       {/* Self-Booking Modal */}
-      <Modal open={isSelfBookOpen} onClose={() => setIsSelfBookOpen(false)} title="Book Doctor Appointment" size="md">
+      <Modal open={isSelfBookOpen} busy={submittingSelfBook} onClose={() => setIsSelfBookOpen(false)} title="Book Doctor Appointment" size="md">
         <form onSubmit={handleSelfBookSubmit} className="space-y-4">
+          {selfBookingError && <Alert variant="error">{selfBookingError}</Alert>}
+          <fieldset disabled={submittingSelfBook || selfBookingLocked} className="space-y-4">
           <Select
             label="Who is this appointment for? *"
             value={selectedForPatientId}
@@ -946,6 +996,7 @@ export default function PatientPortalPage() {
             required
           />
 
+          <Input label={`Visit date (${bookingTimezone})`} type="date" value={bookingDate} onChange={event => setSelfApptTime(event.target.value)} required />
           {selfDoctorBookingInfo?.bookingMode === "sequential_queue" ? (
             <div className="p-3 bg-accent-subtle    border border-primary-500/30 rounded-xl space-y-1.5">
               <div className="flex items-center justify-between">
@@ -953,17 +1004,11 @@ export default function PatientPortalPage() {
                 <Badge variant="primary" className="font-bold text-[10px]">Sequential Token</Badge>
               </div>
               <p className="text-xs text-text-secondary">
-                This doctor operates in live token queue mode. Booking will issue Token <strong className="text-accent font-bold">#{selfDoctorBookingInfo.nextToken || 1}</strong> with an estimated turn time of <strong className="text-warning-text font-bold">~{Math.max(0, ((selfDoctorBookingInfo.nextToken || 1) - 1) * (selfDoctorBookingInfo.appointmentDuration || 15))} mins</strong>.
+                A token is assigned when the visit is recorded. Payment and check-in requirements still apply.
               </p>
             </div>
           ) : (
-            <DatePicker
-              label="Preferred Appointment Date & Time *"
-              mode="datetime"
-              value={selfApptTime}
-              onChange={(val) => setSelfApptTime(val)}
-              fullWidth
-            />
+            <Select label="Available appointment time" value={selfApptTime.split("T")[1] || ""} disabled={availabilityLoading} onChange={event => setSelfApptTime(`${bookingDate}T${event.target.value}`)} options={(selfDoctorBookingInfo?.slots || []).filter((slot: any) => slot.available === true && !slot.isBooked && !slot.lockedByOther).map((slot: any) => ({ value: slot.time, label: slot.time }))} />
           )}
 
           <Input
@@ -972,13 +1017,14 @@ export default function PatientPortalPage() {
             value={selfNotes}
             onChange={(e) => setSelfNotes(e.target.value)}
           />
+          </fieldset>
 
           <div className="flex flex-col-reverse sm:flex-row justify-between gap-3 border-t border-border pt-4 mt-4">
-            <Button variant="outline" type="button" onClick={() => setIsSelfBookOpen(false)} className="w-full sm:w-auto min-h-[44px]">
-              Cancel
+            <Button variant="outline" type="button" disabled={submittingSelfBook} onClick={() => setIsSelfBookOpen(false)} className="w-full sm:w-auto min-h-[44px]">
+              Close
             </Button>
-            <Button type="submit" loading={submittingSelfBook} className="w-full sm:w-auto min-h-[44px]">
-              Confirm Booking & Get Token
+            <Button type="submit" loading={submittingSelfBook} disabled={submittingSelfBook || (!selfBookingLocked && (availabilityLoading || !selfDoctorBookingInfo || selfDoctorBookingInfo.isHoliday))} className="w-full sm:w-auto min-h-[44px]">
+              {selfBookingLocked && selfBookingError ? "Retry Submitted Booking" : "Record Visit & Get Token"}
             </Button>
           </div>
         </form>
@@ -1056,7 +1102,7 @@ export default function PatientPortalPage() {
         >
           <form onSubmit={handleClaimRecord} className="space-y-4">
             <p className="text-xs text-text-muted">
-              If your care team has a walk-in record for you, enter your Patient ID or MRN below to link it directly to your online account.
+              If your care team has a walk-in record for you, enter its patient record reference to request an identity review. The organization verifies your identity before medical access is granted.
             </p>
             <Input
               label="Patient ID or Record Reference *"
@@ -1070,7 +1116,7 @@ export default function PatientPortalPage() {
                 Cancel
               </Button>
               <Button type="submit" loading={claiming} className="w-full sm:w-auto min-h-[44px]">
-                Claim & Link Record
+                Request identity review
               </Button>
             </div>
           </form>

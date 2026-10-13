@@ -323,7 +323,7 @@ export function EncounterWorkspace({
               variant="outline"
               size="sm"
               onClick={handleOpenChargePreview}
-              className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover shadow-xs"
+              className="flex-1 sm:flex-initial min-h-[40px] text-xs font-semibold shadow-xs"
             >
               <Receipt className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
               Auto Charge Capture
@@ -333,7 +333,7 @@ export function EncounterWorkspace({
               size="sm"
               onClick={() => handleCallNextPatient()}
               loading={callingNext}
-              className="flex-1 sm:flex-initial min-h-[40px] font-semibold rounded-xl shadow-xs"
+              className="flex-1 sm:flex-initial min-h-[40px] font-semibold"
             >
               <Megaphone className="w-3.5 h-3.5 mr-1.5" />
               Call Next Patient
@@ -576,15 +576,7 @@ export function EncounterWorkspace({
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs font-bold text-text">₹</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={customConsultFee}
-                      onChange={(e) => setCustomConsultFee(e.target.value)}
-                      onBlur={(e) => handleOpenChargePreview(Number(e.target.value) || 0)}
-                      className="w-28 px-3 py-1.5 bg-surface border border-border rounded-xl text-xs font-bold text-text focus:ring-2 focus:ring-focus-ring focus:border-primary-500 shadow-2xs"
-                      placeholder="Fee (₹)"
-                    />
+                    <Input type="number" min={0} value={customConsultFee} onChange={(e) => setCustomConsultFee(e.target.value)} onBlur={(e) => handleOpenChargePreview(Number(e.target.value) || 0)} placeholder="Fee (₹)" fullWidth={false} containerClassName="w-28" size="sm" />
                     <Button
                       size="xs"
                       variant="outline"

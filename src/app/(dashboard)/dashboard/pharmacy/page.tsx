@@ -451,7 +451,7 @@ export default function PharmacyPage() {
               size="sm"
               onClick={fetchData}
               disabled={isRefreshing}
-              className="flex-1 sm:flex-initial min-h-[40px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors"
+              className="flex-1 sm:flex-initial min-h-[40px] text-xs font-semibold transition-colors"
              loading={isRefreshing}>
               <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
@@ -473,7 +473,7 @@ export default function PharmacyPage() {
                   setMedErrors({});
                   setIsMedModalOpen(true);
                 }}
-                className="flex-1 sm:flex-initial min-h-[40px] font-semibold rounded-xl shadow-xs"
+                className="flex-1 sm:flex-initial min-h-[40px] font-semibold"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Add Medicine
@@ -843,24 +843,13 @@ export default function PharmacyPage() {
           {/* Quick Search & Filter Header */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface p-3.5 rounded-2xl border border-border/80 shadow-xs">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
-              <input
-                type="text"
-                placeholder="Find prescription by Patient Name, Token # (e.g. #14), or Medicine..."
-                aria-label="Search pending prescriptions"
-                value={dispenseSearch}
-                onChange={(e) => setDispenseSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-surface-alt rounded-xl text-xs text-text border border-border/70 focus:outline-none focus:ring-2 focus:ring-focus-ring"
-              />
+
+              <Input icon={<Search />} type="text" placeholder="Find prescription by Patient Name, Token # (e.g. #14), or Medicine..." aria-label="Search pending prescriptions" value={dispenseSearch} onChange={(e) => setDispenseSearch(e.target.value)} size="sm" variant="filled" />
             </div>
             {dispenseSearch && (
-              <button
-                type="button"
-                onClick={() => setDispenseSearch("")}
-                className="text-xs text-text-muted hover:text-text font-semibold px-2 py-1 cursor-pointer"
-              >
+              <Button type="button" onClick={() => setDispenseSearch("")} variant="ghost" size="xs">
                 Clear Search
-              </button>
+              </Button>
             )}
           </div>
 
@@ -946,7 +935,7 @@ export default function PharmacyPage() {
                         variant="primary"
                         size="xs"
                         onClick={() => openDispenseModal(group)}
-                        className="font-semibold rounded-lg shadow-xs min-h-[36px] w-full sm:w-auto"
+                        className="font-semibold rounded-lg min-h-[36px] w-full sm:w-auto"
                       >
                         <Receipt className="w-3.5 h-3.5 mr-1" />
                         Dispense & Bill
@@ -1021,7 +1010,7 @@ export default function PharmacyPage() {
                           variant="primary"
                           size="sm"
                           onClick={() => openDispenseModal(group)}
-                          className="w-full font-bold text-xs rounded-xl min-h-[44px] justify-center shadow-xs"
+                          className="w-full font-bold text-xs min-h-[44px] justify-center"
                         >
                           <Receipt className="w-4 h-4 mr-1.5" />
                           Dispense & Bill
@@ -1051,7 +1040,7 @@ export default function PharmacyPage() {
             <Button type="button" variant="outline" size="sm" onClick={() => setIsMedModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" form="med-stock-form" variant="primary" size="sm" disabled={submittingMed} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]" loading={submittingMed}>
+            <Button type="submit" form="med-stock-form" variant="primary" size="sm" disabled={submittingMed} className="w-full sm:w-auto font-semibold min-h-[44px]" loading={submittingMed}>
               {submittingMed ? "Saving..." : "Save Medicine Stock"}
             </Button>
           </div>
@@ -1195,7 +1184,7 @@ export default function PharmacyPage() {
                   variant="primary"
                   disabled={submittingDispense || hasDispenseErrors}
                   onClick={handleDispenseSubmit}
-                  className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]"
+                  className="w-full sm:w-auto font-semibold min-h-[44px]"
                 >
                   {submittingDispense ? "Dispensing..." : "Dispense & Bill Patient"}
                 </Button>
@@ -1292,7 +1281,7 @@ export default function PharmacyPage() {
             <Button variant="outline" size="sm" type="button" onClick={() => setIsBatchModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
               Cancel
             </Button>
-            <Button type="submit" form="add-batch-form" size="sm" variant="primary" loading={submittingBatch} className="w-full sm:w-auto font-semibold rounded-xl shadow-xs min-h-[44px]">
+            <Button type="submit" form="add-batch-form" size="sm" variant="primary" loading={submittingBatch} className="w-full sm:w-auto font-semibold min-h-[44px]">
               Add Batch Stock
             </Button>
           </div>

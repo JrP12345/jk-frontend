@@ -41,14 +41,14 @@ export default function DashboardError({
         )}
 
         <div className="flex flex-wrap items-center gap-2.5 justify-center pt-1">
-          <Button variant="primary" size="sm" onClick={() => reset()} className="rounded-xl font-bold text-xs cursor-pointer">
+          <Button variant="primary" size="sm" onClick={() => reset()} className="font-bold text-xs cursor-pointer">
             Reload Section
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => (window.location.href = "/dashboard")}
-            className="rounded-xl font-semibold text-xs cursor-pointer"
+            className="font-semibold text-xs cursor-pointer"
           >
             Dashboard Overview
           </Button>

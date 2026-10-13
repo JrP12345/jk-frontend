@@ -83,6 +83,7 @@ api.interceptors.response.use(
       requestPath !== "/auth/refresh-token" &&
       requestPath !== "/auth/logout" &&
       requestPath !== "/auth/login" &&
+      requestPath !== "/auth/login/workspace" &&
       !requestPath?.startsWith("/auth/passkeys/login/") &&
       requestPath !== "/auth/login/verify-2fa"
     ) {

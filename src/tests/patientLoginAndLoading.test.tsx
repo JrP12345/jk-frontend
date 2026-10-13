@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import LoginPage from "@/app/(auth)/login/page";
 import LoginLoading from "@/app/(auth)/login/loading";
-import RootLoading from "@/app/loading";
+import RootLoading from "@/app/(auth)/loading";
 import { useAuthStore, type User } from "@/store/authStore";
 import api from "@/lib/api";
 
@@ -298,7 +298,7 @@ describe("Page loading feedback", () => {
     expect(screen.queryByText("Loading platform content...")).not.toBeInTheDocument();
   });
 
-  it("provides one accessible status for the full-page fallback", () => {
+  it("provides one accessible status for the auth layout fallback", () => {
     render(<RootLoading />);
     expect(screen.getAllByRole("status")).toHaveLength(1);
     expect(screen.getByRole("status", { name: "Loading…" })).toHaveClass("min-h-dvh");

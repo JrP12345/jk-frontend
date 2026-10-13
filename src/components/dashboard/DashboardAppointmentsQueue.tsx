@@ -4,6 +4,7 @@ import { localDateKey } from "@/lib/date";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent, Badge, Table, Button, Dropdown } from "@/components/ui";
 import { hasAnyPermission } from "@/lib/permissions";
+import { patientName as canonicalPatientName } from "@/lib/locationWorkflow";
 import { Clock, CheckCircle2, PlayCircle, XCircle, ChevronRight, UserCheck, CalendarX2, MoreHorizontal, Plus, Stethoscope } from "lucide-react";
 
 interface DashboardAppointmentsQueueProps {
@@ -66,7 +67,7 @@ export function DashboardAppointmentsQueue({
                 variant="outline"
                 size="sm"
                 onClick={() => router.push("/dashboard/appointments")}
-                className="mt-4 rounded-xl text-xs font-semibold"
+                className="mt-4 text-xs font-semibold"
               >
                 <Plus className="w-3.5 h-3.5 mr-1" />
                 Create First Appointment
@@ -78,7 +79,7 @@ export function DashboardAppointmentsQueue({
             {/* Mobile Touch-Friendly Card Roster View */}
             <div className="sm:hidden divide-y divide-border/60">
               {appointments.slice(0, 5).map((row: any) => {
-                const patientName = row.patientId?.userId?.name || (user?.role === "patient" ? "Self" : "Patient Profile");
+                const patientName = canonicalPatientName(row.patientId);
                 const doctorName = row.doctorId?.name || "Physician";
                 const timeString = new Date(row.appointmentTime).toLocaleTimeString([], {
                   hour: "2-digit",
@@ -179,7 +180,7 @@ export function DashboardAppointmentsQueue({
                           size="xs"
                           variant="ghost"
                           onClick={() => router.push("/dashboard/appointments")}
-                          className="h-9 px-3 text-xs font-semibold text-text-muted hover:text-accent hover:bg-surface-hover shrink-0 min-h-[44px] rounded-xl touch-manipulation"
+                          className="h-9 px-3 text-xs font-semibold text-text-muted hover:text-accent shrink-0 min-h-[44px] rounded-xl touch-manipulation"
                         >
                           Details
                           <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
@@ -219,10 +220,10 @@ export function DashboardAppointmentsQueue({
                           render: (row: any) => (
                             <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-surface-alt border border-border flex items-center justify-center text-[10px] font-bold text-text-secondary shrink-0">
-                                {(row.patientId?.userId?.name || "P")[0].toUpperCase()}
+                                {canonicalPatientName(row.patientId)[0].toUpperCase()}
                               </div>
                               <span className="font-semibold text-text text-xs sm:text-sm">
-                                {row.patientId?.userId?.name || "Patient Profile"}
+                                {canonicalPatientName(row.patientId)}
                               </span>
                             </div>
                           ),
@@ -326,7 +327,7 @@ export function DashboardAppointmentsQueue({
                           header: "Patient",
                           render: (row: any) => (
                             <span className="font-semibold text-text text-xs sm:text-sm">
-                              {row.patientId?.userId?.name || "Self"}
+                              {canonicalPatientName(row.patientId)}
                             </span>
                           ),
                         },

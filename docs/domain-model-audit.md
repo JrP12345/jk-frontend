@@ -36,3 +36,30 @@ Protected HTTP and private websocket requests require persisted session authorit
 Development records with superseded names must be reset and reseeded using the guarded [development lifecycle](../../backend/docs/development-data.md). No startup field backfill or permanent reader for previous model representations is provided. Current ciphertext uses enc:v1 and DATA_ENCRYPTION_KEY; encrypted MFA enrollment is required. These source changes do not reset a database or rotate a secret.
 
 Retain original full-width navigation, mobile bottom bars and the separate dashboard toolbar. Shared presentation follows [design-system.md](design-system.md).
+
+## CRM additions reviewed 2026-10-12
+
+`Inquiry` records an administrative inquiry without requiring a patient or login.
+Reviewed conversion and minimum-entry registration reuse the canonical `Patient`
+and `Appointment`; unknown DOB or demographics stay unknown. `PatientRelationship`
+records the organization's branch/owner/contact preferences, and `CrmActivity`
+records administrative history. Operational follow-up remains in the existing
+`Task`; clinical results and notes remain in their existing clinical records.
+
+`FamilyRelationship` booking rights do not establish communication, consent or
+data-rights authority. Each additional purpose requires an independently reviewed
+organization grant. Current authority, explicit recipient and attributable consent
+are checked before delegated use and communication dispatch. Clinical capabilities
+are excluded from administrative family communication.
+
+`OperationReceipt` preserves immutable command identity and encrypted booking
+responses for uncertain retries. Current workspace/branch authority still applies
+on replay. Disruption attendance uses `disruptionOriginalStatus`; missing legacy
+status requires review rather than inference from notes. Courtesy follow-up keeps
+the canonical visit and invoice financially consistent; booking follow-up does not
+complete the original clinical visit.
+
+Node 24 native startup requires erasable TypeScript syntax; the backend type gate
+now enforces it. Implementation and observed acceptance limits are tracked in
+[crm-implementation-progress.md](crm-implementation-progress.md) and
+[crm-acceptance-matrix.md](crm-acceptance-matrix.md). Production validation is pending.

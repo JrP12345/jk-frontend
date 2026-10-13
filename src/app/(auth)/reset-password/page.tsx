@@ -157,7 +157,7 @@ function ResetPasswordForm() {
               </CardContent>
 
               <CardFooter className="p-0 pt-2 flex flex-col gap-3">
-                <Button type="submit" fullWidth loading={loading} size="lg" className="rounded-xl font-bold min-h-[44px]">
+                <Button type="submit" fullWidth loading={loading} size="lg" className="font-bold min-h-[44px]">
                   Update Password
                 </Button>
                 <Link
@@ -183,7 +183,7 @@ function ResetPasswordForm() {
                 </p>
               </div>
 
-              <Button fullWidth onClick={() => router.push("/login")} size="lg" className="rounded-xl font-bold min-h-[44px]">
+              <Button fullWidth onClick={() => router.push("/login")} size="lg" className="font-bold min-h-[44px]">
                 Proceed to Sign In
               </Button>
             </div>

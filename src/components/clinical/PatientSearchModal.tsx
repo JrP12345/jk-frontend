@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-import { Modal, Badge, Spinner, EmptyState } from "@/components/ui";
+import { Modal, Badge, Spinner, EmptyState, Input, Button } from "@/components/ui";
 
 export interface SearchResultItem {
   id: string;
@@ -111,36 +111,23 @@ export function PatientSearchModal({ isOpen, onClose, patientId }: PatientSearch
       <div className="space-y-4" onKeyDown={handleKeyDown}>
         {/* Search input bar */}
         <div className="relative">
-          <input
-            type="text"
-            placeholder="Search notes, medications, lab orders, or diagnoses..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-full px-4 py-2.5 bg-surface-alt/70 border border-border/80 rounded-xl text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-focus-ring text-text shadow-2xs transition-all"
-            autoFocus
-          />
-          {loading && (
-            <div className="absolute right-3 top-3">
-              <Spinner size="sm" />
-            </div>
-          )}
+          <Input aria-label="Search clinical records" type="text" placeholder="Search notes, medications, lab orders, or diagnoses..." value={query} onChange={(e) => setQuery(e.target.value)} autoFocus size="sm" variant="filled" iconRight={loading ? <Spinner size="sm" /> : undefined} />
         </div>
 
         {/* Category filter pills */}
-        <div className="flex gap-2 text-xs">
+        <div className="flex flex-wrap gap-2">
           {["all", "notes", "medication", "lab", "discharge"].map((cat) => (
-            <button
+            <Button
               key={cat}
               type="button"
               onClick={() => setCategory(cat)}
-              className={`px-3 py-1 rounded-xl capitalize font-semibold transition-all cursor-pointer shadow-2xs ${
-                category === cat
-                  ? "bg-primary-600 text-brand-mist shadow-xs border border-primary-500"
-                  : "bg-surface-alt/70 text-text-secondary border border-border/70 hover:bg-surface-hover hover:text-text"
-              }`}
+              aria-pressed={category === cat}
+              size="sm"
+              variant={category === cat ? "primary" : "secondary"}
+              className="capitalize"
             >
               {cat}
-            </button>
+            </Button>
           ))}
         </div>
 

@@ -277,7 +277,7 @@ export function FollowUpRecallRegister({
             onClick={fetchFollowUps}
             loading={loading}
             icon={<RotateCw className="w-3.5 h-3.5" />}
-            className="rounded-xl h-8 font-semibold cursor-pointer"
+            className="h-8 font-semibold cursor-pointer"
             title="Refresh Recall Register"
           />
         </div>
@@ -421,7 +421,7 @@ export function FollowUpRecallRegister({
                         onClick={() => handleSendRecall(item)}
                         loading={sendingRecallId === item.id}
                         disabled={!item.patient.phone}
-                        className="bg-success hover:bg-success text-background font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1"
+                        className="bg-success hover:bg-success text-background font-bold text-xs rounded-xl cursor-pointer flex items-center gap-1"
                         title="Send personalized WhatsApp recall message with direct live wait tracker"
                       >
                         <Send className="w-3.5 h-3.5" />

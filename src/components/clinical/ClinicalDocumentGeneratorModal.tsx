@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Modal, Button, Input, Select, useToast } from "@/components/ui";
+import { Modal, Button, Input, Select, useToast, Textarea } from "@/components/ui";
 import { UnifiedDocumentData, UnifiedDocumentModal } from "./UnifiedDocumentModal";
 import { FileText, Building2, HeartPulse, CheckCircle2 } from "lucide-react";
 
@@ -376,39 +376,18 @@ export function ClinicalDocumentGeneratorModal({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-text mb-1">
-                  Clinical History & Presenting Complaints
-                </label>
-                <textarea
-                  className="w-full text-xs p-2.5 rounded-lg border border-border bg-surface text-text focus:ring-1 focus:ring-focus-ring min-h-[70px]"
-                  value={refSummary}
-                  onChange={(e) => setRefSummary(e.target.value)}
-                  placeholder="Describe patient symptoms, duration, examination findings..."
-                />
+
+                <Textarea value={refSummary} onChange={(e) => setRefSummary(e.target.value)} placeholder="Describe patient symptoms, duration, examination findings..." label="Clinical History & Presenting Complaints" rows={3} />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold text-text mb-1">
-                    Investigations / Labs Done
-                  </label>
-                  <textarea
-                    className="w-full text-xs p-2 rounded-lg border border-border bg-surface text-text min-h-[60px]"
-                    value={refInvestigations}
-                    onChange={(e) => setRefInvestigations(e.target.value)}
-                    placeholder="ECG findings, bedside troponin, blood counts..."
-                  />
+
+                  <Textarea value={refInvestigations} onChange={(e) => setRefInvestigations(e.target.value)} placeholder="ECG findings, bedside troponin, blood counts..." label="Investigations / Labs Done" rows={3} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-text mb-1">
-                    Emergency Care & Medication Given
-                  </label>
-                  <textarea
-                    className="w-full text-xs p-2 rounded-lg border border-border bg-surface text-text min-h-[60px]"
-                    value={refTreatmentGiven}
-                    onChange={(e) => setRefTreatmentGiven(e.target.value)}
-                    placeholder="Stat drugs administered, IV fluids, oxygen support..."
-                  />
+
+                  <Textarea value={refTreatmentGiven} onChange={(e) => setRefTreatmentGiven(e.target.value)} placeholder="Stat drugs administered, IV fluids, oxygen support..." label="Emergency Care & Medication Given" rows={3} />
                 </div>
               </div>
 
@@ -433,15 +412,8 @@ export function ClinicalDocumentGeneratorModal({
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold text-text mb-1">Days of Rest</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={90}
-                    className="w-full text-xs p-2 rounded-lg border border-border bg-surface text-text"
-                    value={leaveDays}
-                    onChange={(e) => handleDaysChange(parseInt(e.target.value) || 1)}
-                  />
+
+                  <Input type="number" min={1} max={90} value={leaveDays} onChange={(e) => handleDaysChange(parseInt(e.target.value) || 1)} label="Days of Rest" size="sm" />
                 </div>
                 <Input
                   label="Leave Start Date"
@@ -474,15 +446,8 @@ export function ClinicalDocumentGeneratorModal({
               />
 
               <div>
-                <label className="block text-xs font-semibold text-text mb-1">
-                  Medical Advice & Remarks
-                </label>
-                <textarea
-                  className="w-full text-xs p-2 rounded-lg border border-border bg-surface text-text min-h-[60px]"
-                  value={leaveRemarks}
-                  onChange={(e) => setLeaveRemarks(e.target.value)}
-                  placeholder="Bed rest advised, avoid strenuous work, dietary instructions..."
-                />
+
+                <Textarea value={leaveRemarks} onChange={(e) => setLeaveRemarks(e.target.value)} placeholder="Bed rest advised, avoid strenuous work, dietary instructions..." label="Medical Advice & Remarks" rows={3} />
               </div>
             </div>
           )}
@@ -551,27 +516,13 @@ export function ClinicalDocumentGeneratorModal({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-text mb-1">
-                  Systemic Clinical Examination
-                </label>
-                <input
-                  type="text"
-                  className="w-full text-xs p-2 rounded-lg border border-border bg-surface text-text"
-                  value={fitnessSystemic}
-                  onChange={(e) => setFitnessSystemic(e.target.value)}
-                  placeholder="CVS, RS, Abdomen, CNS findings..."
-                />
+
+                <Input type="text" value={fitnessSystemic} onChange={(e) => setFitnessSystemic(e.target.value)} placeholder="CVS, RS, Abdomen, CNS findings..." label="Systemic Clinical Examination" size="sm" />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-text mb-1">
-                  Physician's Fitness Declaration
-                </label>
-                <textarea
-                  className="w-full text-xs p-2 rounded-lg border border-border bg-surface text-text min-h-[50px]"
-                  value={fitnessDeclaration}
-                  onChange={(e) => setFitnessDeclaration(e.target.value)}
-                />
+
+                <Textarea value={fitnessDeclaration} onChange={(e) => setFitnessDeclaration(e.target.value)} label="Physician's Fitness Declaration" rows={3} />
               </div>
             </div>
           )}

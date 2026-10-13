@@ -4,13 +4,13 @@ import type { LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
 import { rememberTrackerLink } from "@/store/trackerStore";
 import { useAuthStore } from "@/store/authStore";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 import { detectPatientOtpTarget } from "@/lib/patientLogin";
 import { userFacingError } from "@/lib/userFacingError";
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, useToast, ModeSwitcher, cn } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, useToast, ModeSwitcher, cn, Input } from "@/components/ui";
 import { Stethoscope, MapPin, Users, Clock, CheckCircle2, AlertCircle, Sparkles, Phone, ShieldCheck, ChevronRight, ArrowRight, UserCheck, RefreshCw, Building2 } from "lucide-react";
 
 type PublicDoctor = LocationDetail["doctors"][number];
@@ -18,9 +18,19 @@ type PublicLocation = LocationDetail;
 
 export default function JoinLocationQueuePage() {
   const params = useParams();
+  return <JoinLocationQueue key={params?.locationSlug as string} locationSlug={params?.locationSlug as string} />;
+}
+
+function JoinLocationQueue({ locationSlug }: { locationSlug: string }) {
   const router = useRouter();
   const { toast } = useToast();
-  const locationSlug = params?.locationSlug as string;
+  const mounted = useRef(true);
+  const redirect = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const submitted = useRef<Record<string, unknown> | null>(null);
+  const submittingRef = useRef(false);
+  const [submissionError, setSubmissionError] = useState("");
+  const [locked, setLocked] = useState(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; if (redirect.current) clearTimeout(redirect.current); }; }, []);
 
   const [location, setLocation] = useState<PublicLocation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,6 +51,8 @@ export default function JoinLocationQueuePage() {
     queuePosition: number;
     isExisting: boolean;
     trackingUrl: string;
+    status?: string;
+    paymentStatus?: string;
     message?: string;
   } | null>(null);
 
@@ -94,6 +106,7 @@ export default function JoinLocationQueuePage() {
   // Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current || !location) return;
 
     if (!name.trim()) {
       toast({
@@ -124,15 +137,21 @@ export default function JoinLocationQueuePage() {
     }
 
     try {
+      submittingRef.current = true;
       setSubmitting(true);
-      const res = await api.post("/public/join-queue", {
+      setSubmissionError("");
+      submitted.current ||= {
+        clientRequestId: crypto.randomUUID(),
         locationId: location!.id,
         doctorId: selectedDoctorId,
         name: name.trim(),
         phone: phone.trim().startsWith("+") ? phone.trim() : phoneTarget.phone,
         gender,
         notes: notes.trim() || undefined,
-      });
+      };
+      setLocked(true);
+      const res = await api.post("/public/join-queue", submitted.current);
+      if (!mounted.current) return;
 
       if (res.data?.success && res.data.data) {
         const data = res.data.data;
@@ -144,33 +163,37 @@ export default function JoinLocationQueuePage() {
           isExisting: !!data.isExisting,
           trackingUrl: data.trackingUrl,
           message: res.data.message,
+          status: data.status,
+          paymentStatus: data.paymentStatus,
         });
 
         toast({
-          title: data.isExisting ? "Existing Token Retrieved" : "Queue Joined Successfully!",
-          description: data.isExisting
-            ? `Active Token #${data.tokenNumber} found for today.`
-            : `Token #${data.tokenNumber} generated. Redirecting to live tracker...`,
+          title: data.status === "pending_payment" ? "Payment Pending" : "Visit Recorded",
+          description: res.data.message || `Token #${data.tokenNumber}. Review the current status in your tracker.`,
           variant: "success",
         });
 
         // Auto-redirect to live tracker after a brief celebratory view
-        setTimeout(() => {
+        redirect.current = setTimeout(() => {
           router.push(data.trackingUrl);
         }, 1800);
       } else {
         throw new Error(res.data?.message || "Failed to join queue");
       }
     } catch (err: any) {
-      console.error("Queue join error:", err);
+      if (!mounted.current) return;
+      const definitive = [400, 403, 404, 409, 422].includes(err.response?.status);
+      if (definitive) { submitted.current = null; setLocked(false); }
       const message = userFacingError(err.response?.data?.message || err.message, "Could not join the queue. Please ask reception for help.");
+      setSubmissionError(definitive ? message : `${message} The outcome is unknown. Retry the same request before submitting another visit.`);
       toast({
         title: "Unable to Join Queue",
         description: message,
         variant: "error",
       });
     } finally {
-      setSubmitting(false);
+      submittingRef.current = false;
+      if (mounted.current) setSubmitting(false);
     }
   };
 
@@ -241,7 +264,7 @@ export default function JoinLocationQueuePage() {
               <CheckCircle2 className="w-8 h-8 text-brand-mist" />
             </div>
             <h2 className="text-2xl font-black tracking-tight">
-              {successResult.isExisting ? "Token Retrieved!" : "You're in the Queue!"}
+              {successResult.status === "pending_payment" ? "Payment Pending" : "Visit Recorded"}
             </h2>
             <p className="text-brand-mist text-xs font-medium mt-1">
               {location.name}
@@ -251,14 +274,14 @@ export default function JoinLocationQueuePage() {
           <CardContent className="p-6 text-center space-y-6">
             <div className="bg-surface dark:bg-surface-alt/80 rounded-2xl p-5 border border-border dark:border-border">
               <span className="text-xs font-bold uppercase tracking-wider text-text-muted dark:text-text-muted">
-                Your Assigned Live Token
+                Your Visit Token
               </span>
               <div className="text-5xl font-black text-accent dark:text-accent mt-1 mb-2 tracking-tight">
                 #{successResult.tokenNumber}
               </div>
               <div className="flex items-center justify-center gap-2 text-xs font-medium text-text-secondary dark:text-text-secondary">
                 <Users className="w-4 h-4 text-accent" />
-                <span>Estimated Position in Queue: #{successResult.queuePosition}</span>
+                <span>{successResult.status === "pending_payment" ? "Ask reception to complete the required payment." : `Estimated Position in Queue: #${successResult.queuePosition}`}</span>
               </div>
             </div>
 
@@ -267,7 +290,7 @@ export default function JoinLocationQueuePage() {
             </p>
 
             <Button
-              className="w-full bg-primary hover:bg-primary text-brand-mist font-semibold py-6 text-base shadow-lg "
+              className="w-full hover:bg-primary font-semibold py-6 text-base shadow-lg "
               onClick={() => router.push(successResult.trackingUrl)}
             >
               Open Live Tracker Now
@@ -319,7 +342,7 @@ export default function JoinLocationQueuePage() {
             Join the Live Doctor Queue
           </h2>
           <p className="text-sm text-text-secondary mt-1">
-            Fill your name & number below to instantly receive your token and live mobile tracking link.
+            Enter your details to request a walk-in token and live tracking link. Shared or existing contacts may need reception review.
           </p>
 
           <div className="mt-3 pt-3 border-t border-white/20 flex items-center justify-between text-[11px] font-medium">
@@ -341,6 +364,8 @@ export default function JoinLocationQueuePage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {submissionError && <p role="alert" className="text-sm text-danger-text">{submissionError}</p>}
+          <fieldset disabled={submitting || locked} className="space-y-5">
           {/* Card 1: Patient Information */}
           <Card className="border-border dark:border-border shadow-sm">
             <CardHeader className="pb-3 pt-4 px-4">
@@ -352,19 +377,8 @@ export default function JoinLocationQueuePage() {
             <CardContent className="px-4 pb-4 space-y-3.5">
               {/* Name */}
               <div>
-                <label htmlFor="walk-in-name" className="block text-xs font-semibold text-text-secondary dark:text-text-secondary mb-1">
-                  Full Name <span className="text-danger-text">*</span>
-                </label>
-                <input
-                  id="walk-in-name"
-                  autoComplete="name"
-                  type="text"
-                  required
-                  placeholder="e.g. Ramesh Patel"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-border dark:border-border bg-surface dark:bg-surface text-text dark:text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition"
-                />
+
+                <Input id="walk-in-name" autoComplete="name" type="text" required placeholder="e.g. Ramesh Patel" value={name} onChange={(e) => setName(e.target.value)} label={"Full Name" + " " + "*"} size="sm" />
               </div>
 
               {/* Mobile Phone */}
@@ -373,25 +387,11 @@ export default function JoinLocationQueuePage() {
                   Mobile Number <span className="text-danger-text">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
-                    <Phone className="w-4 h-4" />
-                  </div>
-                  <input
-                    id="walk-in-phone"
-                    autoComplete="tel"
-                    inputMode="tel"
-                    aria-describedby="walk-in-phone-hint"
-                    type="tel"
-                    required
-                    placeholder="Phone (+country code outside India)"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    maxLength={24}
-                    className="w-full pl-9 pr-3.5 py-2.5 text-sm rounded-xl border border-border dark:border-border bg-surface dark:bg-surface text-text dark:text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition"
-                  />
+
+                  <Input icon={<Phone />} id="walk-in-phone" autoComplete="tel" inputMode="tel" aria-describedby="walk-in-phone-hint" type="tel" required placeholder="Phone (+country code outside India)" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={24} size="sm" />
                 </div>
                 <p id="walk-in-phone-hint" className="text-[11px] text-text-muted dark:text-text-muted mt-1">
-                  We use this to recover your existing token or send queue updates.
+                  Reception may need to verify shared or existing contact details. Keep your tracking link to reopen this visit.
                 </p>
               </div>
 
@@ -422,17 +422,8 @@ export default function JoinLocationQueuePage() {
 
               {/* Reason / Notes (Optional) */}
               <div>
-                <label htmlFor="walk-in-reason" className="block text-xs font-semibold text-text-secondary dark:text-text-secondary mb-1">
-                  Reason for Visit / Symptoms <span className="text-text-muted font-normal">(Optional)</span>
-                </label>
-                <input
-                  id="walk-in-reason"
-                  type="text"
-                  placeholder="e.g. Fever, routine checkup, cough"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-border dark:border-border bg-surface dark:bg-surface text-text dark:text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition"
-                />
+
+                <Input id="walk-in-reason" type="text" placeholder="e.g. Fever, routine checkup, cough" value={notes} onChange={(e) => setNotes(e.target.value)} label={"Reason for Visit / Symptoms" + " " + "(Optional)"} size="sm" />
               </div>
             </CardContent>
           </Card>
@@ -543,6 +534,7 @@ export default function JoinLocationQueuePage() {
           </Card>
 
           {/* Submit Action */}
+          </fieldset>
           <div className="pt-2 space-y-3">
             <Button
               type="submit"
@@ -551,14 +543,14 @@ export default function JoinLocationQueuePage() {
               loading={submitting}
               loadingText="Assigning Your Token..."
               iconRight={<Sparkles className="w-5 h-5" />}
-              className="w-full bg-primary hover:bg-primary text-brand-mist font-bold py-6 text-base rounded-xl shadow-lg  transition-all flex items-center justify-center gap-2"
+              className="w-full hover:bg-primary font-bold py-6 text-base shadow-lg transition-all flex items-center justify-center gap-2"
             >
-              Join Queue & Get Token
+              {locked && submissionError ? "Retry Submitted Visit" : "Join Queue & Get Token"}
             </Button>
 
             <div className="flex items-center justify-center gap-2 text-center text-xs text-text-muted dark:text-text-muted">
               <ShieldCheck className="w-4 h-4 text-success-text" />
-              <span>Free instant check-in. No app download required.</span>
+              <span>Payment requirements depend on the location. No app download required.</span>
             </div>
           </div>
         </form>

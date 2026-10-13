@@ -1,0 +1,21 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import Laboratory from '@/app/(dashboard)/dashboard/laboratory/page';
+import { ToastProvider } from '@/components/ui/Toast';
+import { ThemeProvider } from '@/components/ui/ThemeProvider';
+import { useAuthStore } from '@/store/authStore';
+import { useLocationStore } from '@/store/locationStore';
+import api from '@/lib/api';
+afterEach(() => { cleanup(); vi.restoreAllMocks(); window.history.replaceState(null, '', '/'); });
+it('opens the exact linked diagnostic source under the current branch and allows returning to the authorized list', async () => {
+  const orderId = '1234567890abcdef12345678';
+  window.history.replaceState(null, '', `/dashboard/laboratory?orderId=${orderId}`);
+  useAuthStore.setState({ user: { id: 'patient-user', role: 'patient', name: 'Patient', email: 'patient@example.test', permissions: ['VIEW_EHR'] }, isAuthenticated: true });
+  useLocationStore.setState({ activeLocationId: null });
+  const read = vi.spyOn(api, 'get').mockResolvedValue({ data: { data: [] } });
+  render(<ThemeProvider><ToastProvider><Laboratory /></ToastProvider></ThemeProvider>);
+  await waitFor(() => expect(read).toHaveBeenCalledWith(`/lab-orders?orderId=${orderId}`, expect.anything()));
+  fireEvent.click(await screen.findByRole('button', { name: 'Show all authorized orders' }));
+  await waitFor(() => expect(read).toHaveBeenCalledWith('/lab-orders', expect.anything()));
+  expect(window.location.search).toBe('');
+});

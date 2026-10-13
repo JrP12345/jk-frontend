@@ -83,7 +83,7 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
               size="xs"
               variant="primary"
               onClick={onOpenSearch}
-              className="rounded-xl font-bold text-xs shadow-xs min-h-[36px] w-full sm:w-auto justify-center"
+              className="rounded-xl font-bold text-xs min-h-[36px] w-full sm:w-auto justify-center"
             >
               <Search className="w-3.5 h-3.5 mr-1" />
               <span>Search (Cmd+K)</span>

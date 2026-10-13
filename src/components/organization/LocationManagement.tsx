@@ -8,12 +8,12 @@ import type { LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
 import { getPublicBookingStatus } from "@/lib/publicBooking";
 import { locationPath, doctorPath } from "@/lib/publicPaths";
 import GoogleBookingLinks from "@/components/organization/GoogleBookingLinks";
-import { parseWeeklySchedule } from "@/lib/timing/locationStatus";
 import { parseLocationCoordinates } from "@/lib/geo/locationCoordinates";
-import { Alert, Card, CardContent, Table, Button, Modal, Input, useToast, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, LoadingState, SkeletonTable, Dropdown, StatCard, cn } from "@/components/ui";
+import { Alert, Card, CardContent, Table, Button, Modal, Input, useToast, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, LoadingState, SkeletonTable, Dropdown, StatCard, cn, Textarea } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { useOrganizationLocations } from "@/hooks/useOrganizationLocations";
-import { organizationPath, saveWithBranding } from "@/services/organization.service";
+import { organizationPath, organizationWorkspaceUrl, saveWithBranding } from "@/services/organization.service";
+import { publicBookingChecklist } from "@/lib/publicBookingSetup";
 import { facilityTypeLabel, facilityTypeOptions, type FacilityType } from "@/lib/facility";
 import { hasAnyPermission, isRootUser } from "@/lib/permissions";
 import { RotateCw, Plus, Building2, MapPin, Phone, Mail, QrCode, MoreHorizontal, Edit3, Trash2, Archive, RotateCcw, Clock, Link2 } from "lucide-react";
@@ -77,14 +77,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
   const publicBookingStatus = websitePublicDetail ? getPublicBookingStatus({ ...websitePublicDetail, doctorCount: websitePublicDetail.doctors.length }) : null;
   const websiteButtonLabel = publicBookingStatus === "check_availability" ? "Check appointments" : publicBookingStatus === "contact_location" ? "Contact reception" : "View location";
   const buttonSnippet = websiteUrl ? `<a href="${websiteUrl}" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#0F6F66;color:#fff;text-decoration:none;font:600 16px system-ui,sans-serif">${websiteButtonLabel}</a>` : "";
-  const websiteChecklist = websitePublicDetail ? [
-    { label: "At least one doctor is listed", complete: websitePublicDetail.doctors.length > 0 },
-    { label: "Online appointments are enabled", complete: publicBookingStatus === "check_availability" },
-    { label: "A contact number is listed", complete: Boolean(websitePublicDetail.phone || websitePublicDetail.organization?.phone) },
-    { label: "The location address is listed", complete: Boolean(websitePublicDetail.address) },
-    { label: "Opening hours are listed", complete: parseWeeklySchedule(websitePublicDetail.timings).hasExplicitSchedule },
-    { label: "Consultation fees are clear", complete: websitePublicDetail.doctors.length > 0 && websitePublicDetail.doctors.every((doctor) => doctor.feeType === "free" || doctor.feeType === "post_consultation" || doctor.fees > 0) },
-  ] : [];
+  const websiteChecklist = websitePublicDetail ? publicBookingChecklist(websitePublicDetail) : [];
 
   const openWebsiteBooking = (location: Location) => {
     setWebsitePublicResponse(null);
@@ -386,7 +379,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
               size="sm"
               onClick={reloadLocations}
               disabled={isRefreshing}
-              className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] rounded-xl text-xs font-semibold hover:bg-surface-hover transition-colors justify-center"
+              className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] text-xs font-semibold transition-colors justify-center"
              loading={isRefreshing}>
               <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
               Refresh
@@ -397,7 +390,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                 variant="primary"
                 size="sm"
                 onClick={openModal}
-                className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs justify-center"
+                className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold justify-center"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
                 Add Location
@@ -518,20 +511,20 @@ export default function LocationManagement({ organizationId, embedded = false }:
                 <Button
                   size="sm"
                   variant="outline"
-                  className="rounded-xl text-xs font-semibold min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-initial justify-center"
+                  className="text-xs font-semibold min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-initial justify-center"
                   onClick={() => setQrLocation(locations[0] as Location)}
                 >
                   <QrCode className="w-3.5 h-3.5 mr-1 text-accent" />
                   QR Poster
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => openWebsiteBooking(locations[0] as Location)} className="rounded-xl text-xs font-semibold min-h-[44px] sm:min-h-[36px]">
+                <Button size="sm" variant="outline" onClick={() => openWebsiteBooking(locations[0] as Location)} className="text-xs font-semibold min-h-[44px] sm:min-h-[36px]">
                   <Link2 className="w-3.5 h-3.5 mr-1" /> Website booking
                 </Button>
                 {canManageLocations && (
                   <Button
                     size="sm"
                     variant="outline"
-                    className="rounded-xl text-xs font-semibold min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-initial justify-center"
+                    className="text-xs font-semibold min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-initial justify-center"
                     onClick={() => openEditModal(locations[0] as Location)}
                   >
                     <Edit3 className="w-3.5 h-3.5 mr-1 text-text-muted" />
@@ -543,14 +536,10 @@ export default function LocationManagement({ organizationId, embedded = false }:
 
             {canManageLocations && (
               <div className="mt-5 pt-4 border-t border-border/60">
-                <button
-                  type="button"
-                  onClick={openModal}
-                  className="text-xs font-semibold text-accent dark:text-accent hover:underline cursor-pointer flex items-center gap-1"
-                >
+                <Button type="button" onClick={openModal} variant="ghost" size="xs" className="text-accent">
                   <Plus className="w-3.5 h-3.5" />
                   Add another location
-                </button>
+                </Button>
               </div>
             )}
           </CardContent>
@@ -741,7 +730,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                         size="sm"
                         variant="outline"
                         onClick={() => openEditModal(row)}
-                        className="w-full font-semibold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5"
+                        className="w-full font-semibold text-xs min-h-[42px] flex items-center justify-center gap-1.5"
                       >
                         <Edit3 className="w-3.5 h-3.5 text-text-muted" />
                         <span>Edit Location</span>
@@ -750,14 +739,14 @@ export default function LocationManagement({ organizationId, embedded = false }:
                         size="sm"
                         variant="outline"
                         onClick={() => setDeletingId(row.id)}
-                        className="w-full font-semibold text-xs min-h-[42px] rounded-xl text-danger-text hover:bg-danger/10 border-danger/30 flex items-center justify-center gap-1.5"
+                        className="w-full font-semibold text-xs min-h-[42px] text-danger-text hover:bg-danger/10 border-danger/30 flex items-center justify-center gap-1.5"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Deactivate</span>
                       </Button>
                     </div>
                   )}
-                  <Button size="sm" variant="outline" onClick={() => openWebsiteBooking(row)} className="w-full min-h-[42px] rounded-xl text-xs font-semibold">
+                  <Button size="sm" variant="outline" onClick={() => openWebsiteBooking(row)} className="w-full min-h-[42px] text-xs font-semibold">
                     Website booking link
                   </Button>
                 </div>
@@ -839,7 +828,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                           <Button
                             size="sm"
                             variant="primary"
-                            className="rounded-xl text-xs font-semibold min-h-[36px] shadow-xs"
+                            className="text-xs font-semibold min-h-[36px]"
                             loading={reactivatingId === row.id}
                             icon={<RotateCcw className="w-3.5 h-3.5" />}
                             onClick={() => handleReactivate(row)}
@@ -884,7 +873,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
                       <Button
                         size="sm"
                         variant="primary"
-                        className="w-full font-semibold text-xs min-h-[44px] rounded-xl shadow-xs justify-center"
+                        className="w-full font-semibold text-xs min-h-[44px] justify-center"
                         loading={reactivatingId === row.id}
                         icon={<RotateCcw className="w-3.5 h-3.5" />}
                         onClick={() => handleReactivate(row)}
@@ -1014,14 +1003,10 @@ export default function LocationManagement({ organizationId, embedded = false }:
               value={formData.description || ""}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
-            <label className="block text-xs font-semibold text-text">Booking page accent
-              <select value={formData.brandColor || "#0F6F66"} onChange={(event) => setFormData({ ...formData, brandColor: event.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-text">
-                <option value="#0F6F66">Teal</option>
-                <option value="#1D4ED8">Blue</option>
-                <option value="#6D28D9">Violet</option>
-                <option value="#9A3412">Terracotta</option>
-              </select>
-            </label>
+            <Select label="Booking page accent" value={formData.brandColor || "#0F6F66"} onChange={(event) => setFormData({ ...formData, brandColor: event.target.value })} size="sm" options={[
+              { value: "#0F6F66", label: "Teal" }, { value: "#1D4ED8", label: "Blue" },
+              { value: "#6D28D9", label: "Violet" }, { value: "#9A3412", label: "Terracotta" },
+            ]} />
           </div>
 
           {/* Section 2: Amenities & Operating Hours */}
@@ -1091,7 +1076,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
             <Button variant="outline" size="sm" type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submitting} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold rounded-xl shadow-xs">
+            <Button type="submit" size="sm" variant="primary" loading={submitting} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold">
               {editingId ? "Update Location Configuration" : "Save Location"}
             </Button>
           </div>
@@ -1130,11 +1115,11 @@ export default function LocationManagement({ organizationId, embedded = false }:
             {websitePublicDetail && <>
               <p className="mt-1 text-xs text-text-secondary">{publicBookingStatus === "check_availability" ? "Patients can check appointment times." : publicBookingStatus === "contact_location" ? "Patients can view the page and contact your care team; online booking is paused." : "Patients can view the page, but no doctors are listed yet."}</p>
               <ul className="mt-3 grid gap-1.5 text-xs sm:grid-cols-2">{websiteChecklist.map((item) => <li key={item.label} className="flex items-start gap-2"><span aria-hidden="true" className={item.complete ? "text-success-text" : "text-warning-text"}>{item.complete ? "✓" : "○"}</span><span>{item.label}</span></li>)}</ul>
-              {websiteChecklist.some((item) => !item.complete) && <div className="mt-3 flex flex-wrap gap-3"><Button size="sm" variant="outline" onClick={() => { if (websiteLocation) { openEditModal(websiteLocation); setWebsiteLocation(null); } }}>Edit location details</Button><Link href="/dashboard/staff" className="inline-flex min-h-9 items-center text-xs font-semibold text-accent hover:underline">Manage doctors</Link></div>}
+              {websiteChecklist.some((item) => !item.complete) && <div className="mt-3 flex flex-wrap gap-3"><Button size="sm" variant="outline" onClick={() => { if (websiteLocation) { openEditModal(websiteLocation); setWebsiteLocation(null); } }}>Edit location details</Button><Link href={organizationId ? organizationWorkspaceUrl(organizationId, "members") : "/dashboard/staff"} className="inline-flex min-h-9 items-center text-xs font-semibold text-accent hover:underline">Manage doctors</Link></div>}
             </>}
           </div>
-          <div><label htmlFor="location-booking-url" className="mb-1 block text-xs font-semibold text-text">Booking link</label><div className="flex gap-2"><input id="location-booking-url" readOnly value={websiteUrl} className="min-w-0 flex-1 rounded-lg border border-border bg-surface-alt px-3 text-xs text-text" /><Button size="sm" disabled={!websiteUrl} onClick={() => copyWebsiteText(websiteUrl, "Link copied")}>Copy link</Button></div></div>
-          <div><label htmlFor="location-booking-html" className="mb-1 block text-xs font-semibold text-text">Paste-in HTML button</label><textarea id="location-booking-html" readOnly value={buttonSnippet} rows={4} className="w-full rounded-lg border border-border bg-surface-alt p-3 font-mono text-xs text-text" /><Button size="sm" variant="outline" disabled={!buttonSnippet} onClick={() => copyWebsiteText(buttonSnippet, "Button code copied")}>Copy button code</Button></div>
+          <div><label htmlFor="location-booking-url" className="mb-1 block text-xs font-semibold text-text">Booking link</label><div className="flex gap-2"><Input id="location-booking-url" readOnly value={websiteUrl} containerClassName="min-w-0 flex-1" size="sm" variant="filled" /><Button size="sm" disabled={!websiteUrl} onClick={() => copyWebsiteText(websiteUrl, "Link copied")}>Copy link</Button></div></div>
+          <div><Textarea id="location-booking-html" readOnly value={buttonSnippet} rows={4} label="Paste-in HTML button" className="font-mono" /><Button size="sm" variant="outline" disabled={!buttonSnippet} onClick={() => copyWebsiteText(buttonSnippet, "Button code copied")}>Copy button code</Button></div>
           <GoogleBookingLinks locationUrl={websiteUrl} available={publicBookingStatus === "check_availability"} doctors={websitePublicDetail?.doctors.map((doctor) => ({ id: doctor.id, name: doctor.name, url: `${window.location.origin}${doctorPath(doctor, websitePublicDetail)}` })) || []} onCopy={copyWebsiteText} />
           <p className="text-xs text-text-muted">The public page stays available while the location is active and published. If online appointments are paused, patients see contact options. No script, iframe, or website rebuild is required.</p>
         </div>

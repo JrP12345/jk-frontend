@@ -159,7 +159,7 @@ export function InCabinLabOrderModal({
             variant="outline"
             size="sm"
             disabled={!customTestInput.trim()}
-            className="shrink-0 font-bold rounded-xl"
+            className="shrink-0 font-bold"
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
             Add Test
@@ -173,13 +173,9 @@ export function InCabinLabOrderModal({
               Requisition Worklist ({selectedTests.length} tests selected)
             </span>
             {selectedTests.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setSelectedTests([])}
-                className="text-[11px] text-danger-text dark:text-danger-text hover:underline cursor-pointer"
-              >
+              <Button type="button" onClick={() => setSelectedTests([])} variant="ghost" size="xs" className="text-danger-text">
                 Clear all
-              </button>
+              </Button>
             )}
           </div>
           {selectedTests.length === 0 ? (
@@ -270,7 +266,7 @@ export function InCabinLabOrderModal({
             onClick={handleSubmitOrder}
             loading={submitting}
             disabled={selectedTests.length === 0}
-            className="bg-primary hover:bg-primary-hover text-brand-mist font-semibold rounded-control shadow-xs"
+            className="font-semibold"
           >
             <FlaskConical className="w-4 h-4 mr-1.5" />
             Order & Move Patient to Standby

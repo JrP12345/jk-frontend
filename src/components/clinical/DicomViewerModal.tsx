@@ -4,7 +4,7 @@ import LoadingImage from "@/components/ui/LoadingImage";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { externalServiceUrl } from "@/lib/externalServiceUrl";
-import { Modal, Button, Badge, Alert } from "@/components/ui";
+import { Modal, Button, Badge, Alert, Select } from "@/components/ui";
 
 export interface ImagingStudyItem {
   id: string;
@@ -94,10 +94,8 @@ export function DICOMViewerModal({ isOpen, onClose, study }: DICOMViewerModalPro
         ) : currentManifest && currentManifest.instances.length === 0 ? <Alert title="No images received">This study has no image instances available yet.</Alert> : instance ? <>
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-0 flex-1">
-              <label htmlFor="dicom-instance" className="block text-sm font-medium mb-1">Image instance</label>
-              <select id="dicom-instance" value={instanceIndex} onChange={event => { setInstanceIndex(Number(event.target.value)); setFrame(1); }} className="w-full min-h-11 rounded-xl border border-border bg-surface px-3 text-sm">
-                {currentManifest?.instances.map((item, index) => <option key={`${item.seriesUid}-${item.instanceUid}`} value={index}>Image {index + 1}{item.number ? ` · Instance ${item.number}` : ""}</option>)}
-              </select>
+
+              <Select id="dicom-instance" value={String(instanceIndex)} onChange={event => { setInstanceIndex(Number(event.target.value)); setFrame(1); }} label="Image instance" size="sm" options={[...(currentManifest?.instances.map((item, index) => ({ value: String(index), label: "Image" + " " + (index + 1) + " " + (item.number ? ` · Instance ${item.number}` : "") })) || [])]} />
             </div>
             <Button variant="outline" disabled={frame <= 1} onClick={() => setFrame(value => value - 1)}>Previous frame</Button>
             <span className="text-sm py-3">Frame {frame} of {instance.frames}</span>

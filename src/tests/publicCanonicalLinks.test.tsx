@@ -16,8 +16,9 @@ it("passes the canonical location record to the booking client", async () => {
   const location = { id: "private-location", slug: "care-location", doctors: [] };
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: location }) }));
   const page = await BrowseDetailPage({ params: Promise.resolve({ slug: "care-location" }) });
-  expect(page.props.children[1].props.initialLocation).toEqual(location);
-  expect(page.props.children[1].props.slug).toBe("care-location");
+  const booking = page.props.children.find((child: { props: { initialLocation?: unknown } }) => child.props.initialLocation);
+  expect(booking?.props.initialLocation).toEqual(location);
+  expect(booking?.props.slug).toBe("care-location");
 });
 it("returns an unavailable doctor instead of loading a second profile representation", async () => {
   const request = vi.fn().mockResolvedValue({ ok: false, status: 404 });

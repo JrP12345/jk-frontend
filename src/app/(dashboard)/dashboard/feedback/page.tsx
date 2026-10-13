@@ -1,558 +1,109 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import api from "@/lib/api";
-import { useAuthStore } from "@/store/authStore";
-import { useLocationStore } from "@/store/locationStore";
-import { Card, CardHeader, CardTitle, CardContent, Button, Modal, Input, Textarea, useToast, Badge, StatCard, SkeletonTable, LoadingState } from "@/components/ui";
-import { Plus, Target, Star, MessageSquare, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import api from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
+import { useLocationStore } from '@/store/locationStore';
+import { hasAnyPermission } from '@/lib/permissions';
+import { useLatestRead } from '@/hooks/useLatestRead';
+import { Alert, Button, Card, CardContent, Input, Modal, Select, Textarea } from '@/components/ui';
 
-interface AspectRatings {
-  waitTime?: number;
-  doctorAttitude?: number;
-  cleanliness?: number;
+interface FeedbackItem { id: string; appointmentId: string; rating: number; npsScore: number; source: string; comments?: string; createdAt: string }
+interface Visit { id: string; appointmentTime: string; locationId: string }
+interface Stats { totalResponses: number; averageCsatRating: number | null; netPromoterScore: number | null; sources: { source: string; total: number; averageRating: number; nps: number }[]; definition: string }
+interface Command { clientRequestId: string; appointmentId: string; rating: number; npsScore: number; comments: string; aspectRatings: { waitTime: number; doctorAttitude: number; cleanliness: number } }
+function message(error: unknown) { return (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'The result could not be confirmed. Retry the submitted request.'; }
+
+export default function Feedback() {
+  const user = useAuthStore(state => state.user), { activeLocationId } = useLocationStore();
+  const patient = user?.role === 'patient';
+  if (!user || ['guest', 'family_member'].includes(user.role) || (!patient && (!user.organization_id || !hasAnyPermission(user, 'VIEW_CRM') || !hasAnyPermission(user, 'MANAGE_CRM_TASKS', 'VIEW_CRM_ANALYTICS', 'VIEW_ANALYTICS')))) return <Alert variant='error'>An authorized patient or staff feedback workspace is required.</Alert>;
+  return <FeedbackWorkspace key={`${user.id}:${user.organization_id || 'self'}:${user.role}:${[...(user.permissions || [])].sort().join(',')}:${activeLocationId || 'all'}`} patient={patient} locationId={activeLocationId || ''} />;
 }
-
-interface PatientFeedbackItem {
-  id: string;
-  appointmentId: {
-    id: string;
-    reason?: string;
-    appointmentTime?: string;
-  };
-  patientId: {
-    id: string;
-    userId?: { name?: string; email?: string };
-  };
-  doctorId: {
-    id: string;
-    name?: string;
-    specialization?: string;
-  };
-  locationId: string;
-  rating: number; // 1-5
-  npsScore: number; // 0-10
-  comments?: string;
-  aspectRatings?: AspectRatings;
-  createdAt: string;
-}
-
-interface FeedbackStats {
-  totalResponses: number;
-  averageCsatRating: number; // e.g. 4.85
-  netPromoterScore: number; // e.g. 88 (-100 to +100)
-  npsCategory: string; // "Excellent" | "Good" | "Needs Improvement"
-  averageAspectRatings: {
-    waitTime: number | null;
-    doctorAttitude: number | null;
-    cleanliness: number | null;
-  };
-}
-
-interface AppointmentOption {
-  id: string;
-  patientName: string;
-  doctorName: string;
-  date: string;
-  reason: string;
-}
-
-export default function PatientExperienceFeedbackPage() {
-  const { user } = useAuthStore();
-  const { activeLocationId } = useLocationStore();
-  const { toast } = useToast();
-
-  const [loading, setLoading] = useState(true);
-  const [feedbacks, setFeedbacks] = useState<PatientFeedbackItem[]>([]);
-  const [stats, setStats] = useState<FeedbackStats>({
-    totalResponses: 0,
-    averageCsatRating: 0,
-    netPromoterScore: 0,
-    npsCategory: "No responses",
-    averageAspectRatings: { waitTime: null, doctorAttitude: null, cleanliness: null },
-  });
-
-  const [appointments, setAppointments] = useState<AppointmentOption[]>([]);
-  const [filterRating, setFilterRating] = useState<string>("all");
-
-  // Modal State
-  const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Survey Form Data
-  const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
-  const [csatRating, setCsatRating] = useState<number>(5);
-  const [npsScore, setNpsScore] = useState<number>(10);
-  const [waitTimeRating, setWaitTimeRating] = useState<number>(5);
-  const [doctorAttitudeRating, setDoctorAttitudeRating] = useState<number>(5);
-  const [cleanlinessRating, setCleanlinessRating] = useState<number>(5);
-  const [comments, setComments] = useState("");
-
-  useEffect(() => {
-    fetchFeedbackData();
-    fetchCompletedAppointments();
-  }, [activeLocationId]);
-
-  const fetchFeedbackData = async () => {
+function FeedbackWorkspace({ patient, locationId }: { patient: boolean; locationId: string }) {
+  const user = useAuthStore(state => state.user)!;
+  const canRecord = patient || hasAnyPermission(user, 'MANAGE_CRM_TASKS'), canReport = !patient && hasAnyPermission(user, 'VIEW_CRM_ANALYTICS', 'VIEW_ANALYTICS');
+  const [stats, setStats] = useState<Stats | null>(null), [items, setItems] = useState<FeedbackItem[]>([]), [page, setPage] = useState(1), [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true), [error, setError] = useState(''), [notice, setNotice] = useState('');
+  const [detail, setDetail] = useState<FeedbackItem | null>(null), [detailError, setDetailError] = useState(''), [detailId, setDetailId] = useState(''), [detailLoading, setDetailLoading] = useState(false);
+  const beginRead = useLatestRead(), beginDetail = useLatestRead(), beginVisits = useLatestRead();
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const load = useCallback(async () => {
+    const request = beginRead(); setLoading(true); setError(''); setStats(null); setItems([]);
+    if (!canReport && !patient) { setLoading(false); return; }
     try {
-      setLoading(true);
-      const statsRes = await api.get(`/feedback/stats${activeLocationId ? `?locationId=${activeLocationId}` : ""}`);
-      if (statsRes.data?.success && statsRes.data?.data) {
-        setStats(statsRes.data.data);
+      const params = { ...(locationId ? { locationId } : {}), page, limit: 20 };
+      if (patient) {
+        const own = await api.get('/feedback/mine', { params: { page, limit: 20 }, signal: request.signal });
+        if (request.isCurrent()) { setItems(own.data.data); setHasMore(Number(own.headers?.['x-total-pages'] || 1) > page); }
+        return;
       }
-
-      const listRes = await api.get(`/feedback${activeLocationId ? `?locationId=${activeLocationId}` : ""}`);
-      if (listRes.data?.success && Array.isArray(listRes.data?.data)) {
-        setFeedbacks(listRes.data.data);
-      } else {
-        setFeedbacks([]);
-      }
-    } catch (error) {
-      console.error("Error fetching feedback data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCompletedAppointments = async () => {
+      const [report, list] = await Promise.all([api.get('/feedback/stats', { params, signal: request.signal }), api.get('/feedback', { params, signal: request.signal })]);
+      if (!request.isCurrent()) return;
+      setStats(report.data.data); setItems(list.data.data); setHasMore(Number(list.headers?.['x-total-pages'] || 1) > page);
+    } catch (failure) { if (request.isCurrent()) setError(message(failure)); }
+    finally { if (request.isCurrent()) setLoading(false); }
+  }, [beginRead, canReport, locationId, page, patient]);
+  useEffect(() => { void load(); }, [load]);
+  const readDetail = useCallback(async (id: string) => {
+    const request = beginDetail(); setDetailId(id); setDetail(null); setDetailError(''); setDetailLoading(true);
+    try { const response = await api.get(`/feedback/visit/${id}`, { signal: request.signal }); if (request.isCurrent()) setDetail(response.data.data); }
+    catch (failure) { if (request.isCurrent()) setDetailError(message(failure)); }
+    finally { if (request.isCurrent()) setDetailLoading(false); }
+  }, [beginDetail]);
+  useEffect(() => { const id = new URLSearchParams(window.location.search).get('appointmentId'); if (id && /^[a-fA-F0-9]{24}$/.test(id)) void readDetail(id); }, [readDetail]);
+  const [open, setOpen] = useState(false), [visits, setVisits] = useState<Visit[]>([]), [cursor, setCursor] = useState<string | null>(null), [visitsLoading, setVisitsLoading] = useState(false), [visitsError, setVisitsError] = useState('');
+  const [form, setForm] = useState({ appointmentId: '', rating: 5, npsScore: 10, comments: '', waitTime: 5, doctorAttitude: 5, cleanliness: 5 });
+  const [command, setCommand] = useState<Command | null>(null), [saving, setSaving] = useState(false), [saveError, setSaveError] = useState('');
+  const errorSummary = useRef<HTMLDivElement | null>(null);
+  useEffect(() => { if (open && saveError && !saving) { errorSummary.current?.focus(); errorSummary.current?.scrollIntoView({ block: 'nearest' }); } }, [open, saveError, saving]);
+  const loadVisits = useCallback(async (nextCursor?: string) => {
+    const request = beginVisits(); setVisitsLoading(true); setVisitsError('');
     try {
-      const res = await api.get(`/appointments${activeLocationId ? `?locationId=${activeLocationId}` : ""}`);
-      if (res.data?.success && Array.isArray(res.data?.data)) {
-        const opts: AppointmentOption[] = res.data.data
-          .filter((a: any) => a.status === "completed")
-          .slice(0, 10)
-          .map((a: any) => ({
-          id: a.id || a._id,
-          patientName: a.patientId?.userId?.name || a.patientId?.name || "Patient",
-          doctorName: a.doctorId?.name || "Doctor",
-          date: a.appointmentTime ? new Date(a.appointmentTime).toLocaleDateString() : "Recent",
-          reason: a.reason || "General Consult",
-          }));
-        setAppointments(opts);
-        if (opts.length > 0) setSelectedAppointmentId(opts[0].id);
-      }
-    } catch (err) {
-      console.error("Error loading appointments for survey modal:", err);
-    }
-  };
-
-  const handleSubmitSurvey = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedAppointmentId) {
-      toast({ title: "Validation Error", description: "Please select an appointment", variant: "error" });
-      return;
-    }
-
+      const response = await api.get('/feedback/eligible-visits', { params: { ...(locationId ? { locationId } : {}), ...(nextCursor ? { cursor: nextCursor } : {}) }, signal: request.signal });
+      if (!request.isCurrent()) return;
+      const data = response.data.data; setVisits(old => nextCursor ? [...old, ...data.items] : data.items); setCursor(data.nextCursor);
+      if (!nextCursor) setForm(old => ({ ...old, appointmentId: data.items[0]?.id || '' }));
+    } catch (failure) { if (request.isCurrent()) setVisitsError(message(failure)); }
+    finally { if (request.isCurrent()) setVisitsLoading(false); }
+  }, [beginVisits, locationId]);
+  const start = () => { setOpen(true); if (command) return; setSaveError(''); setVisits([]); setForm({ appointmentId: '', rating: 5, npsScore: 10, comments: '', waitTime: 5, doctorAttitude: 5, cleanliness: 5 }); void loadVisits(); };
+  const save = async () => {
+    if (saving || (!command && !form.appointmentId)) return;
+    const payload = command || { clientRequestId: crypto.randomUUID(), appointmentId: form.appointmentId, rating: form.rating, npsScore: form.npsScore, comments: form.comments.trim(), aspectRatings: { waitTime: form.waitTime, doctorAttitude: form.doctorAttitude, cleanliness: form.cleanliness } };
+    setCommand(payload); setSaving(true); setSaveError('');
     try {
-      setSubmitting(true);
-      const payload = {
-        appointmentId: selectedAppointmentId,
-        rating: csatRating,
-        npsScore,
-        comments,
-        aspectRatings: {
-          waitTime: waitTimeRating,
-          doctorAttitude: doctorAttitudeRating,
-          cleanliness: cleanlinessRating,
-        },
-      };
-
-      const res = await api.post("/feedback", payload);
-      if (res.data?.success) {
-        toast({ title: "Feedback Recorded", description: "Thank you for rating your hospital visit experience!", variant: "success" });
-        setIsSurveyModalOpen(false);
-        setComments("");
-        fetchFeedbackData();
-      } else {
-        toast({ title: "Submission Failed", description: res.data?.message || "Could not save feedback", variant: "error" });
-      }
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.response?.data?.message || "Server error while recording feedback",
-        variant: "error",
-      });
-    } finally {
-      setSubmitting(false);
-    }
+      await api.post('/feedback', payload);
+      if (!mounted.current) return;
+      setOpen(false); setCommand(null); setNotice(patient ? 'Your feedback was recorded.' : 'Staff-reported feedback was recorded.'); void load();
+    } catch (failure) { if (mounted.current) { setSaveError(message(failure)); const status = (failure as { response?: { status?: number } }).response?.status; if (status && [400, 403, 404, 422].includes(status)) setCommand(null); } }
+    finally { if (mounted.current) setSaving(false); }
   };
-
-  const filteredFeedbacks = feedbacks.filter((f) => {
-    if (filterRating === "all") return true;
-    if (filterRating === "promoter") return f.npsScore >= 9;
-    if (filterRating === "passive") return f.npsScore >= 7 && f.npsScore <= 8;
-    if (filterRating === "detractor") return f.npsScore <= 6;
-    return true;
-  });
-
-  const formatAspectRating = (value: number | null) => value === null ? "—" : `${value} / 5.0`;
-  const aspectPercent = (value: number | null) => value === null ? "0%" : `${Math.round((value / 5) * 100)}%`;
-
-  const renderStars = (count: number) => {
-    return Array.from({ length: 5 }).map((_, i) => (
-      <span key={i} className={`text-lg ${i < count ? "text-warning-text" : "text-text-secondary dark:text-text-secondary"}`}>
-        ★
-      </span>
-    ));
-  };
-
-  const getNpsBadge = (score: number) => {
-    if (score >= 9) {
-      return <Badge variant="success">🟢 Promoter ({score}/10)</Badge>;
-    }
-    if (score >= 7) {
-      return <Badge variant="warning">🟡 Passive ({score}/10)</Badge>;
-    }
-    return <Badge variant="danger">🔴 Detractor ({score}/10)</Badge>;
-  };
-
-  return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
-      {/* ──────────────────────────────────────────────────────────────────────────
-          1. TOP EXECUTIVE HEADER BANNER
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Patient feedback
-              </h1>
-              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Patient experience
-              </Badge>
-            </div>
-            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Review patient ratings and feedback to identify areas for improvement.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setIsSurveyModalOpen(true)}
-              className="font-semibold rounded-xl shadow-xs w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
-            >
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              Submit Patient Survey
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          2. KPI STATS CARDS GRID
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <StatCard loading={loading}
-          label="Net Promoter Score (NPS)"
-          value={`${stats.netPromoterScore > 0 ? `+${stats.netPromoterScore}` : stats.netPromoterScore}`}
-          description={`${stats.npsCategory} Sentiment`}
-          icon={<Target className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard loading={loading}
-          label="Average CSAT Rating"
-          value={`${stats.averageCsatRating} / 5.0`}
-          description="Submitted visit ratings"
-          icon={<Star className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard loading={loading}
-          label="Total Survey Responses"
-          value={stats.totalResponses.toString()}
-          description="Completed Clinical Feedbacks"
-          icon={<MessageSquare className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard loading={loading}
-          label="Hygiene & Care Rating"
-          value={formatAspectRating(stats.averageAspectRatings.cleanliness)}
-          description="Cleanliness Index"
-          icon={<Sparkles className="w-5 h-5 text-text-secondary" />}
-        />
-      </div>
-
-      {/* Aspect Ratings & Sentiment Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-5 shadow-xs border border-border/80 rounded-2xl bg-surface">
-          <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-base font-semibold flex items-center gap-2 text-text">
-              <span>⏱</span> OPD Wait Time Satisfaction
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-text-muted">Average Rating</span>
-              <span className="font-bold text-text">{formatAspectRating(stats.averageAspectRatings.waitTime)}</span>
-            </div>
-            <div className="w-full bg-surface-alt h-2.5 rounded-full overflow-hidden">
-              <div className="bg-success h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.waitTime) }} />
-            </div>
-            <p className="text-xs text-text-muted">Patient ratings of their waiting experience.</p>
-          </CardContent>
-        </Card>
-
-        <Card className="p-5 shadow-xs border border-border/80 rounded-2xl bg-surface">
-          <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-base font-semibold flex items-center gap-2 text-text">
-              <span>👨‍⚕️</span> Doctor Communication & Attitude
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-text-muted">Average Rating</span>
-              <span className="font-bold text-text">{formatAspectRating(stats.averageAspectRatings.doctorAttitude)}</span>
-            </div>
-            <div className="w-full bg-surface-alt h-2.5 rounded-full overflow-hidden">
-              <div className="bg-primary h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.doctorAttitude) }} />
-            </div>
-            <p className="text-xs text-text-muted">Patient ratings of communication and attitude.</p>
-          </CardContent>
-        </Card>
-
-        <Card className="p-5 shadow-xs border border-border/80 rounded-2xl bg-surface">
-          <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-base font-semibold flex items-center gap-2 text-text">
-              <span>✨</span> Facility & Ward Cleanliness
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-text-muted">Average Rating</span>
-              <span className="font-bold text-text">{formatAspectRating(stats.averageAspectRatings.cleanliness)}</span>
-            </div>
-            <div className="w-full bg-surface-alt h-2.5 rounded-full overflow-hidden">
-              <div className="bg-primary h-full rounded-full" style={{ width: aspectPercent(stats.averageAspectRatings.cleanliness) }} />
-            </div>
-            <p className="text-xs text-text-muted">Patient ratings of facility cleanliness.</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Patient Survey Reviews Feed & Filter Table */}
-      <Card className="shadow-xs border border-border/80 rounded-2xl bg-surface">
-        <CardHeader className="p-5 border-b border-border/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <CardTitle className="text-lg font-bold text-text">
-              Patient Feedback & Review Feed
-            </CardTitle>
-            <p className="text-xs text-text-muted">
-              Visit ratings and patient comments.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
-            <span className="text-xs text-text-muted font-medium shrink-0">Filter Sentiment:</span>
-            <select
-              aria-label="Filter feedback by NPS category"
-              value={filterRating}
-              onChange={(e) => setFilterRating(e.target.value)}
-              className="text-xs py-2 px-3 rounded-xl border border-border/80 bg-surface text-text font-semibold cursor-pointer min-h-[38px] sm:min-h-[32px] w-full sm:w-auto"
-            >
-              <option value="all">All Feedback (100%)</option>
-              <option value="promoter">🟢 Promoters (9-10 NPS)</option>
-              <option value="passive">🟡 Passives (7-8 NPS)</option>
-              <option value="detractor">🔴 Detractors (0-6 NPS)</option>
-            </select>
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="p-6">
-              <LoadingState label="Loading feedback"><SkeletonTable rows={4} cols={5} /></LoadingState>
-            </div>
-          ) : filteredFeedbacks.length === 0 ? (
-            <div className="p-12 text-center text-text-muted space-y-3">
-              <div className="text-4xl">📝</div>
-              <p className="text-sm font-medium">No patient feedback matching current sentiment filter.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border/60">
-              {filteredFeedbacks.map((fb) => (
-                <div key={fb.id} className="p-5 hover:bg-surface-hover/50 transition-colors space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-success/10 text-success-text dark:text-success-text font-bold flex items-center justify-center text-sm border border-success/20">
-                        {fb.patientId?.userId?.name?.charAt(0) || "P"}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-text text-sm flex items-center gap-2">
-                          {fb.patientId?.userId?.name || "Anonymous Patient"}
-                          <span className="text-xs text-text-muted font-normal">
-                            · Attending: {fb.doctorId?.name || "Attending Physician"} ({fb.doctorId?.specialization || "Opd"})
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <div className="flex">{renderStars(fb.rating)}</div>
-                          <span className="text-xs font-semibold text-text-secondary">({fb.rating}/5 CSAT)</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div>{getNpsBadge(fb.npsScore)}</div>
-                  </div>
-
-                  {fb.comments && (
-                    <p className="text-sm text-text-secondary bg-surface-alt/70 p-3 rounded-xl border border-border/60 italic">
-                      "{fb.comments}"
-                    </p>
-                  )}
-
-                  {fb.aspectRatings && (
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-text-muted pt-1">
-                      {fb.aspectRatings.waitTime && (
-                        <span>⏱ Wait Time: <strong className="text-text">{fb.aspectRatings.waitTime}/5</strong></span>
-                      )}
-                      {fb.aspectRatings.doctorAttitude && (
-                        <span>👨‍⚕️ Doctor Care: <strong className="text-text">{fb.aspectRatings.doctorAttitude}/5</strong></span>
-                      )}
-                      {fb.aspectRatings.cleanliness && (
-                        <span>✨ Hygiene: <strong className="text-text">{fb.aspectRatings.cleanliness}/5</strong></span>
-                      )}
-                      <span className="ml-auto text-text-muted">
-                        {new Date(fb.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Submit Patient Survey Modal */}
-      <Modal
-        isOpen={isSurveyModalOpen}
-        onClose={() => setIsSurveyModalOpen(false)}
-        title="Submit Patient Experience Survey"
-        size="lg"
-        busy={submitting}
-        footer={<div className="flex flex-col-reverse sm:flex-row justify-end gap-2 w-full">
-          <Button type="button" variant="outline" disabled={submitting} onClick={() => setIsSurveyModalOpen(false)} className="w-full sm:w-auto min-h-11">Cancel</Button>
-          <Button type="submit" form="patient-survey-form" disabled={submitting} loading={submitting} className="w-full sm:w-auto min-h-11">Save Patient Feedback</Button>
-        </div>}
-      >
-        <form id="patient-survey-form" onSubmit={handleSubmitSurvey} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-text mb-1">
-              Select Completed Clinical Visit *
-            </label>
-            <select
-              aria-label="Select completed clinical visit"
-              value={selectedAppointmentId}
-              onChange={(e) => setSelectedAppointmentId(e.target.value)}
-              className="w-full text-xs p-2.5 rounded-xl border border-border/80 bg-surface text-text font-medium"
-              required
-            >
-              {appointments.length === 0 ? (
-                <option value="">No recent appointments found</option>
-              ) : (
-                appointments.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.patientName} — {a.doctorName} ({a.reason} on {a.date})
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-text mb-1">
-                Overall CSAT Rating (1 - 5 Stars) *
-              </label>
-              <select
-                aria-label="Overall CSAT rating"
-                value={csatRating.toString()}
-                onChange={(e) => setCsatRating(Number(e.target.value))}
-                className="w-full text-xs p-2.5 rounded-xl border border-border/80 bg-surface text-text font-medium"
-              >
-                <option value="5">⭐️⭐️⭐️⭐️⭐️ (5 - Excellent)</option>
-                <option value="4">⭐️⭐️⭐️⭐️ (4 - Very Good)</option>
-                <option value="3">⭐️⭐️⭐️ (3 - Average)</option>
-                <option value="2">⭐️⭐️ (2 - Below Expectations)</option>
-                <option value="1">⭐️ (1 - Poor)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-text mb-1">
-                Net Promoter Score (NPS 0 - 10) *
-              </label>
-              <Input
-                aria-label="Net Promoter Score"
-                type="number"
-                min={0}
-                max={10}
-                value={npsScore}
-                onChange={(e) => setNpsScore(Number(e.target.value))}
-                className="text-xs"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Aspect Ratings */}
-          <div className="border-t border-border/60 pt-3 space-y-3">
-            <h4 className="text-xs font-bold text-text uppercase tracking-wider">
-              Care Quality Aspect Breakdown (1 - 5)
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs text-text-muted mb-1">⏱ Wait Time</label>
-                <Input
-                  aria-label="Wait time rating"
-                  type="number"
-                  min={1}
-                  max={5}
-                  value={waitTimeRating}
-                  onChange={(e) => setWaitTimeRating(Number(e.target.value))}
-                  className="text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-text-muted mb-1">👨‍⚕️ Doctor Attitude</label>
-                <Input
-                  aria-label="Doctor attitude rating"
-                  type="number"
-                  min={1}
-                  max={5}
-                  value={doctorAttitudeRating}
-                  onChange={(e) => setDoctorAttitudeRating(Number(e.target.value))}
-                  className="text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-text-muted mb-1">✨ Cleanliness</label>
-                <Input
-                  aria-label="Cleanliness rating"
-                  type="number"
-                  min={1}
-                  max={5}
-                  value={cleanlinessRating}
-                  onChange={(e) => setCleanlinessRating(Number(e.target.value))}
-                  className="text-xs"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-text mb-1">
-              Patient Comments & Qualitative Feedback
-            </label>
-            <Textarea
-              aria-label="Patient comments"
-              rows={3}
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              placeholder="Share detailed experience regarding consultation, nursing care, or billing..."
-              className="text-xs"
-            />
-          </div>
-
-        </form>
-      </Modal>
-    </div>
-  );
+  return <div className='space-y-5'>
+    <div className='flex flex-wrap items-center justify-between gap-3'><div><h1 className='text-2xl font-semibold'>Visit feedback</h1><p className='text-sm text-text-muted'>{patient ? 'Share feedback about your completed visits.' : 'Review recorded surveys and service recovery in your authorized branches.'}</p></div>{canRecord && <Button onClick={start}>{command ? 'Resume submitted feedback' : patient ? 'Share visit feedback' : 'Record reported feedback'}</Button>}</div>
+    {!patient && <Link href='/dashboard/crm/tasks?kind=crm_feedback' className='text-accent underline'>Open feedback recovery tasks</Link>}
+    {notice && <p role='status'>{notice}</p>}{loading && <p role='status'>Loading feedback…</p>}{error && <Alert variant='error'>{error}<Button onClick={() => void load()}>Retry feedback load</Button></Alert>}
+    {stats && <Card><CardContent><p>{stats.totalResponses} recorded responses · Average rating: {stats.averageCsatRating === null ? 'Unavailable' : `${stats.averageCsatRating}/5`} · NPS: {stats.netPromoterScore === null ? 'Unavailable' : stats.netPromoterScore}</p><p className='mt-2 text-sm'>{stats.definition}</p>{stats.sources.map(source => <p key={source.source} className='mt-2 text-sm'>{source.source.replaceAll('_', ' ')}: {source.total} responses · {source.averageRating}/5 · NPS {source.nps}</p>)}</CardContent></Card>}
+    {!loading && !error && (canReport || patient) && <>
+      {!items.length && <p>No feedback on this page.</p>}{items.map(item => <Card key={item.id}><CardContent><p className='break-all'>Visit {item.appointmentId}</p><p className='my-2 text-sm'>{item.source.replaceAll('_', ' ')} · Rating {item.rating}/5 · NPS {item.npsScore} · {new Date(item.createdAt).toLocaleString()}</p><Button onClick={() => void readDetail(item.appointmentId)}>Review feedback</Button></CardContent></Card>)}<div className='flex gap-3'><Button disabled={page === 1 || loading} onClick={() => setPage(page - 1)}>Previous feedback page</Button><Button disabled={!hasMore || loading} onClick={() => setPage(page + 1)}>Next feedback page</Button></div></>}
+    {detailId && <Card><CardContent><h2 className='text-lg font-semibold'>Selected visit feedback</h2>{detailLoading && <p role='status'>Loading selected feedback…</p>}{detailError && <Alert variant='error'>{detailError}<Button onClick={() => void readDetail(detailId)}>Retry selected feedback</Button></Alert>}{detail && <><p>{detail.source.replaceAll('_', ' ')} · Rating {detail.rating}/5 · NPS {detail.npsScore}</p><p className='mt-3 whitespace-pre-wrap break-words'>{detail.comments || 'No comments were provided.'}</p><p className='mt-3 text-sm'>Use the existing recovery task to record review and its outcome. Any contact requires current recipient and purpose authorization.</p></>}</CardContent></Card>}
+    <Modal open={open} onClose={() => { if (!saving) setOpen(false); }} title={patient ? 'Share visit feedback' : 'Record reported feedback'} busy={saving} footer={<><Button variant='secondary' disabled={saving} onClick={() => setOpen(false)}>{command && !saving ? 'Close and keep request' : 'Cancel'}</Button><Button type='submit' form='visit-feedback' loading={saving} disabled={!command && (!form.appointmentId || visitsLoading)}>{command ? 'Retry submitted feedback' : 'Save feedback'}</Button></>}>
+      <form id='visit-feedback' className='space-y-4' onSubmit={event => { event.preventDefault(); void save(); }}>
+        <p className='text-sm'>{patient ? 'This survey is recorded as your own submission.' : 'This is recorded as a staff report, with you as the recorder. Do not describe it as a patient account submission.'} Low ratings create a staff review task; sending a message requires a separate authorized action.</p>
+        {saveError && <div ref={errorSummary} tabIndex={-1}><Alert variant='error'>{saveError} {command ? 'The submitted details are locked so a retry cannot create a different survey. Closing keeps this request available to resume.' : 'The request was rejected. Check the visit and ratings before submitting again.'}</Alert></div>}
+        {visitsError && <Alert variant='error'>{visitsError}<Button type='button' disabled={!!command} onClick={() => void loadVisits()}>Retry visit load</Button></Alert>}
+        {visitsLoading && <p role='status'>Loading completed visits…</p>}
+        <fieldset disabled={saving || !!command} className='min-w-0 space-y-3'>
+          <Select label='Select completed visit' value={form.appointmentId} onChange={event => setForm({ ...form, appointmentId: event.target.value })} required options={[{ value: '', label: 'Choose a completed visit' }, ...visits.map(visit => ({ value: visit.id, label: `${visit.id} · ${new Date(visit.appointmentTime).toLocaleString()}` }))]} />
+          {!visitsLoading && !visits.length && !visitsError && <p>No completed visits without feedback are available in this scope.</p>}
+          {cursor && <Button type='button' disabled={visitsLoading} onClick={() => void loadVisits(cursor)}>Load more completed visits</Button>}
+          <div className='grid gap-3 sm:grid-cols-2'><Input label='Overall rating' type='number' min={1} max={5} step={1} required value={form.rating} onChange={event => setForm({ ...form, rating: Number(event.target.value) })} /><Input label='Net Promoter Score' type='number' min={0} max={10} step={1} required value={form.npsScore} onChange={event => setForm({ ...form, npsScore: Number(event.target.value) })} /></div>
+          <div className='grid gap-3 sm:grid-cols-3'>{(['waitTime', 'doctorAttitude', 'cleanliness'] as const).map(key => <Input key={key} label={key === 'waitTime' ? 'Wait time rating' : key === 'doctorAttitude' ? 'Doctor attitude rating' : 'Cleanliness rating'} type='number' min={1} max={5} step={1} required value={form[key]} onChange={event => setForm({ ...form, [key]: Number(event.target.value) })} />)}</div>
+          <Textarea label='Feedback comments' maxLength={2000} rows={4} value={form.comments} onChange={event => setForm({ ...form, comments: event.target.value })} />
+        </fieldset>
+      </form>
+    </Modal>
+  </div>;
 }

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
 import { userFacingError } from "@/lib/userFacingError";
 import PatientHistoryAccess from "./PatientHistoryAccess";
-import { Modal, Badge, Button, cn, LoadingState, SkeletonCardGrid } from "@/components/ui";
+import { Modal, Badge, Button, cn, LoadingState, SkeletonCardGrid, Input, Checkbox } from "@/components/ui";
 import { Stethoscope, FlaskConical, Building2, CreditCard, FileText, Sparkles, Search } from "lucide-react";
 
 export interface TimelineEvent {
@@ -192,26 +192,11 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
         {/* Search & Financial Toggle */}
         <div className="flex items-center gap-3 w-full md:w-auto">
           <form onSubmit={handleSearchSubmit} className="relative flex-1 md:w-64">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-            <input
-              type="text"
-              aria-label="Search patient history"
-              placeholder="Search diagnoses, meds, labs..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full min-h-11 pl-9 pr-3 py-1.5 text-base md:text-sm bg-surface-alt border border-border/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-focus-ring focus:border-primary-500 text-text"
-            />
+
+            <Input icon={<Search />} type="text" aria-label="Search patient history" placeholder="Search diagnoses, meds, labs..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} size="sm" variant="filled" />
           </form>
 
-          <label className="flex items-center gap-2 text-xs font-medium text-text-secondary dark:text-text-muted cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={includeFinancial}
-              onChange={(e) => setIncludeFinancial(e.target.checked)}
-              className="rounded border-border dark:border-border text-accent focus:ring-focus-ring"
-            />
-            Include Financials
-          </label>
+          <Checkbox checked={includeFinancial} onChange={(e) => setIncludeFinancial(e.target.checked)} label="Include Financials" />
         </div>
       </div>
 
@@ -274,14 +259,10 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
                 <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-text-muted">
                   <span>Actor: {event.actor.name}</span>
                   <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenExplainer(event)}
-                      className="px-2.5 py-1 bg-primary-500/10 hover:bg-primary-500/20 text-accent dark:text-accent rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
-                    >
+                    <Button type="button" onClick={() => handleOpenExplainer(event)} variant="primary" size="xs" className="text-accent">
                       <Sparkles className="w-3 h-3" />
                       <span>AI Explainer</span>
-                    </button>
+                    </Button>
                     <a
                       href={event.sourceRef.link}
                       className="text-accent dark:text-accent hover:underline font-medium flex items-center gap-1"
@@ -301,7 +282,7 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
           <Button variant="ghost" size="sm"
             onClick={() => fetchTimeline(nextCursor || undefined, true)}
             disabled={loading}
-            className="px-4 py-2 bg-surface-alt border border-border/80 text-xs font-semibold text-text rounded-xl hover:bg-surface-hover transition-all cursor-pointer shadow-xs"
+            className="px-4 py-2 bg-surface-alt border border-border/80 text-xs font-semibold text-text transition-all cursor-pointer shadow-xs"
           >
             {loading ? "Loading..." : "Load Older Records"}
           </Button>

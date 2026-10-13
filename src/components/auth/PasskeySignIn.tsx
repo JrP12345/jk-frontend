@@ -6,8 +6,9 @@ import { Button, useToast } from "@/components/ui";
 import { KeyRound } from "lucide-react";
 import api from "@/lib/api";
 import type { User } from "@/store/authStore";
+import type { WorkspaceSelection } from "@/types/workspace";
 
-export default function PasskeySignIn({ onSuccess, onTwoFactor, disabled = false }: { onSuccess: (user: User) => void; onTwoFactor: (token: string) => void; disabled?: boolean }) {
+export default function PasskeySignIn({ onSuccess, onTwoFactor, onWorkspace, disabled = false }: { onSuccess: (user: User) => void; onTwoFactor: (token: string) => void; onWorkspace?: (selection: WorkspaceSelection) => void; disabled?: boolean }) {
   const [support, setSupport] = useState<{ checked: boolean; supported: boolean; reason?: string }>({ checked: false, supported: false });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -34,6 +35,10 @@ export default function PasskeySignIn({ onSuccess, onTwoFactor, disabled = false
       const result = await api.post("/auth/passkeys/login/verify", { response });
       const data = result.data.data;
       if (data.twoFactorRequired) { onTwoFactor(data.twoFactorToken); return; }
+      if (data.workspaceRequired) {
+        if (!onWorkspace) throw new Error("Select a workspace from the sign-in page.");
+        onWorkspace(data); return;
+      }
       onSuccess(data.user);
       completed = true;
     } catch (error: any) {

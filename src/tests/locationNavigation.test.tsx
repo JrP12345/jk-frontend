@@ -1,5 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import api from "@/lib/api";
 import DashboardLayout from "@/app/(dashboard)/layout";
 import { useLocationStore } from "@/store/locationStore";
 import { useAuthStore } from "@/store/authStore";
@@ -19,18 +21,34 @@ vi.mock("next/dynamic", () => ({ default: () => () => null }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(api, "get").mockResolvedValue({ data: { data: [] } });
   vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
   HTMLElement.prototype.scrollIntoView = vi.fn();
-  useAuthStore.setState({ user: { id: "admin", name: "Admin", email: "admin@test", role: "admin", organization_id: "organization" }, isLoading: false, isAuthenticated: true, isLoggingOut: false });
+  useAuthStore.setState({ user: { id: "admin", name: "Admin", email: "admin@test", role: "admin", organization_id: "organization", permissions: ["VIEW_LOCATIONS"] }, isLoading: false, isAuthenticated: true, isLoggingOut: false });
 });
 
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("Dashboard location navigation", () => {
+  it('shows a patient relationship entry in the platform root menu', () => {
+    useAuthStore.setState({ user: { id: 'root', name: 'Root', email: 'root@example.test', role: 'root' } });
+    render(<QueryClientProvider client={new QueryClient()}><ThemeProvider><ToastProvider><DashboardLayout><p>Platform</p></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
+    expect(screen.getAllByRole('link', { name: 'Patient relationships' })[0]).toHaveAttribute('href', '/dashboard/crm');
+  });
+  it("keeps CRM-only work usable without requesting facility administration data", async () => {
+    const fetchLocations = vi.fn(async () => []);
+    useLocationStore.setState({ locations: [{ id: "branch", name: "Previous branch", city: "Pune" }, { id: "second", name: "Second branch", city: "Pune" }], activeLocationId: null, fetchLocations });
+    useAuthStore.setState({ user: { id: "desk", name: "Desk", email: "desk@example.test", role: "crm_desk", organization_id: "organization", permissions: ["VIEW_CRM", "MANAGE_CRM_TASKS"] } });
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}><ThemeProvider><ToastProvider><DashboardLayout><p>CRM work</p></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.getByText("CRM work")).toBeInTheDocument();
+    expect(fetchLocations).not.toHaveBeenCalled();
+    expect(screen.queryByRole("combobox", { name: "Active location" })).not.toBeInTheDocument();
+  });
   it("hides the location switcher for a single facility while rendering the workspace", async () => {
     const locations = [{ id: "hospital", name: "Hospital", city: "Surat" }];
     useLocationStore.setState({ locations: locations, activeLocationId: "hospital", isLoaded: true, fetchLocations: vi.fn(async () => locations) });
-    render(<ThemeProvider><ToastProvider><DashboardLayout><p>Workspace content</p></DashboardLayout></ToastProvider></ThemeProvider>);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}><ThemeProvider><ToastProvider><DashboardLayout><p>Workspace content</p></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
     expect(screen.getByText("Workspace content")).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Active location" })).not.toBeInTheDocument();
   });
@@ -38,7 +56,7 @@ describe("Dashboard location navigation", () => {
   it("preserves an all-location selection through the layout effect", async () => {
     const locations = [{ id: "hospital", name: "Hospital", city: "Surat" }, { id: "diagnostics", name: "Diagnostics", city: "Valsad" }];
     useLocationStore.setState({ locations: locations, activeLocationId: "hospital", isLoaded: true, fetchLocations: vi.fn(async () => locations) });
-    render(<ThemeProvider><ToastProvider><DashboardLayout><p>Workspace content</p></DashboardLayout></ToastProvider></ThemeProvider>);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}><ThemeProvider><ToastProvider><DashboardLayout><p>Workspace content</p></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
     const switcher = screen.getAllByRole("combobox", { name: "Active location" })[0];
     fireEvent.click(switcher);
     fireEvent.click(screen.getByRole("option", { name: "All locations" }));
@@ -53,7 +71,7 @@ describe("Dashboard location navigation", () => {
     useLocationStore.setState({ locations, activeLocationId: "hospital", isLoaded: true, fetchLocations: vi.fn(async () => locations) });
     useAuthStore.setState({ user: { id: role, name: "Account", email: "account@test", role, ...(role === "admin" ? { organization_id: "organization" } : {}) } });
     const continueWork = vi.fn();
-    render(<ThemeProvider><ToastProvider><DashboardLayout><button onClick={continueWork}>Continue work</button></DashboardLayout></ToastProvider></ThemeProvider>);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}><ThemeProvider><ToastProvider><DashboardLayout><button onClick={continueWork}>Continue work</button></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
     await act(async () => { await vi.advanceTimersByTimeAsync(16 * 60 * 1000); });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Continue work" }));
@@ -68,7 +86,7 @@ describe("Dashboard location navigation", () => {
 
   it("continues to hide dashboard content and require sign-in without a session", async () => {
     useAuthStore.setState({ user: null, isAuthenticated: false });
-    render(<ThemeProvider><ToastProvider><DashboardLayout><p>Private workspace content</p></DashboardLayout></ToastProvider></ThemeProvider>);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}><ThemeProvider><ToastProvider><DashboardLayout><p>Private workspace content</p></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
     expect(screen.queryByText("Private workspace content")).not.toBeInTheDocument();
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/login"));
   });
