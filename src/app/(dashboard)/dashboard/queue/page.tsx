@@ -16,7 +16,7 @@ import { authScopeKey } from "@/lib/authScope";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
-import { Alert, Card, CardContent, Button, Select, Input, DatePicker, useToast, Spinner, Badge, StatCard, Modal, Textarea, Checkbox, Skeleton, SkeletonCard, ChartContainer, BarChart, cn, ConfirmDialog } from "@/components/ui";
+import { Alert, Card, CardContent, Button, Select, Input, DatePicker, useToast, Spinner, Badge, Modal, Textarea, Checkbox, Skeleton, SkeletonCard, ChartContainer, BarChart, cn, ConfirmDialog } from "@/components/ui";
 import dynamic from "next/dynamic";
 import type { UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
 import type { ThermalTokenSlipData } from "@/components/clinical/ThermalTokenSlipModal";
@@ -62,7 +62,7 @@ const ClinicalDocumentGeneratorModal = dynamic(
 );
 
 import { playChimeSound, CHIME_OPTIONS, ChimeType, announcePatientToken, VoiceAnnounceLanguage } from "@/utils/audioChimes";
-import { Megaphone, Volume2, RotateCw, Users, UserCheck, Stethoscope, Ticket, Clock, ChevronUp, ChevronDown, CheckCircle2, Activity, UserX, XCircle, Plus, Trash2, Sparkles, Check, Play, CalendarClock, Phone, FileText, AlertTriangle, Zap, PauseCircle, Banknote, FlaskConical, History, Send, ShieldCheck } from "lucide-react";
+import { Megaphone, Volume2, RotateCw, Users, UserCheck, Stethoscope, Clock, ChevronUp, ChevronDown, CheckCircle2, Activity, UserX, XCircle, Plus, Trash2, Sparkles, Check, Play, CalendarClock, Phone, FileText, AlertTriangle, Zap, PauseCircle, Banknote, FlaskConical, History, Send, ShieldCheck } from "lucide-react";
 import { PatientTimeline } from "@/components/ehr/PatientTimeline";
 import { InCabinInvestigationViewerModal } from "@/components/clinical/InCabinInvestigationViewerModal";
 import { DrugAllergyAlert } from "@/components/clinical/DrugAllergyAlert";
@@ -1708,7 +1708,7 @@ function QueueWorkspace() {
   const canCommunicatePatients = hasAnyPermission(user, "COMMUNICATE_PATIENTS");
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12">
       <ConfirmDialog open={Boolean(arrivalConfirmation)} title="Confirm booked patient arrival"
         description={`Token #${arrivalConfirmation?.tokenNumber ?? ''} has not checked in. Call this booked patient now?`}
         confirmLabel="Confirm arrival and call" loading={callingNext}
@@ -1737,22 +1737,19 @@ function QueueWorkspace() {
                 Live updates
               </Badge>
             </div>
-            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Check in patients, manage waiting order, and call the next visit.
-            </p>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-center md:flex-wrap gap-2.5 min-w-0 w-full">
             {/* Primary Action Row for Mobile: Call Next & Walk-In */}
-            <div className="grid grid-cols-2 md:flex items-center gap-2 w-full md:w-auto order-1 md:order-2">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:flex items-center gap-2 w-full md:w-auto order-1 md:order-2">
               <Button
                 variant="primary"
                 size="sm"
                 onClick={openQuickWalkInModal}
                 className="font-bold bg-success hover:bg-success text-background border-none justify-center min-h-[42px] sm:min-h-[36px]"
               >
-                <Plus className="w-3.5 h-3.5 mr-1.5" />
-                <span>Walk-In (+)</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>Walk-in</span>
               </Button>
 
               <Button
@@ -1762,17 +1759,21 @@ function QueueWorkspace() {
                 loading={callingNext}
                 className="font-semibold justify-center min-h-[42px] sm:min-h-[36px]"
               >
-                <Megaphone className="w-3.5 h-3.5 mr-1.5" />
+                <Megaphone className="w-3.5 h-3.5" />
                 <span>Call Next</span>
               </Button>
+              <Button variant="outline" size="sm" onClick={fetchQueue} loading={loadingQueue} aria-label="Refresh queue" className="min-h-11 min-w-11 p-2"><RotateCw className="h-4 w-4" /></Button>
             </div>
 
             {/* Secondary Tools Row: Chime & Operations */}
-            <div className="flex flex-wrap items-center gap-2 min-w-0 w-full md:w-auto md:flex-1 order-2 md:order-1">
+            <details className="group min-w-0 w-full md:w-auto md:flex-1 order-2 md:order-1">
+              <summary className="min-h-11 cursor-pointer rounded-lg px-2 py-2.5 text-sm font-medium text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Availability &amp; queue tools</summary>
+              <div className="flex flex-wrap items-center gap-2 pt-2">
               {/* Chime selector pill */}
               <div className="flex items-center gap-1.5 bg-surface-alt p-1 rounded-xl border border-border/80 shrink-0">
                 <Select
                   size="sm"
+                  aria-label="Queue chime"
                   value={chimeType}
                   onChange={(e) => handleChimeChange(e.target.value as ChimeType)}
                   options={CHIME_OPTIONS.map((c) => ({ value: c.id, label: `${c.icon} ${c.label}` }))}
@@ -1845,17 +1846,41 @@ function QueueWorkspace() {
                 Certificates
               </Button>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchQueue}
-                loading={loadingQueue}
-                className="font-semibold whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
-              >
-                <RotateCw className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
-                Refresh
-              </Button>
-            </div>
+
+              {/* Doorway Voice Calling Bell Language Selector */}
+              <div role="group" aria-label="Voice announcement language" className="flex flex-wrap items-center gap-1.5 p-1 bg-surface-alt rounded-xl border border-border/70 text-xs">
+                <Volume2 className="w-3.5 h-3.5 text-accent ml-1.5 shrink-0" />
+                <span className="text-[11px] font-bold text-text-muted hidden sm:inline">Voice Announcer:</span>
+                {(["off", "en", "hi", "both"] as const).map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    aria-pressed={voiceLanguage === lang}
+                    onClick={() => {
+                      setVoiceLanguage(lang);
+                      if (lang !== "off") {
+                        playChimeSound("beep");
+                        toast({
+                          title: `Voice Announcer: ${lang.toUpperCase()}`,
+                          description: `Calling bell set to ${lang === "both" ? "Dual (English + Hindi)" : lang === "hi" ? "Hindi" : "English"}.`,
+                          variant: "default",
+                        });
+                      }
+                    }}
+                    className={cn(
+                      "min-h-11 min-w-11 px-2 py-0.5 rounded-lg text-xs font-medium uppercase transition-all cursor-pointer",
+                      voiceLanguage === lang
+                        ? "bg-primary-600 text-brand-mist shadow-2xs"
+                        : "text-text-muted hover:text-text hover:bg-surface"
+                    )}
+                    title={`Doorway Calling Bell: ${lang.toUpperCase()}`}
+                  >
+                    {lang === "both" ? "Dual" : lang}
+                  </button>
+                ))}
+              </div>
+              </div>
+            </details>
           </div>
         </div>
       </div>
@@ -2109,38 +2134,22 @@ function QueueWorkspace() {
           3. STATS OVERVIEW
          ────────────────────────────────────────────────────────────────────────── */}
       {selectedLocation && selectedDoctor && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            label="Booked, not arrived"
-            value={(stats.waiting - stats.checkedIn).toString()}
-            description="Pending or confirmed bookings"
-            icon={<Users className="w-5 h-5 text-text-secondary" />}
-          />
-          <StatCard
-            label="Arrived and waiting"
-            value={stats.checkedIn.toString()}
-            description="Present at waiting area"
-            icon={<UserCheck className="w-5 h-5 text-text-secondary" />}
-          />
-          <StatCard
-            label="In Consultation"
-            value={stats.activeConsultation.toString()}
-            description="Currently with physician"
-            icon={<Stethoscope className="w-5 h-5 text-text-secondary" />}
-          />
-          <StatCard
-            label="Next Token"
-            value={stats.nextInLine ? `#${stats.nextInLine}` : "None"}
-            description="Next summoned patient"
-            icon={<Ticket className="w-5 h-5 text-text-secondary" />}
-          />
-        </div>
+        <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-3 rounded-2xl border border-border bg-surface p-3 sm:p-4">
+          {[
+            { label: "Booked, not arrived", value: stats.waiting - stats.checkedIn },
+            { label: "Arrived and waiting", value: stats.checkedIn },
+            { label: "In consultation", value: stats.activeConsultation },
+            { label: "Next token", value: stats.nextInLine ? `#${stats.nextInLine}` : "None" },
+          ].map(({ label, value }) => <div key={label} className="flex min-w-0 items-start justify-between gap-2"><dt className="text-xs leading-snug text-text-secondary">{label}</dt><dd className="shrink-0 text-base font-semibold leading-snug tabular-nums text-text">{value}</dd></div>)}
+        </dl>
       )}
 
       {/* ──────────────────────────────────────────────────────────────────────────
           4. HOURLY TRAFFIC & BOTTLENECK CHART
          ────────────────────────────────────────────────────────────────────────── */}
       {selectedLocation && selectedDoctor && !loadingQueue && appointments.length > 0 && (
+        <details className="rounded-2xl border border-border bg-surface">
+          <summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Hourly patient flow</summary>
         <ChartContainer
           title="Hourly Patient Flow & Rush Distribution"
           description="Distribution of patient tokens across operating hours"
@@ -2172,6 +2181,7 @@ function QueueWorkspace() {
             valueFormatter={(v) => `${v} patients`}
           />
         </ChartContainer>
+        </details>
       )}
 
       {/* ──────────────────────────────────────────────────────────────────────────
@@ -2210,7 +2220,7 @@ function QueueWorkspace() {
                   type="button"
                   onClick={() => setQueueViewTab("active")}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                    "min-h-11 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5",
                     queueViewTab === "active"
                       ? "bg-surface text-text shadow-xs border border-border/60"
                       : "text-text-muted hover:text-text"
@@ -2223,7 +2233,7 @@ function QueueWorkspace() {
                   type="button"
                   onClick={() => setQueueViewTab("standby")}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                    "min-h-11 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5",
                     queueViewTab === "standby"
                       ? "bg-warning text-background shadow-xs"
                       : "text-warning-text dark:text-warning-text hover:text-warning-text"
@@ -2236,7 +2246,7 @@ function QueueWorkspace() {
                   type="button"
                   onClick={() => setQueueViewTab("recalls")}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                    "min-h-11 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5",
                     queueViewTab === "recalls"
                       ? "bg-success text-background shadow-xs"
                       : "text-success-text dark:text-success-text hover:text-success-text"
@@ -2247,37 +2257,7 @@ function QueueWorkspace() {
                 </button>
               </div>
 
-              {/* Doorway Voice Calling Bell Language Selector */}
-              <div className="flex items-center gap-1.5 p-1 bg-surface-alt rounded-xl border border-border/70 text-xs">
-                <Volume2 className="w-3.5 h-3.5 text-accent ml-1.5 shrink-0" />
-                <span className="text-[11px] font-bold text-text-muted hidden sm:inline">Voice Announcer:</span>
-                {(["off", "en", "hi", "both"] as const).map((lang) => (
-                  <button
-                    key={lang}
-                    type="button"
-                    onClick={() => {
-                      setVoiceLanguage(lang);
-                      if (lang !== "off") {
-                        playChimeSound("beep");
-                        toast({
-                          title: `Voice Announcer: ${lang.toUpperCase()}`,
-                          description: `Calling bell set to ${lang === "both" ? "Dual (English + Hindi)" : lang === "hi" ? "Hindi" : "English"}.`,
-                          variant: "default",
-                        });
-                      }
-                    }}
-                    className={cn(
-                      "px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase transition-all cursor-pointer",
-                      voiceLanguage === lang
-                        ? "bg-primary-600 text-brand-mist shadow-2xs"
-                        : "text-text-muted hover:text-text hover:bg-surface"
-                    )}
-                    title={`Doorway Calling Bell: ${lang.toUpperCase()}`}
-                  >
-                    {lang === "both" ? "Dual" : lang}
-                  </button>
-                ))}
-              </div>
+
             </div>
 
             {/* View Tab 1: Active Queue */}
@@ -2306,6 +2286,7 @@ function QueueWorkspace() {
 
                       return (
                         <Card
+                          padding="none"
                           key={appt.id}
                           className={cn(
                             "rounded-2xl border transition-all shadow-xs overflow-hidden",
@@ -2343,7 +2324,7 @@ function QueueWorkspace() {
 
                               <div className="space-y-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-bold text-text text-sm truncate">
+                                  <span className="min-w-0 font-bold text-text text-sm break-words">
                                     {canonicalPatientName(appt.patientId)}
                                   </span>
                                   {isEmergency && (
@@ -2393,7 +2374,7 @@ function QueueWorkspace() {
                                 {/* Vitals Display Strip if Recorded */}
                                 {appt.vitals && (
                                   <div className="flex items-center gap-1.5 flex-wrap text-xs pt-1">
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-alt border border-border/80 text-text font-medium text-[11px]">
+                                    <span className="inline-flex flex-wrap items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-alt border border-border/80 text-text font-medium text-[11px]">
                                       <Stethoscope className="w-3 h-3 text-accent shrink-0" />
                                       <span>BP: <strong>{appt.vitals.bpSystolic}/{appt.vitals.bpDiastolic}</strong></span>
                                       <span>&bull;</span>
@@ -2759,6 +2740,7 @@ function QueueWorkspace() {
 
                   return (
                     <Card
+                      padding="none"
                       key={appt.id}
                       className={cn(
                         "rounded-2xl border transition-all shadow-xs overflow-hidden",

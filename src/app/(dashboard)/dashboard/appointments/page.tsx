@@ -933,7 +933,7 @@ export default function AppointmentsPage() {
   if (!user) return null;
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-16">
+    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-16">
       <Suspense fallback={<p role="status">Loading linked booking...</p>}><AppointmentLinkSummary key={`${user.organization_id}:${user.id}`} /></Suspense>
       {loadError && <Alert variant="error" title="Unable to load appointments" action={<Button variant="outline" size="sm" onClick={fetchAppointments}>Try again</Button>}>{loadError}</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
@@ -951,7 +951,7 @@ export default function AppointmentsPage() {
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
               {user.role === "patient"
                 ? "View your upcoming consultations, digital queue slips, and clinical visit history."
-                : "Manage clinical appointments, queue tokens, slot reservations, and patient encounter workflows."}
+                : "Book visits and manage arrivals."}
             </p>
           </div>
 
@@ -1025,12 +1025,13 @@ export default function AppointmentsPage() {
         }}>Needs review</Button>
         {reviewOnly && <p className="text-xs text-text-secondary">Overdue and unresolved visits keep their recorded status until staff resolves them.</p>}
       </div>}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface p-3 sm:p-4 rounded-2xl border border-border/80 shadow-xs">
-        <span className="text-xs font-bold text-text-muted uppercase tracking-wider">Schedule View Mode</span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-medium text-text-secondary">Schedule</span>
         <div className="grid grid-cols-2 sm:flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 w-full sm:w-fit">
           <button
             type="button"
             onClick={() => setViewLayout("table")}
+            aria-pressed={viewLayout === "table"}
             className={cn(
               "px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 min-h-[40px] sm:min-h-[34px]",
               viewLayout === "table"
@@ -1044,6 +1045,7 @@ export default function AppointmentsPage() {
           <button
             type="button"
             onClick={() => setViewLayout("calendar")}
+            aria-pressed={viewLayout === "calendar"}
             className={cn(
               "px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 min-h-[40px] sm:min-h-[34px]",
               viewLayout === "calendar"
@@ -1060,9 +1062,9 @@ export default function AppointmentsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           3. MAIN APPOINTMENTS ROSTER (TABLE OR CALENDAR)
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <Input aria-label="Search all appointments" placeholder="Search by patient, doctor, or token..." value={listSearch} onChange={e => setListSearch(e.target.value)} />
-        <span className="text-sm text-text-muted">{totalAppointments} matching appointments; counts and exports below cover this page. Page {listPage} of {listPages}</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <Input type="search" containerClassName="basis-full" aria-label="Search all appointments" placeholder="Patient, doctor or token" value={listSearch} onChange={e => setListSearch(e.target.value)} />
+        <span role="status" className="text-xs text-text-muted flex-1 min-w-0">{totalAppointments} matches · Page {listPage} of {listPages}<span className="block">Counts and exports cover this page.</span></span>
         <Button variant="outline" size="sm" disabled={listPage <= 1 || isRefreshing} onClick={() => setListPage(p => p - 1)}>Previous</Button>
         <Button variant="outline" size="sm" disabled={listPage >= listPages || isRefreshing} onClick={() => setListPage(p => p + 1)}>Next</Button>
       </div>
@@ -1072,7 +1074,7 @@ export default function AppointmentsPage() {
           onRescheduleClick={(appt: any) => handleOpenRescheduleModal(appt)}
         />
       ) : (
-        <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+        <Card padding="none" className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
           <CardContent className="p-0">
             <Table
 
@@ -1173,21 +1175,21 @@ export default function AppointmentsPage() {
 
                   {/* Doctor & Patient Information */}
                   <div className="space-y-1 pt-0.5">
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 text-sm font-bold text-text truncate">
+                        <div className="flex items-start gap-1.5 text-sm font-bold text-text">
                           <Stethoscope className="w-3.5 h-3.5 text-accent shrink-0" />
-                          <span className="truncate">Dr. {(row.doctorId?.name || "Unassigned").replace(/^dr\.?\s+/i, "")}</span>
+                          <span className="min-w-0 break-words">Dr. {(row.doctorId?.name || "Unassigned").replace(/^dr\.?\s+/i, "")}</span>
                         </div>
                         <p className="text-[11px] text-text-muted pl-5 truncate">
                           {row.doctorId?.specialization || "General Medicine"}
                         </p>
                       </div>
 
-                      <div className="text-right shrink-0">
-                        <div className="flex items-center justify-end gap-1 text-xs font-semibold text-text">
+                      <div className="min-w-0 text-left sm:text-right sm:flex-1">
+                        <div className="flex items-start sm:justify-end gap-1 text-xs font-semibold text-text">
                           <User className="w-3 h-3 text-text-muted shrink-0" />
-                          <span>{appointmentPatientName(row.patientId)}</span>
+                          <span className="min-w-0 break-words">{appointmentPatientName(row.patientId)}</span>
                         </div>
                         {appointmentPatientPhone(row.patientId) && appointmentPatientPhone(row.patientId) !== "-" && (
                           <p className="text-[10px] text-text-muted font-mono">{appointmentPatientPhone(row.patientId)}</p>

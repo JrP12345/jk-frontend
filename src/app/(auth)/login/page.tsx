@@ -312,7 +312,7 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md relative z-10 animate-fade-up">
         {/* Brand Header */}
-        <div className="text-center mb-6 flex flex-col items-center justify-center">
+        <div className="text-center mb-4 sm:mb-6 flex flex-col items-center justify-center">
           <div className="relative mb-2">
             <div className="relative">
               <EkavyuLogo size="xl" />

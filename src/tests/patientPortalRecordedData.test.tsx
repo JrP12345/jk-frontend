@@ -22,7 +22,7 @@ describe("Recorded patient blood group", () => {
     await screen.findByRole('combobox', { name: 'Organization for privacy choices' });
     expect(fixture.get.mock.calls.some(([path]) => path === '/patient/me')).toBe(false);
     expect(screen.queryByRole('button', { name: 'Edit Medical Info' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Download Medical Records' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Records', exact: true })).not.toBeInTheDocument();
   });
   it.each([undefined, "AB-"])("preserves recorded or unknown blood group (%s) when saving other profile information", async bloodGroup => {
     fixture.bloodGroup = bloodGroup;

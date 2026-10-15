@@ -19,9 +19,9 @@ export default function StaffWorkspaceSwitcher() {
     queryFn: async ({ signal }): Promise<StaffWorkspace[]> => (await api.get("/auth/workspaces", { signal })).data.data,
   });
   if (!enabled) return null;
-  if (query.isError) return <Button size="sm" variant="outline" onClick={() => void query.refetch()}>Reload workspaces</Button>;
+  if (query.isError) return <Button size="sm" variant="outline" className="max-w-full whitespace-normal" onClick={() => void query.refetch()}>Reload workspaces</Button>;
   if (!query.data || query.data.length < 2) return null;
-  return <div className="w-36 sm:w-48 min-w-0">
+  return <div className="flex-1 min-w-0 lg:flex-none lg:w-48">
     <Select aria-label="Organization workspace" value={user?.organization_id || ""} disabled={busy}
       options={query.data.map(workspace => ({ value: workspace.organizationId, label: workspace.name }))}
       onChange={async event => {

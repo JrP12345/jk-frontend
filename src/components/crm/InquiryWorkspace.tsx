@@ -57,7 +57,7 @@ function Workspace({ canManage }: { canManage: boolean }) {
   }, [beginRead, filters]);
   useEffect(() => { void load(); }, [load]);
   return <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-semibold">Patient relationships</h1><p className="text-sm text-text-muted">Capture an inquiry without creating a patient account. Track an owner and the next action.</p></div>{canManage && <Button disabled={loading || !!error || !locations.length} onClick={() => setCapturing(true)}>Capture inquiry</Button>}</div>
-    <nav aria-label="Patient relationship workflows" className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+    <nav aria-label="Patient relationship workflows" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center">
     <Link href="/dashboard/crm/tasks" className="inline-block py-2 text-accent underline">Daily patient tasks</Link><Link className="py-2 text-accent underline" href="/dashboard/crm/communications">Communication replies</Link>
     {hasAnyPermission(user, 'VIEW_CRM_ANALYTICS') && <Link className='text-accent underline' href='/dashboard/crm/overview'>Operational overview</Link>}
     {hasAnyPermission(user, 'MANAGE_CRM_SETTINGS') && <Link className='text-accent underline' href='/dashboard/crm/settings'>Workflow settings</Link>}

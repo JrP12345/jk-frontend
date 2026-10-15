@@ -347,7 +347,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
   );
 
   return (
-    <div className={embedded ? "space-y-4 w-full min-w-0" : "space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12"}>
+    <div className={embedded ? "space-y-4 w-full min-w-0" : "space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12"}>
       {(activeTab === "archived" ? archivedError : locationLoadError) && <Alert variant="error" title="Unable to load locations" action={<Button variant="outline" size="sm" onClick={reloadLocations} loading={isRefreshing}>Try again</Button>}>Locations could not be loaded. Check your connection and try again.</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP HEADER BANNER

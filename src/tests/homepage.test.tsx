@@ -31,7 +31,7 @@ describe("Public homepage entry", () => {
     fixture.cookies.set("ekavyu_session", "guest");
     fixture.cookies.set("access_token", "booking-session");
     render(await Home());
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Your care team.One clear workspace.");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Run your practice.Connect every visit.");
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Find care" }).every(link => link.getAttribute("href") === "/browse")).toBe(true);
     expect(screen.getAllByRole("link", { name: "Request setup" }).every(link => link.getAttribute("href") === "/onboarding?mode=new_org")).toBe(true);
@@ -72,6 +72,10 @@ describe("Homepage interactions", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(toggle).toHaveFocus();
     fireEvent.click(toggle);
+    fireEvent.keyDown(toggle, { key: "Escape" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveFocus();
+    fireEvent.click(toggle);
     fireEvent.click(screen.getAllByRole("link", { name: "For healthcare teams" })[1]);
     expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
@@ -87,5 +91,14 @@ describe("Homepage interactions", () => {
     fixture.role = "guest";
     view.rerender(<HomeNavigation />);
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
+  });
+
+  it("dismisses mobile navigation when the visitor returns to page content", () => {
+    render(<><HomeNavigation /><main><button>Explore the workflow</button></main></>);
+    const toggle = screen.getByRole("button", { name: "Open navigation" });
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Explore the workflow" }));
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 });

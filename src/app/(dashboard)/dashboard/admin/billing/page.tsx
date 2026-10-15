@@ -190,7 +190,7 @@ export default function AdminBillingPage() {
 
   if (loading) {
     return (
-      <div role="status" aria-label="Loading platform billing" aria-busy="true" className="space-y-6 w-full min-w-0 pb-32 sm:pb-12 animate-fade-in">
+      <div role="status" aria-label="Loading platform billing" aria-busy="true" className="space-y-4 sm:space-y-6 w-full min-w-0 pb-4 sm:pb-12 animate-fade-in">
         <Card className="p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="min-w-0 space-y-2">
@@ -222,7 +222,7 @@ export default function AdminBillingPage() {
   const totalTrialingOrgs = subscriptions.filter((s) => s.status === "trialing").length;
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased pb-32 sm:pb-12 animate-fade-up">
+    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased pb-4 sm:pb-12 animate-fade-up">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -298,7 +298,7 @@ export default function AdminBillingPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. PLATFORM KPI METRICS
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <StatCard
           label="Total Organizations"
           value={subscriptions.length.toString()}

@@ -410,7 +410,7 @@ export default function LaboratoryPage() {
   const completedOrders = labOrders.filter(o => o.status === "result-uploaded").length;
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-32 sm:pb-12">
+    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-4 sm:pb-12">
       {linkedOrderId && <Card><div className="p-4 flex flex-wrap items-center gap-3"><p className="text-sm">Showing the linked diagnostic order within your current authority and branch filter.</p><Button variant="outline" onClick={() => { setLinkedOrderId(""); window.history.replaceState(null, "", window.location.pathname); }}>Show all authorized orders</Button></div></Card>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
@@ -486,7 +486,7 @@ export default function LaboratoryPage() {
           2. KPI STATS CARDS GRID (STAFF ONLY)
          ────────────────────────────────────────────────────────────────────────── */}
       {user && user.role !== "patient" && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           <StatCard loading={loading}
             label="Total Lab Orders"
             value={totalOrders.toString()}

@@ -433,7 +433,7 @@ export default function BillingSettingsPage({
     : "Not available";
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased">
+    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased">
       {pendingOrderId && (
         <Card className="p-4 border border-warning/40 bg-warning/10 text-sm">
           <p role="status" className="font-semibold">{verificationPending ? "Checking payment confirmation…" : "Checkout is awaiting payment or confirmation."}</p>

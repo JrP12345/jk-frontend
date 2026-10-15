@@ -292,7 +292,7 @@ export function EncounterWorkspace({
   }
 
   return (
-    <div className="min-h-screen bg-surface-alt flex flex-col">
+    <div className="min-w-0 bg-surface-alt flex flex-col">
       {/* Sticky Patient Context Banner */}
       <PatientHeader patient={patient} onOpenSearch={() => setIsSearchOpen(true)} />
 
@@ -300,7 +300,7 @@ export function EncounterWorkspace({
       <PatientSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} patientId={patient.id} />
 
       {/* Main Workspace Container */}
-      <div className="p-4 max-w-7xl mx-auto w-full space-y-4">
+      <div className="py-3 sm:p-4 max-w-7xl mx-auto w-full min-w-0 space-y-4">
         {/* Ekavyu 20-Second Doctor Pre-Visit Briefing Card */}
         {(!focused || activeTab !== "visit") && <DoctorCopilotCard patientName={patient.name} />}
         {visitCompleted && <p className="text-sm text-text-muted" role="status">Visit completed. Review history or continue with billing and the next patient.</p>}
@@ -311,10 +311,10 @@ export function EncounterWorkspace({
             onChange={tab => { if (tab === "soap") setSoapOpened(true); setActiveTab(tab); }}
             tabs={[
               ...(focused && appointmentId ? [{ id: "visit", label: "Visit", icon: <FileText className="w-4 h-4" /> }] : []),
-              ...(!visitCompleted || hasSavedNote ? [{ id: "soap", label: "Full clinical editor", icon: <FileText className="w-4 h-4" /> }] : []),
-              { id: "orders", label: `Diagnostic Orders (${orders.length})`, icon: <Activity className="w-4 h-4" /> },
-              { id: "timeline", label: "EHR Timeline", icon: <Clock className="w-4 h-4" /> },
-              { id: "news2", label: "NEWS2 Vitals Calculator", icon: <Activity className="w-4 h-4" /> },
+              ...(!visitCompleted || hasSavedNote ? [{ id: "soap", label: "Clinical notes", icon: <FileText className="w-4 h-4" /> }] : []),
+              { id: "orders", label: "Orders", badge: orders.length, icon: <Activity className="w-4 h-4" /> },
+              { id: "timeline", label: "History", icon: <Clock className="w-4 h-4" /> },
+              { id: "news2", label: "NEWS2", icon: <Activity className="w-4 h-4" /> },
             ]}
           />
 

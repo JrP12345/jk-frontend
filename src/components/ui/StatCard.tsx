@@ -34,13 +34,13 @@ const StatCard = memo(function StatCard({
   if (loading) {
     return (
       <Card padding="sm" className={className}>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2 sm:gap-3">
           <div className="flex-1 min-w-0 space-y-2">
-            <Skeleton className="h-4 w-24 rounded-md" />
-            <Skeleton className="h-7 w-32 rounded-lg" />
-            <Skeleton className="h-3 w-16 rounded-md" />
+            <Skeleton className="h-4 w-24 max-w-full rounded-md" />
+            <Skeleton className="h-7 w-32 max-w-full rounded-lg" />
+            <Skeleton className="h-3 w-16 max-w-full rounded-md" />
           </div>
-          <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+          <Skeleton className="hidden sm:block h-10 w-10 rounded-xl shrink-0" />
         </div>
       </Card>
     );
@@ -52,8 +52,8 @@ const StatCard = memo(function StatCard({
     <Card padding="sm" onClick={onClick} className={cn("relative overflow-hidden ", className)}>
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <p className="text-xs sm:text-sm text-text-secondary font-medium truncate select-none">{displayLabel}</p>
-          <p className="text-xl sm:text-2xl font-semibold text-text mt-1 tracking-tight truncate tabular-nums">
+          <p className="text-xs sm:text-sm text-text-secondary font-medium leading-snug break-words select-none">{displayLabel}</p>
+          <p className="text-xl sm:text-2xl font-semibold text-text mt-1 tracking-tight [overflow-wrap:anywhere] tabular-nums">
             {value}
           </p>
 
@@ -86,7 +86,7 @@ const StatCard = memo(function StatCard({
           )}
         </div>
         {icon && (
-          <div className="shrink-0 p-2 sm:p-2.5 rounded-control bg-surface-alt border border-transparent text-accent [&>svg]:h-4 [&>svg]:w-4 sm:[&>svg]:h-5 sm:[&>svg]:w-5 ml-2 sm:ml-4">
+          <div aria-hidden="true" className="hidden sm:block shrink-0 p-2.5 rounded-control bg-surface-alt border border-transparent text-accent [&>svg]:h-5 [&>svg]:w-5 ml-4">
             {icon}
           </div>
         )}

@@ -260,7 +260,7 @@ export default function RootAdminMonitorPage() {
   }
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -340,7 +340,7 @@ export default function RootAdminMonitorPage() {
       {activeTab === "sessions" && (
         <div className="space-y-6">
           {/* KPI Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
             <StatCard
               label="Active Sessions"
               value={sessionStats.totalSessions.toString()}
@@ -668,7 +668,7 @@ export default function RootAdminMonitorPage() {
           </div>
 
           {/* Headline Traffic Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
             <StatCard
               label="Today's Visits"
               value={trafficSummary ? trafficSummary.todayVisits.toString() : "0"}

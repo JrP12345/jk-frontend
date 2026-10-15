@@ -128,7 +128,7 @@ describe("Shared patient entry", () => {
     expect(selector).toHaveTextContent("Select doctor"); expect(screen.getByRole("button", { name: "Add visit" })).toBeDisabled();
     fireEvent.click(selector);
     fireEvent.click(await screen.findByRole("option", { name: "Second doctor" }));
-    fireEvent.change(screen.getByLabelText("Search name, phone or patient identifier"), { target: { value: "9876500011" } });
+    fireEvent.change(screen.getByLabelText("Find existing patient"), { target: { value: "9876500011" } });
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
     fireEvent.click(await screen.findByRole("button", { name: /Canonical walk-in · 9876500011/ }));
     fireEvent.click(screen.getByRole("combobox", { name: "Visit source" }));
@@ -212,6 +212,27 @@ describe("Today's existing visits and financial records", () => {
     expect(screen.getByRole("button", { name: "Go to next page" })).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Rows per page" })).not.toBeInTheDocument();
     expect(api.get).toHaveBeenCalledWith(expect.stringContaining("limit=25"), expect.anything());
+    expect(api.get).toHaveBeenCalledWith(expect.stringContaining("includeAppointments=false"), expect.anything());
+  });
+
+  it("pauses hidden-tab polling and reloads current visits immediately on return", async () => {
+    let poll = () => {};
+    vi.spyOn(globalThis, "setInterval").mockImplementation(((callback: () => void, delay: number) => {
+      if (delay === 30000) poll = callback;
+      return 1;
+    }) as typeof setInterval);
+    const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    vi.mocked(api.get).mockImplementation(async path => ({ headers: {}, data: { data: String(path).includes("assignments") ? [assignment] : String(path).includes("daily-summary") ? { completed: 8, byStatus: {} } : [{ id: "appointment", patientId: patient, doctorId: doctor, status: "checked-in", appointmentType: "walk-in" }] } }));
+    mount(<TodayPatients onDetailedView={vi.fn()} />);
+    await screen.findAllByText("Canonical walk-in");
+    vi.mocked(api.get).mockClear();
+    visibility.mockReturnValue("hidden");
+    act(() => { for (let i = 0; i < 60; i++) poll(); window.dispatchEvent(new Event("focus")); });
+    expect(api.get).not.toHaveBeenCalled();
+    visibility.mockReturnValue("visible");
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("focus")); });
+    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
+    console.log("PERF_HIDDEN_POLLING", JSON.stringify({ hiddenIntervals: 60, beforeRequests: 120, afterRequests: 0, returnRequests: 2 }));
   });
 
   it("records received money on the existing invoice and never books or creates an invoice", async () => {

@@ -322,7 +322,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              {locationSelector && <div className="lg:hidden mt-3">{locationSelector}</div>}
               </div>
             )
           }
@@ -379,8 +378,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <OfflineStatusBanner />
 
         {/* Top Navbar */}
-        <header data-app-header className="h-[calc(4rem+env(safe-area-inset-top))] min-h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] gap-2 border-b border-border/80 bg-surface/90 flex items-center justify-between px-3 sm:px-4 md:px-6 shrink-0 z-40 relative shadow-2xs">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <header data-app-header className="min-h-[calc(3.5rem+env(safe-area-inset-top))] pt-[calc(0.25rem+env(safe-area-inset-top))] pb-1 gap-x-2 gap-y-1 border-b border-border/80 bg-surface/90 flex flex-wrap items-center justify-between px-3 sm:px-4 md:px-6 shrink-0 z-40 relative shadow-2xs lg:min-h-[calc(4rem+env(safe-area-inset-top))]">
+          <div className="order-1 flex items-center gap-2 sm:gap-3 min-w-0">
             {/* Mobile Hamburger Toggle Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -403,10 +402,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </p>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-2 xl:gap-4 min-w-0 shrink-0">
+          <div className="order-3 flex w-full min-w-0 items-center gap-2 empty:hidden lg:order-2 lg:ml-auto lg:w-auto">
             <StaffWorkspaceSwitcher />
-            {/* Only show Location selector when in operational location/tenant workspace */}
-            {locationSelector && <div className="hidden lg:block lg:w-48 xl:w-64 shrink-0">{locationSelector}</div>}
+            {locationSelector && <div className="min-w-0 flex-1 lg:flex-none lg:w-48 xl:w-64">{locationSelector}</div>}
+          </div>
+
+          <div className="order-2 lg:order-3 flex items-center gap-1 sm:gap-2 xl:gap-4 min-w-0 shrink-0">
             <NotificationBell />
             <div className="hidden lg:block"><ModeSwitcher variant="icon" /></div>
             <div className="w-px h-6 bg-border mx-0.5 sm:mx-1 md:mx-2 hidden xl:block" />
@@ -454,7 +455,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           role="main"
           id="main-content"
           data-app-scroll
-          className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 pb-32 sm:pb-32 lg:pb-8 scroll-smooth w-full touch-scroll [scrollbar-gutter:stable]"
+          className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-8 lg:pb-8 scroll-pb-[calc(8rem+env(safe-area-inset-bottom))] md:scroll-pb-8 scroll-smooth w-full touch-scroll [scrollbar-gutter:stable]"
         >
           <div className="w-full space-y-5 sm:space-y-6 max-w-7xl xl:max-w-[90rem] mx-auto">
             {isLoading || !user ? (

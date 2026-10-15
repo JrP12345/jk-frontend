@@ -106,7 +106,7 @@ function DetailedConsultationsPage() {
           api.get(`/appointments?${todayRangeParams()}${selectedLocationId ? `&locationId=${selectedLocationId}` : ""}`),
           api.get("/patients"),
           api.get(selectedLocationId ? `/onboarding/staff?locationId=${selectedLocationId}` : "/onboarding/staff"),
-          api.get(`/analytics/daily-summary?${todayRangeParams()}${selectedLocationId ? `&locationId=${selectedLocationId}` : ""}`),
+          api.get(`/analytics/daily-summary?${todayRangeParams()}${selectedLocationId ? `&locationId=${selectedLocationId}` : ""}&includeAppointments=false`),
         ]);
 
         const rawAppts = apptsRes.data?.data || apptsRes.data || [];
@@ -220,7 +220,7 @@ function DetailedConsultationsPage() {
   const completedCount = dailyCounts?.byStatus.completed ?? queueList.filter((a) => a.status === "completed").length;
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12">
       <ConfirmDialog open={Boolean(arrivalConfirmation)} title="Confirm patient arrival"
         description="Is this patient present and ready? Mark arrival and start the consultation?"
         confirmLabel="Mark arrival and start" loading={openingConsultation}
@@ -276,7 +276,7 @@ function DetailedConsultationsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. KPI STATS CARDS
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <StatCard loading={loading}
           label="Total OPD Appointments"
           value={totalToday.toString()}

@@ -198,7 +198,7 @@ export default function ServiceCatalogPage() {
   const bedCount = services.filter((s) => s.category === "bed_charge").length;
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -248,7 +248,7 @@ export default function ServiceCatalogPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. KPI STATS CARDS GRID
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <StatCard loading={loading}
           label="Total Catalog Services"
           value={totalCount.toString()}

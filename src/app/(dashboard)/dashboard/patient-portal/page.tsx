@@ -458,13 +458,13 @@ function PatientPortal() {
       {loadError && <Alert variant="error" title="Unable to load health records" action={<Button variant="outline" size="sm" onClick={fetchPatientData}>Try again</Button>}>{loadError}</Alert>}
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-6 bg-accent-subtle    border border-primary-500/20 rounded-2xl">
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <div className="w-14 h-14 rounded-2xl bg-primary-600/20 border border-primary-500/30 flex items-center justify-center text-2xl font-black text-accent shrink-0">
             {user?.name?.[0]?.toUpperCase() || "P"}
           </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-text">{user?.name}</h1>
-            <p className="text-xs text-text-muted mt-0.5">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-text break-words">{user?.name}</h1>
+            <p className="text-xs text-text-muted mt-0.5 [overflow-wrap:anywhere]">
               {user?.email} • {patient?.bloodGroup ? `Blood Group: ${patient.bloodGroup}` : "Patient Portal Active"}
             </p>
           </div>
@@ -483,11 +483,11 @@ function PatientPortal() {
       {/* Portal Tabs */}
       <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-full md:w-fit max-w-full touch-manipulation scrollbar-none">
         {[
-          { key: "profile", label: "Medical Profile" },
+          { key: "profile", label: "Profile" },
           { key: "family", label: `My Family (${familyMembers.length})` },
-          { key: "records", label: "Download Medical Records" },
-          { key: "refills", label: `Refill Requests (${refillRequests.length})` },
-          { key: "timeline", label: "PHR Health Timeline" },
+          { key: "records", label: "Records" },
+          { key: "refills", label: `Refills (${refillRequests.length})` },
+          { key: "timeline", label: "Health timeline" },
         ].filter(tab => user?.role !== 'family_member' || tab.key === 'family').map((tab) => (
           <button
             key={tab.key}
@@ -508,7 +508,7 @@ function PatientPortal() {
 
       {/* TAB 1: Profile */}
       {activeTab === "profile" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {patient?.id && <div className="md:col-span-2"><PatientPrivacyControls patientId={patient.id} /></div>}
           <Card>
             <CardHeader>
@@ -518,13 +518,13 @@ function PatientPortal() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-2">
-              <div className="flex justify-between border-b border-border/50 pb-2">
+              <div className="flex justify-between gap-3 border-b border-border/50 pb-2">
                 <span className="text-xs text-text-muted">Full Name</span>
-                <span className="text-xs font-semibold text-text">{user?.name}</span>
+                <span className="text-xs font-semibold text-text text-right min-w-0 break-words">{user?.name}</span>
               </div>
-              <div className="flex justify-between border-b border-border/50 pb-2">
+              <div className="flex justify-between gap-3 border-b border-border/50 pb-2">
                 <span className="text-xs text-text-muted">Email Address</span>
-                <span className="text-xs font-semibold text-text">{user?.email}</span>
+                <span className="text-xs font-semibold text-text text-right min-w-0 [overflow-wrap:anywhere]">{user?.email}</span>
               </div>
               <div className="flex justify-between border-b border-border/50 pb-2">
                 <span className="text-xs text-text-muted">Phone Number</span>

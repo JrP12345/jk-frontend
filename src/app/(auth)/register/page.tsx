@@ -155,8 +155,8 @@ export default function RegisterPage() {
         <ModeSwitcher variant="icon" />
       </div>
 
-      <div className="w-full max-w-lg relative z-10 animate-fade-up my-8">
-        <div className="text-center mb-6 flex flex-col items-center justify-center">
+      <div className="w-full max-w-lg relative z-10 animate-fade-up my-3 sm:my-8">
+        <div className="text-center mb-4 sm:mb-6 flex flex-col items-center justify-center">
           <EkavyuLogo size="xl" showTagline />
           <p className="text-text-secondary text-xs sm:text-sm mt-2">Quick Patient Registration</p>
         </div>
@@ -210,7 +210,7 @@ export default function RegisterPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Select
                       label="Gender"

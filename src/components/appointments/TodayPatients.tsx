@@ -70,7 +70,7 @@ export function TodayPatients({ onDetailedView, essentialEntry = false, currency
     if (status !== "all") listParams.set("status", status);
     if (search.trim()) listParams.set("search", search.trim());
     try {
-      const [list, totals] = await Promise.all([api.get(`/appointments?${listParams}`, { signal: request.signal }), api.get(`/analytics/daily-summary?${params}`, { signal: request.signal })]);
+      const [list, totals] = await Promise.all([api.get(`/appointments?${listParams}`, { signal: request.signal }), api.get(`/analytics/daily-summary?${params}&includeAppointments=false`, { signal: request.signal })]);
       if (!request.isCurrent()) return;
       setVisits(list.data?.data || []); setPages(Number(list.headers["x-total-pages"]) || 1); setSummary(totals.data?.data || null);
     } catch { if (request.isCurrent()) { setVisits([]); setSummary(null); setError("Today's patients could not be loaded. Refresh to retry."); } }
@@ -78,10 +78,19 @@ export function TodayPatients({ onDetailedView, essentialEntry = false, currency
   }, [beginRead, locationId, locations, doctorId, page, search, status, timezone]);
   useEffect(() => { const timer = setTimeout(() => { void load(); }, 200); return () => clearTimeout(timer); }, [load]);
   useEffect(() => {
-    const timer = setInterval(() => { void load(); }, 30000);
-    const focus = () => { void load(); };
+    let lastRefresh = Number.NEGATIVE_INFINITY;
+    const focus = () => {
+      if (document.visibilityState !== "visible") return;
+      // Returning to a tab can emit both visibilitychange and focus.
+      const now = performance.now();
+      if (now - lastRefresh < 250) return;
+      lastRefresh = now;
+      void load();
+    };
+    const timer = setInterval(focus, 30000);
     window.addEventListener("focus", focus);
-    return () => { clearInterval(timer); window.removeEventListener("focus", focus); };
+    document.addEventListener("visibilitychange", focus);
+    return () => { clearInterval(timer); window.removeEventListener("focus", focus); document.removeEventListener("visibilitychange", focus); };
   }, [load]);
   async function arrive(visit: Visit, start = false) {
     if (busy) return; setBusy(visit.id); setError("");

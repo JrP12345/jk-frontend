@@ -918,7 +918,7 @@ export default function BillingPage() {
   })();
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -1008,7 +1008,7 @@ export default function BillingPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. FINANCIAL KPI STATS CARDS
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <StatCard loading={loading}
           label="Today's Collections"
           value={`₹${todaysPaidAmount.toLocaleString("en-IN")}`}
@@ -1074,7 +1074,7 @@ export default function BillingPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           4. INVOICES ROSTER TABLE
          ────────────────────────────────────────────────────────────────────────── */}
-      <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+      <Card padding="none" className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
         <CardContent className="p-0">
           <Table
               error={loadError}

@@ -46,7 +46,7 @@ function SettingsForm() {
   }
   const numeric = (field: 'defaultInquiryHours' | 'defaultTaskHours' | 'reminderStartHour' | 'reminderEndHour' | 'feedbackRecoveryRating', value: string) => setForm(current => current ? { ...current, [field]: value === '' ? NaN : Number(value) } : current);
   return <div className='space-y-5'><div><h1 className='text-2xl font-semibold'>Patient relationship settings</h1><p className='text-sm text-text-muted'>Simple organization defaults. Patient contact always follows current consent and recipient choices.</p></div>
-    <nav aria-label='Patient relationship workflows' className='flex flex-wrap gap-4'><Link className='text-accent underline' href='/dashboard/crm'>Inquiries</Link><Link className='text-accent underline' href='/dashboard/crm/tasks'>Daily tasks</Link></nav>
+    <nav aria-label='Patient relationship workflows' className='flex flex-wrap items-center gap-x-4 gap-y-1 text-sm [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center'><Link className='text-accent underline' href='/dashboard/crm'>Inquiries</Link><Link className='text-accent underline' href='/dashboard/crm/tasks'>Daily tasks</Link></nav>
     <Button variant='outline' disabled={pending} loading={loading} onClick={() => load()}>Reload workflow settings</Button>
     {error && <Alert variant='error'>{error}</Alert>}{success && <Alert variant='success'>{success}</Alert>}{loading && <p role='status'>Loading workflow settings…</p>}
     {settings && form && <>

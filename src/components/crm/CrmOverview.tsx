@@ -41,7 +41,7 @@ function Overview() {
   useEffect(() => { void load(); }, [load]);
   return <div className='space-y-5'>
     <div><h1 className='text-2xl font-semibold'>Patient relationship overview</h1><p className='text-sm text-text-muted'>Operational counts for your authorized branches.</p></div>
-    <nav aria-label='Patient relationship workflows' className='flex flex-wrap gap-4'><Link href='/dashboard/crm' className='text-accent underline'>Inquiries</Link><Link href='/dashboard/crm/tasks' className='text-accent underline'>Daily tasks</Link>{hasAnyPermission(user, 'MANAGE_CRM_SETTINGS') && <Link href='/dashboard/crm/settings' className='text-accent underline'>Workflow settings</Link>}</nav>
+    <nav aria-label='Patient relationship workflows' className='flex flex-wrap items-center gap-x-4 gap-y-1 text-sm [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center'><Link href='/dashboard/crm' className='text-accent underline'>Inquiries</Link><Link href='/dashboard/crm/tasks' className='text-accent underline'>Daily tasks</Link>{hasAnyPermission(user, 'MANAGE_CRM_SETTINGS') && <Link href='/dashboard/crm/settings' className='text-accent underline'>Workflow settings</Link>}</nav>
     <Card><CardContent><form className='flex flex-wrap items-end gap-3' onSubmit={event => { event.preventDefault(); void load(); }}>
       <Select label='Report branch' value={filters.locationId} onChange={event => setFilters({ ...filters, locationId: event.target.value })} options={[{ value: '', label: 'All authorized branches' }, ...branches.map(branch => ({ value: branch.locationId, label: branch.name }))]} />
       <DatePicker label='Report start date' value={filters.startDate} onChange={startDate => setFilters({ ...filters, startDate })} />

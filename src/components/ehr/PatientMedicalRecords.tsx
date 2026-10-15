@@ -35,7 +35,7 @@ export function PatientMedicalRecords({ patientId, accessToken }: PatientMedical
         setReadErrors({ notes: false, invoices: false });
         const [notesRead, invoiceRead] = await Promise.allSettled([
           api.get(`/patients/${patientId}/clinical-notes/history${recordAccessToken ? "?scope=all" : ""}`, { signal: controller.signal, headers: recordAccessToken ? { "X-Patient-Record-Access": recordAccessToken } : {} }),
-          api.get("/invoices", { signal: controller.signal }),
+          api.get(`/invoices?patientId=${encodeURIComponent(patientId)}`, { signal: controller.signal }),
         ]);
 
         if (controller.signal.aborted) return;

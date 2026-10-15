@@ -9,7 +9,7 @@ import { useAuthStore } from "@/store/authStore";
 import { PatientService } from "@/services/patient.service";
 import { AssociatePatientModal } from "@/components/patients/AssociatePatientModal";
 import { hasAnyPermission } from "@/lib/permissions";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, Column, Button, Input, Select, Modal, useToast, Badge, StatCard, Dropdown } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Table, Column, Button, Input, Select, Modal, useToast, Badge, StatCard, Dropdown } from "@/components/ui";
 import { UserPlus, RotateCw, Search, Users, FileText, User, UserCheck, MoreHorizontal, AlertCircle, CalendarPlus, Activity, ArrowLeft, ArrowRight, Mail, Phone, Droplets } from "lucide-react";
 
 interface PatientUser {
@@ -389,7 +389,7 @@ export default function PatientsDirectoryPage() {
   ];
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -400,13 +400,7 @@ export default function PatientsDirectoryPage() {
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
                 Patient Directory
               </h1>
-              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                EMR Directory
-              </Badge>
             </div>
-            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Search, manage, and view electronic health records across your organization.
-            </p>
           </div>
 
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0 w-full sm:w-auto">
@@ -441,7 +435,9 @@ export default function PatientsDirectoryPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. SUMMARY KPI STAT CARDS
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <details className="rounded-xl border border-border bg-surface">
+      <summary className="min-h-11 cursor-pointer px-3 py-3 text-sm font-medium text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Directory summary</summary>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 p-3 pt-0 sm:gap-4">
         <StatCard loading={loading}
           label="Total Patients"
           value={(totalCount || patients.length).toString()}
@@ -467,6 +463,7 @@ export default function PatientsDirectoryPage() {
           icon={<UserCheck className="w-5 h-5 text-text-secondary" />}
         />
       </div>
+      </details>
 
       {/* ──────────────────────────────────────────────────────────────────────────
           3. FILTER AND SEARCH BAR
@@ -476,6 +473,8 @@ export default function PatientsDirectoryPage() {
           <div className="sm:col-span-2 flex gap-2">
             <Input
               size="sm"
+              type="search"
+              containerClassName="min-w-0 flex-1"
               icon={<Search className="w-4 h-4 text-text-muted" />}
               placeholder="Search patient by name, email, or phone number..."
               aria-label="Search patients by name, email or phone"
@@ -519,14 +518,11 @@ export default function PatientsDirectoryPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           4. MAIN PATIENTS TABLE CARD
          ────────────────────────────────────────────────────────────────────────── */}
-      <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-        <CardHeader className="pb-3 border-b border-border/60 bg-surface-alt/30">
+      <Card padding="none" className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+        <CardHeader className="px-3 pt-3 pb-3 border-b border-border/60 bg-surface-alt/30">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base font-bold text-text">Registered Patient Profiles</CardTitle>
-              <CardDescription className="text-xs text-text-muted mt-0.5">
-                Select a patient record to view medical history, past encounters, and lab diagnostic reports.
-              </CardDescription>
             </div>
             <Badge variant="neutral" size="sm" className="font-semibold text-[10px]">
               {totalCount || patients.length} Records
@@ -535,6 +531,7 @@ export default function PatientsDirectoryPage() {
         </CardHeader>
         <CardContent className="p-0">
           <Table
+            variant="flat"
               error={loadError}
               onRetry={fetchPatients}
             columns={columns}
@@ -558,7 +555,7 @@ export default function PatientsDirectoryPage() {
                   className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
                 >
                   {/* Top Row: Avatar + Name + MRN/Gender */}
-                  <div className="flex items-start justify-between gap-2.5">
+                  <div className="flex flex-wrap items-start justify-between gap-2.5">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-accent dark:text-accent font-bold flex items-center justify-center text-sm shrink-0 border border-primary-500/20">
                         {name.charAt(0).toUpperCase()}
@@ -566,7 +563,7 @@ export default function PatientsDirectoryPage() {
                       <div className="min-w-0">
                         <Link
                           href={`/dashboard/patients/${pid}`}
-                          className="font-bold text-text text-sm hover:text-accent transition-colors block truncate"
+                          className="font-bold text-text text-sm hover:text-accent transition-colors block break-words"
                         >
                           {name}
                         </Link>
@@ -583,7 +580,7 @@ export default function PatientsDirectoryPage() {
                     </div>
 
                     {p.mrn && (
-                      <Badge variant="outline" size="sm" className="font-mono text-[10px] shrink-0 font-bold uppercase">
+                      <Badge variant="outline" size="sm" className="max-w-full whitespace-normal break-all font-mono text-[10px] font-bold uppercase">
                         {p.mrn}
                       </Badge>
                     )}
@@ -594,7 +591,7 @@ export default function PatientsDirectoryPage() {
                     {phone && phone !== "-" && (
                       <a
                         href={`tel:${phone}`}
-                        className="flex items-center gap-1.5 text-text hover:text-accent transition-colors font-mono min-h-[32px]"
+                        className="flex items-center gap-1.5 text-text hover:text-accent transition-colors font-mono min-h-11"
                       >
                         <Phone className="w-3.5 h-3.5 text-text-muted" />
                         <span>{phone}</span>
@@ -603,10 +600,10 @@ export default function PatientsDirectoryPage() {
                     {email && email !== "-" && (
                       <a
                         href={`mailto:${email}`}
-                        className="flex items-center gap-1.5 text-text-muted hover:text-text transition-colors truncate max-w-[200px] min-h-[32px]"
+                        className="flex min-w-0 max-w-full items-center gap-1.5 text-text-muted hover:text-text transition-colors min-h-11"
                       >
                         <Mail className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                        <span className="truncate">{email}</span>
+                        <span className="min-w-0 [overflow-wrap:anywhere]">{email}</span>
                       </a>
                     )}
                   </div>

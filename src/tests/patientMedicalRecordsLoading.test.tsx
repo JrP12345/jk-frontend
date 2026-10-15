@@ -27,6 +27,7 @@ describe("Medical record read sequence", () => {
     expect(screen.getByRole("status", { name: "Loading medical records" })).toBeInTheDocument();
     await act(async () => invoices.resolve({ data: { data: [] } }));
     expect(await screen.findByText("No consultation notes found for your profile.")).toBeInTheDocument();
+    expect(fixture.get).toHaveBeenCalledWith("/invoices?patientId=patient", expect.objectContaining({ signal: expect.any(AbortSignal) }));
   });
 
   it("retries failed reads with the same approved patient scope", async () => {

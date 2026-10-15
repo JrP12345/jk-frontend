@@ -440,7 +440,7 @@ export default function InsurancePage() {
   }
 
   return (
-    <div className="space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12">
+    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12">
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -548,7 +548,7 @@ export default function InsurancePage() {
           3. KPI STATS CARDS GRID
          ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === "preAuth" ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           <StatCard loading={loading}
             label="Total Pre-Auth Claims"
             value={totalPreAuthCount.toString()}
@@ -575,7 +575,7 @@ export default function InsurancePage() {
           />
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           <StatCard loading={loading}
             label="Total Insurance Claims"
             value={totalClaimsCount.toString()}

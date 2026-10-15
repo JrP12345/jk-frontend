@@ -84,7 +84,7 @@ export function DashboardStatCards({
 
   if (role === "doctor") {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         {loading ? (
           <>
             <SkeletonCard />

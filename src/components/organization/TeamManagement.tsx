@@ -752,7 +752,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   if (loading) return <TeamLoading />;
 
   return (
-    <div className={embedded ? "space-y-4 w-full min-w-0" : "space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-32 sm:pb-12"}>
+    <div className={embedded ? "space-y-4 w-full min-w-0" : "space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12"}>
       {pendingAssignment && <Alert variant="error" title="Doctor needs location assignment" action={<Button variant="outline" size="sm" loading={retryingAssignment} onClick={async () => {
         setRetryingAssignment(true);
         try { await api.post(scopedPath("/onboarding/doctors/assignments"), pendingAssignment); setPendingAssignment(null); toast({ title: "Doctor assigned", description: "The existing doctor account is now assigned to the location.", variant: "success" }); void fetchStaff(); }
@@ -834,7 +834,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       {/* ──────────────────────────────────────────────────────────────────────────
           2. WORKFORCE KPI STATS CARDS
          ────────────────────────────────────────────────────────────────────────── */}
-      {!embedded && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {!embedded && <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
         <StatCard
           label="Total Team Members"
           value={allStaffMembers.length.toString()}

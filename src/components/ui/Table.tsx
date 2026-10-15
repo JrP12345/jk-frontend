@@ -332,7 +332,7 @@ export default function Table<T extends Record<string, any>>({
   const hasFilterableColumns = columns.some((c) => c.filterable);
   const activeFiltersCount = Object.values(columnFilters).filter(Boolean).length;
   const hasToolbar = Boolean(title || description || action || searchable || hasFilterableColumns || showColumnVisibility || exportable || onAddClick || toolbarFilters);
-  const hasMobileControls = selectable || columns.some((column) => column.sortable) || hasFilterableColumns || Boolean(sortKey);
+  const hasMobileControls = selectable || columns.some((column) => column.sortable) || (hasFilterableColumns && showFilterRow) || Boolean(sortKey);
 
   return (
     <div aria-busy={loading} className={cn("w-full min-w-0 flex flex-col relative", className)}>
@@ -369,7 +369,7 @@ export default function Table<T extends Record<string, any>>({
                 onClear={() => { setSearchQuery(""); setCurrentPage(1); }}
                 placeholder={searchPlaceholder}
                 size="sm"
-                containerClassName="basis-full md:basis-0 flex-1 min-w-0"
+                containerClassName="basis-[10rem] md:basis-0 flex-1 min-w-0"
               />
             )}
 
@@ -544,9 +544,9 @@ export default function Table<T extends Record<string, any>>({
                         );
                       }
                       return (
-                        <div key={colIdx} className="flex items-start justify-between gap-2">
-                          <span className="text-xs font-medium text-text-secondary shrink-0">{col.header}</span>
-                          <span className="text-sm font-medium text-text text-right min-w-0 break-words">{cellContent}</span>
+                        <div key={colIdx} className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start gap-2">
+                          <span className="text-xs font-medium text-text-secondary break-words">{col.header}</span>
+                          <span className="text-sm font-medium text-text text-right min-w-0 [overflow-wrap:anywhere] [&>*]:max-w-full [&>*]:min-w-0">{cellContent}</span>
                         </div>
                       );
                     })}
@@ -825,7 +825,7 @@ export default function Table<T extends Record<string, any>>({
                   type="button"
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="h-8 min-w-[34px] px-2.5 rounded-lg border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-2xs cursor-pointer flex items-center justify-center font-bold min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-[34px]"
+                  className="h-8 px-2.5 rounded-lg border border-border/80 bg-surface text-text-muted hover:text-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-2xs cursor-pointer flex items-center justify-center font-bold min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-[34px]"
                   aria-label="Next page"
                 >
                   ›

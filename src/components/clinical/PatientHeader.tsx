@@ -47,8 +47,8 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-bold text-sm sm:text-base text-text truncate">{patient.name}</h2>
-              {patient.mrn && <Badge variant="neutral" size="sm">MRN: {patient.mrn}</Badge>}
+              <h2 className="font-bold text-sm sm:text-base text-text break-words min-w-0">{patient.name}</h2>
+              {patient.mrn && <Badge variant="neutral" size="sm" className="max-w-full whitespace-normal break-all">MRN: {patient.mrn}</Badge>}
               {getRiskBadge(patient.recentNews2Risk, patient.recentNews2Score)}
             </div>
             <div className="text-xs text-text-secondary flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
@@ -59,8 +59,8 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
         </div>
 
         {/* Clinical Allergies & Diagnoses Indicators */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="text-xs flex items-center gap-1.5 bg-surface-alt px-2.5 py-1 rounded-xl border border-border/80 flex-wrap">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="text-xs flex min-w-0 max-w-full items-center gap-1.5 bg-surface-alt px-2.5 py-1 rounded-xl border border-border/80 flex-wrap [&>span]:whitespace-normal [&>span]:break-words">
             <span className="font-semibold text-text-secondary">Allergies:</span>
             {allergies.map((a, i) => (
               <Badge key={i} variant={a.includes("NKDA") ? "success" : a === "Not recorded" || patient.clinicalProfileRestricted ? "neutral" : "danger"} size="sm">
@@ -69,7 +69,7 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
             ))}
           </div>
 
-          <div className="text-xs flex items-center gap-1.5 bg-surface-alt px-2.5 py-1 rounded-xl border border-border/80 flex-wrap">
+          <div className="text-xs flex min-w-0 max-w-full items-center gap-1.5 bg-surface-alt px-2.5 py-1 rounded-xl border border-border/80 flex-wrap [&>span]:whitespace-normal [&>span]:break-words">
             <span className="font-semibold text-text-secondary">Diagnoses:</span>
             {conditions.slice(0, 2).map((c, i) => (
               <Badge key={i} variant="primary" size="sm">
@@ -83,10 +83,10 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
               size="xs"
               variant="primary"
               onClick={onOpenSearch}
-              className="rounded-xl font-bold text-xs min-h-[36px] w-full sm:w-auto justify-center"
+              className="rounded-xl font-medium text-xs min-h-11 md:min-h-9 justify-center"
             >
               <Search className="w-3.5 h-3.5 mr-1" />
-              <span>Search (Cmd+K)</span>
+              <span>Find patient<span className="hidden md:inline"> (Cmd+K)</span></span>
             </Button>
           )}
         </div>

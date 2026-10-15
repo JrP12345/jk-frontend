@@ -42,7 +42,6 @@ export default function HomePricing() {
     <div ref={element} className={styles.pricingContent}>
       <div className={styles.pricingControls}>
         <BillingCycleSwitch value={cycle} onChange={setCycle} />
-        <p>Monthly or annual pricing. Capacity for your team. Assisted setup.</p>
       </div>
       {isPending ? (
         <div className={styles.pricingLoading} aria-busy="true">
