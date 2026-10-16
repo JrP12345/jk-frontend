@@ -268,12 +268,12 @@ export default function WaitingRoomTvQueueBoard() {
               }
               fetchQueueState();
             }
-          } catch (err) {
-            console.error("[Queue TV WS Error]", err);
+          } catch {
+            console.error("[Queue TV WS Error]");
           }
         };
-      } catch (err) {
-        console.warn("[Queue TV WS Conn Error]", err);
+      } catch {
+        console.warn("[Queue TV WS Conn Error]");
       }
     }
 

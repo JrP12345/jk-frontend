@@ -63,8 +63,8 @@ class EventBus {
       eventListeners.forEach((callback) => {
         try {
           callback(data);
-        } catch (err) {
-          console.error(`[EncounterEventBus] Exception in subscriber for event ${event}:`, err);
+        } catch {
+          console.error("Client operation failed");
         }
       });
     }

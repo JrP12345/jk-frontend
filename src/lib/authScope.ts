@@ -5,5 +5,6 @@ export function authScopeKey(user: User | null): string {
   return user ? JSON.stringify([
     user.id, user.organization_id || null, user.role, user.impersonatedBy?.id || null,
     [...new Set(user.permissions || [])].sort(),
+    Boolean(user.mfaEnrollmentRequired),
   ]) : "anonymous";
 }

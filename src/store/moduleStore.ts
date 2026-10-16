@@ -91,7 +91,7 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
         ),
       }));
     } catch (err: unknown) {
-      console.error("Failed to toggle module:", err);
+      console.error("Failed to toggle module:");
       throw err;
     }
   },
@@ -110,7 +110,7 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
         ),
       }));
     } catch (err: unknown) {
-      console.error("Failed to bulk toggle modules:", err);
+      console.error("Failed to bulk toggle modules:");
       throw err;
     }
   },

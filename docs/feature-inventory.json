@@ -1,0 +1,5900 @@
+{
+  "scope": "Static source inventory, not proof of runtime authorization or successful workflows. Guards can be inherited or enforced inside handlers; empty guards do not imply anonymous access. API calls/links are direct page references; shared components and hooks require separate tracing.",
+  "roles": [
+    "root",
+    "admin",
+    "doctor",
+    "receptionist",
+    "nurse",
+    "lab_tech",
+    "pharmacist",
+    "cashier",
+    "location_manager",
+    "patient",
+    "family_member",
+    "guest",
+    "organization custom roles"
+  ],
+  "pages": [
+    {
+      "route": "/accept-invite",
+      "source": "src/app/(auth)/accept-invite/page.tsx",
+      "directApiCalls": [
+        "POST \"/auth/accept-invitation\""
+      ],
+      "directLinks": [
+        "\"/login\""
+      ]
+    },
+    {
+      "route": "/login",
+      "source": "src/app/(auth)/login/page.tsx",
+      "directApiCalls": [
+        "POST \"/auth/otp/request\"",
+        "POST \"/auth/otp/verify\"",
+        "POST \"/auth/login\"",
+        "POST \"/auth/forgot-password\"",
+        "POST \"/auth/login/verify-2fa\""
+      ],
+      "directLinks": [
+        "\"/browse\"",
+        "\"/register\""
+      ]
+    },
+    {
+      "route": "/onboarding",
+      "source": "src/app/(auth)/onboarding/page.tsx",
+      "directApiCalls": [
+        "POST \"/onboarding/draft\"",
+        "POST \"/onboarding/totp/setup\"",
+        "POST \"/onboarding/organization\"",
+        "POST \"/onboarding/totp/verify\""
+      ],
+      "directLinks": []
+    },
+    {
+      "route": "/register",
+      "source": "src/app/(auth)/register/page.tsx",
+      "directApiCalls": [
+        "POST \"/auth/otp/request\"",
+        "POST \"/auth/otp/verify\""
+      ],
+      "directLinks": [
+        "\"/browse\"",
+        "\"/login\""
+      ]
+    },
+    {
+      "route": "/reset-password",
+      "source": "src/app/(auth)/reset-password/page.tsx",
+      "directApiCalls": [
+        "POST \"/auth/reset-password\""
+      ],
+      "directLinks": [
+        "\"/login\""
+      ]
+    },
+    {
+      "route": "/dashboard/admin/billing",
+      "source": "src/app/(dashboard)/dashboard/admin/billing/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/admin/monitor",
+      "source": "src/app/(dashboard)/dashboard/admin/monitor/page.tsx",
+      "directApiCalls": [
+        "GET \"/auth/admin/sessions\"",
+        "GET `/admin/analytics/traffic?days=${trafficDays}`",
+        "DELETE `/auth/admin/sessions/${session.id}`",
+        "POST `/auth/admin/sessions/revoke-user/${targetUserId}`"
+      ],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/admin/setup-requests",
+      "source": "src/app/(dashboard)/dashboard/admin/setup-requests/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/admin/users",
+      "source": "src/app/(dashboard)/dashboard/admin/users/page.tsx",
+      "directApiCalls": [
+        "GET \"/organizations\"",
+        "GET \"/admin/users?\" + requestParams",
+        "PUT \"/admin/users/\" + target.user.id + \"/status\""
+      ],
+      "directLinks": [
+        "{organizationWorkspaceUrl(selectedOrgId, \"members\")}",
+        "{organizationWorkspaceUrl(member.organizationId, \"members\")}"
+      ]
+    },
+    {
+      "route": "/dashboard/analytics",
+      "source": "src/app/(dashboard)/dashboard/analytics/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/appointments",
+      "source": "src/app/(dashboard)/dashboard/appointments/page.tsx",
+      "directApiCalls": [
+        "GET `/doctors/${bookingDoctorId}/slots?locationId=${bookingLocationId}&date=${selectedSlotDate}`",
+        "PATCH `/appointments/${rescheduleTargetAppt.id}/reschedule`",
+        "GET `/encounters/${appt.id}/summary-report`",
+        "POST `/doctors/${reviewDoctorId}/reviews`",
+        "GET `/appointments${queryString}`",
+        "GET \"/onboarding/staff\"",
+        "GET `/onboarding/doctors/assignments?locationId=${bookingLocationId}`",
+        "GET `/patients?search=${patientSearch}`",
+        "POST \"/appointments\"",
+        "DELETE \"/appointments/lock-slot\"",
+        "POST \"/appointments/lock-slot\"",
+        "PUT `/appointments/${targetId}/status`"
+      ],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/audit",
+      "source": "src/app/(dashboard)/dashboard/audit/page.tsx",
+      "directApiCalls": [
+        "GET \"/organizations\"",
+        "GET `/onboarding/locations${orgParam}`",
+        "GET `/onboarding/staff${orgParam}`",
+        "GET `/audit-logs${qs ? `?${qs}` : \"\"}`"
+      ],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/billing",
+      "source": "src/app/(dashboard)/dashboard/billing/page.tsx",
+      "directApiCalls": [
+        "GET url",
+        "GET `/appointments?locationId=${cId}&startDate=${today}&endDate=${today}`",
+        "POST \"/billing/checkout/consolidate\"",
+        "GET `/billing/till/summary?locationId=${locationIdToFetch}`",
+        "POST \"/billing/till/close\"",
+        "POST `/invoices/${partialTargetInvoice.id}/payments`",
+        "GET `/invoices${queryString}`",
+        "GET `/onboarding/doctors/assignments?locationId=${selectedLocationId}`",
+        "GET `/patients?search=${encodeURIComponent(patientSearch.trim())}`",
+        "POST \"/invoices\"",
+        "PUT `/invoices/${activeInvoice.id}/pay`"
+      ],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/billing/services",
+      "source": "src/app/(dashboard)/dashboard/billing/services/page.tsx",
+      "directApiCalls": [
+        "GET `/service-catalog${queryString}`",
+        "PUT `/service-catalog/${editingService._id || editingService.id}`",
+        "POST \"/service-catalog\"",
+        "DELETE `/service-catalog/${service._id || service.id}`",
+        "POST \"/service-catalog/seed\""
+      ],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/bills",
+      "source": "src/app/(dashboard)/dashboard/bills/page.tsx",
+      "directApiCalls": [
+        "GET \"/invoices\"",
+        "POST \"/appointment-payments/verify\"",
+        "POST \"/appointment-payments/create-order\""
+      ],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/consultations",
+      "source": "src/app/(dashboard)/dashboard/consultations/page.tsx",
+      "directApiCalls": [
+        "GET `/appointments?${params}`",
+        "GET `/analytics/daily-summary?${todayRangeParams()}${selectedLocationId ? `&locationId=${selectedLocationId}` : \"\"}&includeAppointments=false`",
+        "PUT `/appointments/${item.id}/status`",
+        "GET '/appointments/' + id"
+      ],
+      "directLinks": [
+        "{`tel:${patientPhone}`}"
+      ]
+    },
+    {
+      "route": "/dashboard/consultations/[id]",
+      "source": "src/app/(dashboard)/dashboard/consultations/[id]/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/crm/communications",
+      "source": "src/app/(dashboard)/dashboard/crm/communications/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/crm/overview",
+      "source": "src/app/(dashboard)/dashboard/crm/overview/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/crm",
+      "source": "src/app/(dashboard)/dashboard/crm/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/crm/settings",
+      "source": "src/app/(dashboard)/dashboard/crm/settings/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/crm/tasks",
+      "source": "src/app/(dashboard)/dashboard/crm/tasks/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/feedback",
+      "source": "src/app/(dashboard)/dashboard/feedback/page.tsx",
+      "directApiCalls": [
+        "GET '/feedback/mine'",
+        "GET '/feedback/stats'",
+        "GET '/feedback'",
+        "GET `/feedback/visit/${id}`",
+        "GET '/feedback/eligible-visits'",
+        "POST '/feedback'"
+      ],
+      "directLinks": [
+        "'/dashboard/crm/tasks?kind=crm_feedback'"
+      ]
+    },
+    {
+      "route": "/dashboard/insurance",
+      "source": "src/app/(dashboard)/dashboard/insurance/page.tsx",
+      "directApiCalls": [
+        "GET selectedLocationId ? `/pre-auth?locationId=${selectedLocationId}` : \"/pre-auth\"",
+        "GET selectedLocationId ? `/billing/claims?locationId=${selectedLocationId}` : \"/billing/claims\"",
+        "GET \"/patients\"",
+        "GET selectedLocationId ? `/onboarding/staff?locationId=${selectedLocationId}` : \"/onboarding/staff\"",
+        "GET selectedLocationId ? `/invoices?locationId=${selectedLocationId}` : \"/invoices\"",
+        "POST \"/pre-auth\"",
+        "PUT `/pre-auth/${activePreAuth.id}`",
+        "POST \"/billing/claims\"",
+        "POST `/billing/claims/${cId}/adjudicate`"
+      ],
+      "directLinks": [
+        "{`tel:${patientPhone}`}"
+      ]
+    },
+    {
+      "route": "/dashboard/laboratory",
+      "source": "src/app/(dashboard)/dashboard/laboratory/page.tsx",
+      "directApiCalls": [
+        "GET !isAll ? `/lab-tests?locationId=${selectedLocationId}` : \"/lab-tests\"",
+        "GET linkedOrderId ? `/lab-orders?orderId=${linkedOrderId}${!isAll ? `&locationId=${selectedLocationId}` : \"\"}` : !isAll ? `/lab-orders?locationId=${selectedLocationId}` : \"/lab-orders\"",
+        "GET !isAll ? `/onboarding/staff?locationId=${selectedLocationId}` : \"/onboarding/staff\"",
+        "GET !isAll ? `/lab/tat-metrics?locationId=${selectedLocationId}` : \"/lab/tat-metrics\"",
+        "GET '/patients'",
+        "POST \"/lab-orders\"",
+        "PUT `/lab-tests/${editingTestId}`",
+        "POST \"/lab-tests\"",
+        "DELETE `/lab-tests/${deletingTestId}`",
+        "PUT `/lab-orders/${orderId}/sample`",
+        "PUT `/lab-orders/${activeOrder.id}/result`"
+      ],
+      "directLinks": [
+        "{`tel:${order.patientId?.userId?.phone}`}"
+      ]
+    },
+    {
+      "route": "/dashboard/locations",
+      "source": "src/app/(dashboard)/dashboard/locations/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/notifications",
+      "source": "src/app/(dashboard)/dashboard/notifications/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/organizations",
+      "source": "src/app/(dashboard)/dashboard/organizations/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard",
+      "source": "src/app/(dashboard)/dashboard/page.tsx",
+      "directApiCalls": [
+        "PUT `/appointments/${apptId}/status`",
+        "GET '/onboarding/staff'",
+        "GET '/invoices?limit=5'",
+        "GET dailyPath",
+        "GET '/appointments/patient/me?limit=5'",
+        "GET '/invoices/patient/me?status=unpaid&limit=5'",
+        "GET '/invoices/patient/me?status=partially_paid&limit=5'"
+      ],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/patient-portal",
+      "source": "src/app/(dashboard)/dashboard/patient-portal/page.tsx",
+      "directApiCalls": [
+        "GET \"/family\"",
+        "GET `/doctors/${selfDoctorId}/slots?locationId=${selfLocationId}&date=${bookingDate}`",
+        "GET \"/public/locations\"",
+        "POST \"/appointments/lock-slot\"",
+        "POST \"/patient-portal/self-book\"",
+        "GET \"/patient/me\"",
+        "GET \"/prescriptions/refills\"",
+        "GET `/patients/${patientId}/timeline`",
+        "PUT \"/patient/me\"",
+        "POST `/prescriptions/${selectedPrescription.id}/refill`",
+        "POST \"/family\"",
+        "POST \"/family/claim\"",
+        "GET \"/patient-portal/records\""
+      ],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/patients",
+      "source": "src/app/(dashboard)/dashboard/patients/page.tsx",
+      "directApiCalls": [
+        "GET `/patients?${queryParams.toString()}`"
+      ],
+      "directLinks": [
+        "{`/dashboard/patients/${pid}`}",
+        "{`tel:${phone}`}",
+        "{`mailto:${email}`}",
+        "{`/dashboard/patients/${candidate.id}`}"
+      ]
+    },
+    {
+      "route": "/dashboard/patients/[id]",
+      "source": "src/app/(dashboard)/dashboard/patients/[id]/page.tsx",
+      "directApiCalls": [
+        "GET `/patients/${patientId}${recordAccessToken ? \"?scope=all\" : \"\"}`",
+        "GET `/lab-orders?patientId=${encodeURIComponent(patientId)}`",
+        "GET `/invoices?patientId=${encodeURIComponent(patientId)}`"
+      ],
+      "directLinks": [
+        "\"/dashboard/patients\""
+      ]
+    },
+    {
+      "route": "/dashboard/patients/[id]/timeline",
+      "source": "src/app/(dashboard)/dashboard/patients/[id]/timeline/page.tsx",
+      "directApiCalls": [],
+      "directLinks": [
+        "{`/dashboard/patients/${id}`}"
+      ]
+    },
+    {
+      "route": "/dashboard/pharmacy",
+      "source": "src/app/(dashboard)/dashboard/pharmacy/page.tsx",
+      "directApiCalls": [
+        "POST \"/pharmacy/batches\"",
+        "GET `/medicines${query}`",
+        "GET `/pharmacy/pending-prescriptions?locationId=${selectedLocationId}`",
+        "PUT `/medicines/${editingMedId}`",
+        "POST \"/medicines\"",
+        "DELETE `/medicines/${deletingMedId}`",
+        "POST \"/pharmacy/dispense\""
+      ],
+      "directLinks": [
+        "{`tel:${group.patientId.phone}`}"
+      ]
+    },
+    {
+      "route": "/dashboard/queue",
+      "source": "src/app/(dashboard)/dashboard/queue/page.tsx",
+      "directApiCalls": [
+        "POST `/appointments/${resendRxAppt.id}/resend-rx`",
+        "GET `/onboarding/doctors/assignments?doctorId=${user.id}`",
+        "GET \"/onboarding/staff\"",
+        "GET `/doctor-overrides?locationId=${selectedLocation}&doctorId=${selectedDoctor}&date=${selectedDate}`",
+        "GET `/doctor-overrides/triage?locationId=${selectedLocation}&date=${selectedDate}`",
+        "GET `/queue/delay-status?locationId=${selectedLocation}&doctorId=${selectedDoctor}&date=${selectedDate}`",
+        "GET `/queue?locationId=${selectedLocation}&doctorId=${selectedDoctor}&date=${selectedDate}`",
+        "GET `/queue/status?locationId=${selectedLocation}&doctorId=${selectedDoctor}&date=${selectedDate}`",
+        "POST \"/doctor-overrides\"",
+        "DELETE `/doctor-overrides/${overrideId}`",
+        "POST `/queue/${appointmentId}/bump-back`",
+        "POST `/queue/${apptToStatEmergency.id}/stat-emergency`",
+        "POST `/queue/${parkingAppt.id}/park`",
+        "POST `/queue/${appointmentId}/resend-tracker`",
+        "POST `/queue/${appointmentId}/resume`",
+        "POST \"/queue/trigger-delay-alerts\"",
+        "POST \"/queue/session/start\"",
+        "POST \"/queue/session/break\"",
+        "GET `/queue/session/summary?locationId=${selectedLocation}&doctorId=${selectedDoctor}&date=${selectedDate}`",
+        "POST \"/queue/session/end\"",
+        "POST `/queue/${investigationAppt.id}/order-investigations`",
+        "POST `/queue/${apptId}/resume-review`",
+        "PUT `/appointments/${appointmentId}/status`",
+        "POST \"/queue/call-next\"",
+        "PUT `/appointments/${appt.id}/status`",
+        "GET `/appointments/${walkInAppointmentId}`",
+        "POST \"/appointments\"",
+        "PUT `/appointments/${newAppt.id || newAppt._id}/status`",
+        "PUT `/appointments/${apptToComplete.id}/status`",
+        "PUT \"/queue/reorder\""
+      ],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/radiology",
+      "source": "src/app/(dashboard)/dashboard/radiology/page.tsx",
+      "directApiCalls": [
+        "GET selectedLocationId ? `/radiology/studies?locationId=${selectedLocationId}` : \"/radiology/studies\"",
+        "GET \"/patients\"",
+        "POST \"/radiology/studies\"",
+        "PUT `/radiology/studies/${activeReportStudy.id}/report`",
+        "PUT `/radiology/studies/${studyId}/status`"
+      ],
+      "directLinks": [
+        "{`tel:${patientPhone}`}"
+      ]
+    },
+    {
+      "route": "/dashboard/security",
+      "source": "src/app/(dashboard)/dashboard/security/page.tsx",
+      "directApiCalls": [
+        "GET \"/auth/passkeys\"",
+        "GET \"/auth/admin/owner-session-policies\"",
+        "POST \"/auth/passkeys/register/options\"",
+        "POST \"/auth/passkeys/register/verify\"",
+        "DELETE `/auth/passkeys/${id}`",
+        "PATCH `/auth/admin/owner-session-policies/${owner.id}`",
+        "POST `/auth/admin/sessions/revoke-user/${owner.id}`"
+      ],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/settings/billing",
+      "source": "src/app/(dashboard)/dashboard/settings/billing/page.tsx",
+      "directApiCalls": [
+        "DELETE `/locations/${locationId}`"
+      ],
+      "directLinks": [
+        "\"/dashboard/organizations\"",
+        "\"/dashboard/admin/billing\"",
+        "\"/dashboard/staff\"",
+        "\"/dashboard/locations\""
+      ]
+    },
+    {
+      "route": "/dashboard/settings/modules",
+      "source": "src/app/(dashboard)/dashboard/settings/modules/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/settings",
+      "source": "src/app/(dashboard)/dashboard/settings/page.tsx",
+      "directApiCalls": [],
+      "directLinks": [
+        "{organizationWorkspaceUrl(organizationId)}"
+      ]
+    },
+    {
+      "route": "/dashboard/shifts",
+      "source": "src/app/(dashboard)/dashboard/shifts/page.tsx",
+      "directApiCalls": [
+        "GET `/shifts?${queryParams.toString()}`",
+        "POST \"/shifts\"",
+        "PATCH `/shifts/${id}/status`",
+        "PATCH `/shifts/${activeShiftForHandover.id}/handover`"
+      ],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/staff",
+      "source": "src/app/(dashboard)/dashboard/staff/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/dashboard/teleconsultation",
+      "source": "src/app/(dashboard)/dashboard/teleconsultation/page.tsx",
+      "directApiCalls": [
+        "GET selectedLocationId ? `/appointments?locationId=${selectedLocationId}` : \"/appointments\"",
+        "GET `/teleconsultation/session/${appt.id}`",
+        "POST \"/teleconsultation/session\"",
+        "PUT `/teleconsultation/session/${sId}/start`",
+        "PUT `/teleconsultation/session/${sId}/notes`",
+        "PUT `/teleconsultation/session/${sId}/end`"
+      ],
+      "directLinks": [
+        "{`tel:${patientPhone}`}",
+        "{meetingUrl}"
+      ]
+    },
+    {
+      "route": "/browse",
+      "source": "src/app/browse/(directory)/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/browse/[slug]",
+      "source": "src/app/browse/[slug]/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/check-in",
+      "source": "src/app/check-in/page.tsx",
+      "directApiCalls": [
+        "POST \"/check-in/qr\"",
+        "GET `/appointments?${query}`",
+        "GET `/appointments?${query}&page=${page}`"
+      ],
+      "directLinks": [
+        "\"/login\"",
+        "\"/browse\""
+      ]
+    },
+    {
+      "route": "/doctor/[slug]",
+      "source": "src/app/doctor/[slug]/page.tsx",
+      "directApiCalls": [],
+      "directLinks": [
+        "\"/browse\"",
+        "{locationPath(selectedLocation)}",
+        "\"#booking\"",
+        "{locationPath(location)}",
+        "{`${doctorPath(doctor, location)}#booking`}"
+      ]
+    },
+    {
+      "route": "/join/[locationSlug]",
+      "source": "src/app/join/[locationSlug]/page.tsx",
+      "directApiCalls": [
+        "GET `/public/locations/${encodeURIComponent(locationSlug)}`",
+        "POST \"/public/join-queue\""
+      ],
+      "directLinks": [
+        "\"/track\"",
+        "{`tel:${location.phone}`}"
+      ]
+    },
+    {
+      "route": "/",
+      "source": "src/app/page.tsx",
+      "directApiCalls": [],
+      "directLinks": [
+        "\"#main-content\"",
+        "\"/onboarding?mode=new_org\"",
+        "\"#how-it-works\"",
+        "\"mailto:ekavyuofficial@gmail.com\"",
+        "\"/browse\"",
+        "\"/login\"",
+        "\"/\"",
+        "\"#plans\""
+      ]
+    },
+    {
+      "route": "/pricing",
+      "source": "src/app/pricing/page.tsx",
+      "directApiCalls": [],
+      "directLinks": []
+    },
+    {
+      "route": "/queue-tv",
+      "source": "src/app/queue-tv/page.tsx",
+      "directApiCalls": [
+        "GET `/public/queue-tv/${locationId}${doctorQuery}`",
+        "GET \"/queue\""
+      ],
+      "directLinks": []
+    },
+    {
+      "route": "/track/[appointmentId]",
+      "source": "src/app/track/[appointmentId]/page.tsx",
+      "directApiCalls": [
+        "POST `/public/track/${appointmentId}/return`",
+        "POST \"/doctor-overrides/patient-action\"",
+        "GET `/public/track/${appointmentId}`",
+        "POST `/public/track/${appointmentId}/check-in-capability`",
+        "POST `/public/track/${appointmentId}/check-in`",
+        "GET url"
+      ],
+      "directLinks": [
+        "\"/browse\"",
+        "{`tel:${data.location.phone.replace(/\\s+/g, \"\")}`}",
+        "{trackerUpiPayload}"
+      ]
+    },
+    {
+      "route": "/verify-email",
+      "source": "src/app/verify-email/page.tsx",
+      "directApiCalls": [
+        "POST \"/auth/verify-email\""
+      ],
+      "directLinks": []
+    }
+  ],
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "source": "index.ts",
+      "line": 423,
+      "guards": [],
+      "handler": "healthCheckHandler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health/liveness",
+      "source": "index.ts",
+      "line": 424,
+      "guards": [],
+      "handler": "livenessHandler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health/readiness",
+      "source": "index.ts",
+      "line": 425,
+      "guards": [],
+      "handler": "readinessHandler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/operations/profiling",
+      "source": "index.ts",
+      "line": 426,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/platform/manifest",
+      "source": "platform/gateway.ts",
+      "line": 6,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/abdm/generate-otp",
+      "source": "routes/abdm.ts",
+      "line": 33,
+      "guards": [],
+      "handler": "generateAadhaarOtpController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/abdm/generate-aadhaar-otp",
+      "source": "routes/abdm.ts",
+      "line": 34,
+      "guards": [],
+      "handler": "generateAadhaarOtpController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/abdm/verify-otp",
+      "source": "routes/abdm.ts",
+      "line": 36,
+      "guards": [],
+      "handler": "verifyAadhaarOtpController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/abdm/verify-aadhaar-otp",
+      "source": "routes/abdm.ts",
+      "line": 37,
+      "guards": [],
+      "handler": "verifyAadhaarOtpController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/abdm/search",
+      "source": "routes/abdm.ts",
+      "line": 39,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "searchAbhaController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/abdm/search-abha",
+      "source": "routes/abdm.ts",
+      "line": 40,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "searchAbhaController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/abdm/scan-share",
+      "source": "routes/abdm.ts",
+      "line": 43,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "scanAndShareCheckInController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/abdm/scan-and-share",
+      "source": "routes/abdm.ts",
+      "line": 44,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "scanAndShareCheckInController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/abdm/qr-standee/:locationId",
+      "source": "routes/abdm.ts",
+      "line": 46,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "getLocationQrStandeeController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/abdm/care-contexts/link",
+      "source": "routes/abdm.ts",
+      "line": 49,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "linkCareContextController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/abdm/care-contexts/:patientId",
+      "source": "routes/abdm.ts",
+      "line": 50,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "getPatientCareContextsController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/abdm/fhir/encounter/:appointmentId",
+      "source": "routes/abdm.ts",
+      "line": 51,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "getFhirBundleController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/abdm/hiu/consent-request",
+      "source": "routes/abdm.ts",
+      "line": 54,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "createConsentRequestController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/abdm/hiu/consent-status/:consentRequestId",
+      "source": "routes/abdm.ts",
+      "line": 55,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "getConsentStatusController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/abdm/hiu/health-data/:consentRequestId",
+      "source": "routes/abdm.ts",
+      "line": 56,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "getExternalHealthDataController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/soap-notes/generate",
+      "source": "routes/ai.ts",
+      "line": 80,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\")"
+      ],
+      "handler": "generateSOAPNoteController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/health-assistant/query",
+      "source": "routes/ai.ts",
+      "line": 83,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\", \"VIEW_EHR\")"
+      ],
+      "handler": "queryHealthAssistantController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/chat/sessions",
+      "source": "routes/ai.ts",
+      "line": 86,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\", \"VIEW_EHR\")"
+      ],
+      "handler": "listChatSessionsController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/chat/sessions",
+      "source": "routes/ai.ts",
+      "line": 87,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\", \"VIEW_EHR\")"
+      ],
+      "handler": "createChatSessionController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/chat/sessions/:sessionId",
+      "source": "routes/ai.ts",
+      "line": 88,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\", \"VIEW_EHR\")"
+      ],
+      "handler": "getChatSessionController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/chat/sessions/:sessionId/messages",
+      "source": "routes/ai.ts",
+      "line": 89,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\", \"VIEW_EHR\")"
+      ],
+      "handler": "listChatSessionMessagesController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/chat/sessions/:sessionId/messages",
+      "source": "routes/ai.ts",
+      "line": 90,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\", \"VIEW_EHR\")"
+      ],
+      "handler": "sendChatMessageController"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/ai/chat/sessions/:sessionId",
+      "source": "routes/ai.ts",
+      "line": 91,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\", \"VIEW_EHR\")"
+      ],
+      "handler": "deleteChatSessionController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/gateway/query",
+      "source": "routes/ai.ts",
+      "line": 94,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\", \"VIEW_EHR\")"
+      ],
+      "handler": "queryAIGatewayController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/gateway/stream",
+      "source": "routes/ai.ts",
+      "line": 95,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\", \"VIEW_EHR\")"
+      ],
+      "handler": "streamAIGatewayController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/health",
+      "source": "routes/ai.ts",
+      "line": 96,
+      "guards": [],
+      "handler": "getAIHealthController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/prompts",
+      "source": "routes/ai.ts",
+      "line": 99,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "listPromptTemplatesController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/prompts",
+      "source": "routes/ai.ts",
+      "line": 100,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "createPromptDraftController"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/ai/prompts/:id/approve",
+      "source": "routes/ai.ts",
+      "line": 101,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "approvePromptTemplateController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/prompts/test",
+      "source": "routes/ai.ts",
+      "line": 102,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "testPromptSandboxController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/tools/intent",
+      "source": "routes/ai.ts",
+      "line": 105,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\", \"VIEW_EHR\")"
+      ],
+      "handler": "detectToolIntentController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/tools/request-execution",
+      "source": "routes/ai.ts",
+      "line": 106,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\")"
+      ],
+      "handler": "requestToolExecutionController"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/ai/tools/:id/approve",
+      "source": "routes/ai.ts",
+      "line": 107,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\")"
+      ],
+      "handler": "approveAndExecuteToolController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/observability/metrics",
+      "source": "routes/ai.ts",
+      "line": 110,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_ANALYTICS\", \"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "getAIObservabilityMetricsController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/observability/costs",
+      "source": "routes/ai.ts",
+      "line": 111,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_BILLING\", \"MANAGE_BILLING\")"
+      ],
+      "handler": "getAICostAnalyticsController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/admin/config",
+      "source": "routes/ai.ts",
+      "line": 114,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "getAIAdminConfigController"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/ai/admin/config",
+      "source": "routes/ai.ts",
+      "line": 115,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "updateAIAdminConfigController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/predictive/no-show",
+      "source": "routes/ai.ts",
+      "line": 118,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_ANALYTICS\", \"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "predictNoShowRiskController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/billing/audit",
+      "source": "routes/ai.ts",
+      "line": 119,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_BILLING\", \"MANAGE_BILLING\")"
+      ],
+      "handler": "auditBillingAnomaliesController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ai/inventory/forecast",
+      "source": "routes/ai.ts",
+      "line": 120,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_MEDICINES\")"
+      ],
+      "handler": "forecastInventorySupplyController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/nlp/icd10-extract",
+      "source": "routes/ai.ts",
+      "line": 121,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\")"
+      ],
+      "handler": "extractNlpIcd10CodesController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analytics/daily-summary",
+      "source": "routes/analytics.ts",
+      "line": 14,
+      "guards": [
+        "authenticate",
+        "checkAnyPermissionOrRoles([], \"VIEW_APPOINTMENTS\", \"MANAGE_APPOINTMENTS\", \"VIEW_EHR\", \"VIEW_BILLING\", \"MANAGE_BILLING\")"
+      ],
+      "handler": "getDailyDashboard"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analytics/executive",
+      "source": "routes/analytics.ts",
+      "line": 17,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"VIEW_ANALYTICS\")"
+      ],
+      "handler": "getExecutiveAnalytics"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analytics/quality-metrics",
+      "source": "routes/analytics.ts",
+      "line": 18,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"VIEW_ANALYTICS\")"
+      ],
+      "handler": "getOrganizationQualityMetricsController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analytics/nabh-kpis",
+      "source": "routes/analytics.ts",
+      "line": 19,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"VIEW_ANALYTICS\")"
+      ],
+      "handler": "getNabhKpis"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analytics/clinical-summary",
+      "source": "routes/analytics.ts",
+      "line": 22,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"VIEW_ANALYTICS\")"
+      ],
+      "handler": "getClinicalSummaryAnalyticsController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analytics/export",
+      "source": "routes/analytics.ts",
+      "line": 25,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"VIEW_ANALYTICS\")"
+      ],
+      "handler": "exportAnalyticsReportController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/appointment-payments/create-order",
+      "source": "routes/appointmentPayment.ts",
+      "line": 36,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles(\n        [\"patient\", \"family_member\", \"guest\"],\n        \"MANAGE_BILLING\",\n        \"MANAGE_APPOINTMENTS\",\n        \"VIEW_APPOINTMENTS\",\n        \"MANAGE_QUEUE\"\n      )"
+      ],
+      "handler": "createAppointmentPaymentOrder"
+    },
+    {
+      "method": "POST",
+      "path": "/api/appointment-payments/verify",
+      "source": "routes/appointmentPayment.ts",
+      "line": 37,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles(\n        [\"patient\", \"family_member\", \"guest\"],\n        \"MANAGE_BILLING\",\n        \"MANAGE_APPOINTMENTS\",\n        \"VIEW_APPOINTMENTS\",\n        \"MANAGE_QUEUE\"\n      )"
+      ],
+      "handler": "verifyAppointmentPayment"
+    },
+    {
+      "method": "POST",
+      "path": "/api/appointment-payments/pay-at-location",
+      "source": "routes/appointmentPayment.ts",
+      "line": 38,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles(\n        [\"patient\", \"family_member\", \"guest\"],\n        \"MANAGE_BILLING\",\n        \"MANAGE_APPOINTMENTS\",\n        \"VIEW_APPOINTMENTS\",\n        \"MANAGE_QUEUE\"\n      )"
+      ],
+      "handler": "selectPayAtLocation"
+    },
+    {
+      "method": "POST",
+      "path": "/api/appointment-payments/collect-counter",
+      "source": "routes/appointmentPayment.ts",
+      "line": 39,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermission(\"MANAGE_BILLING\", \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "collectCounterPayment"
+    },
+    {
+      "method": "POST",
+      "path": "/api/appointment-payments/reconcile",
+      "source": "routes/appointmentPayment.ts",
+      "line": 40,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermission(\"MANAGE_BILLING\", \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "reconcileAppointmentPayment"
+    },
+    {
+      "method": "POST",
+      "path": "/api/appointment-payments/reconcile-refund",
+      "source": "routes/appointmentPayment.ts",
+      "line": 41,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "reconcileRefund"
+    },
+    {
+      "method": "POST",
+      "path": "/api/appointments",
+      "source": "routes/appointments.ts",
+      "line": 93,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\", \"guest\"], \"MANAGE_APPOINTMENTS\", \"CREATE_APPOINTMENTS\")"
+      ],
+      "handler": "bookAppointment"
+    },
+    {
+      "method": "GET",
+      "path": "/api/appointments",
+      "source": "routes/appointments.ts",
+      "line": 94,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_APPOINTMENTS\", \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "getAppointments"
+    },
+    {
+      "method": "GET",
+      "path": "/api/appointments/patient/me",
+      "source": "routes/appointments.ts",
+      "line": 95,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_APPOINTMENTS\", \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "getAppointments"
+    },
+    {
+      "method": "GET",
+      "path": "/api/appointments/:id",
+      "source": "routes/appointments.ts",
+      "line": 96,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_APPOINTMENTS\", \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "getAppointmentById"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/appointments/:id/status",
+      "source": "routes/appointments.ts",
+      "line": 97,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "updateAppointmentStatus"
+    },
+    {
+      "method": "POST",
+      "path": "/api/appointments/:id/check-in",
+      "source": "routes/appointments.ts",
+      "line": 98,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"MANAGE_QUEUE\")"
+      ],
+      "handler": "checkInAppointment"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/appointments/:id/cancel",
+      "source": "routes/appointments.ts",
+      "line": 99,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "cancelAppointment"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/appointments/:id/reschedule",
+      "source": "routes/appointments.ts",
+      "line": 100,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "rescheduleAppointment"
+    },
+    {
+      "method": "POST",
+      "path": "/api/appointments/:id/resend-rx",
+      "source": "routes/appointments.ts",
+      "line": 101,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"MANAGE_APPOINTMENTS\")",
+        "checkAnyPermission('COMMUNICATE_PATIENTS')"
+      ],
+      "handler": "resendPrescriptionNotification"
+    },
+    {
+      "method": "GET",
+      "path": "/api/appointments/follow-ups",
+      "source": "routes/appointments.ts",
+      "line": 102,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_APPOINTMENTS\", \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "getFollowUpRegister"
+    },
+    {
+      "method": "POST",
+      "path": "/api/appointments/:id/send-followup-reminder",
+      "source": "routes/appointments.ts",
+      "line": 103,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "sendFollowUpReminder"
+    },
+    {
+      "method": "GET",
+      "path": "/api/doctors/:doctorId/slots",
+      "source": "routes/appointments.ts",
+      "line": 104,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_APPOINTMENTS\", \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "getDoctorSlots"
+    },
+    {
+      "method": "POST",
+      "path": "/api/appointments/lock-slot",
+      "source": "routes/appointments.ts",
+      "line": 107,
+      "guards": [],
+      "handler": "lockSlot"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/appointments/lock-slot",
+      "source": "routes/appointments.ts",
+      "line": 108,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "unlockSlot"
+    },
+    {
+      "method": "GET",
+      "path": "/api/appointments/slot-lock-status",
+      "source": "routes/appointments.ts",
+      "line": 109,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_APPOINTMENTS\", \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "getSlotLockStatus"
+    },
+    {
+      "method": "GET",
+      "path": "/api/patients/association-locations",
+      "source": "routes/appointments.ts",
+      "line": 112,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission('MANAGE_PATIENTS')",
+        "checkAnyPermission('REVIEW_PATIENT_IDENTITY')"
+      ],
+      "handler": "listCrmLocations"
+    },
+    {
+      "method": "POST",
+      "path": "/api/patients",
+      "source": "routes/appointments.ts",
+      "line": 113,
+      "guards": [
+        "authenticate",
+        "requireModule(\"patients\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"MANAGE_PATIENTS\")"
+      ],
+      "handler": "createPatient"
+    },
+    {
+      "method": "POST",
+      "path": "/api/patients/:id/associate",
+      "source": "routes/appointments.ts",
+      "line": 116,
+      "guards": [
+        "checkPermission(\"MANAGE_PATIENTS\")"
+      ],
+      "handler": "associateOrganizationPatient"
+    },
+    {
+      "method": "GET",
+      "path": "/api/patients/:id/identity-claims",
+      "source": "routes/appointments.ts",
+      "line": 122,
+      "guards": [
+        "authenticate",
+        "requireModule(\"patients\")",
+        "checkPermission(\"REVIEW_PATIENT_IDENTITY\")"
+      ],
+      "handler": "listPatientIdentityClaims"
+    },
+    {
+      "method": "POST",
+      "path": "/api/patients/:id/identity-claims/:claimId/review",
+      "source": "routes/appointments.ts",
+      "line": 125,
+      "guards": [
+        "authenticate",
+        "requireModule(\"patients\")",
+        "checkPermission(\"REVIEW_PATIENT_IDENTITY\")"
+      ],
+      "handler": "reviewPatientIdentityClaim"
+    },
+    {
+      "method": "GET",
+      "path": "/api/patients/:id/contact",
+      "source": "routes/appointments.ts",
+      "line": 129,
+      "guards": [
+        "authenticate",
+        "requireModule(\"patients\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"MANAGE_PATIENTS\")"
+      ],
+      "handler": "getOrganizationPatientContact"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/patients/:id/contact",
+      "source": "routes/appointments.ts",
+      "line": 130,
+      "guards": [
+        "authenticate",
+        "requireModule(\"patients\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"MANAGE_PATIENTS\")"
+      ],
+      "handler": "correctOrganizationPatientContact"
+    },
+    {
+      "method": "GET",
+      "path": "/api/patients",
+      "source": "routes/appointments.ts",
+      "line": 137,
+      "guards": [
+        "authenticate",
+        "requireModule(\"patients\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_PATIENTS\", \"MANAGE_PATIENTS\")"
+      ],
+      "handler": "searchPatients"
+    },
+    {
+      "method": "GET",
+      "path": "/api/patients/:id",
+      "source": "routes/appointments.ts",
+      "line": 138,
+      "guards": [
+        "authenticate",
+        "requireModule(\"patients\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_PATIENTS\", \"MANAGE_PATIENTS\")"
+      ],
+      "handler": "getPatientDetails"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/patients/:id",
+      "source": "routes/appointments.ts",
+      "line": 139,
+      "guards": [
+        "authenticate",
+        "requireModule(\"patients\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"MANAGE_PATIENTS\")"
+      ],
+      "handler": "updatePatientProfile"
+    },
+    {
+      "method": "POST",
+      "path": "/api/doctors/:id/reviews",
+      "source": "routes/appointments.ts",
+      "line": 140,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_APPOINTMENTS\")"
+      ],
+      "handler": "submitDoctorReview"
+    },
+    {
+      "method": "GET",
+      "path": "/api/queue",
+      "source": "routes/appointments.ts",
+      "line": 149,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkAnyPermission(\"MANAGE_QUEUE\", \"VIEW_APPOINTMENTS\")"
+      ],
+      "handler": "getQueue"
+    },
+    {
+      "method": "GET",
+      "path": "/api/queue/status",
+      "source": "routes/appointments.ts",
+      "line": 150,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkAnyPermission(\"MANAGE_QUEUE\", \"VIEW_APPOINTMENTS\")"
+      ],
+      "handler": "getQueueStatus"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/queue/reorder",
+      "source": "routes/appointments.ts",
+      "line": 151,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "reorderQueue"
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue/call-next",
+      "source": "routes/appointments.ts",
+      "line": 152,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "callNextPatient"
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue/:id/bump-back",
+      "source": "routes/appointments.ts",
+      "line": 153,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "bumpQueuePatient"
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue/:id/park",
+      "source": "routes/appointments.ts",
+      "line": 154,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "parkQueuePatient"
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue/:id/resume",
+      "source": "routes/appointments.ts",
+      "line": 155,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "resumeQueuePatient"
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue/:id/order-investigations",
+      "source": "routes/appointments.ts",
+      "line": 156,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "sendPatientForInvestigation"
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue/:id/resume-review",
+      "source": "routes/appointments.ts",
+      "line": 157,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "resumeForReportReview"
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue/session/start",
+      "source": "routes/appointments.ts",
+      "line": 158,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "startOpdSession"
+    },
+    {
+      "method": "GET",
+      "path": "/api/queue/session/summary",
+      "source": "routes/appointments.ts",
+      "line": 159,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkAnyPermission(\"MANAGE_QUEUE\", \"VIEW_APPOINTMENTS\")"
+      ],
+      "handler": "getOpdSessionSummary"
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue/session/end",
+      "source": "routes/appointments.ts",
+      "line": 160,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "endOpdSessionAndReconcile"
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue/session/break",
+      "source": "routes/appointments.ts",
+      "line": 161,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "toggleDoctorBreak"
+    },
+    {
+      "method": "GET",
+      "path": "/api/queue/delay-status",
+      "source": "routes/appointments.ts",
+      "line": 162,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkAnyPermission(\"MANAGE_QUEUE\", \"VIEW_APPOINTMENTS\")"
+      ],
+      "handler": "getQueueDelayStatus"
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue/trigger-delay-alerts",
+      "source": "routes/appointments.ts",
+      "line": 163,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "triggerQueueDelayAlerts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue/:id/vitals",
+      "source": "routes/appointments.ts",
+      "line": 164,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "recordPatientVitals"
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue/:id/stat-emergency",
+      "source": "routes/appointments.ts",
+      "line": 165,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "triggerStatEmergency"
+    },
+    {
+      "method": "POST",
+      "path": "/api/queue/:id/resend-tracker",
+      "source": "routes/appointments.ts",
+      "line": 166,
+      "guards": [
+        "authenticate",
+        "requireModule(\"queue\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "resendQueueTrackerNotification"
+    },
+    {
+      "method": "GET",
+      "path": "/api/audit-logs",
+      "source": "routes/appointments.ts",
+      "line": 167,
+      "guards": [
+        "authenticate",
+        "requireModule(\"audit\")",
+        "checkPermission(\"VIEW_AUDIT_LOGS\")"
+      ],
+      "handler": "getAuditLogs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/audit-logs/verify-integrity",
+      "source": "routes/appointments.ts",
+      "line": 168,
+      "guards": [
+        "authenticate",
+        "requireModule(\"audit\")",
+        "checkPermission(\"VIEW_AUDIT_LOGS\")"
+      ],
+      "handler": "verifyAuditLogsIntegrity"
+    },
+    {
+      "method": "GET",
+      "path": "/api/queue/ws",
+      "source": "routes/appointments.ts",
+      "line": 171,
+      "guards": [],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/clinical/ws",
+      "source": "routes/appointments.ts",
+      "line": 176,
+      "guards": [],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/passkeys",
+      "source": "routes/auth.ts",
+      "line": 37,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "listPasskeys"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/passkeys/register/options",
+      "source": "routes/auth.ts",
+      "line": 38,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "registrationOptions"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/passkeys/register/verify",
+      "source": "routes/auth.ts",
+      "line": 39,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "registrationVerify"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/passkeys/login/options",
+      "source": "routes/auth.ts",
+      "line": 40,
+      "guards": [],
+      "handler": "authenticationOptions"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/passkeys/login/verify",
+      "source": "routes/auth.ts",
+      "line": 41,
+      "guards": [],
+      "handler": "authenticationVerify"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/auth/passkeys/:id",
+      "source": "routes/auth.ts",
+      "line": 42,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "deletePasskey"
+    },
+    {
+      "method": "GET",
+      "path": "/.well-known/jwks.json",
+      "source": "routes/auth.ts",
+      "line": 45,
+      "guards": [],
+      "handler": "inline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/google",
+      "source": "routes/auth.ts",
+      "line": 50,
+      "guards": [],
+      "handler": "googleLoginController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/otp/request",
+      "source": "routes/auth.ts",
+      "line": 60,
+      "guards": [],
+      "handler": "requestOtpController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/otp/verify",
+      "source": "routes/auth.ts",
+      "line": 69,
+      "guards": [],
+      "handler": "verifyOtpController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "source": "routes/auth.ts",
+      "line": 79,
+      "guards": [],
+      "handler": "login"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login/workspace",
+      "source": "routes/auth.ts",
+      "line": 89,
+      "guards": [],
+      "handler": "selectLoginWorkspace"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/workspaces",
+      "source": "routes/auth.ts",
+      "line": 95,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "getUserWorkspaces"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login/verify-2fa",
+      "source": "routes/auth.ts",
+      "line": 97,
+      "guards": [],
+      "handler": "verifyLoginTwoFactor"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "source": "routes/auth.ts",
+      "line": 118,
+      "guards": [],
+      "handler": "registerPatient"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/verify-email",
+      "source": "routes/auth.ts",
+      "line": 129,
+      "guards": [],
+      "handler": "verifyEmail"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "source": "routes/auth.ts",
+      "line": 130,
+      "guards": [],
+      "handler": "forgotPassword"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/reset-password",
+      "source": "routes/auth.ts",
+      "line": 131,
+      "guards": [],
+      "handler": "resetPassword"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/sessions",
+      "source": "routes/auth.ts",
+      "line": 134,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "getActiveSessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/auth/sessions/:sessionId",
+      "source": "routes/auth.ts",
+      "line": 135,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "revokeSession"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/admin/sessions",
+      "source": "routes/auth.ts",
+      "line": 138,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "getAdminAllSessions"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/admin/owner-session-policies",
+      "source": "routes/auth.ts",
+      "line": 139,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "listOwnerSessionPolicies"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/auth/admin/owner-session-policies/:userId",
+      "source": "routes/auth.ts",
+      "line": 140,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "updateOwnerSessionPolicy"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/auth/admin/sessions/:sessionId",
+      "source": "routes/auth.ts",
+      "line": 144,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "adminRevokeSession"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/admin/sessions/revoke-user/:userId",
+      "source": "routes/auth.ts",
+      "line": 145,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "adminRevokeUserSessions"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/refresh",
+      "source": "routes/auth.ts",
+      "line": 148,
+      "guards": [],
+      "handler": "refreshAccessToken"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/refresh-token",
+      "source": "routes/auth.ts",
+      "line": 149,
+      "guards": [],
+      "handler": "refreshAccessToken"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "source": "routes/auth.ts",
+      "line": 152,
+      "guards": [],
+      "handler": "logout"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "source": "routes/auth.ts",
+      "line": 155,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "me"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/switch-org",
+      "source": "routes/auth.ts",
+      "line": 158,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "switchOrganization"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/impersonate",
+      "source": "routes/auth.ts",
+      "line": 176,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "impersonateUser"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/stop-impersonation",
+      "source": "routes/auth.ts",
+      "line": 200,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "stopImpersonation"
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/plans",
+      "source": "routes/billing.ts",
+      "line": 84,
+      "guards": [],
+      "handler": "getSaaSPlans"
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/subscription",
+      "source": "routes/billing.ts",
+      "line": 87,
+      "guards": [
+        "authenticate",
+        "checkSaaSPermission(req, reply)"
+      ],
+      "handler": "getSubscriptionDetails"
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/usage",
+      "source": "routes/billing.ts",
+      "line": 88,
+      "guards": [
+        "authenticate",
+        "checkSaaSPermission(req, reply)"
+      ],
+      "handler": "getOrganizationUsageMetrics"
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/saas-invoices",
+      "source": "routes/billing.ts",
+      "line": 89,
+      "guards": [
+        "authenticate",
+        "checkSaaSPermission(req, reply)"
+      ],
+      "handler": "getSaaSInvoices"
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/payment-attempts",
+      "source": "routes/billing.ts",
+      "line": 90,
+      "guards": [
+        "authenticate",
+        "checkSaaSPermission(req, reply)"
+      ],
+      "handler": "getPaymentAttempts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/details",
+      "source": "routes/billing.ts",
+      "line": 91,
+      "guards": [
+        "authenticate",
+        "checkSaaSPermission(req, reply)"
+      ],
+      "handler": "getBillingDetails"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/billing/details",
+      "source": "routes/billing.ts",
+      "line": 92,
+      "guards": [
+        "authenticate",
+        "checkSaaSPermission(req, reply)"
+      ],
+      "handler": "saveBillingDetails"
+    },
+    {
+      "method": "POST",
+      "path": "/api/billing/checkout",
+      "source": "routes/billing.ts",
+      "line": 95,
+      "guards": [
+        "authenticate",
+        "checkSaaSPermission(req, reply)"
+      ],
+      "handler": "createCheckoutOrderController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/billing/validate-downgrade",
+      "source": "routes/billing.ts",
+      "line": 96,
+      "guards": [
+        "authenticate",
+        "checkSaaSPermission(req, reply)"
+      ],
+      "handler": "validatePlanDowngradeController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/billing/switch-plan",
+      "source": "routes/billing.ts",
+      "line": 97,
+      "guards": [
+        "authenticate",
+        "checkSaaSPermission(req, reply)"
+      ],
+      "handler": "directSwitchPlanController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/billing/verify-payment",
+      "source": "routes/billing.ts",
+      "line": 98,
+      "guards": [
+        "authenticate",
+        "checkSaaSPermission(req, reply)"
+      ],
+      "handler": "verifyPaymentController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/checkout-status",
+      "source": "routes/billing.ts",
+      "line": 99,
+      "guards": [
+        "authenticate",
+        "checkSaaSPermission(req, reply)"
+      ],
+      "handler": "getCheckoutStatusController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/billing/checkout/abandon",
+      "source": "routes/billing.ts",
+      "line": 100,
+      "guards": [
+        "authenticate",
+        "checkSaaSPermission(req, reply)"
+      ],
+      "handler": "abandonCheckoutController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/billing/cancel",
+      "source": "routes/billing.ts",
+      "line": 101,
+      "guards": [
+        "authenticate",
+        "checkSaaSPermission(req, reply)"
+      ],
+      "handler": "cancelSubscriptionController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/billing/webhook",
+      "source": "routes/billing.ts",
+      "line": 104,
+      "guards": [],
+      "handler": "razorpayWebhookController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/billing/plans",
+      "source": "routes/billing.ts",
+      "line": 107,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "adminGetPlans"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/billing/plans",
+      "source": "routes/billing.ts",
+      "line": 108,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "adminUpsertPlan"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/billing/subscriptions",
+      "source": "routes/billing.ts",
+      "line": 109,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "adminGetSubscriptions"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/billing/payment-reviews",
+      "source": "routes/billing.ts",
+      "line": 110,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "adminGetPaymentReviews"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/billing/subscriptions/:id/extend-trial",
+      "source": "routes/billing.ts",
+      "line": 111,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "adminExtendTrial"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/billing/subscriptions/:id/activate",
+      "source": "routes/billing.ts",
+      "line": 112,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "adminActivateSubscription"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/billing/payments/:paymentId/refund",
+      "source": "routes/billing.ts",
+      "line": 113,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "adminRefundPayment"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/billing/razorpay-config",
+      "source": "routes/billing.ts",
+      "line": 114,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "adminGetRazorpayConfig"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/billing/razorpay-config",
+      "source": "routes/billing.ts",
+      "line": 115,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "adminSaveRazorpayConfig"
+    },
+    {
+      "method": "POST",
+      "path": "/api/invoices",
+      "source": "routes/billing.ts",
+      "line": 118,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "createInvoice"
+    },
+    {
+      "method": "GET",
+      "path": "/api/invoices",
+      "source": "routes/billing.ts",
+      "line": 119,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_BILLING\", \"MANAGE_BILLING\")"
+      ],
+      "handler": "getInvoices"
+    },
+    {
+      "method": "GET",
+      "path": "/api/invoices/patient/me",
+      "source": "routes/billing.ts",
+      "line": 120,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_BILLING\", \"MANAGE_BILLING\")"
+      ],
+      "handler": "getInvoices"
+    },
+    {
+      "method": "GET",
+      "path": "/api/invoices/:id",
+      "source": "routes/billing.ts",
+      "line": 121,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_BILLING\", \"MANAGE_BILLING\")"
+      ],
+      "handler": "getInvoiceDetails"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/invoices/:id/pay",
+      "source": "routes/billing.ts",
+      "line": 122,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "collectPayment"
+    },
+    {
+      "method": "POST",
+      "path": "/api/invoices/:id/payments",
+      "source": "routes/billing.ts",
+      "line": 123,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "recordPartialPayment"
+    },
+    {
+      "method": "GET",
+      "path": "/api/encounters/:encounterId/charges-preview",
+      "source": "routes/billing.ts",
+      "line": 126,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "requireModule(\"consultations\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "getEncounterChargesPreview"
+    },
+    {
+      "method": "POST",
+      "path": "/api/encounters/:encounterId/auto-invoice",
+      "source": "routes/billing.ts",
+      "line": 127,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "requireModule(\"consultations\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "autoGenerateInvoiceForEncounter"
+    },
+    {
+      "method": "POST",
+      "path": "/api/billing/payment-link",
+      "source": "routes/billing.ts",
+      "line": 130,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "createPaymentLinkController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/billing/claims",
+      "source": "routes/billing.ts",
+      "line": 133,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "createClaimController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/claims",
+      "source": "routes/billing.ts",
+      "line": 134,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_BILLING\", \"MANAGE_BILLING\")"
+      ],
+      "handler": "getClaimsController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/billing/claims/:id/adjudicate",
+      "source": "routes/billing.ts",
+      "line": 135,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "adjudicateClaimController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/checkout/preview/:appointmentId",
+      "source": "routes/billing.ts",
+      "line": 138,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "getConsolidatedCheckoutPreview"
+    },
+    {
+      "method": "POST",
+      "path": "/api/billing/checkout/consolidate",
+      "source": "routes/billing.ts",
+      "line": 139,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "processConsolidatedCheckout"
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/till/summary",
+      "source": "routes/billing.ts",
+      "line": 142,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "getTillSummary"
+    },
+    {
+      "method": "POST",
+      "path": "/api/billing/till/close",
+      "source": "routes/billing.ts",
+      "line": 143,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "closeTill"
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/till/history",
+      "source": "routes/billing.ts",
+      "line": 144,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "getTillHistory"
+    },
+    {
+      "method": "POST",
+      "path": "/api/check-in/qr",
+      "source": "routes/checkIn.ts",
+      "line": 10,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkPermission(\"MANAGE_QUEUE\")"
+      ],
+      "handler": "processSelfCheckInQr"
+    },
+    {
+      "method": "GET",
+      "path": "/api/patients/:id/timeline",
+      "source": "routes/clinical.ts",
+      "line": 37,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_EHR\")"
+      ],
+      "handler": "getPatientTimelineController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/patients/:id/record-access/request",
+      "source": "routes/clinical.ts",
+      "line": 39,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkPermission(\"VIEW_EHR\")"
+      ],
+      "handler": "requestPatientRecordOtp"
+    },
+    {
+      "method": "POST",
+      "path": "/api/patients/:id/record-access/verify",
+      "source": "routes/clinical.ts",
+      "line": 40,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkPermission(\"VIEW_EHR\")"
+      ],
+      "handler": "verifyPatientRecordOtp"
+    },
+    {
+      "method": "POST",
+      "path": "/api/encounters",
+      "source": "routes/clinical.ts",
+      "line": 43,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkPermission(\"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "createEncounterController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/clinical-notes",
+      "source": "routes/clinical.ts",
+      "line": 44,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkPermission(\"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "saveDraftClinicalNoteController"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/clinical-notes/:id/sign",
+      "source": "routes/clinical.ts",
+      "line": 45,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkPermission(\"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "signClinicalNoteController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/clinical-notes/:id/amend",
+      "source": "routes/clinical.ts",
+      "line": 46,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkPermission(\"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "amendClinicalNoteController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/patients/:id/clinical-notes/history",
+      "source": "routes/clinical.ts",
+      "line": 47,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_EHR\")"
+      ],
+      "handler": "getClinicalNoteHistoryController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/prescriptions/evaluate-safety",
+      "source": "routes/clinical.ts",
+      "line": 50,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkPermission(\"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "evaluatePrescriptionSafetyController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/prescriptions/override-evaluation",
+      "source": "routes/clinical.ts",
+      "line": 51,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkPermission(\"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "overrideCDSEvaluationController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/prescriptions/:id/verify-integrity",
+      "source": "routes/clinical.ts",
+      "line": 54,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_EHR\")"
+      ],
+      "handler": "verifyPrescriptionIntegrityController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/prescriptions/:id/amend",
+      "source": "routes/clinical.ts",
+      "line": 55,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkPermission(\"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "amendPrescriptionController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/encounters/:id/evaluate-score",
+      "source": "routes/clinical.ts",
+      "line": 58,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkAnyPermission(\"EVALUATE_NEWS2\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "evaluateEncounterScoreController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/encounters/:id/scores",
+      "source": "routes/clinical.ts",
+      "line": 61,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_EHR\")"
+      ],
+      "handler": "getEncounterScoresController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/alerts/:id/acknowledge",
+      "source": "routes/clinical.ts",
+      "line": 62,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkPermission(\"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "acknowledgeAlertController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/patients/:id/vital-trends",
+      "source": "routes/clinical.ts",
+      "line": 63,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_EHR\")"
+      ],
+      "handler": "getPatientVitalTrendsController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/clinical/opd-templates",
+      "source": "routes/clinical.ts",
+      "line": 69,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "getOpdTemplates"
+    },
+    {
+      "method": "POST",
+      "path": "/api/clinical/opd-templates",
+      "source": "routes/clinical.ts",
+      "line": 70,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkAnyPermission(\"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "createOpdTemplate"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/clinical/opd-templates/:id",
+      "source": "routes/clinical.ts",
+      "line": 71,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkAnyPermission(\"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "deleteOpdTemplate"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/patients/:id/family-recipients",
+      "source": "routes/crm.ts",
+      "line": 26,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission('VIEW_CRM')",
+        "checkAnyPermission('MANAGE_PATIENTS')"
+      ],
+      "handler": "listFamilyRecipients"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/patients/:id/family-authorizations",
+      "source": "routes/crm.ts",
+      "line": 27,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission('VIEW_CRM')",
+        "checkAnyPermission('ADMINISTRATIVE_GOVERNANCE')",
+        "checkAnyPermission('REVIEW_PATIENT_IDENTITY')"
+      ],
+      "handler": "listFamilyAuthorizations"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/crm/patients/:id/family-authorizations/:familyId",
+      "source": "routes/crm.ts",
+      "line": 28,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission('VIEW_CRM')",
+        "checkAnyPermission('ADMINISTRATIVE_GOVERNANCE')",
+        "checkAnyPermission('REVIEW_PATIENT_IDENTITY')"
+      ],
+      "handler": "reviewFamilyAuthorization"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/locations",
+      "source": "routes/crm.ts",
+      "line": 31,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_CRM\")"
+      ],
+      "handler": "listCrmLocations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/analytics",
+      "source": "routes/crm.ts",
+      "line": 34,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission('VIEW_CRM')",
+        "checkAnyPermission('VIEW_CRM_ANALYTICS')"
+      ],
+      "handler": "getCrmAnalytics"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/settings",
+      "source": "routes/crm.ts",
+      "line": 35,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_CRM\")"
+      ],
+      "handler": "getCrmSettings"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/crm/settings",
+      "source": "routes/crm.ts",
+      "line": 36,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission('VIEW_CRM')",
+        "checkAnyPermission('MANAGE_CRM_SETTINGS')"
+      ],
+      "handler": "updateCrmSettings"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/communications/inbound",
+      "source": "routes/crm.ts",
+      "line": 39,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission('VIEW_CRM')",
+        "checkAnyPermission('COMMUNICATE_PATIENTS')"
+      ],
+      "handler": "listInboundMessages"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crm/communications/inbound/:id/route",
+      "source": "routes/crm.ts",
+      "line": 40,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission('VIEW_CRM')",
+        "checkAnyPermission('COMMUNICATE_PATIENTS')",
+        "checkAnyPermission('MANAGE_CRM_INQUIRIES')"
+      ],
+      "handler": "routeInboundMessage"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/communications/messages",
+      "source": "routes/crm.ts",
+      "line": 41,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_CRM\")"
+      ],
+      "handler": "listPatientMessages"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/communications/messages/preview",
+      "source": "routes/crm.ts",
+      "line": 42,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission('VIEW_CRM')",
+        "checkAnyPermission('COMMUNICATE_PATIENTS')"
+      ],
+      "handler": "previewPatientMessage"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crm/communications/messages",
+      "source": "routes/crm.ts",
+      "line": 43,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission('VIEW_CRM')",
+        "checkAnyPermission('COMMUNICATE_PATIENTS')"
+      ],
+      "handler": "queuePatientMessage"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/inquiries",
+      "source": "routes/crm.ts",
+      "line": 46,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_CRM\")"
+      ],
+      "handler": "listInquiries"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crm/inquiries",
+      "source": "routes/crm.ts",
+      "line": 47,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CRM_INQUIRIES\")"
+      ],
+      "handler": "createInquiry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/inquiries/:id",
+      "source": "routes/crm.ts",
+      "line": 48,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_CRM\")"
+      ],
+      "handler": "getInquiry"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/crm/inquiries/:id",
+      "source": "routes/crm.ts",
+      "line": 49,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CRM_INQUIRIES\")"
+      ],
+      "handler": "updateInquiry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/assignees",
+      "source": "routes/crm.ts",
+      "line": 50,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_CRM\")"
+      ],
+      "handler": "listCrmAssignees"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/communications/calls",
+      "source": "routes/crm.ts",
+      "line": 51,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_CRM\")"
+      ],
+      "handler": "listCrmCalls"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crm/communications/calls",
+      "source": "routes/crm.ts",
+      "line": 52,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission('VIEW_CRM')",
+        "checkAnyPermission('COMMUNICATE_PATIENTS')"
+      ],
+      "handler": "recordCrmCall"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/patients/:id/relationship",
+      "source": "routes/crm.ts",
+      "line": 55,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_CRM\")"
+      ],
+      "handler": "getPatientRelationship"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/crm/patients/:id/relationship",
+      "source": "routes/crm.ts",
+      "line": 56,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_CRM\")",
+        "checkAnyPermission(\"MANAGE_PATIENTS\")"
+      ],
+      "handler": "updatePatientRelationship"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/tasks",
+      "source": "routes/crm.ts",
+      "line": 57,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_CRM\")"
+      ],
+      "handler": "listCrmTasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/crm/tasks/:id",
+      "source": "routes/crm.ts",
+      "line": 58,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_CRM\")"
+      ],
+      "handler": "getCrmTask"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crm/tasks",
+      "source": "routes/crm.ts",
+      "line": 59,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CRM_TASKS\")"
+      ],
+      "handler": "captureCrmTask"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/crm/tasks/:id",
+      "source": "routes/crm.ts",
+      "line": 60,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CRM_TASKS\")"
+      ],
+      "handler": "updateCrmTask"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crm/tasks/:id/convert",
+      "source": "routes/crm.ts",
+      "line": 61,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CRM_TASKS\")",
+        "checkAnyPermission(\"MANAGE_APPOINTMENTS\")",
+        "requireModule(\"appointments\")"
+      ],
+      "handler": "convertPatientTask"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crm/tasks/:id/review-follow-up",
+      "source": "routes/crm.ts",
+      "line": 62,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CRM_TASKS\")",
+        "checkAnyPermission(\"MANAGE_APPOINTMENTS\")",
+        "requireModule(\"appointments\")"
+      ],
+      "handler": "reviewCareFollowUp"
+    },
+    {
+      "method": "POST",
+      "path": "/api/crm/inquiries/:id/convert",
+      "source": "routes/crm.ts",
+      "line": 65,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CRM_INQUIRIES\")",
+        "checkAnyPermission(\"MANAGE_APPOINTMENTS\")",
+        "requireModule(\"appointments\")"
+      ],
+      "handler": "convertInquiry"
+    },
+    {
+      "method": "POST",
+      "path": "/api/doctor-overrides",
+      "source": "routes/doctorAvailability.ts",
+      "line": 56,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "denyRoles(\"patient\", \"family_member\", \"guest\")",
+        "checkAnyPermission(\n        \"MANAGE_APPOINTMENTS\",\n        \"MANAGE_QUEUE\",\n      )",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "setDoctorDayOverride"
+    },
+    {
+      "method": "GET",
+      "path": "/api/doctor-overrides",
+      "source": "routes/doctorAvailability.ts",
+      "line": 57,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles(\n        [\"patient\", \"family_member\"],\n        \"VIEW_APPOINTMENTS\",\n        \"MANAGE_APPOINTMENTS\"\n      )"
+      ],
+      "handler": "getDoctorDayOverrides"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/doctor-overrides/:id",
+      "source": "routes/doctorAvailability.ts",
+      "line": 58,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "denyRoles(\"patient\", \"family_member\", \"guest\")",
+        "checkAnyPermission(\n        \"MANAGE_APPOINTMENTS\",\n        \"MANAGE_QUEUE\",\n      )",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "deleteDoctorDayOverride"
+    },
+    {
+      "method": "GET",
+      "path": "/api/doctor-overrides/triage",
+      "source": "routes/doctorAvailability.ts",
+      "line": 61,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "denyRoles(\"patient\", \"family_member\", \"guest\")",
+        "checkAnyPermission(\"VIEW_APPOINTMENTS\", \"MANAGE_APPOINTMENTS\", \"MANAGE_QUEUE\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "getTriageAppointments"
+    },
+    {
+      "method": "GET",
+      "path": "/api/doctor-overrides/eligible-replacements",
+      "source": "routes/doctorAvailability.ts",
+      "line": 62,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "denyRoles(\"patient\", \"family_member\", \"guest\")",
+        "checkAnyPermission(\"VIEW_APPOINTMENTS\", \"MANAGE_APPOINTMENTS\", \"MANAGE_QUEUE\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "getEligibleReplacements"
+    },
+    {
+      "method": "POST",
+      "path": "/api/doctor-overrides/triage/transfer",
+      "source": "routes/doctorAvailability.ts",
+      "line": 63,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "denyRoles(\"patient\", \"family_member\", \"guest\")",
+        "checkAnyPermission(\n        \"MANAGE_APPOINTMENTS\",\n        \"MANAGE_QUEUE\",\n      )",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "triageTransferAppointment"
+    },
+    {
+      "method": "POST",
+      "path": "/api/doctor-overrides/triage/cancel",
+      "source": "routes/doctorAvailability.ts",
+      "line": 64,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "denyRoles(\"patient\", \"family_member\", \"guest\")",
+        "checkAnyPermission(\n        \"MANAGE_APPOINTMENTS\",\n        \"MANAGE_QUEUE\",\n      )",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "triageCancelAppointment"
+    },
+    {
+      "method": "POST",
+      "path": "/api/doctor-overrides/triage/reschedule",
+      "source": "routes/doctorAvailability.ts",
+      "line": 65,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "denyRoles(\"patient\", \"family_member\", \"guest\")",
+        "checkAnyPermission(\n        \"MANAGE_APPOINTMENTS\",\n        \"MANAGE_QUEUE\",\n      )",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "triageRescheduleAppointment"
+    },
+    {
+      "method": "POST",
+      "path": "/api/doctor-overrides/triage/batch",
+      "source": "routes/doctorAvailability.ts",
+      "line": 66,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "denyRoles(\"patient\", \"family_member\", \"guest\")",
+        "checkAnyPermission(\n        \"MANAGE_APPOINTMENTS\",\n        \"MANAGE_QUEUE\",\n      )",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "triageBatchAction"
+    },
+    {
+      "method": "POST",
+      "path": "/api/doctor-overrides/patient-action",
+      "source": "routes/doctorAvailability.ts",
+      "line": 69,
+      "guards": [],
+      "handler": "patientDisruptionAction"
+    },
+    {
+      "method": "POST",
+      "path": "/api/documents/upload",
+      "source": "routes/documents.ts",
+      "line": 22,
+      "guards": [
+        "authenticate",
+        "requireModule(\"patients\")",
+        "checkAnyPermission(\"MANAGE_PATIENTS\", \"VIEW_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "uploadDocument"
+    },
+    {
+      "method": "GET",
+      "path": "/api/documents/patient/:patientId",
+      "source": "routes/documents.ts",
+      "line": 28,
+      "guards": [
+        "authenticate",
+        "requireModule(\"patients\")",
+        "checkAnyPermission(\"VIEW_EHR\")"
+      ],
+      "handler": "getPatientDocuments"
+    },
+    {
+      "method": "GET",
+      "path": "/api/documents/:documentId/download",
+      "source": "routes/documents.ts",
+      "line": 33,
+      "guards": [
+        "authenticate",
+        "requireModule(\"patients\")",
+        "checkAnyPermission(\"VIEW_EHR\")"
+      ],
+      "handler": "downloadDocument"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dpdp/export",
+      "source": "routes/dpdp.ts",
+      "line": 34,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "exportPatientData"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dpdp/erasure",
+      "source": "routes/dpdp.ts",
+      "line": 37,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "requestPatientErasure"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dpdp/privacy-request",
+      "source": "routes/dpdp.ts",
+      "line": 38,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "getPatientPrivacyRequest"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/dpdp/privacy-request/review",
+      "source": "routes/dpdp.ts",
+      "line": 39,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "reviewPatientPrivacyRequest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dpdp/consents",
+      "source": "routes/dpdp.ts",
+      "line": 42,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "getPatientConsents"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dpdp/organizations",
+      "source": "routes/dpdp.ts",
+      "line": 43,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "listPrivacyOrganizations"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/dpdp/consents",
+      "source": "routes/dpdp.ts",
+      "line": 44,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "updatePatientConsents"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dpdp/breaches",
+      "source": "routes/dpdp.ts",
+      "line": 47,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"ADMINISTRATIVE_GOVERNANCE\")"
+      ],
+      "handler": "recordBreachIncident"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dpdp/breaches",
+      "source": "routes/dpdp.ts",
+      "line": 48,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"ADMINISTRATIVE_GOVERNANCE\")"
+      ],
+      "handler": "getBreachIncidents"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dpdp/breaches/:incidentId/dpbi-dossier",
+      "source": "routes/dpdp.ts",
+      "line": 49,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"ADMINISTRATIVE_GOVERNANCE\")"
+      ],
+      "handler": "generateIncidentDPBIReport"
+    },
+    {
+      "method": "GET",
+      "path": "/api/family",
+      "source": "routes/family.ts",
+      "line": 14,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "getFamilyMembers"
+    },
+    {
+      "method": "POST",
+      "path": "/api/family",
+      "source": "routes/family.ts",
+      "line": 15,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "addFamilyMember"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/family/:id",
+      "source": "routes/family.ts",
+      "line": 16,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "updateFamilyMember"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/family/:id",
+      "source": "routes/family.ts",
+      "line": 17,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "removeFamilyMember"
+    },
+    {
+      "method": "POST",
+      "path": "/api/family/claim",
+      "source": "routes/family.ts",
+      "line": 18,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "claimPatientRecord"
+    },
+    {
+      "method": "POST",
+      "path": "/api/feedback",
+      "source": "routes/feedback.ts",
+      "line": 10,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "submitFeedback"
+    },
+    {
+      "method": "GET",
+      "path": "/api/feedback",
+      "source": "routes/feedback.ts",
+      "line": 11,
+      "guards": [],
+      "handler": "getFeedback"
+    },
+    {
+      "method": "GET",
+      "path": "/api/feedback/stats",
+      "source": "routes/feedback.ts",
+      "line": 12,
+      "guards": [],
+      "handler": "getFeedbackStats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/feedback/eligible-visits",
+      "source": "routes/feedback.ts",
+      "line": 13,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "getFeedbackEligibleVisits"
+    },
+    {
+      "method": "GET",
+      "path": "/api/feedback/mine",
+      "source": "routes/feedback.ts",
+      "line": 14,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "getOwnFeedback"
+    },
+    {
+      "method": "GET",
+      "path": "/api/feedback/visit/:id",
+      "source": "routes/feedback.ts",
+      "line": 15,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "getVisitFeedback"
+    },
+    {
+      "method": "POST",
+      "path": "/api/radiology/studies",
+      "source": "routes/imaging.ts",
+      "line": 23,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORDERS\")"
+      ],
+      "handler": "createImagingStudy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/radiology/studies",
+      "source": "routes/imaging.ts",
+      "line": 24,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_ORDERS\")"
+      ],
+      "handler": "getImagingStudies"
+    },
+    {
+      "method": "GET",
+      "path": "/api/radiology/studies/:id/preview",
+      "source": "routes/imaging.ts",
+      "line": 25,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_ORDERS\")"
+      ],
+      "handler": "imagingPreview"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/radiology/studies/:id/status",
+      "source": "routes/imaging.ts",
+      "line": 26,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORDERS\")"
+      ],
+      "handler": "updateImagingStudyStatus"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/radiology/studies/:id/report",
+      "source": "routes/imaging.ts",
+      "line": 27,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_CLINICAL_NOTES\", \"MANAGE_EHR\")"
+      ],
+      "handler": "signRadiologyReport"
+    },
+    {
+      "method": "POST",
+      "path": "/api/insurance/tariffs",
+      "source": "routes/insuranceTariff.ts",
+      "line": 18,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_BILLING\", \"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "upsertTariff"
+    },
+    {
+      "method": "GET",
+      "path": "/api/insurance/tariffs",
+      "source": "routes/insuranceTariff.ts",
+      "line": 19,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_BILLING\", \"MANAGE_BILLING\", \"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "getTariffs"
+    },
+    {
+      "method": "POST",
+      "path": "/api/insurance/tariffs/evaluate",
+      "source": "routes/insuranceTariff.ts",
+      "line": 20,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_BILLING\", \"MANAGE_BILLING\", \"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "evaluateTariff"
+    },
+    {
+      "method": "GET",
+      "path": "/api/lab/patient/:patientId/comparison",
+      "source": "routes/laboratory.ts",
+      "line": 45,
+      "guards": [
+        "authenticate",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_EHR\", \"MANAGE_ORDERS\")"
+      ],
+      "handler": "getPatientLabComparison"
+    },
+    {
+      "method": "GET",
+      "path": "/api/lab/tat-metrics",
+      "source": "routes/laboratory.ts",
+      "line": 48,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_ANALYTICS\", \"MANAGE_ORDERS\", \"MANAGE_LAB_TESTS\")"
+      ],
+      "handler": "getLabTatMetrics"
+    },
+    {
+      "method": "POST",
+      "path": "/api/lab-tests",
+      "source": "routes/laboratory.ts",
+      "line": 51,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_LAB_TESTS\")"
+      ],
+      "handler": "createLabTest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/lab-tests",
+      "source": "routes/laboratory.ts",
+      "line": 52,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_ORDERS\", \"MANAGE_LAB_TESTS\")"
+      ],
+      "handler": "getLabTests"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/lab-tests/:id",
+      "source": "routes/laboratory.ts",
+      "line": 53,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_LAB_TESTS\")"
+      ],
+      "handler": "updateLabTest"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/lab-tests/:id",
+      "source": "routes/laboratory.ts",
+      "line": 54,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_LAB_TESTS\")"
+      ],
+      "handler": "deleteLabTest"
+    },
+    {
+      "method": "POST",
+      "path": "/api/lab-orders",
+      "source": "routes/laboratory.ts",
+      "line": 57,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORDERS\")"
+      ],
+      "handler": "createLabOrder"
+    },
+    {
+      "method": "GET",
+      "path": "/api/lab-orders",
+      "source": "routes/laboratory.ts",
+      "line": 58,
+      "guards": [
+        "authenticate",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_EHR\", \"MANAGE_ORDERS\")"
+      ],
+      "handler": "getLabOrders"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/lab-orders/:id/sample",
+      "source": "routes/laboratory.ts",
+      "line": 59,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORDERS\")"
+      ],
+      "handler": "collectSample"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/lab-orders/:id/status",
+      "source": "routes/laboratory.ts",
+      "line": 60,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORDERS\")"
+      ],
+      "handler": "updateLabOrderStatus"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/lab-orders/:id/result",
+      "source": "routes/laboratory.ts",
+      "line": 61,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORDERS\")"
+      ],
+      "handler": "uploadLabResult"
+    },
+    {
+      "method": "POST",
+      "path": "/api/encounters/:id/orders",
+      "source": "routes/laboratory.ts",
+      "line": 64,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORDERS\")"
+      ],
+      "handler": "placeOrderController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/encounters/:id/orders",
+      "source": "routes/laboratory.ts",
+      "line": 65,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"VIEW_EHR\")"
+      ],
+      "handler": "getEncounterOrdersController"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/orders/:id/collect",
+      "source": "routes/laboratory.ts",
+      "line": 66,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORDERS\")"
+      ],
+      "handler": "collectSampleOrderController"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/orders/:id/process",
+      "source": "routes/laboratory.ts",
+      "line": 67,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORDERS\")"
+      ],
+      "handler": "markProcessingController"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/orders/:id/result",
+      "source": "routes/laboratory.ts",
+      "line": 68,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORDERS\")"
+      ],
+      "handler": "recordResultController"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/orders/:id/cancel",
+      "source": "routes/laboratory.ts",
+      "line": 69,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORDERS\")"
+      ],
+      "handler": "cancelOrderController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/locations",
+      "source": "routes/locations.ts",
+      "line": 30,
+      "guards": [
+        "authenticate",
+        "requireModule(\"locations\")",
+        "checkPermission(\"MANAGE_LOCATIONS\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "createLocation"
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboarding/locations",
+      "source": "routes/locations.ts",
+      "line": 31,
+      "guards": [
+        "authenticate",
+        "requireModule(\"locations\")",
+        "checkPermission(\"VIEW_LOCATIONS\")"
+      ],
+      "handler": "getLocations"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/locations/:id",
+      "source": "routes/locations.ts",
+      "line": 32,
+      "guards": [
+        "authenticate",
+        "requireModule(\"locations\")",
+        "checkPermission(\"MANAGE_LOCATIONS\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "updateLocation"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/locations/:id/publication",
+      "source": "routes/locations.ts",
+      "line": 33,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_LOCATIONS\")"
+      ],
+      "handler": "setLocationPublication"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/onboarding/locations/:id",
+      "source": "routes/locations.ts",
+      "line": 37,
+      "guards": [
+        "authenticate",
+        "requireModule(\"locations\")",
+        "checkPermission(\"MANAGE_LOCATIONS\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "deleteLocation"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/locations/:id/reactivate",
+      "source": "routes/locations.ts",
+      "line": 38,
+      "guards": [
+        "authenticate",
+        "requireModule(\"locations\")",
+        "checkPermission(\"MANAGE_LOCATIONS\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "reactivateLocation"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/locations/:id/reactivate",
+      "source": "routes/locations.ts",
+      "line": 39,
+      "guards": [
+        "authenticate",
+        "requireModule(\"locations\")",
+        "checkPermission(\"MANAGE_LOCATIONS\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "reactivateLocation"
+    },
+    {
+      "method": "POST",
+      "path": "/api/departments",
+      "source": "routes/locations.ts",
+      "line": 42,
+      "guards": [
+        "authenticate",
+        "requireModule(\"locations\")",
+        "checkPermission(\"MANAGE_LOCATIONS\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "createDepartment"
+    },
+    {
+      "method": "GET",
+      "path": "/api/departments",
+      "source": "routes/locations.ts",
+      "line": 43,
+      "guards": [
+        "authenticate",
+        "requireModule(\"locations\")",
+        "checkPermission(\"VIEW_LOCATIONS\")"
+      ],
+      "handler": "getDepartments"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/doctors/assignments",
+      "source": "routes/locations.ts",
+      "line": 46,
+      "guards": [
+        "authenticate",
+        "requireModule(\"locations\")",
+        "checkPermission(\"MANAGE_LOCATIONS\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "assignDoctor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboarding/doctors/assignments",
+      "source": "routes/locations.ts",
+      "line": 47,
+      "guards": [
+        "authenticate",
+        "requireModule(\"locations\")",
+        "checkPermission(\"VIEW_LOCATIONS\")"
+      ],
+      "handler": "getDoctorAssignments"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/doctors/assignments/:id",
+      "source": "routes/locations.ts",
+      "line": 48,
+      "guards": [
+        "authenticate",
+        "requireModule(\"locations\")",
+        "checkPermission(\"MANAGE_LOCATIONS\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "updateAssignment"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/onboarding/doctors/assignments/:id",
+      "source": "routes/locations.ts",
+      "line": 49,
+      "guards": [
+        "authenticate",
+        "requireModule(\"locations\")",
+        "checkPermission(\"MANAGE_LOCATIONS\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "removeAssignment"
+    },
+    {
+      "method": "GET",
+      "path": "/api/modules",
+      "source": "routes/moduleRegistry.ts",
+      "line": 15,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "getModules"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/modules/bulk",
+      "source": "routes/moduleRegistry.ts",
+      "line": 19,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "bulkToggleModules"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/modules/:moduleKey",
+      "source": "routes/moduleRegistry.ts",
+      "line": 20,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "toggleModule"
+    },
+    {
+      "method": "POST",
+      "path": "/api/modules/seed",
+      "source": "routes/moduleRegistry.ts",
+      "line": 23,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "seedModulesEndpoint"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notification-preferences",
+      "source": "routes/notificationPreferences.ts",
+      "line": 7,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/notification-preferences",
+      "source": "routes/notificationPreferences.ts",
+      "line": 19,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ws",
+      "source": "routes/notifications.ts",
+      "line": 37,
+      "guards": [],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/ws",
+      "source": "routes/notifications.ts",
+      "line": 40,
+      "guards": [],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/stream",
+      "source": "routes/notifications.ts",
+      "line": 45,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "notificationStreamHandler"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/metrics",
+      "source": "routes/notifications.ts",
+      "line": 48,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/dispatch-logs",
+      "source": "routes/notifications.ts",
+      "line": 57,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/unread-count",
+      "source": "routes/notifications.ts",
+      "line": 69,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "source": "routes/notifications.ts",
+      "line": 80,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/notifications/:id/read",
+      "source": "routes/notifications.ts",
+      "line": 105,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/notifications/read-all",
+      "source": "routes/notifications.ts",
+      "line": 123,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/notifications/:id/archive",
+      "source": "routes/notifications.ts",
+      "line": 135,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/notifications/:id",
+      "source": "routes/notifications.ts",
+      "line": 153,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/notifications/:id/snooze",
+      "source": "routes/notifications.ts",
+      "line": 171,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/notifications/:id/pin",
+      "source": "routes/notifications.ts",
+      "line": 191,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/users",
+      "source": "routes/notifications.ts",
+      "line": 209,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/send",
+      "source": "routes/notifications.ts",
+      "line": 227,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/test-trigger",
+      "source": "routes/notifications.ts",
+      "line": 357,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/test-email",
+      "source": "routes/notifications.ts",
+      "line": 388,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/organization",
+      "source": "routes/onboarding.ts",
+      "line": 32,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "createOrganization"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/draft",
+      "source": "routes/onboarding.ts",
+      "line": 38,
+      "guards": [],
+      "handler": "saveDraft"
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboarding/draft",
+      "source": "routes/onboarding.ts",
+      "line": 39,
+      "guards": [],
+      "handler": "getDraft"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/totp/setup",
+      "source": "routes/onboarding.ts",
+      "line": 43,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "setupOnboardingTOTP"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/totp/verify",
+      "source": "routes/onboarding.ts",
+      "line": 44,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "verifyOnboardingTOTP"
+    },
+    {
+      "method": "GET",
+      "path": "/api/organizations",
+      "source": "routes/onboarding.ts",
+      "line": 50,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "getAllOrganizations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboarding/organizations/:id/members",
+      "source": "routes/onboarding.ts",
+      "line": 51,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "getOrganizationMembers"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "source": "routes/onboarding.ts",
+      "line": 56,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "getGlobalUsers"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/users/:id/status",
+      "source": "routes/onboarding.ts",
+      "line": 57,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "updateGlobalUserStatus"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/organizations/:id/members/:userId",
+      "source": "routes/onboarding.ts",
+      "line": 61,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_STAFF\")"
+      ],
+      "handler": "removeOrganizationMember"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/organizations/:id/members/:userId/location-access",
+      "source": "routes/onboarding.ts",
+      "line": 64,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "updateMemberLocationAccess"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/hierarchy",
+      "source": "routes/onboarding.ts",
+      "line": 71,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "getPlatformHierarchy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/dashboard",
+      "source": "routes/onboarding.ts",
+      "line": 72,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "getPlatformDashboard"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/organizations/:id",
+      "source": "routes/onboarding.ts",
+      "line": 75,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "updateOrganizationById"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/organizations/:id",
+      "source": "routes/onboarding.ts",
+      "line": 76,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "deleteOrganizationById"
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboarding/organization/preferences",
+      "source": "routes/onboarding.ts",
+      "line": 79,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "getOrganizationWorkflowPreferences"
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboarding/organization/me",
+      "source": "routes/onboarding.ts",
+      "line": 80,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "getOrganizationSettings"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/organization/me",
+      "source": "routes/onboarding.ts",
+      "line": 81,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "updateOrganizationSettings"
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboarding/organization/me/smtp",
+      "source": "routes/onboarding.ts",
+      "line": 84,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "getOrganizationSmtp"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/organization/me/smtp",
+      "source": "routes/onboarding.ts",
+      "line": 85,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "updateOrganizationSmtp"
+    },
+    {
+      "method": "POST",
+      "path": "/api/organizations/branding/uploads",
+      "source": "routes/organizationBranding.ts",
+      "line": 17,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_ORGANIZATION\", \"MANAGE_LOCATIONS\")"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/organizations/branding/uploads/:id",
+      "source": "routes/organizationBranding.ts",
+      "line": 44,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_ORGANIZATION\", \"MANAGE_LOCATIONS\")"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/organization-branding/:id",
+      "source": "routes/organizationBranding.ts",
+      "line": 56,
+      "guards": [],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/operations/domain-events/metrics",
+      "source": "routes/outboxOperations.ts",
+      "line": 15,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/operations/providers/metrics",
+      "source": "routes/outboxOperations.ts",
+      "line": 24,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/operations/dead-letters",
+      "source": "routes/outboxOperations.ts",
+      "line": 33,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/operations/dead-letters/:kind/:id/replay",
+      "source": "routes/outboxOperations.ts",
+      "line": 50,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/patient/me",
+      "source": "routes/patientPortal.ts",
+      "line": 45,
+      "guards": [
+        "authenticate",
+        "requireModule(\"patients\")",
+        "checkAnyPermissionOrRoles([\"patient\"], \"VIEW_PATIENTS\", \"MANAGE_PATIENTS\")"
+      ],
+      "handler": "getCurrentPatientProfile"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/patient/me",
+      "source": "routes/patientPortal.ts",
+      "line": 46,
+      "guards": [
+        "authenticate",
+        "requireModule(\"patients\")",
+        "checkAnyPermissionOrRoles([\"patient\"], \"VIEW_PATIENTS\", \"MANAGE_PATIENTS\")"
+      ],
+      "handler": "updateCurrentPatientProfile"
+    },
+    {
+      "method": "POST",
+      "path": "/api/patient-portal/self-book",
+      "source": "routes/patientPortal.ts",
+      "line": 48,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_APPOINTMENTS\", \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "patientSelfBookAppointment"
+    },
+    {
+      "method": "GET",
+      "path": "/api/patient-portal/appointments",
+      "source": "routes/patientPortal.ts",
+      "line": 57,
+      "guards": [
+        "authenticate",
+        "requireModule(\"appointments\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_APPOINTMENTS\", \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "getPatientAppointmentsHistory"
+    },
+    {
+      "method": "GET",
+      "path": "/api/patient-portal/records",
+      "source": "routes/patientPortal.ts",
+      "line": 60,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkAnyPermissionOrRoles([\"patient\", \"family_member\"], \"VIEW_EHR\")"
+      ],
+      "handler": "getPatientMedicalRecords"
+    },
+    {
+      "method": "POST",
+      "path": "/api/prescriptions/:id/refill",
+      "source": "routes/patientPortal.ts",
+      "line": 62,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkAnyPermissionOrRoles([\"patient\"], \"VIEW_EHR\", \"MANAGE_MEDICINES\")"
+      ],
+      "handler": "createPrescriptionRefillRequest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/prescriptions/refills",
+      "source": "routes/patientPortal.ts",
+      "line": 63,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkAnyPermissionOrRoles([\"patient\"], \"VIEW_EHR\", \"MANAGE_MEDICINES\")"
+      ],
+      "handler": "getPrescriptionRefillRequests"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/prescriptions/refills/:id",
+      "source": "routes/patientPortal.ts",
+      "line": 64,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkAnyPermissionOrRoles([\"patient\"], \"VIEW_EHR\", \"MANAGE_MEDICINES\")"
+      ],
+      "handler": "updatePrescriptionRefillRequestStatus"
+    },
+    {
+      "method": "POST",
+      "path": "/api/insurance/pec/evaluate",
+      "source": "routes/pec.ts",
+      "line": 9,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_BILLING\", \"MANAGE_BILLING\", \"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "evaluatePecClaim"
+    },
+    {
+      "method": "POST",
+      "path": "/api/medicines",
+      "source": "routes/pharmacy.ts",
+      "line": 26,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkPermission(\"MANAGE_MEDICINES\")"
+      ],
+      "handler": "createMedicine"
+    },
+    {
+      "method": "GET",
+      "path": "/api/medicines",
+      "source": "routes/pharmacy.ts",
+      "line": 27,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkAnyPermission(\"MANAGE_MEDICINES\", \"VIEW_EHR\")"
+      ],
+      "handler": "getMedicines"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/medicines/:id",
+      "source": "routes/pharmacy.ts",
+      "line": 28,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkPermission(\"MANAGE_MEDICINES\")"
+      ],
+      "handler": "updateMedicine"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/medicines/:id",
+      "source": "routes/pharmacy.ts",
+      "line": 29,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkPermission(\"MANAGE_MEDICINES\")"
+      ],
+      "handler": "deleteMedicine"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pharmacy/dispense",
+      "source": "routes/pharmacy.ts",
+      "line": 30,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkPermission(\"MANAGE_MEDICINES\")"
+      ],
+      "handler": "dispensePrescription"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pharmacy/pending-prescriptions",
+      "source": "routes/pharmacy.ts",
+      "line": 31,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkAnyPermission(\"MANAGE_MEDICINES\", \"VIEW_EHR\")"
+      ],
+      "handler": "getPendingPrescriptionsController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pharmacy/prescriptions/pending",
+      "source": "routes/pharmacy.ts",
+      "line": 32,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkAnyPermission(\"MANAGE_MEDICINES\", \"VIEW_EHR\")"
+      ],
+      "handler": "getPendingPrescriptionsController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pharmacy/adjust-stock",
+      "source": "routes/pharmacy.ts",
+      "line": 33,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkPermission(\"MANAGE_MEDICINES\")"
+      ],
+      "handler": "adjustStock"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pharmacy/batches",
+      "source": "routes/pharmacy.ts",
+      "line": 36,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkPermission(\"MANAGE_MEDICINES\")"
+      ],
+      "handler": "createMedicineBatch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pharmacy/medicines/:id/batches",
+      "source": "routes/pharmacy.ts",
+      "line": 37,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkAnyPermission(\"MANAGE_MEDICINES\", \"VIEW_EHR\")"
+      ],
+      "handler": "getMedicineBatches"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pharmacy/expiring",
+      "source": "routes/pharmacy.ts",
+      "line": 38,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkAnyPermission(\"MANAGE_MEDICINES\", \"VIEW_EHR\")"
+      ],
+      "handler": "getExpiringMedicinesController"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pre-auth",
+      "source": "routes/preAuth.ts",
+      "line": 18,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_BILLING\", \"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "createPreAuthRequest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pre-auth",
+      "source": "routes/preAuth.ts",
+      "line": 19,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_BILLING\", \"MANAGE_BILLING\", \"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "getPreAuthList"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/pre-auth/:id",
+      "source": "routes/preAuth.ts",
+      "line": 20,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_BILLING\", \"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "updatePreAuthStatus"
+    },
+    {
+      "method": "GET",
+      "path": "/api/encounters/:encounterId/prescription/print",
+      "source": "routes/prescriptionPrint.ts",
+      "line": 21,
+      "guards": [
+        "authenticate",
+        "requireModule(\"consultations\")",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/discovery",
+      "source": "routes/public.ts",
+      "line": 24,
+      "guards": [],
+      "handler": "getPublicDiscovery"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/organizations",
+      "source": "routes/public.ts",
+      "line": 26,
+      "guards": [],
+      "handler": "getOrganizations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/organizations/:id",
+      "source": "routes/public.ts",
+      "line": 29,
+      "guards": [],
+      "handler": "getOrganizationDetails"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/locations",
+      "source": "routes/public.ts",
+      "line": 32,
+      "guards": [],
+      "handler": "getPublicLocations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/locations/:id",
+      "source": "routes/public.ts",
+      "line": 35,
+      "guards": [],
+      "handler": "getPublicLocationDetails"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/doctors/:doctorId/profile",
+      "source": "routes/public.ts",
+      "line": 37,
+      "guards": [],
+      "handler": "getPublicDoctorProfile"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/doctors/:doctorId/slots",
+      "source": "routes/public.ts",
+      "line": 40,
+      "guards": [],
+      "handler": "getDoctorSlots"
+    },
+    {
+      "method": "POST",
+      "path": "/api/public/booking-session",
+      "source": "routes/public.ts",
+      "line": 43,
+      "guards": [],
+      "handler": "createPublicBookingSession"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/track/:appointmentId",
+      "source": "routes/public.ts",
+      "line": 65,
+      "guards": [],
+      "handler": "getPublicAppointmentTracker"
+    },
+    {
+      "method": "POST",
+      "path": "/api/public/track/:appointmentId/check-in-capability",
+      "source": "routes/public.ts",
+      "line": 68,
+      "guards": [],
+      "handler": "issuePublicTrackerCheckInCapability"
+    },
+    {
+      "method": "POST",
+      "path": "/api/public/track/:appointmentId/check-in",
+      "source": "routes/public.ts",
+      "line": 71,
+      "guards": [],
+      "handler": "processPublicTrackerCheckIn"
+    },
+    {
+      "method": "POST",
+      "path": "/api/public/track/:appointmentId/return",
+      "source": "routes/public.ts",
+      "line": 76,
+      "guards": [],
+      "handler": "processPublicTrackerReturn"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/track/:appointmentId/prescription/print",
+      "source": "routes/public.ts",
+      "line": 79,
+      "guards": [],
+      "handler": "printPublicTrackerPrescription"
+    },
+    {
+      "method": "POST",
+      "path": "/api/public/join-queue",
+      "source": "routes/public.ts",
+      "line": 82,
+      "guards": [],
+      "handler": "joinPublicQueue"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/queue-tv/:locationId",
+      "source": "routes/public.ts",
+      "line": 85,
+      "guards": [],
+      "handler": "getPublicQueueTv"
+    },
+    {
+      "method": "GET",
+      "path": "/api/public/queue/tv",
+      "source": "routes/public.ts",
+      "line": 86,
+      "guards": [],
+      "handler": "getPublicQueueTv"
+    },
+    {
+      "method": "POST",
+      "path": "/api/public/track-visit",
+      "source": "routes/public.ts",
+      "line": 89,
+      "guards": [],
+      "handler": "trackSiteVisitController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/reports/export",
+      "source": "routes/reportExport.ts",
+      "line": 9,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_ANALYTICS\", \"VIEW_EHR\", \"VIEW_BILLING\", \"MANAGE_BILLING\", \"MANAGE_MEDICINES\", \"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "exportReport"
+    },
+    {
+      "method": "GET",
+      "path": "/api/roles",
+      "source": "routes/role.ts",
+      "line": 17,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "getRoles"
+    },
+    {
+      "method": "GET",
+      "path": "/api/permissions",
+      "source": "routes/role.ts",
+      "line": 18,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "getPermissionCatalog"
+    },
+    {
+      "method": "POST",
+      "path": "/api/roles",
+      "source": "routes/role.ts",
+      "line": 19,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"ADMINISTRATIVE_GOVERNANCE\")"
+      ],
+      "handler": "createRole"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/roles/:name",
+      "source": "routes/role.ts",
+      "line": 20,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"ADMINISTRATIVE_GOVERNANCE\")"
+      ],
+      "handler": "updateRolePermissions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/roles/:name",
+      "source": "routes/role.ts",
+      "line": 21,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"ADMINISTRATIVE_GOVERNANCE\")"
+      ],
+      "handler": "deleteRole"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/users/:id/role",
+      "source": "routes/role.ts",
+      "line": 22,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"ADMINISTRATIVE_GOVERNANCE\")"
+      ],
+      "handler": "updateUserRole"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pharmacy/schedule-h1-register",
+      "source": "routes/scheduleH1.ts",
+      "line": 7,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkAnyPermission(\"MANAGE_MEDICINES\", \"VIEW_EHR\")"
+      ],
+      "handler": "getScheduleH1Entries"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pharmacy/schedule-h1-register/export",
+      "source": "routes/scheduleH1.ts",
+      "line": 15,
+      "guards": [
+        "authenticate",
+        "requireModule(\"pharmacy\")",
+        "checkPermission(\"MANAGE_MEDICINES\")"
+      ],
+      "handler": "exportScheduleH1Register"
+    },
+    {
+      "method": "GET",
+      "path": "/api/patients/:id/search",
+      "source": "routes/search.ts",
+      "line": 11,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"VIEW_EHR\")"
+      ],
+      "handler": "searchPatientRecordController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/encounters/:id/summary-report",
+      "source": "routes/search.ts",
+      "line": 12,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"VIEW_EHR\")"
+      ],
+      "handler": "getEncounterSummaryReportController"
+    },
+    {
+      "method": "GET",
+      "path": "/api/service-catalog",
+      "source": "routes/serviceCatalog.ts",
+      "line": 29,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"VIEW_BILLING\", \"MANAGE_BILLING\")"
+      ],
+      "handler": "getServices"
+    },
+    {
+      "method": "GET",
+      "path": "/api/service-catalog/:id",
+      "source": "routes/serviceCatalog.ts",
+      "line": 30,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkAnyPermission(\"VIEW_BILLING\", \"MANAGE_BILLING\")"
+      ],
+      "handler": "getServiceById"
+    },
+    {
+      "method": "POST",
+      "path": "/api/service-catalog",
+      "source": "routes/serviceCatalog.ts",
+      "line": 31,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "createService"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/service-catalog/:id",
+      "source": "routes/serviceCatalog.ts",
+      "line": 32,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "updateService"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/service-catalog/:id",
+      "source": "routes/serviceCatalog.ts",
+      "line": 33,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "deleteService"
+    },
+    {
+      "method": "POST",
+      "path": "/api/service-catalog/seed",
+      "source": "routes/serviceCatalog.ts",
+      "line": 34,
+      "guards": [
+        "authenticate",
+        "requireModule(\"billing\")",
+        "checkPermission(\"MANAGE_BILLING\")"
+      ],
+      "handler": "seedDefaultServices"
+    },
+    {
+      "method": "POST",
+      "path": "/api/public/setup-requests",
+      "source": "routes/setupRequests.ts",
+      "line": 9,
+      "guards": [],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/setup-requests",
+      "source": "routes/setupRequests.ts",
+      "line": 39,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/setup-requests/:id",
+      "source": "routes/setupRequests.ts",
+      "line": 49,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/shifts/",
+      "source": "routes/shifts.ts",
+      "line": 25,
+      "guards": [
+        "checkAnyPermission(\"VIEW_STAFF\", \"MANAGE_STAFF\", \"VIEW_EHR\")"
+      ],
+      "handler": "getShifts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/shifts/",
+      "source": "routes/shifts.ts",
+      "line": 26,
+      "guards": [
+        "checkAnyPermission(\"MANAGE_STAFF\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "createShift"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/shifts/:id/status",
+      "source": "routes/shifts.ts",
+      "line": 27,
+      "guards": [
+        "checkAnyPermission(\"MANAGE_STAFF\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "updateShiftStatus"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/shifts/:id/handover",
+      "source": "routes/shifts.ts",
+      "line": 28,
+      "guards": [
+        "checkAnyPermission(\"MANAGE_STAFF\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "updateHandoverNotes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/shifts/:id",
+      "source": "routes/shifts.ts",
+      "line": 29,
+      "guards": [
+        "checkPermission(\"MANAGE_STAFF\")"
+      ],
+      "handler": "deleteShift"
+    },
+    {
+      "method": "GET",
+      "path": "/api/soap-templates",
+      "source": "routes/soapTemplate.ts",
+      "line": 13,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"VIEW_EHR\", \"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "getSoapTemplates"
+    },
+    {
+      "method": "POST",
+      "path": "/api/soap-templates",
+      "source": "routes/soapTemplate.ts",
+      "line": 14,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "createSoapTemplate"
+    },
+    {
+      "method": "POST",
+      "path": "/api/soap-templates/seed",
+      "source": "routes/soapTemplate.ts",
+      "line": 15,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_EHR\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "seedDefaultSoapTemplates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/sso/initiate",
+      "source": "routes/sso.ts",
+      "line": 7,
+      "guards": [],
+      "handler": "initiateSsoRedirect"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/sso/callback",
+      "source": "routes/sso.ts",
+      "line": 8,
+      "guards": [],
+      "handler": "handleSsoCallback"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/doctor",
+      "source": "routes/staff.ts",
+      "line": 24,
+      "guards": [
+        "authenticate",
+        "requireModule(\"staff\")",
+        "checkPermission(\"MANAGE_STAFF\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "addDoctor"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/receptionist",
+      "source": "routes/staff.ts",
+      "line": 25,
+      "guards": [
+        "authenticate",
+        "requireModule(\"staff\")",
+        "checkPermission(\"MANAGE_STAFF\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "addReceptionist"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/staff",
+      "source": "routes/staff.ts",
+      "line": 26,
+      "guards": [
+        "authenticate",
+        "requireModule(\"staff\")",
+        "checkPermission(\"MANAGE_STAFF\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "addStaff"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/admin/enable-doctor-profile",
+      "source": "routes/staff.ts",
+      "line": 27,
+      "guards": [
+        "authenticate",
+        "requireModule(\"staff\")",
+        "checkPermission(\"MANAGE_STAFF\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "enableAdminDoctorProfile"
+    },
+    {
+      "method": "POST",
+      "path": "/api/onboarding/invitations",
+      "source": "routes/staff.ts",
+      "line": 28,
+      "guards": [
+        "authenticate",
+        "requireModule(\"staff\")",
+        "checkPermission(\"MANAGE_STAFF\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "inviteStaff"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/accept-invitation",
+      "source": "routes/staff.ts",
+      "line": 29,
+      "guards": [],
+      "handler": "acceptInvitation"
+    },
+    {
+      "method": "GET",
+      "path": "/api/onboarding/staff",
+      "source": "routes/staff.ts",
+      "line": 30,
+      "guards": [
+        "authenticate",
+        "requireModule(\"staff\")",
+        "checkPermission(\"VIEW_STAFF\")"
+      ],
+      "handler": "getOrgStaff"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/doctor/:id",
+      "source": "routes/staff.ts",
+      "line": 31,
+      "guards": [
+        "authenticate",
+        "requireModule(\"staff\")",
+        "checkPermission(\"MANAGE_STAFF\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "updateDoctor"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/receptionist/:id",
+      "source": "routes/staff.ts",
+      "line": 32,
+      "guards": [
+        "authenticate",
+        "requireModule(\"staff\")",
+        "checkPermission(\"MANAGE_STAFF\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "updateReceptionist"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/onboarding/staff/:id",
+      "source": "routes/staff.ts",
+      "line": 33,
+      "guards": [
+        "authenticate",
+        "requireModule(\"staff\")",
+        "checkPermission(\"MANAGE_STAFF\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "updateStaff"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/onboarding/staff/:id",
+      "source": "routes/staff.ts",
+      "line": 34,
+      "guards": [
+        "authenticate",
+        "requireModule(\"staff\")",
+        "checkPermission(\"MANAGE_STAFF\")",
+        "enforceSubscriptionActive"
+      ],
+      "handler": "deleteStaff"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health/synthetic",
+      "source": "routes/syntheticHealth.ts",
+      "line": 27,
+      "guards": [],
+      "handler": "inline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks",
+      "source": "routes/tasks.ts",
+      "line": 20,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_ORGANIZATION\", \"MANAGE_STAFF\", \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks",
+      "source": "routes/tasks.ts",
+      "line": 78,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/tasks/:id/status",
+      "source": "routes/tasks.ts",
+      "line": 102,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teleconsultation/sessions",
+      "source": "routes/teleconsultation.ts",
+      "line": 53,
+      "guards": [
+        "authenticate",
+        "checkAnyPermissionOrRoles([\"patient\"], \"VIEW_APPOINTMENTS\", \"VIEW_EHR\", \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "getTeleSessions"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teleconsultation/session",
+      "source": "routes/teleconsultation.ts",
+      "line": 54,
+      "guards": [
+        "authenticate",
+        "checkAnyPermissionOrRoles([\"patient\"], \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "createTeleSession"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teleconsultation/session/:appointmentId",
+      "source": "routes/teleconsultation.ts",
+      "line": 55,
+      "guards": [
+        "authenticate",
+        "checkAnyPermissionOrRoles([\"patient\"], \"VIEW_APPOINTMENTS\", \"VIEW_EHR\", \"MANAGE_APPOINTMENTS\")"
+      ],
+      "handler": "getTeleSession"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teleconsultation/session/:id/start",
+      "source": "routes/teleconsultation.ts",
+      "line": 56,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_APPOINTMENTS\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "startTeleSession"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teleconsultation/session/:id/notes",
+      "source": "routes/teleconsultation.ts",
+      "line": 57,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "updateTeleSessionNotes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teleconsultation/session/:id/end",
+      "source": "routes/teleconsultation.ts",
+      "line": 58,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_APPOINTMENTS\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "endTeleSession"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teleconsultation/session/:id/signal",
+      "source": "routes/teleconsultation.ts",
+      "line": 59,
+      "guards": [
+        "authenticate",
+        "checkAnyPermissionOrRoles([\"patient\"], \"VIEW_APPOINTMENTS\", \"MANAGE_APPOINTMENTS\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "postSessionSignal"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teleconsultation/session/:id/signals",
+      "source": "routes/teleconsultation.ts",
+      "line": 60,
+      "guards": [
+        "authenticate",
+        "checkAnyPermissionOrRoles([\"patient\"], \"VIEW_APPOINTMENTS\", \"MANAGE_APPOINTMENTS\", \"MANAGE_CLINICAL_NOTES\")"
+      ],
+      "handler": "getSessionSignals"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/traffic",
+      "source": "routes/trafficAnalytics.ts",
+      "line": 7,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "getSiteTrafficAnalytics"
+    },
+    {
+      "method": "POST",
+      "path": "/api/webhooks/upi",
+      "source": "routes/upiWebhook.ts",
+      "line": 6,
+      "guards": [],
+      "handler": "handleInboundUpiWebhook"
+    },
+    {
+      "method": "POST",
+      "path": "/api/uploads/intent",
+      "source": "routes/upload.ts",
+      "line": 29,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "createIntent"
+    },
+    {
+      "method": "POST",
+      "path": "/api/uploads/verify",
+      "source": "routes/upload.ts",
+      "line": 31,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/uploads/download/:intentId",
+      "source": "routes/upload.ts",
+      "line": 69,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/uploads/base64",
+      "source": "routes/upload.ts",
+      "line": 86,
+      "guards": [
+        "authenticate"
+      ],
+      "handler": "inline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/whatsapp",
+      "source": "routes/whatsappCredits.ts",
+      "line": 21,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "getPlatformWhatsAppConfig"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/whatsapp",
+      "source": "routes/whatsappCredits.ts",
+      "line": 22,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "savePlatformWhatsAppConfig"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/whatsapp/test",
+      "source": "routes/whatsappCredits.ts",
+      "line": 25,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "testWhatsAppConnection"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/whatsapp/templates/sync",
+      "source": "routes/whatsappCredits.ts",
+      "line": 26,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "syncWhatsAppTemplates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/whatsapp/health",
+      "source": "routes/whatsappCredits.ts",
+      "line": 27,
+      "guards": [
+        "authenticate",
+        "requirePlatformRoot()",
+        "requirePlatformRoot"
+      ],
+      "handler": "getWhatsAppHealth"
+    },
+    {
+      "method": "POST",
+      "path": "/api/organization/whatsapp/test",
+      "source": "routes/whatsappCredits.ts",
+      "line": 28,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "testWhatsAppConnection"
+    },
+    {
+      "method": "POST",
+      "path": "/api/organization/whatsapp/templates/sync",
+      "source": "routes/whatsappCredits.ts",
+      "line": 29,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "syncWhatsAppTemplates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/organization/whatsapp/health",
+      "source": "routes/whatsappCredits.ts",
+      "line": 30,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "getWhatsAppHealth"
+    },
+    {
+      "method": "GET",
+      "path": "/api/organization/whatsapp",
+      "source": "routes/whatsappCredits.ts",
+      "line": 33,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_ORGANIZATION\", \"VIEW_BILLING\", \"MANAGE_BILLING\")"
+      ],
+      "handler": "getOrganizationWhatsAppConfig"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/organization/whatsapp",
+      "source": "routes/whatsappCredits.ts",
+      "line": 36,
+      "guards": [
+        "authenticate",
+        "checkPermission(\"MANAGE_ORGANIZATION\")"
+      ],
+      "handler": "updateOrganizationWhatsAppConfig"
+    },
+    {
+      "method": "POST",
+      "path": "/api/organization/whatsapp/top-up",
+      "source": "routes/whatsappCredits.ts",
+      "line": 39,
+      "guards": [
+        "authenticate",
+        "checkAnyPermission(\"MANAGE_ORGANIZATION\", \"MANAGE_BILLING\")"
+      ],
+      "handler": "purchaseWhatsAppCredits"
+    },
+    {
+      "method": "GET",
+      "path": "/api/webhooks/whatsapp",
+      "source": "routes/whatsappWebhook.ts",
+      "line": 6,
+      "guards": [],
+      "handler": "verifyWhatsAppWebhook"
+    },
+    {
+      "method": "POST",
+      "path": "/api/webhooks/whatsapp",
+      "source": "routes/whatsappWebhook.ts",
+      "line": 9,
+      "guards": [],
+      "handler": "handleWhatsAppWebhookEvent"
+    }
+  ],
+  "modules": [
+    {
+      "key": "dashboard",
+      "definition": "{ route: \"/dashboard\",              priority: \"P1\", label: \"Dashboard Overview\",    alwaysOn: true, section: \"Core Workspace\",         description: \"Main dashboard with overview metrics and quick actions\" }"
+    },
+    {
+      "key": "notifications",
+      "definition": "{ route: \"/dashboard/notifications\", priority: \"P1\", label: \"Notifications\",        alwaysOn: true, section: \"Core Workspace\",         description: \"System notifications and alerts center\" }"
+    },
+    {
+      "key": "settings",
+      "definition": "{ route: \"/dashboard/settings\",      priority: \"P1\", label: \"System Settings\",      alwaysOn: true, section: \"Administration\",         description: \"Organization, AI, notification, and billing settings\" }"
+    },
+    {
+      "key": "appointments",
+      "definition": "{ route: \"/dashboard/appointments\",  priority: \"P1\", label: \"Appointments\",                        section: \"Outpatient (OPD)\",       description: \"Schedule and manage patient appointments\" }"
+    },
+    {
+      "key": "queue",
+      "definition": "{ route: \"/dashboard/queue\",          priority: \"P1\", label: \"Queue Desk\",                          section: \"Outpatient (OPD)\",       description: \"Real-time patient queue management for front desk\" }"
+    },
+    {
+      "key": "patients",
+      "definition": "{ route: \"/dashboard/patients\",       priority: \"P1\", label: \"Patients Directory\",                  section: \"Outpatient (OPD)\",       description: \"Patient registration, search, and demographic records\" }"
+    },
+    {
+      "key": "consultations",
+      "definition": "{ route: \"/dashboard/consultations\",  priority: \"P1\", label: \"Consultations (SOAP)\",                section: \"Outpatient (OPD)\",       description: \"Clinical consultations with SOAP notes and EHR\" }"
+    },
+    {
+      "key": "billing",
+      "definition": "{ route: \"/dashboard/billing\",        priority: \"P1\", label: \"Patient Billing\",                     section: \"Billing & Finance\",      description: \"Create, manage, and track patient invoices\" }"
+    },
+    {
+      "key": "pharmacy",
+      "definition": "{ route: \"/dashboard/pharmacy\",       priority: \"P1\", label: \"Pharmacy Inventory\",                  section: \"Diagnostics & Pharmacy\", description: \"Medicine stock management, batches, and dispensing\" }"
+    },
+    {
+      "key": "staff",
+      "definition": "{ route: \"/dashboard/staff\",          priority: \"P1\", label: \"Staff Accounts\",                      section: \"Administration\",         description: \"Manage doctors, nurses, receptionists, and other staff\" }"
+    },
+    {
+      "key": "locations",
+      "definition": "{ route: \"/dashboard/locations\",        priority: \"P1\", label: \"Locations\",                          section: \"Administration\",         description: \"Add and manage healthcare locations\" }"
+    },
+    {
+      "key": "laboratory",
+      "definition": "{ route: \"/dashboard/laboratory\",     priority: \"P2\", label: \"Laboratory & LIS\",                   section: \"Diagnostics & Pharmacy\", description: \"Lab test ordering, sample tracking, and result management\" }"
+    },
+    {
+      "key": "radiology",
+      "definition": "{ route: \"/dashboard/radiology\",      priority: \"P2\", label: \"Radiology & PACS\",                   section: \"Diagnostics & Pharmacy\", description: \"Imaging orders, radiology reports, and PACS integration\" }"
+    },
+    {
+      "key": "analytics",
+      "definition": "{ route: \"/dashboard/analytics\",      priority: \"P2\", label: \"Analytics\",                          section: \"Core Workspace\",         description: \"Operational and financial analytics dashboards\" }"
+    },
+    {
+      "key": "service-catalog",
+      "definition": "{ route: \"/dashboard/billing/services\", priority: \"P2\", label: \"Service Catalog\",                  section: \"Billing & Finance\",      description: \"Define and manage billable services and pricing\" }"
+    },
+    {
+      "key": "insurance",
+      "definition": "{ route: \"/dashboard/insurance\",      priority: \"P2\", label: \"Insurance & Claims\",                 section: \"Billing & Finance\",      description: \"Insurance tariffs, claims processing, and pre-authorization\" }"
+    },
+    {
+      "key": "teleconsultation",
+      "definition": "{ route: \"/dashboard/teleconsultation\", priority: \"P2\", label: \"Teleconsultation\",                section: \"Outpatient (OPD)\",       description: \"Video consultations with virtual waiting rooms\" }"
+    },
+    {
+      "key": "shifts",
+      "definition": "{ route: \"/dashboard/shifts\",          priority: \"P2\", label: \"Shift Roster\",                      section: \"Administration\",         description: \"Staff shift scheduling and roster management\" }"
+    },
+    {
+      "key": "audit",
+      "definition": "{ route: \"/dashboard/audit\",           priority: \"P2\", label: \"Audit Logs\",                        section: \"Administration\",         description: \"System-wide audit trail and activity logging\" }"
+    },
+    {
+      "key": "feedback",
+      "definition": "{ route: \"/dashboard/feedback\",       priority: \"P2\", label: \"Patient Feedback\",                   section: \"Administration\",         description: \"Collect and analyze patient experience feedback\" }"
+    }
+  ],
+  "models": [
+    "models/AIChatMessage.ts",
+    "models/AIChatSession.ts",
+    "models/AIObservabilityMetric.ts",
+    "models/AIOrganizationConfig.ts",
+    "models/AIPromptTemplate.ts",
+    "models/AIToolExecutionLog.ts",
+    "models/Appointment.ts",
+    "models/AppointmentPayment.ts",
+    "models/AuditChainHead.ts",
+    "models/AuditCheckpoint.ts",
+    "models/AuditLog.ts",
+    "models/CashierShift.ts",
+    "models/CDSEvaluation.ts",
+    "models/ChainTransitionRecord.ts",
+    "models/Claim.ts",
+    "models/ClinicalNote.ts",
+    "models/Counter.ts",
+    "models/CrmActivity.ts",
+    "models/DataBreachIncident.ts",
+    "models/Department.ts",
+    "models/Doctor.ts",
+    "models/DoctorAssignment.ts",
+    "models/DoctorDayOverride.ts",
+    "models/DocumentUpload.ts",
+    "models/DomainEventOutbox.ts",
+    "models/DPDPConsent.ts",
+    "models/Encounter.ts",
+    "models/FamilyRelationship.ts",
+    "models/ImagingStudy.ts",
+    "models/Inquiry.ts",
+    "models/InsuranceTariff.ts",
+    "models/Invoice.ts",
+    "models/LabOrder.ts",
+    "models/LabTest.ts",
+    "models/Location.ts",
+    "models/Medicine.ts",
+    "models/MedicineBatch.ts",
+    "models/ModuleRegistry.ts",
+    "models/Notification.ts",
+    "models/NotificationDelivery.ts",
+    "models/NotificationLog.ts",
+    "models/NotificationPreference.ts",
+    "models/Observation.ts",
+    "models/ObservationAlert.ts",
+    "models/ObservationScore.ts",
+    "models/OnboardingDraft.ts",
+    "models/OpdSession.ts",
+    "models/OpdTemplate.ts",
+    "models/OperationReceipt.ts",
+    "models/Organization.ts",
+    "models/OrganizationBrandingAsset.ts",
+    "models/OrgInvite.ts",
+    "models/OrgMember.ts",
+    "models/OtpVerification.ts",
+    "models/OutboundMessage.ts",
+    "models/Passkey.ts",
+    "models/PasskeyChallenge.ts",
+    "models/Patient.ts",
+    "models/PatientFeedback.ts",
+    "models/PatientRecordAccess.ts",
+    "models/PatientRelationship.ts",
+    "models/PendingTwoFactorSetup.ts",
+    "models/PreAuthorization.ts",
+    "models/Prescription.ts",
+    "models/PublicLink.ts",
+    "models/Receptionist.ts",
+    "models/RefillRequest.ts",
+    "models/RefreshToken.ts",
+    "models/Role.ts",
+    "models/SaaSConfig.ts",
+    "models/SaaSInvoice.ts",
+    "models/SaaSPlan.ts",
+    "models/ScheduleH1Register.ts",
+    "models/ServiceCatalog.ts",
+    "models/SetupRequest.ts",
+    "models/ShiftRoster.ts",
+    "models/SiteVisit.ts",
+    "models/SoapTemplate.ts",
+    "models/SsoAssertion.ts",
+    "models/Subscription.ts",
+    "models/SubscriptionPayment.ts",
+    "models/Task.ts",
+    "models/TeleconsultationSession.ts",
+    "models/UploadIntent.ts",
+    "models/UsageRecord.ts",
+    "models/User.ts",
+    "models/WhatsAppAccount.ts",
+    "models/WhatsAppBookingSession.ts",
+    "models/WhatsAppInboundMessage.ts",
+    "models/WhatsAppRecipient.ts",
+    "models/WhatsAppTemplate.ts",
+    "models/WhatsAppWebhookInbox.ts",
+    "models/WorkerLease.ts"
+  ],
+  "workersAndJobs": [
+    "workers/disruptionTimeoutWorker.ts",
+    "workers/domainEventWorker.ts",
+    "workers/notificationDeliveryWorker.ts",
+    "workers/outboundMessageWorker.ts",
+    "jobs/billingReconciliationJob.ts",
+    "jobs/crmReminderJob.ts",
+    "jobs/disruptionTimeoutJob.ts",
+    "jobs/organizationBrandingJob.ts"
+  ]
+}

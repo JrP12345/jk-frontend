@@ -10,6 +10,7 @@ import { Alert, Button, Skeleton, SkeletonCard } from "@/components/ui";
 import { RotateCw, ArrowLeft } from "lucide-react";
 import { userFacingError } from "@/lib/userFacingError";
 import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
+import { useAuthStore } from "@/store/authStore";
 
 interface ConsultationClientWorkspaceProps {
   appointmentId: string;
@@ -17,7 +18,17 @@ interface ConsultationClientWorkspaceProps {
   initialLocationId?: string;
 }
 
-export function ConsultationClientWorkspace({
+export function ConsultationClientWorkspace(props: ConsultationClientWorkspaceProps) {
+  const { user } = useAuthStore();
+  const router = useRouter();
+  if (user && ["patient", "family_member"].includes(user.role)) return <Alert variant="info" title="Your care records">
+    View shared consultation notes and prescriptions in your patient portal.
+    <Button className="mt-3" onClick={() => router.push("/dashboard/patient-portal")}>Open care records</Button>
+  </Alert>;
+  return <ClinicalConsultationWorkspace {...props} />;
+}
+
+function ClinicalConsultationWorkspace({
   appointmentId,
   initialPatientId,
   initialLocationId,

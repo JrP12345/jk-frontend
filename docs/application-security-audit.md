@@ -1,5 +1,39 @@
 # Application security review — 2026-10-15
 
+## Implementation closeout
+
+The seven original fixes were inspected and their 13 focused authorization regressions
+passed again. Additional confirmed gaps were implemented without deployed-data changes:
+
+| Prior outstanding area | Actual source resolution | Remaining deployment obligation |
+| --- | --- | --- |
+| Legacy grants (high) | Removed implicit all-branch fallback; validate tenant ownership, active branches and matching membership roles | Review missing legacy grants before rollout |
+| Permission presets/assignment (high) | Organization staff assignment cannot select root or consumer identities; organization admins cannot edit consumer presets | Review historical custom presets/assignments through authorized administration |
+| Exception data exposure (high) | Metadata-only catch logging, Pino serializers, telemetry minimization and production 5xx envelopes | Review historical retention/access and new log call sites |
+| Staff MFA (high assurance gap) | Existing TOTP enforced for production staff; recent-login/session-bound encrypted enrollment, UI gate and operator recovery; WebSockets covered | Communicate rollout deadline, perform real-device enrollment/recovery rehearsal |
+| Transport/proxy (medium–high, topology dependent) | HTTPS origin/cookie/proxy validation; production proxy trust defaults off; private Compose topology explicitly one hop | Verify TLS, firewall, cookies, CSRF/CORS and actual forwarding chain |
+| Secrets/storage | Existing persistent encryption/signing/private-download controls retained; configuration validates without echoing values | Provision/escrow keys, private bucket/DB ACLs, repository-history secret scan |
+| Recovery | Dedicated strong new-archive key, bounded authenticated decrypt/decompression, private archive creation, paginated latest selection and isolated restore cleanup | Authorized real snapshot restore plus application/key/index verification; RPO/RTO approval |
+
+Focused evidence is maintained in `production-readiness-worklog.md`. Operational settings
+and recovery procedures are documented in the backend security guide. Infrastructure
+items remain externally unverified and are not marked resolved by repository changes.
+
+Further cross-module tracing confirmed and fixed these boundaries:
+
+| Additional finding | Severity / prerequisite | Fix and evidence |
+| --- | --- | --- |
+| Clinical search exposed observations from other tenants/branches for an authorized patient | High; staff with VIEW_EHR and a shared longitudinal patient | Explicit tenant and granted-location filters on observations, notes and labs; ownership-checked consumers retain their own longitudinal view. A three-scope fixture returns only the granted observation. |
+| Executive/KPI/summary/export ignored branch grants; three reporting entry points required authentication alone | Medium; restricted authenticated staff | Uniform reporting permission, granted active locations, explicit tenant filters and scoped quality metrics. New regressions reproduced sibling branch results and unauthorized KPI access before correction. |
+| Assignment list exposed sibling branch assignments/staff contact information | Medium; staff with VIEW_LOCATIONS | Restrict list to allowed branches; reject explicit ungranted locations and malformed IDs. Positive/negative regression passed. |
+
+Recovery always forces enrollment again, including during a general rollout grace
+period. Refresh-token rotation and workspace switching preserve primary-authentication
+time. Legacy records have no schema default that manufactures proof and require a fresh
+sign-in before enrollment. Browser exception logs now retain fixed labels
+instead of Axios/WebSocket objects or raw errors. The source/bundle startup checks and
+production dependency audits passed; these do not verify deployment or provider security.
+
 This review traced selected real Next.js → Fastify → Mongoose flows and implemented narrow authorization fixes. It is not an ASVS certification, an exhaustive endpoint penetration test, or an assessment of deployed infrastructure. Existing mobile/performance changes in these checkouts were preserved. No production records, secrets, keys, or infrastructure were changed.
 
 ## Standards and scope
@@ -54,10 +88,10 @@ Highest change risk: Level 4 (patient data, authorization, clinical persistence)
 
 1. **Deploy the fixes and review possible prior exposure.** New authorization does not recall previously downloaded content. Assess access logs/audits for the affected endpoints under the organization's incident process. This review did not inspect live data or determine whether exploitation occurred.
 2. **Review legacy template ownership.** Organization-bound legacy public flags no longer expose content to other tenants. Private OPD presets without organizationId are no longer included through author-only matching. If such records exist, assign them to a verified organization through a reviewed migration; do not guess from a multi-workspace doctor's identity. No migration was run.
-3. **Review legacy location grants.** `resolveStaffLocationGrant` intentionally preserves organization-wide access for missing legacy grants in non-strict modules. Explicit selected grants are enforced and tested here. A global fail-closed conversion needs an inventory and grant migration to preserve legitimate staff access; it was not silently imposed.
+3. **Review legacy location grants before rollout.** The security closeout removes the organization-wide fallback. Existing doctor/receptionist assignments derive only active, tenant-owned branches; other missing staff grants deny branch access. Reviewed administrator memberships retain organization scope. Administrators must assign grants for legacy nursing/custom staff before rollout; no production migration has been run.
 4. **Keep production boundaries explicit.** Use NODE_ENV=production, HTTPS, precise CORS_ALLOWED_ORIGINS, the intended cookie domain/SameSite policy, accurate trusted-proxy hops/CIDRs, and origin protection/firewall settings where applicable. A broad trusted network must not make forged forwarding headers authoritative. Validate these settings at the actual edge; local tests do not verify it.
 5. **Protect durable keys and backups.** Provision persistent JWT keys, DATA_ENCRYPTION_KEY, PRESCRIPTION_SIGNING_KEY, webhook secrets, and a separate BACKUP_ENCRYPTION_KEY through the deployment's secret facility. Keep clinical object storage/private backup buckets restricted, retain keys for recoverability, define retention and access reviews, and perform the existing restore drill in an authorized environment. Tracked example files and filename-only scans do not replace a repository-history secret audit.
-6. **Authentication assurance remains a policy decision.** Root MFA checks were retained. This change does not enforce organization-wide clinician/admin MFA, change password policy, or redesign recovery. Review staff MFA/passkey enrollment, recovery procedures, inactivity/absolute timeouts, and production session policy against the application's healthcare threat model. No complete ASVS Level 2 authentication claim is made.
-7. **Log/error coverage remains incomplete.** Several older controllers still log raw exception objects or return exception messages, which may contain submitted clinical data or database validation values. Existing audit/telemetry redaction does not automatically cover console output or every route-local catch. A bounded error-path/log-sink review remains necessary; this pass does not certify all logs or responses.
+6. **Staff MFA rollout now requires operational preparation.** Production staff must enroll the existing TOTP mechanism before operational HTTP/WebSocket access. An explicit dated grace period supports existing clinics. Enrollment requires a recent primary login, encrypted session-bound pending setup, code verification and session revocation. Operator-only identity-reviewed recovery clears the old factor, revokes sessions and requires enrollment again. Root remains stricter. See the backend `docs/security/staff-mfa-and-recovery.md`; no complete ASVS Level 2 authentication claim is made.
+7. **Exception sinks were hardened; operational data review remains necessary.** Controller/service/worker catch logs now emit allowlisted error metadata. Pino error serializers and Sentry/pager minimization exclude raw exception text/stacks/locals. Production handled 5xx error envelopes suppress raw details. Existing support scripts that intentionally display enrollment QR artifacts require private execution. This does not certify arbitrary future log call sites or historical log retention/access.
 8. **File checking is not comprehensive malware detection.** Signature and active-content scanning, attachment disposition, and private downloads reduce exposure but do not establish that arbitrary PDFs/DICOM files are malware-free. The implementation honestly retains malwareClean=false where a comprehensive scanner has not run. Assess additional scanning based on accepted file workload rather than adding infrastructure by default.
 9. **Deployment and external integrations remain unverified.** Database TLS/ACLs, restore success, storage policies, provider dashboards, production origin/cookie behavior, all integration/webhook branches, and the complete route/role matrix require deployment-specific checks. Single-node in-memory rate limiting is appropriate only for the explicitly configured single-instance topology; multi-replica coordination must use the existing supported configuration. This source review is not a substitute for those checks.

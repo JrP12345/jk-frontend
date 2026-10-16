@@ -216,7 +216,7 @@ export default function PublicLiveQueueTracker() {
         color: { dark: "#0E2A28", light: "#ffffff" },
       })
         .then((url) => setTrackerQrDataUrl(url))
-        .catch((err) => console.error("Tracker QR generation error:", err));
+        .catch(() => console.error("Tracker QR generation error:"));
     }
   }, [isPayModalOpen, canUseTrackerUpi, trackerUpiPayload, trackerDueAmt]);
 
@@ -446,12 +446,12 @@ export default function PublicLiveQueueTracker() {
           consecutiveFailuresRef.current = Math.min(4, consecutiveFailuresRef.current + 1);
         };
 
-        ws.onerror = (err) => {
-          console.warn("Tracker WS warning:", err);
+        ws.onerror = () => {
+          console.warn("Tracker WS warning:");
           consecutiveFailuresRef.current = Math.min(4, consecutiveFailuresRef.current + 1);
         };
-      } catch (wsErr) {
-        console.warn("Could not initiate Tracker WS:", wsErr);
+      } catch {
+        console.warn("Could not initiate Tracker WS:");
       }
     }
 

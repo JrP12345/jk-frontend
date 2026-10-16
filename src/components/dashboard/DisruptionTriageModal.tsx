@@ -127,8 +127,8 @@ export default function DisruptionTriageModal({
         if (docs.length > 0) {
           setBatchDoctorId(docs[0].doctorId);
         }
-      } catch (err) {
-        console.error("fetchReplacements error:", err);
+      } catch {
+        console.error("fetchReplacements error:");
       } finally {
         setLoadingReplacements(false);
       }

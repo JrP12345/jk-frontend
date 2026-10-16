@@ -89,8 +89,8 @@ export function ExecutiveAnalytics() {
         trendData,
         deptData,
       });
-    } catch (err) {
-      console.error("Failed to load executive analytics:", err);
+    } catch {
+      console.error("Failed to load executive analytics:");
       setError("Unable to load executive metrics. Please verify your connection and try again.");
     } finally {
       setLoading(false);

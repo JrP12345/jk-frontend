@@ -201,8 +201,8 @@ export default function BillingPage() {
         setSelectedCheckoutApptId("");
         setCheckoutPreview(null);
       }
-    } catch (err) {
-      console.error("fetchOpdAppointments error", err);
+    } catch {
+      console.error("fetchOpdAppointments error");
     } finally {
       setLoadingOpdAppointments(false);
     }
@@ -580,8 +580,8 @@ export default function BillingPage() {
       try {
         const res = await api.get(`/onboarding/doctors/assignments?locationId=${selectedLocationId}`);
         setDoctorAssignments(res.data.data || []);
-      } catch (err) {
-        console.error("Failed to load doctor assignments", err);
+      } catch {
+        console.error("Failed to load doctor assignments");
       }
     };
     fetchAssignments();

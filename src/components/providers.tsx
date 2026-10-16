@@ -15,6 +15,7 @@ export function Providers({
   children: React.ReactNode;
 }) {
   const checkAuth = useAuthStore((state) => state.checkAuth);
+  const mfaEnrollmentRequired = useAuthStore(state => state.user?.mfaEnrollmentRequired);
   const pathname = usePathname();
   const initialPathname = useRef(pathname);
   const [queryClient] = useState(
@@ -31,6 +32,12 @@ export function Providers({
 
   useEffect(() => {
     void checkAuth({ allowAnonymous: !initialPathname.current.startsWith("/dashboard") });
+  }, [checkAuth]);
+
+  useEffect(() => {
+    const refreshAuthority = () => { void checkAuth(); };
+    window.addEventListener("auth-mfa-required", refreshAuthority);
+    return () => window.removeEventListener("auth-mfa-required", refreshAuthority);
   }, [checkAuth]);
 
   useEffect(() => {
@@ -63,7 +70,7 @@ export function Providers({
         <ToastProvider>
           <NotificationRealtime />
           {children}
-          <PWAInstallBanner suppressed={pathname === "/" || pathname === "/dashboard/organizations" || pathname.startsWith("/dashboard/admin/")} />
+          <PWAInstallBanner suppressed={Boolean(mfaEnrollmentRequired) || pathname === "/" || pathname === "/dashboard/organizations" || pathname.startsWith("/dashboard/admin/") || ["/dashboard/consultations", "/dashboard/appointments", "/dashboard/queue", "/dashboard/billing"].some(route => pathname === route || pathname.startsWith(route + "/"))} />
         </ToastProvider>
       </ThemeProvider>
     </QueryClientProvider>

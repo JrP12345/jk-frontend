@@ -1,43 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { todayRangeParams } from "@/lib/date";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
 import { hasAnyPermission } from "@/lib/permissions";
-import { Alert, Card, CardContent, Button, Modal, Select, Textarea, useToast, Badge, StatCard, SkeletonCardGrid, cn, LoadingState, Input, ConfirmDialog } from "@/components/ui";
-import { RotateCw, Plus, Calendar, Clock, Stethoscope, CheckCircle2, Search, Ticket, Phone, ArrowRight } from "lucide-react";
+import { Alert, Card, CardContent, Button, Pagination, useToast, Badge, SkeletonCardGrid, cn, LoadingState, Input, ConfirmDialog } from "@/components/ui";
+import { RotateCw, Plus, Stethoscope, Search, Ticket, Phone, ArrowRight } from "lucide-react";
 import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
 import { TodayPatients } from "@/components/appointments/TodayPatients";
-
-interface PatientUser {
-  name: string;
-  email?: string;
-  phone?: string;
-}
-
-interface PatientProfile {
-  id: string;
-  name?: string;
-  phone?: string;
-  userId: PatientUser;
-  gender?: string;
-  dob?: string;
-}
-
-interface DoctorUser {
-  id: string;
-  name: string;
-  specialization?: string;
-}
+import { PatientEntryModal } from "@/components/appointments/PatientEntryModal";
+import { useLatestRead } from "@/hooks/useLatestRead";
+import { authScopeKey } from "@/lib/authScope";
 
 export interface OPDQueueAppointment {
   id: string;
   tokenNumber?: number;
   queuePosition?: number;
-  status: "pending" | "confirmed" | "checked-in" | "in-consultation" | "completed" | "cancelled" | "no-show";
+  status: "pending_payment" | "pending" | "confirmed" | "checked-in" | "in-consultation" | "completed" | "cancelled" | "no-show";
   appointmentTime: string;
   patientId: {
     id: string;
@@ -54,18 +36,21 @@ export interface OPDQueueAppointment {
 }
 
 export default function ConsultationsPage() {
+  const { user } = useAuthStore();
   const { preferences, loading } = useWorkflowPreferences();
   const [detailed, setDetailed] = useState(false);
   if (loading) return <LoadingState label="Loading consultations"><SkeletonCardGrid count={2} columns="grid-cols-1" /></LoadingState>;
   if (!detailed && (preferences.registration === "essential" || preferences.consultation === "focused")) return <TodayPatients currency={preferences.currency} essentialEntry={preferences.registration === "essential"} onDetailedView={() => setDetailed(true)} />;
-  return <DetailedConsultationsPage />;
+  return <DetailedConsultationsPage key={authScopeKey(user)} />;
 }
 
 function DetailedConsultationsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { activeLocationId } = useLocationStore();
-  const canStartConsultation = hasAnyPermission(user, "MANAGE_CLINICAL_NOTES");
+  const isConsumer = ["patient", "family_member"].includes(user?.role || "");
+  const canStartConsultation = !isConsumer && hasAnyPermission(user, "MANAGE_CLINICAL_NOTES") && hasAnyPermission(user, "MANAGE_APPOINTMENTS");
+  const canBook = canStartConsultation && hasAnyPermission(user, "VIEW_PATIENTS", "MANAGE_PATIENTS") && hasAnyPermission(user, "VIEW_LOCATIONS");
   const { toast } = useToast();
 
   const [selectedLocationId, setSelectedLocationId] = useState(activeLocationId || "");
@@ -73,114 +58,56 @@ function DetailedConsultationsPage() {
   const [arrivalConfirmation, setArrivalConfirmation] = useState<OPDQueueAppointment | null>(null);
   const [openingConsultation, setOpeningConsultation] = useState(false);
   const [dailyCounts, setDailyCounts] = useState<{ appointments: number; byStatus: Record<string, number> } | null>(null);
-  const [patients, setPatients] = useState<PatientProfile[]>([]);
-  const [doctors, setDoctors] = useState<DoctorUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("checked-in");
+  const [statusFilter, setStatusFilter] = useState(isConsumer ? "all" : "checked-in");
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const beginRead = useLatestRead();
+  const [bookingNotice, setBookingNotice] = useState("");
 
   // Walk-in Consultation Modal State
   const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
-  const [patientId, setPatientId] = useState("");
-  const [doctorId, setDoctorId] = useState("");
-  const [chiefComplaint, setChiefComplaint] = useState("");
-  const [startingEncounter, setStartingEncounter] = useState(false);
-  const [walkInBookedId, setWalkInBookedId] = useState("");
 
   useEffect(() => {
     setSelectedLocationId(activeLocationId || "");
+    setPage(1);
   }, [activeLocationId]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    const request = beginRead();
     try {
       setLoadError(null);
       setIsRefreshing(true);
-      if (user?.role === "patient") {
-        const apptsRes = await api.get("/appointments");
-        setQueueList(apptsRes.data?.data || apptsRes.data || []);
-      } else {
-        const [apptsRes, patientsRes, staffRes, summaryRes] = await Promise.all([
-          api.get(`/appointments?${todayRangeParams()}${selectedLocationId ? `&locationId=${selectedLocationId}` : ""}`),
-          api.get("/patients"),
-          api.get(selectedLocationId ? `/onboarding/staff?locationId=${selectedLocationId}` : "/onboarding/staff"),
-          api.get(`/analytics/daily-summary?${todayRangeParams()}${selectedLocationId ? `&locationId=${selectedLocationId}` : ""}&includeAppointments=false`),
-        ]);
-
-        const rawAppts = apptsRes.data?.data || apptsRes.data || [];
-        setQueueList(rawAppts);
-        setDailyCounts(summaryRes.data?.data || null);
-        setPatients(patientsRes.data?.data || []);
-        setDoctors(staffRes.data?.data?.doctors || []);
-      }
-    } catch (err: any) {
+      const params = new URLSearchParams(isConsumer ? "" : todayRangeParams());
+      params.set("page", String(page)); params.set("limit", "25");
+      if (!isConsumer && selectedLocationId) params.set("locationId", selectedLocationId);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      const [apptsRes, summaryRes] = await Promise.all([
+        api.get(`/appointments?${params}`, { signal: request.signal }),
+        isConsumer ? Promise.resolve(null) : api.get(`/analytics/daily-summary?${todayRangeParams()}${selectedLocationId ? `&locationId=${selectedLocationId}` : ""}&includeAppointments=false`, { signal: request.signal }),
+      ]);
+      if (!request.isCurrent()) return;
+      setQueueList(apptsRes.data?.data || []);
+      setPages(Number(apptsRes.headers?.["x-total-pages"]) || 1);
+      setDailyCounts(summaryRes?.data?.data || null);
+    } catch {
+      if (!request.isCurrent()) return;
+      setQueueList([]); setDailyCounts(null);
       setLoadError("Consultations could not be loaded. Check your connection and try again.");
-      toast({
-        title: "Failed to Fetch Consultation Queue",
-        description: err.response?.data?.message || "Could not retrieve appointments.",
-        variant: "error",
-      });
     } finally {
-      setLoading(false);
-      setIsRefreshing(false);
+      if (request.isCurrent()) { setLoading(false); setIsRefreshing(false); }
     }
-  };
+  }, [beginRead, isConsumer, page, searchQuery, selectedLocationId, statusFilter]);
 
   useEffect(() => {
-    fetchData();
-  }, [selectedLocationId]);
-
-  // Handle Start Walk-in Consultation Submit
-  const handleStartWalkIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!patientId || !doctorId) {
-      toast({
-        title: "Validation Error",
-        description: "Patient and attending practitioner are required.",
-        variant: "warning",
-      });
-      return;
-    }
-
-    try {
-      setStartingEncounter(true);
-      const apptRes = walkInBookedId ? await api.get(`/appointments/${walkInBookedId}`) : await api.post("/appointments", {
-        locationId: selectedLocationId,
-        patientId,
-        doctorId,
-        appointmentTime: new Date().toISOString(),
-        appointmentType: "walk-in",
-        notes: chiefComplaint.trim(),
-      });
-
-      const newApptId = apptRes.data?.data?.id || apptRes.data?.data?._id || apptRes.data?.id;
-      setWalkInBookedId(newApptId);
-      if (apptRes.data?.data?.status === "pending_payment") throw new Error("Visit booked. Collect the required payment before starting.");
-      if (apptRes.data?.data?.status !== "in-consultation") await api.put(`/appointments/${newApptId}/status`, { status: "checked-in" });
-      await api.put(`/appointments/${newApptId}/status`, { status: "in-consultation" });
-
-      toast({
-        title: "Consultation started",
-        description: "Opening Clinical Consultation Workspace...",
-        variant: "success",
-      });
-
-      setIsWalkInModalOpen(false);
-      router.push(`/dashboard/consultations/${newApptId}`);
-    } catch (err: any) {
-      toast({
-        title: "Unable to Start Consultation",
-        description:
-          err.response?.data?.message ||
-          "Could not initialize OPD encounter. Please verify physician availability.",
-        variant: "error",
-      });
-    } finally {
-      setStartingEncounter(false);
-    }
-  };
+    const timer = setTimeout(() => { void fetchData(); }, 200);
+    return () => { clearTimeout(timer); beginRead(); };
+  }, [fetchData, beginRead]);
 
   // Filter Queue
   async function openConsultation(item: OPDQueueAppointment, arrivalConfirmed = false) {
@@ -200,18 +127,7 @@ function DetailedConsultationsPage() {
     } catch (error: any) { toast({ title: "Consultation could not be opened", description: error.response?.data?.message || "Refresh the list before retrying.", variant: "error" }); }
     finally { setOpeningConsultation(false); }
   }
-  const filteredQueue = queueList.filter((item) => {
-    const matchesStatus = statusFilter === "all" || item.status === statusFilter;
-    const pName = item.patientId?.userId?.name || item.patientId?.name || "";
-    const dName = item.doctorId?.name || "";
-    const matchesSearch =
-      !searchQuery.trim() ||
-      pName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      dName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.chiefComplaint && item.chiefComplaint.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    return matchesStatus && matchesSearch;
-  });
+  const filteredQueue = queueList; // Server filtering applies to every page, including phone/token matches.
 
   // KPI Calculations
   const totalToday = dailyCounts?.appointments ?? queueList.length;
@@ -227,6 +143,7 @@ function DetailedConsultationsPage() {
         onClose={() => { if (!openingConsultation) setArrivalConfirmation(null); }}
         onConfirm={() => { if (arrivalConfirmation) void openConsultation(arrivalConfirmation, true); }} />
       {loadError && <Alert variant="error" title="Unable to load consultations" action={<Button variant="outline" size="sm" onClick={fetchData}>Try again</Button>}>{loadError}</Alert>}
+      {bookingNotice && <Alert variant="warning" action={<Button variant="outline" onClick={() => router.push("/dashboard/appointments")}>View appointments</Button>}>{bookingNotice}</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP EXECUTIVE HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
@@ -235,14 +152,14 @@ function DetailedConsultationsPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Consultations & queue
+                {isConsumer ? "Consultations" : "Consultations & queue"}
               </h1>
               <Badge variant="primary" size="sm" dot pulse className="font-semibold">
                 Clinical Desk
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Manage waiting patients, start consultations, and record clinical notes.
+              {isConsumer ? "Your visits and shared care records." : "Manage waiting patients, start consultations, and record clinical notes."}
             </p>
           </div>
 
@@ -258,11 +175,11 @@ function DetailedConsultationsPage() {
               Refresh
             </Button>
 
-            {canStartConsultation && (
+            {canBook && (
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => { setWalkInBookedId(""); setIsWalkInModalOpen(true); }}
+                onClick={() => { setBookingNotice(""); setIsWalkInModalOpen(true); }}
                 className="font-semibold min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
@@ -276,32 +193,13 @@ function DetailedConsultationsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           2. KPI STATS CARDS
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <StatCard loading={loading}
-          label="Total OPD Appointments"
-          value={totalToday.toString()}
-          description="Scheduled outpatient visits"
-          icon={<Calendar className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard loading={loading}
-          label="Waiting for Doctor"
-          value={checkedInCount.toString()}
-          description="Checked-in waiting line"
-          icon={<Clock className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard loading={loading}
-          label="In Consultation"
-          value={inConsultationCount.toString()}
-          description="Active physician encounters"
-          icon={<Stethoscope className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard loading={loading}
-          label="Completed Today"
-          value={completedCount.toString()}
-          description="Concluded patient visits"
-          icon={<CheckCircle2 className="w-5 h-5 text-text-secondary" />}
-        />
-      </div>
+      {!isConsumer && <Card className="p-3">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4" aria-label="Today's consultation counts">
+          {[['Visits today', totalToday], ['Waiting', checkedInCount], ['With doctor', inConsultationCount], ['Seen today', completedCount]].map(([label, count]) => <div key={label} className="flex items-baseline justify-between gap-2 text-sm">
+            <dt className="text-text-muted">{label}</dt><dd className="font-semibold tabular-nums">{loading || loadError ? '?' : count}</dd>
+          </div>)}
+        </dl>
+      </Card>}
 
       {/* ──────────────────────────────────────────────────────────────────────────
           3. FILTER TOOLBAR & SEARCH
@@ -321,7 +219,7 @@ function DetailedConsultationsPage() {
                 key={s.key}
                 type="button"
                 aria-pressed={statusFilter === s.key}
-                onClick={() => setStatusFilter(s.key)}
+                onClick={() => { setStatusFilter(s.key); setPage(1); }}
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
                   statusFilter === s.key
@@ -347,7 +245,7 @@ function DetailedConsultationsPage() {
           {/* Search Input */}
           <div className="relative w-full sm:w-72 shrink-0">
 
-            <Input icon={<Search />} type="text" placeholder="Search patient, doctor, complaint..." aria-label="Search consultations by patient, doctor or complaint" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} size="sm" variant="filled" />
+            <Input icon={<Search />} type="search" placeholder="Search patient, phone or token" aria-label="Search consultations" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }} size="sm" variant="filled" />
           </div>
         </div>
       </Card>
@@ -373,6 +271,7 @@ function DetailedConsultationsPage() {
               onClick={() => {
                 setStatusFilter("all");
                 setSearchQuery("");
+                setPage(1);
               }}
               className="font-semibold text-xs"
             >
@@ -455,12 +354,12 @@ function DetailedConsultationsPage() {
                   <Button
                     size="sm"
                     variant={isInConsultation ? "primary" : isCompleted ? "secondary" : "primary"}
-                    onClick={() => openConsultation(item)}
-                    disabled={!canStartConsultation || ["cancelled", "no-show", "pending_payment"].includes(item.status)}
+                    onClick={() => isConsumer ? router.push("/dashboard/patient-portal") : openConsultation(item)}
+                    disabled={!isConsumer && (!canStartConsultation || ["cancelled", "no-show", "pending_payment"].includes(item.status))}
                     className="font-semibold text-xs rounded-xl w-full shadow-xs justify-between min-h-[44px]"
                   >
                     <span>
-                      {isInConsultation
+                      {isConsumer ? "View care records" : isInConsultation
                         ? "Resume Clinical Encounter"
                         : isCompleted
                         ? "View Signed Consultation Note"
@@ -478,66 +377,18 @@ function DetailedConsultationsPage() {
       {/* ──────────────────────────────────────────────────────────────────────────
           5. START WALK-IN CONSULTATION MODAL
          ────────────────────────────────────────────────────────────────────────── */}
-      <Modal
-        open={isWalkInModalOpen}
-        onClose={() => setIsWalkInModalOpen(false)}
-        title="Start Walk-in Consultation"
-        description="Start a consultation for a walk-in patient."
-      >
-        <form onSubmit={handleStartWalkIn} className="space-y-4 pt-1">
-          <Select
-            label="Target Patient Profile *"
-            value={patientId}
-            onChange={(e) => setPatientId(e.target.value)}
-            options={[
-              { value: "", label: "Select patient profile..." },
-              ...patients.map((p) => ({
-                value: p.id,
-                label: `${p.userId?.name || p.name || "Patient"} (${p.userId?.phone || p.phone || "No phone"})`,
-              })),
-            ]}
-            required
-          />
-
-          <Select
-            label="Attending Doctor *"
-            value={doctorId}
-            onChange={(e) => setDoctorId(e.target.value)}
-            options={[
-              { value: "", label: "Select attending physician..." },
-              ...doctors.map((d) => ({
-                value: d.id,
-                label: `Dr. ${(d.name || "").replace(/^dr\.?\s+/i, "")} (${d.specialization || "General OPD"})`,
-              })),
-            ]}
-            required
-          />
-
-          <Textarea
-            label="Chief Complaint / Initial Symptoms"
-            placeholder="e.g. Acute migraine, fever for 2 days, chest congestion..."
-            value={chiefComplaint}
-            onChange={(e) => setChiefComplaint(e.target.value)}
-            rows={3}
-          />
-
-          <div className="pt-3 border-t border-border/60 flex flex-col-reverse sm:flex-row justify-end gap-2.5">
-            <Button type="button" variant="outline" size="sm" onClick={() => setIsWalkInModalOpen(false)} className="min-h-[44px] w-full sm:w-auto justify-center">
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              loading={startingEncounter}
-              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
-            >
-              Start Clinical Encounter
-              <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      <Pagination currentPage={page} totalPages={pages} onPageChange={setPage} />
+      {isWalkInModalOpen && <PatientEntryModal open onClose={() => setIsWalkInModalOpen(false)} locationId={selectedLocationId}
+        onBooked={id => {
+          setIsWalkInModalOpen(false);
+          void api.get('/appointments/' + id).then(response => {
+            const visit = response.data.data as OPDQueueAppointment;
+            if (visit.status === 'pending_payment') {
+              setBookingNotice('Visit booked. Collect the required payment in Appointments before starting the consultation.');
+              void fetchData();
+            } else { void openConsultation(visit); }
+          }).catch(() => { setBookingNotice('The visit is booked. Refresh Appointments before starting; do not book it again.'); });
+        }} />}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { ToastProvider } from '@/components/ui';
 const fixture = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), push: vi.fn() }));
 vi.mock('@/lib/api', () => ({ default: { get: fixture.get, put: fixture.put } }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: fixture.push }) }));
-vi.mock('@/store/authStore', () => ({ useAuthStore: () => ({ user: { id: 'doctor', role: 'doctor', organization_id: 'org', permissions: ['MANAGE_CLINICAL_NOTES'] } }) }));
+vi.mock('@/store/authStore', () => ({ useAuthStore: () => ({ user: { id: 'doctor', role: 'doctor', organization_id: 'org', permissions: ['MANAGE_CLINICAL_NOTES', 'MANAGE_APPOINTMENTS'] } }) }));
 vi.mock('@/store/locationStore', () => ({ useLocationStore: () => ({ activeLocationId: 'branch' }) }));
 vi.mock('@/hooks/useWorkflowPreferences', () => ({ useWorkflowPreferences: () => ({ preferences: { registration: 'full', consultation: 'full' }, loading: false }) }));
 afterEach(() => { vi.clearAllMocks(); });

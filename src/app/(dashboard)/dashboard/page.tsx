@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import PlatformOwnerDashboard from "@/components/dashboard/PlatformOwnerDashboard";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
@@ -8,7 +8,9 @@ import { useLocationStore } from "@/store/locationStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import api from "@/lib/api";
 import { localDateKey, todayRangeParams } from "@/lib/date";
-import { Badge, Button, useToast } from "@/components/ui";
+import { Alert, Badge, Button, useToast } from "@/components/ui";
+import { useLatestRead } from "@/hooks/useLatestRead";
+import { authScopeKey } from "@/lib/authScope";
 import { RotateCw, Plus, CalendarPlus } from "lucide-react";
 import { DashboardStatCards, DashboardAnalytics, DashboardAppointmentsQueue, DashboardQuickActions, DashboardFollowUpAlerts, DashboardLocations } from "@/components/dashboard";
 
@@ -16,7 +18,7 @@ export default function DashboardOverview() {
   const user = useAuthStore(state => state.user);
   if (!user) return null;
   if (user.role === "root" && !user.impersonatedBy?.id) return <PlatformOwnerDashboard />;
-  return <OperationalDashboard />;
+  return <OperationalDashboard key={authScopeKey(user)} />;
 }
 
 function OperationalDashboard() {
@@ -24,9 +26,18 @@ function OperationalDashboard() {
   const { locations: locationsList, fetchLocations } = useLocationStore();
   const router = useRouter();
   const { toast } = useToast();
+  const isConsumer = user?.role === "patient" || user?.role === "family_member";
+  const canReadStaff = hasAnyPermission(user, "VIEW_STAFF");
+  const canReadAppointments = hasAnyPermission(user, "VIEW_APPOINTMENTS", "MANAGE_APPOINTMENTS");
+  const canReadBilling = hasAnyPermission(user, "VIEW_BILLING", "MANAGE_BILLING");
+  const beginRead = useLatestRead();
+  const [loadError, setLoadError] = useState("");
+  const [financialVisible, setFinancialVisible] = useState(false);
+  const [moneyByCurrency, setMoneyByCurrency] = useState<Array<{ currency: string; collections: number; outstanding: number }>>([]);
+  const [trends, setTrends] = useState<{ days: Array<{ day: string; status: string; count: number }>; locations: Array<{ locationId: string; status: string; count: number }> } | null>(null);
 
   const canViewOpsDashboard =
-    user?.role !== "patient" &&
+    !isConsumer &&
     user?.role !== "doctor" &&
     hasAnyPermission(
       user,
@@ -66,7 +77,7 @@ function OperationalDashboard() {
 
   // Purposeful Analytics: Patient volume trajectory over 7D/30D
   const appointmentTrendData = useMemo(() => {
-    if (appointments.length === 0) return [];
+    if (!trends) return [];
     const daysCount = trendRange === "30D" ? 30 : 7;
     const now = new Date();
     const result = [];
@@ -74,21 +85,17 @@ function OperationalDashboard() {
     for (let i = daysCount - 1; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const dateKey = d.toISOString().split("T")[0];
+      const dateKey = localDateKey(d);
       const label = d.toLocaleDateString("en-US", {
         weekday: "short",
         month: daysCount > 7 ? "numeric" : undefined,
         day: "numeric",
       });
 
-      const dayAppts = appointments.filter((a) => {
-        const aDate = (a.appointmentTime || a.createdAt || "").split("T")[0];
-        return aDate === dateKey;
-      });
-
-      const completed = dayAppts.filter((a) => a.status === "completed").length;
-      const scheduled = dayAppts.filter((a) => a.status !== "completed" && a.status !== "cancelled").length;
-      const cancelled = dayAppts.filter((a) => a.status === "cancelled").length;
+      const rows = trends.days.filter(row => row.day === dateKey);
+      const completed = rows.filter(row => row.status === "completed").reduce((sum, row) => sum + row.count, 0);
+      const scheduled = rows.filter(row => !["completed", "cancelled", "no-show"].includes(row.status)).reduce((sum, row) => sum + row.count, 0);
+      const cancelled = rows.filter(row => row.status === "cancelled").reduce((sum, row) => sum + row.count, 0);
 
       result.push({
         label,
@@ -98,24 +105,22 @@ function OperationalDashboard() {
       });
     }
     return result;
-  }, [appointments, trendRange]);
+  }, [trends, trendRange]);
 
   // Purposeful Analytics: Location branch throughput breakdown
   const locationThroughputData = useMemo(() => {
     if (locationsList.length === 0) return [];
     return locationsList.slice(0, 5).map((cl) => {
-      const clAppts = appointments.filter(
-        (a) => a.locationId?.id === cl.id || a.locationId === cl.id || a.locationId?._id === cl.id
-      );
-      const completed = clAppts.filter((a) => a.status === "completed").length;
-      const waiting = clAppts.filter((a) => a.status !== "completed" && a.status !== "cancelled").length;
+      const rows = trends?.locations.filter(row => row.locationId === cl.id) || [];
+      const completed = rows.filter(row => row.status === "completed").reduce((sum, row) => sum + row.count, 0);
+      const waiting = rows.filter(row => !["completed", "cancelled", "no-show"].includes(row.status)).reduce((sum, row) => sum + row.count, 0);
       return {
         label: cl.name.length > 14 ? cl.name.substring(0, 12) + "..." : cl.name,
         completed,
         waiting,
       };
     });
-  }, [locationsList, appointments]);
+  }, [locationsList, trends]);
 
   // Update appointment status inline
   const handleUpdateStatus = async (apptId: string, status: string) => {
@@ -136,88 +141,57 @@ function OperationalDashboard() {
     }
   };
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     if (!user) return;
+    const request = beginRead();
+    setIsRefreshing(true); setLoadError('');
     try {
-      setIsRefreshing(true);
-      if (canViewOpsDashboard) {
-        const [staffRes, apptsRes, invoicesRes, dailyRes] = await Promise.allSettled([
-          api.get("/onboarding/staff"),
-          api.get("/appointments"),
-          api.get("/invoices"),
-          api.get(`/analytics/daily-summary?${todayRangeParams()}`),
+      if (canViewOpsDashboard || user.role === 'doctor') {
+        const dailyPath = '/analytics/daily-summary?' + todayRangeParams() + '&trendDays=' + (trendRange === '30D' ? '30' : '7') + '&timezone=' + encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone);
+        const [staffRes, invoicesRes, dailyRes, locationsRes] = await Promise.allSettled([
+          canReadStaff && canViewOpsDashboard ? api.get('/onboarding/staff', { signal: request.signal }) : Promise.resolve(null),
+          canReadBilling && canViewOpsDashboard ? api.get('/invoices?limit=5', { signal: request.signal }) : Promise.resolve(null),
+          api.get(dailyPath, { signal: request.signal }), fetchLocations(),
         ]);
-        const clList = await fetchLocations();
-        const staffData = staffRes.status === "fulfilled" ? staffRes.value.data.data || {} : {};
-        const docList = staffData.doctors || [];
-        const recList = staffData.receptionists || [];
-        const apptList = apptsRes.status === "fulfilled" ? apptsRes.value.data.data || [] : [];
-        const invList = invoicesRes.status === "fulfilled" ? invoicesRes.value.data.data || [] : [];
-
-        const daily = dailyRes.status === "fulfilled" ? dailyRes.value.data.data : null;
-        const todayStr = localDateKey();
-        const todaysPaid = invList.reduce((acc: number, curr: any) => {
-          if (curr.status !== "paid") return acc;
-          const dateStr = localDateKey(curr.paymentDate || curr.createdAt || "");
-          return dateStr === todayStr ? acc + curr.totalAmount : acc;
-        }, 0);
-
-        const unpaidBills = invList.reduce((acc: number, curr: any) => {
-          if (localDateKey(curr.createdAt || "") !== todayStr || curr.status === "paid" || curr.status === "cancelled") return acc;
-          return acc + (curr.totalAmount - (curr.amountPaid || 0));
-        }, 0);
-
-        setAdminStats({
-          locations: clList?.length || 0,
-          doctors: docList.length,
-          receptionists: recList.length,
-          appointments: daily?.appointments ?? apptList.filter((a: any) => localDateKey(a.appointmentTime) === todayStr).length,
-          collections: daily?.collections ?? todaysPaid,
-          outstanding: daily?.outstanding ?? unpaidBills,
-        });
-
-        setAppointments(apptList);
-        setTodayAppointments(daily?.recentAppointments || apptList.filter((a: any) => localDateKey(a.appointmentTime) === todayStr));
-        setInvoices(invList.filter((i: any) => ["unpaid", "partially_paid"].includes(i.status) && localDateKey(i.createdAt || "") === todayStr));
-      } else if (user.role === "doctor") {
-        const [res, dailyRes] = await Promise.all([api.get("/appointments"), api.get(`/analytics/daily-summary?${todayRangeParams()}`)]);
-        const daily = dailyRes.data.data;
-        const docAppts = res.data.data || [];
-        const completed = docAppts.filter((a: any) => a.status === "completed").length;
-        const pending = docAppts.filter(
-          (a: any) => a.status === "confirmed" || a.status === "pending" || a.status === "scheduled"
-        ).length;
+        if (!request.isCurrent()) return;
+        if (dailyRes.status !== 'fulfilled') throw new Error('Daily summary unavailable');
+        const daily = dailyRes.value.data.data;
+        const staff = staffRes.status === 'fulfilled' ? staffRes.value?.data.data : null;
+        const invoiceList = invoicesRes.status === 'fulfilled' ? invoicesRes.value?.data.data || [] : [];
+        setAdminStats({ locations: locationsRes.status === 'fulfilled' ? locationsRes.value?.length || 0 : 0,
+          doctors: staff?.doctors?.length || 0, receptionists: staff?.receptionists?.length || 0,
+          appointments: daily.appointments, collections: daily.collections, outstanding: daily.outstanding });
+        setFinancialVisible(Boolean(daily.financialVisible && canReadBilling));
+        setMoneyByCurrency(daily.moneyByCurrency || []);
+        setTrends(daily.trends || null);
         setDoctorStats({ total: daily.appointments, completed: daily.completed, pending: daily.pending });
-        setAppointments(docAppts);
-        setTodayAppointments(daily.recentAppointments || []);
-      } else if (user.role === "patient") {
-        const [apptsRes, invsRes] = await Promise.all([
-          api.get("/appointments/patient/me").catch(() => api.get("/patient-portal/appointments").catch(() => ({ data: { data: [] } }))),
-          api.get("/invoices/patient/me").catch(() => api.get("/invoices").catch(() => ({ data: { data: [] } }))),
+        setTodayAppointments(canReadAppointments ? daily.recentAppointments || [] : []);
+        setAppointments([]);
+        setInvoices(invoiceList.filter((invoice: any) => ['unpaid', 'partially_paid'].includes(invoice.status)));
+        if ([staffRes, invoicesRes, locationsRes].some(result => result.status === 'rejected')) setLoadError('Some dashboard details could not be loaded. Refresh to retry.');
+      } else if (isConsumer) {
+        const [visits, unpaid, partial] = await Promise.all([
+          api.get('/appointments/patient/me?limit=5', { signal: request.signal }),
+          api.get('/invoices/patient/me?status=unpaid&limit=5', { signal: request.signal }),
+          api.get('/invoices/patient/me?status=partially_paid&limit=5', { signal: request.signal }),
         ]);
-        const apptList = apptsRes.data.data || [];
-        const invList = invsRes.data.data || [];
-        const unpaidCount = invList.filter((i: any) => i.status === "unpaid").length;
-        setPatientStats({
-          appointmentsCount: apptList.filter((a: any) => a.status !== "cancelled").length,
-          unpaidBills: unpaidCount,
-        });
-        setAppointments(apptList);
-        setInvoices(invList.filter((i: any) => i.status === "unpaid"));
+        if (!request.isCurrent()) return;
+        setPatientStats({ appointmentsCount: Number(visits.headers?.['x-total-count']) || visits.data.data?.length || 0,
+          unpaidBills: (Number(unpaid.headers?.['x-total-count']) || unpaid.data.data?.length || 0) + (Number(partial.headers?.['x-total-count']) || partial.data.data?.length || 0) });
+        setAppointments(visits.data.data || []);
+        setInvoices([...(unpaid.data.data || []), ...(partial.data.data || [])]);
       }
-    } catch (err) {
-      console.error("Failed to load dashboard statistics", err);
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+    } catch {
+      if (!request.isCurrent()) return;
+      setLoadError('Dashboard information could not be loaded. Refresh to retry.');
+      setAppointments([]); setTodayAppointments([]); setInvoices([]); setTrends(null); setFinancialVisible(false);
+    } finally { if (request.isCurrent()) { setLoading(false); setIsRefreshing(false); } }
+  }, [beginRead, canReadAppointments, canReadBilling, canReadStaff, canViewOpsDashboard, fetchLocations, isConsumer, trendRange, user]);
 
   useEffect(() => {
-    if (user) {
-      fetchDashboardData();
-    }
-  }, [user?.id, user?.role, user?.impersonatedBy]);
+    void fetchDashboardData();
+    return () => { beginRead(); };
+  }, [fetchDashboardData, beginRead]);
 
   const recommendedFollowUps = useMemo(() => {
     return appointments.filter((appt) => {
@@ -241,7 +215,7 @@ function OperationalDashboard() {
       ? "Physician"
       : user.role === "receptionist"
       ? "Front Desk"
-      : "Patient";
+      : isConsumer ? (user.role === "family_member" ? "Family member" : "Patient") : user.role.replaceAll("_", " ");
 
   const subtitleText =
     user.role === "admin"
@@ -254,6 +228,7 @@ function OperationalDashboard() {
 
   return (
     <div className="space-y-6 font-sans text-text antialiased animate-fade-up">
+      {loadError && <Alert variant="error" action={<Button variant="outline" onClick={fetchDashboardData}>Try again</Button>}>{loadError}</Alert>}
       {/* 1. HEADER BANNER */}
       <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
@@ -295,7 +270,7 @@ function OperationalDashboard() {
               </Button>
             )}
 
-            {user.role === "patient" && (
+            {isConsumer && (
               <Button
                 variant="primary"
                 size="sm"
@@ -311,7 +286,7 @@ function OperationalDashboard() {
       </div>
 
       {/* 1.5 FIRST-TIME SETUP CHECKLIST (shown only for fresh tenant practices, NEVER for Root) */}
-      {canViewOpsDashboard &&
+      {canViewOpsDashboard && canManageOrg && canReadStaff && !loadError &&
         !loading &&
         adminStats.doctors + adminStats.receptionists === 0 &&
         !setupDismissed && (
@@ -389,34 +364,37 @@ function OperationalDashboard() {
       )}
 
       {/* 3. METRICS & KPI CARDS */}
-      <DashboardStatCards
+      {!loadError && <DashboardStatCards
         role={user.role}
         canViewOpsDashboard={canViewOpsDashboard}
         loading={loading}
         adminStats={adminStats}
         doctorStats={doctorStats}
         patientStats={patientStats}
-      />
+        financialVisible={financialVisible}
+        moneyByCurrency={moneyByCurrency}
+        showStaffCounts={canReadStaff}
+      />}
 
       {/* 4. PURPOSEFUL CLINICAL & OPERATIONAL ANALYTICS */}
-      <DashboardAnalytics
+      {!loadError && !isConsumer && <DashboardAnalytics
         role={user.role}
         loading={loading}
         trendRange={trendRange}
         setTrendRange={setTrendRange}
         appointmentTrendData={appointmentTrendData}
         locationThroughputData={locationThroughputData}
-      />
+      />}
 
       {/* 5. MAIN SECTION (APPOINTMENTS QUEUE + QUICK ACTIONS) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
-        <DashboardAppointmentsQueue
+        {!loadError && (canReadAppointments || isConsumer) && <DashboardAppointmentsQueue
           appointments={user?.role === "patient" || user?.role === "family_member" ? appointments : todayAppointments}
           loading={loading}
           user={user}
           canViewOpsDashboard={canViewOpsDashboard}
           onUpdateStatus={handleUpdateStatus}
-        />
+        />}
         <DashboardQuickActions
           user={user}
           invoices={invoices}

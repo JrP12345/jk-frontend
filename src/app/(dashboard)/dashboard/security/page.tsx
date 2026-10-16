@@ -6,6 +6,7 @@ import { Alert, Button, Card, Input, Toggle, Skeleton, useToast, Badge, LoadingS
 import { KeyRound, ShieldCheck } from "lucide-react";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { AuthenticatorEnrollment } from "@/components/auth/AuthenticatorEnrollment";
 
 type Passkey = { id: string; name: string; createdAt: string; lastUsedAt?: string };
 type Owner = { id: string; name: string; email: string; limit: number | null; activeSessions: number; organizations: string[] };
@@ -74,6 +75,7 @@ export default function AccountSecurityPage() {
   if (loadError) return <div className="space-y-4 max-w-4xl mx-auto"><h1 className="text-2xl font-bold">Account security</h1><Alert variant="error" title="Security settings unavailable" action={<Button variant="outline" onClick={load}>Try again</Button>}>Your passkeys and session policies could not be loaded.</Alert></div>;
   return <div className="space-y-5 max-w-4xl mx-auto pb-24">
     <div><h1 className="text-2xl font-bold text-text">Account security</h1><p className="text-sm text-text-secondary mt-1">Manage your passkeys and device preferences.</p></div>
+    {user && !["patient", "family_member", "guest"].includes(user.role) && (user.twoFactorEnabled ? <Alert variant="success">Authenticator verification is enabled.</Alert> : <AuthenticatorEnrollment />)}
     <Card className="p-4 sm:p-6" contentClassName="gap-4 items-start">
       <h2 className="font-bold flex items-center gap-2"><KeyRound className="w-5 h-5 text-accent" />Passkeys</h2>
       <p className="text-sm text-text-secondary">Sign in with your fingerprint, face, or device PIN. Your existing sign-in methods remain available.</p>

@@ -563,8 +563,8 @@ function QueueWorkspace() {
             setSelectedDoctor(loadedDoctors[0].id || loadedDoctors[0]._id);
           }
         }
-      } catch (err) {
-        console.error("initFilters error:", err);
+      } catch {
+        console.error("initFilters error:");
       } finally {
         setLoadingFilters(false);
       }
@@ -601,9 +601,9 @@ function QueueWorkspace() {
       const res = await api.get(`/doctor-overrides/triage?locationId=${selectedLocation}&date=${selectedDate}`, { signal: request.signal });
       if (!request.isCurrent()) return;
       setTriageAppointments(res.data?.data || []);
-    } catch (err) {
+    } catch {
       if (!request.isCurrent()) return;
-      console.error("fetchTriageAppointments error:", err);
+      console.error("fetchTriageAppointments error:");
     } finally {
       if (request.isCurrent()) setLoadingTriage(false);
     }
@@ -661,7 +661,7 @@ function QueueWorkspace() {
       setAppointments(resQueue.data.data || []);
       setQueueStatusData(resStatus.data?.data || null);
       await Promise.all([fetchActiveOverride(), fetchTriageAppointments(), fetchDelayStatus()]);
-    } catch (err: any) {
+    } catch {
       if (!request.isCurrent()) return;
       setQueueError("The queue could not be loaded. Check your connection and try again.");
       if (loadedQueueScope.current === null) toast({
@@ -1170,12 +1170,12 @@ function QueueWorkspace() {
               fetchQueue();
               fetchTriageAppointments();
             }
-          } catch (err) {
-            console.error("[Queue WS Message Error]", err);
+          } catch {
+            console.error("[Queue WS Message Error]");
           }
         };
-      } catch (err) {
-        console.warn("[Queue WS Connection Error]", err);
+      } catch {
+        console.warn("[Queue WS Connection Error]");
       }
     }
 

@@ -536,8 +536,8 @@ export default function AppointmentsPage() {
     try {
       const [, staffRes] = await Promise.all([fetchLocations(), api.get("/onboarding/staff")]);
       setDoctors(staffRes.data.data.doctors || []);
-    } catch (err) {
-      console.error("Failed to load locations or doctors", err);
+    } catch {
+      console.error("Failed to load locations or doctors");
     }
   };
 
@@ -566,8 +566,8 @@ export default function AppointmentsPage() {
       try {
         const res = await api.get(`/onboarding/doctors/assignments?locationId=${bookingLocationId}`);
         setDoctorAssignments(res.data.data || []);
-      } catch (err) {
-        console.error("Failed to load doctor assignments", err);
+      } catch {
+        console.error("Failed to load doctor assignments");
       }
     };
     fetchAssignments();

@@ -11,12 +11,13 @@ import { getApiUrl } from "@/lib/api";
 /** Own the notification connection once, underneath the application providers. */
 export function NotificationRealtime() {
   const userId = useAuthStore(state => state.user?.id);
+  const mfaEnrollmentRequired = useAuthStore(state => state.user?.mfaEnrollmentRequired);
   const organizationId = useAuthStore(state => state.user?.organization_id);
   const scopeKey = useAuthStore(state => authScopeKey(state.user));
   const queryClient = useQueryClient();
   const { toast } = useToast();
   useEffect(() => {
-    if (!userId || typeof window === "undefined") return;
+    if (!userId || mfaEnrollmentRequired || typeof window === "undefined") return;
 
     const apiUrl = getApiUrl();
     let ws: WebSocket | null = null;
@@ -101,12 +102,12 @@ export function NotificationRealtime() {
           try {
             const payload = JSON.parse(event.data);
             handlePayload(payload);
-          } catch (err) {
-            console.error("[SSE Parse Error]", err);
+          } catch {
+            console.error("[SSE Parse Error]");
           }
         };
-      } catch (err) {
-        console.warn("[SSE Connection Error]", err);
+      } catch {
+        console.warn("[SSE Connection Error]");
       }
     };
 
@@ -124,8 +125,8 @@ export function NotificationRealtime() {
           try {
             const payload = JSON.parse(event.data);
             handlePayload(payload);
-          } catch (err) {
-            console.error("[WebSocket Parse Error]", err);
+          } catch {
+            console.error("[WebSocket Parse Error]");
           }
         };
 
@@ -142,7 +143,7 @@ export function NotificationRealtime() {
             startSseFallback();
           }
         };
-      } catch (err) {
+      } catch {
         startSseFallback();
       }
     } else {
@@ -158,6 +159,6 @@ export function NotificationRealtime() {
         eventSource.close();
       }
     };
-  }, [userId, organizationId, scopeKey, queryClient, toast]);
+  }, [userId, organizationId, scopeKey, mfaEnrollmentRequired, queryClient, toast]);
   return null;
 }

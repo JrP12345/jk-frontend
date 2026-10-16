@@ -204,8 +204,8 @@ export default function BrowseClient({
           setDetectedLocation(loc);
 
         }
-      } catch (err) {
-        console.error("Auto location error:", err);
+      } catch {
+        console.error("Auto location error:");
       }
     };
 

@@ -76,7 +76,7 @@ export default function UpiPaymentModal({
       },
     })
       .then((url) => setQrDataUrl(url))
-      .catch((err) => console.error("UPI QR Generation Error:", err));
+      .catch(() => console.error("UPI QR Generation Error:"));
   }, [open, upiPayload, vpa]);
 
   const triggerSoundboxAnnouncement = (amt: number, token?: number | string) => {
@@ -90,8 +90,8 @@ export default function UpiPaymentModal({
         utterance.lang = "en-IN";
         window.speechSynthesis.speak(utterance);
       }
-    } catch (err) {
-      console.warn("Soundbox voice announcement notice:", err);
+    } catch {
+      console.warn("Soundbox voice announcement notice:");
     }
   };
 

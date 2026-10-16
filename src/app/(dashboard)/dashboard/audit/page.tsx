@@ -150,10 +150,10 @@ export default function AuditLogsPage() {
       const res = await api.get(`/audit-logs${qs ? `?${qs}` : ""}`, { signal: request.signal });
       if (!request.isCurrent()) return;
       setLogs(res.data.data || []);
-    } catch (err) {
+    } catch {
       if (!request.isCurrent()) return;
       setLoadError("Audit events could not be loaded. Please try again.");
-      console.error("Failed to load audit logs", err);
+      console.error("Failed to load audit logs");
       toast?.({ title: "Error", description: "Failed to load audit logs", variant: "error" });
     } finally {
       if (request.isCurrent()) setLoading(false);
@@ -270,7 +270,7 @@ export default function AuditLogsPage() {
           ))}
         </dl>
       );
-    } catch (e) {
+    } catch {
       return <span className="text-xs text-text-muted">Could not parse details</span>;
     }
   };

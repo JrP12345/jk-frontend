@@ -17,7 +17,7 @@ const defaults: WorkflowPreferences = { registration: "full", consultation: "ful
 export function useWorkflowPreferences(organizationId?: string) {
   const user = useAuthStore((state) => state.user);
   const scope = organizationId || user?.organization_id;
-  const enabled = Boolean(scope && user && !["patient", "family_member", "guest"].includes(user.role));
+  const enabled = Boolean(scope && user && !user.mfaEnrollmentRequired && !["patient", "family_member", "guest"].includes(user.role));
   const query = useQuery({
     queryKey: ["workflow-preferences", authScopeKey(user), scope],
     enabled,

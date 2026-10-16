@@ -23,6 +23,7 @@ import DashboardLoading from "./loading";
 import { LayoutDashboard, Calendar, User, CreditCard, Bell, BarChart3, Building2, Users, FileText, Video, FlaskConical, Image as ImageIcon, Pill, Receipt, ShieldCheck, ClipboardList, Clock, MessageSquare, Settings, Activity, ChevronLeft, ChevronRight, Menu, X, LogOut, Lock } from "lucide-react";
 
 const FloatingAICopilot = dynamic(() => import("@/components/ai/FloatingAICopilot").then((module) => module.FloatingAICopilot), { ssr: false });
+const AuthenticatorEnrollment = dynamic(() => import("@/components/auth/AuthenticatorEnrollment").then(module => module.AuthenticatorEnrollment));
 
 interface NavItem {
   section: string;
@@ -59,7 +60,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     // Only fetch locations if the user is operating within a location/tenant workspace
-    if (!isLoading && requiresTenantModules(user) && hasAnyPermission(user, "VIEW_LOCATIONS")) {
+    if (!isLoading && !user?.mfaEnrollmentRequired && requiresTenantModules(user) && hasAnyPermission(user, "VIEW_LOCATIONS")) {
       if (workflowPreferencesLoading) return;
       fetchLocations().then((list) => {
         if (list.length > 0 && activeLocationId !== "all" && (!activeLocationId || !list.some((c) => c.id === activeLocationId))) {
@@ -72,7 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Fetch module toggle states once user is loaded
   useEffect(() => {
-    if (!isLoading && requiresTenantModules(user) && !modulesLoaded) {
+    if (!isLoading && !user?.mfaEnrollmentRequired && requiresTenantModules(user) && !modulesLoaded) {
       fetchModules();
     }
   }, [user, isLoading, modulesLoaded, fetchModules]);
@@ -274,6 +275,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   /> : null;
 
   if (isLoggingOut) return <div role="status" aria-live="polite" className="min-h-dvh flex items-center justify-center bg-background text-text-secondary text-sm">Signing out…</div>;
+  if (user?.mfaEnrollmentRequired) return <main className="min-h-dvh bg-background p-4 sm:p-8 flex items-center"><AuthenticatorEnrollment required /></main>;
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background relative">

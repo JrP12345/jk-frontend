@@ -272,16 +272,16 @@ export default function PharmacyPage() {
             } else if (payload.type === "PRESCRIPTION_DISPENSED") {
               fetchData();
             }
-          } catch (parseErr) {
-            console.error("Pharmacy WebSocket parse error:", parseErr);
+          } catch {
+            console.error("Pharmacy WebSocket parse error:");
           }
         };
 
-        ws.onerror = (err) => {
-          console.warn("Pharmacy WebSocket error:", err);
+        ws.onerror = () => {
+          console.warn("Pharmacy WebSocket error:");
         };
-      } catch (connErr) {
-        console.warn("Could not initiate Pharmacy WebSocket:", connErr);
+      } catch {
+        console.warn("Could not initiate Pharmacy WebSocket:");
       }
     }
 

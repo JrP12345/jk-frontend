@@ -86,7 +86,7 @@ export default function NursingShiftRosterPage() {
         if (res.data.data.metrics) setMetrics(res.data.data.metrics);
       }
     } catch (err: any) {
-      console.error("Error fetching shifts:", err);
+      console.error("Error fetching shifts:");
       toast({
         title: "Error Loading Roster",
         description: err.response?.data?.message || "Failed to fetch shift roster",

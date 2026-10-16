@@ -114,6 +114,10 @@ api.interceptors.response.use(
     // If 403 Forbidden, notify client-side listener for permission/organization fallback
     if (error.response?.status === 403 && typeof window !== "undefined") {
       const data = error.response?.data || {};
+      if (data.code === "MFA_ENROLLMENT_REQUIRED") {
+        window.dispatchEvent(new Event("auth-mfa-required"));
+        return Promise.reject(error);
+      }
       const rawMsg = data.message || data.error || "Access forbidden";
       const lower = rawMsg.toLowerCase();
 

@@ -86,7 +86,7 @@ function JoinLocationQueue({ locationSlug }: { locationSlug: string }) {
           setError(userFacingError(res.data?.message, "This location could not be found."));
         }
       } catch (err: any) {
-        console.error("Failed to load location details:", err);
+        console.error("Failed to load location details:");
         if (isMounted) {
           setError(
             userFacingError(err.response?.data?.message, "Location details could not be loaded. Scan the QR code again or ask reception for help.")

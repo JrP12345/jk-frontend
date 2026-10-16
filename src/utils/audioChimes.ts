@@ -155,8 +155,8 @@ export function playChimeSound(type: ChimeType = "bell") {
         break;
       }
     }
-  } catch (e) {
-    console.warn("Audio chime playback error:", e);
+  } catch {
+    console.warn("Audio chime playback error:");
   }
 }
 
@@ -218,8 +218,8 @@ export function announcePatientToken({
       }
 
       utterances.forEach((u) => window.speechSynthesis.speak(u));
-    } catch (err) {
-      console.warn("Speech synthesis error:", err);
+    } catch {
+      console.warn("Speech synthesis error:");
     }
   }, 450);
 }

@@ -22,8 +22,8 @@ export function PreviousVisitsSidebar({ patientId, onCopyForward }: PreviousVisi
         const res = await api.get(`/patients/${patientId}/clinical-notes/history`);
         const list = res.data?.data?.notes || res.data?.data || [];
         setHistory(list);
-      } catch (err) {
-        console.error("Failed to load previous visits:", err);
+      } catch {
+        console.error("Failed to load previous visits:");
       } finally {
         setLoading(false);
       }

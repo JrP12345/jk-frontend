@@ -259,9 +259,9 @@ function PatientPortal() {
 
       // Fetch refill requests
       await fetchRefills();
-    } catch (err: any) {
+    } catch {
       setLoadError("Your health records could not be loaded. Please try again.");
-      console.error("Failed to fetch patient portal data:", err);
+      console.error("Failed to fetch patient portal data:");
       toast({
         title: "Error",
         description: "Your health records could not be loaded. Please try again.",
@@ -286,7 +286,7 @@ function PatientPortal() {
       const res = await api.get(`/patients/${patientId}/timeline`);
       setTimelineEvents(res.data.data?.events || []);
       setTimelineError(null);
-    } catch (err) {
+    } catch {
       setTimelineError("Clinical history could not be refreshed. Retry to check for the latest records.");
     } finally {
       setTimelineLoading(false);

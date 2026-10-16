@@ -38,8 +38,8 @@ export function PatientQueueTracker({ appointmentId, locationId, doctorId }: Pat
         currentInConsultationToken: inConsultationAppt?.tokenNumber || null,
         totalWaitingAhead: queueList.filter((a) => ["checked-in", "confirmed", "pending"].includes(a.status) && a.tokenNumber < (currentPatientAppt?.tokenNumber || 0)).length,
       });
-    } catch (err) {
-      console.error("Failed to fetch live queue status:", err);
+    } catch {
+      console.error("Failed to fetch live queue status:");
     } finally {
       setLoading(false);
     }
@@ -124,7 +124,7 @@ export function PatientQueueTracker({ appointmentId, locationId, doctorId }: Pat
                 try {
                   await api.post(`/appointments/${appointmentId}/check-in`);
                   fetchQueueInfo();
-                } catch (e) {
+                } catch {
                   // ignore
                 }
               }}

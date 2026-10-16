@@ -2,6 +2,7 @@
 
 import { StatCard, SkeletonCard } from "@/components/ui";
 import { IndianRupee, AlertCircle, Building2, Stethoscope, Calendar, Clock, CheckCircle2, Receipt } from "lucide-react";
+import { formatCurrency } from "@/lib/currency";
 
 interface AdminStats {
   locations: number;
@@ -30,6 +31,9 @@ interface DashboardStatCardsProps {
   adminStats: AdminStats;
   doctorStats: DoctorStats;
   patientStats: PatientStats;
+  financialVisible?: boolean;
+  showStaffCounts?: boolean;
+  moneyByCurrency?: Array<{ currency: string; collections: number; outstanding: number }>;
 }
 
 export function DashboardStatCards({
@@ -39,6 +43,9 @@ export function DashboardStatCards({
   adminStats,
   doctorStats,
   patientStats,
+  financialVisible = true,
+  showStaffCounts = true,
+  moneyByCurrency = [],
 }: DashboardStatCardsProps) {
   if (canViewOpsDashboard) {
     return (
@@ -52,18 +59,19 @@ export function DashboardStatCards({
           </>
         ) : (
           <>
-            <StatCard
+            {financialVisible && <><StatCard
               label="Collections"
-              value={`₹${adminStats.collections.toLocaleString("en-IN")}`}
+              value={moneyByCurrency.length ? moneyByCurrency.map(row => formatCurrency(row.collections, row.currency)).join(" · ") : formatCurrency(adminStats.collections)}
               description="Today's settled"
               icon={<IndianRupee className="w-5 h-5" />}
             />
             <StatCard
               label="Outstanding"
-              value={`₹${adminStats.outstanding.toLocaleString("en-IN")}`}
+              value={moneyByCurrency.length ? moneyByCurrency.map(row => formatCurrency(row.outstanding, row.currency)).join(" · ") : formatCurrency(adminStats.outstanding)}
               description="Today's pending balance"
               icon={<AlertCircle className="w-5 h-5" />}
             />
+            </>}
             <StatCard
               label="Active Locations"
               value={adminStats.locations.toString()}
@@ -71,9 +79,9 @@ export function DashboardStatCards({
               icon={<Building2 className="w-5 h-5" />}
             />
             <StatCard
-              label="Doctors On-Duty"
-              value={adminStats.doctors.toString()}
-              description="Active clinicians"
+              label={showStaffCounts ? "Doctors" : "Today's visits"}
+              value={(showStaffCounts ? adminStats.doctors : adminStats.appointments).toString()}
+              description={showStaffCounts ? "Registered clinicians" : "Across granted locations"}
               icon={<Stethoscope className="w-5 h-5" />}
             />
           </>
@@ -117,7 +125,7 @@ export function DashboardStatCards({
     );
   }
 
-  if (role === "patient") {
+  if (role === "patient" || role === "family_member") {
     return (
       <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
         {loading ? (
@@ -128,15 +136,15 @@ export function DashboardStatCards({
         ) : (
           <>
             <StatCard
-              label="Booked Visits"
+              label="Recorded visits"
               value={patientStats.appointmentsCount.toString()}
-              description="Upcoming bookings"
+              description="All recorded bookings"
               icon={<Calendar className="w-5 h-5" />}
             />
             <StatCard
-              label="Due Balance"
-              value={`₹${patientStats.unpaidBills.toLocaleString("en-IN")}`}
-              description="Invoices pending"
+              label="Unpaid invoices"
+              value={patientStats.unpaidBills.toLocaleString()}
+              description="Including partial payments"
               icon={<Receipt className="w-5 h-5" />}
             />
           </>

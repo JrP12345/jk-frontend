@@ -135,8 +135,8 @@ export default function TeleconsultationPage() {
             if (startRes.data?.data) {
               sessionData = startRes.data.data;
             }
-          } catch (e) {
-            console.warn("Could not mark session as active automatically:", e);
+          } catch {
+            console.warn("Could not mark session as active automatically:");
           }
         }
 

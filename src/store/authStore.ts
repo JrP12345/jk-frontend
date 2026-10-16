@@ -16,6 +16,8 @@ export interface User {
   organization_id?: string;
   image_url?: string;
   permissions?: string[];
+  twoFactorEnabled?: boolean;
+  mfaEnrollmentRequired?: boolean;
   impersonatedBy?: {
     id: string;
     email: string;

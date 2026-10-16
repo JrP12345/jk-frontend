@@ -67,8 +67,8 @@ export function InCabinInvestigationViewerModal({
             setSelectedTestName(testKeys[0]);
           }
         }
-      } catch (err) {
-        console.warn("Could not fetch historical lab comparisons, falling back to current results:", err);
+      } catch {
+        console.warn("Could not fetch historical lab comparisons, falling back to current results:");
       } finally {
         setLoading(false);
       }

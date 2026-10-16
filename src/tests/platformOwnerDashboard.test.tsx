@@ -143,7 +143,7 @@ describe("Platform owner dashboard", () => {
     vi.mocked(api.get).mockResolvedValue({ data: { data: [] } });
     mount();
     await screen.findByText("Clinic operational metrics");
-    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/appointments/patient/me"));
+      await waitFor(() => expect(api.get).toHaveBeenCalledWith("/appointments/patient/me?limit=5", expect.objectContaining({ signal: expect.any(AbortSignal) })));
     expect(vi.mocked(api.get).mock.calls.some(([path]) => path === "/admin/dashboard")).toBe(false);
   });
 });

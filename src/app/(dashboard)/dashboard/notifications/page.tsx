@@ -71,7 +71,7 @@ export default function NotificationsInboxPage() {
       notificationService
         .getOrganizationUsers()
         .then((users) => setOrgUsers(users))
-        .catch((err) => console.error(err));
+        .catch(() => console.error("Client operation failed"));
     }
   }, [isSendModalOpen, orgUsers.length]);
 
@@ -91,8 +91,8 @@ export default function NotificationsInboxPage() {
       });
       await new Promise((r) => setTimeout(r, 150));
       await refetch();
-    } catch (err) {
-      console.error(err);
+    } catch {
+      console.error("Client operation failed");
       toast({
         title: "Test notification could not be sent",
         description: "Please try again.",
@@ -153,7 +153,7 @@ export default function NotificationsInboxPage() {
       await new Promise((r) => setTimeout(r, 150));
       await refetch();
     } catch (err: any) {
-      console.error(err);
+      console.error("Client operation failed");
       toast({
         title: "Notification could not be sent",
         description: err?.response?.data?.message || "Failed to send notification.",

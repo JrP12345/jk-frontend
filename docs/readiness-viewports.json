@@ -1,0 +1,215 @@
+{
+  "scope": "Production frontend rendering with synthetic API fixtures; no backend/provider E2E claim",
+  "results": [
+    {
+      "mode": "doctor",
+      "width": 320,
+      "viewport": 320,
+      "documentWidth": 320,
+      "headings": [
+        "Consultations & queue"
+      ]
+    },
+    {
+      "mode": "doctor",
+      "width": 390,
+      "viewport": 390,
+      "documentWidth": 390,
+      "headings": [
+        "Consultations & queue"
+      ]
+    },
+    {
+      "mode": "doctor",
+      "width": 430,
+      "viewport": 430,
+      "documentWidth": 430,
+      "headings": [
+        "Consultations & queue"
+      ]
+    },
+    {
+      "mode": "doctor",
+      "width": 1440,
+      "viewport": 1440,
+      "documentWidth": 1430,
+      "headings": [
+        "Consultations & queue"
+      ]
+    },
+    {
+      "mode": "patient-entry",
+      "width": 320,
+      "viewport": 320,
+      "documentWidth": 320,
+      "dialogWidth": 288
+    },
+    {
+      "mode": "dashboard",
+      "width": 320,
+      "viewport": 320,
+      "documentWidth": 320,
+      "headings": [
+        "Welcome back, Synthetic doctor"
+      ]
+    },
+    {
+      "mode": "dashboard",
+      "width": 390,
+      "viewport": 390,
+      "documentWidth": 390,
+      "headings": [
+        "Welcome back, Synthetic doctor"
+      ]
+    },
+    {
+      "mode": "mfa",
+      "width": 320,
+      "viewport": 320,
+      "documentWidth": 320,
+      "headings": [
+        "Secure your workspace"
+      ]
+    },
+    {
+      "mode": "mfa",
+      "width": 390,
+      "viewport": 390,
+      "documentWidth": 390,
+      "headings": [
+        "Secure your workspace"
+      ]
+    },
+    {
+      "mode": "mfa",
+      "width": 430,
+      "viewport": 430,
+      "documentWidth": 430,
+      "headings": [
+        "Secure your workspace"
+      ]
+    }
+  ],
+  "requests": [
+    {
+      "mode": "doctor",
+      "method": "GET",
+      "route": "/auth/me"
+    },
+    {
+      "mode": "doctor",
+      "method": "GET",
+      "route": "/auth/workspaces"
+    },
+    {
+      "mode": "doctor",
+      "method": "GET",
+      "route": "/notifications/unread-count"
+    },
+    {
+      "mode": "doctor",
+      "method": "GET",
+      "route": "/onboarding/organization/preferences"
+    },
+    {
+      "mode": "doctor",
+      "method": "GET",
+      "route": "/modules"
+    },
+    {
+      "mode": "doctor",
+      "method": "GET",
+      "route": "/onboarding/locations"
+    },
+    {
+      "mode": "doctor",
+      "method": "GET",
+      "route": "/notifications/stream"
+    },
+    {
+      "mode": "doctor",
+      "method": "GET",
+      "route": "/appointments"
+    },
+    {
+      "mode": "doctor",
+      "method": "GET",
+      "route": "/analytics/daily-summary"
+    },
+    {
+      "mode": "doctor",
+      "method": "OPTIONS",
+      "route": "/public/track-visit"
+    },
+    {
+      "mode": "doctor",
+      "method": "POST",
+      "route": "/public/track-visit"
+    },
+    {
+      "mode": "doctor",
+      "method": "GET",
+      "route": "/onboarding/doctors/assignments"
+    },
+    {
+      "mode": "doctor",
+      "method": "GET",
+      "route": "/doctors/fixture-doctor/slots"
+    },
+    {
+      "mode": "dashboard",
+      "method": "GET",
+      "route": "/auth/me"
+    },
+    {
+      "mode": "dashboard",
+      "method": "GET",
+      "route": "/auth/workspaces"
+    },
+    {
+      "mode": "dashboard",
+      "method": "GET",
+      "route": "/notifications/unread-count"
+    },
+    {
+      "mode": "dashboard",
+      "method": "GET",
+      "route": "/analytics/daily-summary"
+    },
+    {
+      "mode": "dashboard",
+      "method": "GET",
+      "route": "/onboarding/locations"
+    },
+    {
+      "mode": "dashboard",
+      "method": "GET",
+      "route": "/onboarding/organization/preferences"
+    },
+    {
+      "mode": "dashboard",
+      "method": "GET",
+      "route": "/modules"
+    },
+    {
+      "mode": "dashboard",
+      "method": "GET",
+      "route": "/notifications/stream"
+    },
+    {
+      "mode": "dashboard",
+      "method": "POST",
+      "route": "/public/track-visit"
+    },
+    {
+      "mode": "mfa",
+      "method": "GET",
+      "route": "/auth/me"
+    },
+    {
+      "mode": "mfa",
+      "method": "POST",
+      "route": "/public/track-visit"
+    }
+  ]
+}

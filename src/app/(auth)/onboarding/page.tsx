@@ -97,8 +97,8 @@ function OnboardingInner() {
         if (typeof parsed.isMultiLocation === "boolean") setIsMultiLocation(parsed.isMultiLocation);
         if (parsed.step && parsed.step < STEPS.length - 1) setStep(parsed.step);
       }
-    } catch (err) {
-      console.warn("Could not parse onboarding local draft:", err);
+    } catch {
+      console.warn("Could not parse onboarding local draft:");
     }
   }, []);
 
@@ -113,7 +113,7 @@ function OnboardingInner() {
         if (onboardingKey) {
           api.post("/onboarding/draft", { token: onboardingKey, step, formData: safeFormData }).catch(() => {});
         }
-      } catch (err) {
+      } catch {
         // ignore
       }
     }, 500);
