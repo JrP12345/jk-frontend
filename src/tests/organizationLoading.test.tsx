@@ -44,10 +44,12 @@ describe("Organization read sequence", () => {
     vi.spyOn(api, "get").mockResolvedValueOnce(response([organization])).mockReturnValueOnce(refresh.promise);
     mount();
     expect(await screen.findByText(organization.name)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Refresh organizations" }));
+    fireEvent.click(screen.getByRole("button", { name: "Organization actions" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Refresh organizations" }));
     expect(screen.getByText(organization.name)).toBeInTheDocument();
     expect(screen.queryByRole("status", { name: "Loading organizations" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Refresh organizations" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Organization actions" }));
+    expect(await screen.findByRole("menuitem", { name: "Refresh organizations" })).toBeDisabled();
     await act(async () => refresh.reject(new Error("Connection unavailable")));
     expect(await screen.findByText("Unable to load organizations")).toBeInTheDocument();
     expect(screen.getByText(organization.name)).toBeInTheDocument();

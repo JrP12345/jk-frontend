@@ -4,7 +4,8 @@ import PrintButton from "@/components/ui/PrintButton";
 import { printElement } from "@/lib/printBrand";
 
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Input, Select, Badge, useToast } from "@/components/ui";
+import { Button, Input, Select, Badge, useToast, DatePicker } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
 import api from "@/lib/api";
 import { ShieldCheck, QrCode, Search, CheckCircle2, Smartphone, CreditCard, UserCheck, Sparkles, Zap, FileCode, Share2, Copy, Check, Download, Layers } from "lucide-react";
 
@@ -265,13 +266,13 @@ export function AbdmRegistrationModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Ayushman Bharat Digital Mission (ABDM) / ABHA Desk"
-      description="India National Health Authority (NHA) certified ABHA generation, lookup, and 3-second Scan & Share counter token check-in."
+      title="ABHA registration"
+      description="Create or find an ABHA record and add the patient to the queue."
       size="lg"
     >
       <div className="space-y-4 pt-1">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-border pb-2.5">
+        <div data-dialog-tabs className="grid grid-cols-2 sm:grid-cols-4 gap-2 border-b border-border pb-2.5">
           <button
             type="button"
             onClick={() => setActiveTab("generate")}
@@ -282,7 +283,7 @@ export function AbdmRegistrationModal({
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            1. Generate New ABHA (Aadhaar OTP)
+            Create ABHA
           </button>
           <button
             type="button"
@@ -294,7 +295,7 @@ export function AbdmRegistrationModal({
             }`}
           >
             <Search className="w-3.5 h-3.5" />
-            2. Search & Link ABHA
+            Find ABHA
           </button>
           <button
             type="button"
@@ -306,7 +307,7 @@ export function AbdmRegistrationModal({
             }`}
           >
             <QrCode className="w-3.5 h-3.5" />
-            3. Counter Scan & Share Standee
+            Scan & share
           </button>
           <button
             type="button"
@@ -318,22 +319,22 @@ export function AbdmRegistrationModal({
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
-            4. Care Contexts & FHIR (M3)
+            Care records
           </button>
         </div>
 
         {/* Doctor Assignment Selection for Token Issuance */}
         <div className="p-3 bg-surface-alt rounded-xl border border-border/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
           <div className="text-xs space-y-0.5">
-            <span className="font-bold text-text">Assign Token to Consulting Physician:</span>
-            <p className="text-[11px] text-text-muted">Issued OPD tokens will immediately place patient into this doctor's live cabin queue.</p>
+            <span className="font-bold text-text">Consulting doctor</span>
+
           </div>
-          <Select
+          {doctors.length === 1 ? <span className="text-sm font-medium">Dr. {doctors[0].name}</span> : <Select
             value={targetDoctorId}
             onChange={(e) => setTargetDoctorId(e.target.value)}
             options={doctors.map((d) => ({ value: d.id, label: `Dr. ${d.name}` }))}
             className="w-full sm:w-56 text-xs"
-          />
+          />}
         </div>
 
         {/* TAB 1: GENERATE NEW ABHA */}
@@ -424,11 +425,11 @@ export function AbdmRegistrationModal({
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-text-secondary">Date of Birth</label>
-                        <Input
-                          type="date"
+                        <DatePicker
+                          label="Date of Birth"
+
                           value={dob}
-                          onChange={(e) => setDob(e.target.value)}
+                          onChange={(value) => setDob(value)}
                           className="text-xs mt-1"
                         />
                       </div>

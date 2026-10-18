@@ -8,12 +8,16 @@ import { useToast } from "@/components/ui/Toast";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
-import { Button, Input, Select, Textarea, Badge, Card, Table, Pagination, Dropdown, cn, type Column, type TableBulkAction } from "@/components/ui";
+import { Button, Input, Select, Textarea, Badge, Table, Pagination, Dropdown, Checkbox, Tabs, type Column, type TableBulkAction } from "@/components/ui";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { notificationCategoryLabel } from "@/lib/notificationPresentation";
-import { Bell, Sparkles, CheckCheck, Send, Search, Pin, PinOff, Check, Eye, Trash2, MoreHorizontal, Clock, ExternalLink, Mail, Stethoscope, ShieldAlert, Receipt, Settings, CheckSquare, Users, Building2, ArrowRight } from "lucide-react";
+import { Sparkles, CheckCheck, Send, Search, Pin, PinOff, Check, Eye, Trash2, MoreHorizontal, ExternalLink, Stethoscope, ShieldAlert, Receipt, Settings, CheckSquare, Users, Building2, RotateCw, Filter } from "lucide-react";
+
+import styles from "./Notifications.module.css";
+
+const CATEGORIES = ["auth", "patient", "task", "security", "system", "billing", "team", "organization"].map(value => ({ value, label: notificationCategoryLabel(value) }));
 
 export default function NotificationsInboxPage() {
   const router = useRouter();
@@ -29,6 +33,7 @@ export default function NotificationsInboxPage() {
   // Modals & Dialogs State
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
   const [viewingNotification, setViewingNotification] = useState<NotificationItem | null>(null);
   const [orgUsers, setOrgUsers] = useState<Array<{ id: string; name: string; email: string; role: string }>>([]);
@@ -105,6 +110,7 @@ export default function NotificationsInboxPage() {
 
   const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSending || !canSendNotifications) return;
     if (!sendInApp && !sendEmail) {
       toast({ title: "Choose a delivery method", description: "Select in-app notification, email, or both.", variant: "error" });
       return;
@@ -166,7 +172,7 @@ export default function NotificationsInboxPage() {
 
   const handleViewDetail = (item: NotificationItem) => {
     if (!item.readAt) {
-      markAsRead(item.id);
+      void markAsRead(item.id).catch(() => toast({ title: "Notification could not be marked as read", variant: "error" }));
     }
     if (item.actionUrl) {
       router.push(item.actionUrl);
@@ -221,740 +227,103 @@ export default function NotificationsInboxPage() {
     });
   };
 
-  // ── Table Column Definitions ─────────────────────────────────────
+  const performAction = async (action: () => Promise<unknown>) => {
+    try { await action(); } catch { toast({ title: "Notification could not be updated", description: "Please try again.", variant: "error" }); }
+  };
+  const renderBadges = (row: NotificationItem, showUnread = true) => <div className={styles.badges}>
+    <Badge variant={getSeverityBadgeVariant(row.severity)} className={styles.categoryBadge}>{getCategoryIcon(row.category)}{notificationCategoryLabel(row.category)}</Badge>
+    {showUnread && !row.readAt && <span className={styles.unreadLabel}>Unread</span>}
+    {row.pinned && <span className={styles.pinned}><Pin className="h-3 w-3" aria-hidden="true" />Pinned</span>}
+    {(row.priority === "urgent" || row.priority === "high") && <span className={styles.priority}>{row.priority} priority</span>}
+  </div>;
+  const renderContent = (row: NotificationItem) => <div className={styles.notificationContent}>
+    <button type="button" className={row.readAt ? styles.readTitle : styles.titleButton} onClick={() => handleViewDetail(row)}>{row.title}{row.actionUrl && <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />}</button>
+    <p className={styles.messagePreview}>{row.message}</p>
+  </div>;
+  const renderActions = (row: NotificationItem) => <Dropdown align="right" width="w-52" trigger={<Button size="sm" variant="outline" className={styles.iconAction} aria-label={`Options for ${row.title}`}><MoreHorizontal className="h-4 w-4" /></Button>} items={[
+    { label: row.pinned ? "Unpin notification" : "Pin notification", icon: row.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />, onClick: () => { void performAction(() => togglePinNotification(row.id)); } },
+    ...(!row.readAt ? [{ label: "Mark as read", icon: <Check className="h-4 w-4" />, onClick: () => { void performAction(() => markAsRead(row.id)); } }] : []),
+    { label: row.actionUrl ? "Open related page" : "View details", icon: <Eye className="h-4 w-4" />, onClick: () => handleViewDetail(row) },
+    { divider: true, label: "" },
+    { label: "Delete notification", icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => setDeletingIds([row.id]) },
+  ]} />;
   const columns: Column<NotificationItem>[] = [
-    {
-      header: "Status",
-      key: "status",
-      width: "50px",
-      align: "center",
-      render: (row) => (
-        <div className="flex items-center justify-center">
-          {!row.readAt ? (
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary-500 shadow-xs " />
-            </span>
-          ) : (
-            <span className="w-2 h-2 rounded-full bg-border/80" title="Read" />
-          )}
-        </div>
-      ),
-    },
-    {
-      header: "Category & priority",
-      key: "category",
-      width: "170px",
-      render: (row) => (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Badge
-              variant={getSeverityBadgeVariant(row.severity)}
-              size="sm"
-              className="uppercase font-bold text-[10px] tracking-wide inline-flex items-center gap-1"
-            >
-              {getCategoryIcon(row.category)}
-              <span>{notificationCategoryLabel(row.category)}</span>
-            </Badge>
-            {row.pinned && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-warning-text dark:text-warning-text bg-warning/15 border border-warning/30 px-1.5 py-0.5 rounded-md">
-                <Pin className="w-2.5 h-2.5 fill-current" />
-                Pinned
-              </span>
-            )}
-          </div>
-          {row.priority === "urgent" || row.priority === "high" ? (
-            <div className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
-              <span className="text-[10px] font-bold text-danger-text uppercase tracking-wider">
-                {row.priority} Priority
-              </span>
-            </div>
-          ) : null}
-        </div>
-      ),
-    },
-    {
-      header: "Notification",
-      key: "detail",
-      render: (row) => (
-        <div className="space-y-1 min-w-0 w-full">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p
-              className={`text-xs sm:text-sm text-text cursor-pointer hover:text-accent dark:hover:text-accent transition-colors ${
-                !row.readAt ? "font-bold text-text" : "font-medium text-text-secondary"
-              }`}
-              onClick={() => handleViewDetail(row)}
-            >
-              {row.title}
-            </p>
-            {row.actionUrl && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-accent dark:text-accent bg-primary-500/10 px-1.5 py-0.5 rounded border border-primary-500/20">
-                <ExternalLink className="w-2.5 h-2.5" />
-                Open related page
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-text-muted leading-relaxed line-clamp-2">{row.message}</p>
-        </div>
-      ),
-    },
-    {
-      header: "Received",
-      key: "time",
-      width: "140px",
-      render: (row) => (
-        <div className="flex items-center gap-1.5 text-xs text-text-muted font-medium whitespace-nowrap">
-          <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
-          <span>{formatTimestamp(row.createdAt)}</span>
-        </div>
-      ),
-    },
-    {
-      header: "Actions",
-      key: "actions",
-      width: "90px",
-      align: "right",
-      render: (row) => (
-        <div className="flex items-center justify-end">
-          <Dropdown
-            align="right"
-            width="w-44"
-            trigger={
-              <Button
-                type="button"
-                size="xs"
-                variant="outline"
-                className="h-8 px-2.5 text-xs font-semibold rounded-lg text-text-secondary hover:text-text min-h-[36px]"
-              >
-                <MoreHorizontal className="w-4 h-4" />
-              </Button>
-            }
-            items={[
-              {
-                label: row.pinned ? "Unpin notification" : "Pin notification",
-                icon: row.pinned ? <PinOff className="w-4 h-4 text-text-muted" /> : <Pin className="w-4 h-4 text-warning-text" />,
-                onClick: () => togglePinNotification(row.id),
-              },
-              ...(!row.readAt
-                ? [
-                    {
-                      label: "Mark as Read",
-                      icon: <Check className="w-4 h-4 text-accent" />,
-                      onClick: () => markAsRead(row.id),
-                    },
-                  ]
-                : []),
-              {
-                label: "View Details",
-                icon: <Eye className="w-4 h-4 text-text-muted" />,
-                onClick: () => handleViewDetail(row),
-              },
-              { divider: true, label: "" },
-              {
-                label: "Delete notification",
-                icon: <Trash2 className="w-4 h-4 text-danger" />,
-                danger: true,
-                onClick: () => setDeletingIds([row.id]),
-              },
-            ]}
-          />
-        </div>
-      ),
-    },
+    { header: "Notification", key: "detail", width: "68%", render: row => <div className={styles.notificationCell}>{renderBadges(row)}{renderContent(row)}</div> },
+    { header: "Received", key: "time", width: "23%", render: row => <div className={styles.received}><time dateTime={row.createdAt}>{formatTimestamp(row.createdAt)}</time><span>{row.readAt ? "Read" : "Unread"}</span></div> },
+    { header: "Actions", key: "actions", align: "right", width: "9%", render: renderActions },
   ];
-
-  // ── Table Bulk Actions ───────────────────────────────────────────
   const bulkActions: TableBulkAction<NotificationItem>[] = [
-    {
-      label: "Mark Selected as Read",
-      variant: "primary",
-      onClick: (selectedRows) => {
-        selectedRows.forEach((row) => {
-          if (!row.readAt) markAsRead(row.id);
-        });
-      },
-    },
-    {
-      label: "Delete Selected",
-      variant: "danger",
-      onClick: (selectedRows) => {
-        if (selectedRows.length > 0) {
-          setDeletingIds(selectedRows.map((r) => r.id));
-        }
-      },
-    },
+    { label: "Mark Selected as Read", variant: "primary", onClick: rows => { void performAction(() => Promise.all(rows.filter(row => !row.readAt).map(row => markAsRead(row.id)))); } },
+    { label: "Delete Selected", variant: "danger", onClick: rows => { if (rows.length) setDeletingIds(rows.map(row => row.id)); } },
   ];
-
-  return (
-    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12">
-      {/* ──────────────────────────────────────────────────────────────────────────
-          1. TOP HEADER BANNER
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Notifications & Broadcasts
-              </h1>
-              {unreadCount > 0 ? (
-                <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                  {unreadCount} Unread
-                </Badge>
-              ) : (
-                <Badge variant="neutral" size="sm" className="font-semibold">
-                  All Caught Up
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Review updates and send notifications to your team.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap shrink-0 w-full sm:w-auto">
-            {canSendNotifications && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleTestTrigger}
-                loading={isTestLoading}
-                icon={<Sparkles className="h-3.5 w-3.5 text-text-secondary" />}
-                className="text-xs font-semibold transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
-              >
-                Send test notification
-              </Button>
-            )}
-
-            {unreadCount > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => markAllAsRead()}
-                className="text-xs font-semibold transition-colors flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
-              >
-                <CheckCheck className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
-                Mark all read
-              </Button>
-            )}
-
-            {canSendNotifications && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setIsSendModalOpen(true)}
-                className="text-xs font-semibold flex-1 sm:flex-initial min-h-[44px] sm:min-h-[36px] justify-center"
-              >
-                <Send className="h-3.5 w-3.5 mr-1.5" />
-                New notification
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          2. FILTERS & SEARCH BAR
-         ────────────────────────────────────────────────────────────────────────── */}
-      <Card className="p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-          <div className="relative sm:col-span-7 lg:col-span-8">
-
-            <Input icon={<Search />} type="text" placeholder="Search notifications" aria-label="Search notifications" value={search} onChange={(e) => setSearch(e.target.value)} size="sm" variant="filled" />
-          </div>
-
-          <div className="sm:col-span-5 lg:col-span-4">
-            <Select
-              value={unreadOnly ? "unread" : category}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === "unread") {
-                  setUnreadOnly(true);
-                  setCategory("");
-                } else {
-                  setUnreadOnly(false);
-                  setCategory(val);
-                }
-              }}
-              options={[
-                { value: "", label: "All notifications" },
-                { value: "unread", label: `Unread (${unreadCount})` },
-                { value: "auth", label: "Account activity" },
-                { value: "patient", label: "Patient care" },
-                { value: "task", label: "Tasks" },
-                { value: "security", label: "Security" },
-                { value: "system", label: "System" },
-                { value: "billing", label: "Billing" },
-                { value: "team", label: "Team" },
-                { value: "organization", label: "Organization" },
-              ]}
-            />
-          </div>
-        </div>
-      </Card>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          3. MAIN NOTIFICATION DATA TABLE
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div>
-        <Table
-            error={isError ? "Notifications could not be loaded. Please try again." : null}
-            onRetry={() => refetch()}
-          columns={columns}
-          data={notifications}
-          keyField="id"
-          selectable
-          loading={isLoading}
-          bulkActions={bulkActions}
-          mobileCardView={true}
-          renderMobileCard={(row: NotificationItem) => {
-            const isUnread = !row.readAt;
-            return (
-              <div
-                key={row.id}
-                className={cn(
-                  "p-4 rounded-2xl border shadow-xs space-y-2.5 relative overflow-hidden transition-all",
-                  isUnread
-                    ? "bg-primary-500/[0.03] dark:bg-primary-500/[0.06] border-primary-500/30"
-                    : "bg-surface border-border/80 hover:border-border"
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {isUnread && (
-                      <span className="relative flex h-2 w-2 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-500" />
-                      </span>
-                    )}
-                    <Badge
-                      variant={getSeverityBadgeVariant(row.severity)}
-                      size="sm"
-                      className="uppercase font-bold text-[10px] tracking-wide inline-flex items-center gap-1"
-                    >
-                      {getCategoryIcon(row.category)}
-                      <span>{notificationCategoryLabel(row.category)}</span>
-                    </Badge>
-                    {row.pinned && (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-warning-text dark:text-warning-text bg-warning/15 border border-warning/30 px-1.5 py-0.2 rounded-md">
-                        <Pin className="w-2.5 h-2.5 fill-current" />
-                        Pinned
-                      </span>
-                    )}
-                  </div>
-
-                  <span className="text-[11px] text-text-muted flex items-center gap-1 shrink-0 font-medium">
-                    <Clock className="w-3 h-3 text-text-muted" />
-                    {formatTimestamp(row.createdAt)}
-                  </span>
-                </div>
-
-                <div
-                  className="cursor-pointer space-y-1 pt-0.5"
-                  onClick={() => handleViewDetail(row)}
-                >
-                  <h4 className={cn("text-sm transition-colors", isUnread ? "font-bold text-text" : "font-medium text-text-secondary")}>
-                    {row.title}
-                  </h4>
-                  <p className="text-xs text-text-muted leading-relaxed line-clamp-2">{row.message}</p>
-                </div>
-
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50">
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    onClick={() => handleViewDetail(row)}
-                    className="flex-1 font-semibold text-xs rounded-xl min-h-[36px] justify-center"
-                  >
-                    <Eye className="w-3.5 h-3.5 mr-1 text-text-muted" />
-                    View notification
-                  </Button>
-
-                  {isUnread && (
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      onClick={() => markAsRead(row.id)}
-                      className="font-semibold text-xs rounded-xl min-h-[36px] px-3 text-accent dark:text-accent hover:bg-primary-500/10"
-                    >
-                      <Check className="w-3.5 h-3.5 mr-1" />
-                      Mark Read
-                    </Button>
-                  )}
-
-                  <Dropdown
-                    align="right"
-                    width="w-44"
-                    trigger={
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="outline"
-                        className="h-[36px] w-[36px] min-h-[36px] min-w-[36px] p-0 flex items-center justify-center rounded-xl text-text-secondary hover:text-text cursor-pointer shrink-0"
-                        aria-label="More notification options"
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    }
-                    items={[
-                      {
-                        label: row.pinned ? "Unpin notification" : "Pin notification",
-                        icon: row.pinned ? <PinOff className="w-4 h-4 text-text-muted" /> : <Pin className="w-4 h-4 text-warning-text" />,
-                        onClick: () => togglePinNotification(row.id),
-                      },
-                      { divider: true, label: "" },
-                      {
-                        label: "Delete notification",
-                        icon: <Trash2 className="w-4 h-4 text-danger" />,
-                        danger: true,
-                        onClick: () => setDeletingIds([row.id]),
-                      },
-                    ]}
-                  />
-                </div>
-              </div>
-            );
-          }}
-          emptyMessage="Your inbox is clear. Important clinical and system alerts will appear here."
-        />
-
-        {pagination.totalPages > 1 && !isLoading && (
-          <div className="p-3.5 border border-border/80 border-t-0 rounded-b-2xl flex justify-center bg-surface-alt/40">
-            <Pagination
-              currentPage={pagination.page}
-              totalPages={pagination.totalPages}
-              onPageChange={(p) => setPage(p)}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          4. SEND NOTIFICATION COMPOSER MODAL
-         ────────────────────────────────────────────────────────────────────────── */}
-      <Modal
-        open={isSendModalOpen}
-        onClose={() => setIsSendModalOpen(false)}
-        title="New notification"
-        description="Choose who should receive it and how to send it."
-        size="lg"
-      >
-        <form onSubmit={handleSendNotification} className="space-y-4 pt-1">
-          {/* Delivery Channels Selector */}
-          <div className="bg-surface-alt p-3.5 rounded-2xl border border-border/80 space-y-2">
-            <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
-              Send by
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label
-                className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
-                  sendInApp
-                    ? "bg-primary-500/10 border-primary-500/40 text-text"
-                    : "bg-surface border-border/80 text-text-muted"
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      sendInApp ? "bg-primary-500/20 text-accent dark:text-accent" : "bg-surface-alt text-text-muted"
-                    }`}
-                  >
-                    <Bell className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-text">In-app notification</p>
-                    <p className="text-[10px] text-text-muted">Appears in the recipient’s inbox</p>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={sendInApp}
-                  onChange={(e) => setSendInApp(e.target.checked)}
-                  className="rounded text-accent focus:ring-focus-ring h-4 w-4"
-                />
-              </label>
-
-              <label
-                className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
-                  sendEmail
-                    ? "bg-primary-500/10 border-primary-500/40 text-text"
-                    : "bg-surface border-border/80 text-text-muted"
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      sendEmail ? "bg-primary-500/20 text-accent dark:text-accent" : "bg-surface-alt text-text-muted"
-                    }`}
-                  >
-                    <Mail className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-text">Email</p>
-                    <p className="text-[10px] text-text-muted">Sent to the recipient’s email address</p>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={sendEmail}
-                  onChange={(e) => setSendEmail(e.target.checked)}
-                  className="rounded text-accent focus:ring-focus-ring h-4 w-4"
-                />
-              </label>
-            </div>
-          </div>
-
-          {/* Row 1: Recipient Audience & User / Category */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-                <label className="block text-xs font-semibold text-text mb-1">Recipients *</label>
-              <Select
-                value={recipientScope}
-                onChange={(e) => setRecipientScope(e.target.value)}
-                options={[
-                  { value: "all", label: "All members" },
-                  { value: "user", label: "One person" },
-                  { value: "admin", label: "Administrators" },
-                  { value: "doctor", label: "Doctors" },
-                  { value: "staff", label: "Receptionists and staff" },
-                ]}
-              />
-            </div>
-
-            {recipientScope === "user" ? (
-              <div>
-                <label className="block text-xs font-semibold text-text mb-1">Person *</label>
-                <Select
-                  value={targetUserId}
-                  onChange={(e) => setTargetUserId(e.target.value)}
-                  options={[
-                    { value: "", label: "Choose a person" },
-                    ...orgUsers.map((u) => ({
-                      value: u.id,
-                      label: `${u.name} (${u.email}) — ${u.role}`,
-                    })),
-                  ]}
-                />
-              </div>
-            ) : (
-              <div>
-                <label className="block text-xs font-semibold text-text mb-1">Category *</label>
-                <Select
-                  value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
-                  options={[
-                  { value: "system", label: "System" },
-                  { value: "patient", label: "Patient care" },
-                  { value: "task", label: "Tasks" },
-                  { value: "security", label: "Security" },
-                  { value: "billing", label: "Billing" },
-                  { value: "team", label: "Team" },
-                  { value: "organization", label: "Organization" },
-                  ]}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Row 2: Severity Level & Priority Level */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {recipientScope === "user" && (
-              <div>
-                <label className="block text-xs font-semibold text-text mb-1">Category *</label>
-                <Select
-                  value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
-                  options={[
-                    { value: "system", label: "System" },
-                    { value: "patient", label: "Patient care" },
-                    { value: "task", label: "Tasks" },
-                    { value: "security", label: "Security" },
-                    { value: "billing", label: "Billing" },
-                    { value: "team", label: "Team" },
-                    { value: "organization", label: "Organization" },
-                  ]}
-                />
-              </div>
-            )}
-            <div>
-              <label className="block text-xs font-semibold text-text mb-1">Notice type</label>
-              <Select
-                value={formSeverity}
-                onChange={(e) => setFormSeverity(e.target.value)}
-                options={[
-                  { value: "info", label: "Information" },
-                  { value: "success", label: "Confirmation" },
-                  { value: "warning", label: "Needs attention" },
-                  { value: "error", label: "Urgent issue" },
-                ]}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-text mb-1">Priority</label>
-              <Select
-                value={formPriority}
-                onChange={(e) => setFormPriority(e.target.value)}
-                options={[
-                  { value: "low", label: "Low" },
-                  { value: "medium", label: "Standard" },
-                  { value: "high", label: "High" },
-                  { value: "urgent", label: "Urgent" },
-                ]}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-text mb-1">Title *</label>
-            <Input
-              placeholder="What is this notification about?"
-              value={formTitle}
-              onChange={(e) => setFormTitle(e.target.value)}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-text mb-1">Message *</label>
-            <Textarea
-              placeholder="Write a clear message for recipients"
-              value={formMessage}
-              onChange={(e) => setFormMessage(e.target.value)}
-              rows={3}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-text mb-1">
-              Related page (optional)
-            </label>
-            <Input
-              placeholder="e.g. /dashboard/appointments"
-              value={formActionUrl}
-              onChange={(e) => setFormActionUrl(e.target.value)}
-            />
-          </div>
-
-          <div className="pt-3 border-t border-border/60 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2.5">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsSendModalOpen(false)}
-              className="font-semibold w-full sm:w-auto min-h-[44px] sm:min-h-[36px]"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              loading={isSending}
-              icon={<Send className="w-3.5 h-3.5" />}
-              className="font-semibold w-full sm:w-auto min-h-[44px] sm:min-h-[36px]"
-            >
-              Send notification
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          5. NOTIFICATION DETAIL VIEW MODAL
-         ────────────────────────────────────────────────────────────────────────── */}
-      <Modal
-        open={!!viewingNotification}
-        onClose={() => setViewingNotification(null)}
-        title="Notification details"
-        size="md"
-      >
-        {viewingNotification && (
-          <div className="space-y-4 text-xs font-sans">
-            {/* Metadata Header */}
-            <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-3 flex-wrap">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge
-                  variant={getSeverityBadgeVariant(viewingNotification.severity)}
-                  size="sm"
-                  className="uppercase font-bold text-[10px] tracking-wide inline-flex items-center gap-1"
-                >
-                  {getCategoryIcon(viewingNotification.category)}
-                  {notificationCategoryLabel(viewingNotification.category)}
-                </Badge>
-                <Badge variant="outline" size="sm" className="uppercase font-semibold text-[9px]">
-                  {viewingNotification.severity}
-                </Badge>
-                {viewingNotification.priority && (
-                  <span className="text-[10px] font-bold text-accent dark:text-accent bg-primary-500/10 border border-primary-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    {viewingNotification.priority} Priority
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1 text-[11px] text-text-muted font-medium">
-                <Clock className="w-3.5 h-3.5 text-text-muted" />
-                <span>{formatTimestamp(viewingNotification.createdAt)}</span>
-              </div>
-            </div>
-
-            {/* Rich Message Container */}
-            <div className="bg-surface-alt p-4 rounded-2xl border border-border/80 shadow-xs space-y-2">
-              <h4 className="text-sm font-bold text-text">{viewingNotification.title}</h4>
-              <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">
-                {viewingNotification.message}
-              </p>
-            </div>
-
-            {viewingNotification.actionUrl && (
-              <div className="pt-2 flex justify-end">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => {
-                    const url = viewingNotification.actionUrl!;
-                    setViewingNotification(null);
-                    router.push(url);
-                  }}
-                  className="font-semibold w-full sm:w-auto min-h-[44px] sm:min-h-[36px] justify-center"
-                >
-                  Open related page
-                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          6. DELETE CONFIRMATION DIALOG
-         ────────────────────────────────────────────────────────────────────────── */}
-      <ConfirmDialog
-        open={deletingIds.length > 0}
-        onClose={() => setDeletingIds([])}
-        onConfirm={async () => {
-          if (deletingIds.length > 0) {
-            const count = deletingIds.length;
-            await Promise.all(deletingIds.map((id) => deleteNotification(id)));
-            setDeletingIds([]);
-            toast({
-              title: count > 1 ? "Notifications Deleted" : "Notification Deleted",
-              description: `${count} notification(s) removed successfully.`,
-              variant: "warning",
-            });
-            refetch();
-          }
-        }}
-        title={deletingIds.length > 1 ? `Delete ${deletingIds.length} Notifications` : "Delete Notification"}
-        description={
-          deletingIds.length > 1
-            ? `Are you sure you want to delete these ${deletingIds.length} selected notifications? This action cannot be undone.`
-            : "Are you sure you want to delete this notification? This action cannot be undone."
-        }
-        variant="danger"
-        confirmLabel={deletingIds.length > 1 ? `Delete (${deletingIds.length})` : "Delete"}
-      />
+  const inbox = <section className={styles.panel} aria-label="Notification inbox">
+    <div className={styles.toolbar}>
+      <Input type="search" aria-label="Search notifications" placeholder="Search notifications" icon={<Search className="h-4 w-4" />} value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} onClear={() => { setSearch(""); setPage(1); }} containerClassName={styles.search} />
+      <Select aria-label="Notification category" compactOnMobile fullWidth={false} containerClassName={styles.categoryFilter} icon={<Filter className="h-4 w-4" />} value={category} onChange={event => { setCategory(event.target.value); setPage(1); }} options={[{ value: "", label: "All categories" }, ...CATEGORIES]} />
     </div>
-  );
+    <Table key={`${page}:${category}:${unreadOnly}:${search}`} className={styles.responsiveTable} columns={columns} data={notifications} keyField="id" caption="Notification inbox" variant="flat" fitContent selectable bulkActions={bulkActions} loading={isLoading} searchable={false} showColumnVisibility={false} pagination={false}
+      error={isError ? "Notifications could not be loaded. Please try again." : null} onRetry={() => refetch()}
+      emptyMessage={category || search || unreadOnly ? "No notifications match your filters." : "Your inbox is clear. New updates will appear here."}
+      renderMobileCard={row => <article className={row.readAt ? styles.notificationCard : styles.unreadCard} aria-label={row.title}>
+        <div className={styles.cardHeading}>{renderBadges(row)}{renderActions(row)}</div>
+        {renderContent(row)}
+        <div className={styles.cardFooter}><time dateTime={row.createdAt}>{formatTimestamp(row.createdAt)}</time>{!row.readAt ? <Button variant="ghost" size="sm" className={styles.readAction} aria-label={`Mark ${row.title} as read`} onClick={() => performAction(() => markAsRead(row.id))}><Check className="h-4 w-4" /><span>Mark read</span></Button> : <span>Read</span>}</div>
+      </article>}
+    />
+    {!isLoading && !isError && <footer className={styles.pagination}><p>{notifications.length ? `${(pagination.page - 1) * pagination.limit + 1}\u2013${(pagination.page - 1) * pagination.limit + notifications.length} of ${pagination.total}` : "0 notifications"}</p><Pagination currentPage={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} /></footer>}
+  </section>;
+
+  return <div className={styles.workspace}>
+    <header className={styles.header}>
+      <div><h1>Notifications</h1><p>{isLoading ? "Loading your inbox..." : isError ? "Your updates and team announcements." : unreadCount > 0 ? `${unreadCount} unread ${unreadCount === 1 ? "notification" : "notifications"}` : "You are all caught up."}</p></div>
+      <div className={styles.headerActions}>
+        {canSendNotifications && <Button size="sm" onClick={() => setIsSendModalOpen(true)} aria-label="New notification" className={styles.composeButton}><Send className="h-4 w-4" /><span className={styles.composeLabel}>New notification</span><span className={styles.shortComposeLabel}>New</span></Button>}
+        <Dropdown align="right" width="w-60" trigger={<Button size="sm" variant="outline" aria-label="Inbox options" className={styles.iconAction}><MoreHorizontal className="h-4 w-4" /></Button>} items={[
+          { label: "Refresh inbox", icon: <RotateCw className="h-4 w-4" />, disabled: isLoading, onClick: () => { void refetch(); } },
+          ...(canSendNotifications ? [{ label: "Send test notification", icon: <Sparkles className="h-4 w-4" />, disabled: isTestLoading, onClick: () => { void handleTestTrigger(); } }] : []),
+        ]} />
+      </div>
+    </header>
+    <div className={styles.inboxHeader}>
+      <Tabs className={styles.tabs} variant="underline" scrollActiveIntoView={false} activeTab={unreadOnly ? "unread" : "all"} onChange={id => { setUnreadOnly(id === "unread"); setPage(1); }} tabs={[{ id: "all", label: "All" }, { id: "unread", label: "Unread" }]} />
+      {!isLoading && !isError && unreadCount > 0 && <Button variant="ghost" size="sm" className={styles.markAll} onClick={() => performAction(() => markAllAsRead())}><CheckCheck className="h-4 w-4" />Mark all read</Button>}
+    </div>
+    {inbox}
+
+    <Modal open={isSendModalOpen && canSendNotifications} onClose={() => { if (!isSending) setIsSendModalOpen(false); }} busy={isSending} title="New notification" description="Choose recipients and delivery channels." size="lg" bodyClassName={styles.composerBody} footerClassName={styles.modalFooter} footer={<><Button variant="outline" onClick={() => setIsSendModalOpen(false)} disabled={isSending}>Cancel</Button><Button type="submit" form="notification-composer" loading={isSending} icon={<Send className="h-4 w-4" />}>Send notification</Button></>}>
+      <form id="notification-composer" onSubmit={handleSendNotification} className={styles.composer}>
+        <fieldset className={styles.channels}><legend>Send by</legend><div><Checkbox aria-label="In-app notification" label="In-app notification" description="Delivered to their inbox" checked={sendInApp} onChange={event => setSendInApp(event.target.checked)} /><Checkbox aria-label="Email" label="Email" description="Delivered to their email address" checked={sendEmail} onChange={event => setSendEmail(event.target.checked)} /></div></fieldset>
+        <div className={styles.formGrid}>
+          <Select label="Recipients" value={recipientScope} onChange={event => setRecipientScope(event.target.value)} options={[{ value: "all", label: "All members" }, { value: "user", label: "One person" }, { value: "admin", label: "Administrators" }, { value: "doctor", label: "Doctors" }, { value: "staff", label: "Receptionists and staff" }]} />
+          {recipientScope === "user" && <Select label="Person" value={targetUserId} onChange={event => setTargetUserId(event.target.value)} options={[{ value: "", label: "Choose a person" }, ...orgUsers.map(person => ({ value: person.id, label: `${person.name} (${person.email}) \u00b7 ${person.role}` }))]} />}
+          <Select label="Category" value={formCategory} onChange={event => setFormCategory(event.target.value)} options={CATEGORIES.filter(option => option.value !== "auth")} />
+          <Select label="Notice type" value={formSeverity} onChange={event => setFormSeverity(event.target.value)} options={[{ value: "info", label: "Information" }, { value: "success", label: "Confirmation" }, { value: "warning", label: "Needs attention" }, { value: "error", label: "Urgent issue" }]} />
+          <Select label="Priority" value={formPriority} onChange={event => setFormPriority(event.target.value)} options={[{ value: "low", label: "Low" }, { value: "medium", label: "Standard" }, { value: "high", label: "High" }, { value: "urgent", label: "Urgent" }]} />
+        </div>
+        <Input label="Title" placeholder="What is this notification about?" value={formTitle} onChange={event => setFormTitle(event.target.value)} required />
+        <Textarea label="Message" placeholder="Write a clear message for recipients" rows={4} value={formMessage} onChange={event => setFormMessage(event.target.value)} required />
+        <Input label="Related page (optional)" placeholder="e.g. /dashboard/appointments" value={formActionUrl} onChange={event => setFormActionUrl(event.target.value)} />
+      </form>
+    </Modal>
+
+    <Modal open={!!viewingNotification} onClose={() => setViewingNotification(null)} title="Notification details" size="md" bodyClassName={styles.detailBody} footerClassName={styles.modalFooter} footer={<Button variant="outline" onClick={() => setViewingNotification(null)}>Close</Button>}>
+      {viewingNotification && <div className={styles.details}>
+        {renderBadges(viewingNotification, false)}
+        <time dateTime={viewingNotification.createdAt}>{formatTimestamp(viewingNotification.createdAt)}</time>
+        <h2>{viewingNotification.title}</h2><p>{viewingNotification.message}</p>
+      </div>}
+    </Modal>
+    <ConfirmDialog open={deletingIds.length > 0} onClose={() => { if (!isDeleting) setDeletingIds([]); }} loading={isDeleting} title={deletingIds.length > 1 ? `Delete ${deletingIds.length} Notifications` : "Delete Notification"} description={deletingIds.length > 1 ? `Delete these ${deletingIds.length} selected notifications? This cannot be undone.` : "Delete this notification? This cannot be undone."} variant="danger" confirmLabel={deletingIds.length > 1 ? `Delete (${deletingIds.length})` : "Delete"} onConfirm={async () => {
+      if (!deletingIds.length || isDeleting) return;
+      setIsDeleting(true);
+      try {
+        const count = deletingIds.length;
+        await Promise.all(deletingIds.map(id => deleteNotification(id)));
+        setDeletingIds([]);
+        toast({ title: count > 1 ? "Notifications Deleted" : "Notification Deleted", description: `${count} notification(s) removed successfully.`, variant: "warning" });
+        void refetch();
+      } catch { toast({ title: "Notifications could not be deleted", description: "Please try again.", variant: "error" }); }
+      finally { setIsDeleting(false); }
+    }} />
+  </div>;
 }

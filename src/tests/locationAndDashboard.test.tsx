@@ -197,12 +197,12 @@ describe("Locations Page Active and Archived Branch Lifecycle", () => {
     );
 
     // Wait for initial load and archived count badge to appear
-    expect(await screen.findByText("1 Active Location")).toBeInTheDocument();
-    expect(await screen.findByText(/1 Archived/i)).toBeInTheDocument();
-    expect(screen.getByText("Ekavyu Indiranagar")).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: /Active\s*1/ })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: /Archived\s*1/ })).toBeInTheDocument();
+    expect(screen.getAllByText("Ekavyu Indiranagar").length).toBeGreaterThan(0);
 
     // Click on Archived Branches tab
-    const archivedTab = screen.getByTestId("tab-archived-branches");
+    const archivedTab = screen.getByRole("tab", { name: /Archived\s*1/ });
     await act(async () => {
       fireEvent.click(archivedTab);
     });
@@ -211,7 +211,7 @@ describe("Locations Page Active and Archived Branch Lifecycle", () => {
     const branchNames = await screen.findAllByText("Ekavyu Whitefield");
     expect(branchNames.length).toBeGreaterThan(0);
 
-    const reactivateBtns = await screen.findAllByText("Reactivate Branch");
+    const reactivateBtns = await screen.findAllByRole("button", { name: "Reactivate", exact: true });
     expect(reactivateBtns.length).toBeGreaterThan(0);
 
     // Click reactivate button

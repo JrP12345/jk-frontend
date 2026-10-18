@@ -1,5 +1,8 @@
 "use client";
 import { CallHistory } from "./CallHistory";
+import { Plus, RotateCw, Search, Inbox } from "lucide-react";
+import { CrmWorkspaceLayout, CrmFilterPanel } from "./CrmWorkspaceLayout";
+import styles from "./CrmWorkspace.module.css";
 import { RootCrmWorkspace } from './RootCrmWorkspace';
 import { InquiryReplies } from './InquiryReplies';
 
@@ -15,7 +18,7 @@ import { locationLocalDateTimeInput, locationLocalTimeToIso } from "@/lib/locati
 import type { Inquiry, InquiryActivity, CrmLocation } from "@/types/crm";
 import { InquiryConversion, type ConversionCommand } from "./InquiryConversion";
 import { authScopeKey } from '@/lib/authScope';
-import { Alert, Badge, Button, Card, CardContent, Input, Modal, Select, Textarea, Checkbox } from "@/components/ui";
+import { Alert, Badge, Button, EmptyState, Input, Modal, Select, Textarea, Checkbox, DatePicker } from "@/components/ui";
 
 const sourceOptions = ["unknown", "phone", "walk_in", "whatsapp", "website", "referral"].map(value => ({ value, label: value === "unknown" ? "Unknown source" : value.replaceAll("_", " ") }));
 const actionOptions = [{ value: "review", label: "Review inquiry" }, { value: "contact", label: "Contact caller" }, { value: "book", label: "Arrange booking" }];
@@ -56,24 +59,29 @@ function Workspace({ canManage }: { canManage: boolean }) {
     finally { if (request.isCurrent()) setLoading(false); }
   }, [beginRead, filters]);
   useEffect(() => { void load(); }, [load]);
-  return <div className="space-y-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-semibold">Patient relationships</h1><p className="text-sm text-text-muted">Capture an inquiry without creating a patient account. Track an owner and the next action.</p></div>{canManage && <Button disabled={loading || !!error || !locations.length} onClick={() => setCapturing(true)}>Capture inquiry</Button>}</div>
-    <nav aria-label="Patient relationship workflows" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center">
-    <Link href="/dashboard/crm/tasks" className="inline-block py-2 text-accent underline">Daily patient tasks</Link><Link className="py-2 text-accent underline" href="/dashboard/crm/communications">Communication replies</Link>
-    {hasAnyPermission(user, 'VIEW_CRM_ANALYTICS') && <Link className='text-accent underline' href='/dashboard/crm/overview'>Operational overview</Link>}
-    {hasAnyPermission(user, 'MANAGE_CRM_SETTINGS') && <Link className='text-accent underline' href='/dashboard/crm/settings'>Workflow settings</Link>}
-    </nav>
-    <Card><CardContent className="space-y-3"><form className="flex flex-wrap items-end gap-3" onSubmit={event => { event.preventDefault(); setFilters({ ...filters, search: search.trim() }); }}>
-      <Input label="Search caller or service" value={search} maxLength={120} onChange={event => setSearch(event.target.value)} />
-      <Select label="Inquiry ownership" value={filters.owner} onChange={event => setFilters({ ...filters, owner: event.target.value })} options={[{ value: "mine", label: "My inquiries" }, { value: "team", label: "Team inquiries" }, { value: "unassigned", label: "Unassigned" }]} />
-      <Select label="Inquiry status" value={filters.status} onChange={event => setFilters({ ...filters, status: event.target.value })} options={[{ value: "active", label: "Open and in progress" }, { value: "closed", label: "Closed" }, { value: "converted", label: "Converted to booking" }, { value: "all", label: "All statuses" }]} />
-      <Select label="Inquiry branch" value={filters.locationId} onChange={event => setFilters({ ...filters, locationId: event.target.value })} options={[{ value: "", label: "All authorized branches" }, ...locations.map(location => ({ value: location.id, label: location.name }))]} />
-      <Checkbox checked={filters.overdue === "true"} onChange={event => setFilters({ ...filters, overdue: String(event.target.checked) })} label="Due or overdue" />
-      <Button type="submit" variant="outline" disabled={loading}>Search inquiries</Button><Button variant="outline" loading={loading} onClick={() => load()}>Reload inquiries</Button>
-    </form>{error && <Alert variant="error">{error}</Alert>}{loading && <p role="status">Loading authorized inquiries…</p>}
-      {!loading && !error && items.length === 0 && <p>No inquiries match these filters.</p>}
-      {!error && items.map(row => <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3"><div><p className="font-medium">{row.callerName || "Anonymous caller"} <Badge variant="neutral">{row.status.replaceAll("_", " ")}</Badge></p><p className="text-sm">{row.phone || row.email || "No contact provided"} · {row.requestedService || row.reasonForContact.replaceAll("_", " ")}</p><p className="text-sm text-text-muted">{locations.find(location => location.id === row.locationId)?.name || "Authorized branch"} · {row.nextAction.kind}: {new Date(row.nextAction.dueAt).toLocaleString(undefined, { timeZone: timezone(locations.find(location => location.id === row.locationId)) })} ({timezone(locations.find(location => location.id === row.locationId))})</p></div><Button variant="outline" disabled={loading} onClick={() => setSelectedId(row.id)}>Open inquiry</Button></div>)}
-      {nextCursor && !error && <Button variant="outline" loading={loading} onClick={() => load(nextCursor)}>Load more inquiries</Button>}
-    </CardContent></Card>
+  const activeFilters = Number(filters.owner !== "mine") + Number(filters.status !== "active") + Number(!!filters.locationId) + Number(filters.overdue === "true");
+  return <CrmWorkspaceLayout active="inquiries" title="Patient relationships" description="Capture inquiries, track ownership and plan the next action." action={canManage && <Button aria-label="Capture inquiry" disabled={loading || !!error || !locations.length} onClick={() => setCapturing(true)}><Plus className="h-4 w-4" /><span className={styles.shortActionLabel}>Capture</span><span className={styles.fullActionLabel}>Capture inquiry</span></Button>}>
+    <section aria-label="Inquiry queue" className={styles.panel}>
+      <form onSubmit={event => { event.preventDefault(); setFilters({ ...filters, search: search.trim() }); }}>
+      <CrmFilterPanel activeCount={activeFilters} search={<Input aria-label="Search caller or service" placeholder="Search inquiries" className="min-w-0" leadingControl={<Button type="submit" variant="ghost" className={styles.iconAction} aria-label="Search inquiries" title="Search inquiries" disabled={loading}><Search className="h-4 w-4" /></Button>} value={search} maxLength={120} onChange={event => setSearch(event.target.value)} />} actions={<><Button variant="outline" className={styles.iconAction} aria-label="Reload inquiries" title="Reload inquiries" loading={loading} onClick={() => load()}><RotateCw className="h-4 w-4" /></Button></>}>
+        <Select label="Inquiry ownership" value={filters.owner} onChange={event => setFilters({ ...filters, owner: event.target.value })} options={[{ value: "mine", label: "My inquiries" }, { value: "team", label: "Team inquiries" }, { value: "unassigned", label: "Unassigned" }]} />
+        <Select label="Inquiry status" value={filters.status} onChange={event => setFilters({ ...filters, status: event.target.value })} options={[{ value: "active", label: "Open and in progress" }, { value: "closed", label: "Closed" }, { value: "converted", label: "Converted to booking" }, { value: "all", label: "All statuses" }]} />
+        <Select label="Inquiry branch" value={filters.locationId} onChange={event => setFilters({ ...filters, locationId: event.target.value })} options={[{ value: "", label: "All authorized branches" }, ...locations.map(location => ({ value: location.id, label: location.name }))]} />
+        <Checkbox checked={filters.overdue === "true"} onChange={event => setFilters({ ...filters, overdue: String(event.target.checked) })} label="Due or overdue" />
+      </CrmFilterPanel></form>
+      <div className={styles.queueContent}>
+        <div className={styles.queueHeading}><h2>Inquiries</h2>{!error && !loading && <span>{items.length} loaded{nextCursor ? " / More available" : ""}</span>}</div>
+        {error && <Alert variant="error">{error}</Alert>}{loading && <p role="status" className="py-4 text-sm text-text-secondary">Loading authorized inquiries...</p>}
+        {!loading && !error && items.length === 0 && <EmptyState icon={<Inbox />} title="No inquiries match these filters." description="Try another search or adjust ownership, status and branch." />}
+        {!error && <ul className={styles.recordList}>{items.map(row => <li key={row.id} className={styles.record}><div className={styles.recordBody}>
+          <div className={styles.recordTitle}><h3>{row.callerName || "Anonymous caller"}</h3><Badge variant={row.status === "converted" ? "success" : row.status === "closed" ? "neutral" : "primary"}>{row.status.replaceAll("_", " ")}</Badge></div>
+          <p className={styles.recordContact}>{row.phone || row.email || "No contact provided"}</p><p className="mt-1 text-sm text-text-secondary">{row.requestedService || row.reasonForContact.replaceAll("_", " ")}</p>
+          <p className={styles.recordMeta}>{locations.find(location => location.id === row.locationId)?.name || "Authorized branch"}<span aria-hidden="true"> · </span>{row.ownerName || (row.ownerId ? "Assigned staff member" : "Unassigned")}</p>
+          <p className={styles.recordMeta}><span className="capitalize">{row.nextAction.kind}</span> · {new Date(row.nextAction.dueAt).toLocaleString(undefined, { timeZone: timezone(locations.find(location => location.id === row.locationId)) })} ({timezone(locations.find(location => location.id === row.locationId))})</p>
+        </div><Button variant="outline" disabled={loading} onClick={() => setSelectedId(row.id)}>Open inquiry</Button></li>)}</ul>}
+        {nextCursor && !error && <div className={styles.recordFooter}><span>More inquiries are available.</span><Button variant="outline" loading={loading} onClick={() => load(nextCursor)}>Load more inquiries</Button></div>}
+      </div>
+    </section>
     {capturing && <InquiryEditor locations={locations} onClose={() => setCapturing(false)} onSaved={id => { setCapturing(false); setSelectedId(id); void load(); }} />}
     {conversionMessage && <Alert variant='success'>{conversionMessage}</Alert>}
     {conversion?.command && !conversion.open && !selectedId && <Button onClick={() => setConversion({ ...conversion, open: true })}>Resume submitted booking</Button>}
@@ -83,7 +91,7 @@ function Workspace({ canManage }: { canManage: boolean }) {
       onSubmitted={command => setConversion(current => current && { ...current, command: command || undefined })}
       onClose={() => setConversion(current => current?.command ? { ...current, open: false } : null)}
       onConverted={result => { setConversion(null); setConversionMessage(result.appointment.status === 'pending_payment' ? 'Booking recorded; payment remains pending.' : `Booking restored or recorded with status ${result.appointment.status}.`); void load(); }} />}
-  </div>;
+  </CrmWorkspaceLayout>;
 }
 function InquiryDetail({ id, locations, canManage, resumeBooking, onBook, onClose, onChanged }: { id: string; locations: CrmLocation[]; canManage: boolean; resumeBooking: boolean; onBook: (source: Inquiry) => void; onClose: () => void; onChanged: () => void }) {
   const user = useAuthStore(state => state.user);
@@ -176,18 +184,18 @@ function InquiryEditor({ initial, locations, onClose, onSaved }: { initial?: Inq
     {assigneeError && <Alert variant="error">{assigneeError}<Button variant="outline" size="sm" onClick={() => loadAssignees()}>Reload assignees</Button></Alert>}
     {assigneeCursor && <Button variant="outline" disabled={locked || pending} loading={assigneeLoading} onClick={() => loadAssignees(assigneeCursor)}>More eligible assignees</Button>}
     <fieldset disabled={pending || locked} className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Select label="Capture branch" value={locationId} onChange={event => changeBranch(event.target.value)} options={locations.map(location => ({ value: location.id, label: location.name }))} placeholder="Choose a branch" />
+      <div className={styles.formGrid}><Select label="Capture branch" value={locationId} onChange={event => changeBranch(event.target.value)} options={locations.map(location => ({ value: location.id, label: location.name }))} placeholder="Choose a branch" />
       <Select label="Inquiry owner" value={ownerId} disabled={assigneeLoading || !locationId} onChange={event => setOwnerId(event.target.value)} options={[{ value: "", label: "Unassigned", disabled: !hasAnyPermission(user, "ASSIGN_CRM_TASKS") && !!ownerId }, ...assignees.map(actor => ({ value: actor.id, label: actor.name })), ...(ownerId && !assignees.some(actor => actor.id === ownerId) ? [{ value: ownerId, label: "Current owner — verify branch eligibility", disabled: true }] : [])]} /></div>
       <Input label="Caller name (optional)" value={form.callerName} maxLength={120} onChange={event => setForm({ ...form, callerName: event.target.value })} />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Input label="Indian contact phone (optional)" type="tel" value={form.phone} maxLength={30} onChange={event => setForm({ ...form, phone: event.target.value })} /><Input label="Contact email (optional)" type="email" value={form.email} maxLength={200} onChange={event => setForm({ ...form, email: event.target.value })} /></div>
+      <div className={styles.formGrid}><Input label="Indian contact phone (optional)" type="tel" value={form.phone} maxLength={30} onChange={event => setForm({ ...form, phone: event.target.value })} /><Input label="Contact email (optional)" type="email" value={form.email} maxLength={200} onChange={event => setForm({ ...form, email: event.target.value })} /></div>
       <Select label="Reported inquiry source" value={form.source} onChange={event => setForm({ ...form, source: event.target.value })} options={sourceOptions} />
       <Select label="Reason for contact" value={form.reasonForContact} onChange={event => setForm({ ...form, reasonForContact: event.target.value })} options={["unknown", "booking", "reschedule", "cancellation", "service_question", "other"].map(value => ({ value, label: value.replaceAll("_", " ") }))} />
       <Input label="Requested service (optional)" value={form.requestedService} maxLength={100} onChange={event => setForm({ ...form, requestedService: event.target.value })} />
       <Input label="Existing patient reference (optional)" hint="Choose the canonical patient after checking identity. Shared contact alone is not proof." value={form.patientId} maxLength={24} onChange={event => setForm({ ...form, patientId: event.target.value })} />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Select label="Next inquiry action" value={action} onChange={event => setAction(event.target.value as typeof action)} options={actionOptions} /><Input label={`Next action due (${zone})`} type="datetime-local" required value={due} onChange={event => { dueEdited.current = true; setDue(event.target.value); }} /></div>
+      <div className={styles.formGrid}><Select label="Next inquiry action" value={action} onChange={event => setAction(event.target.value as typeof action)} options={actionOptions} /><DatePicker label={`Next action due (${zone})`} mode="datetime" required value={due} onChange={value => { dueEdited.current = true; setDue(value); }} /></div>
       {initial && <Select label="Progress status" value={form.status} onChange={event => setForm({ ...form, status: event.target.value as typeof form.status })} options={[{ value: "open", label: "Open / reopen" }, { value: "in_progress", label: "In progress" }, { value: "closed", label: "Close inquiry" }]} />}
       {initial && form.status === "closed" && <><Select label="Close outcome" value={form.closeReason} onChange={event => setForm({ ...form, closeReason: event.target.value })} options={closeOptions} />{form.closeReason === "duplicate_inquiry" && <Input label="Duplicate inquiry reference" value={form.duplicateInquiryId} required maxLength={24} onChange={event => setForm({ ...form, duplicateInquiryId: event.target.value })} />}</>}
       <Textarea label="Administrative note (optional)" maxLength={1000} value={form.note} onChange={event => setForm({ ...form, note: event.target.value })} />
-    </fieldset><div className="flex justify-end gap-2"><Button variant="outline" disabled={pending} onClick={onClose}>Close</Button><Button type="submit" loading={pending} disabled={pending || !locationId || !due || assigneeLoading || !!assigneeError}>{error && locked ? "Retry submitted inquiry" : initial ? "Save inquiry update" : "Save inquiry"}</Button></div>
+    </fieldset><div className={styles.formActions}><Button variant="outline" disabled={pending} onClick={onClose}>Close</Button><Button type="submit" loading={pending} disabled={pending || !locationId || !due || assigneeLoading || !!assigneeError}>{error && locked ? "Retry submitted inquiry" : initial ? "Save inquiry update" : "Save inquiry"}</Button></div>
   </form></Modal>;
 }

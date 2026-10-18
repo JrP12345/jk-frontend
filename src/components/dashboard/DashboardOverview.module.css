@@ -1,0 +1,868 @@
+.workspace {
+  container: overview / inline-size;
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+  margin-inline: 0;
+  padding-bottom: 2rem;
+  color: var(--text-primary);
+}
+
+.content {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.header,
+.headerActions,
+.contextRow,
+.sectionHeader,
+.trendHeading,
+.trendControls,
+.activityToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.header > div:first-child {
+  display: contents;
+}
+
+.sectionHeader > div,
+.trendHeading > div {
+  min-width: 0;
+}
+
+.header h1 {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+
+.header p {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.headerActions {
+  grid-column: 2;
+  grid-row: 1;
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+.iconAction {
+  flex-shrink: 0;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding-inline: 0;
+}
+
+.primaryAction {
+  min-height: 2.75rem;
+}
+
+.wideLabel {
+  display: none;
+}
+
+.contextRow {
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: -0.625rem;
+}
+
+.contextRow p,
+.muted {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.contextRow button {
+  min-height: 2.75rem;
+  padding-inline: 0;
+  font-size: 0.75rem;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.metric {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: var(--surface);
+}
+
+.metric h2 {
+  min-height: 2.75rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.metricHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  min-height: 2.75rem;
+}
+
+.metricHeading h2 {
+  min-height: 0;
+}
+
+.currency {
+  flex-shrink: 0;
+  width: 2.75rem;
+  max-width: 100%;
+}
+
+.currency button {
+  width: 2.75rem;
+  min-height: 2.75rem;
+  padding-inline: 0.375rem;
+  gap: 0.125rem;
+  font-size: 0.6875rem;
+}
+
+.currency button > svg {
+  display: none;
+}
+
+.metricValue {
+  margin-top: 0.375rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.metricValue > span {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.metricNote,
+.metricBasis {
+  margin-top: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.metricBasis {
+  font-size: 0.6875rem;
+}
+
+.insights {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.panel,
+.trend,
+.health,
+.attention,
+.usage {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.panelHeader,
+.sectionHeader {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.panelHeader h2,
+.sectionHeader h2 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.panelHeader p,
+.sectionHeader p {
+  margin-top: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.sectionHeader,
+.trendHeading,
+.trendControls {
+  flex-wrap: wrap;
+}
+
+.panelBody {
+  min-width: 0;
+  padding: 1rem;
+}
+
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.75rem;
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.textLink > svg {
+  flex-shrink: 0;
+}
+
+.textLink:hover {
+  text-decoration: underline;
+}
+
+.textLink:focus-visible,
+.attention a:focus-visible,
+.chartScroll:focus-visible,
+.dailyTotals summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+.healthBar {
+  display: flex;
+  height: 0.375rem;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: var(--surface-alt);
+}
+
+.healthList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.healthList > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 0.75rem;
+}
+
+.healthList dt {
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.healthList dd {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.healthNote {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.attentionBody {
+  padding: 0.25rem 1rem;
+}
+
+.attention li + li {
+  border-top: 1px solid var(--border);
+}
+
+.attention a {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  padding-block: 0.625rem;
+  font-size: 0.8125rem;
+}
+
+.attention a:hover {
+  color: var(--accent);
+}
+
+.issueCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  border-radius: 0.5rem;
+  background: var(--surface-alt);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.calmState {
+  display: flex;
+  align-items: start;
+  gap: 0.75rem;
+  padding-block: 0.875rem;
+  font-size: 0.8125rem;
+}
+
+.calmState > svg {
+  flex-shrink: 0;
+}
+
+.calmState small {
+  display: block;
+  margin-top: 0.375rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.metricSelect {
+  width: 8.5rem;
+  max-width: 100%;
+}
+
+.metricSelect button,
+.activitySort button {
+  min-height: 2.75rem;
+}
+
+.trendControls {
+  margin-top: 0.875rem;
+  gap: 0.5rem;
+}
+
+.trendControls > div {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.trendControls button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+.trendControls > span,
+.chartNote {
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+  line-height: 1.6;
+}
+
+.chartScroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.chartNote {
+  margin-top: 0.875rem;
+}
+
+.dailyTotals summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  list-style: none;
+  cursor: pointer;
+}
+
+.dailyTotals summary::-webkit-details-marker {
+  display: none;
+}
+
+.dailyTotals[open] summary > svg {
+  rotate: 180deg;
+}
+
+.dailyTotals ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.5rem 1.5rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  padding-block: 0.375rem;
+}
+
+.dailyTotals li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.emptyChart p {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.emptyChart small {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.emptyChart button {
+  min-height: 2.75rem;
+  margin-top: 0.75rem;
+}
+
+.usage dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.usage dl > div {
+  min-width: 0;
+  padding: 0.875rem;
+}
+
+.usage dl > div + div {
+  border-inline-start: 1px solid var(--border);
+}
+
+.usage dt {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.usage dd {
+  margin-top: 0.375rem;
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.activityToolbar {
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.activitySort {
+  flex: 1 1 9rem;
+  max-width: 12rem;
+}
+
+.responsiveTable div[class~="md:hidden"] {
+  display: block;
+}
+
+.responsiveTable [role="region"][aria-label="Table results"] {
+  display: none;
+}
+
+.responsiveTable table {
+  table-layout: fixed;
+}
+
+.responsiveTable td {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  font-size: 0.8125rem;
+}
+
+.organizationCard {
+  min-width: 0;
+  padding: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+}
+
+.organizationHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.375rem 0.75rem;
+}
+
+.organizationName {
+  min-width: 0;
+  flex: 1 1 9rem;
+}
+
+.organizationName p {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.healthBadge {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.organizationFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.875rem;
+  margin-top: 0.875rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+}
+
+.organizationFacts dt {
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.organizationFacts dd {
+  margin-top: 0.25rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.access,
+.activityCounts {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+}
+
+.access small,
+.activityCounts small {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.recentActivity li {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  padding-block: 0.875rem;
+}
+
+.recentActivity li + li {
+  border-top: 1px solid var(--border);
+}
+
+.recentActivity p {
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.recentActivity time {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.operationsGrid {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  align-items: start;
+}
+
+.setup {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.setupHeading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.setupHeading h2 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.setupHeading p {
+  margin-top: 0.375rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.setupHeading button,
+.setupActions button {
+  min-height: 2.75rem;
+}
+
+.setupActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.operationalStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.doctorStats,
+.patientStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.doctorStats > :last-child {
+  grid-column: 1 / -1;
+}
+
+.operationalStat {
+  min-width: 0;
+  box-shadow: none;
+}
+
+.operationalStat > div > div > div:first-child > p:first-child {
+  min-height: 2.25rem;
+  font-size: 0.75rem;
+}
+
+.operationalStat div[aria-hidden="true"] {
+  display: none;
+}
+
+.quickLinks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.5rem;
+}
+
+.queuePanel {
+  container: queue / inline-size;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.queueHeader,
+.locationHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.queueHeader {
+  flex-direction: row;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.queueHeader > * {
+  margin-block: 0;
+}
+
+.queueHeader > div {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.queueHeader button,
+.queueCards button,
+.locationHeader button {
+  min-height: 2.75rem;
+}
+
+.queueCards > div + div {
+  border-top: 1px solid var(--border);
+}
+
+.queueCards > div > div:first-child {
+  flex-wrap: wrap;
+}
+
+.queueCards p[class~="truncate"] {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+
+.queueTable {
+  display: none;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.analytics {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.chartPanel {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.chartPanel button {
+  min-height: 2.75rem;
+}
+
+.chartPanel p[class~="truncate"] {
+  white-space: normal;
+}
+
+.locationGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0.75rem;
+}
+
+.locationName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+@container queue (min-width: 42rem) {
+  .queueCards {
+    display: none;
+  }
+
+  .queueTable {
+    display: block;
+  }
+}
+
+@container overview (min-width: 32rem) {
+  .header h1 {
+    font-size: 1.5rem;
+  }
+
+  .wideLabel {
+    display: inline;
+  }
+
+  .shortLabel {
+    display: none;
+  }
+
+  .recentActivity li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .doctorStats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .doctorStats > :last-child {
+    grid-column: auto;
+  }
+}
+
+@container overview (min-width: 56rem) {
+  .summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .metricValue {
+    font-size: 1.5rem;
+  }
+
+  .insights {
+    grid-template-columns: minmax(0, 2fr) minmax(17rem, 1fr);
+    grid-template-areas: "trend attention" "trend health";
+    align-items: start;
+  }
+
+  .trend {
+    grid-area: trend;
+  }
+
+  .attention {
+    grid-area: attention;
+  }
+
+  .health {
+    grid-area: health;
+  }
+
+  .responsiveTable div[class~="md:hidden"] {
+    display: none;
+  }
+
+  .responsiveTable [role="region"][aria-label="Table results"] {
+    display: block;
+  }
+
+  .operationsGrid {
+    grid-template-columns: minmax(0, 2fr) minmax(15rem, 1fr);
+  }
+
+  .analytics {
+    grid-template-columns: minmax(0, 2fr) minmax(17rem, 1fr);
+  }
+
+  .operationsGrid > div:first-child {
+    grid-column: auto;
+  }
+
+  .operationalStats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

@@ -207,7 +207,7 @@ describe("Today's existing visits and financial records", () => {
     vi.mocked(api.get).mockImplementation(async path => ({ headers: { "x-total-pages": "2" }, data: { data: String(path).includes("assignments") ? [assignment] : String(path).includes("daily-summary") ? { appointments: 32, completed: 8, byStatus: { "checked-in": 24, completed: 8 }, financialVisible: true, moneyByCurrency: [{ currency: "INR", collections: 350, outstanding: 700 }] } : [{ id: "appointment", patientId: patient, doctorId: doctor, status: "checked-in", appointmentType: "walk-in", tokenNumber: 12 }] } }));
     mount(<TodayPatients essentialEntry onDetailedView={vi.fn()} />);
     expect((await screen.findAllByText("Canonical walk-in")).length).toBeGreaterThan(0);
-    expect(screen.getByText("8", { selector: "strong" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Completed\s*8/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Start consultation" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Go to next page" })).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Rows per page" })).not.toBeInTheDocument();
@@ -258,10 +258,11 @@ describe("Today's existing visits and financial records", () => {
     });
     mount(<TodayPatients onDetailedView={vi.fn()} />);
     await screen.findAllByText("Canonical walk-in");
+    fireEvent.click(screen.getByText("Location & doctor"));
     fireEvent.click(screen.getByRole("combobox", { name: "Location" }));
     fireEvent.click(await screen.findByRole("option", { name: "Second location" }));
     expect(screen.queryByText("Canonical walk-in")).not.toBeInTheDocument();
-    expect(screen.queryByText("8", { selector: "strong" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Completed\s*8/ })).not.toBeInTheDocument();
     releasePatients({ data: { data: [] }, headers: {} });
     await screen.findByText("No visits match this view.");
   });

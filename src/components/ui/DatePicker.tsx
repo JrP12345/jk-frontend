@@ -1,15 +1,17 @@
 "use client";
 
-import { type ReactNode, forwardRef, useId, useState, useEffect, useRef, useCallback } from "react";
+import { type ReactNode, forwardRef, useId, useState, useEffect, useRef, useCallback, useImperativeHandle } from "react";
 import { createPortal } from "react-dom";
 import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import { popoverPosition } from "@/lib/popoverPosition";
 import { cn } from "./utils";
 import { fieldBase, fieldVariants } from "./controlStyles";
+import Button from "./Button";
+import Select from "./Select";
 
 export type DatePickerVariant = "outline" | "filled" | "ghost" | "danger";
 export type DatePickerSize = "sm" | "md" | "lg";
-export type DatePickerMode = "date" | "datetime" | "range";
+export type DatePickerMode = "date" | "datetime" | "range" | "time";
 
 export interface DateRangeValue {
   startDate: string;
@@ -34,6 +36,7 @@ export interface DatePickerProps {
   minDate?: string | Date;
   maxDate?: string | Date;
   disabled?: boolean;
+  required?: boolean;
   isClearable?: boolean;
   fullWidth?: boolean;
   className?: string;
@@ -62,6 +65,7 @@ const MONTH_NAMES = [
 const DAY_NAMES = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 function parseISOValue(valStr?: string, mode: DatePickerMode = "date"): { dateObj: Date | null; timeStr: string } {
+  if (mode === "time") return { dateObj: null, timeStr: valStr || "" };
   if (!valStr) return { dateObj: null, timeStr: "09:00" };
 
   try {
@@ -85,6 +89,7 @@ function parseISOValue(valStr?: string, mode: DatePickerMode = "date"): { dateOb
 }
 
 function formatDateISO(date: Date | null, timeStr: string = "09:00", mode: DatePickerMode = "date"): string {
+  if (mode === "time") return timeStr;
   if (!date) return "";
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -148,6 +153,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     minDate,
     maxDate,
     disabled = false,
+    required = false,
     isClearable = true,
     fullWidth = true,
     className = "",
@@ -157,6 +163,10 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     const autoId = useId();
     const id = propId || autoId;
     const buttonRef = useRef<HTMLButtonElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    useImperativeHandle(ref, () => inputRef.current!);
+    const [nativeError, setNativeError] = useState("");
+    const visibleError = error || nativeError;
 
     const renderPresets = showPresetsProp ?? (mode === "range");
 
@@ -190,39 +200,11 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     );
     const [viewMode, setViewMode] = useState<"days" | "months" | "years">("days");
     const [timeScreenOpen, setTimeScreenOpen] = useState(false);
-
-    const hourColRef = useRef<HTMLDivElement>(null);
-    const minColRef = useRef<HTMLDivElement>(null);
-    const periodColRef = useRef<HTMLDivElement>(null);
-
-    // Initial position centering when time screen opens
-    useEffect(() => {
-      if (timeScreenOpen) {
-        const timer = setTimeout(() => {
-          const [hStr, mStr] = (selectedTime || "09:00").split(":");
-          const h24 = parseInt(hStr || "9", 10);
-          const mins = parseInt(mStr || "0", 10);
-          const isPM = h24 >= 12;
-          const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-
-          if (hourColRef.current) {
-            hourColRef.current.scrollTop = (h12 - 1) * 36;
-          }
-          if (minColRef.current) {
-            const minOptions = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
-            const minIdx = minOptions.findIndex((m) => Math.abs(mins - m) < 3);
-            if (minIdx !== -1) minColRef.current.scrollTop = minIdx * 36;
-          }
-          if (periodColRef.current) {
-            periodColRef.current.scrollTop = (isPM ? 1 : 0) * 36;
-          }
-        }, 30);
-        return () => clearTimeout(timer);
-      }
-    }, [timeScreenOpen]);
+    const [timeDraft, setTimeDraft] = useState(initialParsed.timeStr || "09:00");
 
     // Sync controlled props
     useEffect(() => {
+      setNativeError("");
       if (mode === "range") {
         const r = parseInitialRange(controlledValue, propStartDate, propEndDate);
         setRangeStart(r.start);
@@ -248,6 +230,8 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
       if (disabled) return;
       if (!isOpen) {
         updateCoords();
+        setTimeDraft(selectedTime || "09:00");
+        setTimeScreenOpen(false);
       }
       setIsOpen(!isOpen);
     };
@@ -260,6 +244,8 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
         if (buttonRef.current && e.target instanceof Node && buttonRef.current.contains(e.target)) return;
         const portalEl = document.getElementById(`datepicker-portal-${id}`);
         if (portalEl && e.target instanceof Node && portalEl.contains(e.target)) return;
+        const nestedPopup = e.target instanceof Element ? e.target.closest<HTMLElement>("[data-overlay-owner]") : null;
+        if (nestedPopup?.dataset.overlayOwner === popupRef.current?.id) return;
         setIsOpen(false);
       };
 
@@ -284,6 +270,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     }, [isOpen, id, updateCoords]);
 
     const emitSingleChange = (d: Date | null, t: string = selectedTime) => {
+      setNativeError("");
       const formatted = formatDateISO(d, t, mode);
       if (onChange) {
         onChange(formatted);
@@ -291,6 +278,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     };
 
     const emitRangeChange = (start: Date | null, end: Date | null) => {
+      setNativeError("");
       const startStr = start ? formatDateISO(start, "00:00", "date") : "";
       const endStr = end ? formatDateISO(end, "23:59", "date") : "";
       const payloadString = startStr && endStr ? `${startStr} to ${endStr}` : startStr || endStr;
@@ -334,7 +322,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
 
     const handleTimeChange = (newTime: string) => {
       setSelectedTime(newTime);
-      if (selectedDate) {
+      if (selectedDate || mode === "time") {
         emitSingleChange(selectedDate, newTime);
       }
     };
@@ -347,7 +335,8 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
         emitRangeChange(null, null);
       } else {
         setSelectedDate(null);
-        emitSingleChange(null);
+        if (mode === "time") setSelectedTime("");
+        emitSingleChange(null, mode === "time" ? "" : selectedTime);
       }
     };
 
@@ -412,12 +401,14 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     const isDateDisabled = (day: number) => {
       const target = new Date(viewYear, viewMonth, day);
       if (minDate) {
-        const minD = typeof minDate === "string" ? new Date(minDate) : minDate;
+        const minD = typeof minDate === "string" ? parseISOValue(minDate).dateObj : new Date(minDate);
+        if (!minD) return true;
         minD.setHours(0, 0, 0, 0);
         if (target < minD) return true;
       }
       if (maxDate) {
-        const maxD = typeof maxDate === "string" ? new Date(maxDate) : maxDate;
+        const maxD = typeof maxDate === "string" ? parseISOValue(maxDate).dateObj : new Date(maxDate);
+        if (!maxD) return true;
         maxD.setHours(23, 59, 59, 999);
         if (target > maxD) return true;
       }
@@ -464,7 +455,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
 
     // Trigger Placeholder & Display String
     const defaultPlaceholder =
-      mode === "range"
+      mode === "time" ? "Select time..." : mode === "range"
         ? "Select date range..."
         : mode === "datetime"
         ? "Select date & time..."
@@ -481,12 +472,14 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
       } else if (rangeStart) {
         displayString = `${formatShortDate(rangeStart)} – Select End Date`;
       }
+    } else if (mode === "time") {
+      displayString = selectedTime;
     } else if (selectedDate) {
       displayString = formatShortDate(selectedDate) + (mode === "datetime" ? `, ${selectedTime}` : "");
     }
 
-    const hasValue = mode === "range" ? !!(rangeStart || rangeEnd) : !!selectedDate;
-    const activeVariantClass = error ? variantStyles.danger : variantStyles[variant];
+    const hasValue = mode === "time" ? Boolean(selectedTime) : mode === "range" ? !!(rangeStart || rangeEnd) : !!selectedDate;
+    const activeVariantClass = visibleError ? variantStyles.danger : variantStyles[variant];
 
     return (
       <div className={cn("flex flex-col gap-1.5 relative", fullWidth && "w-full", className)}>
@@ -497,12 +490,33 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
         )}
 
         <div className="relative">
-          {/* Hidden input for HTML form integration */}
+          {/* Form semantics stay inside the shared control; the visible picker is custom. */}
           <input
-            ref={ref}
-            type="hidden"
+            ref={inputRef}
+            type={mode === "range" ? "hidden" : mode === "datetime" ? "datetime-local" : mode}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
+            required={required}
+            disabled={disabled}
+            min={typeof minDate === "string" ? minDate : minDate ? formatDateISO(minDate) : undefined}
+            max={typeof maxDate === "string" ? maxDate : maxDate ? formatDateISO(maxDate) : undefined}
             name={name}
             id={id}
+            onChange={event => {
+              const parsed = parseISOValue(event.target.value, mode);
+              setSelectedDate(parsed.dateObj);
+              setSelectedTime(parsed.timeStr);
+              setNativeError("");
+              onChange?.(event.target.value);
+            }}
+            onInvalid={event => {
+              event.preventDefault();
+              setNativeError(event.currentTarget.validity.valueMissing
+                ? mode === "time" ? "Choose a time." : mode === "datetime" ? "Choose a date and time." : "Choose a date."
+                : "Choose a value within the allowed range.");
+              buttonRef.current?.focus();
+            }}
             value={
               mode === "range"
                 ? `${rangeStart ? formatDateISO(rangeStart, "00:00", "date") : ""}${rangeEnd ? ` to ${formatDateISO(rangeEnd, "23:59", "date")}` : ""}`
@@ -516,7 +530,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             ref={buttonRef}
             aria-labelledby={label ? `${id}-label` : undefined}
             aria-label={!label ? placeholder || (mode === "range" ? "Choose date range" : "Choose date") : undefined}
-            aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
+            aria-describedby={visibleError ? `${id}-error` : hint ? `${id}-hint` : undefined}
             type="button"
             disabled={disabled}
             onClick={handleToggle}
@@ -533,7 +547,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             <span className="shrink-0 text-text-muted [&>svg]:h-4 [&>svg]:w-4">
               {icon || (
                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d={mode === "time" ? "M12 6v6l4 2m5-2a9 9 0 11-18 0 9 9 0 0118 0z" : "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"} />
                 </svg>
               )}
             </span>
@@ -548,8 +562,8 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
               type="button"
               onClick={handleClear}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 touch-target text-text-muted hover:text-text p-1 rounded hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring cursor-pointer transition-colors"
-              aria-label="Clear date"
-              title="Clear date"
+              aria-label={mode === "time" ? "Clear time" : "Clear date"}
+              title={mode === "time" ? "Clear time" : "Clear date"}
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -574,172 +588,32 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
               left: coords.left,
               width: coords.width,
               maxHeight: coords.maxHeight,
-              zIndex: 99999,
+              zIndex: "var(--layer-popover)",
             }}
             className="material-glass-elevated overflow-y-auto rounded-container p-4 animate-popover-in"
           >
-            {mode === "datetime" && timeScreenOpen ? (
-              /* SCREEN MODE 2: WHEEL TIME PICKER SCREEN (Matching Reference Image) */
-              (() => {
-                const [hStr, mStr] = (selectedTime || "09:00").split(":");
-                const h24 = parseInt(hStr || "9", 10);
-                const mins = parseInt(mStr || "0", 10);
-                const isPM = h24 >= 12;
-                const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-
-                const setTimeVal = (newH12: number, newMins: number, pm: boolean) => {
-                  let targetH24 = newH12 % 12;
-                  if (pm) targetH24 += 12;
-                  const cleanH = String(targetH24).padStart(2, "0");
-                  const cleanM = String(newMins).padStart(2, "0");
-                  handleTimeChange(`${cleanH}:${cleanM}`);
-                };
-
-                const displayFormatted12 = `${String(h12).padStart(2, "0")}:${String(mins).padStart(2, "0")} ${isPM ? "PM" : "AM"}`;
-
-                return (
-                  <div className="space-y-3 animate-in fade-in zoom-in-95 duration-200 ease-out transform-gpu py-1">
-                    {/* Header: < Back button and Set Time badge */}
-                    <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setTimeScreenOpen(false)}
-                        className="px-2.5 py-1 bg-surface border border-border rounded-xl text-xs font-semibold text-text hover:bg-surface-hover transition-all duration-150 cursor-pointer flex items-center gap-1.5 shadow-xs"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                        </svg>
-                        <span>Back</span>
-                      </button>
-                      <span className="px-3 py-1 rounded-xl bg-primary/15 text-accent border border-primary/30 font-mono font-semibold text-xs animate-in fade-in duration-200">
-                        Set: {displayFormatted12}
-                      </span>
-                    </div>
-
-                    {/* 3-Column Vertical Scroll Wheel Box */}
-                    <div className="relative border border-border/80 rounded-2xl bg-surface p-2 overflow-hidden shadow-inner my-2 h-44">
-                      {/* Central Highlight Selection Bar Across All 3 Columns */}
-                      <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 h-8 bg-primary-500/25 border border-primary-500/50 rounded-xl pointer-events-none z-0 shadow-xs transition-all duration-200" />
-
-                      <div className="grid grid-cols-3 gap-1 relative z-10 text-center font-mono h-full">
-                        {/* Column 1: Hours (01 - 12) */}
-                        <div
-                          ref={hourColRef}
-                          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-                          onScroll={(e) => {
-                            const scrollTop = e.currentTarget.scrollTop;
-                            requestAnimationFrame(() => {
-                              const idx = Math.min(11, Math.max(0, Math.round(scrollTop / 36)));
-                              const scrolledH12 = idx + 1;
-                              if (scrolledH12 !== h12) {
-                                setTimeVal(scrolledH12, mins, isPM);
-                              }
-                            });
-                          }}
-                          className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden py-[72px] space-y-1 snap-y snap-mandatory scroll-smooth"
-                        >
-                          {Array.from({ length: 12 }, (_, i) => i + 1).map((hVal) => {
-                            const isSelected = hVal === h12;
-                            return (
-                              <button
-                                key={hVal}
-                                type="button"
-                                onClick={() => setTimeVal(hVal, mins, isPM)}
-                                className={cn(
-                                  "w-full h-8 flex items-center justify-center text-sm font-semibold transition-all duration-150 ease-out cursor-pointer rounded-lg snap-center",
-                                  isSelected ? "text-accent font-semibold" : "text-text-muted hover:text-text hover:bg-surface/60"
-                                )}
-                              >
-                                {String(hVal).padStart(2, "0")}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Column 2: Minutes (00 - 55 in steps of 5) */}
-                        <div
-                          ref={minColRef}
-                          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-                          onScroll={(e) => {
-                            const minOptions = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
-                            const scrollTop = e.currentTarget.scrollTop;
-                            requestAnimationFrame(() => {
-                              const idx = Math.min(minOptions.length - 1, Math.max(0, Math.round(scrollTop / 36)));
-                              const scrolledMins = minOptions[idx];
-                              if (scrolledMins !== mins) {
-                                setTimeVal(h12, scrolledMins, isPM);
-                              }
-                            });
-                          }}
-                          className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden py-[72px] space-y-1 snap-y snap-mandatory scroll-smooth"
-                        >
-                          {["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map((mStrVal) => {
-                            const mVal = parseInt(mStrVal, 10);
-                            const isSelected = Math.abs(mins - mVal) < 3 || (mins > 55 && mVal === 55);
-                            return (
-                              <button
-                                key={mStrVal}
-                                type="button"
-                                onClick={() => setTimeVal(h12, mVal, isPM)}
-                                className={cn(
-                                  "w-full h-8 flex items-center justify-center text-sm font-semibold transition-all duration-150 ease-out cursor-pointer rounded-lg snap-center",
-                                  isSelected ? "text-accent font-semibold" : "text-text-muted hover:text-text hover:bg-surface/60"
-                                )}
-                              >
-                                {mStrVal}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Column 3: Period (AM / PM Wheel) */}
-                        <div
-                          ref={periodColRef}
-                          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-                          onScroll={(e) => {
-                            const scrollTop = e.currentTarget.scrollTop;
-                            requestAnimationFrame(() => {
-                              const idx = Math.round(scrollTop / 36);
-                              const scrolledPM = idx >= 1;
-                              if (scrolledPM !== isPM) {
-                                setTimeVal(h12, mins, scrolledPM);
-                              }
-                            });
-                          }}
-                          className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden py-[72px] space-y-1 snap-y snap-mandatory scroll-smooth"
-                        >
-                          {["AM", "PM"].map((pVal) => {
-                            const isSelected = (pVal === "PM" && isPM) || (pVal === "AM" && !isPM);
-                            return (
-                              <button
-                                key={pVal}
-                                type="button"
-                                onClick={() => setTimeVal(h12, mins, pVal === "PM")}
-                                className={cn(
-                                  "w-full h-8 flex items-center justify-center text-sm font-semibold transition-all duration-150 ease-out cursor-pointer rounded-lg snap-center",
-                                  isSelected ? "text-accent font-semibold" : "text-text-muted hover:text-text hover:bg-surface/60"
-                                )}
-                              >
-                                {pVal}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Confirm & Close Button */}
-                    <button
-                      type="button"
-                      onClick={() => { setTimeScreenOpen(false); setIsOpen(false); }}
-                      className="w-full py-2 bg-primary text-brand-mist font-semibold text-xs rounded-xl shadow-md hover:bg-primary-600 transition-all duration-150 cursor-pointer text-center"
-                    >
-                      Set Date & Time
-                    </button>
-                  </div>
-                );
-              })()
-            ) : (
+            {mode === "time" || (mode === "datetime" && timeScreenOpen) ? (() => {
+              const [hourText, minuteText] = timeDraft.split(":");
+              const hour = Number(hourText);
+              const period = hour >= 12 ? "PM" : "AM";
+              const hour12 = hour % 12 || 12;
+              const updateTime = (nextHour: number, nextMinute: string, nextPeriod: string) => {
+                const hour24 = nextHour % 12 + (nextPeriod === "PM" ? 12 : 0);
+                setTimeDraft(String(hour24).padStart(2, "0") + ":" + nextMinute);
+              };
+              return <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-text">Choose time</h3>
+                  {mode === "datetime" && <Button variant="ghost" size="sm" onClick={() => setTimeScreenOpen(false)}>Back to date</Button>}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Select label="Hour" value={String(hour12)} onChange={event => updateTime(Number(event.target.value), minuteText, period)} options={Array.from({ length: 12 }, (_, index) => ({ value: String(index + 1), label: String(index + 1).padStart(2, "0") }))} />
+                  <Select label="Minute" value={minuteText} onChange={event => updateTime(hour12, event.target.value, period)} options={Array.from({ length: 60 }, (_, minute) => ({ value: String(minute).padStart(2, "0"), label: String(minute).padStart(2, "0") }))} />
+                  <Select label="Period" value={period} onChange={event => updateTime(hour12, minuteText, event.target.value)} options={[{ value: "AM", label: "AM" }, { value: "PM", label: "PM" }]} />
+                </div>
+                <Button fullWidth onClick={() => { handleTimeChange(timeDraft); setTimeScreenOpen(false); setIsOpen(false); }} disabled={mode === "datetime" && !selectedDate}>{mode === "time" ? "Set time" : "Set date & time"}</Button>
+              </div>;
+            })() : (
               /* SCREEN MODE 1: CALENDAR VIEW SCREEN */
               <>
                 {/* Preset Shortcuts */}
@@ -977,7 +851,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                       <span className="text-text-muted font-semibold text-[11px] uppercase tracking-wider">Time:</span>
                       <button
                         type="button"
-                        onClick={() => setTimeScreenOpen(true)}
+                        onClick={() => { setTimeDraft(selectedTime || "09:00"); setTimeScreenOpen(true); }}
                         className="px-2.5 py-1.5 rounded-xl bg-surface border border-border/80 hover:border-primary-500/50 hover:bg-surface-hover text-text font-mono font-semibold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs"
                       >
                         <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1000,8 +874,8 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
           document.body
         )}
 
-        {error && <p id={`${id}-error`} role="alert" className="text-xs text-danger-text animate-fade-in">{error}</p>}
-        {!error && hint && <p id={`${id}-hint`} className="text-xs text-text-muted">{hint}</p>}
+        {visibleError && <p id={`${id}-error`} role="alert" className="text-xs text-danger-text animate-fade-in">{visibleError}</p>}
+        {!visibleError && hint && <p id={`${id}-hint`} className="text-xs text-text-muted">{hint}</p>}
       </div>
     );
   }

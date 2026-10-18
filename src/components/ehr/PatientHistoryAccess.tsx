@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Input, Modal, useToast, Badge } from "@/components/ui";
+import { Button, Input, useToast, Badge } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";

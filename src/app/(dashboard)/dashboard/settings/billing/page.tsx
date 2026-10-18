@@ -438,7 +438,7 @@ export default function BillingSettingsPage({
         <Card className="p-4 border border-warning/40 bg-warning/10 text-sm">
           <p role="status" className="font-semibold">{verificationPending ? "Checking payment confirmation…" : "Checkout is awaiting payment or confirmation."}</p>
           <p className="mt-1 text-text-muted">Your existing plan stays active until Razorpay confirms payment. Order {pendingOrderId}.</p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             <Button variant="secondary" size="xs" onClick={() => refreshCheckoutStatus(pendingOrderId).catch(() => {})}>Check payment status</Button>
             {!verificationPending && pendingPlanId && plans.some((plan) => plan.id === pendingPlanId) && (
               <Button variant="primary" size="xs" disabled={isProcessing} onClick={() => handleInitiateCheckout(plans.find((plan) => plan.id === pendingPlanId)!, true)}>Resume payment</Button>
@@ -475,10 +475,10 @@ export default function BillingSettingsPage({
 
       {/* Active Subscription Banner */}
       <Card className="border border-primary-500/30 bg-surface    shadow-xs">
-        <CardContent className="p-6">
+        <CardContent className="pt-4">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="space-y-2">
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <Badge variant="primary" size="md" className="font-bold uppercase tracking-wider">
                   {summary?.planName || currentPlan?.name || "Plan unavailable"}
                 </Badge>
@@ -542,8 +542,8 @@ export default function BillingSettingsPage({
             Enforced automatically on backend creation APIs according to your active commercial plan.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-5">
             {/* Clinics */}
             <div className="p-4 rounded-xl border border-border/70 bg-surface-alt/30 space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold text-text">
@@ -609,8 +609,8 @@ export default function BillingSettingsPage({
             </button>
           </div>
         </CardHeader>
-        <CardContent className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-5">
             {plans.map((plan) => {
               const price = billingCycle === "annual" ? Math.round(plan.annualPrice / 12) : plan.monthlyPrice;
               const isCurrent = currentPlan?.slug === plan.slug;
@@ -626,7 +626,7 @@ export default function BillingSettingsPage({
                   }`}
                 >
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-wrap justify-between items-center gap-2">
                       <h4 className="text-lg font-bold text-text">{plan.name}</h4>
                       {isCurrent && <Badge variant="primary" size="sm" className="font-bold">Current</Badge>}
                     </div>
@@ -669,7 +669,7 @@ export default function BillingSettingsPage({
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-5 space-y-4">
+          <CardContent className="pt-4 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="GSTIN Number (Optional)"

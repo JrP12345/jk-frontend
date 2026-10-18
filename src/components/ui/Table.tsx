@@ -631,13 +631,12 @@ export default function Table<T extends Record<string, any>>({
 
                     return (
                       <th key={`filter-${colKey}`} className={cn("px-2.5 py-1.5 font-normal", variant === "bordered" && !isLast && "border-r border-border/40")}>
-                        <input
-                          type="text"
+                        <Input
+                          size="sm"
                           placeholder={`Filter ${col.header}...`}
                           value={columnFilters[colKey] || ""}
                           onChange={(e) => handleColumnFilterChange(colKey, e.target.value)}
                           aria-label={`Filter ${col.header}`}
-                          className="w-full bg-surface border border-border rounded-lg px-2.5 py-1 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-primary-500 font-normal"
                         />
                       </th>
                     );

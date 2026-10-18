@@ -6,13 +6,16 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { authScopeKey } from "@/lib/authScope";
 import { organizationPath } from "@/services/organization.service";
+import type { ChimeType, VoiceAnnounceLanguage } from "@/utils/audioChimes";
 
 export interface WorkflowPreferences {
   registration: "full" | "essential";
   consultation: "full" | "focused";
   currency: string;
+  queueChime: ChimeType;
+  queueVoiceLanguage: VoiceAnnounceLanguage;
 }
-const defaults: WorkflowPreferences = { registration: "full", consultation: "full", currency: "INR" };
+const defaults: WorkflowPreferences = { registration: "full", consultation: "full", currency: "INR", queueChime: "bell", queueVoiceLanguage: "en" };
 
 export function useWorkflowPreferences(organizationId?: string) {
   const user = useAuthStore((state) => state.user);

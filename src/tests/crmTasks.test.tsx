@@ -1,3 +1,4 @@
+import { datePickerInput } from "./datePickerTestUtils";
 ﻿import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '@/lib/api';
@@ -40,7 +41,7 @@ describe('Daily patient task workspace', () => {
     render(<CrmTaskWorkspace />);
     fireEvent.click(await screen.findByRole('button', { name: 'Open task' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Record task outcome' }));
-    fireEvent.change(screen.getByLabelText('Next task time (Asia/Kolkata)'), { target: { value: '2026-10-11T17:30' } });
+    fireEvent.change(datePickerInput(screen.getByLabelText('Next task time (Asia/Kolkata)')), { target: { value: '2026-10-11T17:30' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save task update' }));
     await waitFor(() => expect(api.patch).toHaveBeenCalledWith('/crm/tasks/task', expect.objectContaining({ expectedRevision: 3, action: 'complete', outcome: 'contacted', nextAction: { kind: 'contact', dueAt: '2026-10-11T12:00:00.000Z' } })));
     expect(vi.mocked(api.patch).mock.calls[0][1]).not.toHaveProperty('closeInquiry');

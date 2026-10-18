@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Modal, Button, Input, Select, useToast, Textarea } from "@/components/ui";
+import { Button, Input, Select, useToast, Textarea, DatePicker } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
 import { UnifiedDocumentData, UnifiedDocumentModal } from "./UnifiedDocumentModal";
 import { FileText, Building2, HeartPulse, CheckCircle2 } from "lucide-react";
 
@@ -249,12 +250,20 @@ export function ClinicalDocumentGeneratorModal({
       <Modal
         open={open}
         onClose={onClose}
-        title="Official Medico-Legal & Clinical Document Generator"
+        title="Clinical certificates"
         size="lg"
-      >
+       footer={<>
+            <Button variant="outline" size="sm" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button variant="primary" size="sm" onClick={handleGenerate}>
+              <CheckCircle2 className="w-4 h-4 mr-1" />
+              Generate & Print Certificate
+            </Button>
+          </>}>
         <div className="space-y-4">
           {/* Category Tabs */}
-          <div className="grid grid-cols-3 gap-2 bg-surface-alt p-1 rounded-xl border border-border text-xs font-bold">
+          <div data-dialog-tabs className="grid grid-cols-3 gap-2 bg-surface-alt p-1 rounded-xl border border-border text-xs font-bold">
             <button
               type="button"
               onClick={() => setCategory("referral")}
@@ -265,7 +274,7 @@ export function ClinicalDocumentGeneratorModal({
               }`}
             >
               <Building2 className="w-4 h-4" />
-              Tertiary Referral Letter
+              Referral
             </button>
             <button
               type="button"
@@ -277,7 +286,7 @@ export function ClinicalDocumentGeneratorModal({
               }`}
             >
               <FileText className="w-4 h-4" />
-              Medical Sick Leave
+              Sick leave
             </button>
             <button
               type="button"
@@ -289,7 +298,7 @@ export function ClinicalDocumentGeneratorModal({
               }`}
             >
               <HeartPulse className="w-4 h-4" />
-              Fitness Certificate
+              Fitness
             </button>
           </div>
 
@@ -334,7 +343,7 @@ export function ClinicalDocumentGeneratorModal({
 
           {/* Category-Specific Form Fields */}
 
-          {/* 1. Tertiary Referral Letter Form */}
+          {/* 1. Referral Form */}
           {category === "referral" && (
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -400,7 +409,7 @@ export function ClinicalDocumentGeneratorModal({
             </div>
           )}
 
-          {/* 2. Medical Sick Leave Form */}
+          {/* 2. Sick leave Form */}
           {category === "leave" && (
             <div className="space-y-3">
               <Input
@@ -415,26 +424,26 @@ export function ClinicalDocumentGeneratorModal({
 
                   <Input type="number" min={1} max={90} value={leaveDays} onChange={(e) => handleDaysChange(parseInt(e.target.value) || 1)} label="Days of Rest" size="sm" />
                 </div>
-                <Input
+                <DatePicker
                   label="Leave Start Date"
-                  type="date"
+
                   value={leaveStart}
-                  onChange={(e) => {
-                    setLeaveStart(e.target.value);
+                  onChange={(value) => {
+                    setLeaveStart(value);
                     handleDaysChange(leaveDays);
                   }}
                 />
-                <Input
+                <DatePicker
                   label="Leave End Date"
-                  type="date"
+
                   value={leaveEnd}
-                  onChange={(e) => setLeaveEnd(e.target.value)}
+                  onChange={(value) => setLeaveEnd(value)}
                 />
-                <Input
+                <DatePicker
                   label="Fit to Resume On"
-                  type="date"
+
                   value={leaveResume}
-                  onChange={(e) => setLeaveResume(e.target.value)}
+                  onChange={(value) => setLeaveResume(value)}
                 />
               </div>
 
@@ -528,15 +537,7 @@ export function ClinicalDocumentGeneratorModal({
           )}
 
           {/* Action Footer */}
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
-            <Button variant="outline" size="sm" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button variant="primary" size="sm" onClick={handleGenerate}>
-              <CheckCircle2 className="w-4 h-4 mr-1" />
-              Generate & Print Certificate
-            </Button>
-          </div>
+
         </div>
       </Modal>
 

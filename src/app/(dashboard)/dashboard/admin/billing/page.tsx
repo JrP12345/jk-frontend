@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, StatCard, Button, Input, Badge, Table, Modal, Toggle, useToast, cn, Skeleton, SkeletonStats, SkeletonCardGrid } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Badge, Table, Tabs, Modal, Toggle, EmptyState, useToast, Skeleton } from "@/components/ui";
 import { billingService, SaaSPlan } from "@/services/billing.service";
 import { API_URL } from "@/lib/api";
-import { RotateCw, Plus, Building2, CreditCard, Clock, Layers, Search, Edit3, CheckCircle2, CalendarPlus, KeyRound, Eye, EyeOff, Shield } from "lucide-react";
+import { RotateCw, Plus, Building2, CreditCard, Layers, Search, Edit3, CheckCircle2, CalendarPlus, KeyRound, Eye, EyeOff, Shield } from "lucide-react";
+
+import styles from "./AdminBilling.module.css";
 
 export default function AdminBillingPage() {
   const { toast } = useToast();
@@ -12,6 +14,7 @@ export default function AdminBillingPage() {
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [paymentReviews, setPaymentReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"plans" | "subscriptions" | "razorpay">("plans");
@@ -68,6 +71,7 @@ export default function AdminBillingPage() {
   const loadAdminData = useCallback(async () => {
     try {
       setIsRefreshing(true);
+      setLoadError("");
       const [plansData, subsData, rzpData, reviewsData] = await Promise.all([
         billingService.adminGetPlans(),
         billingService.adminGetSubscriptions(),
@@ -86,6 +90,7 @@ export default function AdminBillingPage() {
         });
       }
     } catch (err: any) {
+      setLoadError(err.response?.data?.message || "Plans and subscriptions could not be loaded. Retry.");
       toast({
         title: "Error Loading Admin Data",
         description: err.response?.data?.message || "Plans and subscriptions could not be loaded.",
@@ -188,77 +193,14 @@ export default function AdminBillingPage() {
     return orgName.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  if (loading) {
-    return (
-      <div role="status" aria-label="Loading platform billing" aria-busy="true" className="space-y-4 sm:space-y-6 w-full min-w-0 pb-4 sm:pb-12 animate-fade-in">
-        <Card className="p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="min-w-0 space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Skeleton className="h-7 w-72 rounded" />
-                <Skeleton className="h-6 w-28 rounded-full" />
-              </div>
-              <Skeleton className="h-4 w-96 rounded" />
-            </div>
-            <div className="flex gap-2.5">
-              <Skeleton className="h-9 w-24 rounded-xl" />
-              <Skeleton className="h-9 w-36 rounded-xl" />
-            </div>
-          </div>
-        </Card>
-        <SkeletonStats count={4} />
-        <Card className="p-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <Skeleton className="h-6 w-48 rounded" />
-            <Skeleton className="h-9 w-32 rounded-lg" />
-          </div>
-          <SkeletonCardGrid count={3} columns={3} />
-        </Card>
-      </div>
-    );
-  }
+  if (loading) return <div className={styles.workspace} role="status" aria-label="Loading platform billing" aria-busy="true"><Skeleton height="4rem" /><Skeleton height="7rem" /><Skeleton height="3.5rem" /><div className={styles.planGrid}>{[0, 1, 2].map(item => <Skeleton key={item} height="20rem" />)}</div></div>;
 
   const totalActiveSubs = subscriptions.filter((s) => s.status === "active").length;
   const totalTrialingOrgs = subscriptions.filter((s) => s.status === "trialing").length;
 
   return (
-    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased pb-4 sm:pb-12 animate-fade-up">
-      {/* ──────────────────────────────────────────────────────────────────────────
-          1. TOP EXECUTIVE BANNER
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Plans & subscriptions
-              </h1>
-              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Platform admin
-              </Badge>
-            </div>
-            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Manage plan prices, usage limits, payment settings, and organization subscriptions.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadAdminData}
-              loading={isRefreshing}
-              icon={<RotateCw className="h-3.5 w-3.5 text-text-secondary" />}
-              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] text-xs font-semibold transition-colors"
-            >
-              Refresh
-            </Button>
-
-            <Button
-              variant="primary"
-              size="sm"
-              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold"
-              onClick={() => {
+    <div className={styles.workspace}>
+      <header className={styles.header}><h1>Plans &amp; subscriptions</h1><div className={styles.headerActions}><Button variant="outline" className={styles.iconAction} aria-label="Refresh platform billing" title="Refresh platform billing" onClick={loadAdminData} loading={isRefreshing}><RotateCw className="h-4 w-4" /></Button><Button className={styles.createAction} aria-label="Create plan" title="Create plan" disabled={!!loadError} onClick={() => {
                 setEditingPlan({
                   name: "",
                   slug: "",
@@ -286,351 +228,51 @@ export default function AdminBillingPage() {
                   },
                 });
                 setPlanModalOpen(true);
-              }}
-            >
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              Create plan
-            </Button>
-          </div>
-        </div>
-      </div>
+              }}><Plus className="h-4 w-4" /><span className={styles.createLabel}>Create plan</span></Button></div><p>Manage plan prices, usage limits and organization subscriptions.</p></header>
+      <dl className={styles.summary} aria-label="Platform billing summary">
+        {[{ label: "Organizations", value: subscriptions.length }, { label: "Active subscriptions", value: totalActiveSubs }, { label: "Free trials", value: totalTrialingOrgs }, { label: "Configured plans", value: plans.length }].map(metric => <div key={metric.label}><dt>{metric.label}</dt><dd>{loadError ? <span aria-label="Unavailable">—</span> : metric.value}</dd></div>)}
+      </dl>
+      <nav aria-label="Billing sections"><Tabs className={styles.tabs} variant="pills" activeTab={activeTab} scrollActiveIntoView={false} onChange={id => { if (id === "plans" || id === "subscriptions" || id === "razorpay") setActiveTab(id); }} tabs={[{ id: "plans", label: "Plans", icon: <Layers /> }, { id: "subscriptions", label: "Subscriptions", icon: <Building2 /> }, { id: "razorpay", label: "Gateway", icon: <CreditCard /> }]} /></nav>
+      {loadError && <Alert variant="error" title="Platform billing unavailable" action={<Button variant="outline" onClick={loadAdminData} loading={isRefreshing}>Retry billing</Button>}>{loadError}</Alert>}
+      {!loadError && activeTab === "plans" && <section aria-label="Configured plans" className={styles.planGrid}>
+        {!plans.length && <EmptyState icon={<Layers />} title="No plans configured yet" description="Create a subscription plan to set its price, limits and features." />}
+        {plans.map(plan => <Card key={plan.id || plan.slug} contentClassName="gap-4">
+          <div><div className={styles.planTitle}><h2>{plan.name}</h2><Badge variant={plan.status === "active" ? "success" : "neutral"} size="sm" dot>{plan.status}</Badge></div><p className={`${styles.meta} ${styles.planDescription}`}>{plan.description}</p><p className="mt-3 text-2xl font-semibold tabular-nums">₹{plan.monthlyPrice?.toLocaleString("en-IN")} <span className="text-xs font-normal text-text-secondary">/ month</span></p></div>
+          <div className="border-t border-border pt-4"><h3 className="mb-3 text-xs font-medium text-text-secondary">Resource limits</h3><dl className={styles.quotaGrid}><div><dt>Locations</dt><dd>{plan.limits?.maxLocations} {plan.limits?.maxLocations === 1 ? "branch" : "branches"}</dd></div><div><dt>Doctors</dt><dd>{plan.limits?.maxDoctors}</dd></div><div><dt>Staff</dt><dd>{plan.limits?.maxStaff}</dd></div><div><dt>Patients</dt><dd>{(plan.limits?.maxPatients || 500).toLocaleString("en-IN")}</dd></div></dl></div>
+          <div className="flex flex-wrap gap-1.5">{plan.features?.analytics && <Badge variant="primary" size="sm">Analytics</Badge>}{plan.features?.auditLogs && <Badge variant="primary" size="sm">Audit logs</Badge>}{plan.features?.aiFeatures && <Badge variant="primary" size="sm">Clinical AI</Badge>}{plan.features?.multiBranch && <Badge variant="primary" size="sm">Multi-branch</Badge>}</div>
+          <div className={styles.planFooter}><Button variant="outline" size="sm" aria-label={`Edit ${plan.name} plan`} onClick={() => { setEditingPlan(plan); setPlanModalOpen(true); }}><Edit3 className="h-4 w-4" />Edit plan</Button></div>
+        </Card>)}
+      </section>}
 
-      {/* ──────────────────────────────────────────────────────────────────────────
-          2. PLATFORM KPI METRICS
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <StatCard
-          label="Total Organizations"
-          value={subscriptions.length.toString()}
-          description="Registered organizations"
-          icon={<Building2 className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard
-          label="Active Subscriptions"
-          value={totalActiveSubs.toString()}
-          description="Organizations with an active paid plan"
-          icon={<CreditCard className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard
-          label="Active Free Trials"
-          value={totalTrialingOrgs.toString()}
-          description="Organizations in trial period"
-          icon={<Clock className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard
-          label="Configured Plans"
-          value={plans.length.toString()}
-          description="Available subscription plans"
-          icon={<Layers className="w-5 h-5 text-text-secondary" />}
-        />
-      </div>
+      {!loadError && activeTab === "subscriptions" && <div className={styles.content}>
+        {paymentReviews.length > 0 && <Card className="border-warning/40 bg-warning/10"><h2 className="text-sm font-semibold">Captured payments requiring review ({paymentReviews.length})</h2><div className="mt-3 space-y-3">{paymentReviews.map(payment => <div key={payment._id} className={styles.review}><strong>{payment.organizationId?.name || "Organization unavailable"}</strong><p>{payment.planId?.name || "Plan unavailable"} / ₹{payment.amount?.toLocaleString("en-IN")}</p><p className="font-mono text-xs">Order {payment.razorpayOrderId}<br />Payment {payment.razorpayPaymentId}</p><p className="text-xs text-text-secondary">Review the existing entitlement and invoice before a manual grant or refund.</p></div>)}</div></Card>}
+        <section aria-label="Organization subscriptions" className={styles.panel}><div className={styles.toolbar}><Input icon={<Search />} type="search" placeholder="Search organization subscriptions" aria-label="Search organization subscriptions" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} /></div>
+          <Table className={styles.responsiveTable} data={filteredSubs} searchable={false} showColumnVisibility={false} fitContent caption="Organization subscriptions" emptyMessage="No organization subscriptions match the current search filter." columns={[
+            { header: "Organization", accessor: (row: any) => <div className="min-w-0 [overflow-wrap:anywhere]"><p className="text-sm font-semibold">{row.organizationId?.name || "Unassigned"}</p><p className={styles.meta}>{row.organizationId?.city || "General"}</p></div> },
+            { header: "Plan", accessor: (row: any) => <div><p className="text-sm font-medium text-accent">{row.planId?.name || "Starter Tier"}</p><p className={styles.meta}><span className="capitalize">{row.billingCycle || "monthly"}</span> cycle</p></div> },
+            { header: "Status & period end", accessor: (row: any) => <div><Badge variant={row.status === "active" ? "success" : row.status === "trialing" ? "warning" : "error"} size="sm" dot>{row.status}</Badge><p className={styles.meta}>{new Date(row.currentPeriodEnd || row.trialEndsAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</p></div> },
+            { header: "Actions", align: "right", accessor: (row: any) => <div className={styles.actions}>{row.status !== "active" && <Button variant="primary" size="sm" onClick={() => { setManualGrantSub(row); setManualGrantReason(""); }}><CheckCircle2 className="h-4 w-4 shrink-0" />Grant access</Button>}<Button variant="outline" size="sm" onClick={() => setExtendingSubId(row.id)}><CalendarPlus className="h-4 w-4 shrink-0" />Extend Trial</Button></div> },
+          ]} renderMobileCard={(row: any) => <article className={styles.subscriptionCard} aria-label={`Subscription for ${row.organizationId?.name || "Unassigned"}`}><div><h3>{row.organizationId?.name || "Unassigned"}</h3><p className={styles.meta}>{row.organizationId?.city || "General"}</p></div><dl className={styles.subscriptionFacts}><div><dt>Plan</dt><dd>{row.planId?.name || "Starter Tier"}<span className="block mt-1 text-xs capitalize text-text-secondary">{row.billingCycle || "monthly"} cycle</span></dd></div><div><dt>Status</dt><dd><Badge variant={row.status === "active" ? "success" : row.status === "trialing" ? "warning" : "error"} size="sm" dot>{row.status}</Badge></dd></div><div className="col-span-2"><dt>Trial / period end</dt><dd>{new Date(row.currentPeriodEnd || row.trialEndsAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</dd></div></dl><div className={styles.actions}>{row.status !== "active" && <Button variant="primary" size="sm" onClick={() => { setManualGrantSub(row); setManualGrantReason(""); }}><CheckCircle2 className="h-4 w-4 shrink-0" />Grant access</Button>}<Button variant="outline" size="sm" onClick={() => setExtendingSubId(row.id)}><CalendarPlus className="h-4 w-4 shrink-0" />Extend Trial</Button></div></article>} />
+        </section>
+      </div>}
 
-      {/* ──────────────────────────────────────────────────────────────────────────
-          3. SEGMENTED TAB NAVIGATION & SEARCH
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface p-3 rounded-2xl border border-border/80 shadow-xs">
-        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto touch-manipulation w-fit max-w-full">
-          <button
-            type="button"
-            aria-pressed={activeTab === "plans"}
-            onClick={() => setActiveTab("plans")}
-            className={cn(
-              "min-h-11 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 focus-visible:ring-2 focus-visible:ring-accent",
-              activeTab === "plans"
-                ? "bg-surface text-text shadow-xs font-bold border border-border/60"
-                : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
-            )}
-          >
-            <Layers className={cn("w-3.5 h-3.5", activeTab === "plans" ? "text-accent" : "text-text-muted")} />
-            <span>Plans</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
-              {plans.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            aria-pressed={activeTab === "subscriptions"}
-            onClick={() => setActiveTab("subscriptions")}
-            className={cn(
-              "min-h-11 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 focus-visible:ring-2 focus-visible:ring-accent",
-              activeTab === "subscriptions"
-                ? "bg-surface text-text shadow-xs font-bold border border-border/60"
-                : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
-            )}
-          >
-            <Building2 className={cn("w-3.5 h-3.5", activeTab === "subscriptions" ? "text-accent" : "text-text-muted")} />
-            <span>Organization Subscriptions</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-surface-alt text-text-muted">
-              {subscriptions.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            aria-pressed={activeTab === "razorpay"}
-            onClick={() => setActiveTab("razorpay")}
-            className={cn(
-              "min-h-11 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-2 shrink-0 focus-visible:ring-2 focus-visible:ring-accent",
-              activeTab === "razorpay"
-                ? "bg-surface text-text shadow-xs font-bold border border-border/60"
-                : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
-            )}
-          >
-            <CreditCard className={cn("w-3.5 h-3.5", activeTab === "razorpay" ? "text-accent" : "text-text-muted")} />
-            <span>Razorpay Platform Gateway</span>
-          </button>
-        </div>
-
-        {activeTab === "subscriptions" && (
-          <div className="relative w-full sm:w-64 shrink-0">
-
-            <Input icon={<Search />} type="text" placeholder="Search by organization..." aria-label="Search organization subscriptions" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} size="sm" variant="filled" />
-          </div>
-        )}
-      </div>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          4. TAB 1: COMMERCIAL SaaS PLANS GRID
-         ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "plans" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {plans.map((plan) => (
-            <Card
-              key={plan.id || plan.slug}
-              className="border border-border/80 shadow-xs hover:border-primary-500/40 transition-all flex flex-col justify-between overflow-hidden rounded-2xl bg-surface"
-            >
-              <CardHeader className="border-b border-border/60 pb-4 bg-surface-alt/30">
-                <div className="flex justify-between items-center mb-1">
-                  <h3 className="text-base sm:text-lg font-bold text-text">{plan.name}</h3>
-                  <Badge
-                    variant={plan.status === "active" ? "success" : "neutral"}
-                    size="sm"
-                    dot
-                    className="uppercase font-bold text-[10px]"
-                  >
-                    {plan.status}
-                  </Badge>
-                </div>
-                <p className="text-xs text-text-muted line-clamp-2 min-h-[32px]">{plan.description}</p>
-                <div className="text-2xl sm:text-3xl font-bold text-text pt-2 tabular-nums">
-                  ₹{plan.monthlyPrice?.toLocaleString("en-IN")}{" "}
-                  <span className="text-xs text-text-muted font-normal">/ month</span>
-                </div>
-              </CardHeader>
-
-              <CardContent className="p-4 sm:p-5 space-y-4">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
-                  Resource Quotas
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="p-2.5 rounded-xl border border-border/80 bg-surface-alt">
-                    <span className="text-text-muted text-[10px] block">Locations</span>
-                    <strong className="text-text font-bold text-xs sm:text-sm">
-                      {plan.limits?.maxLocations} Branch{plan.limits?.maxLocations !== 1 ? "es" : ""}
-                    </strong>
-                  </div>
-                  <div className="p-2.5 rounded-xl border border-border/80 bg-surface-alt">
-                    <span className="text-text-muted text-[10px] block">Doctors</span>
-                    <strong className="text-text font-bold text-xs sm:text-sm">
-                      {plan.limits?.maxDoctors} Doctor{plan.limits?.maxDoctors !== 1 ? "s" : ""}
-                    </strong>
-                  </div>
-                  <div className="p-2.5 rounded-xl border border-border/80 bg-surface-alt">
-                    <span className="text-text-muted text-[10px] block">Staff</span>
-                    <strong className="text-text font-bold text-xs sm:text-sm">
-                      {plan.limits?.maxStaff} Staff
-                    </strong>
-                  </div>
-                  <div className="p-2.5 rounded-xl border border-border/80 bg-surface-alt">
-                    <span className="text-text-muted text-[10px] block">Patients</span>
-                    <strong className="text-text font-bold text-xs sm:text-sm">
-                      {(plan.limits?.maxPatients || 500).toLocaleString("en-IN")}
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-border/60 flex flex-wrap gap-1.5">
-                  {plan.features?.analytics && (
-                    <Badge variant="primary" size="sm" className="text-[10px]">
-                      Analytics
-                    </Badge>
-                  )}
-                  {plan.features?.auditLogs && (
-                    <Badge variant="primary" size="sm" className="text-[10px]">
-                      Audit Logs
-                    </Badge>
-                  )}
-                  {plan.features?.aiFeatures && (
-                    <Badge variant="primary" size="sm" className="text-[10px]">
-                      Clinical AI
-                    </Badge>
-                  )}
-                  {plan.features?.multiBranch && (
-                    <Badge variant="primary" size="sm" className="text-[10px]">
-                      Multi-Branch
-                    </Badge>
-                  )}
-                </div>
-              </CardContent>
-
-              <CardFooter className="p-4 border-t border-border/60 bg-surface-alt/30">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full font-semibold"
-                  onClick={() => {
-                    setEditingPlan(plan);
-                    setPlanModalOpen(true);
-                  }}
-                >
-                  <Edit3 className="w-3.5 h-3.5 mr-1.5" />
-                  Edit Plan Configuration
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          5. TAB 2: ORGANIZATION SUBSCRIPTIONS TABLE
-         ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "subscriptions" && (
-        <div className="space-y-4">
-          {paymentReviews.length > 0 && (
-            <Card className="p-4 border border-warning/40 bg-warning/10">
-              <CardTitle className="text-sm">Captured payments requiring review ({paymentReviews.length})</CardTitle>
-              <div className="mt-3 space-y-2 text-xs">
-                {paymentReviews.map((payment) => (
-                  <div key={payment._id} className="rounded-lg bg-surface p-3 border border-border">
-                    <strong>{payment.organizationId?.name || "Organization unavailable"}</strong> · {payment.planId?.name || "Plan unavailable"} · ₹{payment.amount?.toLocaleString("en-IN")}
-                    <div className="font-mono mt-1">Order {payment.razorpayOrderId} · Payment {payment.razorpayPaymentId}</div>
-                    <div className="mt-1">Review the existing entitlement and invoice before a manual grant or refund.</div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-          <Table
-            data={filteredSubs}
-            loading={loading}
-            mobileCardView
-            emptyMessage="No organization subscriptions match the current search filter."
-            columns={[
-                  {
-                    header: "Organization",
-                    accessor: (row: any) => (
-                      <div className="space-y-0.5">
-                        <div className="font-bold text-xs sm:text-sm text-text">
-                          {row.organizationId?.name || "Unassigned"}
-                        </div>
-                        <div className="text-xs text-text-muted">{row.organizationId?.city || "General"}</div>
-                      </div>
-                    ),
-                  },
-                  {
-                    header: "Active Plan",
-                    accessor: (row: any) => (
-                      <div className="space-y-0.5">
-                        <span className="font-semibold text-xs text-accent dark:text-accent">
-                          {row.planId?.name || "Starter Tier"}
-                        </span>
-                        <span className="text-[10px] text-text-muted block capitalize">
-                          {row.billingCycle || "monthly"} cycle
-                        </span>
-                      </div>
-                    ),
-                  },
-                  {
-                    header: "Status",
-                    accessor: (row: any) => (
-                      <Badge
-                        variant={row.status === "active" ? "success" : row.status === "trialing" ? "warning" : "danger"}
-                        size="sm"
-                        dot
-                        className="uppercase font-bold text-[10px]"
-                      >
-                        {row.status}
-                      </Badge>
-                    ),
-                  },
-                  {
-                    header: "Trial / Period End",
-                    accessor: (row: any) => (
-                      <div className="flex items-center gap-1 text-xs text-text-muted">
-                        <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                        <span>
-                          {new Date(row.currentPeriodEnd || row.trialEndsAt).toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </span>
-                      </div>
-                    ),
-                  },
-                  {
-                    header: "Actions",
-                    align: "right",
-                    accessor: (row: any) => (
-                      <div className="flex items-center justify-end gap-2">
-                        {row.status !== "active" && (
-                          <Button
-                            variant="primary"
-                            size="xs"
-                            onClick={() => { setManualGrantSub(row); setManualGrantReason(""); }}
-                            className="font-semibold rounded-lg min-h-[32px] px-2.5"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                            Grant access
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          onClick={() => setExtendingSubId(row.id)}
-                          className="font-semibold rounded-lg min-h-[32px] px-2.5"
-                        >
-                          <CalendarPlus className="w-3.5 h-3.5 mr-1 text-text-muted" />
-                          Extend Trial
-                        </Button>
-                      </div>
-                    ),
-                  },
-              ]}
-            />
-        </div>
-      )}
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          6. TAB 3: RAZORPAY PLATFORM GATEWAY CONFIGURATION
-         ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "razorpay" && (
+      {!loadError && activeTab === "razorpay" && (
         <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
           <form onSubmit={handleSaveRazorpayConfig}>
-            <CardHeader className="border-b border-border/60 pb-4 bg-surface-alt/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <CardHeader className={styles.gatewayHeading}>
               <div>
-                <CardTitle className="text-base font-bold text-text">
+                <CardTitle as="h2" className="text-base font-semibold text-text">
                   Razorpay Platform Payment Gateway
                 </CardTitle>
                 <CardDescription className="text-xs text-text-muted mt-0.5">
                   Configure payment credentials for subscription checkout and payment updates.
                 </CardDescription>
               </div>
-              <Button
-                variant="primary"
-                size="sm"
-                loading={savingRazorpay}
-                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold shrink-0"
-              >
-                <KeyRound className="w-3.5 h-3.5 mr-1.5" />
-                Save Gateway Keys
-              </Button>
+
             </CardHeader>
 
-            <CardContent className="p-5 sm:p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <CardContent className="pt-4 space-y-4">
+              <div className={styles.formGrid}>
                 <Input
                   label="Razorpay Key ID (RAZORPAY_KEY_ID)"
                   placeholder="rzp_live_xxxxxxxxxxxx"
@@ -647,8 +289,9 @@ export default function AdminBillingPage() {
                   />
                   <button
                     type="button"
+                    aria-label={showKeySecret ? "Hide Razorpay key secret" : "Show Razorpay key secret"}
                     onClick={() => setShowKeySecret(!showKeySecret)}
-                    className="text-[11px] font-semibold text-text-muted hover:text-text cursor-pointer mt-1 inline-flex items-center gap-1"
+                    className={styles.secretAction}
                   >
                     {showKeySecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                     {showKeySecret ? "Hide secret" : "Show secret"}
@@ -656,7 +299,7 @@ export default function AdminBillingPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className={styles.formGrid}>
                 <div>
                   <Input
                     label="Razorpay Webhook Secret (RAZORPAY_WEBHOOK_SECRET)"
@@ -667,8 +310,9 @@ export default function AdminBillingPage() {
                   />
                   <button
                     type="button"
+                    aria-label={showWebhookSecret ? "Hide webhook secret" : "Show webhook secret"}
                     onClick={() => setShowWebhookSecret(!showWebhookSecret)}
-                    className="text-[11px] font-semibold text-text-muted hover:text-text cursor-pointer mt-1 inline-flex items-center gap-1"
+                    className={styles.secretAction}
                   >
                     {showWebhookSecret ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                     {showWebhookSecret ? "Hide secret" : "Show secret"}
@@ -687,6 +331,7 @@ export default function AdminBillingPage() {
                   <strong className="text-text font-semibold">Platform payment account:</strong> Subscription payments for all organizations use these credentials. Update them only when changing the payment account.
                 </div>
               </div>
+            <div className={styles.formActions}><Button type="submit" variant="primary" loading={savingRazorpay}><KeyRound className="h-4 w-4" />Save Gateway Keys</Button></div>
             </CardContent>
           </form>
         </Card>
@@ -714,7 +359,7 @@ export default function AdminBillingPage() {
               value={extraDays}
               onChange={(e) => setExtraDays(Number(e.target.value))}
             />
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
+            <div className={`${styles.formActions} pt-3 border-t border-border/60`}>
               <Button variant="outline" size="sm" onClick={() => setExtendingSubId(null)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 Cancel
               </Button>
@@ -736,7 +381,7 @@ export default function AdminBillingPage() {
         <div className="space-y-4 pt-1">
           <p className="text-sm text-text-secondary">Grant {manualGrantSub?.organizationId?.name} access to {manualGrantSub?.planId?.name}. This is a Root override and does not record a payment.</p>
           <Input label="Reason for manual grant" value={manualGrantReason} onChange={(event) => setManualGrantReason(event.target.value)} placeholder="Describe the approved exception" minLength={10} />
-          <div className="flex justify-end gap-2">
+          <div className={styles.formActions}>
             <Button variant="outline" onClick={() => setManualGrantSub(null)}>Cancel</Button>
             <Button disabled={manualGrantReason.trim().length < 10 || !manualGrantSub?.planId?.slug} loading={savingManualGrant} onClick={async () => {
               if (!manualGrantSub?.planId?.slug) return;
@@ -765,7 +410,7 @@ export default function AdminBillingPage() {
           size="xl"
         >
           <form onSubmit={handleSavePlan} className="space-y-4 pt-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className={styles.formGrid}>
               <Input
                 label="Plan Name *"
                 value={editingPlan.name || ""}
@@ -791,7 +436,7 @@ export default function AdminBillingPage() {
               placeholder="e.g. Designed for growing multi-doctor practices and multi-branch locations."
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div className={styles.formGrid}>
               <Input
                 label="Monthly Price (INR) *"
                 type="number"
@@ -816,7 +461,7 @@ export default function AdminBillingPage() {
 
             <div className="border-t border-border/60 pt-3.5 space-y-2">
               <h4 className="text-xs font-bold text-text uppercase tracking-wider">Resource Quota Limits</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className={styles.limitFields}>
                 <Input
                   label="Max Locations"
                   type="number"
@@ -866,37 +511,41 @@ export default function AdminBillingPage() {
 
             <div className="border-t border-border/60 pt-3.5 space-y-2">
               <h4 className="text-xs font-bold text-text uppercase tracking-wider">Feature Flags</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="flex items-center justify-between p-3 border border-border/80 rounded-xl bg-surface-alt">
-                  <span className="font-semibold text-text">Advanced Analytics</span>
+              <div className={styles.formGrid}>
+                <div className={styles.featureRow}>
+                  <label htmlFor="plan-feature-analytics" className="font-semibold text-sm text-text">Advanced Analytics</label>
                   <Toggle
+                    id="plan-feature-analytics"
                     checked={editingPlan.features?.analytics || false}
                     onChange={(v) =>
                       setEditingPlan({ ...editingPlan, features: { ...editingPlan.features!, analytics: v } })
                     }
                   />
                 </div>
-                <div className="flex items-center justify-between p-3 border border-border/80 rounded-xl bg-surface-alt">
-                  <span className="font-semibold text-text">Audit Logging Trail</span>
+                <div className={styles.featureRow}>
+                  <label htmlFor="plan-feature-auditLogs" className="font-semibold text-sm text-text">Audit Logging Trail</label>
                   <Toggle
+                    id="plan-feature-auditLogs"
                     checked={editingPlan.features?.auditLogs || false}
                     onChange={(v) =>
                       setEditingPlan({ ...editingPlan, features: { ...editingPlan.features!, auditLogs: v } })
                     }
                   />
                 </div>
-                <div className="flex items-center justify-between p-3 border border-border/80 rounded-xl bg-surface-alt">
-                  <span className="font-semibold text-text">Multi-Branch Support</span>
+                <div className={styles.featureRow}>
+                  <label htmlFor="plan-feature-multiBranch" className="font-semibold text-sm text-text">Multi-Branch Support</label>
                   <Toggle
+                    id="plan-feature-multiBranch"
                     checked={editingPlan.features?.multiBranch || false}
                     onChange={(v) =>
                       setEditingPlan({ ...editingPlan, features: { ...editingPlan.features!, multiBranch: v } })
                     }
                   />
                 </div>
-                <div className="flex items-center justify-between p-3 border border-border/80 rounded-xl bg-surface-alt">
-                  <span className="font-semibold text-text">Clinical AI Features</span>
+                <div className={styles.featureRow}>
+                  <label htmlFor="plan-feature-aiFeatures" className="font-semibold text-sm text-text">Clinical AI Features</label>
                   <Toggle
+                    id="plan-feature-aiFeatures"
                     checked={editingPlan.features?.aiFeatures || false}
                     onChange={(v) =>
                       setEditingPlan({ ...editingPlan, features: { ...editingPlan.features!, aiFeatures: v } })
@@ -906,7 +555,7 @@ export default function AdminBillingPage() {
               </div>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
+            <div className={`${styles.formActions} pt-3 border-t border-border/60`}>
               <Button type="button" variant="outline" size="sm" onClick={() => setPlanModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
                 Cancel
               </Button>

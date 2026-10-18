@@ -20,13 +20,13 @@ describe('Consultation arrival confirmation', () => {
       : String(path).includes('/daily-summary') ? { appointments: 1, byStatus: { confirmed: 1 } } : [] } }));
     fixture.put.mockResolvedValue({ data: { data: {} } });
     render(<ToastProvider><ConsultationsPage /></ToastProvider>);
-    fireEvent.click(await screen.findByRole('button', { name: /All Patients/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Start Consultation Workspace' }));
+    fireEvent.click(await screen.findByRole('tab', { name: /^All/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start consultation' }));
     await screen.findByRole('dialog', { name: 'Confirm patient arrival' });
     expect(fixture.put).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel', exact: true }));
     expect(fixture.put).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Start Consultation Workspace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start consultation' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Mark arrival and start' }));
     await waitFor(() => expect(fixture.push).toHaveBeenCalledWith('/dashboard/consultations/visit'));
     expect(fixture.put.mock.calls).toEqual([

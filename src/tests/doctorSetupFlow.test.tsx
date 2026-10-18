@@ -35,8 +35,9 @@ describe("Guided doctor setup", () => {
     fireEvent.click(await screen.findByRole("menuitem", { name: "Edit Doctor" }));
     const dialog = screen.getByRole("dialog", { name: "Update Doctor" });
     expect(dialog.querySelectorAll('input[type="file"]')).toHaveLength(1);
-    expect(within(dialog).getByText("Profile photo")).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Full Name *")).toHaveValue(doctor.name);
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Profile & practice" }));
+    expect(within(dialog).getByText("Profile photo")).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("button", { name: "Remove file" }));
     expect(within(dialog).queryByRole("img", { name: "Preview" })).not.toBeInTheDocument();
     const image = new File(["photo"], "profile.png", { type: "image/png" });
@@ -100,7 +101,7 @@ describe("Guided doctor setup", () => {
 
   it("shows the exact missing assignment with a resume action and a no-location recovery link", async () => {
     fixture.doctors = [doctor]; fixture.locations = []; mount();
-    fireEvent.click(await screen.findByRole("button", { name: "Finish setup for Owner Doctor" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "Finish setup for Owner Doctor" }))[0]);
     await screen.findByText("Create a location first");
     expect(screen.getByRole("link", { name: "Open location setup" })).toHaveAttribute("href", "/dashboard/organizations?organizationId=org&section=locations");
     expect(screen.queryByRole("button", { name: "Assign Location" })).not.toBeInTheDocument();

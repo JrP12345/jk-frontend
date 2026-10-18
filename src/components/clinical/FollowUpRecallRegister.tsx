@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import styles from "./FollowUpRecallRegister.module.css";
+
+import { useState, useEffect, type ReactNode } from "react";
 import api from "@/lib/api";
 import { Card, CardContent, Button, Badge, Input, useToast, cn, SkeletonCardGrid } from "@/components/ui";
-import { CalendarClock, Send, UserCheck, AlertTriangle, Search, RotateCw, Phone, CheckCircle2, Calendar, Users } from "lucide-react";
+import { CalendarClock, Send, UserCheck, RotateCw, Phone, CheckCircle2 } from "lucide-react";
 
 interface FollowUpItem {
   id: string;
@@ -45,12 +47,14 @@ interface FollowUpRecallRegisterProps {
   locationId?: string;
   doctorId?: string;
   onCheckInSuccess?: () => void;
+  toolbarActions?: ReactNode;
 }
 
 export function FollowUpRecallRegister({
   locationId,
   doctorId,
   onCheckInSuccess,
+  toolbarActions,
 }: FollowUpRecallRegisterProps) {
   const { toast } = useToast();
   const [items, setItems] = useState<FollowUpItem[]>([]);
@@ -60,7 +64,7 @@ export function FollowUpRecallRegister({
     overdueCount: 0,
     totalCount: 0,
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState<"all" | "today" | "upcoming" | "overdue">("all");
   const [search, setSearch] = useState("");
   const [sendingRecallId, setSendingRecallId] = useState<string | null>(null);
@@ -157,144 +161,37 @@ export function FollowUpRecallRegister({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Metric Cards Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <button
-          type="button"
-          onClick={() => setTimeframe("all")}
-          className={cn(
-            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
-            timeframe === "all"
-              ? "bg-primary-500/15 border-primary-500/40 shadow-xs"
-              : "bg-surface border-border/80 hover:bg-surface-hover"
-          )}
-        >
-          <div className="flex items-center justify-between text-xs font-bold text-text-muted mb-1">
-            <span>Total Follow-Ups</span>
-            <Users className="w-4 h-4 text-accent" />
-          </div>
-          <div className="text-2xl font-black text-text">{metrics.totalCount}</div>
-          <p className="text-[10px] text-text-muted">Total recorded review plans</p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setTimeframe("today")}
-          className={cn(
-            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning",
-            timeframe === "today"
-              ? "bg-warning/20 border-warning/50 shadow-xs"
-              : "bg-surface border-border/80 hover:bg-surface-hover"
-          )}
-        >
-          <div className="flex items-center justify-between text-xs font-bold text-warning-text dark:text-warning-text mb-1">
-            <span>Due Today</span>
-            <CalendarClock className="w-4 h-4 text-warning-text" />
-          </div>
-          <div className="text-2xl font-black text-warning-text dark:text-warning-text">{metrics.dueTodayCount}</div>
-          <p className="text-[10px] text-text-muted">Scheduled for consultation today</p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setTimeframe("upcoming")}
-          className={cn(
-            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success",
-            timeframe === "upcoming"
-              ? "bg-success/20 border-success/50 shadow-xs"
-              : "bg-surface border-border/80 hover:bg-surface-hover"
-          )}
-        >
-          <div className="flex items-center justify-between text-xs font-bold text-success-text dark:text-success-text mb-1">
-            <span>Upcoming (7 Days)</span>
-            <Calendar className="w-4 h-4 text-success-text" />
-          </div>
-          <div className="text-2xl font-black text-success-text dark:text-success-text">{metrics.upcomingCount}</div>
-          <p className="text-[10px] text-text-muted">Next 7 days scheduled reviews</p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setTimeframe("overdue")}
-          className={cn(
-            "p-3.5 rounded-2xl border transition-all cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger",
-            timeframe === "overdue"
-              ? "bg-danger/20 border-danger/50 shadow-xs"
-              : "bg-surface border-border/80 hover:bg-surface-hover"
-          )}
-        >
-          <div className="flex items-center justify-between text-xs font-bold text-danger-text dark:text-danger-text mb-1">
-            <span>Overdue (Missed)</span>
-            <AlertTriangle className="w-4 h-4 text-danger-text" />
-          </div>
-          <div className="text-2xl font-black text-danger-text dark:text-danger-text">{metrics.overdueCount}</div>
-          <p className="text-[10px] text-text-muted">Past scheduled date - needs recall</p>
-        </button>
+    <div className={styles.register}>
+      <div className={cn(styles.filterBar, toolbarActions && styles.withActions)}>
+      <div className={styles.timeframes} role="group" aria-label="Follow-up filters">
+        {([
+          { id: "all", label: "All", name: "All follow-ups", count: metrics.totalCount },
+          { id: "today", label: "Today", name: "Due today", count: metrics.dueTodayCount },
+          { id: "upcoming", label: "7 days", name: "Next 7 days", count: metrics.upcomingCount },
+          { id: "overdue", label: "Overdue", name: "Overdue", count: metrics.overdueCount },
+        ] as const).map(filter => <button key={filter.id} type="button" aria-label={filter.name} aria-pressed={timeframe === filter.id} title={filter.name} onClick={() => setTimeframe(filter.id)}>
+          <span>{filter.label}</span><strong>{loading && items.length === 0 ? "—" : filter.count}</strong>
+        </button>)}
       </div>
-
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-1.5 overflow-x-auto">
-          {(
-            [
-              { id: "all", label: "All Records" },
-              { id: "today", label: `Due Today (${metrics.dueTodayCount})` },
-              { id: "upcoming", label: `Upcoming (${metrics.upcomingCount})` },
-              { id: "overdue", label: `Overdue (${metrics.overdueCount})` },
-            ] as const
-          ).map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTimeframe(t.id)}
-              className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
-                timeframe === t.id
-                  ? "bg-primary-600 text-brand-mist shadow-xs"
-                  : "bg-surface border border-border/80 text-text-secondary hover:bg-surface-hover"
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="w-3.5 h-3.5 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && fetchFollowUps()}
-              placeholder="Search patient, phone, diagnosis..."
-              className="pl-8 text-xs h-8"
-            />
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={fetchFollowUps}
-            loading={loading}
-            icon={<RotateCw className="w-3.5 h-3.5" />}
-            className="h-8 font-semibold cursor-pointer"
-            title="Refresh Recall Register"
-          />
-        </div>
+      {toolbarActions}
       </div>
+      <form className={styles.search} role="search" aria-label="Search follow-ups" onSubmit={event => { event.preventDefault(); void fetchFollowUps(); }}>
+        <Input type="search" enterKeyHint="search" value={search} onChange={event => setSearch(event.target.value)} aria-label="Search follow-up patients" placeholder="Name, phone or diagnosis" />
+        <Button type="submit" size="sm" variant="outline" loading={loading} icon={<RotateCw className="h-4 w-4" />} aria-label="Refresh recall register" />
+      </form>
 
       {/* Patient Recall Cards / Table */}
       {loading && items.length === 0 ? (
-        <SkeletonCardGrid count={4} columns={1} />
+        <SkeletonCardGrid count={1} columns={1} />
       ) : items.length === 0 ? (
-        <Card className="py-14 text-center rounded-2xl border border-border/80 bg-surface">
+        <Card padding="none" className={styles.emptyState}>
           <CardContent className="space-y-2">
             <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-accent">
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <h4 className="text-sm font-bold text-text">No Follow-Up Records Found</h4>
             <p className="text-xs text-text-muted max-w-sm mx-auto">
-              No patients match the selected filter criteria. When doctors conclude consultations with follow-up recommendations, they will appear here.
+              {search.trim() ? "Try another name, phone number or diagnosis." : "Follow-up recommendations from completed visits appear here."}
             </p>
           </CardContent>
         </Card>
@@ -309,6 +206,7 @@ export function FollowUpRecallRegister({
             return (
               <Card
                 key={item.id}
+                padding="none"
                 className={cn(
                   "rounded-2xl border transition-all hover:shadow-sm",
                   isOverdue
@@ -318,7 +216,7 @@ export function FollowUpRecallRegister({
                     : "border-border/80 bg-surface"
                 )}
               >
-                <CardContent className="p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <CardContent className={styles.patient}>
                   {/* Patient Details */}
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -399,7 +297,7 @@ export function FollowUpRecallRegister({
                   </div>
 
                   {/* Actions: Send Recall & Check In */}
-                  <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                  <div className={styles.actions}>
                     {!isAttended && item.status !== "checked-in" && (
                       <Button
                         size="xs"

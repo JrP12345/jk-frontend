@@ -9,7 +9,7 @@ export default async function PatientTimelinePage({ params }: PageProps) {
   const { id } = await params;
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 md:p-0 w-full min-w-0 space-y-6">
       <Link href={`/dashboard/patients/${id}`} className="inline-flex min-h-11 items-center text-sm font-medium text-text-secondary hover:text-accent">← Back to patient profile</Link>
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-text">Patient history</h1>

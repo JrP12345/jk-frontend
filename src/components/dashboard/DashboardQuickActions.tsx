@@ -7,6 +7,7 @@ import { getDisabledRouteModule } from "@/lib/routeModules";
 import { useModuleStore } from "@/store/moduleStore";
 import { formatCurrency } from "@/lib/currency";
 import type { User } from "@/store/authStore";
+import styles from "./DashboardOverview.module.css";
 
 interface DashboardQuickActionsProps {
   user: User | null;
@@ -35,9 +36,9 @@ export function DashboardQuickActions({ user, invoices }: DashboardQuickActionsP
     { href: "/dashboard/audit", label: "Audit log" },
   ];
   const accessible = entries.filter(entry => hasRoutePermission(entry.href, user.role, user.permissions) && !getDisabledRouteModule(entry.href, user, isModuleEnabled));
-  return <Card className="overflow-hidden">
-    <CardHeader><CardTitle>{consumer ? "Care and billing" : "Quick operations"}</CardTitle></CardHeader>
-    <CardContent className="space-y-3">
+  return <Card padding="none" className={styles.panel}>
+    <CardHeader className={styles.panelHeader}><CardTitle>{consumer ? "Care and billing" : "Quick operations"}</CardTitle></CardHeader>
+    <CardContent className={`${styles.panelBody} space-y-3`}>
       {consumer && invoices.length > 0 && <div className="space-y-2">
         <p className="text-xs text-text-muted">Recent unpaid invoices</p>
         {invoices.slice(0, 5).map(invoice => <div key={invoice.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
@@ -45,7 +46,7 @@ export function DashboardQuickActions({ user, invoices }: DashboardQuickActionsP
           <Link href="/dashboard/bills" className="inline-flex min-h-11 shrink-0 items-center px-3 text-sm text-accent focus-visible:ring-2 focus-visible:ring-focus-ring">View bill</Link>
         </div>)}
       </div>}
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">{accessible.map(entry => <Link key={entry.href} href={entry.href} className="flex min-h-11 items-center rounded-xl border border-border px-3 py-2 text-sm font-medium hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">{entry.label}</Link>)}</div>
+      <div className={styles.quickLinks}>{accessible.map(entry => <Link key={entry.href} href={entry.href} className="flex min-h-11 items-center rounded-xl border border-border px-3 py-2 text-sm font-medium hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">{entry.label}</Link>)}</div>
     </CardContent>
   </Card>;
 }

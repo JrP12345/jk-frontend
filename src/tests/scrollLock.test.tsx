@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { lockScroll, unlockScroll, forceResetScrollLock, getActiveScrollLocks } from "@/lib/scrollLock";
 
 describe("scrollLock manager", () => {
@@ -6,6 +6,26 @@ describe("scrollLock manager", () => {
     forceResetScrollLock();
     document.body.style.overflow = "";
     document.body.style.paddingRight = "";
+  });
+  afterEach(() => { forceResetScrollLock(); vi.restoreAllMocks(); });
+
+  it("preserves the rendered width with a stable root gutter through nested dialogs", () => {
+    const originalWidth = document.body.style.width;
+    const originalGutter = document.documentElement.style.scrollbarGutter;
+    document.documentElement.style.scrollbarGutter = "stable";
+    document.body.style.paddingRight = "8px";
+    vi.spyOn(document.documentElement, "getBoundingClientRect").mockReturnValue({ width: window.innerWidth - 10 } as DOMRect);
+    lockScroll();
+    expect(document.body.style.width).toBe("calc(100% - 10px)");
+    expect(document.body.style.paddingRight).toBe("8px");
+    lockScroll();
+    unlockScroll();
+    expect(document.body.style.width).toBe("calc(100% - 10px)");
+    unlockScroll();
+    expect(document.body.style.width).toBe(originalWidth);
+    expect(document.documentElement.style.scrollbarGutter).toBe("stable");
+    expect(document.body.style.paddingRight).toBe("8px");
+    document.documentElement.style.scrollbarGutter = originalGutter;
   });
 
   it("locks and unlocks scroll cleanly", () => {

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PatientTimeline } from "@/components/ehr/PatientTimeline";
 
@@ -14,6 +14,37 @@ const event = {
   clinicalMetadata: { diagnoses: [] }, clinicalConcepts: {},
 };
 describe("Shared patient history recovery", () => {
+  it("keeps history controls mounted while changing from populated to loading and empty results", async () => {
+    let finish!: (value: unknown) => void;
+    fixture.get.mockResolvedValueOnce({ data: { data: { events: [event] } } })
+      .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    render(<PatientTimeline patientId="patient" accessToken="approved" />);
+    await screen.findByText(event.title);
+    const category = screen.getByRole("button", { name: "Diagnostics" });
+    const search = screen.getByRole("textbox", { name: "Search patient history" });
+    fireEvent.click(category);
+    expect(await screen.findByRole("status", { name: "Loading patient health records timeline" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Diagnostics" })).toBe(category);
+    expect(screen.getByRole("textbox", { name: "Search patient history" })).toBe(search);
+    expect(screen.queryByText(event.title)).not.toBeInTheDocument();
+    await act(async () => { finish({ data: { data: { events: [] } } }); });
+    expect(await screen.findByText("No clinical timeline events found matching filters.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Diagnostics" })).toBe(category);
+  });
+
+  it("ignores a cancelled patient's late history response", async () => {
+    let finish!: (value: unknown) => void;
+    fixture.get.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }))
+      .mockResolvedValue({ data: { data: { events: [] } } });
+    const { rerender } = render(<PatientTimeline patientId="previous" accessToken={null} />);
+    const signal = fixture.get.mock.calls[0][1].signal;
+    rerender(<PatientTimeline patientId="current" accessToken={null} />);
+    await screen.findByText("No clinical timeline events found matching filters.");
+    expect(signal.aborted).toBe(true);
+    await act(async () => { finish({ data: { data: { events: [event] } } }); });
+    expect(screen.queryByText(event.title)).not.toBeInTheDocument();
+  });
+
   it("retries the profile-owned scope and preserves its approval header", async () => {
     fixture.get.mockRejectedValueOnce(new Error("offline")).mockResolvedValue({ data: { data: { events: [], hasMore: false } } });
     render(<PatientTimeline patientId="patient" accessToken="patient-approved-token" />);

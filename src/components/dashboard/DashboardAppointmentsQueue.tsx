@@ -2,7 +2,8 @@
 
 import { localDateKey } from "@/lib/date";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardContent, Badge, Table, Button, Dropdown } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Badge, Table, Button, Dropdown, LoadingState, Skeleton } from "@/components/ui";
+import styles from "./DashboardOverview.module.css";
 import { hasAnyPermission } from "@/lib/permissions";
 import { patientName as canonicalPatientName } from "@/lib/locationWorkflow";
 import { Clock, CheckCircle2, PlayCircle, XCircle, ChevronRight, UserCheck, CalendarX2, MoreHorizontal, Plus, Stethoscope } from "lucide-react";
@@ -26,8 +27,8 @@ export function DashboardAppointmentsQueue({
   const router = useRouter();
 
   return (
-    <Card className="lg:col-span-2 rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden ">
-      <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/60">
+    <Card padding="none" className={styles.queuePanel}>
+      <CardHeader className={styles.queueHeader}>
         <div className="flex items-center gap-2.5">
           <CardTitle className="text-sm sm:text-base font-bold text-text">
             {canViewOpsDashboard
@@ -53,7 +54,7 @@ export function DashboardAppointmentsQueue({
         </Button>
       </CardHeader>
       <CardContent className="p-0">
-        {appointments.length === 0 ? (
+        {loading ? <LoadingState label="Loading appointments"><Skeleton height="8rem" /></LoadingState> : appointments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center text-text-muted">
             <div className="w-12 h-12 rounded-2xl bg-surface-alt flex items-center justify-center mb-3 border border-border/70 text-text-secondary">
               <CalendarX2 className="w-6 h-6" />
@@ -77,7 +78,7 @@ export function DashboardAppointmentsQueue({
         ) : (
           <>
             {/* Mobile Touch-Friendly Card Roster View */}
-            <div className="sm:hidden divide-y divide-border/60">
+            <div className={styles.queueCards}>
               {appointments.slice(0, 5).map((row: any) => {
                 const patientName = canonicalPatientName(row.patientId);
                 const doctorName = row.doctorId?.name || "Physician";
@@ -193,8 +194,10 @@ export function DashboardAppointmentsQueue({
             </div>
 
             {/* Desktop Table View — Compact Widget Presentation */}
-            <div className="hidden sm:block overflow-x-auto [scrollbar-width:thin]">
+            <div className={styles.queueTable}>
               <Table
+                fitContent
+                mobileCardView={false}
                 loading={loading}
                 searchable={false}
                 pagination={false}

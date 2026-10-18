@@ -8,9 +8,12 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { PatientService } from "@/services/patient.service";
 import { AssociatePatientModal } from "@/components/patients/AssociatePatientModal";
+import { PatientMrn } from "@/components/patients/PatientMrn";
+import Modal from "@/components/queue/QueueDialog";
+import styles from "./Patients.module.css";
 import { hasAnyPermission } from "@/lib/permissions";
-import { Card, CardHeader, CardTitle, CardContent, Table, Column, Button, Input, Select, Modal, useToast, Badge, StatCard, Dropdown } from "@/components/ui";
-import { UserPlus, RotateCw, Search, Users, FileText, User, UserCheck, MoreHorizontal, AlertCircle, CalendarPlus, Activity, ArrowLeft, ArrowRight, Mail, Phone, Droplets } from "lucide-react";
+import { Table, Column, Button, Input, Select, useToast, Badge, Dropdown, DatePicker } from "@/components/ui";
+import { UserPlus, RotateCw, Search, SlidersHorizontal, User, MoreHorizontal, AlertCircle, CalendarPlus, Activity, ArrowLeft, ArrowRight, Mail, Phone } from "lucide-react";
 
 interface PatientUser {
   _id?: string;
@@ -42,9 +45,11 @@ export default function PatientsDirectoryPage() {
   const { user } = useAuthStore();
   const { toast } = useToast();
 
+  const canManagePatients = hasAnyPermission(user, "MANAGE_PATIENTS");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [patients, setPatients] = useState<PatientRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadedScope, setLoadedScope] = useState("");
+  const [readError, setReadError] = useState<{ scope: string; message: string } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -53,6 +58,11 @@ export default function PatientsDirectoryPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const readScope = JSON.stringify([user?.id, user?.organization_id, page, genderFilter, debouncedSearch]);
+  const scopeReady = loadedScope === readScope && search === debouncedSearch;
+  const loadError = scopeReady ? readError?.scope === readScope ? readError.message : null : null;
+  const loading = !scopeReady;
+  const visiblePatients = scopeReady ? patients : [];
 
   // Register New Patient Modal State
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -104,7 +114,7 @@ export default function PatientsDirectoryPage() {
 
   const handleRegisterSubmit = async (e: React.FormEvent, forceIgnoreDuplicate = false) => {
     if (e) e.preventDefault();
-    if (registerLoading) return;
+    if (registerLoading || !canManagePatients || (duplicateWarning && !forceIgnoreDuplicate)) return;
     if (forceIgnoreDuplicate && !distinctPersonReason.trim()) {
       toast({ title: "Identity review required", description: "Record why this is a different person before creating a separate patient.", variant: "error" });
       return;
@@ -148,8 +158,8 @@ export default function PatientsDirectoryPage() {
         ];
       }
 
-      const res = await PatientService.createPatient(payload);
-      const created = res.data || res;
+      await PatientService.createPatient(payload);
+
       toast({
         title: "Patient Registered 🏥",
         description: `${registerForm.name} has been enrolled into the EMR directory.`,
@@ -181,7 +191,7 @@ export default function PatientsDirectoryPage() {
   const fetchPatients = async () => {
     const request = startRead();
     try {
-      setLoadError(null);
+      setReadError(null);
       setIsRefreshing(true);
       const queryParams = new URLSearchParams();
       if (debouncedSearch.trim()) queryParams.set("search", debouncedSearch.trim());
@@ -200,14 +210,17 @@ export default function PatientsDirectoryPage() {
       const list = Array.isArray(rawData) ? rawData : [];
 
       setPatients(list);
+      setLoadedScope(readScope);
       if (totalHeader) setTotalCount(Number(totalHeader));
       else setTotalCount(list.length);
 
       if (pagesHeader) setTotalPages(Number(pagesHeader));
       else setTotalPages(1);
-    } catch (err: any) {
+    } catch {
       if (!request.isCurrent()) return;
-      setLoadError("Patient records could not be loaded. Check your connection and try again.");
+      if (!scopeReady) setPatients([]);
+      setLoadedScope(readScope);
+      setReadError({ scope: readScope, message: "Patient records could not be loaded. Check your connection and try again." });
       toast({
         title: "Unable to Load Patients",
         description: "Patient records could not be loaded. Check your connection and try again.",
@@ -215,7 +228,6 @@ export default function PatientsDirectoryPage() {
       });
     } finally {
       if (request.isCurrent()) {
-        setLoading(false);
         setIsRefreshing(false);
       }
     }
@@ -223,7 +235,7 @@ export default function PatientsDirectoryPage() {
 
   useEffect(() => {
     fetchPatients();
-  }, [page, genderFilter, debouncedSearch]);
+  }, [page, genderFilter, debouncedSearch, user?.id, user?.organization_id]);
 
   // Debounced auto-search
   useEffect(() => {
@@ -243,7 +255,7 @@ export default function PatientsDirectoryPage() {
   };
 
   const calculateAge = (dobString?: string) => {
-    if (!dobString) return "N/A";
+    if (!dobString) return "Age not recorded";
     const dob = new Date(dobString);
     if (isNaN(dob.getTime())) return dobString;
     const diffMs = Date.now() - dob.getTime();
@@ -251,8 +263,6 @@ export default function PatientsDirectoryPage() {
     return Math.abs(ageDate.getUTCFullYear() - 1970) + " yrs";
   };
 
-  const maleCount = patients.filter((p) => p.gender === "male").length;
-  const femaleCount = patients.filter((p) => p.gender === "female").length;
 
   const columns: Column<PatientRecord>[] = [
     {
@@ -263,7 +273,7 @@ export default function PatientsDirectoryPage() {
         const uPhone = p.phone ?? p.userId?.phone ?? "";
         return (
           <div className="space-y-0.5 min-w-[160px]">
-            <p className="font-bold text-text text-xs sm:text-sm">{uName}</p>
+            <Link href={"/dashboard/patients/" + (p.id || p._id)} className={styles.patientLink}>{uName}</Link>
             <div className="flex items-center gap-2 text-xs text-text-muted flex-wrap">
               {uEmail && (
                 <span className="inline-flex items-center gap-1">
@@ -278,19 +288,8 @@ export default function PatientsDirectoryPage() {
                 </span>
               )}
             </div>
+            <p className={styles.mrn}>MRN: {p.mrn || "Not assigned"}</p>
           </div>
-        );
-      },
-    },
-    {
-      header: "MRN Code",
-      render: (p) => {
-        const pid = p.id || p._id;
-        const mrnCode = p.mrn || `MRN-${pid.substring(0, 6).toUpperCase()}`;
-        return (
-          <span className="font-mono text-xs font-bold text-text-secondary px-2 py-0.5 rounded-lg bg-surface-alt border border-border/60">
-            {mrnCode}
-          </span>
         );
       },
     },
@@ -303,21 +302,9 @@ export default function PatientsDirectoryPage() {
             {p.gender || "Unspecified"}
           </Badge>
           <p className="text-xs text-text-muted">{calculateAge(p.dob)}</p>
+          {p.bloodGroup && <span className="text-xs text-text-secondary">Blood: {p.bloodGroup}</span>}
         </div>
       ),
-    },
-    {
-      key: "bloodGroup",
-      header: "Blood Group",
-      render: (p) =>
-        p.bloodGroup ? (
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-danger/10 border border-danger/20 text-danger-text dark:text-danger-text font-mono font-bold text-[11px]">
-            <Droplets className="w-3 h-3 shrink-0" />
-            <span>{p.bloodGroup}</span>
-          </div>
-        ) : (
-          <span className="text-text-muted text-xs">&ndash;</span>
-        ),
     },
     {
       key: "allergies",
@@ -326,17 +313,17 @@ export default function PatientsDirectoryPage() {
         const allergies = p.allergies || [];
         const conditions = p.conditions || [];
         if (allergies.length === 0 && conditions.length === 0) {
-          return <span className="text-text-muted text-xs font-normal">None recorded</span>;
+          return <span className="text-text-muted text-xs font-normal">Not recorded</span>;
         }
         return (
           <div className="flex flex-wrap gap-1 max-w-[220px]">
-            {allergies.slice(0, 2).map((a, i) => (
+            {allergies.map((a, i) => (
               <Badge key={i} variant="warning" size="sm" className="text-[9px] font-bold inline-flex items-center gap-0.5">
                 <AlertCircle className="w-2.5 h-2.5" />
                 <span>{a}</span>
               </Badge>
             ))}
-            {conditions.slice(0, 2).map((c, i) => (
+            {conditions.map((c, i) => (
               <Badge key={i} variant="outline" size="sm" className="text-[9px]">
                 {c}
               </Badge>
@@ -370,16 +357,16 @@ export default function PatientsDirectoryPage() {
                   icon: <User className="w-4 h-4 text-text-muted" />,
                   onClick: () => router.push(`/dashboard/patients/${pid}`),
                 },
-                {
+                ...(hasAnyPermission(user, "MANAGE_APPOINTMENTS") ? [{
                   label: "Book Appointment",
                   icon: <CalendarPlus className="w-4 h-4 text-accent" />,
                   onClick: () => router.push(`/dashboard/appointments?patientId=${pid}`),
-                },
-                {
+                }] : []),
+                ...(hasAnyPermission(user, "VIEW_EHR") ? [{
                   label: "Medical EHR Timeline",
                   icon: <Activity className="w-4 h-4 text-success-text" />,
                   onClick: () => router.push(`/dashboard/patients/${pid}/timeline`),
-                },
+                }] : []),
               ]}
             />
           </div>
@@ -389,300 +376,61 @@ export default function PatientsDirectoryPage() {
   ];
 
   return (
-    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12">
-      {/* ──────────────────────────────────────────────────────────────────────────
-          1. TOP EXECUTIVE HEADER BANNER
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Patient Directory
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchPatients}
-              disabled={isRefreshing}
-              className="flex-1 sm:flex-initial min-h-[40px] text-xs font-semibold transition-colors"
-             loading={isRefreshing}>
-              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
-              Refresh
-            </Button>
-
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                resetRegisterForm();
-                setIsRegisterOpen(true);
-              }}
-              className="flex-1 sm:flex-initial min-h-[40px] font-semibold cursor-pointer"
-            >
-              <UserPlus className="h-3.5 w-3.5 mr-1" />
-              Register Patient
-            </Button>
-            {hasAnyPermission(user, "REVIEW_PATIENT_IDENTITY") && hasAnyPermission(user, "MANAGE_PATIENTS") && <Button variant="outline" size="sm" onClick={() => setIsAssociationOpen(true)}>Use existing patient record</Button>}
-          </div>
+    <div className={styles.workspace}>
+      <header className={styles.header}>
+        <div className={styles.heading}><h1>Patients</h1><span>{scopeReady ? totalCount : "—"}</span></div>
+        <div className={styles.headerActions}><Button variant="ghost" size="sm" className={styles.iconButton} aria-label="Refresh patients" disabled={isRefreshing} onClick={fetchPatients}><RotateCw size={17} className={isRefreshing ? "animate-spin" : ""} /></Button>
+          {canManagePatients && <Button size="sm" onClick={() => { resetRegisterForm(); setIsRegisterOpen(true); }}><UserPlus size={16} /> Register patient</Button>}
+          {canManagePatients && hasAnyPermission(user, "REVIEW_PATIENT_IDENTITY") && <Dropdown align="right" trigger={<Button variant="ghost" size="sm" className={styles.iconButton} aria-label="Patient directory options"><MoreHorizontal size={18} /></Button>} items={[{ label: "Link existing patient", onClick: () => setIsAssociationOpen(true) }]} />}
         </div>
-      </div>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          2. SUMMARY KPI STAT CARDS
-         ────────────────────────────────────────────────────────────────────────── */}
-      <details className="rounded-xl border border-border bg-surface">
-      <summary className="min-h-11 cursor-pointer px-3 py-3 text-sm font-medium text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Directory summary</summary>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 p-3 pt-0 sm:gap-4">
-        <StatCard loading={loading}
-          label="Total Patients"
-          value={(totalCount || patients.length).toString()}
-          description="Registered profiles in system"
-          icon={<Users className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard loading={loading}
-          label="Directory Page Count"
-          value={patients.length.toString()}
-          description="Currently displayed on page"
-          icon={<FileText className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard loading={loading}
-          label="Male on this page"
-          value={maleCount.toString()}
-          description="In the current results"
-          icon={<User className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard loading={loading}
-          label="Female on this page"
-          value={femaleCount.toString()}
-          description="In the current results"
-          icon={<UserCheck className="w-5 h-5 text-text-secondary" />}
-        />
-      </div>
-      </details>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          3. FILTER AND SEARCH BAR
-         ────────────────────────────────────────────────────────────────────────── */}
-      <Card className="p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs">
-        <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
-          <div className="sm:col-span-2 flex gap-2">
-            <Input
-              size="sm"
-              type="search"
-              containerClassName="min-w-0 flex-1"
-              icon={<Search className="w-4 h-4 text-text-muted" />}
-              placeholder="Search patient by name, email, or phone number..."
-              aria-label="Search patients by name, email or phone"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onClear={() => {
-                setSearch("");
-                setPage(1);
-              }}
-              className="w-full"
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={loading}
-              className="font-semibold shrink-0 min-h-[40px] px-4"
-             loading={loading}>
-              Search
-            </Button>
-          </div>
-
-          <Select
-            aria-label="Filter patients by gender"
-            value={genderFilter}
-            onChange={(e) => {
-              setGenderFilter(e.target.value);
-              setPage(1);
-            }}
-            className="text-xs"
-            options={[
-              { label: "All Genders", value: "all" },
-              { label: "Male Only", value: "male" },
-              { label: "Female Only", value: "female" },
-              { label: "Other", value: "other" },
-            ]}
-          />
+      </header>
+      <section className={styles.toolbar} aria-label="Patient search and filters">
+        <form onSubmit={handleSearchSubmit} className={styles.searchRow}>
+          <Input type="search" icon={<Search size={16} />} placeholder="Name, phone, email or MRN" aria-label="Search patients by name, email or phone" value={search} onChange={event => setSearch(event.target.value)} onClear={() => { setSearch(""); setPage(1); }} />
+          <Button variant="outline" size="sm" className={styles.filterButton} aria-label="Filter patients" onClick={() => setFiltersOpen(true)}><SlidersHorizontal size={16} /><span className={styles.filterLabel}>{genderFilter === "all" ? "Filters" : genderFilter}</span>{genderFilter !== "all" && <i />}</Button>
         </form>
-      </Card>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          4. MAIN PATIENTS TABLE CARD
-         ────────────────────────────────────────────────────────────────────────── */}
-      <Card padding="none" className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-        <CardHeader className="px-3 pt-3 pb-3 border-b border-border/60 bg-surface-alt/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base font-bold text-text">Registered Patient Profiles</CardTitle>
-            </div>
-            <Badge variant="neutral" size="sm" className="font-semibold text-[10px]">
-              {totalCount || patients.length} Records
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
+        <div className={styles.resultSummary}><span>{genderFilter === "all" ? "All patients" : genderFilter.charAt(0).toUpperCase() + genderFilter.slice(1) + " patients"}</span><span role="status">{loading ? "Loading patients…" : isRefreshing ? "Updating…" : totalCount + " matches"}</span></div>
+      </section>
+      <Modal open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filter patients" size="sm" footer={<><Button variant="outline" onClick={() => { setGenderFilter("all"); setPage(1); }}>Reset</Button><Button onClick={() => setFiltersOpen(false)}>Done</Button></>}>
+        <Select label="Gender" value={genderFilter} onChange={event => { setGenderFilter(event.target.value); setPage(1); }} options={[{ value: "all", label: "All genders" }, { value: "male", label: "Male" }, { value: "female", label: "Female" }, { value: "other", label: "Other" }]} />
+      </Modal>
+      <section className={styles.results} aria-label="Patient directory results">
           <Table
             variant="flat"
+            density="compact"
+            fitContent
+            showColumnVisibility={false}
               error={loadError}
               onRetry={fetchPatients}
             columns={columns}
-            data={patients}
+            data={visiblePatients}
             loading={loading || isRefreshing}
             searchable={false}
             pagination={false}
             mobileCardView={true}
-            renderMobileCard={(p: PatientRecord) => {
-              const pid = p.id || p._id;
-              const name = p.name || p.userId?.name || "Patient Profile";
-              const phone = p.phone ?? p.userId?.phone;
-              const email = p.email ?? p.userId?.email;
-              const age = p.dob ? calculateAge(p.dob) : null;
-              const allergies = p.allergies || [];
-              const conditions = p.conditions || [];
-
-              return (
-                <div
-                  key={pid}
-                  className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
-                >
-                  {/* Top Row: Avatar + Name + MRN/Gender */}
-                  <div className="flex flex-wrap items-start justify-between gap-2.5">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-accent dark:text-accent font-bold flex items-center justify-center text-sm shrink-0 border border-primary-500/20">
-                        {name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <Link
-                          href={`/dashboard/patients/${pid}`}
-                          className="font-bold text-text text-sm hover:text-accent transition-colors block break-words"
-                        >
-                          {name}
-                        </Link>
-                        <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5">
-                          {p.gender && <span className="capitalize">{p.gender}</span>}
-                          {age && <span>&bull; {age}</span>}
-                          {p.bloodGroup && (
-                            <span className="font-bold text-danger-text dark:text-danger-text text-[10px] bg-danger/10 px-1.5 py-0.2 rounded-md font-mono">
-                              {p.bloodGroup}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {p.mrn && (
-                      <Badge variant="outline" size="sm" className="max-w-full whitespace-normal break-all font-mono text-[10px] font-bold uppercase">
-                        {p.mrn}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Contact Info (Clickable on Mobile) */}
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-text-secondary pt-1 border-t border-border/50">
-                    {phone && phone !== "-" && (
-                      <a
-                        href={`tel:${phone}`}
-                        className="flex items-center gap-1.5 text-text hover:text-accent transition-colors font-mono min-h-11"
-                      >
-                        <Phone className="w-3.5 h-3.5 text-text-muted" />
-                        <span>{phone}</span>
-                      </a>
-                    )}
-                    {email && email !== "-" && (
-                      <a
-                        href={`mailto:${email}`}
-                        className="flex min-w-0 max-w-full items-center gap-1.5 text-text-muted hover:text-text transition-colors min-h-11"
-                      >
-                        <Mail className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                        <span className="min-w-0 [overflow-wrap:anywhere]">{email}</span>
-                      </a>
-                    )}
-                  </div>
-
-                  {/* Medical Tags (Allergies & Conditions) */}
-                  {(allergies.length > 0 || conditions.length > 0) && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {allergies.map((allergy, idx) => (
-                        <span
-                          key={`al-${idx}`}
-                          className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-danger/10 text-danger-text dark:text-danger-text border border-danger/20"
-                        >
-                          Allergy: {allergy}
-                        </span>
-                      ))}
-                      {conditions.map((condition, idx) => (
-                        <span
-                          key={`cd-${idx}`}
-                          className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-alt text-text-secondary border border-border/60"
-                        >
-                          {condition}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Actions Footer */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-border/60">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => router.push(`/dashboard/patients/${pid}`)}
-                      className="flex-1 font-semibold text-xs min-h-[40px] justify-center"
-                    >
-                      <User className="w-3.5 h-3.5 mr-1" />
-                      View Profile
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={() => router.push(`/dashboard/appointments?patientId=${pid}`)}
-                      className="flex-1 font-semibold text-xs min-h-[40px] justify-center"
-                    >
-                      <CalendarPlus className="w-3.5 h-3.5 mr-1" />
-                      Book Visit
-                    </Button>
-                    <Dropdown
-                      align="right"
-                      trigger={
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-[40px] w-[40px] min-h-[40px] min-w-[40px] p-0 text-text-secondary hover:text-text cursor-pointer shrink-0 flex items-center justify-center"
-                          aria-label="More options"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      }
-                      items={[
-                        {
-                          label: "Medical EHR Timeline",
-                          icon: <Activity className="w-4 h-4 text-success-text" />,
-                          onClick: () => router.push(`/dashboard/patients/${pid}/timeline`),
-                        },
-                      ]}
-                    />
-                  </div>
-                </div>
-              );
+            renderMobileCard={(patient: PatientRecord) => {
+              const pid = patient.id || patient._id, name = patient.name || patient.userId?.name || "Patient", phone = patient.phone ?? patient.userId?.phone, email = patient.email ?? patient.userId?.email;
+              return <article className={styles.patientCard}>
+                <div className={styles.cardHeading}><span className={styles.avatar}>{name.charAt(0).toUpperCase()}</span><div><Link href={"/dashboard/patients/" + pid} className={styles.patientLink}>{name}</Link><p>{[patient.gender, patient.dob ? calculateAge(patient.dob) : null, patient.bloodGroup].filter(Boolean).join(" · ") || "Demographics not recorded"}</p></div><Dropdown align="right" trigger={<Button variant="ghost" size="sm" className={styles.iconButton} aria-label={"Actions for " + name}><MoreHorizontal size={18} /></Button>} items={[
+                  { label: "View patient profile", onClick: () => router.push("/dashboard/patients/" + pid) },
+                  ...(hasAnyPermission(user, "MANAGE_APPOINTMENTS") ? [{ label: "Book appointment", onClick: () => router.push("/dashboard/appointments?patientId=" + pid) }] : []),
+                  ...(hasAnyPermission(user, "VIEW_EHR") ? [{ label: "Medical EHR timeline", onClick: () => router.push("/dashboard/patients/" + pid + "/timeline") }] : [])
+                ]} /></div>
+                <PatientMrn value={patient.mrn} />
+                <div className={styles.contacts}>{phone && <a href={"tel:" + phone}><Phone size={14} />{phone}</a>}{email && <a href={"mailto:" + email}><Mail size={14} />{email}</a>}{!phone && !email && <span>Contact not recorded</span>}</div>
+                {!!patient.allergies?.length && <p className={styles.allergy}><AlertCircle size={14} /><span>Allergies: {patient.allergies.join(", ")}</span></p>}
+                {!!patient.conditions?.length && <p className={styles.conditions}>{patient.conditions.join(" · ")}</p>}
+              </article>;
             }}
             onRowClick={(p) => router.push(`/dashboard/patients/${p.id || p._id}`)}
             emptyMessage="No patient profiles found matching your search criteria."
           />
-        </CardContent>
-      </Card>
+      </section>
 
       {/* ──────────────────────────────────────────────────────────────────────────
           5. PAGINATION FOOTER
          ────────────────────────────────────────────────────────────────────────── */}
+      <div className={styles.pagination}><span>{scopeReady ? visiblePatients.length + " of " + totalCount + " patients" : "Loading patients"}</span></div>
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-1">
           <p className="text-xs text-text-muted">
@@ -693,7 +441,7 @@ export default function PatientsDirectoryPage() {
             <Button
               variant="outline"
               size="sm"
-              disabled={page <= 1 || loading}
+              disabled={page <= 1 || loading || isRefreshing}
               onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
               className="min-h-[40px] text-xs font-semibold"
             >
@@ -703,7 +451,7 @@ export default function PatientsDirectoryPage() {
             <Button
               variant="outline"
               size="sm"
-              disabled={page >= totalPages || loading}
+              disabled={page >= totalPages || loading || isRefreshing}
               onClick={() => setPage((prev) => prev + 1)}
               className="min-h-[40px] text-xs font-semibold"
             >
@@ -722,11 +470,13 @@ export default function PatientsDirectoryPage() {
           setIsRegisterOpen(false);
           resetRegisterForm();
         }}
-        title="🏥 Register New Patient Profile"
-        description="Enroll a new or walk-in patient into the medical directory with comprehensive demographics."
+        title="Register patient"
+        description="Enter a name and at least one contact. Add other details when available."
         size="lg"
+        busy={registerLoading}
+        footer={<><Button variant="outline" disabled={registerLoading} onClick={() => { setIsRegisterOpen(false); resetRegisterForm(); }}>Cancel</Button><Button type="submit" form="patient-registration" loading={registerLoading} disabled={!!duplicateWarning}>Register patient</Button></>}
       >
-        <form onSubmit={(e) => handleRegisterSubmit(e, false)} className="space-y-4 pt-1">
+        <form id="patient-registration" onSubmit={(e) => handleRegisterSubmit(e, false)} className="space-y-4 pt-1">
           {duplicateWarning && (
             <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-2xl space-y-2 animate-fade-in text-xs">
               <div className="flex items-center gap-2 font-bold text-warning-text dark:text-warning-text">
@@ -743,7 +493,7 @@ export default function PatientsDirectoryPage() {
                   type="button"
                   size="xs"
                   variant="outline"
-                  onClick={() => resetRegisterForm()}
+                  onClick={() => { setDuplicateWarning(null); setDistinctPersonReason(""); setRegistrationRequestId(crypto.randomUUID()); }}
                   className="w-full sm:w-auto min-h-[38px]"
                 >
                   Edit Information
@@ -787,11 +537,11 @@ export default function PatientsDirectoryPage() {
               value={registerForm.email}
               onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
             />
-            <Input
+            <DatePicker
               label="Date of Birth"
-              type="date"
+
               value={registerForm.dob}
-              onChange={(e) => setRegisterForm({ ...registerForm, dob: e.target.value })}
+              onChange={(value) => setRegisterForm({ ...registerForm, dob: value })}
             />
             <Select
               label="Gender *"
@@ -806,6 +556,7 @@ export default function PatientsDirectoryPage() {
             />
           </div>
 
+          <details className={styles.optionalDetails}><summary>Clinical, address and emergency details</summary><div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Select
               label="Blood Group"
@@ -899,29 +650,8 @@ export default function PatientsDirectoryPage() {
             </div>
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => {
-                setIsRegisterOpen(false);
-                resetRegisterForm();
-              }}
-              className="w-full sm:w-auto min-h-[44px]"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              variant="primary"
-              loading={registerLoading}
-              className="w-full sm:w-auto min-h-[44px] font-semibold"
-            >
-              Enroll Patient Profile
-            </Button>
-          </div>
+
+          </div></details>
         </form>
       </Modal>
       {isAssociationOpen && <AssociatePatientModal onClose={() => setIsAssociationOpen(false)} onAssociated={patientId => { setIsAssociationOpen(false); router.push(`/dashboard/patients/${patientId}`); }} />}

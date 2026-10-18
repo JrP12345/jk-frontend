@@ -1,0 +1,189 @@
+.form {
+  container: organization-details / inline-size;
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.formHeader,
+.saveBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.formHeader button,
+.saveBar button {
+  min-height: 2.75rem;
+}
+
+.columns,
+.fields,
+.controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  min-width: 0;
+}
+
+.columns {
+  align-items: start;
+}
+
+.panel {
+  container: details-panel / inline-size;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--surface);
+  box-shadow: var(--s-shadow-xs);
+}
+
+.panelTitle {
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.uploads {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.upload {
+  min-width: 0;
+}
+
+.upload [role="button"] {
+  min-height: 9rem;
+  padding: 0.75rem;
+  border-width: 1px;
+  border-radius: var(--radius-lg, 0.75rem);
+}
+
+.logo img {
+  object-fit: contain;
+}
+
+/* Preview actions have their own row, so they stay visible without covering the image. */
+.upload [role="button"] > div:has(button[aria-label="Remove file"]) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  height: auto;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+
+.upload [role="button"] > div:has(button[aria-label="Remove file"]) > img {
+  height: 6rem;
+}
+
+.upload div:has(> button[aria-label="Remove file"]) {
+  position: static;
+  inset: auto;
+  justify-content: center;
+  gap: 0.25rem;
+  background: transparent;
+  opacity: 1;
+}
+
+.upload button[aria-label="Change file"],
+.upload button[aria-label="Remove file"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  transform: none;
+}
+
+.disclosure {
+  min-width: 0;
+  border-top: 1px solid var(--border);
+}
+
+.disclosureSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding-block: 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  list-style: none;
+  cursor: pointer;
+}
+
+.disclosureSummary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosureSummary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.disclosure[open] > .disclosureSummary > svg {
+  rotate: 180deg;
+}
+
+.disclosureBody {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding-block: 0.25rem 1rem;
+}
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: 0.75rem;
+}
+
+.saveBar {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--surface);
+}
+
+.saveBar button {
+  flex: 1 1 auto;
+}
+
+@container organization-details (min-width: 36rem) {
+  .saveBar button {
+    flex: 0 0 auto;
+  }
+}
+
+@container organization-details (min-width: 60rem) {
+  .columns {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+@container details-panel (min-width: 28rem) {
+  .fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

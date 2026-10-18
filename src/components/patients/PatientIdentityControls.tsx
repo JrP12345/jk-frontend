@@ -6,7 +6,8 @@ import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { authScopeKey } from '@/lib/authScope';
-import { Alert, Button, Card, CardContent, Input, Modal, Select, Checkbox } from "@/components/ui";
+import { Alert, Button, Card, CardContent, Input, Select, Checkbox } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
 
 interface Contact { phone: string; email: string; availability: "unknown" | "reachable" | "unreachable" | "invalid"; revision: number }
 interface Claim { id: string; accountName: string; requestedAt: string }
@@ -76,13 +77,13 @@ function ContactEditor({ patientId, initial, onClose, onSaved }: { patientId: st
       expectedRevision: initial.revision, reason: reason.trim(), clientRequestId }); onSaved(); }
     catch (failure) { setError(failureMessage(failure)); } finally { setPending(false); }
   }
-  return <Modal open title="Correct organization contact" description="These details apply to this organization. The patient's login account keeps its verified contact." busy={pending} closeOnOverlay={!pending} onClose={() => { if (!pending) onClose(); }}>
-    <form onSubmit={save} className="space-y-3">{error && <Alert variant="error">{error}</Alert>}<fieldset disabled={pending} className="space-y-3">
+  return <Modal footer={<div className="flex justify-end gap-2"><Button variant="outline" disabled={pending} onClick={onClose}>Close</Button><Button type="submit" form="patient-identity-1" loading={pending} disabled={pending || !reason.trim()}>Save contact correction</Button></div>} open title="Correct organization contact" description="These details apply to this organization. The patient's login account keeps its verified contact." busy={pending} closeOnOverlay={!pending} onClose={() => { if (!pending) onClose(); }}>
+    <form id="patient-identity-1" onSubmit={save} className="space-y-3">{error && <Alert variant="error">{error}</Alert>}<fieldset disabled={pending} className="space-y-3">
       <Input label="Organization contact phone" type="tel" value={form.phone} maxLength={30} onChange={event => setForm({ ...form, phone: event.target.value })} />
       <Input label="Organization contact email" type="email" value={form.email} maxLength={200} onChange={event => setForm({ ...form, email: event.target.value })} />
       <Select label="Contact availability" value={form.availability} onChange={event => setForm({ ...form, availability: event.target.value as Contact["availability"] })} options={["unknown", "reachable", "unreachable", "invalid"].map(value => ({ value, label: value }))} />
       <Input label="Correction reason" value={reason} maxLength={500} onChange={event => setReason(event.target.value)} required />
-    </fieldset><div className="flex justify-end gap-2"><Button variant="outline" disabled={pending} onClick={onClose}>Close</Button><Button type="submit" loading={pending} disabled={pending || !reason.trim()}>Save contact correction</Button></div></form>
+    </fieldset></form>
   </Modal>;
 }
 function ClaimReviewer({ patientId, claim, onClose, onSaved }: { patientId: string; claim: Claim; onClose: () => void; onSaved: () => void }) {
@@ -97,11 +98,11 @@ function ClaimReviewer({ patientId, claim, onClose, onSaved }: { patientId: stri
     try { await api.post(`/patients/${patientId}/identity-claims/${claim.id}/review`, { decision, identityVerified: verified, reason: reason.trim(), clientRequestId }); onSaved(); }
     catch (failure) { setError(failureMessage(failure)); } finally { setPending(false); }
   }
-  return <Modal open title="Review patient identity" description={`Verify that ${claim.accountName} is the person in this patient record. Shared contact possession alone is insufficient.`} busy={pending} closeOnOverlay={!pending} onClose={() => { if (!pending) onClose(); }}>
-    <form onSubmit={save} className="space-y-3">{error && <Alert variant="error">{error}</Alert>}<fieldset disabled={pending} className="space-y-3">
+  return <Modal footer={<div className="flex justify-end gap-2"><Button variant="outline" disabled={pending} onClick={onClose}>Close</Button><Button type="submit" form="patient-identity-2" loading={pending} disabled={pending || !reason.trim() || (decision === "approve" && !verified)}>Record identity review</Button></div>} open title="Review patient identity" description={`Verify that ${claim.accountName} is the person in this patient record. Shared contact possession alone is insufficient.`} busy={pending} closeOnOverlay={!pending} onClose={() => { if (!pending) onClose(); }}>
+    <form id="patient-identity-2" onSubmit={save} className="space-y-3">{error && <Alert variant="error">{error}</Alert>}<fieldset disabled={pending} className="space-y-3">
       <Select label="Identity review decision" value={decision} onChange={event => setDecision(event.target.value)} options={[{ value: "reject", label: "Reject claim" }, { value: "approve", label: "Approve verified identity" }]} />
       {decision === "approve" && <Checkbox checked={verified} onChange={event => setVerified(event.target.checked)} label="I verified the person and their authority to claim this record." />}
       <Input label="Identity review reason" value={reason} maxLength={500} onChange={event => setReason(event.target.value)} required />
-    </fieldset><div className="flex justify-end gap-2"><Button variant="outline" disabled={pending} onClick={onClose}>Close</Button><Button type="submit" loading={pending} disabled={pending || !reason.trim() || (decision === "approve" && !verified)}>Record identity review</Button></div></form>
+    </fieldset></form>
   </Modal>;
 }

@@ -15,10 +15,13 @@ import { DoctorCopilotCard } from "./DoctorCopilotCard";
 import { VisitCompletion } from "./VisitCompletion";
 import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
-import { Tabs, Card, CardContent, Badge, Button, Input, Select, Modal, useToast, Table, Skeleton } from "@/components/ui";
+import { Alert, ConfirmDialog, Tabs, Card, CardContent, Badge, Button, Input, Select, useToast, Table, Skeleton } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
+import styles from "./EncounterWorkspace.module.css";
 import api from "@/lib/api";
 import { OrdersService } from "@/services/orders.service";
-import { Receipt, Megaphone, Activity, FileText, Clock } from "lucide-react";
+import { EncounterLabTestPicker } from "./EncounterLabTestPicker";
+import { Receipt, Megaphone, Activity, FileText, Clock, Search } from "lucide-react";
 
 interface EncounterWorkspaceProps {
   appointmentId?: string;
@@ -46,6 +49,7 @@ export function EncounterWorkspace({
     locationId,
     doctorId,
     loading: contextLoading,
+    error: ordersError,
     orders,
     refreshOrders,
   } = useEncounterContext();
@@ -59,6 +63,7 @@ export function EncounterWorkspace({
   const user = useAuthStore(state => state.user);
   const canBill = hasAnyPermission(user, "MANAGE_BILLING");
   const canCallNext = hasAnyPermission(user, "MANAGE_QUEUE");
+  const canManageOrders = hasAnyPermission(user, "MANAGE_ORDERS");
   const { toast } = useToast();
 
   // Diagnostic Orders State
@@ -73,11 +78,11 @@ export function EncounterWorkspace({
   const [resultVal, setResultVal] = useState("");
   const [resultUnit, setResultUnit] = useState("");
   const [resultRefRange, setResultRefRange] = useState("");
-  const [resultInterpretation, setResultInterpretation] = useState("normal");
-  const [isAbnormal, setIsAbnormal] = useState(false);
+  const [resultInterpretation, setResultInterpretation] = useState("");
   const [submittingResult, setSubmittingResult] = useState(false);
 
   const [callingNext, setCallingNext] = useState(false);
+  const [arrivalConfirmation, setArrivalConfirmation] = useState<{ id: string; tokenNumber?: number; justCompleted: boolean } | null>(null);
 
   // Auto Charge Capture State
   const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
@@ -135,6 +140,7 @@ export function EncounterWorkspace({
       setCallingNext(true);
       const res = await api.post("/queue/call-next", { locationId, doctorId, requireArrivalConfirmation: true, confirmedAppointmentId });
       if (res.data?.data) {
+        setArrivalConfirmation(null);
         toast({ title: "Patient Called 🩺", description: res.data.message || `Token #${res.data.data.tokenNumber} in consultation`, variant: "success" });
         const apptId = res.data.data.id || res.data.data._id;
         const pId = typeof res.data.data.patientId === "object" ? (res.data.data.patientId.id || res.data.data.patientId._id) : res.data.data.patientId;
@@ -145,7 +151,7 @@ export function EncounterWorkspace({
     } catch (err: any) {
       if ((err.response?.data?.error || err.response?.data?.details) === "ARRIVAL_CONFIRMATION_REQUIRED") {
         const candidate = err.response.data.data;
-        if (window.confirm(`Token #${candidate.tokenNumber} has not checked in. Call this booked patient now?`)) await handleCallNextPatient(candidate.id, justCompleted);
+        if (candidate?.id) setArrivalConfirmation({ ...candidate, justCompleted });
         return;
       }
       toast({ title: "Error", description: err.response?.data?.message || "Failed to call next patient", variant: "error" });
@@ -212,7 +218,7 @@ export function EncounterWorkspace({
 
   const handleRecordResult = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedOrderForResult) return;
+    if (!selectedOrderForResult || !resultInterpretation) return;
     setSubmittingResult(true);
     try {
       await OrdersService.recordResult(selectedOrderForResult._id || selectedOrderForResult.id, {
@@ -220,7 +226,6 @@ export function EncounterWorkspace({
         unit: resultUnit,
         referenceRange: resultRefRange,
         interpretation: resultInterpretation,
-        isAbnormal,
       });
       toast({ title: "Result Recorded", description: "Diagnostic lab result updated successfully", variant: "success" });
       setSelectedOrderForResult(null);
@@ -232,93 +237,95 @@ export function EncounterWorkspace({
     }
   };
 
-  if (contextLoading) {
-    return (
-      <div role="status" aria-label="Loading encounter" aria-busy="true" className="min-h-screen bg-surface-alt flex flex-col animate-fade-in">
-        {/* Sticky Patient Context Banner Skeleton */}
-        <div className="bg-surface border-b border-border/80 px-4 py-3">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Skeleton className="w-10 h-10 rounded-full" />
-              <div className="space-y-1.5">
-                <Skeleton className="h-5 w-44 rounded" />
-                <Skeleton className="h-3.5 w-64 rounded" />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Skeleton className="h-9 w-36 rounded-xl" />
-              <Skeleton className="h-9 w-28 rounded-xl" />
-            </div>
-          </div>
+  const renderOrderActions = (row: any) => (
+    <div className="flex items-center gap-2">
+      {row.result?.value !== undefined && row.result?.value !== null && row.result?.value !== "" ? (
+        <ReferenceRange
+          value={row.result.value}
+          unit={row.result.unit}
+          normalRange={row.result.referenceRange}
+          isAbnormal={row.result.isAbnormal}
+          interpretation={row.result.interpretation}
+        />
+      ) : !canManageOrders ? <span className="text-xs text-text-muted">Read only</span> : row.status === "ordered" ? (
+        <div className="flex gap-2">
+          <Button size="sm" variant="secondary" onClick={() => handleCollectSample(row._id || row.id)}>
+            Collect Sample
+          </Button>
+          <Button size="sm" variant="danger" onClick={() => handleCancelOrder(row._id || row.id)}>
+            Cancel Order
+          </Button>
         </div>
-
-        {/* Main Workspace Container */}
-        <div className="p-4 max-w-7xl mx-auto w-full space-y-4 flex-1">
-          {/* Doctor Briefing Card Skeleton */}
-          <Card className="p-4 space-y-2">
-            <Skeleton className="h-5 w-48 rounded" />
-            <Skeleton className="h-4 w-full rounded" />
-          </Card>
-
-          {/* Tabs + Action row */}
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 min-w-0">
-            <div className="flex gap-2">
-              <Skeleton className="h-9 w-36 rounded-xl" />
-              <Skeleton className="h-9 w-36 rounded-xl" />
-              <Skeleton className="h-9 w-28 rounded-xl" />
-            </div>
-            <div className="flex gap-2">
-              <Skeleton className="h-9 w-36 rounded-xl" />
-              <Skeleton className="h-9 w-36 rounded-xl" />
-            </div>
-          </div>
-
-          {/* Main workspace layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card className="lg:col-span-2 p-6 space-y-4">
-              <Skeleton className="h-6 w-48 rounded" />
-              <Skeleton className="h-32 w-full rounded-xl" />
-              <Skeleton className="h-32 w-full rounded-xl" />
-            </Card>
-            <Card className="p-6 space-y-4">
-              <Skeleton className="h-6 w-36 rounded" />
-              <Skeleton className="h-20 w-full rounded-xl" />
-              <Skeleton className="h-20 w-full rounded-xl" />
-            </Card>
-          </div>
+      ) : row.status === "sample-collected" ? (
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => handleMarkProcessing(row._id || row.id)}>
+            Mark Processing
+          </Button>
+          <Button size="sm" onClick={() => {
+            setSelectedOrderForResult(row);
+            setResultVal("");
+            setResultInterpretation("");
+            setResultUnit("");
+            setResultRefRange(row.testId?.normalRange || "");
+          }}>
+            Record Result
+          </Button>
+          <Button size="sm" variant="danger" onClick={() => handleCancelOrder(row._id || row.id)}>
+            Cancel Order
+          </Button>
         </div>
-      </div>
-    );
-  }
+      ) : row.status === "processing" ? (
+        <div className="flex gap-2 items-center">
+          <Button size="sm" onClick={() => {
+            setSelectedOrderForResult(row);
+            setResultVal("");
+            setResultInterpretation("");
+            setResultUnit("");
+            setResultRefRange(row.testId?.normalRange || "");
+          }}>
+            Record Result
+          </Button>
+        </div>
+      ) : (
+        <span className="text-xs text-text-muted italic">Completed</span>
+      )}
+    </div>
+
+  );
 
   return (
-    <div className="min-w-0 bg-surface-alt flex flex-col">
+    <div className={styles.workspace}>
       {/* Sticky Patient Context Banner */}
-      <PatientHeader patient={patient} onOpenSearch={() => setIsSearchOpen(true)} />
+      <div className={styles.patientContext}><PatientHeader patient={patient} compactMrn /></div>
 
       {/* Global Cmd+K Search Modal */}
       <PatientSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} patientId={patient.id} />
+      <ConfirmDialog open={Boolean(arrivalConfirmation)} title="Confirm patient arrival"
+        description={arrivalConfirmation?.tokenNumber !== undefined ? `Token #${arrivalConfirmation.tokenNumber} has not checked in. Is this patient present and ready?` : "Is this patient present and ready?"}
+        confirmLabel="Mark arrival and start" loading={callingNext}
+        onClose={() => { if (!callingNext) setArrivalConfirmation(null); }}
+        onConfirm={() => { if (arrivalConfirmation && !callingNext) void handleCallNextPatient(arrivalConfirmation.id, arrivalConfirmation.justCompleted); }} />
 
       {/* Main Workspace Container */}
-      <div className="py-3 sm:p-4 max-w-7xl mx-auto w-full min-w-0 space-y-4">
+      <div className={styles.body}>
         {/* Ekavyu 20-Second Doctor Pre-Visit Briefing Card */}
-        {(!focused || activeTab !== "visit") && <DoctorCopilotCard patientName={patient.name} />}
         {visitCompleted && <p className="text-sm text-text-muted" role="status">Visit completed. Review history or continue with billing and the next patient.</p>}
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 min-w-0">
+        <div className={styles.toolbar}>
           <Tabs
-            variant="pills" className="min-w-0 xl:flex-1"
+            variant="pills" className={styles.tabs} scrollActiveIntoView={false}
             activeTab={activeTab}
             onChange={tab => { if (tab === "soap") setSoapOpened(true); setActiveTab(tab); }}
             tabs={[
               ...(focused && appointmentId ? [{ id: "visit", label: "Visit", icon: <FileText className="w-4 h-4" /> }] : []),
-              ...(!visitCompleted || hasSavedNote ? [{ id: "soap", label: "Clinical notes", icon: <FileText className="w-4 h-4" /> }] : []),
-              { id: "orders", label: "Orders", badge: orders.length, icon: <Activity className="w-4 h-4" /> },
+              ...(!visitCompleted || hasSavedNote ? [{ id: "soap", label: "Notes", icon: <FileText className="w-4 h-4" /> }] : []),
+              { id: "orders", label: "Orders", badge: contextLoading ? "…" : orders.length, icon: <Activity className="w-4 h-4" /> },
               { id: "timeline", label: "History", icon: <Clock className="w-4 h-4" /> },
               { id: "news2", label: "NEWS2", icon: <Activity className="w-4 h-4" /> },
             ]}
           />
 
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 w-full sm:w-auto">
+          <div className={styles.tools}>
+            <Button variant="outline" size="sm" aria-label="Search patient record" onClick={() => setIsSearchOpen(true)}><Search size={16} /></Button>
             {canBill && <Button
               variant="outline"
               size="sm"
@@ -326,7 +333,7 @@ export function EncounterWorkspace({
               className="flex-1 sm:flex-initial min-h-[40px] text-xs font-semibold shadow-xs"
             >
               <Receipt className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
-              Auto Charge Capture
+              Charges
             </Button>}
             {canCallNext && <Button
               variant="primary"
@@ -336,7 +343,7 @@ export function EncounterWorkspace({
               className="flex-1 sm:flex-initial min-h-[40px] font-semibold"
             >
               <Megaphone className="w-3.5 h-3.5 mr-1.5" />
-              Call Next Patient
+              Next patient
             </Button>}
           </div>
         </div>
@@ -368,85 +375,36 @@ export function EncounterWorkspace({
         {/* Tab 2: Diagnostic Orders & Results */}
         {activeTab === "orders" && (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 rounded-xl border border-border">
+            {ordersError && <Alert variant="error" title="Lab orders unavailable" action={<Button variant="outline" onClick={() => void refreshOrders()}>Try again</Button>}>{ordersError}</Alert>}
+            <div className={styles.sectionHeader}>
               <div>
-                <h3 className="font-bold text-base text-text">Diagnostic Lab Orders</h3>
-                <p className="text-xs text-text-secondary">Place and track diagnostic orders for this encounter</p>
+                <h3>Lab orders</h3>
               </div>
-              <Button onClick={() => setIsOrderModalOpen(true)} className="w-full sm:w-auto min-h-[40px]">+ Place Diagnostic Order</Button>
+              {canManageOrders && <Button onClick={() => setIsOrderModalOpen(true)}>+ Order test</Button>}
             </div>
 
-            {orders.length > 0 ? (
-              <Card>
+            {contextLoading ? <div role="status" aria-label="Loading lab orders" className={styles.ordersLoading}><Skeleton height="80px" /><Skeleton height="80px" /></div> : orders.length > 0 ? (
+              <Card padding="none" className={styles.orderList}>
                 <CardContent className="p-0">
                   <Table
+                    variant="flat" density="compact" fitContent pagination={false} showColumnVisibility={false} searchable={false}
                     columns={[
                       { header: "Test Name", accessor: (row) => row.testId?.name || "Lab Test" },
                       { header: "Priority", accessor: (row) => <Badge variant={row.priority === "stat" ? "error" : "info"}>{row.priority?.toUpperCase() || "ROUTINE"}</Badge> },
                       { header: "Status", accessor: (row) => <LabStatusBadge status={row.status as LabOrderStatus} /> },
                       {
                         header: "Result / Actions",
-                        accessor: (row) => (
-                          <div className="flex items-center gap-2">
-                            {row.result?.value ? (
-                              <ReferenceRange
-                                value={row.result.value}
-                                unit={row.result.unit}
-                                normalRange={row.result.referenceRange}
-                                isAbnormal={row.result.isAbnormal}
-                                interpretation={row.result.interpretation}
-                              />
-                            ) : row.status === "ordered" ? (
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="secondary" onClick={() => handleCollectSample(row._id || row.id)}>
-                                  Collect Sample
-                                </Button>
-                                <Button size="sm" variant="danger" onClick={() => handleCancelOrder(row._id || row.id)}>
-                                  Cancel Order
-                                </Button>
-                              </div>
-                            ) : row.status === "sample-collected" ? (
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleMarkProcessing(row._id || row.id)}>
-                                  Mark Processing
-                                </Button>
-                                <Button size="sm" onClick={() => {
-                                  setSelectedOrderForResult(row);
-                                  setResultVal("");
-                                  setResultUnit("");
-                                  setResultRefRange(row.testId?.normalRange || "");
-                                }}>
-                                  Record Result
-                                </Button>
-                                <Button size="sm" variant="danger" onClick={() => handleCancelOrder(row._id || row.id)}>
-                                  Cancel Order
-                                </Button>
-                              </div>
-                            ) : row.status === "processing" ? (
-                              <div className="flex gap-2 items-center">
-                                <Button size="sm" onClick={() => {
-                                  setSelectedOrderForResult(row);
-                                  setResultVal("");
-                                  setResultUnit("");
-                                  setResultRefRange(row.testId?.normalRange || "");
-                                }}>
-                                  Record Result
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-text-muted italic">Completed</span>
-                            )}
-                          </div>
-                        ),
+                        accessor: renderOrderActions,
                       },
                     ]}
+                    renderMobileCard={row => <article className={styles.mobileOrder}><h3>{row.testId?.name || "Lab test"}</h3><div className={styles.orderMeta}><Badge size="sm" variant={row.priority === "stat" ? "error" : "neutral"}>{row.priority?.toUpperCase() || "ROUTINE"}</Badge><LabStatusBadge status={row.status as LabOrderStatus} /></div>{renderOrderActions(row)}</article>}
                     data={orders}
                   />
                 </CardContent>
               </Card>
-            ) : (
+            ) : !ordersError ? (
               <Card><CardContent className="text-center py-8 text-text-muted text-sm">No diagnostic orders placed yet for this encounter.</CardContent></Card>
-            )}
+            ) : null}
           </div>
         )}
 
@@ -461,24 +419,18 @@ export function EncounterWorkspace({
         {activeTab === "news2" && (
           <NEWS2Calculator encounterId={encounterId} patientId={patient.id} />
         )}
+        {(!focused || activeTab !== "visit") && <details className={styles.briefing}><summary>Pre-visit briefing</summary><DoctorCopilotCard patientName={patient.name} /></details>}
       </div>
 
       {/* Modal 1: Place Diagnostic Order */}
-      <Modal isOpen={isOrderModalOpen} onClose={() => setIsOrderModalOpen(false)} title="Place Diagnostic Lab Order">
-        <form onSubmit={handlePlaceOrder} className="space-y-4">
+      <Modal isOpen={isOrderModalOpen} onClose={() => { if (!submittingOrder) setIsOrderModalOpen(false); }} title="Order test" busy={submittingOrder}
+        footer={<><Button variant="outline" disabled={submittingOrder} onClick={() => setIsOrderModalOpen(false)}>Cancel</Button><Button type="submit" form="encounter-lab-order" loading={submittingOrder} disabled={!selectedTestId || !canManageOrders}>Place order</Button></>}>
+        <form id="encounter-lab-order" onSubmit={handlePlaceOrder} className="space-y-4">
+          <EncounterLabTestPicker key={locationId} locationId={locationId} value={selectedTestId} onChange={setSelectedTestId} disabled={submittingOrder} />
           <div>
-            <label className="block text-xs font-semibold text-text-secondary mb-1">Diagnostic Test ID or Code *</label>
-            <Input
-              value={selectedTestId}
-              onChange={(e) => setSelectedTestId(e.target.value)}
-              placeholder="e.g. CBC or Lipid Panel"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-text-secondary mb-1">Priority</label>
+            <label htmlFor="encounter-test-priority" className="block text-xs font-semibold text-text-secondary mb-1">Priority</label>
             <Select
-              value={priority}
+              id="encounter-test-priority" value={priority}
               onChange={(e) => setPriority(e.target.value)}
               options={[
                 { value: "routine", label: "Routine" },
@@ -488,60 +440,58 @@ export function EncounterWorkspace({
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-text-secondary mb-1">Clinical Reason / Indication</label>
+            <label htmlFor="encounter-test-reason" className="block text-xs font-semibold text-text-secondary mb-1">Reason</label>
             <Input
-              value={clinicalReason}
+              id="encounter-test-reason" value={clinicalReason}
               onChange={(e) => setClinicalReason(e.target.value)}
               placeholder="e.g. Rule out acute infection"
             />
           </div>
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setIsOrderModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">Cancel</Button>
-            <Button type="submit" loading={submittingOrder} className="w-full sm:w-auto min-h-[44px]">Place Order</Button>
-          </div>
+
         </form>
       </Modal>
 
       {/* Modal 2: Record Result */}
-      <Modal isOpen={!!selectedOrderForResult} onClose={() => setSelectedOrderForResult(null)} title="Record Lab Test Result">
-        <form onSubmit={handleRecordResult} className="space-y-4">
+      <Modal isOpen={!!selectedOrderForResult} onClose={() => { if (!submittingResult) setSelectedOrderForResult(null); }} title="Record result" busy={submittingResult}
+        footer={<><Button variant="outline" disabled={submittingResult} onClick={() => setSelectedOrderForResult(null)}>Cancel</Button><Button type="submit" form="encounter-lab-result" loading={submittingResult} disabled={!resultInterpretation || !resultVal.trim()}>Save result</Button></>}>
+        <form id="encounter-lab-result" onSubmit={handleRecordResult} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-text-secondary mb-1">Result Value *</label>
+            <label htmlFor="encounter-result-value" className="block text-xs font-semibold text-text-secondary mb-1">Result Value *</label>
             <Input
-              value={resultVal}
+              id="encounter-result-value" value={resultVal}
               onChange={(e) => setResultVal(e.target.value)}
               placeholder="e.g. 12.5"
               required
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-text-secondary mb-1">Unit</label>
+            <label htmlFor="encounter-result-unit" className="block text-xs font-semibold text-text-secondary mb-1">Unit</label>
             <Input
-              value={resultUnit}
+              id="encounter-result-unit" value={resultUnit}
               onChange={(e) => setResultUnit(e.target.value)}
               placeholder="e.g. g/dL or mg/dL"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-text-secondary mb-1">Reference Range</label>
+            <label htmlFor="encounter-result-range" className="block text-xs font-semibold text-text-secondary mb-1">Reference Range</label>
             <Input
-              value={resultRefRange}
+              id="encounter-result-range" value={resultRefRange}
               onChange={(e) => setResultRefRange(e.target.value)}
               placeholder="e.g. 12.0 - 16.0"
             />
           </div>
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setSelectedOrderForResult(null)} className="w-full sm:w-auto min-h-[44px]">Cancel</Button>
-            <Button type="submit" loading={submittingResult} className="w-full sm:w-auto min-h-[44px]">Save Result</Button>
-          </div>
+          <Select label="Interpretation *" value={resultInterpretation} required onChange={event => setResultInterpretation(event.target.value)}
+            options={[{ value: "", label: "Choose interpretation" }, { value: "normal", label: "Normal" }, { value: "low", label: "Low" }, { value: "high", label: "High" }, { value: "critical", label: "Critical" }, { value: "indeterminate", label: "Indeterminate" }]} />
         </form>
       </Modal>
 
       {/* Modal 3: Auto Charge Capture & Invoice Preview */}
       <Modal
         open={isChargeModalOpen}
-        onClose={() => setIsChargeModalOpen(false)}
-        title="Auto-Captured Encounter Charges & Invoice Preview"
+        onClose={() => { if (!generatingInvoice) setIsChargeModalOpen(false); }}
+        title="Encounter charges"
+        busy={generatingInvoice}
+        footer={<><Button variant="outline" disabled={generatingInvoice} onClick={() => setIsChargeModalOpen(false)}>Close</Button><Button onClick={handleGenerateInvoiceFromEncounter} loading={generatingInvoice} disabled={loadingCharges || !chargePreview?.items?.length}>Generate invoice</Button></>}
         size="lg"
         loading={loadingCharges}
         loadingText="Compiling consultation fees, lab orders & prescriptions..."
@@ -656,14 +606,7 @@ export function EncounterWorkspace({
                 </div>
               </div>
 
-              <div className="flex flex-col-reverse sm:flex-row justify-between gap-2 border-t border-border pt-4 mt-4">
-                <Button variant="outline" type="button" onClick={() => setIsChargeModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
-                  Close
-                </Button>
-                <Button type="button" onClick={handleGenerateInvoiceFromEncounter} loading={generatingInvoice} className="w-full sm:w-auto min-h-[44px]">
-                  📄 Generate Official Invoice
-                </Button>
-              </div>
+
             </div>
           )}
         </div>

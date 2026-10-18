@@ -3,10 +3,11 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
-import TeamLoading from "@/app/(dashboard)/dashboard/staff/loading";
-import { Alert, Card, CardContent, Table, Tabs, Button, Modal, Input, useToast, Spinner, ImageUpload, ConfirmDialog, ScheduleEditor, Select, Dropdown, Badge, Avatar, StatCard, cn } from "@/components/ui";
+import { Alert, Table, Tabs, Button, Input, useToast, Spinner, ImageUpload, ConfirmDialog, ScheduleEditor, Select, Dropdown, Avatar, DatePicker } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
+import styles from "./TeamManagement.module.css";
 import { useR2Upload } from "@/hooks/useR2Upload";
-import { hasAnyPermission } from "@/lib/permissions";
+import { canViewAnalytics, hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useOrganizationLocations } from "@/hooks/useOrganizationLocations";
 import { organizationPath, organizationWorkspaceUrl } from "@/services/organization.service";
@@ -16,7 +17,7 @@ import { useLatestRead } from "@/hooks/useLatestRead";
 import { InviteOrganizationMember } from "./InviteOrganizationMember";
 import { RBACPermissionMatrix } from "@/components/clinical/RBACPermissionMatrix";
 import { ExecutiveAnalytics } from "@/components/analytics/ExecutiveAnalytics";
-import { RotateCw, Plus, UserPlus, UserCheck, Users, Stethoscope, ShieldCheck, MoreHorizontal, Edit3, Trash2, Building2, Mail, Phone, Eye, EyeOff, CalendarOff, Calendar } from "lucide-react";
+import { RotateCw, UserPlus, UserCheck, MoreHorizontal, Edit3, Trash2, Building2, Mail, Phone, Eye, EyeOff, CalendarOff, Search } from "lucide-react";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -64,6 +65,11 @@ export interface StaffMember {
 }
 
 export default function TeamManagement({ organizationId, embedded = false }: { organizationId?: string; embedded?: boolean }) {
+  const user = useAuthStore((state) => state.user);
+  return <TeamWorkspace key={`${organizationId || ""}:${authScopeKey(user)}`} organizationId={organizationId} embedded={embedded} />;
+}
+
+function TeamWorkspace({ organizationId, embedded }: { organizationId?: string; embedded: boolean }) {
   const scopedPath = (path: string) => organizationPath(path, organizationId);
   const { toast } = useToast();
   const { uploadFile } = useR2Upload();
@@ -78,6 +84,18 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   useEffect(() => { currentContext.current = context; return () => { currentContext.current = ""; }; }, [context]);
   const beginAssignmentRead = useLatestRead();
   const beginSetupRead = useLatestRead();
+  const beginStaffRead = useLatestRead();
+  const beginHolidayRead = useLatestRead();
+  const staffReadScope = `${context}:${activeLocationId || "all"}`;
+  const [loadedStaffScope, setLoadedStaffScope] = useState("");
+  const [search, setSearch] = useState("");
+  const [workspaceTab, setWorkspaceTab] = useState("directory");
+  const [profileTab, setProfileTab] = useState("account");
+  const [assignmentTab, setAssignmentTab] = useState("list");
+  const [deactivating, setDeactivating] = useState(false);
+  const [removingAssignmentId, setRemovingAssignmentId] = useState<string | null>(null);
+  const [removingHolidayId, setRemovingHolidayId] = useState<string | null>(null);
+  const [holidayError, setHolidayError] = useState(false);
   const [memberChoiceOpen, setMemberChoiceOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [setupAssignments, setSetupAssignments] = useState<any[] | null>(null);
@@ -134,6 +152,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   }, [roles]);
 
   const allStaffMembers = useMemo(() => {
+    if (loadedStaffScope !== staffReadScope) return [];
     const list: StaffMember[] = [];
     doctors.forEach((d) =>
       list.push({
@@ -141,7 +160,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         roleType: "doctor",
         roleLabel: "Doctor",
         details: d.specialization
-          ? `${d.specialization} (${d.qualification || "MD"})`
+          ? [d.specialization, d.qualification].filter(Boolean).join(" · ")
           : d.qualification || "—",
       })
     );
@@ -198,7 +217,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       })
     );
     return list;
-  }, [doctors, receptionists, nurses, labTechs, pharmacists, cashiers, customStaff]);
+  }, [doctors, receptionists, nurses, labTechs, pharmacists, cashiers, customStaff, loadedStaffScope, staffReadScope]);
 
   const roleFilterTabs = useMemo(() => {
     const tabs = [
@@ -269,67 +288,59 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
     reason: "Public Holiday",
   });
 
-  const openHolidaysModal = async (doctor: any) => {
-    setSelectedDoctorForHolidays(doctor);
-    setIsHolidaysModalOpen(true);
-    setLoadingHolidays(true);
-    setNewHoliday({
-      locationId: "all",
-      date: new Date(new Date().getTime() + 86400000).toISOString().split("T")[0],
-      reason: "Public Holiday",
-    });
+  const [holidayTab, setHolidayTab] = useState("form");
+  const readHolidays = async (doctorId: string) => {
+    const request = beginHolidayRead();
+    setLoadingHolidays(true); setHolidayError(false);
     try {
-      const res = await api.get(scopedPath(`/doctor-overrides?doctorId=${doctor.id}`));
-      setDoctorHolidays(res.data?.data || []);
-    } catch {
-      toast({ title: "Error", description: "Failed to load doctor holiday schedule", variant: "error" });
-    } finally {
-      setLoadingHolidays(false);
-    }
+      const response = await api.get(scopedPath("/doctor-overrides?doctorId=" + doctorId), { signal: request.signal });
+      if (request.isCurrent()) setDoctorHolidays(response.data?.data || []);
+    } catch { if (request.isCurrent()) setHolidayError(true); }
+    finally { if (request.isCurrent()) setLoadingHolidays(false); }
   };
-
-  const handleAddHoliday = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newHoliday.date || !newHoliday.reason.trim()) {
-      toast({ title: "Validation Error", description: "Please select a date and specify holiday reason", variant: "error" });
-      return;
-    }
+  const openHolidaysModal = async (doctor: Doctor | StaffMember) => {
+    setSelectedDoctorForHolidays(doctor);
+    setDoctorHolidays([]); setHolidayTab("form");
+    setIsHolidaysModalOpen(true);
+    setNewHoliday({ locationId: "all", date: new Date(new Date().getTime() + 86400000).toISOString().slice(0, 10), reason: "Public Holiday" });
+    await readHolidays(doctor.id);
+  };
+  const handleAddHoliday = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!canManageStaff || savingHoliday || loadingHolidays || holidayError || !selectedDoctorForHolidays || !newHoliday.date || !newHoliday.reason.trim()) return;
+    const submittedContext = context;
+    const doctorId = selectedDoctorForHolidays.id;
     setSavingHoliday(true);
     try {
-      await api.post(scopedPath("/doctor-overrides"), {
-        doctorId: selectedDoctorForHolidays?.id,
-        locationId: newHoliday.locationId,
-        date: newHoliday.date,
-        status: "unavailable",
-        reason: newHoliday.reason.trim(),
-      });
-      toast({ title: "Holiday Declared", description: "Doctor holiday/leave scheduled successfully. Appointments are blocked for this date.", variant: "success" });
-      const res = await api.get(scopedPath(`/doctor-overrides?doctorId=${selectedDoctorForHolidays?.id}`));
-      setDoctorHolidays(res.data?.data || []);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to declare holiday", variant: "error" });
-    } finally {
-      setSavingHoliday(false);
-    }
+      await api.post(scopedPath("/doctor-overrides"), { doctorId, locationId: newHoliday.locationId, date: newHoliday.date, status: "unavailable", reason: newHoliday.reason.trim() });
+      if (currentContext.current !== submittedContext) return;
+      toast({ title: "Leave saved", description: "Bookings are blocked for the selected date.", variant: "success" });
+      setHolidayTab("list");
+      await readHolidays(doctorId);
+    } catch (error: any) { if (currentContext.current === submittedContext) toast({ title: "Could not save leave", description: error.response?.data?.message || "Try again.", variant: "error" }); }
+    finally { if (currentContext.current === submittedContext) setSavingHoliday(false); }
   };
-
   const handleDeleteHoliday = async (overrideId: string) => {
+    if (!canManageStaff || removingHolidayId) return;
+    const submittedContext = context;
+    setRemovingHolidayId(overrideId);
     try {
-      await api.delete(scopedPath(`/doctor-overrides/${overrideId}`));
-      toast({ title: "Holiday Cancelled", description: "Doctor holiday removed. Normal availability restored.", variant: "success" });
-      setDoctorHolidays((prev) => prev.filter((h) => (h.id || h._id) !== overrideId));
-    } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to delete holiday", variant: "error" });
-    }
+      await api.delete(scopedPath("/doctor-overrides/" + overrideId));
+      if (currentContext.current !== submittedContext) return;
+      setDoctorHolidays(previous => previous.filter(holiday => (holiday.id || holiday._id) !== overrideId));
+      toast({ title: "Leave cancelled", description: "The regular schedule applies again.", variant: "success" });
+    } catch (error: any) { if (currentContext.current === submittedContext) toast({ title: "Could not cancel leave", description: error.response?.data?.message || "Try again.", variant: "error" }); }
+    finally { if (currentContext.current === submittedContext) setRemovingHolidayId(null); }
   };
 
   const filteredStaff = useMemo(() => {
-    if (selectedRoleFilter === "all") return allStaffMembers;
-    return allStaffMembers.filter((s) => s.roleType === selectedRoleFilter);
-  }, [allStaffMembers, selectedRoleFilter]);
+    const query = search.trim().toLowerCase();
+    return allStaffMembers.filter((member) => (selectedRoleFilter === "all" || member.roleType === selectedRoleFilter) && [member.name, member.email, member.phone || "", member.roleLabel, member.details || ""].some(value => value.toLowerCase().includes(query)));
+  }, [allStaffMembers, selectedRoleFilter, search]);
 
   const handleEnableAdminDoctorProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingAdminDoctor || !canManageStaff) return;
     if (!adminDoctorData.specialization) {
       toast({ title: "Validation Required", description: "Please enter your clinical specialization.", variant: "error" });
       return;
@@ -404,10 +415,12 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   };
 
   const fetchStaff = async () => {
+    const request = beginStaffRead();
     try {
       setLoadError(null);
       const url = activeLocationId ? `/onboarding/staff?locationId=${activeLocationId}` : "/onboarding/staff";
-      const res = await api.get(scopedPath(url));
+      const res = await api.get(scopedPath(url), { signal: request.signal });
+      if (!request.isCurrent()) return;
       const data = res.data.data || {};
       setDoctors(data.doctors || []);
       setReceptionists(data.receptionists || []);
@@ -419,7 +432,9 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       const allStaff = data.allStaff || [];
       const builtInRoles = new Set(["doctor", "receptionist", "nurse", "lab_tech", "pharmacist", "cashier"]);
       setCustomStaff(allStaff.filter((s: any) => !builtInRoles.has(s.role)));
+      setLoadedStaffScope(staffReadScope);
     } catch {
+      if (!request.isCurrent()) return;
       setLoadError("Team members could not be loaded. Check your connection and try again.");
       toast({ title: "Error", description: "Failed to load staff list", variant: "error" });
     }
@@ -468,6 +483,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   }, [activeLocationId, organizationId, scope]);
 
   const openModal = (type: "doctor" | "receptionist" | "nurse" | "lab_tech" | "pharmacist" | "cashier" = "doctor") => {
+    setProfileTab("account");
     setEditingId(null);
     setModalType(type);
     setFormData({
@@ -484,6 +500,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
     type: string,
     row: any
   ) => {
+    setProfileTab("account");
     setEditingId(row.id);
     setModalType(type);
     setFormData({ ...row });
@@ -494,6 +511,8 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting || !canManageStaff) return;
+    const submittedContext = context;
 
     const isNameValid = validateStaffField("name", formData.name || "");
     const isEmailValid = validateStaffField("email", formData.email || "");
@@ -502,18 +521,20 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
     const isLocationValid = modalType === "receptionist" ? validateStaffField("locationId", formData.locationId || "") : true;
 
     if (!isNameValid || !isEmailValid || !isPassValid || !isSpecValid || !isLocationValid) {
+      setProfileTab(!isNameValid || !isEmailValid || !isPassValid ? "account" : "profile");
       toast({ title: "Validation Error", description: "Please correct the highlighted errors.", variant: "error" });
       return;
     }
 
     setSubmitting(true);
     try {
-      let finalData = { ...formData };
+      const finalData = { ...formData };
 
       // Handle deferred image upload
       if (finalData.image_url instanceof File) {
-        toast({ title: "Uploading...", description: "Uploading profile image to Cloudflare R2", variant: "default" });
+        toast({ title: "Uploading photo", description: "Please wait while the profile photo is saved.", variant: "default" });
         const { objectKey } = await uploadFile(finalData.image_url);
+        if (currentContext.current !== submittedContext) return;
         finalData.image_url = objectKey;
       }
 
@@ -526,6 +547,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         toast({ title: "Success", description: "Team member updated successfully!", variant: "success" });
       } else if (modalType === "doctor" || modalType === "receptionist") {
         const res = await api.post(scopedPath(`/onboarding/${modalType}`), finalData);
+        if (currentContext.current !== submittedContext) return;
         if (modalType === "doctor" && finalData.locationId && res.data?.data?.id) {
           try {
             const docFeeType = finalData.feeType || "fixed";
@@ -542,7 +564,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
             setPendingAssignment(assignment);
             await api.post(scopedPath("/onboarding/doctors/assignments"), assignment);
             setPendingAssignment(null);
-          } catch (assignErr) {
+          } catch {
             toast({ title: "Doctor account created; location assignment failed", description: "Retry the location assignment below. Do not register the doctor again.", variant: "error" });
             setIsModalOpen(false);
             void fetchStaff();
@@ -572,19 +594,21 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   };
 
   const handleDelete = async () => {
-    if (!deletingId) return;
+    if (!deletingId || deactivating || !canManageStaff) return;
+    setDeactivating(true);
     try {
       await api.delete(scopedPath(`/onboarding/staff/${deletingId}`));
       toast({ title: "Success", description: "Staff deactivated successfully!", variant: "success" });
+      setDeletingId(null);
       fetchStaff();
     } catch (err: any) {
       toast({
         title: "Error",
-        description: err.response?.data?.message || "Failed to delete staff member",
+        description: err.response?.data?.message || "Staff could not be deactivated. Please retry.",
         variant: "error",
       });
     } finally {
-      setDeletingId(null);
+      setDeactivating(false);
     }
   };
 
@@ -607,6 +631,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
     const request = beginAssignmentRead();
     const readContext = context;
     setSelectedDoctorForAssignments(doctor);
+    setAssignmentTab("list");
     setAssignments([]);
     setNewAssignment(assignmentDefaults(doctor));
     setIsAssignmentsModalOpen(true);
@@ -620,6 +645,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       const currentAssignments = res.data.data || [];
       setAssignments(currentAssignments);
       setNewAssignment(assignmentDefaults(doctor, currentAssignments));
+      if (!currentAssignments.length) setAssignmentTab("form");
     } catch {
       if (request.isCurrent() && currentContext.current === readContext) setAssignmentError(true);
     } finally {
@@ -628,6 +654,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   };
 
   const handleStartEditAssignment = (asg: any) => {
+    setAssignmentTab("form");
     setEditingAssignmentId(asg.id || asg._id);
     setNewAssignment({
       locationId: asg.locationId?.id || asg.locationId?._id || asg.locationId,
@@ -647,7 +674,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
 
   const handleAddAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (savingAssignment || !selectedDoctorForAssignments) return;
+    if (savingAssignment || !canManageStaff || !selectedDoctorForAssignments || assignmentLoading || assignmentError) return;
     const submittedContext = context;
     const doctorId = selectedDoctorForAssignments.id;
     const asgFeeType = (newAssignment as any).feeType || "fixed";
@@ -693,6 +720,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       const res = await api.get(scopedPath(`/onboarding/doctors/assignments?doctorId=${doctorId}`));
       if (currentContext.current !== submittedContext || authScopeKey(useAuthStore.getState().user) !== scope) return;
       setAssignments(res.data.data || []);
+      setAssignmentTab("list");
       setEditingAssignmentId(null);
       setNewAssignment(assignmentDefaults(selectedDoctorForAssignments, res.data.data || []));
       void fetchSetupAssignments();
@@ -705,13 +733,18 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   };
 
   const handleRemoveAssignment = async (assignmentId: string) => {
+    if (!canManageStaff || removingAssignmentId || savingAssignment) return;
+    const submittedContext = context;
+    setRemovingAssignmentId(assignmentId);
     try {
       await api.delete(scopedPath(`/onboarding/doctors/assignments/${assignmentId}`));
+      if (currentContext.current !== submittedContext) return;
       toast({ title: "Removed", description: "Doctor assignment removed successfully.", variant: "success" });
       if (editingAssignmentId === assignmentId) {
         setEditingAssignmentId(null);
       }
       const res = await api.get(scopedPath(`/onboarding/doctors/assignments?doctorId=${selectedDoctorForAssignments?.id}`));
+      if (currentContext.current !== submittedContext) return;
       setAssignments(res.data.data || []);
       setNewAssignment(assignmentDefaults(selectedDoctorForAssignments, res.data.data || []));
       void fetchSetupAssignments();
@@ -721,6 +754,8 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         description: err.response?.data?.message || "Failed to remove assignment",
         variant: "error",
       });
+    } finally {
+      if (currentContext.current === submittedContext) setRemovingAssignmentId(null);
     }
   };
 
@@ -749,81 +784,48 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
   const ownDoctor = doctors.find(doctor => doctor.id === user?.id);
   const unassignedDoctors = setupAssignments === null ? [] : doctors.filter(doctor => !setupAssignments.some(assignment => assignment.isActive !== false && recordId(assignment.doctorId) === doctor.id));
 
-  if (loading) return <TeamLoading />;
+  const readingStaff = loading || (loadedStaffScope !== staffReadScope && !loadError);
+  const Heading = embedded ? "h2" : "h1";
+  const staffActions = (member: StaffMember) => <div className={styles.rowActions}>
+    {canManageStaff && member.roleType === "doctor" && <Button size="sm" variant="outline" aria-label={unassignedDoctors.some(doctor => doctor.id === member.id) ? "Finish setup for " + member.name : "Assignments for " + member.name} onClick={() => openAssignmentsModal(member)}>{unassignedDoctors.some(doctor => doctor.id === member.id) ? "Finish setup" : "Assignments"}</Button>}
+    {canManageStaff && <Dropdown align="right" width="w-56" trigger={<Button size="sm" variant="ghost" className={styles.iconAction} title="Row Actions" aria-label={"Actions for " + member.name}><MoreHorizontal size={18} /></Button>} items={[
+      { label: member.roleType === "doctor" ? "Edit Doctor" : "Edit profile", icon: <Edit3 size={16} />, onClick: () => openEditModal(member.roleType, member) },
+      ...(member.roleType === "doctor" ? [{ label: "Leave & holidays", icon: <CalendarOff size={16} />, onClick: () => openHolidaysModal(member) }] : []),
+      { label: "Deactivate account", icon: <Trash2 size={16} />, variant: "danger" as const, onClick: () => setDeletingId(member.id) },
+    ]} />}
+  </div>;
+  const staffIdentity = (member: StaffMember) => <div className={styles.identity}><Avatar name={member.name} src={member.image_url} size="sm" /><div><strong>{member.name}</strong><span>{member.roleLabel}</span>{member.details && <small>{member.details}</small>}</div></div>;
+  const directory = <section className={styles.directory} aria-label="Staff directory">
+    <div className={styles.toolbar}>
+      <Input type="search" icon={<Search size={16} />} aria-label="Search staff" placeholder="Search staff" value={search} onChange={event => setSearch(event.target.value)} />
+      <Select aria-label="Filter by role" value={selectedRoleFilter} onChange={event => setSelectedRoleFilter(event.target.value)} options={roleFilterTabs.filter(role => role.key === "all" || role.count > 0 || selectedRoleFilter === role.key).map(role => ({ value: role.key, label: role.label + (readingStaff ? "" : " (" + role.count + ")") }))} />
+    </div>
+    <Table variant="flat" density="compact" fitContent searchable={false} showColumnVisibility={false} pagination={filteredStaff.length > 10} loading={readingStaff} error={loadError} onRetry={fetchStaff} data={filteredStaff}
+      columns={[
+        { key: "name", header: "Team member", render: staffIdentity },
+        { key: "contact", header: "Contact", render: (member: StaffMember) => <div className={styles.contact}>{member.email && <a href={"mailto:" + member.email}><Mail size={13} /><span>{member.email}</span></a>}{member.phone && <a href={"tel:" + member.phone}><Phone size={13} /><span>{member.phone}</span></a>}</div> },
+        { key: "locationName", header: "Location / shift", render: (member: StaffMember) => <div className={styles.contact}><span>{member.locationName || "Not listed"}</span>{member.shift && <span>{member.shift}</span>}</div> },
+        { key: "actions", header: "", align: "right", render: staffActions },
+      ]} mobileCardView renderMobileCard={(member: StaffMember) => <article className={styles.staffCard} key={member.id}>
+        {staffIdentity(member)}<div className={styles.contact}>{member.email && <a href={"mailto:" + member.email}><Mail size={13} /><span>{member.email}</span></a>}{member.phone && <a href={"tel:" + member.phone}><Phone size={13} /><span>{member.phone}</span></a>}{member.locationName && <span>{member.locationName}{member.shift ? " · " + member.shift : ""}</span>}</div>{staffActions(member)}
+      </article>} emptyMessage={loadError ? "Staff are unavailable. Try again." : search || selectedRoleFilter !== "all" ? "No team members match your filters." : "No team members yet. Add a member to get started."} />
+    {!readingStaff && !loadError && <footer className={styles.resultCount}>{filteredStaff.length} of {allStaffMembers.length} team members</footer>}
+  </section>;
 
   return (
-    <div className={embedded ? "space-y-4 w-full min-w-0" : "space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12"}>
+    <div className={styles.workspace}>
       {pendingAssignment && <Alert variant="error" title="Doctor needs location assignment" action={<Button variant="outline" size="sm" loading={retryingAssignment} onClick={async () => {
         setRetryingAssignment(true);
         try { await api.post(scopedPath("/onboarding/doctors/assignments"), pendingAssignment); setPendingAssignment(null); toast({ title: "Doctor assigned", description: "The existing doctor account is now assigned to the location.", variant: "success" }); void fetchStaff(); }
         catch (err: any) { toast({ title: "Assignment failed", description: err.response?.data?.message || "Please retry the location assignment.", variant: "error" }); }
         finally { setRetryingAssignment(false); }
       }}>Retry assignment</Button>}>The account exists, but booking setup is incomplete. Fee: {pendingAssignment.fees}; duration: {pendingAssignment.appointmentDuration} minutes; mode: sequential queue.</Alert>}
-      {loadError && <Alert variant="error" title="Unable to load staff" action={<Button variant="outline" size="sm" onClick={fetchStaff}>Try again</Button>}>{loadError}</Alert>}
       {canManageStaff && setupError && <Alert variant="warning" title="Booking setup could not be checked" action={<Button variant="outline" size="sm" onClick={fetchSetupAssignments}>Retry setup check</Button>}>Your team remains available. Retry to check which doctors need location assignments.</Alert>}
-      {canManageStaff && unassignedDoctors.length > 0 && <Alert variant="warning" title="Location assignment required"><p>These doctor profiles need a location, consultation hours and fees before they can appear on a public booking page.</p><div className="mt-3 flex flex-wrap gap-2">{unassignedDoctors.map(doctor => <Button key={doctor.id} variant="outline" size="sm" onClick={() => openAssignmentsModal(doctor)}>Finish setup for {doctor.name}</Button>)}</div></Alert>}
-      {/* ──────────────────────────────────────────────────────────────────────────
-          1. TOP EXECUTIVE HEADER BANNER
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Team
-              </h1>
-              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                {allStaffMembers.length} Members
-              </Badge>
-            </div>
-            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Manage doctors, receptionists, nurses, and other team members across your practice.
-            </p>
-          </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto shrink-0">
-            {canManageStaff && (
-              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto order-1 sm:order-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={user?.role === "root" || (!!organizationId && organizationId !== user?.organization_id)}
-                  onClick={() => ownDoctor ? openAssignmentsModal(ownDoctor) : setIsAdminDoctorModalOpen(true)}
-                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] text-xs font-semibold justify-center"
-                >
-                  <UserCheck className="w-3.5 h-3.5 mr-1.5 text-accent" />
-                  {ownDoctor ? "My doctor setup" : "Set up myself as a doctor"}
-                </Button>
+      <header className={styles.header}><div><Heading>Staff</Heading><p>Profiles, location assignments and availability</p></div><div className={styles.headerActions}><Button variant="ghost" size="sm" className={styles.iconAction} aria-label="Refresh staff" disabled={isRefreshing} onClick={loadData}><RotateCw size={17} className={isRefreshing ? "animate-spin" : ""} /></Button>{canManageStaff && <Button size="sm" onClick={() => setMemberChoiceOpen(true)}><UserPlus size={16} /> Add Member</Button>}</div></header>
+      {canManageStaff && <div className={styles.selfSetup}><Button variant="ghost" size="sm" disabled={readingStaff || user?.role === "root" || (!!organizationId && organizationId !== user?.organization_id)} onClick={() => ownDoctor ? openAssignmentsModal(ownDoctor) : setIsAdminDoctorModalOpen(true)}><UserCheck size={15} />{ownDoctor ? "My doctor setup" : "Set up myself as a doctor"}</Button>{user?.role === "root" && <p>To link an administrator's doctor profile, use their organization session.</p>}</div>}
 
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setMemberChoiceOpen(true)}
-                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold justify-center"
-                >
-                  <UserPlus className="h-3.5 w-3.5 mr-1" />
-                  Add Member
-                </Button>
-              </div>
-            )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadData}
-              disabled={isRefreshing}
-              className="w-full sm:w-auto min-h-[40px] sm:min-h-[36px] text-xs font-semibold transition-colors justify-center order-2 sm:order-1"
-             loading={isRefreshing}>
-              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
-              Refresh
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {canManageStaff && user?.role === "root" && <p className="text-sm text-text-muted">To set up an administrator as a doctor, use their organization session through Login as administrator.</p>}
-
-      <Modal open={memberChoiceOpen} onClose={() => setMemberChoiceOpen(false)} title="Add a team member" description="Choose how this person joins your organization." size="md">
+      <Modal open={memberChoiceOpen} onClose={() => setMemberChoiceOpen(false)} title="Add a team member" description="Choose how this person joins your organization." size="sm" bodyClassName={styles.dialogBody} footer={<Button variant="outline" size="sm" onClick={() => setMemberChoiceOpen(false)}>Cancel</Button>}>
         <div className="space-y-4">
           <div><Button disabled={!targetOrganizationId} onClick={() => { setMemberChoiceOpen(false); setInviteOpen(true); }}>Use an existing account</Button><p className="mt-2 text-sm text-text-muted">Invite them by email. Their existing account and other organization memberships are retained.</p></div>
           <div><Button variant="outline" onClick={() => { setMemberChoiceOpen(false); openModal("doctor"); }}>Create a new account</Button><p className="mt-2 text-sm text-text-muted">Register a new team member and configure their clinical profile.</p></div>
@@ -831,380 +833,25 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       </Modal>
       {inviteOpen && targetOrganizationId && <InviteOrganizationMember key={targetOrganizationId} organizationId={targetOrganizationId} onClose={() => setInviteOpen(false)} />}
 
-      {/* ──────────────────────────────────────────────────────────────────────────
-          2. WORKFORCE KPI STATS CARDS
-         ────────────────────────────────────────────────────────────────────────── */}
-      {!embedded && <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
-        <StatCard
-          label="Total Team Members"
-          value={allStaffMembers.length.toString()}
-          description="Active members in your practice"
-          icon={<Users className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard
-          label="Active Roles"
-          value={roleFilterTabs.filter(r => r.key !== "all" && r.count > 0).length.toString()}
-          description="Distinct team roles configured"
-          icon={<ShieldCheck className="w-5 h-5 text-text-secondary" />}
-        />
-      </div>}
+      {embedded ? directory : <Tabs className={styles.workspaceTabs} variant="pills" activeTab={workspaceTab} onChange={setWorkspaceTab} scrollActiveIntoView={false} tabs={[
+        { id: "directory", label: "Staff", badge: readingStaff ? undefined : allStaffMembers.length, content: directory },
+        ...(canManageStaff ? [{ id: "rbac", label: "Permissions", content: <RBACPermissionMatrix organizationId={organizationId} users={allStaffMembers.map(member => ({ id: member.id, name: member.name, email: member.email, role: member.roleType, permissions: member.permissions || [] }))} onRefresh={loadData} /> }] : []),
+        ...(canViewAnalytics(user) ? [{ id: "analytics", label: "Insights", content: <ExecutiveAnalytics /> }] : []),
+      ]} />}
 
-      {/* ──────────────────────────────────────────────────────────────────────────
-          3. TABS NAVIGATION (DIRECTORY, RBAC, ANALYTICS)
-         ────────────────────────────────────────────────────────────────────────── */}
-      <Tabs
-        variant="pills"
-        tabs={[
-          {
-            id: "directory",
-            label: `Staff Directory (${allStaffMembers.length})`,
-            icon: <Users className="w-4 h-4" />,
-            content: (
-              <div className="space-y-4 pt-1">
-                {/* Role Filter Bar */}
-                <div className="flex items-center gap-1.5 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto [scrollbar-width:none] touch-manipulation w-full sm:w-fit max-w-full">
-                  <span className="text-[11px] font-bold text-text-muted px-2.5 shrink-0">Filter:</span>
-                  {roleFilterTabs.map((filter) => {
-                    const isSelected = selectedRoleFilter === filter.key;
-                    return (
-                      <button
-                        key={filter.key}
-                        type="button"
-                        onClick={() => setSelectedRoleFilter(filter.key)}
-                        className={cn(
-                          "px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 shrink-0 min-h-[40px] sm:min-h-[34px] touch-manipulation",
-                          isSelected
-                            ? "bg-surface text-text shadow-xs font-bold border border-border/60"
-                            : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
-                        )}
-                      >
-                        <span>{filter.label}</span>
-                        <span
-                          className={cn(
-                            "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
-                            isSelected
-                              ? "bg-primary-500/10 text-accent dark:text-accent"
-                              : "bg-surface-alt text-text-muted"
-                          )}
-                        >
-                          {filter.count}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-                  <CardContent className="p-0">
-                    <Table
-
-                      searchable
-                      searchPlaceholder="Search staff members by name, email, role, or specialty..."
-                      mobileCardView
-                      columns={[
-                        {
-                          key: "name",
-                          header: "Staff Member",
-                          sortable: true,
-                          render: (row) => (
-                            <div className="flex items-center gap-2.5 min-w-[150px]">
-                              <Avatar
-                                src={row.image_url}
-                                name={row.name}
-                                size="sm"
-                              />
-                              <div className="space-y-0.5 min-w-0">
-                                <span className="font-bold text-text text-xs sm:text-sm truncate block">{row.name}</span>
-                                {row.specialization && (
-                                  <span className="text-[10px] text-text-muted truncate block">{row.specialization}</span>
-                                )}
-                              </div>
-                            </div>
-                          ),
-                        },
-                        {
-                          key: "roleLabel",
-                          header: "Designation",
-                          sortable: true,
-                          render: (row) => (
-                            <Badge
-                              variant={
-                                row.roleType === "doctor"
-                                  ? "primary"
-                                  : row.roleType === "receptionist"
-                                  ? "success"
-                                  : row.roleType === "nurse"
-                                  ? "warning"
-                                  : "neutral"
-                              }
-                              size="sm"
-                              className="font-semibold text-[10px] capitalize"
-                            >
-                              {row.roleLabel}
-                            </Badge>
-                          ),
-                        },
-                        {
-                          key: "email",
-                          header: "Email Address",
-                          sortable: true,
-                          render: (row) => (
-                            <div className="flex items-center gap-1 text-xs text-text-secondary">
-                              <Mail className="w-3 h-3 text-text-muted shrink-0" />
-                              <span className="truncate max-w-[150px]">{row.email}</span>
-                            </div>
-                          ),
-                        },
-                        {
-                          key: "phone",
-                          header: "Phone Number",
-                          sortable: true,
-                          render: (row) => (
-                            <div className="flex items-center gap-1 text-xs text-text-secondary">
-                              <Phone className="w-3 h-3 text-text-muted shrink-0" />
-                              <span>{row.phone || "—"}</span>
-                            </div>
-                          ),
-                        },
-                        {
-                          key: "details",
-                          header: "Details / Branch",
-                          sortable: true,
-                          render: (row) => (
-                            <div className="flex items-center gap-1 text-xs text-text-muted">
-                              <Building2 className="w-3 h-3 text-text-muted shrink-0" />
-                              <span className="truncate max-w-[160px]">{row.details}</span>
-                            </div>
-                          ),
-                        },
-                        {
-                          key: "actions",
-                          header: "Actions",
-                          align: "right",
-                          width: "56px",
-                          render: (row) => (
-                            <div className="flex items-center justify-end">
-                              <Dropdown
-                                align="right"
-                                trigger={
-                                  <Button
-                                    size="xs"
-                                    variant="outline"
-                                    className="h-9 w-9 p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text min-h-[36px] min-w-[36px]"
-                                    title="Row Actions"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                }
-                                items={[
-                                  ...(row.roleType === "doctor"
-                                    ? [
-                                        {
-                                          label: "Manage Location Assignments",
-                                          icon: <Stethoscope className="w-4 h-4 text-accent" />,
-                                          onClick: () => openAssignmentsModal(row),
-                                        },
-                                        {
-                                          label: "Holidays & Leave Schedule",
-                                          icon: <CalendarOff className="w-4 h-4 text-warning-text" />,
-                                          onClick: () => openHolidaysModal(row),
-                                        },
-                                      ]
-                                    : []),
-                                  {
-                                    label: `Edit ${row.roleLabel}`,
-                                    icon: <Edit3 className="w-4 h-4 text-text-muted" />,
-                                    onClick: () => openEditModal(row.roleType, row),
-                                  },
-                                  { divider: true, label: "" },
-                                  {
-                                    label: `Deactivate ${row.roleLabel}`,
-                                    icon: <Trash2 className="w-4 h-4 text-danger" />,
-                                    variant: "danger" as any,
-                                    onClick: () => setDeletingId(row.id),
-                                  },
-                                ]}
-                              />
-                            </div>
-                          ),
-                        },
-                      ]}
-                      data={filteredStaff}
-                      loading={loading || isRefreshing}
-                      emptyMessage="No staff members match the selected filter."
-                      renderMobileCard={(row: StaffMember) => (
-                        <div
-                          key={row.id}
-                          className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-10 h-10 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-accent font-bold text-sm shrink-0">
-                                {(row.name || "S").charAt(0).toUpperCase()}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-bold text-text text-sm truncate">{row.name}</p>
-                                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                                  <Badge
-                                    variant={
-                                      row.roleType === "doctor"
-                                        ? "primary"
-                                        : row.roleType === "receptionist"
-                                        ? "success"
-                                        : row.roleType === "nurse"
-                                        ? "warning"
-                                        : "neutral"
-                                    }
-                                    size="sm"
-                                    className="font-semibold text-[10px] capitalize"
-                                  >
-                                    {row.roleLabel}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-
-                            {canManageStaff && (
-                              <Dropdown
-                                align="right"
-                                trigger={
-                                  <Button
-                                    size="xs"
-                                    variant="outline"
-                                    className="h-9 w-9 p-0 flex items-center justify-center rounded-xl text-text-secondary hover:text-text min-h-[36px] min-w-[36px]"
-                                    title="Actions"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                }
-                                items={[
-                                  ...(row.roleType === "doctor"
-                                    ? [
-                                        {
-                                          label: "Manage Location Assignments",
-                                          icon: <Stethoscope className="w-4 h-4 text-accent" />,
-                                          onClick: () => openAssignmentsModal(row),
-                                        },
-                                        {
-                                          label: "Holidays & Leave Schedule",
-                                          icon: <CalendarOff className="w-4 h-4 text-warning-text" />,
-                                          onClick: () => openHolidaysModal(row),
-                                        },
-                                      ]
-                                    : []),
-                                  {
-                                    label: `Edit ${row.roleLabel}`,
-                                    icon: <Edit3 className="w-4 h-4 text-text-muted" />,
-                                    onClick: () => openEditModal(row.roleType, row),
-                                  },
-                                  { divider: true, label: "" },
-                                  {
-                                    label: `Deactivate ${row.roleLabel}`,
-                                    icon: <Trash2 className="w-4 h-4 text-danger" />,
-                                    variant: "danger" as any,
-                                    onClick: () => setDeletingId(row.id),
-                                  },
-                                ]}
-                              />
-                            )}
-                          </div>
-
-                          <div className="p-2.5 bg-surface-alt/70 rounded-xl border border-border/60 space-y-1.5 text-xs">
-                            <div className="flex items-center gap-1.5 text-text-secondary">
-                              <Mail className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                              <a href={`mailto:${row.email}`} className="truncate hover:text-accent transition-colors">
-                                {row.email}
-                              </a>
-                            </div>
-                            {row.phone && (
-                              <div className="flex items-center gap-1.5 text-text-secondary">
-                                <Phone className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                                <a href={`tel:${row.phone}`} className="hover:text-accent transition-colors">
-                                  {row.phone}
-                                </a>
-                              </div>
-                            )}
-                            {row.details && (
-                              <div className="flex items-center gap-1.5 text-text-muted pt-1 border-t border-border/40 text-[11px]">
-                                <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                                <span className="truncate">{row.details}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {row.roleType === "doctor" && canManageStaff && (
-                            <div className="grid grid-cols-2 gap-2 pt-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openAssignmentsModal(row)}
-                                className="w-full font-semibold text-xs min-h-[40px] flex items-center justify-center gap-1"
-                              >
-                                <Stethoscope className="w-3.5 h-3.5 text-accent" />
-                                <span>Assignments</span>
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openHolidaysModal(row)}
-                                className="w-full font-semibold text-xs min-h-[40px] flex items-center justify-center gap-1 text-warning-text hover:bg-warning/10 border-warning/30"
-                              >
-                                <CalendarOff className="w-3.5 h-3.5" />
-                                <span>Leave</span>
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-            ),
-          },
-          {
-            id: "rbac",
-            label: "RBAC Governance & Permissions",
-            content: (
-              <div className="pt-2">
-                <RBACPermissionMatrix
-                  organizationId={organizationId}
-                  users={allStaffMembers.map((s) => ({
-                    id: s.id,
-                    name: s.name,
-                    email: s.email,
-                    role: s.roleType,
-                    permissions: s.permissions || [],
-                  }))}
-                  onRefresh={loadData}
-                />
-              </div>
-            ),
-          },
-          {
-            id: "analytics",
-            label: "Executive BI & Analytics",
-            content: (
-              <div className="pt-2">
-                <ExecutiveAnalytics />
-              </div>
-            ),
-          },
-        ].filter((tab) => !embedded || tab.id === "directory")}
-      />
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          4. STAFF ADD/EDIT MODAL
-         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingId ? `Update ${modalType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}` : "Add Team Member"}
         description={editingId ? "Update credentials and details for this team member." : "Add a doctor, receptionist, nurse, or other staff member to your practice."}
-        size="xl"
+        size="lg"
+        busy={submitting}
+        bodyClassName={styles.dialogBody}
+        headerClassName={styles.profileHeader}
+        header={<><h2>{editingId ? "Edit profile" : "New team member"}</h2><p>{editingId ? formData.name : "Choose a role and add their account details."}</p><Tabs variant="pills" activeTab={profileTab} onChange={setProfileTab} scrollActiveIntoView={false} tabs={[{ id: "account", label: "Account" }, { id: "profile", label: "Profile & practice" }]} /></>}
         footer={
           <>
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
+            <Button disabled={submitting} variant="outline" size="sm" type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
               Cancel
             </Button>
             <Button form="staff-form" type="submit" size="sm" variant="primary" loading={submitting} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold">
@@ -1214,6 +861,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         }
       >
         <form id="staff-form" onSubmit={handleSave} className="space-y-4 pt-1 pr-1" noValidate>
+          <section hidden={profileTab !== "account"} className={styles.formSection}>
           {!editingId && (
             <Select
               label="Role & Designation *"
@@ -1233,19 +881,6 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
               options={allRoleOptions}
             />
           )}
-
-          {/* Staff Profile Photo Upload */}
-          <div className="space-y-2">
-            <ImageUpload
-              value={formData.image_url || null}
-              onChange={(value) => handleFieldChange("image_url", value)}
-              label="Profile photo"
-              disabled={submitting}
-            />
-            <p className="text-xs text-text-muted">
-              Upload a professional staff photo. Displayed on patient portals, appointments, and staff directories.
-            </p>
-          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
@@ -1298,6 +933,21 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                 }
               />
             )}
+          </div>
+
+          </section>
+          <section hidden={profileTab !== "profile"} className={styles.formSection}>
+          {/* Staff Profile Photo Upload */}
+          <div className="space-y-2">
+            <ImageUpload
+              value={formData.image_url || null}
+              onChange={(value) => handleFieldChange("image_url", value)}
+              label="Profile photo"
+              disabled={submitting}
+            />
+            <p className="text-xs text-text-muted">
+              Upload a professional staff photo. Displayed on patient portals, appointments, and staff directories.
+            </p>
           </div>
 
           {modalType === "doctor" && (
@@ -1400,6 +1050,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
             </div>
           )}
 
+          </section>
         </form>
       </Modal>
 
@@ -1409,214 +1060,35 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
       <Modal
         open={isAssignmentsModalOpen}
         onClose={() => { if (!savingAssignment) setIsAssignmentsModalOpen(false); }}
-        busy={savingAssignment}
-        title={`Location Assignments — Dr. ${selectedDoctorForAssignments?.name || ""}`}
-        description="Link this practitioner to branch locations with custom consultation fees, slot durations, and working hours."
-        size="2xl"
+        busy={savingAssignment || Boolean(removingAssignmentId)}
+        title="Location Assignments"
+        description={selectedDoctorForAssignments?.name}
+        size="lg"
+        bodyClassName={styles.dialogBody}
+        footer={<><Button size="sm" variant="outline" disabled={savingAssignment || Boolean(removingAssignmentId)} onClick={() => setIsAssignmentsModalOpen(false)}>Done</Button>{assignmentTab === "form" && !assignmentLoading && !assignmentError && (availableLocations.length > 0 || editingAssignmentId) && <Button size="sm" type="submit" form="doctor-assignment" loading={savingAssignment}>{editingAssignmentId ? "Update Branch Assignment" : "Assign Location"}</Button>}</>}
       >
         <div className="space-y-4 pt-1">
-          <ol aria-label="Doctor setup steps" className="flex flex-wrap gap-3 text-sm text-text-secondary"><li>1. Profile linked</li><li aria-current="step">2. Location, hours & fees</li><li>3. Public preview</li></ol>
+          <ol aria-label="Doctor setup steps" className={styles.setupSteps}><li>1. Profile</li><li aria-current="step">2. Location</li><li>3. Preview</li></ol>
           {assignmentError && <Alert variant="error" title="Location assignments could not be loaded" action={<Button variant="outline" onClick={() => selectedDoctorForAssignments && openAssignmentsModal(selectedDoctorForAssignments)}>Retry assignments</Button>}>Retry before creating an assignment.</Alert>}
           {!assignmentLoading && !assignmentError && !locations.length && <Alert variant="warning" title="Create a location first">A doctor needs an active location before public booking can be configured. <Link className="text-accent hover:underline" href={organizationWorkspaceUrl(targetOrganizationId, "locations")}>Open location setup</Link></Alert>}
-          {!assignmentLoading && !assignmentError && assignments.length > 0 && <Alert variant="success" title="Location assignment saved">Review publication and online booking availability before sharing. <Link className="text-accent hover:underline" href={organizationWorkspaceUrl(targetOrganizationId)}>Review public booking setup</Link></Alert>}
-          {/* Active Assignments Card */}
-          <div className="border border-border/80 rounded-2xl p-4 space-y-3 bg-surface-alt/30">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-text flex items-center gap-2">
-                <span>Active Branch Assignments</span>
-                <Badge variant="primary" size="sm" className="font-semibold">
-                  {assignments.length}
-                </Badge>
-              </h3>
-              <Button
-                size="xs"
-                variant="outline"
-                type="button"
-                onClick={() => {
-                  setIsAssignmentsModalOpen(false);
-                  openHolidaysModal(selectedDoctorForAssignments);
-                }}
-                className="rounded-xl text-xs font-semibold gap-1.5"
-              >
-                <CalendarOff className="w-3.5 h-3.5 text-warning-text" />
-                Holidays & Leaves
-              </Button>
-            </div>
+          {!assignmentLoading && !assignmentError && assignments.length > 0 && <p className={styles.bookingReview}><Link href={organizationWorkspaceUrl(targetOrganizationId)}>Review public booking setup &rarr;</Link></p>}
 
-            {assignmentLoading ? (
-              <div className="flex justify-center p-8">
-                <Spinner size="md" />
-              </div>
-            ) : assignments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center p-6 border border-dashed border-border/80 rounded-2xl bg-surface space-y-2">
-                <div className="w-10 h-10 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-accent">
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <h4 className="text-xs font-bold text-text">No Locations Assigned Yet</h4>
-                <p className="text-xs text-text-muted max-w-sm">
-                  Assign this practitioner to a location below to configure fees and consultation schedules.
-                </p>
-              </div>
-            ) : (
-              <>
-                {/* Mobile Cards View (< sm) */}
-                <div className="block sm:hidden space-y-3">
-                  {assignments.map((asg) => (
-                    <div
-                      key={asg.id || asg._id}
-                      className="p-3.5 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-2.5"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 font-bold text-xs text-text">
-                          <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
-                          <span>{asg.locationId?.name || "Location"}</span>
-                        </div>
-                        <Badge
-                          variant={asg.bookingMode === "sequential_queue" ? "primary" : "neutral"}
-                          size="sm"
-                          className="font-semibold text-[10px]"
-                        >
-                          {asg.bookingMode === "sequential_queue" ? "Token Queue" : "Time Slots"}
-                        </Badge>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="p-2 bg-surface-alt rounded-xl">
-                          <span className="text-[10px] text-text-muted block">Fee</span>
-                          <span className="font-bold">
-                            {asg.feeType === "post_consultation" ? (
-                              <span className="text-warning-text text-[11px]">Post-Visit</span>
-                            ) : asg.feeType === "free" ? (
-                              <span className="text-success-text text-[11px]">Free</span>
-                            ) : (
-                              <span className="text-success-text dark:text-success-text">₹{asg.fees}</span>
-                            )}
-                          </span>
-                        </div>
-
-                        <div className="p-2 bg-surface-alt rounded-xl">
-                          <span className="text-[10px] text-text-muted block">Duration</span>
-                          <span className="font-semibold text-text">{asg.appointmentDuration} mins</span>
-                        </div>
-                      </div>
-
-                      <div className="text-[11px] text-text-muted bg-surface-alt/50 p-2 rounded-xl">
-                        <span className="font-medium text-text-secondary block mb-0.5">Shift Hours:</span>
-                        {formatTimings(asg.workingHours)}
-                      </div>
-
-                      <div className="flex items-center gap-2 pt-1 border-t border-border/60">
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          onClick={() => handleStartEditAssignment(asg)}
-                          className="flex-1 font-semibold text-xs min-h-[38px] rounded-xl justify-center"
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="danger"
-                          size="xs"
-                          onClick={() => handleRemoveAssignment(asg.id || asg._id)}
-                          className="flex-1 font-semibold text-xs min-h-[38px] rounded-xl justify-center"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Desktop Table View (>= sm) */}
-                <div className="hidden sm:block overflow-x-auto rounded-2xl border border-border/80 bg-surface shadow-xs">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-border/60 text-[10px] font-bold text-text-muted uppercase tracking-wider bg-surface-alt">
-                        <th className="p-3">Location</th>
-                        <th className="p-3">Fee</th>
-                        <th className="p-3">Slot Duration</th>
-                        <th className="p-3">Booking Mode</th>
-                        <th className="p-3">Working Shift</th>
-                        <th className="p-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/60">
-                      {assignments.map((asg) => (
-                        <tr key={asg.id || asg._id} className="hover:bg-surface-hover/50 transition-colors">
-                          <td className="p-3 text-text font-bold whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
-                              <span>{asg.locationId?.name || "Location"}</span>
-                            </div>
-                          </td>
-                          <td className="p-3 font-bold whitespace-nowrap">
-                            {asg.feeType === "post_consultation" ? (
-                              <Badge variant="warning" size="sm" className="font-semibold text-[10px]">
-                                Post-Consultation
-                              </Badge>
-                            ) : asg.feeType === "free" ? (
-                              <Badge variant="success" size="sm" className="font-semibold text-[10px]">
-                                Free / ₹0
-                              </Badge>
-                            ) : (
-                              <span className="text-success-text dark:text-success-text">₹{asg.fees}</span>
-                            )}
-                          </td>
-                          <td className="p-3 whitespace-nowrap">
-                            <span className="px-2 py-0.5 bg-surface-alt rounded-lg font-semibold text-text-secondary border border-border/60">
-                              {asg.appointmentDuration} mins
-                            </span>
-                          </td>
-                          <td className="p-3 whitespace-nowrap">
-                            <Badge
-                              variant={asg.bookingMode === "sequential_queue" ? "primary" : "neutral"}
-                              size="sm"
-                              className="font-semibold text-[10px]"
-                            >
-                              {asg.bookingMode === "sequential_queue" ? "Token Queue" : "Time Slots"}
-                            </Badge>
-                          </td>
-                          <td className="p-3 text-text-muted whitespace-normal text-xs">
-                            {formatTimings(asg.workingHours)}
-                          </td>
-                          <td className="p-3 text-right whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <Button
-                                variant="outline"
-                                size="xs"
-                                onClick={() => handleStartEditAssignment(asg)}
-                                className="font-semibold text-xs"
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="danger"
-                                size="xs"
-                                onClick={() => handleRemoveAssignment(asg.id || asg._id)}
-                                className="font-semibold text-xs"
-                              >
-                                Remove
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Add / Edit Assignment Form Card */}
+          <Tabs variant="pills" activeTab={assignmentTab} onChange={setAssignmentTab} scrollActiveIntoView={false} tabs={[{id:"list",label:"Locations",badge:assignmentLoading?undefined:assignments.length},...(!assignmentError && !assignmentLoading && (availableLocations.length>0 || editingAssignmentId) ? [{id:"form",label:editingAssignmentId?"Edit assignment":"Add assignment"}] : [])]} />
+          <section hidden={assignmentTab !== "list"} className={styles.assignmentList} aria-label="Assigned locations">
+            {assignmentLoading ? <div role="status" className={styles.empty}><Spinner size="sm" />Loading assignments...</div> : assignmentError ? null : assignments.length === 0 ? <p className={styles.empty}>No locations assigned yet. Add an assignment to set hours and fees.</p> : assignments.map(assignment => <article key={assignment.id || assignment._id} className={styles.assignmentCard}>
+              <div><strong>{assignment.locationId?.name || "Location"}</strong><p>{assignment.feeType === "free" ? "Free consultation" : assignment.feeType === "post_consultation" ? "Fee after consultation" : "Consultation: \u20b9" + assignment.fees} &middot; {assignment.appointmentDuration} min</p><p>{assignment.bookingMode === "time_slot" ? "Time slots" : "Token queue"} &middot; {formatTimings(assignment.workingHours)}</p></div>
+              <div className={styles.rowActions}><Button size="sm" variant="outline" disabled={savingAssignment || Boolean(removingAssignmentId)} onClick={() => handleStartEditAssignment(assignment)}>Edit</Button><Button size="sm" variant="ghost" loading={removingAssignmentId === (assignment.id || assignment._id)} disabled={savingAssignment || Boolean(removingAssignmentId && removingAssignmentId !== (assignment.id || assignment._id))} onClick={() => handleRemoveAssignment(assignment.id || assignment._id)}>Remove</Button></div>
+            </article>)}
+          </section>
+          <section hidden={assignmentTab !== "form"}>
           {!assignmentLoading && !assignmentError && (availableLocations.length > 0 || editingAssignmentId) ? (
-            <form
+            <form id="doctor-assignment"
               onSubmit={handleAddAssignment}
               className="border border-border/80 rounded-2xl p-4 space-y-3.5 bg-surface shadow-xs"
             >
               <div className="flex items-center justify-between border-b border-border/60 pb-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-text">
-                  {editingAssignmentId ? "Edit Branch Assignment & Schedule" : "Assign to New Location"}
+                  {editingAssignmentId ? "Hours & fees" : "New assignment"}
                 </h3>
                 {editingAssignmentId && (
                   <Button type="button" variant="outline" size="xs" onClick={handleCancelEditAssignment}>
@@ -1631,8 +1103,8 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
                   value={(newAssignment as any).bookingMode || "sequential_queue"}
                   onChange={(e) => setNewAssignment({ ...newAssignment, bookingMode: e.target.value } as any)}
                   options={[
-                    { value: "sequential_queue", label: "Sequential Queue Mode (Live Token Stream)" },
-                    { value: "time_slot", label: "Time-Slot Mode (Fixed Calendar Slots)" },
+                    { value: "sequential_queue", label: "Token queue" },
+                    { value: "time_slot", label: "Time slots" },
                   ]}
                   required
                 />
@@ -1725,26 +1197,17 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
               <ScheduleEditor
                 label="Working Days & Operating Hours *"
                 value={newAssignment.workingHours}
-                onChange={(val) => setNewAssignment({ ...newAssignment, workingHours: val })}
+                key={editingAssignmentId || "new"}
+                onChange={(val) => setNewAssignment((previous: any) => ({ ...previous, workingHours: val }))}
               />
 
-              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2 border-t border-border/60">
-                <Button
-                  type="submit"
-                  loading={savingAssignment}
-                  size="sm"
-                  variant="primary"
-                  className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold"
-                >
-                  {editingAssignmentId ? "Update Branch Assignment" : "Assign Location"}
-                </Button>
-              </div>
             </form>
           ) : !assignmentLoading && !assignmentError && locations.length > 0 ? (
             <div className="text-xs text-text-muted text-center py-4 border border-border/80 bg-surface-alt rounded-2xl font-medium">
               Dr. {selectedDoctorForAssignments?.name} is already assigned to all active locations.
             </div>
           ) : null}
+          </section>
         </div>
       </Modal>
 
@@ -1757,9 +1220,24 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         title="Set up myself as a doctor"
         description="Step 1 of 3: confirm your clinical profile. Next, choose a location and review consultation hours and fees before previewing the public page."
         busy={savingAdminDoctor}
-        size="lg"
+        size="md"
+        bodyClassName={styles.dialogBody}
+        footer={<div className={styles.footerActions}>
+            <Button variant="outline" size="sm" type="button" disabled={savingAdminDoctor} onClick={() => setIsAdminDoctorModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit" form="owner-doctor-profile"
+              loading={savingAdminDoctor}
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold"
+            >
+              Save profile & continue
+            </Button>
+          </div>}
       >
-        <form onSubmit={handleEnableAdminDoctorProfile} className="space-y-4 pt-1">
+        <form id="owner-doctor-profile" onSubmit={handleEnableAdminDoctorProfile} className="space-y-4 pt-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
               label="Medical Specialization *"
@@ -1813,222 +1291,25 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
             />
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
-            <Button variant="outline" size="sm" type="button" disabled={savingAdminDoctor} onClick={() => setIsAdminDoctorModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              type="submit"
-              loading={savingAdminDoctor}
-              className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold"
-            >
-              Save profile & continue
-            </Button>
-          </div>
         </form>
       </Modal>
 
       {/* ──────────────────────────────────────────────────────────────────────────
           6. DOCTOR HOLIDAYS & LEAVES MODAL
          ────────────────────────────────────────────────────────────────────────── */}
-      <Modal
-        open={isHolidaysModalOpen}
-        onClose={() => setIsHolidaysModalOpen(false)}
-        title={`Doctor Holidays & Leave Overrides — Dr. ${selectedDoctorForHolidays?.name || ""}`}
-        description="Schedule holidays, vacations, or day-offs over regular working schedules. Patient bookings are automatically blocked on declared dates."
-        size="2xl"
-      >
-        <div className="space-y-5 pt-1">
-          {/* Add Holiday Form */}
-          <form onSubmit={handleAddHoliday} className="p-4 rounded-2xl border border-border/80 bg-surface-alt/40 space-y-3.5">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-text flex items-center gap-1.5">
-              <CalendarOff className="w-4 h-4 text-warning-text" />
-              <span>Declare Upcoming Holiday / Day Off</span>
-            </h4>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <Select
-                  label="Applies To Branch"
-                  value={newHoliday.locationId}
-                  onChange={(e) => setNewHoliday({ ...newHoliday, locationId: e.target.value })}
-                  options={[
-                    { value: "all", label: "All Locations" },
-                    ...locations.map((c) => ({ value: c.id, label: c.name })),
-                  ]}
-                />
-                <p className="text-[10px] text-text-muted mt-1">Select specific branch or all locations</p>
-              </div>
-
-              <div>
-                <Input
-                  label="Holiday / Leave Date *"
-                  type="date"
-                  value={newHoliday.date}
-                  min={new Date().toISOString().split("T")[0]}
-                  onChange={(e) => setNewHoliday({ ...newHoliday, date: e.target.value })}
-                  required
-                />
-                <p className="text-[10px] text-text-muted mt-1">Bookings will be blocked for this day</p>
-              </div>
-
-              <div>
-                <Input
-                  label="Reason / Description *"
-                  placeholder="e.g. Festival, Annual Leave"
-                  value={newHoliday.reason}
-                  onChange={(e) => setNewHoliday({ ...newHoliday, reason: e.target.value })}
-                  required
-                />
-                <div className="flex gap-1 flex-wrap mt-1">
-                  {["Diwali / Festival", "Vacation", "Medical Leave", "Conference"].map((badge) => (
-                    <button
-                      key={badge}
-                      type="button"
-                      onClick={() => setNewHoliday({ ...newHoliday, reason: badge })}
-                      className="text-[9px] px-1.5 py-0.5 rounded bg-surface hover:bg-surface-hover border border-border/60 text-text-muted hover:text-text cursor-pointer transition-colors"
-                    >
-                      {badge}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-1">
-              <Button
-                type="submit"
-                size="sm"
-                variant="primary"
-                loading={savingHoliday}
-                className="font-bold text-xs gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Declare Holiday Override
-              </Button>
-            </div>
-          </form>
-
-          {/* Active Holidays List */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-text flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-text-muted" />
-                <span>Scheduled Holidays & Overrides</span>
-                <Badge variant="neutral" size="sm" className="font-semibold text-[10px]">
-                  {doctorHolidays.length}
-                </Badge>
-              </h4>
-            </div>
-
-            {loadingHolidays ? (
-              <div className="flex justify-center p-8">
-                <Spinner size="md" />
-              </div>
-            ) : doctorHolidays.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center p-6 border border-dashed border-border/80 rounded-2xl bg-surface space-y-1.5">
-                <div className="w-10 h-10 rounded-2xl bg-surface-alt flex items-center justify-center text-text-muted">
-                  <Calendar className="w-5 h-5" />
-                </div>
-                <h5 className="text-xs font-bold text-text">No Scheduled Holidays</h5>
-                <p className="text-xs text-text-muted max-w-sm">
-                  This doctor is available per standard recurring weekly shifts. Use the form above to declare upcoming holidays.
-                </p>
-              </div>
-            ) : (
-              <>
-                {/* Mobile Cards View (< sm) */}
-                <div className="block sm:hidden space-y-2.5">
-                  {doctorHolidays.map((h) => (
-                    <div
-                      key={h.id || h._id}
-                      className="p-3.5 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-xs text-text">{h.date}</span>
-                        <Badge variant="warning" size="sm" className="font-semibold text-[10px]">
-                          On Holiday / Leave
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-                        <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
-                        <span>{h.locationId?.name || "All Assigned Locations"}</span>
-                      </div>
-
-                      <p className="text-xs text-text font-medium bg-surface-alt/60 p-2 rounded-xl">
-                        {h.reason || "Doctor Away"}
-                      </p>
-
-                      <div className="pt-1">
-                        <Button
-                          size="xs"
-                          variant="ghost"
-                          onClick={() => handleDeleteHoliday(h.id || h._id)}
-                          className="w-full text-danger-text hover:text-danger-text hover:bg-danger/10 rounded-xl text-xs font-semibold min-h-[38px] justify-center"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 mr-1" />
-                          Cancel Holiday
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Desktop Table View (>= sm) */}
-                <div className="hidden sm:block overflow-x-auto rounded-2xl border border-border/80 bg-surface shadow-xs">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="border-b border-border/60 text-[10px] font-bold text-text-muted uppercase tracking-wider bg-surface-alt">
-                        <th className="p-3">Date</th>
-                        <th className="p-3">Branch Location</th>
-                        <th className="p-3">Status</th>
-                        <th className="p-3">Declared Reason</th>
-                        <th className="p-3 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/60">
-                      {doctorHolidays.map((h) => (
-                        <tr key={h.id || h._id} className="hover:bg-surface-hover/50 transition-colors">
-                          <td className="p-3 font-bold text-text whitespace-nowrap">
-                            {h.date}
-                          </td>
-                          <td className="p-3 text-text-secondary whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
-                              <span>{h.locationId?.name || "All Assigned Locations"}</span>
-                            </div>
-                          </td>
-                          <td className="p-3 whitespace-nowrap">
-                            <Badge variant="warning" size="sm" className="font-semibold text-[10px]">
-                              On Holiday / Leave
-                            </Badge>
-                          </td>
-                          <td className="p-3 text-text font-medium">
-                            {h.reason || "Doctor Away"}
-                          </td>
-                          <td className="p-3 text-right whitespace-nowrap">
-                            <Button
-                              size="xs"
-                              variant="ghost"
-                              onClick={() => handleDeleteHoliday(h.id || h._id)}
-                              className="text-danger-text hover:text-danger-text hover:bg-danger/10 rounded-lg text-[11px] font-semibold"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 mr-1" />
-                              Cancel Holiday
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+      <Modal open={isHolidaysModalOpen} onClose={() => setIsHolidaysModalOpen(false)} title="Leave & holidays" description={selectedDoctorForHolidays?.name} size="md" busy={savingHoliday || Boolean(removingHolidayId)} bodyClassName={styles.dialogBody}
+        footer={<><Button size="sm" variant="outline" disabled={savingHoliday || Boolean(removingHolidayId)} onClick={() => setIsHolidaysModalOpen(false)}>Done</Button>{holidayTab === "form" && <Button size="sm" type="submit" form="doctor-leave" loading={savingHoliday} disabled={loadingHolidays || holidayError}>Save leave</Button>}</>}>
+        <Tabs variant="pills" activeTab={holidayTab} onChange={setHolidayTab} scrollActiveIntoView={false} tabs={[{id:"form",label:"Add leave"},{id:"list",label:"Scheduled",badge:loadingHolidays?undefined:doctorHolidays.length}]} />
+        {holidayError && <Alert variant="error" title="Leave could not be loaded" action={<Button variant="outline" size="sm" onClick={() => selectedDoctorForHolidays && readHolidays(selectedDoctorForHolidays.id)}>Try again</Button>}>Retry before changing this doctor's availability.</Alert>}
+        <form id="doctor-leave" hidden={holidayTab !== "form"} onSubmit={handleAddHoliday} className={styles.formSection}>
+          <p className={styles.help}>Bookings are blocked on this date for the selected location. Review existing appointments separately.</p>
+          <Select label="Location" value={newHoliday.locationId} onChange={event => setNewHoliday({...newHoliday,locationId:event.target.value})} options={[{value:"all",label:"All locations"},...locations.map(location=>({value:location.id,label:location.name}))]} />
+          <DatePicker label="Leave date *"  minDate={new Date().toISOString().slice(0,10)} value={newHoliday.date} onChange={value=>setNewHoliday({...newHoliday,date:value})} required />
+          <Input label="Reason *" value={newHoliday.reason} onChange={event=>setNewHoliday({...newHoliday,reason:event.target.value})} required />
+        </form>
+        <section hidden={holidayTab !== "list"} className={styles.assignmentList} aria-label="Scheduled leave">
+          {loadingHolidays ? <div role="status" className={styles.empty}><Spinner size="sm" />Loading leave...</div> : holidayError ? null : doctorHolidays.length === 0 ? <p className={styles.empty}>No scheduled leave. The regular schedule applies.</p> : doctorHolidays.map(holiday=><article key={holiday.id||holiday._id} className={styles.assignmentCard}><div><strong>{holiday.date}</strong><p>{holiday.reason}</p><p>{holiday.locationId?.name || "All locations"}</p></div><Button size="sm" variant="outline" loading={removingHolidayId === (holiday.id || holiday._id)} disabled={Boolean(removingHolidayId && removingHolidayId !== (holiday.id||holiday._id))} onClick={()=>handleDeleteHoliday(holiday.id||holiday._id)}>Cancel leave</Button></article>)}
+        </section>
       </Modal>
 
       {/* ──────────────────────────────────────────────────────────────────────────
@@ -2042,6 +1323,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
         description="Are you sure you want to deactivate this staff member from your organization? They will lose access to the system."
         variant="danger"
         confirmLabel="Deactivate Account"
+        loading={deactivating}
       />
     </div>
   );

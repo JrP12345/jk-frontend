@@ -1,12 +1,15 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from "next/link";
+import { RotateCw, MessageSquare } from "lucide-react";
+import { CrmWorkspaceLayout } from "./CrmWorkspaceLayout";
+import styles from "./CrmWorkspace.module.css";
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { hasAnyPermission } from '@/lib/permissions';
 import { authScopeKey } from '@/lib/authScope';
 import { useLatestRead } from '@/hooks/useLatestRead';
-import { Alert, Button, Card, CardContent, Input, Modal, Select, Checkbox } from '@/components/ui';
+import { Alert, Button, EmptyState, Input, Modal, Select, Checkbox } from '@/components/ui';
 interface Message { id: string; revision: number; type: string; text: string; contactHint: string; createdAt: string }
 interface Destination { id: string; callerName?: string; locationId: string; patientId?: string; status: string; createdAt: string }
 const failureMessage = (error: unknown) => (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Reply review could not be confirmed. Retry the submitted review or reload.';
@@ -28,14 +31,15 @@ function Inbox({ root, initialOrganization, canRoute }: { root: boolean; initial
     } catch (failure) { if (read.isCurrent()) setError(failureMessage(failure)); } finally { if (read.isCurrent()) setLoading(false); }
   }, [beginRead, organizationId, root, shared]);
   useEffect(() => { void load(); }, [load]);
-  return <Card><CardContent className="space-y-4"><h1 className="text-xl font-semibold">Communication replies</h1><p>Route each reply to an inquiry after reviewing its subject and branch. Contact hints do not establish patient identity. Create an inquiry through the existing capture flow when needed.</p>
-    <Link className="text-accent underline" href="/dashboard/crm">Open inquiries</Link>
-    {root && <><Select label="Reply inbox" value={shared ? 'shared' : 'organization'} onChange={event => setShared(event.target.value === 'shared')} options={[{ value: 'shared', label: 'Shared sender quarantine' }, { value: 'organization', label: 'Organization inbox' }]} /><Select label={shared ? 'Routing destination organization' : 'Inbox organization'} value={organizationId} onChange={event => setOrganizationId(event.target.value)} options={organizations.map(row => ({ value: row.id, label: row.name }))} placeholder="Choose organization" /></>}
-    {error && <Alert variant="error">{error}</Alert>}<Button variant="outline" loading={loading} onClick={() => load()}>Reload replies</Button>{loading && <p role="status">Loading replies...</p>}
-    {!loading && !items.length && <p>No replies awaiting review in this scope.</p>}{items.map(row => <div key={row.id} className="border border-border rounded-lg p-3 space-y-2"><p>Contact ending {row.contactHint} · {new Date(row.createdAt).toLocaleString()}</p><p className="whitespace-pre-wrap break-words">{row.text || `${row.type} message. Review through the authorized sender account.`}</p>{canRoute && <Button variant="outline" disabled={!organizationId} onClick={() => setSelected(row)}>Review reply destination</Button>}</div>)}
+  return <CrmWorkspaceLayout active="communications" title="Communication replies" description="Review each reply and its destination inquiry before routing." action={<Button variant="outline" className={styles.iconAction} aria-label="Reload replies" title="Reload replies" loading={loading} onClick={() => load()}><RotateCw className="h-4 w-4" /></Button>}>
+    <section aria-label="Replies awaiting review" className={styles.panel}><div className={styles.queueContent}>
+    <p className="mb-4 text-sm text-text-secondary">Contact hints do not establish patient identity. Review the subject and branch before routing. Capture a new inquiry when needed.</p>
+    {root && <div className={styles.formGrid}><Select label="Reply inbox" value={shared ? 'shared' : 'organization'} onChange={event => setShared(event.target.value === 'shared')} options={[{ value: 'shared', label: 'Shared sender quarantine' }, { value: 'organization', label: 'Organization inbox' }]} /><Select label={shared ? 'Routing destination organization' : 'Inbox organization'} value={organizationId} onChange={event => setOrganizationId(event.target.value)} options={organizations.map(row => ({ value: row.id, label: row.name }))} placeholder="Choose organization" /></div>}
+    {error && <Alert variant="error">{error}</Alert>}{loading && <p role="status">Loading replies...</p>}
+    {!loading && !items.length && <EmptyState icon={<MessageSquare />} title="No replies awaiting review in this scope." description="Replies that need review will appear here." />}{items.map(row => <div key={row.id} className={`${styles.record} mt-3`}><p className="text-xs text-text-secondary w-full">Contact ending {row.contactHint} · {new Date(row.createdAt).toLocaleString()}</p><p className="whitespace-pre-wrap [overflow-wrap:anywhere] min-w-0 flex-1 basis-full text-sm">{row.text || `${row.type} message. Review through the authorized sender account.`}</p>{canRoute && <Button variant="outline" disabled={!organizationId} onClick={() => setSelected(row)}>Review reply destination</Button>}</div>)}
     {cursor && <Button variant="outline" disabled={loading} onClick={() => load(cursor)}>More replies</Button>}
     {selected && <Routing key={`${selected.id}:${organizationId}`} message={selected} organizationId={organizationId} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); void load(); }} />}
-  </CardContent></Card>;
+  </div></section></CrmWorkspaceLayout>;
 }
 function Routing({ message, organizationId, onClose, onSaved }: { message: Message; organizationId: string; onClose: () => void; onSaved: () => void }) {
   const [inquiries, setInquiries] = useState<Destination[]>([]), [cursor, setCursor] = useState<string | null>(null), [inquiryId, setInquiryId] = useState(''), [reason, setReason] = useState(''), [verified, setVerified] = useState(false), [loading, setLoading] = useState(true), [pending, setPending] = useState(false), [locked, setLocked] = useState(false), [error, setError] = useState('');

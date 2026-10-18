@@ -3,20 +3,23 @@
 import PrintDialogActions from "@/components/ui/PrintDialogActions";
 import { RefundReconciliationAction } from "@/components/billing/RefundReconciliationAction";
 
-import PrintButton from "@/components/ui/PrintButton";
+import Modal from "@/components/queue/QueueDialog";
+import { useLatestRead } from "@/hooks/useLatestRead";
+import { authScopeKey } from "@/lib/authScope";
+import styles from "./Billing.module.css";
 
 import { getPrintBrandStyles, printElement, printHtml } from "@/lib/printBrand";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
 import { formatCurrency } from "@/lib/currency";
-import { Card, CardContent, Table, Button, Modal, Input, Select, Textarea, useToast, Spinner, Badge, StatCard, Dropdown, ChartContainer, AreaChart, DonutChart, cn } from "@/components/ui";
+import { Table, Button, Input, Select, Textarea, useToast, Spinner, Badge, Dropdown, Tabs, cn } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
-import { RotateCw, Plus, FileText, IndianRupee, Receipt, CreditCard, CheckCircle2, Printer, Search, MoreHorizontal, Banknote, AlertTriangle, AlertCircle, Phone, Building2, Stethoscope, Trash2 } from "lucide-react";
+import { RotateCw, Plus, FileText, IndianRupee, Receipt, CheckCircle2, Printer, Search, MoreHorizontal, Banknote, AlertTriangle, Trash2 } from "lucide-react";
 
 interface InvoiceItem {
   description: string;
@@ -30,7 +33,7 @@ interface Invoice {
   currency?: string;
   appointmentId?: string;
   refundPending?: boolean;
-  patientId: { id: string; userId: { name: string; email: string; phone: string } };
+  patientId: { id: string; name?: string; phone?: string; userId?: { name?: string; email?: string; phone?: string } };
   locationId: { id: string; name: string; city: string; address: string };
   doctorId: { id: string; name: string; specialization: string };
   items: InvoiceItem[];
@@ -51,10 +54,23 @@ export const roundCurrency = (val: number): number => {
 };
 
 export default function BillingPage() {
+  const user = useAuthStore((state) => state.user);
+  return <BillingWorkspace key={authScopeKey(user)} />;
+}
+
+const patientName = (invoice: Invoice) => invoice.patientId?.userId?.name || invoice.patientId?.name || "Patient";
+const patientPhone = (invoice: Invoice) => invoice.patientId?.userId?.phone || invoice.patientId?.phone || "";
+const balanceDue = (invoice: Invoice) => Math.max(0, invoice.balanceDue ?? invoice.totalAmount - (invoice.amountPaid ?? 0));
+const paidAmount = (invoice: Invoice) => invoice.amountPaid ?? (invoice.status === "paid" ? invoice.totalAmount : 0);
+const isPayable = (invoice: Invoice) => !invoice.refundPending && ["unpaid", "partially_paid"].includes(invoice.status) && balanceDue(invoice) > 0;
+const statusLabel = (status: Invoice["status"]) => status === "partially_paid" ? "Part paid" : status.charAt(0).toUpperCase() + status.slice(1);
+
+function BillingWorkspace() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { locations, fetchLocations } = useLocationStore();
+  const { locations, activeLocationId, fetchLocations } = useLocationStore();
   const { toast } = useToast();
+  const authenticated = Boolean(user);
   const canManageBilling = hasAnyPermission(user, "MANAGE_BILLING");
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -66,6 +82,22 @@ export default function BillingPage() {
   const [filterLocation, setFilterLocation] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadedScope, setLoadedScope] = useState("");
+  const invoiceScope = JSON.stringify([filterLocation, filterStatus, page]);
+  const startInvoiceRead = useLatestRead();
+  const startCheckoutRead = useLatestRead();
+  const startAppointmentRead = useLatestRead();
+  const startTillRead = useLatestRead();
+  const startPatientRead = useLatestRead();
+  const startAssignmentRead = useLatestRead();
+  const [patientError, setPatientError] = useState<string | null>(null);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
+  const [assignmentReadVersion, setAssignmentReadVersion] = useState(0);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [tillError, setTillError] = useState<string | null>(null);
 
   // Create Invoice Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -129,6 +161,7 @@ export default function BillingPage() {
 
   // 1-Click Consolidated OPD Checkout State
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [checkoutLocationId, setCheckoutLocationId] = useState("");
   const [opdAppointments, setOpdAppointments] = useState<any[]>([]);
   const [loadingOpdAppointments, setLoadingOpdAppointments] = useState(false);
   const [selectedCheckoutApptId, setSelectedCheckoutApptId] = useState<string>("");
@@ -152,6 +185,7 @@ export default function BillingPage() {
     isFeeEditable?: boolean;
   } | null>(null);
   const [loadingCheckoutPreview, setLoadingCheckoutPreview] = useState(false);
+  const [previewAppointmentId, setPreviewAppointmentId] = useState("");
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<"cash" | "upi" | "card">("cash");
   const [checkoutDiscount, setCheckoutDiscount] = useState<number>(0);
   const [checkoutNotes, setCheckoutNotes] = useState<string>("");
@@ -160,35 +194,51 @@ export default function BillingPage() {
   const [checkoutCustomConsultFee, setCheckoutCustomConsultFee] = useState<number | string>("");
 
   const fetchCheckoutPreview = async (apptId: string, customFee?: number) => {
+    const request = startCheckoutRead();
+    if (customFee === undefined) setCheckoutPreview(null);
+    setPreviewAppointmentId("");
+    setCheckoutError(null);
+    if (customFee === undefined) setCheckoutCustomConsultFee("");
     if (!apptId) return;
     setLoadingCheckoutPreview(true);
     try {
       const url = customFee !== undefined
         ? `/billing/checkout/preview/${apptId}?customConsultFee=${customFee}`
         : `/billing/checkout/preview/${apptId}`;
-      const res = await api.get(url);
+      const res = await api.get(url, { signal: request.signal });
+      if (!request.isCurrent()) return;
       setCheckoutPreview(res.data?.data);
+      setPreviewAppointmentId(apptId);
       if (customFee === undefined && res.data?.data?.consultationFee !== undefined) {
         setCheckoutCustomConsultFee(res.data.data.consultationFee);
       }
     } catch (err: any) {
-      toast({
-        title: "Checkout Preview Error",
-        description: err.response?.data?.message || "Failed to load consolidated charges.",
-        variant: "error",
-      });
+      if (request.isCurrent()) setCheckoutError(err.response?.data?.message || "Charges could not be loaded. Try again.");
     } finally {
-      setLoadingCheckoutPreview(false);
+      if (request.isCurrent()) setLoadingCheckoutPreview(false);
     }
   };
 
-  const fetchOpdAppointments = async () => {
-    const cId = filterLocation || locations[0]?.id || "";
+  const fetchOpdAppointments = async (locationId = checkoutLocationId) => {
+    const request = startAppointmentRead();
+    startCheckoutRead();
+    setCheckoutPreview(null);
+    setPreviewAppointmentId("");
+    setSelectedCheckoutApptId("");
+    setOpdAppointments([]);
+    setCheckoutError(null);
     setLoadingOpdAppointments(true);
     try {
+      if (!locationId) throw new Error("Location required");
       const today = new Date().toISOString().slice(0, 10);
-      const res = await api.get(`/appointments?locationId=${cId}&startDate=${today}&endDate=${today}`);
-      const list = res.data?.data || [];
+      const list: any[] = [];
+      let pages = 1;
+      for (let current = 1; current <= pages; current++) {
+        const res = await api.get(`/appointments?locationId=${locationId}&startDate=${today}&endDate=${today}&page=${current}&limit=100`, { signal: request.signal });
+        if (!request.isCurrent()) return;
+        list.push(...(res.data?.data || []));
+        pages = Math.max(1, Number(res.headers?.["x-total-pages"]) || 1);
+      }
       const activeAppts = list.filter((a: any) =>
         ["confirmed", "checked-in", "in-consultation", "completed"].includes(a.status)
       );
@@ -202,23 +252,26 @@ export default function BillingPage() {
         setCheckoutPreview(null);
       }
     } catch {
-      console.error("fetchOpdAppointments error");
+      if (request.isCurrent()) setCheckoutError("Appointments could not be loaded. Try again.");
     } finally {
-      setLoadingOpdAppointments(false);
+      if (request.isCurrent()) setLoadingOpdAppointments(false);
     }
   };
 
   const handleOpenCheckoutModal = () => {
     setIsCheckoutModalOpen(true);
+    setCheckoutPaymentMethod("cash");
     setCheckoutDiscount(0);
     setCheckoutNotes("");
     setCheckoutRefNumber("");
-    fetchOpdAppointments();
+    const locationId = filterLocation || locations.find((location) => location.id === activeLocationId)?.id || locations[0]?.id || "";
+    setCheckoutLocationId(locationId);
+    void fetchOpdAppointments(locationId);
   };
 
   const handleExecuteConsolidatedCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCheckoutApptId || !checkoutPreview) return;
+    if (submittingCheckout || !canManageBilling || !selectedCheckoutApptId || !checkoutPreview || loadingCheckoutPreview || loadingOpdAppointments || previewAppointmentId !== selectedCheckoutApptId || checkoutPreview.isAlreadyPaid || (checkoutPreview.isFeeEditable && Number(checkoutCustomConsultFee) !== checkoutPreview.consultationFee)) return;
 
     setSubmittingCheckout(true);
     try {
@@ -254,7 +307,7 @@ export default function BillingPage() {
         patientName,
         patientId: appt?.patientId?.id || appt?.patientId?._id,
         date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
-        referenceNumber: invoiceData?.invoiceNumber || `INV-${Date.now()}`,
+        referenceNumber: invoiceData?.invoiceNumber || "Not provided",
         invoiceItems: checkoutPreview.items.map((it) => ({
           description: it.description,
           quantity: it.quantity,
@@ -285,20 +338,20 @@ export default function BillingPage() {
   };
 
   const fetchTillSummary = async (locationIdToFetch: string) => {
+    const request = startTillRead();
+    setTillSummary(null);
+    setTillError(null);
     if (!locationIdToFetch) return;
     setLoadingTillSummary(true);
     try {
-      const res = await api.get(`/billing/till/summary?locationId=${locationIdToFetch}`);
+      const res = await api.get(`/billing/till/summary?locationId=${locationIdToFetch}`, { signal: request.signal });
+      if (!request.isCurrent()) return;
       const data = res.data?.data || res.data;
       setTillSummary(data);
     } catch (err: any) {
-      toast({
-        title: "Till Summary Error",
-        description: err.response?.data?.message || "Failed to load cashier till summary",
-        variant: "error",
-      });
+      if (request.isCurrent()) setTillError(err.response?.data?.message || "Till totals could not be loaded. Try again.");
     } finally {
-      setLoadingTillSummary(false);
+      if (request.isCurrent()) setLoadingTillSummary(false);
     }
   };
 
@@ -317,12 +370,13 @@ export default function BillingPage() {
 
   const handleCloseTill = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingTillClose || !canManageBilling || loadingTillSummary || !tillSummary || tillSummary.locationId !== tillLocationId) return;
     if (!tillLocationId) {
       toast({ title: "Validation Error", description: "Please select a location for till closeout.", variant: "error" });
       return;
     }
     const counted = Number(actualCashCounted);
-    if (isNaN(counted) || counted < 0) {
+    if (actualCashCounted.trim() === "" || !Number.isFinite(counted) || counted < 0) {
       toast({ title: "Validation Error", description: "Please enter a valid non-negative counted cash amount.", variant: "error" });
       return;
     }
@@ -379,7 +433,8 @@ export default function BillingPage() {
 
   const handleRecordPartialPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!partialTargetInvoice || partialAmount <= 0) {
+    if (submittingPartial || !canManageBilling) return;
+    if (!partialTargetInvoice || !isPayable(partialTargetInvoice) || !Number.isFinite(partialAmount) || roundCurrency(partialAmount) <= 0) {
       toast({ title: "Validation Error", description: "Please enter a valid payment amount greater than 0.", variant: "error" });
       return;
     }
@@ -442,7 +497,7 @@ export default function BillingPage() {
       locationAddress: inv.locationId?.address || inv.locationId?.city,
       doctorName: inv.doctorId?.name,
       doctorSpecialization: inv.doctorId?.specialization,
-      patientName: inv.patientId?.userId?.name || "Patient Profile",
+      patientName: patientName(inv),
       patientId: inv.patientId?.id,
       date: new Date(inv.createdAt).toLocaleDateString("en-US", {
         year: "numeric",
@@ -545,53 +600,60 @@ export default function BillingPage() {
 
   useEffect(() => {
     if (user && user.role !== "patient") fetchLocations();
-  }, [user?.id, user?.role, fetchLocations]);
+  }, [user, fetchLocations]);
 
-  const fetchInvoices = async () => {
+  const fetchInvoices = useCallback(async () => {
+    const request = startInvoiceRead();
+    setLoadError(null);
+    setIsRefreshing(true);
     try {
-      setLoadError(null);
-      setIsRefreshing(true);
-      const queryParams = [];
-      if (filterLocation) queryParams.push(`locationId=${filterLocation}`);
-      if (filterStatus) queryParams.push(`status=${filterStatus}`);
-      const queryString = queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
-
-      const res = await api.get(`/invoices${queryString}`);
-      setInvoices(res.data.data || []);
+      const query = new URLSearchParams({ page: String(page), limit: "20" });
+      if (filterLocation) query.set("locationId", filterLocation);
+      if (filterStatus) query.set("status", filterStatus);
+      const res = await api.get(`/invoices?${query}`, { signal: request.signal });
+      if (!request.isCurrent()) return;
+      const rows = res.data.data || [];
+      if (!Array.isArray(rows)) throw new Error("Invalid invoice response");
+      setInvoices(rows);
+      setLoadedScope(invoiceScope);
+      setTotalCount(Number(res.headers?.["x-total-count"]) || rows.length);
+      setTotalPages(Math.max(1, Number(res.headers?.["x-total-pages"]) || 1));
     } catch {
-      setLoadError("Invoices could not be loaded. Check your connection and try again.");
-      toast({ title: "Error", description: "Failed to load invoices", variant: "error" });
+      if (request.isCurrent()) setLoadError("Invoices could not be loaded. Try again.");
     } finally {
-      setLoading(false);
-      setIsRefreshing(false);
+      if (request.isCurrent()) { setLoading(false); setIsRefreshing(false); }
     }
-  };
+  }, [page, filterLocation, filterStatus, invoiceScope, startInvoiceRead]);
 
   useEffect(() => {
-    if (user) fetchInvoices();
-  }, [user, filterLocation, filterStatus]);
+    if (authenticated) void fetchInvoices();
+  }, [authenticated, fetchInvoices]);
 
   useEffect(() => {
     if (!selectedLocationId) {
       setDoctorAssignments([]);
       return;
     }
+    const request = startAssignmentRead();
+    setDoctorAssignments([]);
+    setAssignmentError(null);
     const fetchAssignments = async () => {
       try {
-        const res = await api.get(`/onboarding/doctors/assignments?locationId=${selectedLocationId}`);
-        setDoctorAssignments(res.data.data || []);
+        const res = await api.get(`/onboarding/doctors/assignments?locationId=${selectedLocationId}`, { signal: request.signal });
+        if (request.isCurrent()) setDoctorAssignments(res.data.data || []);
       } catch {
-        console.error("Failed to load doctor assignments");
+        if (request.isCurrent()) setAssignmentError("Doctors could not be loaded. Try again.");
       }
     };
-    fetchAssignments();
-  }, [selectedLocationId]);
+    void fetchAssignments();
+    return () => { startAssignmentRead(); };
+  }, [selectedLocationId, startAssignmentRead, assignmentReadVersion]);
 
   useEffect(() => {
     if (!selectedDoctorId || !selectedLocationId) return;
     const activeAssign = doctorAssignments.find((a) => (a.doctorId?.id || a.doctorId) === selectedDoctorId);
     if (activeAssign) {
-      const fee = activeAssign.fees || 200;
+      const fee = Number(activeAssign.consultationFee ?? activeAssign.fees ?? 0);
       setInvoiceItems((prev) => {
         const updated = [...prev];
         updated[0] = { ...updated[0], amount: fee };
@@ -600,40 +662,30 @@ export default function BillingPage() {
     }
   }, [selectedDoctorId, selectedLocationId, doctorAssignments]);
 
-  // Debounced Patient Lookup
-  useEffect(() => {
-    if (!patientSearch.trim() || patientSearch.length < 2) {
-      setPatientResults([]);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setSearchLoading(true);
-      try {
-        const res = await api.get(`/patients?search=${encodeURIComponent(patientSearch.trim())}`);
-        setPatientResults(res.data.data || []);
-      } catch {
-        // Non-critical search error
-      } finally {
-        setSearchLoading(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [patientSearch]);
-
-  const handlePatientSearch = async () => {
-    if (!patientSearch.trim()) return;
+  const handlePatientSearch = useCallback(async () => {
+    const request = startPatientRead();
+    const query = patientSearch.trim();
+    if (query.length < 2) return;
     setSearchLoading(true);
+    setPatientError(null);
     try {
-      const res = await api.get(`/patients?search=${encodeURIComponent(patientSearch.trim())}`);
-      setPatientResults(res.data.data || []);
+      const res = await api.get("/patients?search=" + encodeURIComponent(query), { signal: request.signal });
+      if (request.isCurrent()) {
+        const rows = res.data.data || [];
+        setPatientResults(rows);
+        if (!rows.length) setPatientError("No patients found. Try another name or phone number.");
+      }
     } catch {
-      toast({ title: "Error", description: "Patient search failed", variant: "error" });
+      if (request.isCurrent()) setPatientError("Patient search failed. Try again.");
     } finally {
-      setSearchLoading(false);
+      if (request.isCurrent()) setSearchLoading(false);
     }
-  };
+  }, [patientSearch, startPatientRead]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => { void handlePatientSearch(); }, 300);
+    return () => { clearTimeout(timer); startPatientRead(); };
+  }, [handlePatientSearch, startPatientRead]);
 
   const addInvoiceItem = () => {
     setInvoiceItems([...invoiceItems, { description: "", amount: 0, quantity: 1 }]);
@@ -689,6 +741,7 @@ export default function BillingPage() {
 
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingInvoice || !canManageBilling) return;
     if (!validateInvoiceForm()) {
       toast({ title: "Validation Error", description: "Please resolve the form validation errors.", variant: "warning" });
       return;
@@ -716,6 +769,9 @@ export default function BillingPage() {
   };
 
   const resetCreateForm = () => {
+    startPatientRead();
+    setPatientError(null);
+    setSearchLoading(false);
     setSelectedLocationId("");
     setSelectedDoctorId("");
     setSelectedPatient(null);
@@ -729,7 +785,7 @@ export default function BillingPage() {
 
   const handleCollectPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeInvoice) return;
+    if (submittingPayment || !canManageBilling || !activeInvoice || !isPayable(activeInvoice)) return;
     try {
       setSubmittingPayment(true);
       await api.put(`/invoices/${activeInvoice.id}/pay`, { paymentMethod: collectMethod });
@@ -781,7 +837,7 @@ export default function BillingPage() {
             <div class="border-dashed"></div>
             <div class="flex-between"><span class="bold">Receipt No:</span><span>${ticketData.invoiceNumber}</span></div>
             <div class="flex-between"><span class="bold">Date:</span><span>${new Date(ticketData.createdAt).toLocaleDateString()}</span></div>
-            <div class="flex-between"><span class="bold">Patient:</span><span>${ticketData.patientId?.userId?.name}</span></div>
+            <div class="flex-between"><span class="bold">Patient:</span><span>${patientName(ticketData)}</span></div>
             <div class="flex-between"><span class="bold">Doctor:</span><span>Dr. ${ticketData.doctorId?.name}</span></div>
             <div class="border-dashed"></div>
             <table>
@@ -830,584 +886,136 @@ export default function BillingPage() {
     `);
   };
 
-  const filteredInvoices = invoices.filter((inv) => {
-    const patientName = inv.patientId?.userId?.name || "";
-    const phone = inv.patientId?.userId?.phone || "";
-    const num = inv.invoiceNumber || "";
-    const query = searchQuery.toLowerCase();
-    return patientName.toLowerCase().includes(query) || phone.includes(query) || num.toLowerCase().includes(query);
-  });
-
-  const todayStr = new Date().toISOString().split("T")[0];
-  const todaysPaidAmount = invoices.reduce((acc, curr) => {
-    if (curr.status !== "paid") return acc;
-    const dateStr = (curr.paymentDate || curr.createdAt || "").split("T")[0];
-    return dateStr === todayStr ? acc + curr.totalAmount : acc;
-  }, 0);
-
-  const pendingAmount = invoices.reduce((acc, curr) => {
-    return curr.status === "unpaid" ? acc + curr.totalAmount : acc;
-  }, 0);
-
-  const unpaidCount = invoices.filter((i) => i.status === "unpaid").length;
-
-  const cashflowTrendData = (() => {
-    const result = [];
-    const now = new Date();
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const dateKey = d.toISOString().split("T")[0];
-      const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-
-      const dayInvoices = invoices.filter((inv) => {
-        const iDate = (inv.paymentDate || inv.createdAt || "").split("T")[0];
-        return iDate === dateKey;
-      });
-
-      const collected = dayInvoices
-        .filter((inv) => inv.status === "paid")
-        .reduce((sum, inv) => sum + (inv.amountPaid || inv.totalAmount || 0), 0);
-
-      const pending = dayInvoices
-        .filter((inv) => inv.status !== "paid")
-        .reduce((sum, inv) => sum + (inv.balanceDue !== undefined ? inv.balanceDue : inv.totalAmount), 0);
-
-      result.push({
-        label,
-        collected,
-        pending,
-      });
-    }
-    return result;
-  })();
-
-  const paymentMethodsData = (() => {
-    const counts: Record<string, number> = {
-      UPI: 0,
-      Card: 0,
-      Cash: 0,
-      "Insurance / TPA": 0,
-      "Net Banking": 0,
-    };
-
-    invoices.forEach((inv) => {
-      const m = (inv.paymentMethod || "").toLowerCase();
-      if (m.includes("upi")) counts["UPI"] += inv.totalAmount || 1;
-      else if (m.includes("card")) counts["Card"] += inv.totalAmount || 1;
-      else if (m.includes("cash")) counts["Cash"] += inv.totalAmount || 1;
-      else if (m.includes("insur")) counts["Insurance / TPA"] += inv.totalAmount || 1;
-      else if (inv.status === "paid") counts["Net Banking"] += inv.totalAmount || 1;
-    });
-
-    const colors: Record<string, string> = {
-      UPI: "var(--chart-1)",
-      Card: "var(--chart-4)",
-      Cash: "var(--chart-2)",
-      "Insurance / TPA": "var(--chart-3)",
-      "Net Banking": "var(--chart-6)",
-    };
-
-    return Object.entries(counts)
-      .filter(([_, val]) => val > 0)
-      .map(([name, value]) => ({
-        name,
-        value,
-        color: colors[name],
-      }));
-  })();
+  const checkoutFeeDirty = Boolean(checkoutPreview?.isFeeEditable && Number(checkoutCustomConsultFee) !== checkoutPreview.consultationFee);
+  const currentInvoices = loadedScope === invoiceScope ? invoices : [];
+  const query = searchQuery.trim().toLowerCase();
+  const filteredInvoices = currentInvoices.filter((invoice) =>
+    [patientName(invoice), patientPhone(invoice), invoice.invoiceNumber].some((value) => value.toLowerCase().includes(query))
+  );
+  const summaries = Object.entries(currentInvoices.reduce<Record<string, { total: number; paid: number; due: number }>>((groups, invoice) => {
+    const currency = invoice.currency || "INR";
+    const group = groups[currency] ||= { total: 0, paid: 0, due: 0 };
+    group.total += invoice.totalAmount;
+    group.paid += paidAmount(invoice);
+    if (["unpaid", "partially_paid"].includes(invoice.status)) group.due += balanceDue(invoice);
+    return groups;
+  }, {}));
+  const showLoading = loading || (loadedScope !== invoiceScope && !loadError);
+  const invoiceStatus = (invoice: Invoice) => <Badge size="sm" dot variant={invoice.status === "paid" ? "success" : ["unpaid", "partially_paid"].includes(invoice.status) ? "warning" : "default"}>{statusLabel(invoice.status)}</Badge>;
+  const invoiceActions = (invoice: Invoice) => <div className={styles.rowActions}>
+    {invoice.refundPending && invoice.appointmentId && canManageBilling ? <RefundReconciliationAction appointmentId={invoice.appointmentId} onReconciled={fetchInvoices} />
+      : canManageBilling && isPayable(invoice) ? <Button size="sm" onClick={() => openPartialPaymentModal(invoice)}>Record payment</Button>
+      : <Button size="sm" variant="outline" onClick={() => handleOpenPrintInvoice(invoice)}><FileText size={14} /> Invoice</Button>}
+    <Dropdown align="right" width="w-56" trigger={<Button size="sm" variant="ghost" className={styles.iconButton} aria-label={`Actions for invoice ${invoice.invoiceNumber}`}><MoreHorizontal size={18} /></Button>} items={[
+      ...(canManageBilling && isPayable(invoice) && invoice.status === "unpaid" ? [{ label: "Collect full payment", icon: <CheckCircle2 size={16} />, onClick: () => { setActiveInvoice(invoice); setIsCollectOpen(true); } }] : []),
+      { label: "Preview invoice", icon: <FileText size={16} />, onClick: () => handleOpenPrintInvoice(invoice) },
+      ...(paidAmount(invoice) > 0 ? [{ label: "Preview receipt", icon: <Printer size={16} />, onClick: () => handlePrintReceipt(invoice) }] : []),
+    ]} />
+  </div>;
 
   return (
-    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12">
-      {/* ──────────────────────────────────────────────────────────────────────────
-          1. TOP EXECUTIVE HEADER BANNER
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
-        <div className="flex flex-col gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Billing & invoices
-              </h1>
-              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Billing
-              </Badge>
-            </div>
-            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Track outpatient collections, generate medical invoices, and record installment payments.
-            </p>
-          </div>
+    <div className={styles.workspace}>
+      <header className={styles.header}>
+        <div><h1>Billing</h1><p>Invoices and patient payments</p></div>
+        <div className={styles.headerActions}>
+          <Button variant="ghost" size="sm" className={styles.iconButton} aria-label="Refresh invoices" disabled={isRefreshing} onClick={fetchInvoices}><RotateCw size={17} className={isRefreshing ? "animate-spin" : ""} /></Button>
+          {canManageBilling && <Button size="sm" onClick={() => setIsCreateOpen(true)}><Plus size={16} /> New invoice</Button>}
+          <Dropdown align="right" width="w-56" trigger={<Button variant="ghost" size="sm" className={styles.iconButton} aria-label="Billing tools"><MoreHorizontal size={19} /></Button>} items={[
+            ...(canManageBilling ? [
+              { label: "OPD checkout", icon: <Receipt size={16} />, onClick: handleOpenCheckoutModal },
+              { label: "Close till / daily report", icon: <Banknote size={16} />, onClick: handleOpenTillModal },
+            ] : []),
+            { label: "Service rates", icon: <FileText size={16} />, onClick: () => router.push("/dashboard/billing/services") },
+          ]} />
+        </div>
+      </header>
 
-          <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-2.5 min-w-0 w-full">
-            {/* Secondary Utilities & Shift Management */}
-            <div className="flex flex-wrap items-center gap-2 py-0.5 min-w-0 w-full md:w-auto md:flex-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push("/dashboard/billing/services")}
-                className="text-xs font-semibold min-h-[38px] sm:min-h-[36px] shrink-0"
-              >
-                <FileText className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
-                Rate Cards
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchInvoices}
-                disabled={isRefreshing}
-                className="text-xs font-semibold transition-colors min-h-[38px] sm:min-h-[36px] shrink-0"
-               loading={isRefreshing}>
-                <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
-                Refresh
-              </Button>
-
-              {canManageBilling && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleOpenTillModal}
-                  className="text-xs font-semibold border-warning/40 text-warning-text dark:text-warning-text hover:bg-warning/10 transition-colors shadow-2xs min-h-[38px] sm:min-h-[36px] shrink-0"
-                  title="Reconcile Cash Drawer & Close Daily Shift (Z-Report)"
-                >
-                  <Banknote className="h-3.5 w-3.5 mr-1 text-warning-text dark:text-warning-text" />
-                  Close Till / Z-Report
-                </Button>
-              )}
-            </div>
-
-            {/* Primary Billing CTAs */}
-            {canManageBilling && (
-              <div className="grid grid-cols-2 md:flex md:items-center gap-2 w-full md:w-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleOpenCheckoutModal}
-                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold border-primary-500/40 text-accent dark:text-accent hover:bg-primary-500/10 transition-colors shadow-2xs justify-center"
-                  title="Combine consultation, tests and prescriptions for checkout"
-                >
-                  <Receipt className="h-3.5 w-3.5 mr-1 text-accent" />
-                  OPD checkout
-                </Button>
-
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setIsCreateOpen(true)}
-                  className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold justify-center"
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Create Invoice
-                </Button>
-              </div>
-            )}
+      <section className={styles.directory} aria-label="Invoices">
+        <div className={styles.filters}>
+          <Tabs variant="pills" activeTab={filterStatus || "all"} onChange={(value) => { setPage(1); setFilterStatus(value === "all" ? "" : value); }} scrollActiveIntoView={false} tabs={[
+            { id: "all", label: "All" }, { id: "unpaid", label: "Unpaid" }, { id: "partially_paid", label: "Part paid" },
+            { id: "paid", label: "Paid" }, { id: "refunded", label: "Refunded" }, { id: "cancelled", label: "Cancelled" },
+          ]} />
+          <div className={styles.searchRow}>
+            <Input aria-label="Search invoices on this page" icon={<Search size={16} />} placeholder="Search this page" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} />
+            {locations.length > 1 && <Select aria-label="Filter by location" value={filterLocation} onChange={(event) => { setPage(1); setFilterLocation(event.target.value); }} options={[{ value: "", label: "All locations" }, ...locations.map((location) => ({ value: location.id, label: location.name }))]} />}
           </div>
         </div>
-      </div>
+        <Table variant="flat" density="compact" fitContent searchable={false} showColumnVisibility={false} pagination={false}
+          loading={showLoading} error={loadError} onRetry={fetchInvoices} data={filteredInvoices}
+          emptyMessage={query ? "No matches on this page. Try another page or clear your search." : "No invoices for this filter."}
+          columns={[
+            { key: "patient", header: "Patient / invoice", render: (invoice: Invoice) => <div className={styles.identity}><strong>{patientName(invoice)}</strong><span>{invoice.invoiceNumber}</span>{patientPhone(invoice) && <small>{patientPhone(invoice)}</small>}</div> },
+            { key: "location", header: "Visit", render: (invoice: Invoice) => <div className={styles.identity}><span>{invoice.locationId?.name || "Location unavailable"}</span><small>{invoice.doctorId?.name || "Doctor not recorded"}</small><small>{new Date(invoice.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</small></div> },
+            { key: "totalAmount", header: "Amount", align: "right", render: (invoice: Invoice) => <div className={styles.amount}><strong>{formatCurrency(invoice.totalAmount, invoice.currency)}</strong>{["unpaid", "partially_paid"].includes(invoice.status) && <small>Due {formatCurrency(balanceDue(invoice), invoice.currency)}</small>}</div> },
+            { key: "status", header: "Status", render: invoiceStatus },
+            { key: "actions", header: "", align: "right", render: invoiceActions },
+          ]}
+          mobileCardView renderMobileCard={(invoice: Invoice) => <article className={styles.invoiceCard} key={invoice.id}>
+            <div className={styles.cardHeading}><div className={styles.identity}><strong>{patientName(invoice)}</strong><span>{invoice.invoiceNumber}</span></div>{invoiceStatus(invoice)}</div>
+            <p className={styles.visit}>{invoice.locationId?.name || "Location unavailable"} &middot; {new Date(invoice.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
+            <div className={styles.cardAmounts}><div><small>Invoice total</small><strong>{formatCurrency(invoice.totalAmount, invoice.currency)}</strong></div><div><small>{["unpaid", "partially_paid"].includes(invoice.status) ? "Balance due" : "Recorded payments"}</small><strong>{formatCurrency(["unpaid", "partially_paid"].includes(invoice.status) ? balanceDue(invoice) : paidAmount(invoice), invoice.currency)}</strong></div></div>
+            {invoiceActions(invoice)}
+          </article>} />
+        <footer className={styles.pagination}>
+          <span aria-live="polite">{showLoading ? "Loading invoices..." : loadedScope !== invoiceScope ? "Invoices unavailable" : query ? filteredInvoices.length + " matches on this page" : totalCount + (totalCount === 1 ? " invoice" : " invoices")}</span>
+          <div><Button size="sm" variant="ghost" disabled={page <= 1 || isRefreshing} onClick={() => setPage((value) => value - 1)}>Previous</Button><span>Page {page} / {loadedScope === invoiceScope ? totalPages : "\u2014"}</span><Button size="sm" variant="ghost" disabled={page >= totalPages || isRefreshing} onClick={() => setPage((value) => value + 1)}>Next</Button></div>
+        </footer>
+      </section>
+      {currentInvoices.length > 0 && <details className={styles.summary}><summary>Page summary <span>{currentInvoices.length} invoices</span></summary>
+        <p>Totals for invoices on this page, grouped by currency. These are not daily collection totals.</p>
+        {summaries.map(([currency, totals]) => <div key={currency} className={styles.summaryAmounts}><div><small>Invoiced &middot; {currency}</small><strong>{formatCurrency(totals.total, currency)}</strong></div><div><small>Recorded payments</small><strong>{formatCurrency(totals.paid, currency)}</strong></div><div><small>Outstanding</small><strong>{formatCurrency(totals.due, currency)}</strong></div></div>)}
+      </details>}
 
-      {/* ──────────────────────────────────────────────────────────────────────────
-          2. FINANCIAL KPI STATS CARDS
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
-        <StatCard loading={loading}
-          label="Today's Collections"
-          value={`₹${todaysPaidAmount.toLocaleString("en-IN")}`}
-          description="Settled outpatient receipts"
-          icon={<IndianRupee className="w-5 h-5 text-success-text" />}
-        />
-        <StatCard loading={loading}
-          label="Outstanding Balances"
-          value={`₹${pendingAmount.toLocaleString("en-IN")}`}
-          description="Uncollected pending receivables"
-          icon={<AlertCircle className="w-5 h-5 text-warning-text" />}
-        />
-        <StatCard loading={loading}
-          label="Unpaid Invoices"
-          value={unpaidCount.toString()}
-          description="Invoices awaiting settlement"
-          icon={<Receipt className="w-5 h-5 text-danger-text" />}
-        />
-      </div>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          3. BILLING ANALYTICS & CASHFLOW CHARTS
-         ────────────────────────────────────────────────────────────────────────── */}
-      <details className="rounded-xl border border-border bg-surface">
-        <summary className="cursor-pointer p-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Collection trends and payment channels</summary>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 pt-0 sm:gap-5">
-        <ChartContainer
-          title="Collections and outstanding balances"
-          description="14-day comparison of collected revenue vs pending receivables"
-          className="lg:col-span-2"
-          loading={loading}
-          empty={invoices.length === 0}
-          emptyMessage="No historical invoices or collections recorded yet."
-        >
-          <AreaChart
-            data={cashflowTrendData}
-            series={[
-              { key: "collected", name: "Collections Inflow", color: "var(--chart-2)" },
-              { key: "pending", name: "Outstanding Aging", color: "var(--chart-3)" },
-            ]}
-            height={210}
-            valueFormatter={(v) => `₹${v.toLocaleString("en-IN")}`}
-          />
-        </ChartContainer>
-
-        <ChartContainer
-          title="Settlement Channels"
-          description="Payment method volume distribution"
-          className="lg:col-span-1"
-          loading={loading}
-          empty={paymentMethodsData.length === 0}
-          emptyMessage="No payment method transactions yet."
-        >
-          <DonutChart
-            data={paymentMethodsData}
-            height={210}
-            valueFormatter={(v) => `₹${v.toLocaleString("en-IN")}`}
-          />
-        </ChartContainer>
-        </div>
-      </details>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          4. INVOICES ROSTER TABLE
-         ────────────────────────────────────────────────────────────────────────── */}
-      <Card padding="none" className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-        <CardContent className="p-0">
-          <Table
-              error={loadError}
-              onRetry={fetchInvoices}
-            searchPlaceholder="Search patient name, phone, or invoice #..."
-            loading={loading}
-            toolbarFilters={
-              <>
-                {locations.length > 1 && (
-                  <div className="flex-1 min-w-[130px] sm:max-w-[160px]">
-                    <Select
-                      size="sm"
-                      placeholder="All Locations"
-                      value={filterLocation}
-                      onChange={(e) => setFilterLocation(e.target.value)}
-                      options={[{ value: "", label: "All Locations" }, ...locations.map((c) => ({ value: c.id, label: c.name }))]}
-                    />
-                  </div>
-                )}
-                <div className="flex-1 min-w-[130px] sm:max-w-[160px]">
-                  <Select
-                    size="sm"
-                    placeholder="All Statuses"
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    options={[
-                      { value: "", label: "All Statuses" },
-                      { value: "unpaid", label: "Unpaid" },
-                      { value: "paid", label: "Paid" },
-                      { value: "refunded", label: "Refunded" },
-                    ]}
-                  />
-                </div>
-              </>
-            }
-            columns={[
-              {
-                key: "invoiceNumber",
-                header: "Invoice #",
-                render: (row: Invoice) => (
-                  <span className="font-mono font-bold text-xs text-accent dark:text-accent">
-                    #{row.invoiceNumber}
-                  </span>
-                ),
-              },
-              {
-                key: "patient",
-                header: "Patient",
-                render: (row: Invoice) => (
-                  <div className="space-y-0.5 min-w-[140px]">
-                    <span className="font-bold text-text text-xs sm:text-sm">
-                      {row.patientId?.userId?.name || "Patient Profile"}
-                    </span>
-                    <span className="text-xs text-text-muted flex items-center gap-1">
-                      <Phone className="w-3 h-3 text-text-muted" />
-                      {row.patientId?.userId?.phone || "No phone"}
-                    </span>
-                  </div>
-                ),
-              },
-              {
-                key: "location",
-                header: "Facility",
-                render: (row: Invoice) => (
-                  <div className="flex items-center gap-1.5 text-xs text-text-secondary min-w-[120px]">
-                    <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                    <span>{row.locationId?.name || "Location"}</span>
-                  </div>
-                ),
-              },
-              {
-                key: "doctor",
-                header: "Doctor",
-                render: (row: Invoice) => (
-                  <div className="flex items-center gap-1 text-xs font-semibold text-text min-w-[130px]">
-                    <Stethoscope className="w-3.5 h-3.5 text-accent shrink-0" />
-                    <span>Dr. {(row.doctorId?.name || "").replace(/^dr\.?\s+/i, "")}</span>
-                  </div>
-                ),
-              },
-              {
-                key: "totalAmount",
-                header: "Total / Balance",
-                render: (row: Invoice) => (
-                  <div className="space-y-0.5">
-                    <span className="font-bold text-text text-xs sm:text-sm">
-                      {formatCurrency(row.totalAmount, row.currency)}
-                    </span>
-                    {row.status !== "paid" && (
-                      <span className="text-xs font-bold text-danger-text block">
-                        Due: {formatCurrency((row.balanceDue !== undefined
-                          ? row.balanceDue
-                          : row.totalAmount - (row.amountPaid || 0)
-                        ), row.currency)}
-                      </span>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                key: "status",
-                header: "Status",
-                render: (row: Invoice) => (
-                  <Badge
-                    variant={
-                      row.status === "paid" ? "success" : row.status === "partially_paid" ? "warning" : "danger"
-                    }
-                    size="sm"
-                    dot
-                    className="capitalize font-semibold text-[10px]"
-                  >
-                    {row.status === "partially_paid" ? "Partially Paid" : row.status}
-                  </Badge>
-                ),
-              },
-              {
-                key: "actions",
-                header: "Actions",
-                align: "right",
-                render: (row: Invoice) => (
-                  <div className="flex items-center justify-end gap-1.5">
-                    {row.refundPending && row.appointmentId && canManageBilling && <RefundReconciliationAction appointmentId={row.appointmentId} onReconciled={fetchInvoices} />}
-                    {canManageBilling && !row.refundPending && ["unpaid", "partially_paid"].includes(row.status) ? (
-                      <Button
-                        size="xs"
-                        variant="primary"
-                        onClick={() => openPartialPaymentModal(row)}
-                        className="shrink-0 font-semibold rounded-lg min-h-[36px]"
-                      >
-                        <CreditCard className="w-3.5 h-3.5 mr-1" />
-                        Pay {formatCurrency((row.balanceDue !== undefined
-                          ? row.balanceDue
-                          : row.totalAmount - (row.amountPaid || 0)
-                        ), row.currency)}
-                      </Button>
-                    ) : (
-                      <PrintButton
-                        size="xs"
-                        variant="outline"
-                        onPrint={() => handleOpenPrintInvoice(row)}
-                        className="shrink-0 font-semibold rounded-lg min-h-[36px]" documentName="invoice" preview
-                      >
-              </PrintButton>
-                    )}
-                    <Dropdown
-                      align="right"
-                      trigger={
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          className="h-8 w-8 min-h-[36px] min-w-[36px] p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text cursor-pointer"
-                          title="Row Actions"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      }
-                      items={[
-                        ...(canManageBilling && !row.refundPending && ["unpaid", "partially_paid"].includes(row.status)
-                          ? [
-                              {
-                                label: "Record Installment Payment",
-                                icon: <CreditCard className="w-4 h-4 text-accent" />,
-                                onClick: () => openPartialPaymentModal(row),
-                              },
-                            ]
-                          : []),
-                        ...(canManageBilling && !row.refundPending && row.status === "unpaid"
-                          ? [
-                              {
-                                label: "Collect Full Payment",
-                                icon: <CheckCircle2 className="w-4 h-4 text-success-text" />,
-                                onClick: () => {
-                                  setActiveInvoice(row);
-                                  setIsCollectOpen(true);
-                                },
-                              },
-                            ]
-                          : []),
-                        {
-                          label: "Preview receipt",
-                          icon: <Printer className="w-4 h-4 text-text-muted" />,
-                          onClick: () => handlePrintReceipt(row),
-                        },
-                        {
-                          label: "Preview invoice",
-                          icon: <Printer className="w-4 h-4 text-text-muted" />,
-                          onClick: () => handleOpenPrintInvoice(row),
-                        },
-                      ]}
-                    />
-                  </div>
-                ),
-              },
-            ]}
-            mobileCardView
-            data={filteredInvoices}
-            emptyMessage="No clinical invoices found for selected filter."
-            renderMobileCard={(row: Invoice) => {
-              const canCollect = canManageBilling && !row.refundPending && ["unpaid", "partially_paid"].includes(row.status);
-              const dueAmount =
-                row.balanceDue !== undefined
-                  ? row.balanceDue
-                  : row.totalAmount - (row.amountPaid || 0);
-
-              return (
-                <div
-                  key={row.id}
-                  className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <span className="font-mono font-bold text-xs text-accent dark:text-accent block break-all">
-                        #{row.invoiceNumber}
-                      </span>
-                      <p className="font-bold text-text text-sm pt-0.5 truncate">
-                        {row.patientId?.userId?.name || "Patient Profile"}
-                      </p>
-                    </div>
-                    <Badge
-                      variant={
-                        row.status === "paid"
-                          ? "success"
-                          : row.status === "partially_paid"
-                          ? "warning"
-                          : "danger"
-                      }
-                      size="sm"
-                      dot
-                      className="capitalize font-semibold text-[10px] shrink-0"
-                    >
-                      {row.status === "partially_paid" ? "Partially Paid" : row.status}
-                    </Badge>
-                  </div>
-
-                  <div className="p-2.5 bg-surface-alt/70 rounded-xl border border-border/60 space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between gap-2 text-text-secondary">
-                      <span className="flex items-center gap-1 text-text-muted">
-                        <Stethoscope className="w-3.5 h-3.5 text-accent shrink-0" />
-                        <span>Doctor:</span>
-                      </span>
-                      <span className="font-semibold text-text truncate">
-                        Dr. {(row.doctorId?.name || "").replace(/^dr\.?\s+/i, "")}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 text-text-secondary">
-                      <span className="flex items-center gap-1 text-text-muted">
-                        <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                        <span>Location:</span>
-                      </span>
-                      <span className="truncate">{row.locationId?.name || "Location"}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40 text-xs">
-                      <div>
-                        <span className="text-[10px] text-text-muted block">Total Billed</span>
-                        <span className="font-bold text-text text-sm">
-                          {formatCurrency(row.totalAmount, row.currency)}
-                        </span>
-                      </div>
-                      {canCollect && (
-                        <div className="text-right">
-                          <span className="text-[10px] text-danger-text font-bold block">Balance Due</span>
-                          <span className="font-bold text-danger-text text-sm">
-                            {formatCurrency(dueAmount, row.currency)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    {canCollect ? (
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        onClick={() => openPartialPaymentModal(row)}
-                        className="w-full font-bold text-xs min-h-[42px] flex items-center justify-center gap-1.5"
-                      >
-                        <CreditCard className="w-4 h-4" />
-                        <span>Pay {formatCurrency(dueAmount, row.currency)}</span>
-                      </Button>
-                    ) : (
-                      <PrintButton
-                        size="sm"
-                        variant="outline"
-                        onPrint={() => handlePrintReceipt(row)}
-                        className="w-full font-semibold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5" documentName="receipt" preview
-                      >
-              </PrintButton>
-                    )}
-
-                    <PrintButton
-                      size="sm"
-                      variant="outline"
-                      onPrint={() => handleOpenPrintInvoice(row)}
-                      className="w-full font-semibold text-xs min-h-[42px] rounded-xl flex items-center justify-center gap-1.5" documentName="invoice" preview
-                    >
-              </PrintButton>
-                  </div>
-                  {row.refundPending && row.appointmentId && canManageBilling && <RefundReconciliationAction appointmentId={row.appointmentId} onReconciled={fetchInvoices} />}
-                </div>
-              );
-            }}
-          />
-        </CardContent>
-      </Card>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          5. CREATE MANUAL INVOICE MODAL
-         ────────────────────────────────────────────────────────────────────────── */}
       <Modal
         open={isCreateOpen}
         onClose={() => {
           setIsCreateOpen(false);
           resetCreateForm();
         }}
-        title="Create Manual Medical Invoice"
-        description="Generate an outpatient invoice itemized by consultation fees, diagnostics, and procedures."
+        title="New invoice"
+        description="Choose a patient and add their charges."
         size="xl"
+        busy={submittingInvoice}
+        bodyClassName={styles.dialogBody}
+        footer={<div className={styles.dialogActions}>
+            <Button
+              disabled={submittingInvoice} variant="outline"
+              type="button"
+              size="sm"
+              onClick={() => {
+                setIsCreateOpen(false);
+                resetCreateForm();
+              }}
+              className="w-full sm:w-auto min-h-[44px]"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit" form="create-invoice"
+              size="sm"
+              variant="primary"
+              loading={submittingInvoice}
+              disabled={!selectedPatient || !selectedLocationId || !selectedDoctorId}
+              className="w-full sm:w-auto font-semibold min-h-[44px]"
+            >
+              Create invoice
+            </Button>
+          </div>}
       >
-        <form onSubmit={handleCreateInvoice} className="space-y-4 pt-1">
+        <form id="create-invoice" onSubmit={handleCreateInvoice} className="space-y-4 pt-1">
           {/* Step 1: Choose Patient */}
           <div className="space-y-2 border-b border-border/60 pb-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-text">1. Choose Patient</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-text">Patient</h3>
             <div className="flex gap-2">
               <div className="relative flex-1">
 
                 <Input icon={<Search />}
                   placeholder="Search patient name, email, or mobile..."
                   value={patientSearch}
-                  onChange={(e) => setPatientSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handlePatientSearch()}
+                  onChange={(e) => { startPatientRead(); setPatientResults([]); setPatientError(null); setSearchLoading(false); setPatientSearch(e.target.value); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handlePatientSearch(); } }}
+                  aria-label="Find a patient"
                   className="pl-9"
                 />
               </div>
@@ -1416,6 +1024,7 @@ export default function BillingPage() {
               </Button>
             </div>
 
+            {patientError && <p role="status" className="text-xs text-text-muted">{patientError}</p>}
             {patientResults.length > 0 && (
               <div className="border border-border/80 rounded-2xl max-h-40 overflow-y-auto bg-surface mt-2 divide-y divide-border/60">
                 {patientResults.map((p) => (
@@ -1424,9 +1033,9 @@ export default function BillingPage() {
                     className="p-2.5 flex justify-between items-center hover:bg-surface-hover transition-colors"
                   >
                     <div>
-                      <p className="font-bold text-xs sm:text-sm text-text">{p.userId?.name}</p>
+                      <p className="font-bold text-xs sm:text-sm text-text">{p.userId?.name || p.name || "Patient"}</p>
                       <p className="text-xs text-text-muted">
-                        {p.userId?.phone} &bull; {p.userId?.email}
+                        {p.userId?.phone || p.phone} &bull; {p.userId?.email}
                       </p>
                     </div>
                     <Button
@@ -1452,7 +1061,7 @@ export default function BillingPage() {
               <div className="p-3 bg-success/10 border border-success/20 rounded-2xl flex items-center justify-between mt-2">
                 <div>
                   <p className="text-xs font-bold text-success-text dark:text-success-text">
-                    Selected: {selectedPatient.userId?.name}
+                    Selected: {selectedPatient.userId?.name || selectedPatient.name || "Patient"}
                   </p>
                   <p className="text-[11px] text-text-muted">
                     {selectedPatient.userId?.phone} &bull; {selectedPatient.userId?.email}
@@ -1475,7 +1084,7 @@ export default function BillingPage() {
           {/* Step 2: Location & Doctor Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 border-b border-border/60 pb-4">
             <Select
-              label="Choose Location *"
+              label="Location *"
               value={selectedLocationId}
               onChange={(e) => {
                 const val = e.target.value;
@@ -1488,7 +1097,7 @@ export default function BillingPage() {
               required
             />
             <Select
-              label="Choose Doctor *"
+              label="Doctor *"
               value={selectedDoctorId}
               onChange={(e) => {
                 const val = e.target.value;
@@ -1510,21 +1119,24 @@ export default function BillingPage() {
             />
           </div>
 
+          {assignmentError && <div role="alert" className={styles.readError}>{assignmentError}<Button type="button" size="sm" variant="outline" onClick={() => setAssignmentReadVersion((value) => value + 1)}>Try again</Button></div>}
           {/* Step 3: Invoice Line Items Table */}
           <div className="space-y-2 border-b border-border/60 pb-4">
             <div className="flex justify-between items-center mb-1">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-text">3. Invoice Line Items</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-text">Charges</h3>
               <Button type="button" size="xs" variant="outline" onClick={addInvoiceItem} className="font-semibold rounded-lg">
                 <Plus className="w-3.5 h-3.5 mr-1" />
-                Add Line Item
+                Add charge
               </Button>
             </div>
 
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+            <div className={styles.lineItems}>
               {invoiceItems.map((item, idx) => (
-                <div key={idx} className="flex gap-2 items-start">
+                <div key={idx} className={styles.lineItem}>
                   <div className="flex-1">
                     <Input
+                      label="Description"
+                      aria-label={`Charge ${idx + 1} description`}
                       value={item.description}
                       onChange={(e) => updateInvoiceItemField(idx, "description", e.target.value)}
                       disabled={idx === 0}
@@ -1536,7 +1148,10 @@ export default function BillingPage() {
                   <div className="w-28">
                     <Input
                       type="number"
-                      value={item.amount || ""}
+                      label="Amount"
+                      aria-label={`Charge ${idx + 1} amount`}
+                      min="0" step="0.01"
+                      value={item.amount}
                       onChange={(e) => updateInvoiceItemField(idx, "amount", e.target.value)}
                       error={errors[`itemAmount_${idx}`]}
                       placeholder="0.00"
@@ -1546,6 +1161,9 @@ export default function BillingPage() {
                   <div className="w-20">
                     <Input
                       type="number"
+                      label="Qty"
+                      aria-label={`Charge ${idx + 1} quantity`}
+                      min="1" step="1"
                       value={item.quantity || ""}
                       onChange={(e) => updateInvoiceItemField(idx, "quantity", e.target.value)}
                       error={errors[`itemQuantity_${idx}`]}
@@ -1617,31 +1235,7 @@ export default function BillingPage() {
             </div>
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 border-t border-border/60 pt-3.5 mt-4">
-            <Button
-              variant="outline"
-              type="button"
-              size="sm"
-              onClick={() => {
-                setIsCreateOpen(false);
-                resetCreateForm();
-              }}
-              className="w-full sm:w-auto min-h-[44px]"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              variant="primary"
-              loading={submittingInvoice}
-              disabled={!selectedPatient || !selectedLocationId || !selectedDoctorId}
-              className="w-full sm:w-auto font-semibold min-h-[44px]"
-            >
-              Generate Invoice
-            </Button>
-          </div>
-        </form>
+          </form>
       </Modal>
 
       {/* ──────────────────────────────────────────────────────────────────────────
@@ -1653,41 +1247,13 @@ export default function BillingPage() {
           setIsCollectOpen(false);
           setActiveInvoice(null);
         }}
-        title="Record Invoice Payment"
+        title="Collect full payment"
         size="sm"
-      >
-        <form onSubmit={handleCollectPayment} className="space-y-4 pt-1">
-          <div className="p-4 bg-surface-alt border border-border/80 rounded-2xl space-y-1 text-xs">
-            <p className="text-text-muted">
-              Invoice Reference: <span className="font-mono font-bold text-text">#{activeInvoice?.invoiceNumber}</span>
-            </p>
-            <p className="text-text-muted">
-              Patient: <span className="font-bold text-text">{activeInvoice?.patientId?.userId?.name}</span>
-            </p>
-            <p className="text-sm font-bold text-text pt-1">
-              Total Amount Due:{" "}
-              <span className="text-accent dark:text-accent font-mono">
-                {formatCurrency(activeInvoice?.totalAmount, activeInvoice?.currency)}
-              </span>
-            </p>
-          </div>
-
-          <Select
-            label="Payment Collection Method *"
-            value={collectMethod}
-            onChange={(e) => setCollectMethod(e.target.value as any)}
-            options={[
-              { value: "cash", label: "Cash Payment" },
-              { value: "card", label: "Card Swipe / POS Terminal" },
-              { value: "upi", label: "UPI Desk QR Scan" },
-              { value: "insurance", label: "Insurance / TPA Settlement" },
-            ]}
-            required
-          />
-
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 border-t border-border/60 pt-3.5">
+        busy={submittingPayment}
+        bodyClassName={styles.dialogBody}
+        footer={<div className={styles.dialogActions}>
             <Button
-              variant="outline"
+              disabled={submittingPayment} variant="outline"
               size="sm"
               type="button"
               onClick={() => {
@@ -1698,11 +1264,41 @@ export default function BillingPage() {
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submittingPayment} className="w-full sm:w-auto font-semibold min-h-[44px]">
-              Record Settlement
+            <Button type="submit" form="collect-payment" size="sm" variant="primary" loading={submittingPayment} className="w-full sm:w-auto font-semibold min-h-[44px]">
+              Record payment
             </Button>
+          </div>}
+      >
+        <form id="collect-payment" onSubmit={handleCollectPayment} className="space-y-4 pt-1">
+          <div className="p-4 bg-surface-alt border border-border/80 rounded-2xl space-y-1 text-xs">
+            <p className="text-text-muted">
+              Invoice Reference: <span className="font-mono font-bold text-text">#{activeInvoice?.invoiceNumber}</span>
+            </p>
+            <p className="text-text-muted">
+              Patient: <span className="font-bold text-text">{activeInvoice ? patientName(activeInvoice) : ""}</span>
+            </p>
+            <p className="text-sm font-bold text-text pt-1">
+              Total Amount Due:{" "}
+              <span className="text-accent dark:text-accent font-mono">
+                {formatCurrency(activeInvoice?.totalAmount, activeInvoice?.currency)}
+              </span>
+            </p>
           </div>
-        </form>
+
+          <Select
+            label="Payment method *"
+            value={collectMethod}
+            onChange={(e) => setCollectMethod(e.target.value as any)}
+            options={[
+              { value: "cash", label: "Cash" },
+              { value: "card", label: "Card / POS" },
+              { value: "upi", label: "UPI" },
+              { value: "insurance", label: "Insurance / TPA Settlement" },
+            ]}
+            required
+          />
+
+          </form>
       </Modal>
 
       {/* ──────────────────────────────────────────────────────────────────────────
@@ -1714,94 +1310,37 @@ export default function BillingPage() {
           setReceiptOpen(false);
           setReceiptInvoice(null);
         }}
-        title="Cash Payment Receipt"
+        title="Payment receipt"
+        bodyClassName={styles.dialogBody}
+        footerClassName={styles.printFooter}
         size="md"
         footer={<PrintDialogActions documentName="receipt" onPrint={() => triggerBrowserPrint(receiptInvoice!)} onClose={() => {
           setReceiptOpen(false);
           setReceiptInvoice(null);
         }} disabled={!receiptInvoice} />}
       >
-        {receiptInvoice && (
-          <div className="space-y-4 py-1">
-            <div className="border border-border/80 rounded-2xl p-5 bg-surface-alt font-mono text-xs space-y-3">
-              <div className="text-center border-b border-border/60 border-dashed pb-3 mb-2">
-                <h3 className="font-bold text-sm tracking-tight text-text">HEALTHCARE RECEIPT</h3>
-                <p className="text-[11px] text-text-muted mt-0.5">{receiptInvoice.locationId?.name}</p>
-                <p className="text-[10px] text-text-muted">
-                  {receiptInvoice.locationId?.address}, {receiptInvoice.locationId?.city}
-                </p>
-              </div>
-
-              <div className="space-y-1 border-b border-border/60 border-dashed pb-2.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Invoice No:</span>
-                  <span className="font-bold text-text">#{receiptInvoice.invoiceNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Invoice Date:</span>
-                  <span>{new Date(receiptInvoice.createdAt).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Patient:</span>
-                  <span className="font-semibold text-text">{receiptInvoice.patientId?.userId?.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Doctor:</span>
-                  <span>Dr. {receiptInvoice.doctorId?.name}</span>
-                </div>
-              </div>
-
-              {/* Items List */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between font-bold border-b border-border/60 pb-1">
-                  <span>Item Description</span>
-                  <span className="w-12 text-right">Qty</span>
-                  <span className="w-20 text-right">Amount</span>
-                </div>
-                {receiptInvoice.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between text-xs py-0.5">
-                    <span className="truncate max-w-[200px]">{item.description}</span>
-                    <span className="w-12 text-right">{item.quantity}</span>
-                    <span className="w-20 text-right">{formatCurrency(item.amount * item.quantity, receiptInvoice.currency)}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Summary */}
-              <div className="border-t border-border/60 border-dashed pt-2.5 space-y-1 text-right">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>{formatCurrency(receiptInvoice.subtotal, receiptInvoice.currency)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Tax:</span>
-                  <span>{formatCurrency(receiptInvoice.tax, receiptInvoice.currency)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Discount:</span>
-                  <span>-{formatCurrency(receiptInvoice.discount, receiptInvoice.currency)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-sm border-t border-border/60 pt-1.5 text-text">
-                  <span>Total Paid:</span>
-                  <span>{formatCurrency(receiptInvoice.totalAmount, receiptInvoice.currency)}</span>
-                </div>
-              </div>
-
-              <div className="text-center pt-2">
-                <span className="inline-block font-bold text-[10px] px-3 py-1 rounded-full uppercase border bg-success/10 text-success-text dark:text-success-text border-success/20">
-                  {receiptInvoice.status}
-                </span>
-                {receiptInvoice.paymentMethod && (
-                  <p className="text-[10px] text-text-muted mt-1.5">
-                    Settled via {receiptInvoice.paymentMethod.toUpperCase()}
-                  </p>
-                )}
-              </div>
-            </div>
-
-
+        {receiptInvoice && <div className={styles.receipt}>
+          <header><h3>Payment receipt</h3><p>{receiptInvoice.locationId?.name}</p><p>{[receiptInvoice.locationId?.address, receiptInvoice.locationId?.city].filter(Boolean).join(", ")}</p></header>
+          <dl>
+            <div><dt>Invoice</dt><dd>{receiptInvoice.invoiceNumber}</dd></div>
+            <div><dt>Date</dt><dd>{new Date(receiptInvoice.createdAt).toLocaleDateString("en-IN")}</dd></div>
+            <div><dt>Patient</dt><dd>{patientName(receiptInvoice)}</dd></div>
+            <div><dt>Doctor</dt><dd>{receiptInvoice.doctorId?.name || "Not recorded"}</dd></div>
+          </dl>
+          <div className={styles.receiptItems}>
+            <div><span>Charge</span><span>Qty</span><span>Amount</span></div>
+            {receiptInvoice.items.map((item, index) => <div key={index}><span>{item.description}</span><span>{item.quantity}</span><span>{formatCurrency(item.amount * item.quantity, receiptInvoice.currency)}</span></div>)}
           </div>
-        )}
+          <dl>
+            <div><dt>Subtotal</dt><dd>{formatCurrency(receiptInvoice.subtotal, receiptInvoice.currency)}</dd></div>
+            <div><dt>Tax</dt><dd>{formatCurrency(receiptInvoice.tax, receiptInvoice.currency)}</dd></div>
+            <div><dt>Discount</dt><dd>-{formatCurrency(receiptInvoice.discount, receiptInvoice.currency)}</dd></div>
+            <div><dt>Invoice total</dt><dd>{formatCurrency(receiptInvoice.totalAmount, receiptInvoice.currency)}</dd></div>
+            <div><dt>Recorded payments</dt><dd><strong>{formatCurrency(paidAmount(receiptInvoice), receiptInvoice.currency)}</strong></dd></div>
+            {["unpaid", "partially_paid"].includes(receiptInvoice.status) && <div><dt>Balance due</dt><dd>{formatCurrency(balanceDue(receiptInvoice), receiptInvoice.currency)}</dd></div>}
+          </dl>
+          <div className={styles.receiptStatus}>{invoiceStatus(receiptInvoice)}{receiptInvoice.paymentMethod && <p>Method: {receiptInvoice.paymentMethod.toUpperCase()}</p>}</div>
+        </div>}
       </Modal>
 
       {/* ──────────────────────────────────────────────────────────────────────────
@@ -1819,20 +1358,31 @@ export default function BillingPage() {
       <Modal
         open={isPartialModalOpen}
         onClose={() => setIsPartialModalOpen(false)}
-        title={`Record Installment: Invoice #${partialTargetInvoice?.invoiceNumber || ""}`}
+        title="Record payment"
+        description={partialTargetInvoice?.invoiceNumber}
         size="md"
+        busy={submittingPartial}
+        bodyClassName={styles.dialogBody}
+        footer={<div className={styles.dialogActions}>
+            <Button disabled={submittingPartial} variant="outline" size="sm" type="button" onClick={() => setIsPartialModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
+              Cancel
+            </Button>
+            <Button type="submit" form="record-payment" size="sm" variant="primary" loading={submittingPartial} className="w-full sm:w-auto font-semibold min-h-[44px]">
+              Record payment
+            </Button>
+          </div>}
       >
-        <form onSubmit={handleRecordPartialPayment} className="space-y-4 pt-1">
+        <form id="record-payment" onSubmit={handleRecordPartialPayment} className="space-y-4 pt-1">
           <div className="p-3.5 bg-surface-alt rounded-2xl border border-border/80 text-xs space-y-1">
-            <p className="font-bold text-text">Patient: {partialTargetInvoice?.patientId?.userId?.name}</p>
+            <p className="font-bold text-text">Patient: {partialTargetInvoice ? patientName(partialTargetInvoice) : ""}</p>
             <p className="text-text-muted">
-              Total Invoice Amount: {formatCurrency(partialTargetInvoice?.totalAmount, partialTargetInvoice?.currency)}
+              Invoice total: {formatCurrency(partialTargetInvoice?.totalAmount, partialTargetInvoice?.currency)}
             </p>
             <p className="text-text-muted">
-              Previously Settled: {formatCurrency(partialTargetInvoice?.amountPaid, partialTargetInvoice?.currency)}
+              Already paid: {formatCurrency(partialTargetInvoice?.amountPaid, partialTargetInvoice?.currency)}
             </p>
             <p className="font-bold text-danger-text pt-1">
-              Remaining Balance Due: {formatCurrency((partialTargetInvoice?.balanceDue !== undefined
+              Balance due: {formatCurrency((partialTargetInvoice?.balanceDue !== undefined
                 ? partialTargetInvoice.balanceDue
                 : (partialTargetInvoice?.totalAmount || 0) - (partialTargetInvoice?.amountPaid || 0)
               ), partialTargetInvoice?.currency)}
@@ -1841,9 +1391,9 @@ export default function BillingPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
-              label={`Installment Payment Amount (${partialTargetInvoice?.currency || "INR"}) *`}
+              label={`Amount (${partialTargetInvoice?.currency || "INR"}) *`}
               type="number"
-              min="1"
+              min="0.01"
               step="0.01"
               value={partialAmount}
               onChange={(e) => setPartialAmount(Number(e.target.value))}
@@ -1864,28 +1414,20 @@ export default function BillingPage() {
           </div>
 
           <Input
-            label="Transaction Reference / Cheque #"
+            label="Reference (optional)"
             placeholder="e.g. UPI/123456789 or CHQ-998822"
             value={partialRef}
             onChange={(e) => setPartialRef(e.target.value)}
           />
 
           <Input
-            label="Payment Notes"
+            label="Notes (optional)"
             placeholder="Installment 1 of 3, Deposit balance, etc."
             value={partialNotes}
             onChange={(e) => setPartialNotes(e.target.value)}
           />
 
-          <div className="flex flex-col-reverse sm:flex-row justify-between gap-2.5 border-t border-border/60 pt-3.5">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsPartialModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submittingPartial} className="w-full sm:w-auto font-semibold min-h-[44px]">
-              Record Installment
-            </Button>
-          </div>
-        </form>
+          </form>
       </Modal>
 
       {/* ──────────────────────────────────────────────────────────────────────────
@@ -1897,13 +1439,37 @@ export default function BillingPage() {
           setIsTillModalOpen(false);
           setZReportSlip(null);
         }}
-        title="Cashier Desk Till Reconciliation & Z-Report"
-        description="End-of-shift physical cash drawer balancing, digital collections audit, and official financial handover certification."
+        title="Close till"
+        footerClassName={zReportSlip ? styles.printFooter : undefined}
+        description="Count the cash, check any difference, and save the daily report."
         size="md"
-        footer={<PrintDialogActions documentName="daily report" disabled={!zReportSlip} onPrint={async () => { const element = document.getElementById("z-report-print"); await printElement(element); }} onClose={() => {
+        busy={submittingTillClose}
+        bodyClassName={styles.dialogBody}
+        footer={zReportSlip ? <PrintDialogActions documentName="daily report" disabled={!zReportSlip} onPrint={async () => { const element = document.getElementById("z-report-print"); await printElement(element); }} onClose={() => {
           setIsTillModalOpen(false);
           setZReportSlip(null);
-        }} />}
+        }} /> : (<div className={styles.dialogActions}>
+                  <Button
+                    type="button"
+                    disabled={submittingTillClose} variant="outline"
+                    size="sm"
+                    onClick={() => setIsTillModalOpen(false)}
+                    className="w-full sm:w-auto min-h-[44px]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit" form="close-till"
+                    size="sm"
+                    variant="primary"
+                    loading={submittingTillClose}
+                    disabled={loadingTillSummary || !tillSummary || Boolean(tillError) || tillSummary.locationId !== tillLocationId}
+                    className="w-full sm:w-auto min-h-[44px] font-bold bg-warning hover:bg-warning text-background"
+                  >
+                    <Banknote className="w-3.5 h-3.5 mr-1.5" />
+                    Close till & save report
+                  </Button>
+                </div>)}
       >
         {zReportSlip ? (
           <div className="space-y-4 pt-1">
@@ -1914,7 +1480,7 @@ export default function BillingPage() {
                 </h3>
                 <p className="text-[11px] text-text-muted">OFFICIAL END-OF-DAY Z-REPORT SLIP</p>
                 <p className="text-[10px] text-text-muted mt-0.5">
-                  Shift Date: {zReportSlip.shiftDate} • Closed: {new Date(zReportSlip.endedAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  Shift Date: {zReportSlip.shiftDate} • Closed: {zReportSlip.endedAt ? new Date(zReportSlip.endedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Not recorded"}
                 </p>
                 <p className="text-[10px] text-text-muted">
                   Cashier: <strong>{zReportSlip.cashierName || user?.name}</strong>
@@ -2016,13 +1582,15 @@ export default function BillingPage() {
 
           </div>
         ) : (
-          <form onSubmit={handleCloseTill} className="space-y-4 pt-1">
+          <form id="close-till" onSubmit={handleCloseTill} className="space-y-4 pt-1">
             {locations.length > 1 && (
               <Select
-                label="Select Reception counter *"
+                label="Location *"
                 value={tillLocationId}
                 onChange={(e) => {
                   setTillLocationId(e.target.value);
+                  setActualCashCounted("");
+                  setVarianceReason("");
                   fetchTillSummary(e.target.value);
                 }}
                 options={locations.map((c) => ({ value: String(c.id), label: c.name }))}
@@ -2030,10 +1598,10 @@ export default function BillingPage() {
               />
             )}
 
-            {loadingTillSummary ? (
+            {tillError ? <div role="alert" className={styles.readError}>{tillError}<Button type="button" size="sm" variant="outline" onClick={() => fetchTillSummary(tillLocationId)}>Try again</Button></div> : loadingTillSummary ? (
               <div className="py-8 flex flex-col items-center justify-center space-y-2 text-text-muted">
                 <Spinner size="md" />
-                <p className="text-xs">Computing live till ledger & collection receipts...</p>
+                <p className="text-xs">Loading till totals...</p>
               </div>
             ) : (
               <>
@@ -2150,7 +1718,7 @@ export default function BillingPage() {
 
                   {actualCashCounted !== "" && Number(actualCashCounted) !== (tillSummary?.systemTotals?.cash ?? 0) && (
                     <Input
-                      label="Variance Justification / Explanation *"
+                      label="Reason for difference *"
                       placeholder="e.g. Returned petty cash, change rounding, unrecorded refund..."
                       value={varianceReason}
                       onChange={(e) => setVarianceReason(e.target.value)}
@@ -2159,7 +1727,7 @@ export default function BillingPage() {
                   )}
 
                   <Textarea
-                    label="Shift Handover & Denomination Notes"
+                    label="Handover notes (optional)"
                     placeholder="e.g. 500x4, 200x2, 100x1. Handed over drawer keys to Evening Shift..."
                     value={handoverNotes}
                     onChange={(e) => setHandoverNotes(e.target.value)}
@@ -2167,27 +1735,6 @@ export default function BillingPage() {
                   />
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-2.5 border-t border-border/60 pt-3.5 mt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsTillModalOpen(false)}
-                    className="w-full sm:w-auto min-h-[44px]"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    variant="primary"
-                    loading={submittingTillClose}
-                    className="w-full sm:w-auto min-h-[44px] font-bold bg-warning hover:bg-warning text-background"
-                  >
-                    <Banknote className="w-3.5 h-3.5 mr-1.5" />
-                    Reconcile & Generate Z-Report
-                  </Button>
-                </div>
               </>
             )}
           </form>
@@ -2200,17 +1747,47 @@ export default function BillingPage() {
       <Modal
         open={isCheckoutModalOpen}
         onClose={() => !submittingCheckout && setIsCheckoutModalOpen(false)}
-        title="⚡ 1-Click Consolidated OPD Checkout"
+        title="OPD checkout"
         size="lg"
+        busy={submittingCheckout}
+        bodyClassName={styles.dialogBody}
+        footer={<div className={styles.dialogActions}>
+            <Button
+              disabled={submittingCheckout} variant="outline"
+              size="sm"
+              onClick={() => setIsCheckoutModalOpen(false)}
+              className="w-full sm:w-auto font-semibold min-h-[44px]"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit" form="checkout-payment"
+              loading={submittingCheckout}
+              disabled={!checkoutPreview || loadingCheckoutPreview || loadingOpdAppointments || previewAppointmentId !== selectedCheckoutApptId || checkoutPreview.isAlreadyPaid || checkoutFeeDirty}
+              className="w-full sm:w-auto font-bold bg-primary-600 hover:bg-primary-700 min-h-[44px]"
+            >
+              Collect & issue invoice
+            </Button>
+          </div>}
       >
-        <form onSubmit={handleExecuteConsolidatedCheckout} className="space-y-4 pt-1">
+        <form id="checkout-payment" onSubmit={handleExecuteConsolidatedCheckout} className="space-y-4 pt-1">
           <p className="text-xs text-text-muted">
-            Consolidate Physician Consultation Fee, Diagnostic Lab Tests, and Pharmacy Medications into a single official tax invoice.
+            Review consultation, test and medicine charges before collecting payment.
           </p>
+
+          {locations.length > 1 ? <Select label="Location" value={checkoutLocationId} disabled={submittingCheckout} onChange={(event) => {
+            setCheckoutLocationId(event.target.value);
+            setCheckoutDiscount(0);
+            setCheckoutNotes("");
+            setCheckoutRefNumber("");
+            void fetchOpdAppointments(event.target.value);
+          }} options={locations.map((location) => ({ value: location.id, label: location.name }))} /> : <p className="text-xs text-text-muted">{locations[0]?.name || "No location available"}</p>}
 
           {/* Select OPD Patient */}
           <div>
-            <label className="text-xs font-bold text-text mb-1.5 block">Select Today's OPD Patient / Appointment *</label>
+            <label htmlFor="checkout-appointment" className="text-xs font-bold text-text mb-1.5 block">Today's appointment</label>
             {loadingOpdAppointments ? (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-surface-alt border border-border text-xs text-text-muted">
                 <Spinner size="sm" />
@@ -2222,47 +1799,53 @@ export default function BillingPage() {
               </div>
             ) : (
               <Select
+                id="checkout-appointment"
                 value={selectedCheckoutApptId}
                 onChange={(e) => {
+                  setCheckoutDiscount(0);
+                  setCheckoutRefNumber("");
+                  setCheckoutNotes("");
+                  setCheckoutPaymentMethod("cash");
                   setSelectedCheckoutApptId(e.target.value);
                   fetchCheckoutPreview(e.target.value);
                 }}
                 options={opdAppointments.map((a: any) => ({
                   value: a.id || a._id,
-                  label: `Token #${a.tokenNumber} — ${a.patientId?.userId?.name || a.patientId?.name || "Patient"} (Dr. ${(a.doctorId?.name || "").replace(/^dr\.?\s+/i, "")} • ${a.status.toUpperCase()}) [${a.paymentStatus === "paid" ? "PAID" : "UNPAID"}]`,
+                  label: `#${a.tokenNumber ?? "—"} — ${a.patientId?.userId?.name || a.patientId?.name || "Patient"} · ${a.paymentStatus === "paid" ? "Paid" : "Unpaid"}`,
                 }))}
               />
             )}
           </div>
 
+          {checkoutError && <div role="alert" className={styles.readError}>{checkoutError}<Button type="button" size="sm" variant="outline" onClick={() => selectedCheckoutApptId ? fetchCheckoutPreview(selectedCheckoutApptId) : fetchOpdAppointments()}>Try again</Button></div>}
           {/* Charges Breakdown Preview */}
-          {loadingCheckoutPreview ? (
+          {loadingCheckoutPreview && !checkoutPreview ? (
             <div className="flex items-center justify-center p-8 rounded-2xl bg-surface-alt border border-border text-xs text-text-muted gap-2">
               <Spinner size="md" />
-              <span>Compiling itemized charges from OPD Encounter, Lab Orders & Prescriptions...</span>
+              <span>Loading charges...</span>
             </div>
           ) : checkoutPreview ? (
             <div className="space-y-3">
               <div className="rounded-2xl border border-border bg-surface-alt p-4 space-y-3">
                 <div className="flex items-center justify-between border-b border-border/80 pb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-text-muted">Itemized Services & Prescriptions</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-text-muted">Charges</span>
                   <Badge variant={checkoutPreview.isAlreadyPaid ? "success" : "warning"} size="sm" className="text-[10px] font-bold">
-                    {checkoutPreview.isAlreadyPaid ? "Already Settled" : "Pending Settlement"}
+                    {checkoutPreview.isAlreadyPaid ? "Already paid" : "Payment due"}
                   </Badge>
                 </div>
 
                 {checkoutPreview.isFeeEditable && (
-                  <div className="py-2.5 px-3 bg-warning/10 border border-warning/20 rounded-xl flex items-center justify-between text-xs gap-3">
+                  <div className={styles.feeEditor}>
                     <div>
-                      <span className="font-bold text-warning-text dark:text-warning-text block">🩺 Doctor Consultation Fee:</span>
+                      <span className="font-bold text-warning-text dark:text-warning-text block">Consultation fee</span>
                       <span className="text-[10px] text-text-muted">
                         {checkoutPreview.feeType === "post_consultation" ? "Post-consultation fee entry" : "Adjustable consultation charge"}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className="font-bold text-text">₹</span>
-                      <Input type="number" min={0} value={checkoutCustomConsultFee} onChange={(e) => setCheckoutCustomConsultFee(e.target.value)} onBlur={(e) => fetchCheckoutPreview(selectedCheckoutApptId, Number(e.target.value) || 0)} placeholder="Amount" fullWidth={false} containerClassName="w-24" size="sm" />
-                      <Button type="button" onClick={() => fetchCheckoutPreview(selectedCheckoutApptId, Number(checkoutCustomConsultFee) || 0)} variant="outline" size="xs">
+                      <Input type="number" min={0} disabled={loadingCheckoutPreview} value={checkoutCustomConsultFee} onChange={(e) => setCheckoutCustomConsultFee(e.target.value)} aria-label="Consultation fee" placeholder="Amount" fullWidth={false} containerClassName="w-24" size="sm" />
+                      <Button type="button" loading={loadingCheckoutPreview} onClick={() => fetchCheckoutPreview(selectedCheckoutApptId, Number(checkoutCustomConsultFee) || 0)} variant="outline" size="xs">
                         Apply
                       </Button>
                     </div>
@@ -2316,9 +1899,8 @@ export default function BillingPage() {
               {/* Settlement Form */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-text mb-1 block">Payment Method *</label>
-                  <Select
-                    value={checkoutPaymentMethod}
+                  <label htmlFor="checkout-method" className="text-xs font-bold text-text mb-1 block">Payment Method *</label>
+                  <Select id="checkout-method"                     value={checkoutPaymentMethod}
                     onChange={(e) => setCheckoutPaymentMethod(e.target.value as any)}
                     options={[
                       { value: "cash", label: "💵 Cash (Counter Drawer)" },
@@ -2329,9 +1911,8 @@ export default function BillingPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-text mb-1 block">Discount / Waiver (₹)</label>
-                  <Input
-                    type="number"
+                  <label htmlFor="checkout-discount" className="text-xs font-bold text-text mb-1 block">Discount / Waiver (₹)</label>
+                  <Input id="checkout-discount"                     type="number"
                     min="0"
                     max={checkoutPreview.totalAmount}
                     value={checkoutDiscount || ""}
@@ -2343,17 +1924,15 @@ export default function BillingPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-text mb-1 block">Transaction / UTR Reference (Optional)</label>
-                  <Input
-                    value={checkoutRefNumber}
+                  <label htmlFor="checkout-reference" className="text-xs font-bold text-text mb-1 block">Transaction / UTR Reference (Optional)</label>
+                  <Input id="checkout-reference"                     value={checkoutRefNumber}
                     onChange={(e) => setCheckoutRefNumber(e.target.value)}
                     placeholder="UPI Ref / Card Auth Code"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-text mb-1 block">Cashier Settlement Notes</label>
-                  <Input
-                    value={checkoutNotes}
+                  <label htmlFor="checkout-notes" className="text-xs font-bold text-text mb-1 block">Cashier Settlement Notes</label>
+                  <Input id="checkout-notes"                     value={checkoutNotes}
                     onChange={(e) => setCheckoutNotes(e.target.value)}
                     placeholder="e.g. Cleared at Reception Counter"
                   />
@@ -2361,11 +1940,11 @@ export default function BillingPage() {
               </div>
 
               {/* Net Payable Banner */}
-              <div className="p-3.5 rounded-2xl bg-success/10 border border-success/30 flex items-center justify-between">
+              <div className={styles.checkoutTotal}>
                 <div>
-                  <span className="text-xs font-bold text-success-text dark:text-success-text">Net Payable Amount:</span>
+                  <span className="text-xs font-bold text-success-text dark:text-success-text">Amount to collect</span>
                   <p className="text-[11px] text-success-text/80 dark:text-success-text/80">
-                    Official tax invoice will be generated upon settlement
+                    Invoice issued after payment
                   </p>
                 </div>
                 <div className="text-2xl font-black font-mono text-success-text dark:text-success-text">
@@ -2375,28 +1954,7 @@ export default function BillingPage() {
             </div>
           ) : null}
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsCheckoutModalOpen(false)}
-              disabled={submittingCheckout}
-              className="w-full sm:w-auto font-semibold min-h-[44px]"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              type="submit"
-              loading={submittingCheckout}
-              disabled={!checkoutPreview || loadingCheckoutPreview}
-              className="w-full sm:w-auto font-bold bg-primary-600 hover:bg-primary-700 min-h-[44px]"
-            >
-              <span>⚡</span> Settle & Issue Invoice
-            </Button>
-          </div>
-        </form>
+          </form>
       </Modal>
     </div>
   );

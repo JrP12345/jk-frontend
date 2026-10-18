@@ -5,7 +5,8 @@ import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useLatestRead } from "@/hooks/useLatestRead";
-import { Alert, Button, Card, CardContent, Input, Modal, Select, Checkbox } from "@/components/ui";
+import { Alert, Button, Card, CardContent, Input, Select, Checkbox } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
 import type { CrmLocation, InquiryActivity } from "@/types/crm";
 import { CallHistory } from '@/components/crm/CallHistory';
 import { PatientMessages } from '@/components/crm/PatientMessages';
@@ -80,7 +81,7 @@ function RelationshipEditor({ patientId, initial, canAssign, onClose, onSaved }:
     setLocked(true);
     try { await api.patch(`/crm/patients/${patientId}/relationship`, submitted.current); onSaved(); } catch (failure) { setError(message(failure)); } finally { setPending(false); }
   }
-  return <Modal open title="Relationship preferences" busy={pending} onClose={onClose}><form onSubmit={save} className="space-y-4">{error && <Alert variant="error">{error} Close and reload to change submitted details.</Alert>}
+  return <Modal footer={<div className="flex justify-end gap-2"><Button variant="outline" disabled={pending || locked} loading={loading} onClick={() => load()}>Reload choices</Button><Button variant="outline" disabled={pending} onClick={onClose}>Close</Button><Button type="submit" form="patient-relationship-1" disabled={pending || loading || !choicesReady || !locationId || (recipientType === 'family' && !familyId)} loading={pending}>{locked && error ? "Retry submitted preferences" : "Save relationship preferences"}</Button></div>} open title="Relationship preferences" busy={pending} onClose={onClose}><form id="patient-relationship-1" onSubmit={save} className="space-y-4">{error && <Alert variant="error">{error} Close and reload to change submitted details.</Alert>}
     <fieldset disabled={locked || pending} className="space-y-3"><Select label="Relationship branch" disabled={loading || (!canAssign && !!initial.locationId)} value={locationId} onChange={event => { setLocationId(event.target.value); setOwnerId(""); }} options={locations.map(row => ({ value: row.id, label: row.name }))} />
       {canAssign && <><Select label="Relationship owner" disabled={loading} value={ownerId} onChange={event => setOwnerId(event.target.value)} options={[{ value: "", label: "Unassigned" }, ...(ownerId && !assignees.some(row => row.id === ownerId) ? [{ value: ownerId, label: initial.ownerName || "Current owner" }] : []), ...assignees.map(row => ({ value: row.id, label: row.name }))]} />{cursor && <Button variant="outline" disabled={loading} onClick={() => load(cursor)}>More relationship owners</Button>}</>}
       <Input label="Preferred language" maxLength={40} value={language} onChange={event => setLanguage(event.target.value)} /><Select label="Preferred communication channel" value={channel} onChange={event => setChannel(event.target.value)} options={["none", "phone", "whatsapp", "email"].map(value => ({ value, label: value === "none" ? "No preference recorded" : value }))} />
@@ -91,5 +92,5 @@ function RelationshipEditor({ patientId, initial, canAssign, onClose, onSaved }:
         catch (failure) { if (request.isCurrent()) setError(message(failure)); } finally { if (request.isCurrent()) setLoading(false); }
       }}>More family recipients</Button>}<p className="text-sm text-text-muted">Family communication authority and fresh channel consent are required. Preferences alone grant neither.</p></>}
       <Select label="Contact availability" value={availability} onChange={event => setAvailability(event.target.value)} options={["unknown", "reachable", "unreachable", "invalid"].map(value => ({ value, label: value }))} /><Checkbox checked={doNotContact} onChange={event => setDoNotContact(event.target.checked)} label="Do not contact in this organization" />
-    </fieldset><div className="flex justify-end gap-2"><Button variant="outline" disabled={pending || locked} loading={loading} onClick={() => load()}>Reload choices</Button><Button variant="outline" disabled={pending} onClick={onClose}>Close</Button><Button type="submit" disabled={pending || loading || !choicesReady || !locationId || (recipientType === 'family' && !familyId)} loading={pending}>{locked && error ? "Retry submitted preferences" : "Save relationship preferences"}</Button></div></form></Modal>;
+    </fieldset></form></Modal>;
 }

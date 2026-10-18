@@ -457,9 +457,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           role="main"
           id="main-content"
           data-app-scroll
-          className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 md:p-6 lg:p-8 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-8 lg:pb-8 scroll-pb-[calc(8rem+env(safe-area-inset-bottom))] md:scroll-pb-8 scroll-smooth w-full touch-scroll [scrollbar-gutter:stable]"
+          className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 md:p-6 lg:py-8 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-8 lg:pb-8 scroll-pb-[calc(8rem+env(safe-area-inset-bottom))] md:scroll-pb-8 scroll-smooth w-full touch-scroll [scrollbar-gutter:stable]"
         >
-          <div className="w-full space-y-5 sm:space-y-6 max-w-7xl xl:max-w-[90rem] mx-auto">
+          {/* This shell owns page gutters; route workspaces fill the available width. */}
+          <div className="w-full min-w-0 space-y-5 sm:space-y-6" data-dashboard-content>
             {isLoading || !user ? (
               <DashboardLoading />
             ) : !hasAccess ? (

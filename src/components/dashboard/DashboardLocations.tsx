@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Card, Badge, Button } from "@/components/ui";
 import { Building2, ArrowUpRight, ChevronRight } from "lucide-react";
+import styles from "./DashboardOverview.module.css";
 
 interface DashboardLocationsProps {
   canManageOrg: boolean;
@@ -19,7 +20,7 @@ export function DashboardLocations({
 
   return (
     <div className="space-y-3 pt-2">
-      <div className="flex items-center justify-between">
+      <div className={styles.locationHeader}>
         <div>
           <h2 className="text-sm sm:text-base font-bold text-text">Active locations</h2>
           <p className="text-xs text-text-muted">Connected healthcare centers and branch network</p>
@@ -35,7 +36,7 @@ export function DashboardLocations({
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+      <div className={styles.locationGrid}>
         {locations.map((cl, idx) => (
           <Card
             key={cl.id ? `${cl.id}-${idx}` : `location-${idx}`}
@@ -48,7 +49,7 @@ export function DashboardLocations({
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-xs sm:text-sm font-bold text-text group-hover:text-accent transition-colors truncate">
+                  <h3 className={styles.locationName}>
                     {cl.name}
                   </h3>
                   <p className="text-xs text-text-muted truncate">{cl.city || "Main Facility"}</p>

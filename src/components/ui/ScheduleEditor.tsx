@@ -3,6 +3,7 @@
 import { useState, useEffect, memo } from "react";
 import { cn } from "./utils";
 import Select from "./Select";
+import Checkbox from "./Checkbox";
 import { Copy, Check, X, Layers } from "lucide-react";
 
 export interface TimeSlot {
@@ -386,16 +387,12 @@ const ScheduleEditor = memo(function ScheduleEditor({
                 >
                   <div className="p-2.5 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 w-32 shrink-0">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         id={`custom-${day}`}
+                        label={day}
                         checked={isActive}
                         onChange={(e) => toggleCustomDay(day, e.target.checked)}
-                        className="h-4 w-4 rounded border-border text-accent focus:ring-focus-ring cursor-pointer"
                       />
-                      <label htmlFor={`custom-${day}`} className="text-xs font-bold text-text cursor-pointer select-none">
-                        {day}
-                      </label>
                     </div>
 
                     {isActive ? (

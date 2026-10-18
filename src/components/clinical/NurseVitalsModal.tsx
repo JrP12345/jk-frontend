@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import Modal from "../ui/Modal";
+import Modal from "@/components/queue/QueueDialog";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
 import Badge from "../ui/Badge";
@@ -221,8 +221,16 @@ export function NurseVitalsModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={`Nurse Triage & Vitals Station — ${patientName}`} size="lg">
-      <form onSubmit={handleSaveVitals} className="space-y-4 pt-1">
+    <Modal open={open} onClose={onClose} title="Vitals & triage" description={patientName} size="lg" footer={<>
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" size="sm" loading={submitting} className="font-bold" form="queue-form-NurseVitalsModal-tsx-0">
+            <Stethoscope className="w-3.5 h-3.5 mr-1" />
+            Save Triage Vitals
+          </Button>
+        </>}>
+      <form onSubmit={handleSaveVitals} className="space-y-4 pt-1" id="queue-form-NurseVitalsModal-tsx-0">
         {/* Realtime Safety Alerts Bar */}
         {(isHighBp || isHypoxic || isFever) && (
           <div className="p-3 bg-danger/10 border border-danger/30 rounded-xl space-y-1 text-xs">
@@ -238,12 +246,7 @@ export function NurseVitalsModal({
           </div>
         )}
 
-        <div className="p-3 bg-primary-500/5 rounded-xl border border-primary-500/20 text-xs text-text-secondary flex items-start gap-2">
-          <Stethoscope className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-          <span>
-            Logged vitals auto-sync to the doctor&apos;s queue card, consultation SOAP note, and patient&apos;s mobile live tracker.
-          </span>
-        </div>
+
 
         {/* Section 1: Core Hemodynamics */}
         <div className="space-y-3">
@@ -251,8 +254,8 @@ export function NurseVitalsModal({
             <HeartPulse className="w-3.5 h-3.5 text-accent" />
             Hemodynamics & Oxygenation
           </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="col-span-2 sm:col-span-1">
               <label className="block text-xs font-bold text-text mb-1">
                 BP (Systolic / Diastolic) <span className="text-danger-text">*</span>
               </label>
@@ -314,8 +317,8 @@ export function NurseVitalsModal({
             <Flame className="w-3.5 h-3.5 text-warning-text" />
             Temperature & Anthropometrics
           </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-            <div className="sm:col-span-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
+            <div className="col-span-2">
               <label className="block text-xs font-bold text-text mb-1">Body Temperature</label>
               <div className="flex gap-2">
                 <Input
@@ -389,7 +392,7 @@ export function NurseVitalsModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-text mb-1">Blood Sugar (mg/dL)</label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-2">
                 <Input
                   type="number"
                   placeholder="110"
@@ -422,15 +425,7 @@ export function NurseVitalsModal({
         </div>
 
         {/* Modal Actions */}
-        <div className="flex justify-end gap-2.5 pt-3 border-t border-border">
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary" size="sm" loading={submitting} className="font-bold">
-            <Stethoscope className="w-3.5 h-3.5 mr-1" />
-            Save Triage Vitals
-          </Button>
-        </div>
+
       </form>
     </Modal>
   );

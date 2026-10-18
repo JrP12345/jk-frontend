@@ -8,7 +8,7 @@ import { useLatestRead } from "@/hooks/useLatestRead";
 import { locationLocalDateTimeInput, locationLocalTimeToIso } from "@/lib/locationTime";
 import { recordId, patientName, patientPhone, type WorkflowPatient } from "@/lib/locationWorkflow";
 import type { Inquiry } from "@/types/crm";
-import { Alert, Button, Input, Modal, Select, Checkbox } from "@/components/ui";
+import { Alert, Button, Input, Modal, Select, Checkbox, DatePicker } from "@/components/ui";
 
 interface Assignment { doctorId: { id?: string; _id?: string; name?: string } | string; isActive?: boolean; bookingMode?: string; paymentRequired?: boolean; fees?: number }
 interface ConversionResult { appointment: { id: string; status: string; paymentStatus: string; tokenNumber: number } }
@@ -118,7 +118,7 @@ export function InquiryConversion({ inquiry, task, timezone, initialCommand, onS
     <fieldset disabled={pending || locked} className="min-w-0 space-y-3">
       <Select label="Booking doctor" value={doctorId} disabled={assignmentLoading} onChange={event => setDoctorId(event.target.value)} options={assignments.map(row => ({ value: recordId(row.doctorId), label: typeof row.doctorId === "object" ? row.doctorId.name || "Assigned doctor" : "Assigned doctor" }))} />
       <Button variant="outline" loading={assignmentLoading} onClick={loadDoctors}>Reload booking doctors</Button>
-      <Input label={`Booking time (${timezone})`} type="datetime-local" required value={appointmentLocal} onChange={event => setAppointmentLocal(event.target.value)} />
+      <DatePicker label={`Booking time (${timezone})`} mode="datetime" required value={appointmentLocal} onChange={value => setAppointmentLocal(value)} />
       {slotMode && <Select label="Available consultation slot" value={slot} disabled={availabilityLoading} onChange={event => setSlot(event.target.value)} options={slots.map(value => ({ value, label: value }))} />}
       <Button variant="outline" loading={availabilityLoading} onClick={loadAvailability}>Reload booking availability</Button>
       {assignment?.paymentRequired && <Alert variant="warning">This doctor requires payment. The recorded booking will remain payment pending until the canonical payment workflow confirms it.</Alert>}

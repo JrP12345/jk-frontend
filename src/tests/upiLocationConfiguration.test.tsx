@@ -12,8 +12,8 @@ it("never routes missing location UPI configuration to a fixed merchant", () => 
   mount();
   expect(QRCode.toDataURL).not.toHaveBeenCalled();
   expect(screen.queryByRole("link", { name: /Pay via UPI App/ })).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /Verified Patient UPI Transfer/ })).toBeDisabled();
-  expect(screen.getByRole("button", { name: /Received Cash at Counter/ })).toBeEnabled();
+  expect(screen.getByRole("button", { name: /Confirm UPI received/ })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /Confirm cash received/ })).toBeEnabled();
 });
 
 it("uses only the configured location merchant for QR and app payment", async () => {

@@ -1,0 +1,372 @@
+.workspace {
+  container: crm / inline-size;
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+  margin-inline: 0;
+  padding-bottom: 2rem;
+  color: var(--text-primary);
+}
+
+.header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.header > div:first-child {
+  min-width: 0;
+}
+
+.header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+
+.header p {
+  max-width: 40rem;
+  margin-top: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.headerAction {
+  flex-shrink: 0;
+}
+
+.headerAction button,
+.toolbarActions button {
+  min-height: 2.75rem;
+}
+
+.fullActionLabel {
+  display: none;
+}
+
+.navigation {
+  display: flex;
+  gap: 0.25rem;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.375rem;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: var(--surface);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  scroll-padding-inline: 0.375rem;
+}
+
+.navigation a {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid transparent;
+  border-radius: 0.625rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.navigation a:hover {
+  color: var(--accent);
+  background: var(--surface-hover);
+}
+
+.navigation a[aria-current="page"] {
+  border-color: var(--border);
+  background: var(--selected-bg, var(--surface-muted));
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.navigation a:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--surface);
+  box-shadow: var(--s-shadow-xs);
+}
+
+.filters {
+  padding: 0.875rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.filterToolbar,
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.filterToolbar {
+  flex-wrap: wrap;
+}
+
+.search {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.search input {
+  min-height: 2.75rem;
+}
+
+.toolbarActions {
+  margin-inline-start: auto;
+}
+
+.iconAction {
+  min-width: 2.75rem;
+  width: 2.75rem;
+  min-height: 2.75rem;
+  padding-inline: 0;
+}
+
+.filterToggle {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding-inline: 0.625rem;
+}
+
+.filterText {
+  display: none;
+}
+
+.filterCount {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 1rem;
+  background: var(--selected-bg, var(--surface-muted));
+  color: var(--accent);
+  font-size: 0.75rem;
+}
+
+.filterFields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: 0.875rem;
+  margin-top: 0.875rem;
+}
+
+.filterFields[data-expanded="false"] {
+  display: none;
+}
+
+.filterFields > * {
+  min-width: 0;
+}
+
+.queueContent {
+  padding: 1rem;
+}
+
+.queueHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.queueHeading h2 {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.queueHeading > span {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.recordList {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.record {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.875rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: var(--surface);
+}
+
+.recordBody {
+  flex: 1 1 14rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.recordTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.625rem;
+  font-weight: 600;
+}
+
+.recordContact {
+  margin-top: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.recordMeta {
+  margin-top: 0.375rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.record > button {
+  min-height: 2.75rem;
+}
+
+.recordFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.formGrid,
+.metricGrid,
+.reportGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1rem;
+  min-width: 0;
+}
+
+.reportGrid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+}
+
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 0.5rem;
+}
+
+.formActions > button {
+  flex: 1 1 auto;
+  min-height: 2.75rem;
+}
+
+.chooser {
+  width: 100%;
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  margin-inline: 0;
+}
+
+.chooserIntro {
+  display: flex;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.chooserIntro h2 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.chooserIntro p {
+  margin-top: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.chooserLinks {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.chooserLinks > div {
+  display: flex;
+  gap: 0.75rem;
+  align-items: start;
+  min-width: 0;
+}
+
+@container crm (min-width: 28rem) {
+  .filterText {
+    display: inline;
+  }
+
+  .filterFields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fullActionLabel {
+    display: inline;
+  }
+
+  .shortActionLabel {
+    display: none;
+  }
+
+  .formActions > button {
+    flex: 0 1 auto;
+  }
+}
+
+@container crm (min-width: 48rem) {
+  .header h1 {
+    font-size: 1.5rem;
+  }
+
+  .filterFields[data-expanded="false"] {
+    display: grid;
+  }
+
+  .filterFields {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  }
+
+  .filterToggle {
+    display: none;
+  }
+
+  .chooserLinks {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

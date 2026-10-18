@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import api from "@/lib/api";
-import { Alert, Button, Input, Modal, Select, useToast } from "@/components/ui";
+import { Alert, Button, Input, Select, useToast } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
 import { authScopeKey } from "@/lib/authScope";
 import { useAuthStore } from "@/store/authStore";
 import { organizationPath } from "@/services/organization.service";
@@ -19,7 +20,7 @@ export function InviteOrganizationMember({ organizationId, onClose }: { organiza
   useEffect(() => { currentContext.current = context; return () => { currentContext.current = ""; }; }, [context]);
   const { toast } = useToast();
 
-  return <Modal open onClose={() => { if (!busy) onClose(); }} title="Invite organization member" description="Use their existing account or let them create one when accepting the invitation." size="md" busy={busy} footer={<Button type="submit" form="invite-organization-member" loading={busy}>Send invitation</Button>}>
+  return <Modal open onClose={() => { if (!busy) onClose(); }} title="Invite organization member" description="Use their existing account or let them create one when accepting the invitation." size="md" busy={busy} footer={<><Button variant="outline" disabled={busy} onClick={onClose}>Cancel</Button><Button type="submit" form="invite-organization-member" loading={busy}>Send invitation</Button></>}>
     <form id="invite-organization-member" className="space-y-4" onSubmit={async (event) => {
       event.preventDefault();
       if (busy) return;

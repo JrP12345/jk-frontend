@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "@/store/authStore";
-import { Alert, Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, Skeleton, SkeletonCard, Input, Select, useToast, Modal, cn } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardContent, Button, Badge, Spinner, Skeleton, SkeletonCard, Input, Select, useToast, Modal, cn, DatePicker } from "@/components/ui";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { Link2, Plus } from "lucide-react";
@@ -837,11 +837,11 @@ function PatientPortal() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Input
+              <DatePicker
                 label="Date of Birth"
-                type="date"
+
                 value={editForm.dob}
-                onChange={(e) => setEditForm({ ...editForm, dob: e.target.value })}
+                onChange={(value) => setEditForm({ ...editForm, dob: value })}
               />
               <Select
                 label="Gender"
@@ -996,7 +996,7 @@ function PatientPortal() {
             required
           />
 
-          <Input label={`Visit date (${bookingTimezone})`} type="date" value={bookingDate} onChange={event => setSelfApptTime(event.target.value)} required />
+          <DatePicker label={`Visit date (${bookingTimezone})`}  value={bookingDate} onChange={value => setSelfApptTime(value)} required />
           {selfDoctorBookingInfo?.bookingMode === "sequential_queue" ? (
             <div className="p-3 bg-accent-subtle    border border-primary-500/30 rounded-xl space-y-1.5">
               <div className="flex items-center justify-between">
@@ -1062,11 +1062,11 @@ function PatientPortal() {
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input
+              <DatePicker
                 label="Date of Birth"
-                type="date"
+
                 value={familyForm.dob}
-                onChange={(e) => setFamilyForm({ ...familyForm, dob: e.target.value })}
+                onChange={(value) => setFamilyForm({ ...familyForm, dob: value })}
               />
 
               <Select

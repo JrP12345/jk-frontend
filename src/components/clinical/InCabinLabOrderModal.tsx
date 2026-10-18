@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import api from "@/lib/api";
-import { Modal, Button, Input, useToast, cn } from "@/components/ui";
+import { Button, Input, useToast, cn } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
 import { FlaskConical, Plus, X, Sparkles, Check } from "lucide-react";
 
 interface InCabinLabOrderModalProps {
@@ -112,10 +113,25 @@ export function InCabinLabOrderModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="In-Cabin Diagnostic Lab Requisition"
+      title="Order lab tests"
       description={`Order laboratory investigations for ${patientName} (Token #${tokenNumber}). Patient will be held in Standby for report review.`}
       size="lg"
-    >
+     footer={<>
+          <Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleSubmitOrder}
+            loading={submitting}
+            disabled={selectedTests.length === 0}
+            className="font-semibold"
+          >
+            <FlaskConical className="w-4 h-4 mr-1.5" />
+            Order & Move Patient to Standby
+          </Button>
+        </>}>
       <div className="space-y-4 pt-1">
         {/* Quick Test Chips Picker */}
         <div className="space-y-2">
@@ -256,22 +272,7 @@ export function InCabinLabOrderModal({
         </div>
 
         {/* Footer Buttons */}
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
-          <Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleSubmitOrder}
-            loading={submitting}
-            disabled={selectedTests.length === 0}
-            className="font-semibold"
-          >
-            <FlaskConical className="w-4 h-4 mr-1.5" />
-            Order & Move Patient to Standby
-          </Button>
-        </div>
+
       </div>
     </Modal>
   );

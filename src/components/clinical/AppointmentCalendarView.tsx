@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Badge, Button, Modal } from "@/components/ui";
+import { useState, useEffect, useRef } from "react";
+import { Badge, Button, Spinner } from "@/components/ui";
+
+import Modal from "@/components/queue/QueueDialog";
+import { locationDateKey } from "@/lib/locationTime";
+import { patientName, patientPhone } from "@/lib/locationWorkflow";
+import styles from "./AppointmentCalendarView.module.css";
 
 interface AppointmentItem {
   id: string;
@@ -10,6 +15,8 @@ interface AppointmentItem {
   status: "pending" | "confirmed" | "checked-in" | "in-consultation" | "completed" | "cancelled";
   notes?: string;
   patientId?: {
+    name?: string;
+    phone?: string;
     userId?: { name: string; phone: string; email: string };
   };
   doctorId?: {
@@ -26,16 +33,17 @@ interface CalendarProps {
   appointments: AppointmentItem[];
   onSelectAppointment?: (appt: AppointmentItem) => void;
   onRescheduleClick?: (appt: AppointmentItem) => void;
+  initialDate?: string;
+  timeZone?: string;
+  onRangeChange?: (start: string, end: string) => void;
+  loading?: boolean;
+  canReschedule?: boolean;
 }
 
-export function AppointmentCalendarView({ appointments, onSelectAppointment, onRescheduleClick }: CalendarProps) {
-  const [viewMode, setViewMode] = useState<"day" | "week" | "month">("week");
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+export function AppointmentCalendarView({ appointments, onSelectAppointment, onRescheduleClick, initialDate, timeZone, onRangeChange, loading = false, canReschedule = true }: CalendarProps) {
+  const [viewMode, setViewMode] = useState<"day" | "week" | "month">(() => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches ? "day" : "week");
+  const [currentDate, setCurrentDate] = useState<Date>(() => initialDate && /^\d{4}-\d{2}-\d{2}$/.test(initialDate) ? new Date(initialDate + "T12:00:00") : new Date());
   const [selectedAppt, setSelectedAppt] = useState<AppointmentItem | null>(null);
-  useEffect(() => {
-    if (window.matchMedia("(max-width: 639px)").matches) setViewMode("day");
-  }, []);
-
   const getLocalDateKey = (d: Date) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -43,11 +51,20 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
     return `${year}-${month}-${day}`;
   };
 
+  const rangeCallback = useRef(onRangeChange);
+  useEffect(() => { rangeCallback.current = onRangeChange; }, [onRangeChange]);
+  useEffect(() => {
+    const start = new Date(currentDate), end = new Date(currentDate);
+    if (viewMode === "week") { start.setDate(start.getDate() - (start.getDay() + 6) % 7); end.setTime(start.getTime()); end.setDate(end.getDate() + 6); }
+    else if (viewMode === "month") { start.setDate(1); end.setMonth(end.getMonth() + 1, 0); }
+    rangeCallback.current?.(getLocalDateKey(start), getLocalDateKey(end));
+  }, [currentDate, viewMode]);
+
   // Group appointments by YYYY-MM-DD in local time
   const appointmentsByDate: Record<string, AppointmentItem[]> = {};
-  appointments.forEach((appt) => {
+  [...appointments].sort((a, b) => Date.parse(a.appointmentTime) - Date.parse(b.appointmentTime)).forEach((appt) => {
     if (!appt.appointmentTime) return;
-    const dateKey = getLocalDateKey(new Date(appt.appointmentTime));
+    const dateKey = timeZone ? locationDateKey(new Date(appt.appointmentTime), timeZone) : getLocalDateKey(new Date(appt.appointmentTime));
     if (!appointmentsByDate[dateKey]) appointmentsByDate[dateKey] = [];
     appointmentsByDate[dateKey].push(appt);
   });
@@ -98,19 +115,19 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
   };
 
   return (
-    <div className="space-y-4 bg-surface p-3 sm:p-6 rounded-2xl border border-border min-w-0">
+    <div className={styles.calendar} aria-busy={loading} aria-label="Appointment calendar">
       {/* Calendar Header & View Switcher */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-border pb-4">
-        <div className="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto">
+      <div className={styles.header}>
+        <div className={styles.navigation}>
           <Button variant="outline" size="sm" onClick={prevPeriod}>← Prev</Button>
           <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())}>Today</Button>
           <Button variant="outline" size="sm" onClick={nextPeriod}>Next →</Button>
-          <h2 className="text-lg font-bold text-text ml-2">
+          <h2 className={styles.periodTitle}>
             {currentDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
           </h2>
         </div>
 
-        <div className="flex items-center gap-1 bg-surface-alt p-1 rounded-xl border border-border">
+        <div className={styles.modes}>
           {(["day", "week", "month"] as const).map((mode) => (
             <Button
               variant={viewMode === mode ? "primary" : "ghost"}
@@ -128,21 +145,22 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
         </div>
       </div>
 
+      <div className={styles.loadingLine}>{loading && <span role="status"><Spinner size="sm" /> Updating schedule...</span>}</div>
       {/* Day View */}
       {viewMode === "day" && (
-        <div className="bg-surface-alt/40 p-4 rounded-xl border border-border space-y-3 min-h-[300px]">
+        <div className="bg-surface-alt/40 p-3 rounded-xl border border-border space-y-3 min-h-[300px]">
           <div className="flex flex-wrap gap-2 justify-between items-center border-b border-border pb-2">
             <h3 className="font-bold text-text text-sm">
               {currentDate.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" })}
             </h3>
             <span className="text-xs text-text-muted">
-              {(appointmentsByDate[getLocalDateKey(currentDate)] || []).length} Appointments Scheduled
+              {loading ? "Loading..." : (appointmentsByDate[getLocalDateKey(currentDate)] || []).length + " visits"}
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {(appointmentsByDate[getLocalDateKey(currentDate)] || []).length === 0 ? (
-              <p className="text-xs text-text-muted italic py-8 col-span-full text-center">No appointments scheduled for this day.</p>
+              <p className="text-xs text-text-muted italic py-8 col-span-full text-center">{loading ? "Loading appointments..." : "No appointments scheduled for this day."}</p>
             ) : (
               (appointmentsByDate[getLocalDateKey(currentDate)] || []).map((appt) => (
                 <button
@@ -154,15 +172,15 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
                   <div className="flex justify-between items-center font-bold text-text text-xs">
                     <span>Token #{appt.tokenNumber}</span>
                     <span className="text-accent font-semibold">
-                      {new Date(appt.appointmentTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(appt.appointmentTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone })}
                     </span>
                   </div>
-                  <p className="font-semibold text-text text-sm">{appt.patientId?.userId?.name || "Patient"}</p>
+                  <p className="font-semibold text-text text-sm">{patientName(appt.patientId)}</p>
                   <div className="flex justify-between items-center pt-1 border-t border-border/50 text-xs">
                     <Badge variant={getStatusBadgeVariant(appt.status)} className="capitalize">
                       {appt.status}
                     </Badge>
-                    <span className="text-text-muted font-medium">Dr. {appt.doctorId?.name}</span>
+                    <span className="text-text-muted font-medium">Dr. {appt.doctorId?.name?.replace(/^dr\.?\s+/i, "")}</span>
                   </div>
                 </button>
               ))
@@ -173,7 +191,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
 
       {/* Week Grid View */}
       {viewMode === "week" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 min-[1280px]:grid-cols-7 gap-2">
           {weekDates.map((d) => {
             const dateStr = getLocalDateKey(d);
             const isToday = getLocalDateKey(new Date()) === dateStr;
@@ -182,7 +200,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
             return (
               <div
                 key={dateStr}
-                className={`min-h-[220px] p-2.5 rounded-xl border flex flex-col space-y-2 ${
+                className={`min-h-[140px] p-2.5 rounded-xl border flex flex-col space-y-2 ${
                   isToday ? "bg-primary-500/10 border-primary-500/40" : "bg-surface-alt/40 border-border/70"
                 }`}
               >
@@ -207,15 +225,15 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
                         <div className="flex justify-between items-center font-bold text-text">
                           <span>#{appt.tokenNumber}</span>
                           <span className="text-[10px] font-semibold text-accent">
-                            {new Date(appt.appointmentTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            {new Date(appt.appointmentTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone })}
                           </span>
                         </div>
-                        <p className="font-medium text-text truncate">{appt.patientId?.userId?.name || "Patient"}</p>
+                        <p className="font-medium text-text truncate">{patientName(appt.patientId)}</p>
                         <div className="flex justify-between items-center">
                           <Badge variant={getStatusBadgeVariant(appt.status)} className="text-[9px] px-1 py-0 capitalize">
                             {appt.status}
                           </Badge>
-                          <span className="text-[9px] text-text-muted truncate max-w-[60px]">Dr. {appt.doctorId?.name}</span>
+                          <span className="text-[9px] text-text-muted truncate max-w-[60px]">Dr. {appt.doctorId?.name?.replace(/^dr\.?\s+/i, "")}</span>
                         </div>
                       </button>
                     ))
@@ -229,7 +247,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
 
       {/* Month View Grid */}
       {viewMode === "month" && (
-        <div className="grid grid-cols-7 gap-1 sm:gap-2">
+        <div className={styles.month}>
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayName) => (
             <div key={dayName} className="text-center font-bold text-xs text-text-muted py-1 border-b border-border">
               {dayName}
@@ -246,14 +264,13 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
             return (
               <div
                 key={dateStr}
+                data-calendar-day={dateStr}
                 className={`min-h-[70px] sm:min-h-[90px] p-1 sm:p-2 rounded-lg sm:rounded-xl border flex flex-col justify-between min-w-0 ${
                   isToday ? "bg-primary-500/10 border-primary-500/40" : "bg-surface-alt/30 border-border/60"
                 }`}
               >
                 <div className="flex flex-wrap gap-1 justify-between items-center text-xs">
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[11px] ${isToday ? "bg-primary text-brand-mist" : "text-text"}`}>
-                    {dayNum}
-                  </span>
+                  <button type="button" className={styles.monthDate} aria-label={d.toLocaleDateString("en-US", { month: "long", day: "numeric" }) + ", " + dayAppts.length + " visits. Open day"} onClick={() => { setCurrentDate(d); setViewMode("day"); }}>{dayNum}</button>
                   {dayAppts.length > 0 && (
                     <span className="text-[10px] font-extrabold text-accent bg-primary/10 px-1.5 py-0.2 rounded-full">
                       {dayAppts.length}<span className="hidden sm:inline"> appt{dayAppts.length > 1 ? "s" : ""}</span>
@@ -261,7 +278,7 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
                   )}
                 </div>
 
-                <div className="space-y-1">
+                <div className={styles.monthEvents}>
                   {dayAppts.slice(0, 2).map((appt) => (
                     <button
                       type="button"
@@ -269,11 +286,11 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
                       onClick={() => { setSelectedAppt(appt); if (onSelectAppointment) onSelectAppointment(appt); }}
                       className="w-full text-left text-[10px] p-1 bg-surface rounded border border-border/60 truncate font-semibold cursor-pointer hover:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus-ring"
                     >
-                      #{appt.tokenNumber} {appt.patientId?.userId?.name || "Patient"}
+                      #{appt.tokenNumber} {patientName(appt.patientId)}
                     </button>
                   ))}
                   {dayAppts.length > 2 && (
-                    <span className="text-[9px] text-text-muted font-bold block text-center">+ {dayAppts.length - 2} more</span>
+                    <button type="button" onClick={() => { setCurrentDate(d); setViewMode("day"); }} className="text-xs text-accent min-h-11 w-full">+ {dayAppts.length - 2} more</button>
                   )}
                 </div>
               </div>
@@ -284,33 +301,21 @@ export function AppointmentCalendarView({ appointments, onSelectAppointment, onR
 
       {/* Appointment Quick Info Modal */}
       {selectedAppt && (
-        <Modal open={!!selectedAppt} onClose={() => setSelectedAppt(null)} title={`Appointment Details #${selectedAppt.tokenNumber}`} size="sm">
-          <div className="space-y-3 text-xs">
+        <Modal open={!!selectedAppt} onClose={() => setSelectedAppt(null)} title={`Appointment #${selectedAppt.tokenNumber}`} size="sm" footer={onRescheduleClick && canReschedule && !["completed", "cancelled", "no-show"].includes(selectedAppt.status) ? <Button variant="outline" onClick={() => { const target = selectedAppt; setSelectedAppt(null); onRescheduleClick(target); }}>Reschedule appointment</Button> : <Button variant="outline" onClick={() => setSelectedAppt(null)}>Done</Button>}>
+          <div className={styles.details}>
             <div className="p-3 bg-surface-alt rounded-lg border border-border space-y-1">
-              <p className="font-bold text-text text-sm">{selectedAppt.patientId?.userId?.name}</p>
-              <p className="text-text-secondary">Phone: {selectedAppt.patientId?.userId?.phone || "N/A"}</p>
+              <p className="font-bold text-text text-sm">{patientName(selectedAppt.patientId)}</p>
+              <p className="text-text-secondary">Phone: {patientPhone(selectedAppt.patientId) || "Not recorded"}</p>
               <p className="text-text-secondary">Doctor: Dr. {selectedAppt.doctorId?.name}</p>
               <p className="text-text-secondary">Location: {selectedAppt.locationId?.name}</p>
-              <p className="text-text-secondary">Time: {new Date(selectedAppt.appointmentTime).toLocaleString()}</p>
+              <p className="text-text-secondary">Time: {new Date(selectedAppt.appointmentTime).toLocaleString(undefined, { timeZone })}</p>
             </div>
 
             <div className="flex justify-between items-center pt-2">
               <Badge variant={getStatusBadgeVariant(selectedAppt.status)} className="capitalize">
                 Status: {selectedAppt.status}
               </Badge>
-              {onRescheduleClick && (
-                <Button
-                  size="xs"
-                  variant="outline"
-                  onClick={() => {
-                    const target = selectedAppt;
-                    setSelectedAppt(null);
-                    onRescheduleClick(target);
-                  }}
-                >
-                  🗓️ Reschedule
-                </Button>
-              )}
+
             </div>
           </div>
         </Modal>

@@ -1,0 +1,26 @@
+.overview { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; min-width: 0; }
+.panel { padding: .875rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--surface); min-width: 0; overflow-wrap: anywhere; }
+.panel > header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 44px; margin-bottom: .5rem; }
+.panel h2 { display: flex; align-items: center; gap: .5rem; font-size: .875rem; font-weight: 600; }
+.panel h2 svg { color: var(--accent); flex-shrink: 0; }
+.panel header button { min-height: 44px; padding-inline: .5rem; font-size: .75rem; }
+.demographics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .875rem .75rem; font-size: .8125rem; }
+.demographics dt, .vitals dt { color: var(--text-muted); font-size: .6875rem; margin-bottom: .25rem; }
+.demographics dd { line-height: 1.5; }
+.demographics a { display: inline-flex; align-items: center; min-height: 44px; max-width: 100%; color: var(--accent); }
+.capitalize { text-transform: capitalize; }
+.full { grid-column: 1 / -1; }
+.clinical { display: grid; gap: .875rem; font-size: .8125rem; line-height: 1.6; }
+.clinical h3 { font-size: .75rem; font-weight: 600; margin-bottom: .375rem; }
+.clinical p, .notice { color: var(--text-muted); font-size: .8125rem; line-height: 1.6; }
+.tags { display: flex; flex-wrap: wrap; gap: .375rem; }
+.tags > span { white-space: normal; overflow-wrap: anywhere; }
+.items, .vitals { display: grid; gap: .75rem; font-size: .8125rem; }
+.items > div { display: flex; flex-direction: column; gap: .25rem; padding-top: .625rem; border-top: 1px solid var(--border); }
+.items strong { font-weight: 600; }
+.items span { color: var(--text-muted); font-size: .75rem; }
+.items a { display: flex; align-items: center; min-height: 44px; color: var(--accent); }
+.vitals > div { padding-top: .625rem; border-top: 1px solid var(--border); }
+.vitals strong { display: block; font-size: .75rem; font-weight: 500; margin-bottom: .5rem; }
+.vitals dl { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; }
+@media (min-width: 900px) { .overview { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; } .panel { padding: 1rem; } }

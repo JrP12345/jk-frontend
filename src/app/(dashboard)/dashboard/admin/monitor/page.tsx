@@ -4,8 +4,9 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
-import { Card, CardTitle, CardDescription, Button, Badge, Table, Input, Select, StatCard, useToast, ConfirmDialog, cn } from "@/components/ui";
-import { Activity, Radio, Globe, Users, Shield, ShieldCheck, ShieldAlert, Smartphone, Laptop, Tablet, RotateCw, LogOut, Search, Building2, Calendar, Clock, MapPin, TrendingUp, Eye } from "lucide-react";
+import { Alert, Avatar, Card, Button, Badge, Table, Input, Select, Skeleton, Tabs, Modal, useToast } from "@/components/ui";
+import styles from "./Monitor.module.css";
+import { Radio, Globe, Shield, ShieldCheck, Smartphone, Laptop, Tablet, RotateCw, LogOut, Search, SlidersHorizontal, ChevronDown } from "lucide-react";
 
 interface ActiveSession {
   id: string;
@@ -70,6 +71,7 @@ export default function RootAdminMonitorPage() {
   // Sessions state
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
@@ -90,6 +92,7 @@ export default function RootAdminMonitorPage() {
   // Traffic Analytics state
   const [trafficDays, setTrafficDays] = useState<14 | 30>(14);
   const [trafficLoading, setTrafficLoading] = useState(true);
+  const [trafficError, setTrafficError] = useState("");
   const [trafficSummary, setTrafficSummary] = useState<TrafficSummary | null>(null);
   const [dailyTrends, setDailyTrends] = useState<DailyTrend[]>([]);
   const [locationAttribution, setLocationAttribution] = useState<LocationAttribution[]>([]);
@@ -101,9 +104,11 @@ export default function RootAdminMonitorPage() {
   const fetchSessions = useCallback(async () => {
     try {
       setSessionsLoading(true);
+      setSessionsError("");
       const res = await api.get("/auth/admin/sessions");
       setSessions(res.data?.data || []);
     } catch (err: any) {
+      setSessionsError(err.response?.data?.message || "Active sessions could not be loaded. Retry.");
       toast({
         title: "Failed to load sessions",
         description: err.response?.data?.message || "Could not retrieve active platform sessions",
@@ -118,6 +123,7 @@ export default function RootAdminMonitorPage() {
   const fetchTraffic = useCallback(async () => {
     try {
       setTrafficLoading(true);
+      setTrafficError("");
       const res = await api.get(`/admin/analytics/traffic?days=${trafficDays}`);
       const data = res.data?.data;
       if (data) {
@@ -129,6 +135,7 @@ export default function RootAdminMonitorPage() {
         setBrowserStats(data.browsers || []);
       }
     } catch (err: any) {
+      setTrafficError(err.response?.data?.message || "Traffic data could not be loaded. Retry.");
       toast({
         title: "Failed to load traffic",
         description: err.response?.data?.message || "Could not retrieve website visit analytics",
@@ -259,700 +266,71 @@ export default function RootAdminMonitorPage() {
     );
   }
 
-  return (
-    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12">
-      {/* ──────────────────────────────────────────────────────────────────────────
-          1. HEADER BANNER
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-primary-500/10 text-accent dark:text-accent border border-primary-500/20">
-              <Activity className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-text">
-                  Live activity
-                </h1>
-                <Badge variant="primary" size="sm" dot pulse className="text-[10px] font-bold uppercase tracking-wider">
-                  Real-Time
-                </Badge>
-              </div>
-              <p className="text-xs text-text-muted mt-0.5">
-                Review active sessions and activity across organizations.
-              </p>
-            </div>
-          </div>
-        </div>
+  const sessionAction = (session: ActiveSession) => <Button variant="outline" size="sm" className={styles.sessionAction} disabled={session.isCurrent} loading={revokingSessionId === session.id} title={session.isCurrent ? "Cannot terminate your current active session" : "Force logout this session"} onClick={() => handleTerminateSession(session)}><LogOut className="h-4 w-4 shrink-0" />{session.isCurrent ? "Current device" : "Terminate session"}</Button>;
+  const summaryValue = (loading: boolean, unavailable: boolean, value: number | string) => loading ? <Skeleton height="1.5rem" width="3rem" /> : unavailable ? <span aria-label="Unavailable">—</span> : value;
 
-        {/* Global Tab Switcher */}
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto max-w-full">
-            <button
-              type="button"
-              aria-pressed={activeTab === "sessions"}
-              onClick={() => setActiveTab("sessions")}
-              className={cn(
-                "min-h-11 shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-accent",
-                activeTab === "sessions"
-                  ? "bg-surface text-accent dark:text-accent shadow-xs border border-border/60"
-                  : "text-text-muted hover:text-text"
-              )}
-            >
-              <Radio className="w-3.5 h-3.5 text-success-text animate-pulse" />
-              Live Sessions ({sessionStats.totalSessions})
-            </button>
-            <button
-              type="button"
-              aria-pressed={activeTab === "traffic"}
-              onClick={() => setActiveTab("traffic")}
-              className={cn(
-                "min-h-11 shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-accent",
-                activeTab === "traffic"
-                  ? "bg-surface text-accent dark:text-accent shadow-xs border border-border/60"
-                  : "text-text-muted hover:text-text"
-              )}
-            >
-              <Globe className="w-3.5 h-3.5 text-accent" />
-              Website Traffic & Locations
-            </button>
-          </div>
+  return <div className={styles.workspace}>
+    <header className={styles.header}><div><h1>Live activity</h1><p>Review platform sessions and website traffic.</p></div><Button variant="outline" className={styles.iconAction} aria-label={activeTab === "sessions" ? "Refresh sessions" : "Refresh traffic"} title={activeTab === "sessions" ? "Refresh sessions" : "Refresh traffic"} loading={activeTab === "sessions" ? sessionsLoading : trafficLoading} onClick={() => { if (activeTab === "sessions") void fetchSessions(); else void fetchTraffic(); }}><RotateCw className="h-4 w-4" /></Button></header>
+    <Tabs className={styles.tabs} variant="pills" activeTab={activeTab} scrollActiveIntoView={false} onChange={id => { if (id === "sessions" || id === "traffic") setActiveTab(id); }} tabs={[
+      { id: "sessions", label: "Live sessions", icon: <Radio />, content: <div className={styles.content}>
+        <dl className={styles.summary} aria-label="Session summary" aria-busy={sessionsLoading}>
+          <div><dt>Active sessions</dt><dd>{summaryValue(sessionsLoading, !!sessionsError, sessionStats.totalSessions)}</dd></div>
+          <div><dt>Distinct users</dt><dd>{summaryValue(sessionsLoading, !!sessionsError, sessionStats.distinctUsers)}</dd></div>
+          <div><dt>Root sessions</dt><dd>{summaryValue(sessionsLoading, !!sessionsError, sessionStats.rootCount)}<small>One login per root account</small></dd></div>
+          <div><dt>Desktop devices</dt><dd>{summaryValue(sessionsLoading, !!sessionsError, sessionStats.desktopCount)}<small>{sessionsError || sessionsLoading ? "Mobile device breakdown" : `${sessionStats.mobileCount} mobile devices`}</small></dd></div>
+        </dl>
+        <details className={styles.policy}><summary><span><ShieldCheck className="h-4 w-4 shrink-0 text-accent" />Root session policy</span><ChevronDown className="h-4 w-4 shrink-0" /></summary><p>Root accounts allow one concurrent active login. Signing in from another device or browser revokes the previous root session.</p></details>
+        <section className={styles.panel} aria-label="Active session directory">
+          <div className={styles.toolbar}><Input containerClassName={styles.search} icon={<Search />} type="search" aria-label="Search active sessions" placeholder="Search users, organizations or devices" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} /><Select aria-label="Session role" compactOnMobile fullWidth={false} containerClassName={styles.roleFilter} icon={<SlidersHorizontal className="h-4 w-4" />} value={roleFilter} onChange={event => setRoleFilter(event.target.value)} options={[{ value: "all", label: "All roles" }, { value: "root", label: "Root Superadmin" }, { value: "admin", label: "Tenant Admin" }, { value: "doctor", label: "Physician / Doctor" }, { value: "receptionist", label: "Front Desk" }, { value: "pharmacist", label: "Pharmacist" }, { value: "lab_tech", label: "Lab Technician" }, { value: "nurse", label: "Nurse" }, { value: "cashier", label: "Billing Cashier" }, { value: "patient", label: "Patient" }]} /></div>
+          {sessionsError ? <div className="p-4"><Alert variant="error" title="Sessions unavailable" action={<Button variant="outline" onClick={fetchSessions}>Retry sessions</Button>}>{sessionsError}</Alert></div> : <>
+          <div className="flex flex-wrap items-baseline justify-between gap-2 px-4 pt-4 pb-1"><h2 className="text-sm font-semibold">Active sessions</h2><span className="text-xs text-text-secondary">{sessionsLoading ? "Loading sessions..." : `${filteredSessions.length} of ${sessions.length} sessions`}</span></div>
+          <Table<ActiveSession> className={styles.responsiveTable} caption="Active platform sessions" data={filteredSessions} loading={sessionsLoading} searchable={false} showColumnVisibility={false} fitContent emptyMessage="No active user sessions match the selected filter." columns={[
+            { header: "User & role", accessor: session => <SessionIdentity session={session} /> },
+            { header: "Organization", accessor: session => <div className="min-w-0 [overflow-wrap:anywhere]"><p className="text-sm font-medium">{session.organizationName}</p>{session.organizationCity && <p className={styles.meta}>{session.organizationCity}</p>}</div> },
+            { header: "Device & connection", accessor: session => <><SessionDevice session={session} /><p className={styles.meta}><span className="font-mono">{session.ipAddress || "Unavailable"}</span></p><p className={styles.meta}>Connected {new Date(session.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p></> },
+            { header: "Session action", align: "right", accessor: sessionAction },
+          ]} renderMobileCard={session => <article className={styles.sessionCard} aria-label={`Session for ${session.userName}`}><SessionIdentity session={session} /><dl className={styles.sessionFacts}>
+            <div className="col-span-2"><dt>Organization</dt><dd>{session.organizationName}{session.organizationCity && <span className="block mt-1 text-xs text-text-secondary">{session.organizationCity}</span>}</dd></div>
+            <div className="col-span-2"><dt>Device & client</dt><dd><SessionDevice session={session} /></dd></div>
+            <div><dt>IP address</dt><dd className="font-mono">{session.ipAddress || "Unavailable"}</dd></div><div><dt>Connected</dt><dd>{new Date(session.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</dd></div>
+          </dl>{sessionAction(session)}</article>} />
+          </>}
+        </section>
+      </div> },
+      { id: "traffic", label: "Website traffic", icon: <Globe />, content: <div className={styles.content}>
+        <div className={styles.sectionHeader}><div><h2 className="text-base font-semibold">Website traffic</h2><p>Pageviews, unique visitors and location attribution.</p></div><div className={styles.range} role="group" aria-label="Traffic period">{([14, 30] as const).map(days => <Button key={days} variant="ghost" size="sm" aria-pressed={trafficDays === days} onClick={() => setTrafficDays(days)}>Last {days} days</Button>)}</div></div>
+        <dl className={styles.summary} aria-label="Traffic summary" aria-busy={trafficLoading}>
+          <div><dt>Today's visits</dt><dd>{summaryValue(trafficLoading, !!trafficError || !trafficSummary, trafficSummary?.todayVisits ?? 0)}<small>{trafficSummary && !trafficError ? `${trafficSummary.todayVisitors} unique visitors` : "Unique visitors today"}</small></dd></div>
+          <div><dt>Yesterday</dt><dd>{summaryValue(trafficLoading, !!trafficError || !trafficSummary, trafficSummary?.yesterdayVisits ?? 0)}<small>{trafficSummary && !trafficError ? `${trafficSummary.yesterdayVisitors} unique visitors` : "Previous calendar day"}</small></dd></div>
+          <div><dt>7-day visits</dt><dd>{summaryValue(trafficLoading, !!trafficError || !trafficSummary, trafficSummary?.sevenDayVisits ?? 0)}<small>Rolling weekly total</small></dd></div>
+          <div><dt>30-day visits</dt><dd>{summaryValue(trafficLoading, !!trafficError || !trafficSummary, trafficSummary?.thirtyDayVisits ?? 0)}<small>{trafficSummary && !trafficError ? `${trafficSummary.totalVisits} all-time visits` : "Rolling monthly total"}</small></dd></div>
+        </dl>
+        {trafficError ? <Alert variant="error" title="Traffic unavailable" action={<Button variant="outline" onClick={fetchTraffic}>Retry traffic</Button>}>{trafficError}</Alert> : <>
+        <Card><div className="space-y-3"><div><h2 className="text-sm font-semibold">Daily traffic</h2><p className={styles.meta}>Pageviews and unique visitors over the past {trafficDays} days.</p><div className={styles.legend}><span><i className="h-2.5 w-2.5 rounded-sm bg-primary-500" aria-hidden="true" />Pageviews</span><span><i className="h-2.5 w-2.5 rounded-sm bg-success" aria-hidden="true" />Unique visitors</span></div></div>
+          {trafficLoading ? <Skeleton height="13rem" /> : !dailyTrends.length ? <p className="py-10 text-center text-sm text-text-secondary">No telemetry recorded for this timeframe.</p> : <>
+            <figure aria-label="Daily pageviews and unique visitors"><div className={styles.chartViewport}><div className={styles.chart} style={{ minWidth: `${dailyTrends.length * 36}px` }}>{dailyTrends.map(day => <div key={day.date} className={styles.barGroup} role="img" tabIndex={0} aria-label={`${day.date}: ${day.visits} visits, ${day.uniqueVisitors} unique visitors`} title={`${day.date}: ${day.visits} visits, ${day.uniqueVisitors} unique visitors`}><div className={styles.bars} aria-hidden="true"><div className="bg-primary-500/80" style={{ height: `${Math.round(day.visits / maxTrendVisits * 100)}%` }} /><div className="bg-success/80" style={{ height: `${Math.round(day.uniqueVisitors / maxTrendVisits * 100)}%` }} /></div><span className={styles.dayLabel} aria-hidden="true">{day.date.slice(5)}</span></div>)}</div></div><figcaption className={styles.meta}>Scroll the chart to view all days. Daily counts are available below.</figcaption></figure>
+            <details className="text-sm"><summary className="cursor-pointer min-h-11 flex items-center font-medium text-accent">View daily counts</summary><div className="overflow-x-auto"><table className="w-full text-left text-xs"><caption className="sr-only">Daily traffic counts</caption><thead><tr className="border-b border-border"><th className="py-2">Date</th><th>Pageviews</th><th>Unique visitors</th></tr></thead><tbody>{dailyTrends.map(day => <tr key={day.date} className="border-b border-border"><th scope="row" className="py-2 font-normal">{day.date}</th><td>{day.visits}</td><td>{day.uniqueVisitors}</td></tr>)}</tbody></table></div></details>
+          </>}
+        </div></Card>
+        <section className={styles.panel} aria-label="Location traffic attribution"><div className="p-4"><h2 className="text-sm font-semibold">Traffic by location</h2><p className={styles.meta}>Patient discovery, appointment and portal visits by location.</p></div><Table<LocationAttribution> className={styles.responsiveTable} caption="Traffic by practice location" data={locationAttribution} loading={trafficLoading} searchable={false} showColumnVisibility={false} fitContent emptyMessage="No location-specific visits recorded yet." keyField="locationName" columns={[
+          { header: "Location", accessor: location => <div className="min-w-0 [overflow-wrap:anywhere]"><p className="text-sm font-medium">{location.locationName}</p><p className={styles.meta}>{location.city}</p></div> },
+          { header: "Organization", accessor: location => <span className="text-sm [overflow-wrap:anywhere]">{location.organizationName}</span> },
+          { header: "Visits", accessor: "visits" }, { header: "Unique visitors", accessor: "uniqueVisitors" }, { header: "Share", accessor: location => <span className="text-sm">{location.percentShare}%</span> },
+        ]} renderMobileCard={location => <article className={styles.locationCard}><div><h3 className="text-sm font-semibold [overflow-wrap:anywhere]">{location.locationName}</h3><p className={styles.meta}>{location.organizationName}</p>{location.city && <p className={styles.meta}>{location.city}</p>}</div><dl className={styles.locationFacts}><div><dt>Visits</dt><dd>{location.visits}</dd></div><div><dt>Unique visitors</dt><dd>{location.uniqueVisitors}</dd></div><div><dt>Traffic share</dt><dd>{location.percentShare}%</dd></div></dl></article>} /></section>
+        <div className={styles.reportGrid}><Card><h2 className="mb-3 text-sm font-semibold">Top visited pages</h2>{trafficLoading ? <Skeleton height="8rem" /> : !topPages.length ? <p className={styles.meta}>No route visits logged yet.</p> : <ol>{topPages.map(page => <li key={page.path} className={styles.route}><code>{page.path}</code><span>{page.visits} visits</span></li>)}</ol>}</Card>
+        <Card><div className="space-y-4"><h2 className="text-sm font-semibold">Devices & browsers</h2>{[{ label: "Client devices", rows: deviceStats }, { label: "Web browsers", rows: browserStats }].map(group => <section key={group.label}><h3 className="mb-2 text-xs font-medium text-text-secondary">{group.label}</h3>{trafficLoading ? <Skeleton height="5rem" /> : !group.rows.length ? <p className={styles.meta}>No data recorded yet.</p> : <div className={styles.technology}>{group.rows.map(row => <div key={row.name}><span>{row.name}</span><strong>{row.count}</strong></div>)}</div>}</section>)}</div></Card></div>
+        </>}
+      </div> },
+    ]} />
+    <Modal open={confirmDialog.open} size="sm" busy={!!revokingSessionId} onClose={() => { if (!revokingSessionId) setConfirmDialog(prev => ({ ...prev, open: false })); }} title={confirmDialog.title} ariaDescribedBy="monitor-session-description" footer={<div className={styles.confirmActions}><Button variant="outline" disabled={!!revokingSessionId} onClick={() => setConfirmDialog(prev => ({ ...prev, open: false }))}>Cancel</Button><Button variant="danger" loading={!!revokingSessionId} onClick={confirmDialog.action}>Confirm Terminate</Button></div>}><p id="monitor-session-description" className={styles.confirmDescription}>{confirmDialog.description}</p></Modal>
+  </div>;
+}
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (activeTab === "sessions") fetchSessions();
-              else fetchTraffic();
-            }}
-            loading={activeTab === "sessions" ? sessionsLoading : trafficLoading}
-            className="shrink-0 min-h-[36px]"
-          >
-            <RotateCw className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </div>
+function SessionIdentity({ session }: { session: ActiveSession }) {
+  return <div className={styles.identity}><Avatar name={session.userName} size="md" /><div><div className={styles.identityName}><span>{session.userName}</span>{session.isCurrent && <Badge variant="primary" size="sm">Current session</Badge>}{session.isGuest && <Badge variant="neutral" size="sm">Guest</Badge>}</div><p className={styles.meta}>{session.userEmail || "Phone OTP account"}</p><p className={styles.meta}><span className="capitalize">{session.userRole.replaceAll("_", " ")}</span></p></div></div>;
+}
 
-      {/* ──────────────────────────────────────────────────────────────────────────
-          TAB 1: LIVE USER SESSIONS & FORCE-LOGOUT
-         ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "sessions" && (
-        <div className="space-y-6">
-          {/* KPI Metrics */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            <StatCard
-              label="Active Sessions"
-              value={sessionStats.totalSessions.toString()}
-              description="Open browser & device tokens"
-              icon={<Radio className="w-5 h-5 text-success-text" />}
-            />
-            <StatCard
-              label="Distinct Users"
-              value={sessionStats.distinctUsers.toString()}
-              description="Users currently online"
-              icon={<Users className="w-5 h-5 text-accent" />}
-            />
-            <StatCard
-              label="Root Concurrency"
-              value={`${sessionStats.rootCount} / 1`}
-              description="Strict Single-Session Active"
-              icon={<ShieldCheck className="w-5 h-5 text-accent" />}
-            />
-            <StatCard
-              label="Device Balance"
-              value={`${sessionStats.desktopCount} Desktop · ${sessionStats.mobileCount} Mobile`}
-              description="Client screen breakdown"
-              icon={<Laptop className="w-5 h-5 text-warning-text" />}
-            />
-          </div>
-
-          {/* Root Policy Notice */}
-          <Card className="border border-accent/30 bg-primary/5 p-4 rounded-2xl">
-            <div className="flex items-start gap-3">
-              <ShieldAlert className="w-5 h-5 text-accent dark:text-accent shrink-0 mt-0.5" />
-              <div className="space-y-1 text-xs">
-                <p className="font-bold text-text">Root Single-Session Concurrency Active</p>
-                <p className="text-text-muted leading-relaxed">
-                  As requested by platform security policy, Root Superadmin accounts are restricted to <strong>1 concurrent active login</strong>.
-                  If you or an admin log in to the Root account from another device or browser, any prior sessions are immediately revoked and logged out.
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          {/* Filters & Search */}
-          <Card className="p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                <Input
-                  placeholder="Search active users by name, email, role, IP address, or device..."
-                  aria-label="Search active sessions"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-10 text-xs w-full"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  options={[
-                    { value: "all", label: "All Roles" },
-                    { value: "root", label: "Root Superadmin" },
-                    { value: "admin", label: "Tenant Admin" },
-                    { value: "doctor", label: "Physician / Doctor" },
-                    { value: "receptionist", label: "Front Desk" },
-                    { value: "pharmacist", label: "Pharmacist" },
-                    { value: "lab_tech", label: "Lab Technician" },
-                    { value: "nurse", label: "Nurse" },
-                    { value: "cashier", label: "Billing Cashier" },
-                    { value: "patient", label: "Patient" },
-                  ]}
-                  className="w-44 text-xs h-10"
-                />
-              </div>
-            </div>
-          </Card>
-
-          {/* Active Sessions Table */}
-          <Table<ActiveSession>
-            data={filteredSessions}
-            loading={sessionsLoading}
-            searchable={false}
-            emptyMessage="No active user sessions match the selected filter."
-            columns={[
-              {
-                header: "User & Role",
-                accessor: (s) => (
-                  <div className="flex items-center gap-3 min-w-[200px]">
-                    <div className="w-9 h-9 rounded-xl bg-primary-500/10 text-accent dark:text-accent font-bold flex items-center justify-center text-xs shrink-0 border border-primary-500/20">
-                      {s.userName.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-text text-xs sm:text-sm">{s.userName}</span>
-                        {s.isCurrent && (
-                          <Badge variant="primary" size="sm" className="text-[9px] font-bold">
-                            Current Session
-                          </Badge>
-                        )}
-                        {s.isGuest && (
-                          <Badge variant="secondary" size="sm" className="text-[9px]">
-                            Guest
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-text-muted">{s.userEmail || "Phone OTP Account"}</p>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                header: "Role",
-                accessor: (s) => {
-                  const variant =
-                    s.userRole === "root"
-                      ? "primary"
-                      : s.userRole === "admin"
-                      ? "info"
-                      : s.userRole === "doctor"
-                      ? "success"
-                      : "secondary";
-                  return (
-                    <Badge variant={variant as any} size="sm" className="uppercase font-bold text-[10px]">
-                      {s.userRole}
-                    </Badge>
-                  );
-                },
-              },
-              {
-                header: "Tenant Practice",
-                accessor: (s) => (
-                  <div className="space-y-0.5 min-w-[150px]">
-                    <div className="flex items-center gap-1 text-xs font-semibold text-text">
-                      <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                      <span className="truncate">{s.organizationName}</span>
-                    </div>
-                    {s.organizationCity && (
-                      <p className="text-[10px] text-text-muted pl-4.5">{s.organizationCity}</p>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                header: "Device & Client",
-                accessor: (s) => (
-                  <div className="flex items-center gap-2 min-w-[160px]">
-                    <div className="p-1.5 rounded-lg bg-surface-alt text-text-muted border border-border/60">
-                      {s.deviceType === "Mobile" ? (
-                        <Smartphone className="w-4 h-4 text-success-text" />
-                      ) : s.deviceType === "Tablet" ? (
-                        <Tablet className="w-4 h-4 text-accent" />
-                      ) : (
-                        <Laptop className="w-4 h-4 text-accent" />
-                      )}
-                    </div>
-                    <div className="space-y-0.5 text-xs">
-                      <p className="font-semibold text-text">
-                        {s.browser} on {s.os}
-                      </p>
-                      <p className="text-[10px] text-text-muted truncate max-w-[150px]">{s.deviceName}</p>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                header: "IP Address",
-                accessor: (s) => (
-                  <span className="font-mono text-xs text-text-secondary px-2 py-0.5 rounded bg-surface-alt border border-border/60">
-                    {s.ipAddress || "127.0.0.1"}
-                  </span>
-                ),
-              },
-              {
-                header: "Connected At",
-                accessor: (s) => (
-                  <div className="space-y-0.5 text-xs min-w-[130px]">
-                    <div className="flex items-center gap-1 text-text-secondary">
-                      <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                      <span>{new Date(s.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                    </div>
-                    <p className="text-[10px] text-text-muted">
-                      {new Date(s.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                header: "Actions",
-                align: "right",
-                accessor: (s) => (
-                  <div className="flex items-center justify-end gap-1.5">
-                    <Button
-                      variant="danger"
-                      size="xs"
-                      loading={revokingSessionId === s.id}
-                      onClick={() => handleTerminateSession(s)}
-                      disabled={s.isCurrent}
-                      title={s.isCurrent ? "Cannot terminate your current active session" : "Force logout this session"}
-                      className="rounded-lg font-semibold gap-1 min-h-[34px]"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Terminate</span>
-                    </Button>
-                  </div>
-                ),
-              },
-            ]}
-            renderMobileCard={(s) => (
-              <div
-                key={s.id}
-                className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-primary-500/10 text-accent dark:text-accent font-bold flex items-center justify-center text-xs shrink-0 border border-primary-500/20">
-                      {s.userName.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-text text-sm">{s.userName}</span>
-                        {s.isCurrent && (
-                          <Badge variant="primary" size="sm" className="text-[9px]">
-                            Current
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-text-muted">{s.userEmail}</p>
-                    </div>
-                  </div>
-                  <Badge
-                    variant={
-                      s.userRole === "root"
-                        ? "primary"
-                        : s.userRole === "admin"
-                        ? "info"
-                        : s.userRole === "doctor"
-                        ? "success"
-                        : "secondary"
-                    }
-                    size="sm"
-                    className="uppercase font-bold text-[9px]"
-                  >
-                    {s.userRole}
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-border/50">
-                  <div>
-                    <span className="text-text-muted text-[10px] block">Facility</span>
-                    <span className="font-medium text-text truncate block">{s.organizationName}</span>
-                  </div>
-                  <div>
-                    <span className="text-text-muted text-[10px] block">Client & OS</span>
-                    <span className="font-medium text-text block">
-                      {s.browser} &bull; {s.os}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-text-muted text-[10px] block">IP Address</span>
-                    <span className="font-mono text-text block">{s.ipAddress}</span>
-                  </div>
-                  <div>
-                    <span className="text-text-muted text-[10px] block">Connected</span>
-                    <span className="text-text block">
-                      {new Date(s.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex items-center gap-2">
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    disabled={s.isCurrent}
-                    loading={revokingSessionId === s.id}
-                    onClick={() => handleTerminateSession(s)}
-                    className="w-full justify-center min-h-[38px] font-semibold gap-1.5 rounded-xl"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    {s.isCurrent ? "Current Active Device" : "Terminate Session"}
-                  </Button>
-                </div>
-              </div>
-            )}
-          />
-        </div>
-      )}
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          TAB 2: WEBSITE TRAFFIC & LOCATION ATTRIBUTION
-         ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "traffic" && (
-        <div className="space-y-6">
-          {/* Traffic Window Switcher & Headline KPIs */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold text-text">Platform Visit Telemetry</h2>
-              <p className="text-xs text-text-muted">
-                Daily visitor traffic, unique audience counts, and location-by-location attribution breakdown.
-              </p>
-            </div>
-            <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 w-fit">
-              <button
-                type="button"
-                onClick={() => setTrafficDays(14)}
-                aria-pressed={trafficDays === 14}
-                className={cn(
-                  "min-h-11 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-accent",
-                  trafficDays === 14 ? "bg-surface text-accent shadow-xs" : "text-text-muted hover:text-text"
-                )}
-              >
-                Last 14 Days
-              </button>
-              <button
-                type="button"
-                onClick={() => setTrafficDays(30)}
-                aria-pressed={trafficDays === 30}
-                className={cn(
-                  "min-h-11 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-accent",
-                  trafficDays === 30 ? "bg-surface text-accent shadow-xs" : "text-text-muted hover:text-text"
-                )}
-              >
-                Last 30 Days
-              </button>
-            </div>
-          </div>
-
-          {/* Headline Traffic Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            <StatCard
-              label="Today's Visits"
-              value={trafficSummary ? trafficSummary.todayVisits.toString() : "0"}
-              description={`${trafficSummary?.todayVisitors || 0} unique visitors today`}
-              icon={<Eye className="w-5 h-5 text-accent" />}
-            />
-            <StatCard
-              label="Yesterday"
-              value={trafficSummary ? trafficSummary.yesterdayVisits.toString() : "0"}
-              description={`${trafficSummary?.yesterdayVisitors || 0} unique visitors`}
-              icon={<Calendar className="w-5 h-5 text-accent" />}
-            />
-            <StatCard
-              label="7-Day Traffic"
-              value={trafficSummary ? trafficSummary.sevenDayVisits.toString() : "0"}
-              description="Rolling weekly platform hits"
-              icon={<TrendingUp className="w-5 h-5 text-success-text" />}
-            />
-            <StatCard
-              label="30-Day Total"
-              value={trafficSummary ? trafficSummary.thirtyDayVisits.toString() : "0"}
-              description={`All-time cumulative: ${trafficSummary?.totalVisits || 0}`}
-              icon={<Globe className="w-5 h-5 text-warning-text" />}
-            />
-          </div>
-
-          {/* Daily Trend Chart (Responsive SVG Bar Visualization) */}
-          <Card className="p-5 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-bold text-text">Daily Visitor Trajectory</CardTitle>
-                <CardDescription className="text-xs text-text-muted">
-                  Daily pageviews (bars) and unique visitors over the past {trafficDays} days
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-3 text-xs font-semibold">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded bg-primary-500 inline-block" />
-                  <span className="text-text-muted">Total Visits</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded bg-success inline-block" />
-                  <span className="text-text-muted">Unique Visitors</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Visual Bar Chart */}
-            <div className="pt-4 pb-2">
-              {dailyTrends.length === 0 ? (
-                <div className="h-48 flex items-center justify-center text-xs text-text-muted">
-                  No telemetry recorded for this timeframe.
-                </div>
-              ) : (
-                <div className="h-48 flex items-end gap-1.5 sm:gap-2.5 w-full border-b border-border/60 pb-2">
-                  {dailyTrends.map((d) => {
-                    const heightPercent = Math.max(Math.round((d.visits / maxTrendVisits) * 100), 4);
-                    const uniquePercent = Math.max(Math.round((d.uniqueVisitors / maxTrendVisits) * 100), 2);
-                    const dayLabel = d.date.slice(5); // "MM-DD"
-
-                    return (
-                      <div
-                        key={d.date}
-                        className="flex-1 flex flex-col items-center gap-1 group relative h-full justify-end"
-                      >
-                        {/* Tooltip on hover */}
-                        <div className="absolute -top-12 z-20 hidden group-hover:flex flex-col items-center bg-black/90 text-brand-mist text-[10px] px-2 py-1 rounded-lg pointer-events-none whitespace-nowrap shadow-lg">
-                          <span className="font-bold">{d.date}</span>
-                          <span>
-                            {d.visits} visits · {d.uniqueVisitors} unique
-                          </span>
-                        </div>
-
-                        {/* Dual Bar (Visits & Unique) */}
-                        <div className="w-full flex items-end justify-center gap-0.5 h-full max-w-[28px]">
-                          <div
-                            style={{ height: `${heightPercent}%` }}
-                            className="w-1/2 rounded-t bg-primary-500/80 group-hover:bg-primary-500 transition-all duration-300"
-                          />
-                          <div
-                            style={{ height: `${uniquePercent}%` }}
-                            className="w-1/2 rounded-t bg-success/80 group-hover:bg-success transition-all duration-300"
-                          />
-                        </div>
-
-                        <span className="text-[9px] text-text-muted font-mono tracking-tighter truncate max-w-full">
-                          {dayLabel}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </Card>
-
-          {/* ──────────────────────────────────────────────────────────────────────
-              LOCATION ATTRIBUTION TABLE ("Whose location and all")
-             ────────────────────────────────────────────────────────────────────── */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-text">Location Traffic Attribution</h3>
-                <p className="text-xs text-text-muted">
-                  Breakdown of patient discovery, appointments, and portal traffic by location
-                </p>
-              </div>
-              <Badge variant="secondary" size="sm">
-                {locationAttribution.length} Location Targets
-              </Badge>
-            </div>
-
-            <Table<LocationAttribution>
-              data={locationAttribution}
-              loading={trafficLoading}
-              searchable={false}
-              emptyMessage="No location-specific visits recorded yet."
-              columns={[
-                {
-                  header: "Location",
-                  accessor: (c) => (
-                    <div className="flex items-center gap-2.5 min-w-[200px]">
-                      <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-accent dark:text-accent flex items-center justify-center font-bold text-xs shrink-0 border border-primary-500/20">
-                        <Building2 className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <span className="font-bold text-text text-xs sm:text-sm">{c.locationName}</span>
-                        <div className="flex items-center gap-1 text-[11px] text-text-muted">
-                          <MapPin className="w-3 h-3 shrink-0" />
-                          <span>{c.city}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  header: "Organization / Tenant",
-                  accessor: (c) => (
-                    <span className="text-xs font-semibold text-text-secondary">{c.organizationName}</span>
-                  ),
-                },
-                {
-                  header: "Total Visits",
-                  accessor: (c) => (
-                    <span className="font-bold text-text text-xs sm:text-sm">{c.visits.toLocaleString()}</span>
-                  ),
-                },
-                {
-                  header: "Unique Visitors",
-                  accessor: (c) => (
-                    <span className="text-xs font-semibold text-success-text dark:text-success-text">
-                      {c.uniqueVisitors.toLocaleString()}
-                    </span>
-                  ),
-                },
-                {
-                  header: "Traffic Share",
-                  align: "right",
-                  accessor: (c) => (
-                    <div className="flex items-center justify-end gap-2 min-w-[120px]">
-                      <div className="w-20 bg-surface-alt rounded-full h-2 overflow-hidden border border-border/60">
-                        <div
-                          className="bg-primary-500 h-full rounded-full transition-all duration-300"
-                          style={{ width: `${Math.min(c.percentShare, 100)}%` }}
-                        />
-                      </div>
-                      <span className="text-xs font-bold text-text w-10 text-right">{c.percentShare}%</span>
-                    </div>
-                  ),
-                },
-              ]}
-              renderMobileCard={(c) => (
-                <div
-                  key={c.locationId || "global"}
-                  className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-2.5"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="font-bold text-text text-sm">{c.locationName}</span>
-                      <p className="text-xs text-text-muted">{c.organizationName}</p>
-                    </div>
-                    <Badge variant="primary" size="sm" className="font-bold text-[10px]">
-                      {c.percentShare}% Share
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/40">
-                    <div>
-                      <span className="text-text-muted text-[10px] block">Visits</span>
-                      <span className="font-bold text-text block">{c.visits}</span>
-                    </div>
-                    <div>
-                      <span className="text-text-muted text-[10px] block">Unique Visitors</span>
-                      <span className="font-bold text-success-text dark:text-success-text block">
-                        {c.uniqueVisitors}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            />
-          </div>
-
-          {/* ──────────────────────────────────────────────────────────────────────
-              POPULAR PAGES & TECH ENVIRONMENT
-             ────────────────────────────────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Top Landing Pages */}
-            <Card className="p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3">
-              <CardTitle className="text-sm font-bold text-text">Top Visited Pages & Routes</CardTitle>
-              <div className="space-y-2 pt-1">
-                {topPages.length === 0 ? (
-                  <p className="text-xs text-text-muted py-4 text-center">No route visits logged yet.</p>
-                ) : (
-                  topPages.map((page, idx) => (
-                    <div
-                      key={page.path}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-surface-alt/50 border border-border/60 text-xs"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-[10px] font-bold w-4 text-text-muted">#{idx + 1}</span>
-                        <span className="font-mono text-text truncate">{page.path}</span>
-                      </div>
-                      <Badge variant="secondary" size="sm" className="font-bold">
-                        {page.visits} hits
-                      </Badge>
-                    </div>
-                  ))
-                )}
-              </div>
-            </Card>
-
-            {/* Devices & Browsers */}
-            <Card className="p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-4">
-              <CardTitle className="text-sm font-bold text-text">Visitor Technology Profile</CardTitle>
-              <div className="space-y-3 pt-1">
-                <div>
-                  <span className="text-xs font-bold text-text-muted uppercase tracking-wider block mb-2">
-                    Client Devices
-                  </span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {deviceStats.map((d) => (
-                      <div
-                        key={d.name}
-                        className="p-2.5 rounded-xl bg-surface-alt/50 border border-border/60 text-center space-y-1"
-                      >
-                        <span className="text-xs text-text-muted block">{d.name}</span>
-                        <span className="text-sm font-bold text-text block">{d.count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <span className="text-xs font-bold text-text-muted uppercase tracking-wider block mb-2">
-                    Web Browsers
-                  </span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {browserStats.map((b) => (
-                      <div
-                        key={b.name}
-                        className="p-2.5 rounded-xl bg-surface-alt/50 border border-border/60 text-center space-y-1"
-                      >
-                        <span className="text-xs text-text-muted block">{b.name}</span>
-                        <span className="text-sm font-bold text-text block">{b.count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {/* Confirmation Modal */}
-      <ConfirmDialog
-        open={confirmDialog.open}
-        onClose={() => setConfirmDialog((prev) => ({ ...prev, open: false }))}
-        onConfirm={confirmDialog.action}
-        title={confirmDialog.title}
-        description={confirmDialog.description}
-        confirmLabel="Confirm Terminate"
-        variant="danger"
-      />
-    </div>
-  );
+function SessionDevice({ session }: { session: ActiveSession }) {
+  const Icon = session.deviceType === "Mobile" ? Smartphone : session.deviceType === "Tablet" ? Tablet : Laptop;
+  return <div className="min-w-0"><p className={styles.deviceHeading}><Icon className="mt-0.5 h-4 w-4 shrink-0 text-accent" /><span>{session.browser} on {session.os}</span></p><p className={styles.meta}>{session.deviceName}</p></div>;
 }

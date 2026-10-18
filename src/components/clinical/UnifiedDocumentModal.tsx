@@ -7,7 +7,7 @@ import { getPrintBrandStyles, printHtml, PrintPreparationError } from "@/lib/pri
 import { formatCurrency } from "@/lib/currency";
 
 import React, { useRef, useState, useEffect } from "react";
-import Modal from "../ui/Modal";
+import Modal from "@/components/queue/QueueDialog";
 import { PrescriptionSealingBadge } from "./PrescriptionSealingBadge";
 
 export type DocumentType =

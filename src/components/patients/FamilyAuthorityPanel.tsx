@@ -5,7 +5,8 @@ import { useAuthStore } from '@/store/authStore';
 import { authScopeKey } from '@/lib/authScope';
 import { hasAnyPermission } from '@/lib/permissions';
 import { useLatestRead } from '@/hooks/useLatestRead';
-import { Alert, Button, Input, Modal, Checkbox } from '@/components/ui';
+import { Alert, Button, Input, Checkbox } from '@/components/ui';
+import Modal from "@/components/queue/QueueDialog";
 
 interface Grants { communication: boolean; consent: boolean; dataRights: boolean }
 interface Family { id: string; name: string; relationship: string; available: boolean; revision: number; grants: Grants; reviewedAt: string | null }
@@ -64,12 +65,12 @@ function Review({ family, submitted, error, busy, onClose, onSave }: { family: F
   const [clientRequestId] = useState(() => submitted?.clientRequestId || crypto.randomUUID());
   const errorRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
-  return <Modal open title={`Family authority · ${family.name}`} busy={busy} onClose={onClose} description="Applies only to the current organization. Review identity, delegation basis and each purpose separately."><form className="space-y-4" onSubmit={event => { event.preventDefault(); void onSave(submitted || { family, clientRequestId, expectedRevision: family.revision, grants, reason: reason.trim(), identityVerified: verified }); }}>
+  return <Modal footer={<div className="flex flex-wrap justify-end gap-2"><Button variant="outline" disabled={busy} onClick={onClose}>Close</Button><Button type="submit" form="patient-family-1" loading={busy} disabled={busy || !verified || !reason.trim()}>{submitted ? 'Retry submitted family review' : 'Save reviewed family authority'}</Button></div>} open title={`Family authority · ${family.name}`} busy={busy} onClose={onClose} description="Applies only to the current organization. Review identity, delegation basis and each purpose separately."><form id="patient-family-1" className="space-y-4" onSubmit={event => { event.preventDefault(); void onSave(submitted || { family, clientRequestId, expectedRevision: family.revision, grants, reason: reason.trim(), identityVerified: verified }); }}>
     {error && <p role="alert" tabIndex={-1} ref={errorRef} className="text-danger">{error}</p>}
     <fieldset disabled={busy || !!submitted} className="min-w-0 space-y-3">{Object.entries(labels).map(([key, label]) => <Checkbox checked={grants[key as keyof Grants]} onChange={event => setGrants(current => ({ ...current, [key]: event.target.checked }))} label={(label)} key={key} />)}
       <Input label="Verified delegation basis" value={reason} onChange={event => setReason(event.target.value)} maxLength={500} required />
       <Checkbox checked={verified} onChange={event => setVerified(event.target.checked)} label="I independently verified this person’s identity and authority for the selected purposes." />
     </fieldset><p className="text-sm text-text-muted">Changing a grant requires fresh consent evidence before related communication. Data erasure requests still require an organization retention review.</p>
-    <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" disabled={busy} onClick={onClose}>Close</Button><Button type="submit" loading={busy} disabled={busy || !verified || !reason.trim()}>{submitted ? 'Retry submitted family review' : 'Save reviewed family authority'}</Button></div>
+
   </form></Modal>;
 }

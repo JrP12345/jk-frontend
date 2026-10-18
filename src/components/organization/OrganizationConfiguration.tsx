@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert, Card, CardHeader, CardTitle, CardContent, CardDescription, Button, Input, useToast, Toggle, Badge, SkeletonForm, LoadingState } from "@/components/ui";
 import { notificationService, type SmtpConfig } from "@/services/notificationService";
@@ -7,6 +7,7 @@ import { aiAdminService } from "@/services/aiAdmin.service";
 import { useAuthStore } from "@/store/authStore";
 import WhatsAppSettingsCard from "@/app/(dashboard)/dashboard/settings/WhatsAppSettingsCard";
 import { Save, Send, Eye, EyeOff, Lock } from "lucide-react";
+import styles from "./SettingsWorkspace.module.css";
 export function OrganizationNotifications({
   selectedOrgId,
   isRoot: propIsRoot,
@@ -24,6 +25,7 @@ export function OrganizationNotifications({
   const isRoot = propIsRoot ?? user?.role === "root";
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const preferenceId = useId();
 
   const { data: pref, isLoading: prefLoading, isError: prefError, refetch: retryPreferences } = useQuery({
     queryKey: ["notification-preferences", user?.id],
@@ -133,15 +135,15 @@ export function OrganizationNotifications({
   const smtpConfigured = !!(smtpData?.host && smtpData?.user && smtpData?.passIsSet);
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className={styles.preferences}>
       {/* Delivery Channels */}
-      {!organizationOnly && <Card className="p-5 border border-border/80 shadow-xs rounded-2xl space-y-4 bg-surface">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
+      {!organizationOnly && <Card padding="none" className={styles.preferencesPanel}>
+        <div className={styles.preferencesHeader}>
           <div>
             <h3 className="text-sm font-bold text-text">Delivery Channels</h3>
             <p className="text-xs text-text-muted mt-0.5">Communication channels enabled for user alerts.</p>
           </div>
-          <Button
+          {!personalOnly && <Button
             variant="primary"
             size="sm"
             onClick={() => updatePrefMutation.mutate()}
@@ -150,22 +152,22 @@ export function OrganizationNotifications({
           >
             <Save className="w-3.5 h-3.5" />
             Save Preferences
-          </Button>
+          </Button>}
         </div>
-        <div className="space-y-3 divide-y divide-border/40">
-          <div className="flex items-center justify-between pt-1">
+        <div className={styles.channelRows}>
+          <div className={styles.preferenceRow}>
             <div>
-              <p className="text-sm font-semibold text-text">In-App Notifications</p>
+              <label htmlFor={`${preferenceId}-in-app`}>In-App Notifications</label>
               <p className="text-xs text-text-muted">Live notification bell badge & toasts while active in app.</p>
             </div>
-            <Toggle checked={channels.inApp} onChange={(v) => setChannels({ ...channels, inApp: v })} />
+            <Toggle id={`${preferenceId}-in-app`} checked={channels.inApp} onChange={(v) => setChannels({ ...channels, inApp: v })} />
           </div>
-          <div className="flex items-center justify-between pt-3">
+          <div className={styles.preferenceRow}>
             <div>
-              <p className="text-sm font-semibold text-text">Email Notifications</p>
+              <label htmlFor={`${preferenceId}-email`}>Email Notifications</label>
               <p className="text-xs text-text-muted">Email summaries and real-time alert emails.</p>
             </div>
-            <Toggle checked={channels.email} onChange={(v) => setChannels({ ...channels, email: v })} />
+            <Toggle id={`${preferenceId}-email`} checked={channels.email} onChange={(v) => setChannels({ ...channels, email: v })} />
           </div>
         </div>
       </Card>}
@@ -174,12 +176,12 @@ export function OrganizationNotifications({
       {!personalOnly && <WhatsAppSettingsCard key={selectedOrgId || user?.organization_id} selectedOrgId={selectedOrgId} isRoot={isRoot} orgsLoading={orgsLoading} />}
 
       {/* Event Categories */}
-      {!organizationOnly && <Card className="p-5 border border-border/80 shadow-xs rounded-2xl space-y-4 bg-surface">
-        <div className="pb-2 border-b border-border/60">
-          <h3 className="text-sm font-bold text-text">Event Categories</h3>
-          <p className="text-xs text-text-muted mt-0.5">Toggle specific event categories on or off.</p>
+      {!organizationOnly && <Card padding="none" className={styles.preferencesPanel}>
+        <div className={styles.preferencesHeader}>
+          <div><h3 className="text-sm font-bold text-text">Event Categories</h3>
+          <p className="text-xs text-text-muted mt-0.5">Toggle specific event categories on or off.</p></div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className={styles.categoryGrid}>
           {[
             { key: "auth", label: "Authentication", desc: "Logins, device alerts, password changes" },
             { key: "organization", label: "Organization", desc: "Member invites, role changes" },
@@ -192,19 +194,21 @@ export function OrganizationNotifications({
           ].map(({ key, label, desc }) => (
             <div
               key={key}
-              className="flex items-center justify-between p-3.5 border border-border/70 rounded-2xl bg-surface-alt/40 hover:bg-surface-alt transition-colors"
+              className={styles.preferenceRow}
             >
               <div>
-                <p className="text-xs font-bold text-text">{label}</p>
+                <label htmlFor={`${preferenceId}-${key}`}>{label}</label>
                 <p className="text-[11px] text-text-muted mt-0.5">{desc}</p>
               </div>
               <Toggle
+                id={`${preferenceId}-${key}`}
                 checked={(categories as any)[key]}
                 onChange={(v) => setCategories({ ...categories, [key]: v })}
               />
             </div>
           ))}
         </div>
+        {personalOnly && <div className={styles.preferenceFooter}><Button size="sm" onClick={() => updatePrefMutation.mutate()} loading={updatePrefMutation.isPending}><Save className="h-4 w-4" />Save Preferences</Button></div>}
       </Card>}
 
       {/* Email Gateway (SMTP) */}

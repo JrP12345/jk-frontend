@@ -4,7 +4,7 @@ import LoadingImage from "@/components/ui/LoadingImage";
 import { useState, useEffect } from "react";
 import QRCode from "qrcode";
 import api from "@/lib/api";
-import Modal from "@/components/ui/Modal";
+import Modal from "@/components/queue/QueueDialog";
 import { Button, Badge, useToast } from "@/components/ui";
 import { QrCode, CheckCircle2, Copy, Receipt, Smartphone, Banknote, CreditCard, ShieldCheck } from "lucide-react";
 
@@ -160,12 +160,16 @@ export default function UpiPaymentModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Counter-Top Dynamic BharatPe/NPCI UPI Settlement"
+      title="Collect payment" description={`${patientName}${tokenNumber ? ` · Token #${tokenNumber}` : ""}`}
       size="lg"
       busy={submitting}
       loadingText="Recording and settling payment..."
-    >
-      <div className="space-y-6">
+     footer={<>
+          <Button variant="ghost" onClick={onClose} disabled={submitting}>
+            {paidSuccess ? "Close" : "Cancel / Settle Later"}
+          </Button>
+        </>}>
+      <div className="space-y-3">
         {paidSuccess ? (
           <div className="p-8 text-center bg-success-subtle dark:bg-success/40 rounded-2xl border border-success dark:border-success animate-fade-in space-y-4">
             <CheckCircle2 className="w-16 h-16 text-success-text dark:text-success-text mx-auto" />
@@ -199,9 +203,9 @@ export default function UpiPaymentModal({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
             {/* Left: Dynamic BharatPe / NPCI UPI QR */}
-            <div className="flex flex-col items-center justify-center p-6 bg-surface dark:bg-surface/60 rounded-2xl border border-border">
+            <div className="flex flex-col items-center justify-center p-3 bg-surface dark:bg-surface/60 rounded-2xl border border-border">
               <div className="flex items-center gap-2 mb-3">
                 <QrCode className="w-5 h-5 text-accent dark:text-accent" />
                 <span className="font-semibold text-sm text-foreground">
@@ -214,11 +218,11 @@ export default function UpiPaymentModal({
                   <LoadingImage
                     src={qrDataUrl}
                     alt="UPI Payment QR Code"
-                    className="w-52 h-52 object-contain"
+                    className="w-40 h-40 sm:w-52 sm:h-52 object-contain"
                   />
                 </div>
               ) : vpa ? (
-                <div className="w-52 h-52 flex items-center justify-center bg-surface-alt dark:bg-surface-alt rounded-xl text-xs text-muted">
+                <div className="w-40 h-40 sm:w-52 sm:h-52 flex items-center justify-center bg-surface-alt dark:bg-surface-alt rounded-xl text-xs text-muted">
                   Generating UPI QR...
                 </div>
               ) : (
@@ -308,7 +312,7 @@ export default function UpiPaymentModal({
 
               <div className="space-y-2">
                 <span className="text-xs font-semibold text-muted uppercase tracking-wider">
-                  Countertop Settlement Action:
+                  Record received payment:
                 </span>
 
                 <Button
@@ -319,7 +323,7 @@ export default function UpiPaymentModal({
                 >
                   <span className="flex items-center gap-2">
                     <Smartphone className="w-4 h-4" />
-                    Verified Patient UPI Transfer
+                    Confirm UPI received
                   </span>
                   <Badge variant="info" className="bg-white/20 text-brand-mist border-0 font-mono">
                     ₹{amount.toFixed(0)}
@@ -334,7 +338,7 @@ export default function UpiPaymentModal({
                 >
                   <span className="flex items-center gap-2">
                     <Banknote className="w-4 h-4 text-success-text" />
-                    Received Cash at Counter
+                    Confirm cash received
                   </span>
                   <span className="text-xs font-bold font-mono">₹{amount.toFixed(0)}</span>
                 </Button>
@@ -347,20 +351,16 @@ export default function UpiPaymentModal({
                 >
                   <span className="flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-accent" />
-                    Swiped Card / POS Machine
+                    Confirm card payment
                   </span>
-                  <span className="text-xs text-muted">Visa/Mastercard</span>
+
                 </Button>
               </div>
             </div>
           </div>
         )}
 
-        <div className="pt-4 border-t border-border flex justify-end">
-          <Button variant="ghost" onClick={onClose} disabled={submitting}>
-            {paidSuccess ? "Close" : "Cancel / Settle Later"}
-          </Button>
-        </div>
+
       </div>
     </Modal>
   );

@@ -46,7 +46,7 @@ export default function SetupRequestInbox() {
     finally { setBusy(null); }
   };
   if (!allowed) return <Alert variant="warning" title="Root access required">Sign in to your platform root account to review setup requests.</Alert>;
-  return <div className="mx-auto max-w-4xl space-y-5 pb-16">
+  return <div className="w-full min-w-0 space-y-5 pb-16">
     <header><h1 className="page-title">Setup requests</h1><p className="mt-2 text-sm text-text-secondary">Practice details submitted from the website. Review requests and track your follow-up here.</p></header>
     <div className="flex flex-wrap items-end gap-3"><Select label="Request status" value={status} disabled={busy !== null} onChange={event => setStatus(event.target.value)} options={[{ value: "", label: "All requests" }, ...statuses]} /><Button variant="outline" onClick={() => void load()} disabled={loading || busy !== null}>Refresh</Button></div>
     {error && <Alert variant="error" title="Request inbox unavailable" action={<Button variant="outline" onClick={() => void load()}>Try again</Button>}>{error}</Alert>}

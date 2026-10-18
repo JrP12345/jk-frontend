@@ -7,7 +7,7 @@ import { printElement, PrintPreparationError } from "@/lib/printBrand";
 
 import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
-import Modal from "@/components/ui/Modal";
+import Modal from "@/components/queue/QueueDialog";
 import { Button, useToast } from "@/components/ui";
 import { Sparkles, ShieldCheck, Copy } from "lucide-react";
 
@@ -89,7 +89,7 @@ export default function LocationQrPosterModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Queue QR poster (A4 Standee)"
+      title="Queue poster"
       description="Print and display this QR poster at your front desk, reception, or entrance. Patients scan it with their phone camera to self-register and get a live queue token."
       size="xl"
       footer={<PrintDialogActions documentName="poster" onPrint={handlePrint} onClose={onClose} disabled={!qrDataUrl || qrError} extraActions={<Button variant="outline" size="sm" onClick={handleCopyLink} icon={<Copy aria-hidden />}>{copied ? "Link copied" : "Copy join link"}</Button>} />}

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bell, Building2, MessageSquare, ShieldCheck, Users } from "lucide-react";
-import { Badge, Card, CardContent, CardHeader, CardTitle, Tabs } from "@/components/ui";
+import { ArrowUpRight, Bell, Building2, MessageSquare, Users } from "lucide-react";
+import { Tabs } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { organizationWorkspaceUrl } from "@/services/organization.service";
 import { OrganizationNotifications } from "./OrganizationConfiguration";
 import WhatsAppConnectionPanel from "@/app/(dashboard)/dashboard/settings/WhatsAppConnectionPanel";
+import styles from "./SettingsWorkspace.module.css";
 
 export function PlatformSettings() {
   const { user } = useAuthStore();
@@ -16,19 +17,21 @@ export function PlatformSettings() {
   const tab = params.get("tab") || "messaging";
   const active = tab === "notifications" ? "notifications" : "messaging";
   if (user?.role !== "root") return null;
-  return <div className="space-y-6 pb-8 min-w-0">
-    <Card padding="lg" className="bg-gradient-to-br from-primary-500/10 via-surface to-surface border-primary-500/20">
-      <div className="flex items-center gap-3"><span className="rounded-xl bg-accent-subtle p-3 text-accent"><ShieldCheck className="h-6 w-6" /></span><div><Badge variant="primary">Root administration</Badge><h1 className="mt-2 text-xl sm:text-2xl font-semibold text-text">Platform settings</h1></div></div>
-      <p className="mt-3 text-sm text-text-secondary">Manage the platform sender and your own alerts. Organization controls are available in each organization workspace.</p>
-    </Card>
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Card><CardHeader><CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5 text-accent" />Organization controls</CardTitle></CardHeader><CardContent><p className="text-sm text-text-muted">Branding, memberships, access, subscriptions and organization delivery settings.</p><Link href={organizationWorkspaceUrl()} className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-accent hover:underline">Choose an organization →</Link></CardContent></Card>
-      <Card><CardHeader><CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-accent" />Global identities</CardTitle></CardHeader><CardContent><p className="text-sm text-text-muted">Platform account status and support sessions across organizations.</p><Link href="/dashboard/admin/users" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-accent hover:underline">Manage global users →</Link></CardContent></Card>
+  return (
+    <div className={styles.workspace}>
+      <header className={styles.header}><h1>Platform settings</h1><p>Manage the shared WhatsApp sender and your personal alerts.</p></header>
+      <div className={styles.layout}>
+        <Tabs className={styles.tabs} variant="pills" scrollActiveIntoView={false} activeTab={active} onChange={id => router.replace(`/dashboard/settings?tab=${id}`, { scroll: false })} tabs={[
+          { id: "messaging", label: "WhatsApp", icon: <MessageSquare className="h-4 w-4" />, content: <section className={styles.panel} aria-labelledby="platform-sender-title"><div className={styles.panelHeader}><h2 id="platform-sender-title">Shared WhatsApp sender</h2><p>Used by organizations connected to the platform gateway.</p></div><div className={styles.panelBody}><WhatsAppConnectionPanel isRoot mode="shared" scope="platform" /></div></section> },
+          { id: "notifications", label: "My alerts", icon: <Bell className="h-4 w-4" />, content: <OrganizationNotifications isRoot personalOnly /> },
+        ]} />
+        <aside className={styles.shortcuts} aria-label="Related settings">
+          <h2>Administration</h2>
+          <Link href={organizationWorkspaceUrl()} className={styles.shortcut}><Building2 className="h-5 w-5" aria-hidden="true" /><span><strong>Choose an organization</strong><small>Branding, members, locations and delivery settings.</small></span><ArrowUpRight className="h-4 w-4" aria-hidden="true" /></Link>
+          <Link href="/dashboard/admin/users" className={styles.shortcut}><Users className="h-5 w-5" aria-hidden="true" /><span><strong>Manage global users</strong><small>Account status and support sessions.</small></span><ArrowUpRight className="h-4 w-4" aria-hidden="true" /></Link>
+          <p>Dedicated senders and subscriptions are managed in each organization workspace.</p>
+        </aside>
+      </div>
     </div>
-    <Tabs variant="pills" activeTab={active} onChange={id => router.replace(`/dashboard/settings?tab=${id}`, { scroll: false })} tabs={[
-      { id: "messaging", label: "Platform WhatsApp", icon: <MessageSquare className="h-4 w-4" /> },
-      { id: "notifications", label: "My notification preferences", icon: <Bell className="h-4 w-4" /> },
-    ]} />
-    {active === "messaging" ? <Card><CardHeader><CardTitle>Shared WhatsApp sender</CardTitle><p className="text-sm text-text-muted mt-1">These credentials serve all organizations using the shared gateway. Dedicated organization senders are managed in their own workspace.</p></CardHeader><CardContent><WhatsAppConnectionPanel isRoot mode="shared" scope="platform" /></CardContent></Card> : <OrganizationNotifications isRoot personalOnly />}
-  </div>;
+  );
 }

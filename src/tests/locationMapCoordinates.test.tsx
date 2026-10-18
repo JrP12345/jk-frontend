@@ -31,7 +31,7 @@ describe("Clinic map pin configuration", () => {
 
   it("preserves a saved pin, rejects invalid edits, and saves valid coordinates to the selected organization", async () => {
     render(<ToastProvider><LocationManagement organizationId="org-1" embedded /></ToastProvider>);
-    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "Edit", exact: true }))[0]);
     const dialog = await screen.findByRole("dialog", { name: "Edit Location" });
     const coordinates = within(dialog).getByRole("textbox", { name: "Map coordinates (optional)" });
     expect(coordinates).toHaveValue("0, -73");
@@ -47,7 +47,7 @@ describe("Clinic map pin configuration", () => {
 
   it("allows an owner to clear a pin explicitly", async () => {
     render(<ToastProvider><LocationManagement organizationId="org-1" embedded /></ToastProvider>);
-    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "Edit", exact: true }))[0]);
     const dialog = await screen.findByRole("dialog", { name: "Edit Location" });
     fireEvent.change(within(dialog).getByRole("textbox", { name: "Map coordinates (optional)" }), { target: { value: "" } });
     fireEvent.submit(dialog.querySelector("form")!);
@@ -56,8 +56,9 @@ describe("Clinic map pin configuration", () => {
 
   it("saves an explicit publishing choice with the scoped location edit", async () => {
     render(<ToastProvider><LocationManagement organizationId="org-1" embedded /></ToastProvider>);
-    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "Edit", exact: true }))[0]);
     const dialog = await screen.findByRole("dialog", { name: "Edit Location" });
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Public page" }));
     const publish = within(dialog).getByRole("checkbox", { name: "Publish location on Ekavyu" });
     expect(publish).toBeChecked();
     fireEvent.click(publish);
@@ -70,7 +71,7 @@ describe("Clinic map pin configuration", () => {
     Object.assign(fixtures.location, { logo: reference });
     try {
       render(<ToastProvider><LocationManagement organizationId="org-1" embedded /></ToastProvider>);
-      fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+      fireEvent.click((await screen.findAllByRole("button", { name: "Edit", exact: true }))[0]);
       const dialog = await screen.findByRole("dialog", { name: "Edit Location" });
       fireEvent.submit(dialog.querySelector("form")!);
       await waitFor(() => expect(api.put).toHaveBeenCalledWith("/onboarding/locations/clinic-1?organizationId=org-1", expect.objectContaining({ logo: reference, image_url: reference })));
@@ -79,7 +80,8 @@ describe("Clinic map pin configuration", () => {
 
   it("unpublishes through the dedicated scoped action even when the public page cannot load", async () => {
     render(<ToastProvider><LocationManagement organizationId="org-1" embedded /></ToastProvider>);
-    fireEvent.click(await screen.findByRole("button", { name: "Website booking" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "Actions for Existing clinic" }))[0]);
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Website booking" }));
     fireEvent.click(await screen.findByRole("button", { name: "Unpublish page" }));
     await waitFor(() => expect(api.put).toHaveBeenCalledWith("/onboarding/locations/clinic-1/publication?organizationId=org-1", { isPublished: false }));
   });

@@ -1,0 +1,443 @@
+.workspace {
+  container: inbox / inline-size;
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+  margin-inline: 0;
+  padding-bottom: 2rem;
+  color: var(--text-primary);
+}
+
+.header,
+.headerActions,
+.inboxHeader,
+.toolbar,
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.header {
+  align-items: start;
+}
+
+.header > div:first-child {
+  min-width: 0;
+}
+
+.header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.header p {
+  margin-top: 0.375rem;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.headerActions {
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+.iconAction {
+  flex-shrink: 0;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding-inline: 0;
+}
+
+.composeButton {
+  min-height: 2.75rem;
+}
+
+.composeLabel {
+  display: none;
+}
+
+.tabs {
+  min-width: 0;
+}
+
+.tabs [role="tablist"] {
+  gap: 0.25rem;
+}
+
+.tabs [role="tab"] {
+  justify-content: center;
+  min-height: 2.75rem;
+  padding-inline: 1rem;
+  font-size: 0.8125rem;
+}
+
+.markAll {
+  flex-shrink: 0;
+  min-height: 2.75rem;
+  padding-inline: 0.375rem;
+  font-size: 0.75rem;
+}
+
+.panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.toolbar {
+  gap: 0.5rem;
+  padding: 0.875rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.search {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.search input,
+.categoryFilter button {
+  min-height: 2.75rem;
+}
+
+.categoryFilter {
+  flex: 0 0 auto;
+  max-width: 45%;
+}
+
+.responsiveTable div[class~="md:hidden"] {
+  display: block;
+}
+
+.responsiveTable [role="region"][aria-label="Table results"] {
+  display: none;
+}
+
+.responsiveTable table {
+  table-layout: fixed;
+}
+
+.responsiveTable td {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.responsiveTable th:first-child {
+  width: 3rem;
+}
+
+.responsiveTable div:has(> article) {
+  position: relative;
+}
+
+.responsiveTable div:has(> article) > div:first-child {
+  position: absolute;
+  inset-inline-start: 0.25rem;
+  top: 0.875rem;
+  z-index: 1;
+}
+
+.responsiveTable div:has(> article) > div:first-child > label {
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  min-height: 2.75rem;
+  padding-block: 0;
+}
+
+.responsiveTable div:has(> article) > article {
+  margin-block: 0;
+}
+
+.notificationCard,
+.unreadCard {
+  display: grid;
+  gap: 0.625rem;
+  min-width: 0;
+  padding: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: var(--surface);
+}
+
+.unreadCard {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 3%, var(--surface));
+}
+
+.cardHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+  min-width: 0;
+  padding-inline-start: 2.125rem;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.5rem;
+  min-width: 0;
+}
+
+.categoryBadge {
+  gap: 0.375rem;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 0.6875rem;
+}
+
+.categoryBadge > svg {
+  flex-shrink: 0;
+}
+
+.unreadLabel,
+.pinned,
+.priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+}
+
+.unreadLabel {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.pinned {
+  color: var(--text-secondary);
+}
+
+.priority {
+  color: var(--danger-text);
+  text-transform: capitalize;
+}
+
+.notificationCell,
+.notificationContent {
+  min-width: 0;
+}
+
+.notificationCell > .badges {
+  margin-bottom: 0.25rem;
+}
+
+.titleButton,
+.readTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  width: 100%;
+  padding-block: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: start;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.titleButton > svg,
+.readTitle > svg {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.readTitle {
+  font-weight: 500;
+}
+
+.titleButton:hover,
+.readTitle:hover {
+  color: var(--accent);
+}
+
+.titleButton:focus-visible,
+.readTitle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+.messagePreview {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.cardFooter {
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  min-height: 2.75rem;
+  padding-top: 0.375rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.readAction {
+  min-height: 2.75rem;
+  padding-inline: 0.375rem;
+  color: var(--accent);
+}
+
+.received {
+  display: grid;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  border-top: 1px solid var(--border);
+}
+
+.pagination > p {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.pagination button {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
+.composerBody {
+  container: composer / inline-size;
+}
+
+.composer {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.composer input:not([type="checkbox"]),
+.composer button {
+  min-height: 2.75rem;
+}
+
+.channels {
+  min-width: 0;
+  padding: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+}
+
+.channels legend {
+  padding-inline: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.channels > div,
+.formGrid {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.channels label {
+  min-height: 2.75rem;
+}
+
+.formGrid > div {
+  min-width: 0;
+}
+
+.modalFooter button {
+  min-height: 2.75rem;
+}
+
+.detailBody {
+  overflow-wrap: anywhere;
+}
+
+.details {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.details > time {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.details h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.details > p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@container inbox (min-width: 32rem) {
+  .header h1 {
+    font-size: 1.5rem;
+  }
+
+  .composeLabel {
+    display: inline;
+  }
+
+  .shortComposeLabel {
+    display: none;
+  }
+}
+
+@container inbox (min-width: 56rem) {
+  .responsiveTable div[class~="md:hidden"] {
+    display: none;
+  }
+
+  .responsiveTable [role="region"][aria-label="Table results"] {
+    display: block;
+  }
+}
+
+@container composer (min-width: 32rem) {
+  .channels > div,
+  .formGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .formGrid > div:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}

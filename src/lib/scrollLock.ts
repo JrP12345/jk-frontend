@@ -26,19 +26,18 @@ export function lockScroll(): void {
     savedX = window.scrollX;
     savedY = window.scrollY;
 
-    // Prevent content jump from disappearing scrollbar on desktop
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-    if (scrollbarWidth > 0) {
-      document.body.style.paddingRight = `${scrollbarWidth}px`;
-    }
+    // clientWidth can include a reserved stable gutter when the root does not
+    // actually scroll. Preserve its rendered width before removing that gutter.
+    const rootWidth = document.documentElement.getBoundingClientRect().width || document.documentElement.clientWidth || window.innerWidth;
+    const scrollbarInset = Math.max(0, window.innerWidth - rootWidth);
 
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
     // The global stable gutter otherwise remains visible outside the backdrop,
-    // even with scrolling locked. Body padding above preserves the page width.
+    // even with scrolling locked. The fixed body's width preserves page layout.
     document.documentElement.style.scrollbarGutter = "auto";
     // Fixed positioning also stops iOS touch scrolling behind an overlay.
-    Object.assign(document.body.style, { position: "fixed", top: `${-savedY}px`, left: `${-savedX}px`, width: "100%", boxSizing: "border-box" });
+    Object.assign(document.body.style, { position: "fixed", top: `${-savedY}px`, left: `${-savedX}px`, width: scrollbarInset ? `calc(100% - ${scrollbarInset}px)` : "100%", boxSizing: "border-box" });
     // The dashboard has its own scrolling main; locking only body leaves it movable.
     for (const element of document.querySelectorAll<HTMLElement>("[data-app-scroll]")) {
       appScrollContainers.set(element, element.style.overflowY);

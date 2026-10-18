@@ -5,7 +5,7 @@ import PrintDialogActions from "@/components/ui/PrintDialogActions";
 
 import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
-import Modal from "@/components/ui/Modal";
+import Modal from "@/components/queue/QueueDialog";
 import { Button, cn } from "@/components/ui";
 import { Scissors } from "lucide-react";
 import { printElement } from "@/lib/printBrand";

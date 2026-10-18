@@ -4,6 +4,8 @@ import { StatCard, SkeletonCard } from "@/components/ui";
 import { IndianRupee, AlertCircle, Building2, Stethoscope, Calendar, Clock, CheckCircle2, Receipt } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 
+import styles from "./DashboardOverview.module.css";
+
 interface AdminStats {
   locations: number;
   doctors: number;
@@ -49,7 +51,7 @@ export function DashboardStatCards({
 }: DashboardStatCardsProps) {
   if (canViewOpsDashboard) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
+      <div className={styles.operationalStats}>
         {loading ? (
           <>
             <SkeletonCard />
@@ -60,12 +62,14 @@ export function DashboardStatCards({
         ) : (
           <>
             {financialVisible && <><StatCard
+              className={styles.operationalStat}
               label="Collections"
               value={moneyByCurrency.length ? moneyByCurrency.map(row => formatCurrency(row.collections, row.currency)).join(" · ") : formatCurrency(adminStats.collections)}
               description="Today's settled"
               icon={<IndianRupee className="w-5 h-5" />}
             />
             <StatCard
+              className={styles.operationalStat}
               label="Outstanding"
               value={moneyByCurrency.length ? moneyByCurrency.map(row => formatCurrency(row.outstanding, row.currency)).join(" · ") : formatCurrency(adminStats.outstanding)}
               description="Today's pending balance"
@@ -73,12 +77,14 @@ export function DashboardStatCards({
             />
             </>}
             <StatCard
+              className={styles.operationalStat}
               label="Active Locations"
               value={adminStats.locations.toString()}
               description="Open branches"
               icon={<Building2 className="w-5 h-5" />}
             />
             <StatCard
+              className={styles.operationalStat}
               label={showStaffCounts ? "Doctors" : "Today's visits"}
               value={(showStaffCounts ? adminStats.doctors : adminStats.appointments).toString()}
               description={showStaffCounts ? "Registered clinicians" : "Across granted locations"}
@@ -92,7 +98,7 @@ export function DashboardStatCards({
 
   if (role === "doctor") {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
+      <div className={styles.doctorStats}>
         {loading ? (
           <>
             <SkeletonCard />
@@ -102,18 +108,21 @@ export function DashboardStatCards({
         ) : (
           <>
             <StatCard
+              className={styles.operationalStat}
               label="Total Visits"
               value={doctorStats.total.toString()}
               description="Today's roster"
               icon={<Calendar className="w-5 h-5" />}
             />
             <StatCard
+              className={styles.operationalStat}
               label="Pending"
               value={doctorStats.pending.toString()}
               description="In waiting line"
               icon={<Clock className="w-5 h-5" />}
             />
             <StatCard
+              className={styles.operationalStat}
               label="Completed"
               value={doctorStats.completed.toString()}
               description="Finished visits"
@@ -127,7 +136,7 @@ export function DashboardStatCards({
 
   if (role === "patient" || role === "family_member") {
     return (
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+      <div className={styles.patientStats}>
         {loading ? (
           <>
             <SkeletonCard />
@@ -136,12 +145,14 @@ export function DashboardStatCards({
         ) : (
           <>
             <StatCard
+              className={styles.operationalStat}
               label="Recorded visits"
               value={patientStats.appointmentsCount.toString()}
               description="All recorded bookings"
               icon={<Calendar className="w-5 h-5" />}
             />
             <StatCard
+              className={styles.operationalStat}
               label="Unpaid invoices"
               value={patientStats.unpaidBills.toLocaleString()}
               description="Including partial payments"

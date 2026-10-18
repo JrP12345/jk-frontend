@@ -1,6 +1,9 @@
 ﻿"use client";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { Plus, RotateCw, CheckCheck } from "lucide-react";
+import { CrmWorkspaceLayout, CrmFilterPanel } from "./CrmWorkspaceLayout";
+import styles from "./CrmWorkspace.module.css";
 import { getCrmLocations, CrmBranchScopeError } from '@/lib/crmLocations';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -9,7 +12,7 @@ import { useLatestRead } from '@/hooks/useLatestRead';
 import { useCrmDefaultHours } from '@/hooks/useCrmDefaultHours';
 import { locationLocalDateTimeInput, locationLocalTimeToIso } from '@/lib/locationTime';
 import type { CrmLocation, InquiryActivity } from '@/types/crm';
-import { Alert, Badge, Button, Card, CardContent, Input, Modal, Select, Textarea, Checkbox } from '@/components/ui';
+import { Alert, Badge, Button, EmptyState, Input, Modal, Select, Textarea, Checkbox, DatePicker } from '@/components/ui';
 import { InquiryConversion, type ConversionCommand } from './InquiryConversion';
 import { authScopeKey } from '@/lib/authScope';
 import { CareFollowUpReview } from './CareFollowUpReview';
@@ -38,13 +41,27 @@ function Workspace() {
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { const id = new URLSearchParams(window.location.search).get('taskId'); if (id && /^[a-fA-F0-9]{24}$/.test(id)) setSelected(id); }, []);
   const canManage = hasAnyPermission(user, 'MANAGE_CRM_TASKS');
-  return <div className='space-y-5'><div className='flex flex-wrap items-center justify-between gap-3'><div><h1 className='text-2xl font-semibold'>Daily patient relationship tasks</h1><p className='text-sm text-text-muted'>Work the next action, record an outcome and arrange the next step.</p></div><div className='flex gap-3'><Link href='/dashboard/crm' className='text-accent underline'>Inquiries</Link>{canManage && <Button disabled={loading || !!error || !locations.length} onClick={() => setCreating(true)}>Create patient task</Button>}</div></div>
-    <Card><CardContent className='space-y-3'><div className='flex flex-wrap items-end gap-3'><Select label='Task ownership' value={filters.owner} onChange={event => setFilters({ ...filters, owner: event.target.value })} options={[{ value: 'mine', label: 'My tasks' }, { value: 'team', label: 'Team tasks' }, { value: 'unassigned', label: 'Unassigned tasks' }]} />
-      <Select label='Task progress' value={filters.status} onChange={event => setFilters({ ...filters, status: event.target.value })} options={[{ value: 'active', label: 'Unfinished tasks' }, { value: 'completed', label: 'Completed tasks' }, { value: 'all', label: 'All tasks' }]} />
-      <Select label='Task due filter' value={filters.due} onChange={event => setFilters({ ...filters, due: event.target.value })} options={[{ value: 'all', label: 'All due times' }, { value: 'due', label: 'Due or overdue' }, { value: 'snoozed', label: 'Snoozed tasks' }]} />
-      <Select label='Task branch filter' value={filters.locationId} onChange={event => setFilters({ ...filters, locationId: event.target.value })} options={[{ value: '', label: 'All authorized branches' }, ...locations.map(row => ({ value: row.id, label: row.name }))]} /><Button variant='outline' loading={loading} onClick={() => load()}>Reload tasks</Button></div>
-      {error && <Alert variant='error'>{error}</Alert>}{loading && <p role='status'>Loading scoped tasks...</p>}{!loading && !error && !items.length && <p>No tasks match these filters.</p>}{!error && items.map(task => <div key={task.id} className='flex flex-wrap justify-between gap-3 border border-border rounded-lg p-3'><div><p className='font-medium'>{task.title} <Badge variant='neutral'>{task.status.replaceAll('_', ' ')}</Badge></p><p>{task.assigneeName || (task.assignedTo ? 'Assigned staff member' : 'Unassigned')} · {locations.find(row => row.id === task.locationId)?.name || 'Authorized branch'}</p><p className='text-sm text-text-muted'>{task.dueDate ? new Date(task.dueDate).toLocaleString(undefined, { timeZone: zone(locations, task.locationId) }) : 'No due time'} ({zone(locations, task.locationId)}){task.snoozedUntil && ' · Snoozed'}</p>{task.outcome && <p>Last outcome: {task.outcome.replaceAll('_', ' ')}</p>}</div><Button variant='outline' disabled={loading} onClick={() => setSelected(task.id)}>Open task</Button></div>)}{cursor && !error && <Button variant='outline' disabled={loading} onClick={() => load(cursor)}>More tasks</Button>}
-    </CardContent></Card>{creating && <TaskCapture locations={locations} onClose={() => setCreating(false)} onSaved={id => { setCreating(false); setSelected(id); void load(); }} />}
+  const activeFilters = Number(filters.owner !== 'mine') + Number(filters.status !== 'active') + Number(filters.due !== 'all') + Number(!!filters.locationId);
+  return <CrmWorkspaceLayout active="tasks" title="Daily patient tasks" description="Review the next action, record an outcome and plan the next step." action={canManage && <Button aria-label="Create patient task" disabled={loading || !!error || !locations.length} onClick={() => setCreating(true)}><Plus className="h-4 w-4" /><span className={styles.shortActionLabel}>Create</span><span className={styles.fullActionLabel}>Create patient task</span></Button>}>
+    <section aria-label="Patient task queue" className={styles.panel}>
+      <CrmFilterPanel activeCount={activeFilters} search={<p className="text-sm font-medium">Task filters</p>} actions={<Button variant="outline" className={styles.iconAction} aria-label="Reload tasks" title="Reload tasks" loading={loading} onClick={() => load()}><RotateCw className="h-4 w-4" /></Button>}>
+        <Select label='Task ownership' value={filters.owner} onChange={event => setFilters({ ...filters, owner: event.target.value })} options={[{ value: 'mine', label: 'My tasks' }, { value: 'team', label: 'Team tasks' }, { value: 'unassigned', label: 'Unassigned tasks' }]} />
+        <Select label='Task progress' value={filters.status} onChange={event => setFilters({ ...filters, status: event.target.value })} options={[{ value: 'active', label: 'Unfinished tasks' }, { value: 'completed', label: 'Completed tasks' }, { value: 'all', label: 'All tasks' }]} />
+        <Select label='Task due filter' value={filters.due} onChange={event => setFilters({ ...filters, due: event.target.value })} options={[{ value: 'all', label: 'All due times' }, { value: 'due', label: 'Due or overdue' }, { value: 'snoozed', label: 'Snoozed tasks' }]} />
+        <Select label='Task branch filter' value={filters.locationId} onChange={event => setFilters({ ...filters, locationId: event.target.value })} options={[{ value: '', label: 'All authorized branches' }, ...locations.map(row => ({ value: row.id, label: row.name }))]} />
+      </CrmFilterPanel>
+      <div className={styles.queueContent}>
+        <div className={styles.queueHeading}><h2>Task queue</h2>{!error && !loading && <span>{items.length} loaded{cursor ? " / More available" : ""}</span>}</div>
+        {error && <Alert variant='error'>{error}</Alert>}{loading && <p role='status' className="py-4 text-sm text-text-secondary">Loading scoped tasks...</p>}
+        {!loading && !error && !items.length && <EmptyState icon={<CheckCheck />} title="No tasks match these filters." description="Adjust the owner, progress, due time or branch to find other tasks." />}
+        {!error && <ul className={styles.recordList}>{items.map(task => <li key={task.id} className={styles.record}><div className={styles.recordBody}>
+          <div className={styles.recordTitle}><h3>{task.title}</h3><Badge variant={task.status === "completed" ? "success" : "neutral"}>{task.status.replaceAll('_', ' ')}</Badge></div>
+          <p className={styles.recordContact}>{task.assigneeName || (task.assignedTo ? 'Assigned staff member' : 'Unassigned')}</p><p className={styles.recordMeta}>{locations.find(row => row.id === task.locationId)?.name || 'Authorized branch'}</p>
+          <p className={styles.recordMeta}>{task.dueDate ? new Date(task.dueDate).toLocaleString(undefined, { timeZone: zone(locations, task.locationId) }) : 'No due time'} ({zone(locations, task.locationId)}){task.snoozedUntil && ' / Snoozed'}</p>{task.outcome && <p className={styles.recordMeta}>Last outcome: {task.outcome.replaceAll('_', ' ')}</p>}
+        </div><Button variant='outline' disabled={loading} onClick={() => setSelected(task.id)}>Open task</Button></li>)}</ul>}
+        {cursor && !error && <div className={styles.recordFooter}><span>More tasks are available.</span><Button variant='outline' disabled={loading} onClick={() => load(cursor)}>More tasks</Button></div>}
+      </div>
+    </section>{creating && <TaskCapture locations={locations} onClose={() => setCreating(false)} onSaved={id => { setCreating(false); setSelected(id); void load(); }} />}
     {conversion?.command && !conversion.open && !selected && <Button onClick={() => setConversion({ ...conversion, open: true })}>Resume submitted booking</Button>}
     {selected && !conversion?.open && <TaskDetail key={selected} id={selected} locations={locations} onClose={() => setSelected(null)} onChanged={() => load()}
       resumeBooking={!!conversion?.command} onBook={source => setConversion(current => current?.command ? { ...current, open: true } : { source, open: true })} />}
@@ -52,7 +69,7 @@ function Workspace() {
       onSubmitted={command => setConversion(current => current && { ...current, command: command || undefined })}
       onClose={() => setConversion(current => current?.command ? { ...current, open: false } : null)}
       onConverted={() => { setConversion(null); void load(); }} />}
-  </div>;
+  </CrmWorkspaceLayout>;
 }
 function TaskDetail({ id, locations, resumeBooking, onBook, onClose, onChanged }: { id: string; locations: CrmLocation[]; resumeBooking: boolean; onBook: (source: Task) => void; onClose: () => void; onChanged: () => void }) {
   const user = useAuthStore(state => state.user)!;
@@ -115,9 +132,9 @@ function TaskCommand({ task, action, locations, onClose, onSaved }: { task: Task
       {action === 'complete' && <><Select label='Task outcome' value={outcome} onChange={event => setOutcome(event.target.value)} options={['contacted', 'unreachable', 'invalid_contact', 'no_response', 'declined', 'resolved', 'other'].map(value => ({ value, label: value.replaceAll('_', ' ') }))} />
         {task.inquiryId && <>{hasAnyPermission(user, 'MANAGE_CRM_INQUIRIES') && <Checkbox checked={closeInquiry} onChange={event => setCloseInquiry(event.target.checked)} label="Close the linked inquiry after this outcome" />}
           {closeInquiry ? <Select label='Linked inquiry close outcome' value={closeReason} onChange={event => setCloseReason(event.target.value)} options={['resolved', 'not_proceeding', 'unreachable', 'other'].map(value => ({ value, label: value.replaceAll('_', ' ') }))} /> : <Select label='Next inquiry action' value={nextAction} onChange={event => setNextAction(event.target.value)} options={[{ value: 'contact', label: 'Contact caller again' }, { value: 'review', label: 'Review inquiry' }, { value: 'book', label: 'Arrange booking' }]} />}</>}
-      </>}{hasDue && <Input label={`Next task time (${timezone})`} type='datetime-local' required value={due} onChange={event => setDue(event.target.value)} />}
+      </>}{hasDue && <DatePicker label={`Next task time (${timezone})`} mode="datetime" required value={due} onChange={value => setDue(value)} />}
       <Textarea label='Administrative outcome or reason' required={['assign', 'snooze', 'reopen'].includes(action) || outcome === 'other' || (closeInquiry && closeReason === 'other')} maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} />
-    </fieldset><div className='flex justify-end gap-2'><Button variant='outline' disabled={pending} onClick={onClose}>Close</Button><Button type='submit' loading={pending} disabled={pending || loading}>{locked && error ? 'Retry submitted task update' : 'Save task update'}</Button></div></form></Modal>;
+    </fieldset><div className={styles.formActions}><Button variant='outline' disabled={pending} onClick={onClose}>Close</Button><Button type='submit' loading={pending} disabled={pending || loading}>{locked && error ? 'Retry submitted task update' : 'Save task update'}</Button></div></form></Modal>;
 }
 function TaskCapture({ locations, onClose, onSaved }: { locations: CrmLocation[]; onClose: () => void; onSaved: (id: string) => void }) {
   const user = useAuthStore(state => state.user)!;
@@ -141,6 +158,6 @@ function TaskCapture({ locations, onClose, onSaved }: { locations: CrmLocation[]
   return <Modal open title='Create patient relationship task' busy={pending} onClose={onClose}><form onSubmit={save} className='space-y-4'>{error && <Alert variant='error'>{error} Close and reload to change submitted details.</Alert>}<p className='text-sm text-text-muted'>{user.role === 'root' ? 'Assign this task to eligible organization staff after creation.' : 'The task is assigned to you.'} Record administrative details only; clinical instructions belong in the encounter.</p><fieldset disabled={locked || pending} className='space-y-3'>
     <Select label='New task branch' value={locationId} onChange={event => changeBranch(event.target.value)} options={locations.map(row => ({ value: row.id, label: row.name }))} /><Select label='New task kind' value={kind} onChange={event => setKind(event.target.value)} options={[{ value: 'crm_callback', label: 'Patient callback' }, { value: 'crm_review', label: 'Administrative review' }]} /><Input label='Existing patient reference (optional)' maxLength={24} value={patientId} onChange={event => setPatientId(event.target.value)} />
     {defaultHours.error && <Alert variant='warning'>{defaultHours.error}</Alert>}
-    <Input label={`Task due (${timezone})`} type='datetime-local' required value={due} onChange={event => { dueEdited.current = true; setDue(event.target.value); }} /><Textarea label='Administrative task instruction' maxLength={1000} value={note} onChange={event => setNote(event.target.value)} />
-    </fieldset><div className='flex justify-end gap-2'><Button variant='outline' disabled={pending} onClick={onClose}>Close</Button><Button type='submit' loading={pending} disabled={pending || !locationId}>{locked && error ? 'Retry submitted patient task' : 'Create task'}</Button></div></form></Modal>;
+    <DatePicker label={`Task due (${timezone})`} mode="datetime" required value={due} onChange={value => { dueEdited.current = true; setDue(value); }} /><Textarea label='Administrative task instruction' maxLength={1000} value={note} onChange={event => setNote(event.target.value)} />
+    </fieldset><div className={styles.formActions}><Button variant='outline' disabled={pending} onClick={onClose}>Close</Button><Button type='submit' loading={pending} disabled={pending || !locationId}>{locked && error ? 'Retry submitted patient task' : 'Create task'}</Button></div></form></Modal>;
 }

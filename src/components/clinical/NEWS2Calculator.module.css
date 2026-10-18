@@ -1,0 +1,24 @@
+.workspace { display: flex; flex-direction: column; gap: .75rem; width: 100%; min-width: 0; }
+.columns { display: grid; gap: .75rem; min-width: 0; align-items: start; }
+.panel { padding: .875rem; border: 1px solid var(--border); border-radius: .875rem; background: var(--surface); min-width: 0; }
+.panel > header { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: .5rem; margin-bottom: .625rem; }
+.panel h2 { font-size: .875rem; font-weight: 650; }
+.panel header p, .description, .date { font-size: .75rem; color: var(--text-muted); line-height: 1.5; }
+.panel header button { min-height: 44px; font-size: .75rem; }
+.description { margin-bottom: .75rem; }
+.date { margin-block: .625rem; }
+.result { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface-alt); }
+.result > div { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.result > div:first-child { flex-direction: column; align-items: flex-start; gap: .125rem; }
+.result span { font-size: .75rem; }
+.result strong { font-size: 1.75rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.empty { padding: 1rem .5rem; color: var(--text-muted); font-size: .8125rem; }
+.panel :where(td, th) { white-space: normal; overflow-wrap: anywhere; font-size: .75rem; }
+.observations { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.observations > div { padding: .625rem; border: 1px solid var(--border); border-radius: .625rem; overflow-wrap: anywhere; }
+.observations dt, .observations span { font-size: .6875rem; color: var(--text-muted); }
+.observations dd { margin-top: .25rem; font-size: .875rem; font-weight: 600; }
+.alert { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding: .875rem; border: 1px solid var(--danger); border-radius: .875rem; background: var(--surface); color: var(--danger-text); font-size: .8125rem; }
+.alert > div { flex: 1 1 16rem; min-width: 0; }
+.alert h3 { font-size: .875rem; font-weight: 650; }
+@media (min-width: 1100px) { .columns { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); } .observations { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

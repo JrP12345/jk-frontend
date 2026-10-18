@@ -56,7 +56,7 @@ describe("organization management", () => {
     const switchOrg = vi.fn();
     useAuthStore.setState({ switchOrg });
     mount(<OrganizationsPage />);
-    const entry = await screen.findByRole("button", { name: /Test organization with a long name/ });
+    const entry = await screen.findByRole("button", { name: `Manage ${org.name}` });
     fireEvent.click(entry);
     expect(screen.getByRole("navigation", { name: "Organization sections" })).toBeInTheDocument();
     expect(within(screen.getByRole("navigation", { name: "Organization sections" })).getByRole("tab", { name: "Details & branding" })).toBeInTheDocument();
@@ -69,11 +69,35 @@ describe("organization management", () => {
     expect(within(screen.getByRole("navigation", { name: "Organization sections" })).getByRole("tab", { name: "Details & branding" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add organization" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Login as administrator" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Login as admin for / })).not.toBeInTheDocument();
     expect(screen.queryByText("Platform status and deletion")).not.toBeInTheDocument();
     expect(hasRoutePermission("/dashboard/organizations", "admin", ["MANAGE_ORGANIZATION"])).toBe(true);
     expect(hasRoutePermission("/dashboard/organizations", "admin", [])).toBe(false);
     expect(hasRoutePermission("/dashboard/admin/users", "admin")).toBe(false);
     expect(hasRoutePermission("/dashboard/organizations", "nurse", [])).toBe(false);
+  });
+  it("shows every permitted workspace tab and supports keyboard navigation without switching accounts", async () => {
+    window.history.replaceState(null, "", `/dashboard/organizations?organizationId=${org.id}&section=overview`);
+    mount(<OrganizationsPage />);
+    const navigation = await screen.findByRole("navigation", { name: "Organization sections" });
+    expect(within(navigation).getAllByRole("tab").map(tab => tab.textContent)).toEqual([
+      "Overview", "Details & branding", "Members", "Roles & permissions", "Locations", "Subscription", "Configuration",
+    ]);
+    expect(screen.queryByRole("combobox", { name: "Organization section" })).not.toBeInTheDocument();
+    fireEvent.keyDown(within(navigation).getByRole("tab", { name: "Overview" }), { key: "ArrowRight" });
+    expect(within(navigation).getByRole("tab", { name: "Details & branding" })).toHaveAttribute("aria-selected", "true");
+    expect(router.push).toHaveBeenLastCalledWith(`/dashboard/organizations?organizationId=${org.id}&section=details`, { scroll: false });
+    expect(await screen.findByRole("form", { name: "Organization details" })).toBeInTheDocument();
+    expect(useAuthStore.getState().user).toMatchObject({ id: "root-1", role: "root" });
+  });
+  it("opens workspace shortcuts directly without changing the authenticated organization", async () => {
+    mount(<OrganizationsPage />);
+    const shortcuts = await screen.findByRole("group", { name: "Workspace shortcuts" });
+    fireEvent.click(within(shortcuts).getByRole("button", { name: `Details & branding for ${org.name}` }));
+    expect(router.push).toHaveBeenCalledWith(`/dashboard/organizations?organizationId=${org.id}&section=details`, { scroll: false });
+    expect(await screen.findByRole("form", { name: "Organization details" })).toBeInTheDocument();
+    expect(useAuthStore.getState().user).toMatchObject({ role: "root", id: "root-1" });
+    expect(useAuthStore.getState().user?.organization_id).toBeUndefined();
   });
   it("opens clinical setup directly from the public booking checklist", async () => {
     const location = { id: "branch", slug: "care-branch", name: "Care branch", isActive: true, isPublished: true };
@@ -160,5 +184,54 @@ describe("organization management", () => {
     expect(impersonate).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Start session" }));
     await waitFor(() => expect(impersonate).toHaveBeenCalledWith({ userId: "member-1", organizationId: org.id }));
+  });
+
+  it("starts a directory administrator session only after confirming the explicit target organization", async () => {
+    const target = { ...org, id: "org-2", name: "Second organization" };
+    const impersonate = vi.fn().mockResolvedValue(undefined);
+    useAuthStore.setState({ impersonate });
+    vi.mocked(api.get).mockResolvedValue({ data: { data: [org, target] } });
+    mount(<OrganizationsPage />);
+    const shortcut = await screen.findByRole("button", { name: `Login as admin for ${target.name}` });
+    fireEvent.click(shortcut);
+    const dialog = await screen.findByRole("dialog", { name: "Login as organization administrator" });
+    expect(within(dialog).getByText(target.name)).toBeInTheDocument();
+    expect(impersonate).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().user?.role).toBe("root");
+    expect(router.push).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(impersonate).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    fireEvent.click(shortcut);
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(impersonate).toHaveBeenCalledExactlyOnceWith({ organizationId: target.id, role: "admin" }));
+    expect(router.push).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("keeps the directory login shortcut unavailable for either suspended organization state", async () => {
+    const impersonate = vi.fn();
+    useAuthStore.setState({ impersonate });
+    const targets = [{ ...org, status: "inactive" }, { ...org, id: "org-2", name: "Inactive workspace", isActive: false }];
+    vi.mocked(api.get).mockResolvedValue({ data: { data: targets } });
+    mount(<OrganizationsPage />);
+    for (const target of targets) {
+      const shortcut = await screen.findByRole("button", { name: `Login as admin for ${target.name}` });
+      expect(shortcut).toBeDisabled();
+      fireEvent.click(shortcut);
+    }
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(impersonate).not.toHaveBeenCalled();
+  });
+
+  it("retains the directory and confirmation when an administrator session is rejected", async () => {
+    const impersonate = vi.fn().mockRejectedValue(new Error("Session rejected"));
+    useAuthStore.setState({ impersonate });
+    mount(<OrganizationsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: `Login as admin for ${org.name}` }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Start session" }));
+    expect(await screen.findByText("Action failed")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: `Manage ${org.name}` })).toBeInTheDocument();
+    expect(router.push).not.toHaveBeenCalled();
   });
 });

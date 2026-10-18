@@ -1,219 +1,100 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, useToast, Table } from "@/components/ui";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, Badge, Button, Skeleton, Table, useToast } from "@/components/ui";
 import { NEWS2Service } from "@/services/news2.service";
+import { useAuthStore } from "@/store/authStore";
+import { hasAnyPermission } from "@/lib/permissions";
+import { useLatestRead } from "@/hooks/useLatestRead";
+import styles from "./NEWS2Calculator.module.css";
 
-interface NEWS2CalculatorProps {
-  encounterId: string;
-  patientId: string;
+interface Score {
+  id?: string; _id?: string; totalScore?: number; score?: number; riskCategory?: string;
+  evaluatedAt?: string; createdAt?: string; algorithmId?: string; isComplete?: boolean;
+  missingParameters?: string[];
+  parameterBreakdown?: Array<{ parameter: string; rawValue?: unknown; unit?: string; subScore?: number }>;
 }
+interface ScoreAlert { id?: string; _id?: string; score?: number; message?: string; recommendedAction?: string; acknowledged?: boolean }
+const scoreValue = (score?: Score | null) => score?.totalScore ?? score?.score ?? "—";
+const dateLabel = (value?: string) => value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString() : "Not recorded";
+const riskVariant = (risk?: string) => risk === "High" ? "error" : risk === "Medium" ? "warning" : risk === "Low" ? "success" : "neutral";
 
-export function NEWS2Calculator({ encounterId, patientId }: NEWS2CalculatorProps) {
-  const [spo2, setSpo2] = useState("98");
-  const [hr, setHr] = useState("72");
-  const [rr, setRr] = useState("16");
-  const [temp, setTemp] = useState("36.8");
-  const [sbp, setSbp] = useState("120");
-
-  const [evaluating, setEvaluating] = useState(false);
-  const [news2Result, setNews2Result] = useState<any | null>(null);
-  const [activeAlert, setActiveAlert] = useState<any | null>(null);
-  const [acknowledging, setAcknowledging] = useState(false);
-
-  const [scoresHistory, setScoresHistory] = useState<any[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
-  const [vitalTrends, setVitalTrends] = useState<any | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
-
+export function NEWS2Calculator({ encounterId, patientId }: { encounterId: string; patientId: string }) {
+  const user = useAuthStore(state => state.user);
+  const canEvaluate = hasAnyPermission(user, "EVALUATE_NEWS2");
   const { toast } = useToast();
-
-  const fetchHistoryAndTrends = async () => {
-    setLoadingHistory(true);
+  const [evaluating, setEvaluating] = useState(false);
+  const [acknowledging, setAcknowledging] = useState(false);
+  const [scores, setScores] = useState<Score[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [loadedScope, setLoadedScope] = useState("");
+  const [evaluated, setEvaluated] = useState<{ scope: string; score: Score; alert: ScoreAlert | null } | null>(null);
+  const scope = JSON.stringify([encounterId, patientId]);
+  const ready = loadedScope === scope;
+  const beginRead = useLatestRead();
+  const load = useCallback(async () => {
+    const request = beginRead(); setLoading(true); setError(false);
     try {
-      const [scoresData, trendsData] = await Promise.all([
-        NEWS2Service.getScores(encounterId),
-        NEWS2Service.getPatientVitalTrends(patientId).catch(() => null),
-      ]);
-      setScoresHistory(scoresData || []);
-      setVitalTrends(trendsData);
-    } catch {
-      setScoresHistory([]);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
+      const records = await NEWS2Service.getScores(encounterId);
+      if (request.isCurrent()) setScores(Array.isArray(records) ? records : []);
+    } catch { if (request.isCurrent()) { setScores([]); setError(true); } }
+    finally { if (request.isCurrent()) { setLoadedScope(scope); setLoading(false); } }
+  }, [beginRead, encounterId, scope]);
+  useEffect(() => { void load(); return () => { beginRead(); }; }, [load, beginRead]);
+  const currentEvaluation = evaluated?.scope === scope ? evaluated : null;
+  const history = ready ? scores : [];
+  const latest = currentEvaluation?.score || [...history].sort((a, b) => (Date.parse(b.evaluatedAt || b.createdAt || "") || 0) - (Date.parse(a.evaluatedAt || a.createdAt || "") || 0))[0];
+  const activeAlert = currentEvaluation?.alert;
 
-  useEffect(() => {
-    fetchHistoryAndTrends();
-  }, [encounterId, patientId]);
-
-  const validateVitals = (): boolean => {
-    const s = Number(spo2);
-    const h = Number(hr);
-    const r = Number(rr);
-    const t = Number(temp);
-    const b = Number(sbp);
-
-    if (isNaN(s) || s < 50 || s > 100) {
-      setValidationError("SpO2 must be a valid percentage between 50% and 100%");
-      return false;
-    }
-    if (isNaN(h) || h < 20 || h > 250) {
-      setValidationError("Heart Rate must be between 20 and 250 bpm");
-      return false;
-    }
-    if (isNaN(r) || r < 4 || r > 60) {
-      setValidationError("Respiration Rate must be between 4 and 60 breaths/min");
-      return false;
-    }
-    if (isNaN(t) || t < 30 || t > 45) {
-      setValidationError("Temperature must be between 30°C and 45°C");
-      return false;
-    }
-    if (isNaN(b) || b < 40 || b > 300) {
-      setValidationError("Systolic BP must be between 40 and 300 mmHg");
-      return false;
-    }
-
-    setValidationError(null);
-    return true;
-  };
-
-  const handleEvaluateScore = async () => {
-    if (!validateVitals()) return;
-
+  async function evaluate() {
+    if (!canEvaluate || evaluating) return;
     setEvaluating(true);
     try {
+      // The server evaluates saved encounter observations; browser defaults are never submitted.
       const data = await NEWS2Service.evaluateScore(encounterId, "NEWS2");
-      const scoreObj = data.score || data;
-      setNews2Result(scoreObj);
-      if (data.alert) {
-        setActiveAlert(data.alert);
-      } else {
-        setActiveAlert(null);
-      }
-
-      toast({
-        title: "NEWS2 Evaluation Complete",
-        description: `Score: ${scoreObj.totalScore || 0} (${scoreObj.riskCategory || "Low"} Risk)`,
-        variant: scoreObj.riskCategory === "High" ? "error" : "success",
-      });
-
-      fetchHistoryAndTrends();
-    } catch (err: any) {
-      toast({
-        title: "Evaluation Error",
-        description: err.response?.data?.message || err.message || "Failed to evaluate NEWS2 score",
-        variant: "error",
-      });
-    } finally {
-      setEvaluating(false);
-    }
-  };
-
-  const handleAcknowledgeAlert = async () => {
-    if (!activeAlert || !activeAlert._id && !activeAlert.id) return;
-    const alertId = activeAlert._id || activeAlert.id;
+      const score: Score = data.score || data;
+      setEvaluated({ scope, score, alert: data.alert || null });
+      toast({ title: "NEWS2 evaluated", description: "Score: " + scoreValue(score) + " (" + (score.riskCategory || "Not classified") + ")", variant: score.riskCategory === "High" ? "error" : "success" });
+      void load();
+    } catch (failure: unknown) {
+      toast({ title: "Evaluation unavailable", description: (failure as { response?: { data?: { message?: string } } }).response?.data?.message || "Check the saved encounter observations and try again.", variant: "error" });
+    } finally { setEvaluating(false); }
+  }
+  async function acknowledge() {
+    const id = activeAlert?.id || activeAlert?._id;
+    if (!id || acknowledging || !canEvaluate) return;
     setAcknowledging(true);
     try {
-      await NEWS2Service.acknowledgeAlert(alertId);
-      setActiveAlert(null);
-      toast({
-        title: "Alert Acknowledged",
-        description: "High-risk clinical deterioration alert acknowledged by clinician.",
-        variant: "success",
-      });
-      fetchHistoryAndTrends();
-    } catch (err: any) {
-      toast({
-        title: "Acknowledgment Error",
-        description: err.response?.data?.message || "Failed to acknowledge alert",
-        variant: "error",
-      });
-    } finally {
-      setAcknowledging(false);
-    }
-  };
+      await NEWS2Service.acknowledgeAlert(id);
+      setEvaluated(current => current?.scope === scope ? { ...current, alert: null } : current);
+      toast({ title: "Alert acknowledged", variant: "success" });
+      void load();
+    } catch { toast({ title: "Acknowledgment unavailable", description: "Please try again.", variant: "error" }); }
+    finally { setAcknowledging(false); }
+  }
 
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* High Risk Active Alert Emergency Banner */}
-      {activeAlert && !activeAlert.acknowledged && (
-        <div className="p-4 rounded-xl bg-error/15 border-2 border-error text-error-text dark:text-error-text animate-pulse flex items-center justify-between">
-          <div className="space-y-1">
-            <div className="font-extrabold text-base flex items-center gap-2">
-              ⚠️ HIGH-RISK CLINICAL DETERIORATION ALERT
-            </div>
-            <p className="text-xs font-medium">
-              NEWS2 Score: <b>{activeAlert.score || news2Result?.totalScore || 8}</b>. Requires immediate medical response team escalation.
-            </p>
-          </div>
-          <Button variant="danger" size="sm" onClick={handleAcknowledgeAlert} loading={acknowledging}>
-            Acknowledge Alert
-          </Button>
-        </div>
-      )}
-
-      {/* Vital Input Calculator Card */}
-      <Card className="shadow-md">
-        <CardHeader className="border-b border-border pb-3">
-          <CardTitle className="text-base font-bold">NEWS2 Clinical Monitoring & Deterioration Engine</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 pt-4">
-          {validationError && (
-            <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg text-xs text-danger-text dark:text-danger-text font-semibold">
-              {validationError}
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <Input label="SpO2 (%)" value={spo2} onChange={(e) => setSpo2(e.target.value)} placeholder="98" />
-            <Input label="Heart Rate (bpm)" value={hr} onChange={(e) => setHr(e.target.value)} placeholder="72" />
-            <Input label="Respiration Rate (/min)" value={rr} onChange={(e) => setRr(e.target.value)} placeholder="16" />
-            <Input label="Temp (°C)" value={temp} onChange={(e) => setTemp(e.target.value)} placeholder="36.8" />
-            <Input label="Systolic BP (mmHg)" value={sbp} onChange={(e) => setSbp(e.target.value)} placeholder="120" />
-          </div>
-
-          <Button onClick={handleEvaluateScore} loading={evaluating} fullWidth size="lg">
-            Evaluate & Persist NEWS2 Risk Score
-          </Button>
-
-          {news2Result && (
-            <div className="p-4 rounded-xl border border-border bg-surface-hover space-y-2 mt-4">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-sm text-text">Evaluated NEWS2 Score:</span>
-                <span className="text-2xl font-extrabold text-accent">{news2Result.totalScore ?? news2Result.score ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-secondary">Risk Classification:</span>
-                <Badge variant={news2Result.riskCategory === "High" ? "error" : news2Result.riskCategory === "Medium" ? "warning" : "success"}>
-                  {news2Result.riskCategory || "Low"} Risk
-                </Badge>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Historical Scores Trajectory */}
-      <Card className="shadow-md">
-        <CardHeader className="border-b border-border pb-3">
-          <CardTitle className="text-base font-bold">NEWS2 Score History & Trajectory</CardTitle>
-        </CardHeader>
-          <Table
-            columns={[
-              { header: "Evaluated At", accessor: (row) => new Date(row.evaluatedAt || row.createdAt).toLocaleString() },
-              { header: "Total Score", accessor: (row) => <span className="font-bold">{row.totalScore}</span> },
-              { header: "Risk Category", accessor: (row) => <Badge variant={row.riskCategory === "High" ? "error" : row.riskCategory === "Medium" ? "warning" : "success"}>{row.riskCategory}</Badge> },
-              { header: "Algorithm", accessor: (row) => row.algorithmId || "NEWS2" },
-            ]}
-            data={scoresHistory}
-            loading={loadingHistory}
-            emptyMessage="No historical NEWS2 evaluations recorded for this encounter yet."
-          />
-      </Card>
+  return <div className={styles.workspace}>
+    {activeAlert && !activeAlert.acknowledged && <div className={styles.alert} role="alert"><div><h3>Clinical alert</h3><p>{activeAlert.message || "Review the recorded NEWS2 result."}</p>{activeAlert.recommendedAction && <p>{activeAlert.recommendedAction}</p>}<p>Score: {activeAlert.score ?? scoreValue(latest)}</p></div>{canEvaluate && <Button variant="danger" size="sm" onClick={acknowledge} loading={acknowledging}>Acknowledge</Button>}</div>}
+    <div className={styles.columns}>
+      <section className={styles.panel} aria-label="NEWS2 evaluation">
+        <header><div><h2>NEWS2</h2><p>Early warning score</p></div>{canEvaluate && <Button size="sm" onClick={evaluate} loading={evaluating}>Evaluate score</Button>}</header>
+        <p className={styles.description}>Calculated from observations saved to this encounter.</p>
+        {(loading || !ready) && !latest ? <div role="status" aria-label="Loading latest NEWS2 score"><Skeleton height="96px" /></div> : latest ? <>
+          <div className={styles.result}><div><span>Latest score</span><strong>{scoreValue(latest)}</strong></div><div><Badge variant={riskVariant(latest.riskCategory)}>{latest.riskCategory || "Not classified"}</Badge>{latest.isComplete === false && <Badge variant="warning">Incomplete</Badge>}</div></div>
+          <p className={styles.date}>Evaluated {dateLabel(latest.evaluatedAt || latest.createdAt)}</p>
+          {latest.isComplete === false && <Alert variant="warning" title="Missing observations">{latest.missingParameters?.length ? latest.missingParameters.join(", ") : "Some observations are missing from this evaluation."}</Alert>}
+        </> : <p className={styles.empty}>{error ? "Latest score unavailable." : "No evaluation recorded yet."}</p>}
+        {!canEvaluate && <p className={styles.description}>Evaluation requires NEWS2 permission.</p>}
+      </section>
+      <section className={styles.panel} aria-label="NEWS2 score history">
+        <header><h2>Score history</h2><Button variant="ghost" size="sm" onClick={load} disabled={loading}>Refresh</Button></header>
+        {ready && error ? <Alert variant="error" title="Score history unavailable" action={<Button variant="outline" size="sm" onClick={load}>Try again</Button>}>The history could not be loaded.</Alert> : ready && !loading && !history.length ? <p className={styles.empty}>No scores recorded for this encounter.</p> : <Table<Score>
+          variant="flat" density="compact" fitContent searchable={false} showColumnVisibility={false} pagination={false}
+          columns={[{ header: "Evaluated", accessor: row => dateLabel(row.evaluatedAt || row.createdAt) }, { header: "Score", accessor: row => <strong>{scoreValue(row)}</strong> }, { header: "Risk", accessor: row => <Badge variant={riskVariant(row.riskCategory)}>{row.riskCategory || "Not classified"}</Badge> }]}
+          data={history} loading={loading || !ready} emptyMessage="No scores recorded for this encounter." />}
+      </section>
     </div>
-  );
+    {latest?.parameterBreakdown?.length ? <section className={styles.panel} aria-label="Observations used for latest score"><header><h2>Observations used</h2></header><p className={styles.description}>Recorded values from the latest evaluation.</p><dl className={styles.observations}>{latest.parameterBreakdown.map((item, index) => <div key={index}><dt>{item.parameter}</dt><dd>{item.rawValue === undefined || item.rawValue === null ? "Not recorded" : String(item.rawValue)} {item.unit || ""}</dd>{item.subScore !== undefined && <span>Score {item.subScore}</span>}</div>)}</dl></section> : null}
+  </div>;
 }

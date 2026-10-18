@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { disruptionPresence } from "@/lib/disruptionPresence";
 import { patientName, patientPhone } from "@/lib/locationWorkflow";
-import { Modal, Button, Input, Badge, Checkbox, useToast, cn, Select } from "@/components/ui";
+import { Button, Badge, Checkbox, useToast, cn, Select, DatePicker } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
 import { AlertTriangle, UserCheck, Clock, Calendar, XCircle, CheckCircle2, Phone, Stethoscope, RefreshCw } from "lucide-react";
 
 export interface TriageAppointment {
@@ -337,9 +338,21 @@ export default function DisruptionTriageModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="🚨 Emergency Disruption & Patient Triage Cockpit"
+      title="Disruption triage"
       size="xl"
-    >
+     footer={<>
+          <span>
+            {triageAppointments.length} total patient(s) flagged for disruption triage.
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            className="font-semibold"
+          >
+            Close Cockpit
+          </Button>
+        </>}>
       <div className="space-y-5 pt-1 font-sans">
         {/* Banner Explainer */}
         <div className="p-4 rounded-2xl bg-warning/10 border border-warning/25 flex items-start gap-3 text-xs leading-relaxed text-warning-text dark:text-warning-text">
@@ -450,10 +463,11 @@ export default function DisruptionTriageModal({
 
                 {batchActionType === "reschedule" && (
                   <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                    <Input
-                      type="date"
+                    <DatePicker
+                      label="Batch reschedule date"
+
                       value={batchRescheduleDate}
-                      onChange={(e) => setBatchRescheduleDate(e.target.value)}
+                      onChange={(value) => setBatchRescheduleDate(value)}
                       className="text-xs"
                     />
                   </div>
@@ -647,10 +661,11 @@ export default function DisruptionTriageModal({
                         Priority Reschedule for Patient #{appt.tokenNumber}:
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <Input
-                          type="date"
+                        <DatePicker
+                          label="Reschedule date"
+
                           value={activeRescheduleDate}
-                          onChange={(e) => setActiveRescheduleDate(e.target.value)}
+                          onChange={(value) => setActiveRescheduleDate(value)}
                           className="w-40 text-xs"
                         />
                         <Select value={activeRescheduleDocId} onChange={event => setActiveRescheduleDocId(event.target.value)} aria-label="Reschedule doctor" size="sm" options={[
@@ -715,19 +730,7 @@ export default function DisruptionTriageModal({
         )}
 
         {/* Modal Footer */}
-        <div className="flex justify-between items-center border-t border-border/60 pt-3 text-xs text-text-muted">
-          <span>
-            {triageAppointments.length} total patient(s) flagged for disruption triage.
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            className="font-semibold"
-          >
-            Close Cockpit
-          </Button>
-        </div>
+
       </div>
     </Modal>
   );

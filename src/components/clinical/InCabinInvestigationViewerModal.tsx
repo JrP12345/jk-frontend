@@ -3,7 +3,8 @@
 import LoadingImage from "@/components/ui/LoadingImage";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { Modal, Button, Badge, Spinner, cn } from "@/components/ui";
+import { Button, Badge, Spinner, cn } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
 import { FlaskConical, TrendingDown, TrendingUp, FileText, ExternalLink, AlertTriangle, CheckCircle2, Clock, Copy, Check, Minus, Volume2 } from "lucide-react";
 import { useToast } from "@/components/ui";
 
@@ -172,10 +173,57 @@ export function InCabinInvestigationViewerModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="In-Cabin Diagnostic Report & Trend Viewer"
+      title="Lab reports"
       description={`Structured parameter values, attached lab PDF scans, and longitudinal patient comparisons for ${patientName} ${tokenNumber ? `(Token #${tokenNumber})` : ""}`}
       size="xl"
-    >
+     footer={<>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleCopySummary}
+            disabled={!activeTest}
+            className="font-bold text-xs border-accent/30 text-accent dark:text-accent hover:bg-primary/10 cursor-pointer"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 mr-1.5 text-success-text" />
+                Copied / Inserted into Note!
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5 mr-1.5 text-accent" />
+                1-Click Insert into Visit Note
+              </>
+            )}
+          </Button>
+
+          <div className="flex items-center gap-2">
+            {appointmentId && (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleRecallToCabin}
+                loading={recalling}
+                className="bg-success hover:bg-success text-background font-bold text-xs cursor-pointer"
+              >
+                <Volume2 className="w-3.5 h-3.5 mr-1.5" />
+                Recall Patient to Cabin (Chime)
+              </Button>
+            )}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="font-semibold text-xs"
+            >
+              Close Viewer
+            </Button>
+          </div>
+        </>}>
       <div className="space-y-4 pt-1 font-sans text-xs">
         {loading ? (
           <div className="py-16 flex flex-col items-center justify-center gap-3 text-text-muted">
@@ -193,7 +241,7 @@ export function InCabinInvestigationViewerModal({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
             {/* Left Sidebar: Investigation Tests List */}
-            <div className="md:col-span-4 space-y-2 border-r border-border/60 pr-3 max-h-[62vh] overflow-y-auto">
+            <div className="md:col-span-4 space-y-2 md:border-r border-border/60 md:pr-3 md:max-h-[62vh] md:overflow-y-auto">
               <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
                 Ordered Tests ({testNames.length})
               </span>
@@ -202,6 +250,7 @@ export function InCabinInvestigationViewerModal({
                   const item = activeTests[name];
                   const isSelected = selectedTestName === name || (!selectedTestName && testNames[0] === name);
                   const isAbnormal = item.latest?.isAbnormal;
+                  const isPending = /^pending\b/i.test(String(item.latest?.value || "").trim());
 
                   return (
                     <button
@@ -217,7 +266,7 @@ export function InCabinInvestigationViewerModal({
                     >
                       <div className="flex items-center justify-between gap-1">
                         <span className="font-bold text-xs truncate text-text">{name}</span>
-                        {isAbnormal ? (
+                        {isPending && !isAbnormal ? <Badge variant="neutral">Pending</Badge> : isAbnormal ? (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-danger/20 text-danger-text dark:text-danger-text shrink-0">
                             Abnormal
                           </span>
@@ -260,7 +309,7 @@ export function InCabinInvestigationViewerModal({
             </div>
 
             {/* Right Main Area: Selected Test Details, Report Attachment & 1-Click Comparison */}
-            <div className="md:col-span-8 space-y-4 max-h-[62vh] overflow-y-auto pl-1 pr-1">
+            <div className="md:col-span-8 space-y-4 md:max-h-[62vh] md:overflow-y-auto">
               {activeTest && latestReading && (
                 <>
                   {/* Critical Panic Alert Banner (if applicable) */}
@@ -279,9 +328,9 @@ export function InCabinInvestigationViewerModal({
                   {/* Test Header & Latest Value Card */}
                   <div className="p-3.5 rounded-2xl bg-surface-alt border border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h4 className="text-sm font-bold text-text">{activeTest.testName}</h4>
-                        {latestReading.isAbnormal ? (
+                        {/^pending\b/i.test(String(latestReading.value || "").trim()) && !latestReading.isAbnormal ? <Badge variant="neutral">Results pending</Badge> : latestReading.isAbnormal ? (
                           <Badge variant="danger" size="sm" className="font-bold text-[10px]">
                             <AlertTriangle className="w-3 h-3 mr-1" /> Abnormal Flag
                           </Badge>
@@ -416,7 +465,7 @@ export function InCabinInvestigationViewerModal({
                                   {item.referenceRange || "Standard"}
                                 </td>
                                 <td className="py-2 px-3">
-                                  {item.isAbnormal ? (
+                                  {/^pending\b/i.test(String(item.value || "").trim()) && !item.isAbnormal ? <Badge variant="neutral">Pending</Badge> : item.isAbnormal ? (
                                     <span className="text-[10px] font-bold text-danger-text dark:text-danger-text bg-danger/10 px-1.5 py-0.5 rounded">
                                       Abnormal
                                     </span>
@@ -454,54 +503,7 @@ export function InCabinInvestigationViewerModal({
         )}
 
         {/* Modal Footer Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-border/60">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleCopySummary}
-            disabled={!activeTest}
-            className="font-bold text-xs border-accent/30 text-accent dark:text-accent hover:bg-primary/10 cursor-pointer"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 mr-1.5 text-success-text" />
-                Copied / Inserted into Note!
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5 mr-1.5 text-accent" />
-                1-Click Insert into Visit Note
-              </>
-            )}
-          </Button>
 
-          <div className="flex items-center gap-2">
-            {appointmentId && (
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={handleRecallToCabin}
-                loading={recalling}
-                className="bg-success hover:bg-success text-background font-bold text-xs cursor-pointer"
-              >
-                <Volume2 className="w-3.5 h-3.5 mr-1.5" />
-                Recall Patient to Cabin (Chime)
-              </Button>
-            )}
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onClose}
-              className="font-semibold text-xs"
-            >
-              Close Viewer
-            </Button>
-          </div>
-        </div>
       </div>
     </Modal>
   );

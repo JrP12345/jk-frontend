@@ -1,10 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Catalog from "@/app/(dashboard)/dashboard/billing/services/page";
 import { ToastProvider } from "@/components/ui/Toast";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 
+beforeEach(() => useAuthStore.setState({ user: { id: "manager", name: "Manager", email: "manager@example.test", role: "staff", permissions: ["MANAGE_BILLING"] } }));
 afterEach(() => { vi.restoreAllMocks(); useAuthStore.setState({ user: null }); });
 
 describe("Catalog query continuity", () => {
@@ -14,9 +15,9 @@ describe("Catalog query continuity", () => {
     vi.spyOn(api, "get").mockResolvedValue({ data: { data: [service] } });
     render(<ToastProvider><Catalog /></ToastProvider>);
     await screen.findAllByText("Consultation");
-    expect(screen.queryByRole("button", { name: "Add Service Item" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add service" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit Rates & Tax" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Row Actions" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Actions for/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Deactivate" })).not.toBeInTheDocument();
   });
   it("keeps default service provisioning available to authorized billing managers", async () => {
@@ -24,21 +25,22 @@ describe("Catalog query continuity", () => {
     vi.spyOn(api, "get").mockResolvedValue({ data: { data: [] } });
     render(<ToastProvider><Catalog /></ToastProvider>);
     expect(await screen.findByRole("button", { name: "Add default services" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add Service Item" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add service" })).toBeInTheDocument();
   });
-  it("debounces typing and ignores an older response that finishes last", async () => {
+  it("filters locally and ignores an older organization response that finishes last", async () => {
     const requests: { url: string; signal?: AbortSignal; resolve: (value: unknown) => void }[] = [];
     vi.spyOn(api, "get").mockImplementation((url, config) => new Promise(resolve => {
       requests.push({ url, signal: config?.signal as AbortSignal, resolve });
     }));
     render(<ToastProvider><Catalog /></ToastProvider>);
     await waitFor(() => expect(requests).toHaveLength(1));
-    const search = screen.getByPlaceholderText("Search by code, service name, HSN/SAC...");
+    const search = screen.getByRole("searchbox", { name: "Search services" });
     fireEvent.change(search, { target: { value: "n" } });
     fireEvent.change(search, { target: { value: "new" } });
     expect(requests).toHaveLength(1);
+    act(() => useAuthStore.setState({ user: { ...useAuthStore.getState().user!, organization_id: "other-org" } }));
     await waitFor(() => expect(requests).toHaveLength(2));
-    expect(requests[1].url).toContain("search=new");
+    expect(requests[1].url).toContain("page=1&limit=100");
     expect(requests[0].signal?.aborted).toBe(true);
     const service = (name: string) => ({ _id: name, code: name, name, category: "consultation", department: "General", price: 100, hsnSacCode: "999312", gstRate: 0, isActive: true });
     await act(async () => requests[1].resolve({ data: { data: [service("Newest service")] } }));

@@ -1,0 +1,23 @@
+.editor { min-width: 0; padding: .875rem; border: 1px solid var(--border); border-radius: .875rem; background: var(--surface); display: flex; flex-direction: column; gap: .875rem; }
+.editor > p { margin: 0; }
+.toolbar { display: flex; flex-direction: column; gap: .625rem; padding-bottom: .75rem; border-bottom: 1px solid var(--border); }
+.toolbar h2 { font-size: 1rem; font-weight: 650; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.content { display: flex; flex-direction: column; gap: .875rem; min-width: 0; }
+.actions button { min-height: 44px; padding-inline: .75rem; font-size: .75rem; }
+.actions > div { display: flex; flex-wrap: wrap; gap: .5rem; }
+.noteTools { min-width: 0; position: relative; }
+.noteTools summary { display: flex; align-items: center; justify-content: center; gap: .5rem; min-height: 44px; padding: .5rem .75rem; border: 1px solid var(--border); border-radius: .625rem; font-size: .75rem; cursor: pointer; color: var(--accent); list-style: none; }
+.noteTools summary::after { content: '+'; }
+.noteTools[open] summary::after { content: '−'; }
+.noteTools > div { position: absolute; top: calc(100% + .375rem); right: 0; z-index: 30; width: 26rem; max-width: calc(100vw - 3.5rem); display: flex; flex-wrap: wrap; gap: .5rem; padding: .625rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface-elevated); box-shadow: 0 8px 24px rgb(0 0 0 / .12); }
+.noteTools:not([open]) > div { display: none; }
+.previousVisits { padding: .75rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); }
+.previousVisits summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--accent); font-size: .8125rem; }
+.previousVisits > div { min-width: 0; }
+.fields { display: grid; gap: .875rem; min-width: 0; }
+.fields > div { padding: .875rem; min-width: 0; }
+.editor :where(input:not([type="checkbox"]), select, button) { min-height: 44px; }
+@media (min-width: 768px) { .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } .toolbar { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: center; } }
+@media (max-width: 767px) { .noteTools > div { left: 0; right: auto; width: 23rem; } }
+@media (min-width: 1280px) { .editor { padding: 1rem; } }

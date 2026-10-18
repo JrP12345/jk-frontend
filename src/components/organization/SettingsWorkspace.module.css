@@ -1,0 +1,286 @@
+.workspace {
+  container: settings / inline-size;
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+  margin-inline: 0;
+  padding-bottom: 2rem;
+  color: var(--text-primary);
+}
+
+.header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.header p,
+.panelHeader p {
+  margin-top: 0.375rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.layout,
+.tabs,
+.content {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  align-content: start;
+}
+
+.tabs [role="tablist"] {
+  gap: 0.25rem;
+  padding: 0.375rem;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: var(--surface);
+}
+
+.tabs [role="tab"] {
+  flex: 1 0 auto;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding-inline: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.tabs [role="tab"] > span:first-child:has(svg) {
+  display: none;
+}
+
+.tabs > [role="tabpanel"] {
+  min-width: 0;
+  padding-top: 0;
+}
+
+.panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.panelHeader {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.panelHeader h2,
+.preferencesHeader h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.panelBody {
+  padding: 1rem;
+}
+
+.primaryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-control, 0.75rem);
+  background: var(--accent);
+  color: var(--text-on-accent, white);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.shortcuts {
+  align-self: start;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.shortcuts h2 {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.shortcut {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.625rem;
+  min-height: 2.75rem;
+  padding-block: 0.875rem;
+}
+
+.shortcut + .shortcut {
+  border-top: 1px solid var(--border);
+}
+
+.shortcut > svg {
+  margin-top: 0.125rem;
+  color: var(--text-secondary);
+}
+
+.shortcut strong {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.shortcut small,
+.shortcuts > p {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.shortcuts > p {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.shortcut:hover strong {
+  color: var(--accent);
+}
+
+.primaryLink:focus-visible,
+.shortcut:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.preferences {
+  container: preferences / inline-size;
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.preferencesPanel {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.preferencesHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.875rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.preferencesHeader p {
+  margin-top: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.preferenceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+  padding-block: 0.875rem;
+}
+
+.preferenceRow > div:first-child {
+  min-width: 0;
+}
+
+.preferenceRow label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.preferenceRow p {
+  margin-top: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.preferenceRow > div:last-child {
+  flex-shrink: 0;
+}
+
+.preferenceRow button[role="switch"]::after {
+  position: absolute;
+  inset: -0.6875rem -0.125rem;
+  content: "";
+}
+
+.channelRows > div + div {
+  border-top: 1px solid var(--border);
+}
+
+.channelRows > div:last-child {
+  padding-bottom: 0;
+}
+
+.categoryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0 1.5rem;
+}
+
+.categoryGrid > div {
+  border-bottom: 1px solid var(--border);
+}
+
+.preferenceFooter {
+  display: flex;
+  justify-content: end;
+  padding-top: 1rem;
+}
+
+.preferenceFooter button {
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+@container settings (min-width: 32rem) {
+  .header h1 {
+    font-size: 1.5rem;
+  }
+
+  .tabs [role="tab"] > span:first-child:has(svg) {
+    display: inline-flex;
+  }
+
+  .primaryLink {
+    width: auto;
+  }
+}
+
+@container settings (min-width: 62rem) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: 1.25rem;
+  }
+}
+
+@container preferences (min-width: 32rem) {
+  .categoryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .preferenceFooter button {
+    width: auto;
+  }
+}

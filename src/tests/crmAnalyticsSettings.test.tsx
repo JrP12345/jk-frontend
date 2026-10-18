@@ -1,3 +1,4 @@
+import { datePickerInput } from "./datePickerTestUtils";
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '@/lib/api';
@@ -85,7 +86,7 @@ describe('CRM operational reports and settings', () => {
     vi.spyOn(Date, 'now').mockReturnValue(new Date('2026-10-09T10:00:00Z').getTime());
     vi.mocked(api.get).mockImplementation(async path => ({ data: { data: String(path) === '/crm/settings' ? settings : String(path) === '/crm/locations' ? [{ id: 'branch', name: 'Visible branch', effectiveTimezone: 'Asia/Kolkata' }] : String(path) === '/crm/assignees' ? { items: [{ id: 'manager', name: 'Manager' }], nextCursor: null } : { items: [], nextCursor: null } } }));
     render(<InquiryWorkspace />); fireEvent.click(await screen.findByRole('button', { name: 'Capture inquiry' }));
-    const due = await screen.findByLabelText('Next action due (Asia/Kolkata)');
+    const due = datePickerInput(await screen.findByLabelText('Next action due (Asia/Kolkata)'));
     await waitFor(() => expect(due).toHaveValue(locationLocalDateTimeInput(new Date('2026-10-09T14:00:00Z'), 'Asia/Kolkata')));
     fireEvent.change(due, { target: { value: '2026-10-10T17:30' } });
     expect(due).toHaveValue('2026-10-10T17:30');

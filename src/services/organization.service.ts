@@ -1,7 +1,8 @@
 import api from "@/lib/api";
+import type { ChimeType, VoiceAnnounceLanguage } from "@/utils/audioChimes";
 
 export interface OrganizationRecord {
-  workflowPreferences?: { registration?: "full" | "essential"; consultation?: "full" | "focused" };
+  workflowPreferences?: { registration?: "full" | "essential"; consultation?: "full" | "focused"; queueChime?: ChimeType; queueVoiceLanguage?: VoiceAnnounceLanguage };
   id: string; name: string; city: string; plan: string; status: string; isActive?: boolean;
   address?: string; email?: string; phone?: string; description?: string;
   logo_url?: string | null; image_url?: string | null; images?: string[];

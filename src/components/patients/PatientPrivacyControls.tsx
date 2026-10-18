@@ -6,7 +6,8 @@ import { useAuthStore } from "@/store/authStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { authScopeKey } from '@/lib/authScope';
-import { Alert, Button, Card, CardContent, Input, Modal, Select, Checkbox } from "@/components/ui";
+import { Alert, Button, Card, CardContent, Input, Select, Checkbox } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
 
 const purposes: Record<string, { label: string; notice: string }> = {
   COMMUNICATION_WHATSAPP: { label: "WhatsApp service messages", notice: "Allow this organization to send appointment and service messages to the recorded WhatsApp recipient." },
@@ -143,7 +144,7 @@ function PrivacyCommand({ patientId, organizationId, action, consent, privacy, c
   }
   const needsConfirmation = action.kind === "consent" && action.status === "GRANTED" || action.kind === "review" && decision === "fulfilled";
   const valid = (!needsConfirmation || confirmed) && (action.kind === "consent" && consumer || !!reason.trim()) && (action.kind !== "review" || !!basis.trim());
-  return <Modal open title={title} busy={pending} closeOnOverlay={!pending} onClose={() => { if (!pending) onClose(); }}><form onSubmit={save} className="space-y-3">
+  return <Modal footer={<div className="flex justify-end gap-2"><Button variant="outline" disabled={pending} onClick={onClose}>Close</Button><Button type="submit" form="patient-privacy-1" loading={pending} disabled={pending || !valid}>{error ? "Retry submitted request" : "Record choice"}</Button></div>} open title={title} busy={pending} closeOnOverlay={!pending} onClose={() => { if (!pending) onClose(); }}><form id="patient-privacy-1" onSubmit={save} className="space-y-3">
     {error && <Alert variant="error">{error} Close and reload to change the submitted details.</Alert>}
     <fieldset disabled={pending || locked} className="space-y-3">
       {action.kind === "consent" && <><p className="text-sm">{purposes[action.purpose!]?.notice} Withdrawal stops future optional use for this purpose; it does not erase retained records.</p>{!consumer && <Select label="Patient evidence method" value={method} onChange={event => setMethod(event.target.value)} options={[
@@ -154,6 +155,6 @@ function PrivacyCommand({ patientId, organizationId, action, consent, privacy, c
       ]} /><Input label="Record-specific retention basis" required value={basis} maxLength={200} onChange={event => setBasis(event.target.value)} /><p className="text-sm">{privacy?.scope}</p></>}
       <Input label={action.kind === "consent" ? "Patient instruction or evidence" : "Request or review reason"} required={action.kind !== "consent" || !consumer} value={reason} maxLength={500} onChange={event => setReason(event.target.value)} />
       {needsConfirmation && <Checkbox checked={confirmed} onChange={event => setConfirmed(event.target.checked)} label={(action.kind === "consent" ? "I confirm the stated purpose and the patient's explicit choice for this organization." : "I reviewed retention and confirm erasure of the eligible CRM scope shown above.")} />}
-    </fieldset><div className="flex justify-end gap-2"><Button variant="outline" disabled={pending} onClick={onClose}>Close</Button><Button type="submit" loading={pending} disabled={pending || !valid}>{error ? "Retry submitted request" : "Record choice"}</Button></div>
+    </fieldset>
   </form></Modal>;
 }

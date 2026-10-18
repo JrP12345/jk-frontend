@@ -1,7 +1,7 @@
 "use client";
 
 import LoadingImage from "@/components/ui/LoadingImage";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
 import type { LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
@@ -9,14 +9,18 @@ import { getPublicBookingStatus } from "@/lib/publicBooking";
 import { locationPath, doctorPath } from "@/lib/publicPaths";
 import GoogleBookingLinks from "@/components/organization/GoogleBookingLinks";
 import { parseLocationCoordinates } from "@/lib/geo/locationCoordinates";
-import { Alert, Card, CardContent, Table, Button, Modal, Input, useToast, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, LoadingState, SkeletonTable, Dropdown, StatCard, cn, Textarea } from "@/components/ui";
+import { Table, Button, Input, useToast, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, Dropdown, Tabs, Textarea } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
+import { useLatestRead } from "@/hooks/useLatestRead";
+import { authScopeKey } from "@/lib/authScope";
+import styles from "./LocationManagement.module.css";
 import { useAuthStore } from "@/store/authStore";
 import { useOrganizationLocations } from "@/hooks/useOrganizationLocations";
 import { organizationPath, organizationWorkspaceUrl, saveWithBranding } from "@/services/organization.service";
 import { publicBookingChecklist } from "@/lib/publicBookingSetup";
 import { facilityTypeLabel, facilityTypeOptions, type FacilityType } from "@/lib/facility";
 import { hasAnyPermission, isRootUser } from "@/lib/permissions";
-import { RotateCw, Plus, Building2, MapPin, Phone, Mail, QrCode, MoreHorizontal, Edit3, Trash2, Archive, RotateCcw, Clock, Link2 } from "lucide-react";
+import { RotateCw, Plus, Building2, Phone, Mail, QrCode, MoreHorizontal, Edit3, Archive, RotateCcw, Clock, Link2, Search } from "lucide-react";
 import LocationQrPosterModal from "@/components/dashboard/LocationQrPosterModal";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -45,11 +49,19 @@ interface Location {
 }
 
 export default function LocationManagement({ organizationId, embedded = false }: { organizationId?: string; embedded?: boolean }) {
+  const user = useAuthStore((state) => state.user);
+  return <LocationsWorkspace key={`${authScopeKey(user)}:${organizationId || "session"}`} organizationId={organizationId} embedded={embedded} />;
+}
+
+function LocationsWorkspace({ organizationId, embedded }: { organizationId?: string; embedded: boolean }) {
   const scopedPath = (path: string) => organizationPath(path, organizationId);
   const { user } = useAuthStore();
   const { locations, fetchLocations, isLoading: locationsLoading, error: locationLoadError } = useOrganizationLocations(organizationId);
   const canManageLocations = hasAnyPermission(user, "MANAGE_LOCATIONS");
   const [organizations, setOrganizations] = useState<any[]>([]);
+  const [organizationsError, setOrganizationsError] = useState(false);
+  const [organizationsLoading, setOrganizationsLoading] = useState(false);
+  const [organizationsRetry, setOrganizationsRetry] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -69,6 +81,13 @@ export default function LocationManagement({ organizationId, embedded = false }:
   const [loadingArchived, setLoadingArchived] = useState(false);
   const [activeTab, setActiveTab] = useState<"active" | "archived">("active");
   const [reactivatingId, setReactivatingId] = useState<string | null>(null);
+  const [deactivating, setDeactivating] = useState(false);
+  const [search, setSearch] = useState("");
+  const [city, setCity] = useState("");
+  const [formTab, setFormTab] = useState("details");
+  const invalidFocusPending = useRef(false);
+  const [archivedLoaded, setArchivedLoaded] = useState(false);
+  const startArchivedRead = useLatestRead();
   const { toast } = useToast();
   const websitePublicDetail = websitePublicResponse && websitePublicResponse.locationId === websiteLocation?.id ? websitePublicResponse.data : null;
   const websiteUrl = websitePublicDetail && typeof window !== "undefined" ? `${window.location.origin}${locationPath(websitePublicDetail)}` : "";
@@ -96,12 +115,12 @@ export default function LocationManagement({ organizationId, embedded = false }:
   useEffect(() => {
     if (!websiteLocation) return;
     const controller = new AbortController();
-    api.get(scopedPath(`/public/locations/${encodeURIComponent(websiteLocation.slug || "")}`), { signal: controller.signal })
+    api.get(organizationPath(`/public/locations/${encodeURIComponent(websiteLocation.slug || "")}`, organizationId), { signal: controller.signal })
       .then((response) => { if (!controller.signal.aborted) { const data = response.data?.data; if (data?.slug === websiteLocation.slug && Array.isArray(data?.doctors)) setWebsitePublicResponse({ locationId: websiteLocation.id, data }); else setWebsiteDetailErrorFor(websiteLocation.id); } })
       .catch(() => { if (!controller.signal.aborted) setWebsiteDetailErrorFor(websiteLocation.id); })
       .finally(() => { if (!controller.signal.aborted) setWebsiteDetailLoadingFor(null); });
     return () => controller.abort();
-  }, [websiteLocation, websiteDetailRetry]);
+  }, [websiteLocation, websiteDetailRetry, organizationId]);
   const copyWebsiteText = async (value: string, title: string) => {
     try {
       await navigator.clipboard.writeText(value);
@@ -111,7 +130,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
     }
   };
   const changePublication = async () => {
-    if (!websiteLocation || publicationSaving) return;
+    if (!websiteLocation || publicationSaving || !canManageLocations) return;
     setPublicationSaving(true);
     try {
       const isPublished = websiteLocation.isPublished === false;
@@ -127,15 +146,21 @@ export default function LocationManagement({ organizationId, embedded = false }:
   // Load organizations list for Root Super-Admin selection
   useEffect(() => {
     if (isRootUser(user) && !organizationId) {
+      const controller = new AbortController();
+      setOrganizationsLoading(true);
+      setOrganizationsError(false);
       api
-        .get("/organizations")
+        .get("/organizations", { signal: controller.signal })
         .then((res) => {
+          if (controller.signal.aborted) return;
           const orgList = res.data.data?.organizations || res.data.data || [];
           setOrganizations(orgList);
         })
-        .catch(() => {});
+        .catch(() => { if (!controller.signal.aborted) setOrganizationsError(true); })
+        .finally(() => { if (!controller.signal.aborted) setOrganizationsLoading(false); });
+      return () => controller.abort();
     }
-  }, [user, organizationId]);
+  }, [user, organizationId, organizationsRetry]);
 
   // Location Form Validation State
   const [locationErrors, setLocationErrors] = useState<Record<string, string>>({});
@@ -174,25 +199,28 @@ export default function LocationManagement({ organizationId, embedded = false }:
     }
   };
 
-  const fetchArchivedLocations = async () => {
+  const fetchArchivedLocations = useCallback(async () => {
+    const request = startArchivedRead();
     try {
       setArchivedError(null);
       setLoadingArchived(true);
-      const res = await api.get(scopedPath("/onboarding/locations?status=inactive"));
+      const res = await api.get(organizationPath("/onboarding/locations?status=inactive", organizationId), { signal: request.signal });
+      if (!request.isCurrent()) return;
       const rawList = res.data.data || [];
       const list = rawList.map((c: any) => ({
         ...c,
         id: c.id || c._id,
       }));
       setArchivedLocations(list);
+      setArchivedLoaded(true);
     } catch {
-      setArchivedError("Archived locations could not be loaded. Please try again.");
+      if (request.isCurrent()) setArchivedError("Archived locations could not be loaded. Please try again.");
     } finally {
-      setLoadingArchived(false);
+      if (request.isCurrent()) setLoadingArchived(false);
     }
-  };
+  }, [organizationId, startArchivedRead]);
 
-  const reloadLocations = async () => {
+  const reloadLocations = useCallback(async () => {
     try {
       setIsRefreshing(true);
       await Promise.all([fetchLocations(true), fetchArchivedLocations()]);
@@ -202,9 +230,10 @@ export default function LocationManagement({ organizationId, embedded = false }:
       setLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [fetchLocations, fetchArchivedLocations, toast]);
 
   const handleReactivate = async (location: Location) => {
+    if (!canManageLocations || reactivatingId) return;
     setReactivatingId(location.id);
     try {
       await api.post(scopedPath(`/onboarding/locations/${location.id}/reactivate`));
@@ -227,9 +256,10 @@ export default function LocationManagement({ organizationId, embedded = false }:
 
   useEffect(() => {
     reloadLocations();
-  }, [fetchLocations]);
+  }, [reloadLocations]);
 
   const openModal = () => {
+    setFormTab("details");
     setEditingId(null);
     const defaultOrgId = organizationId || "";
     setFormData({ facilityType: "clinic", amenities: [], organizationId: defaultOrgId, upiVpa: "", merchantName: "", brandColor: "#0F6F66" });
@@ -238,6 +268,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
   };
 
   const openEditModal = (row: Location) => {
+    setFormTab("details");
     setEditingId(row.id);
     setFormData({
       ...row,
@@ -264,6 +295,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting || !canManageLocations) return;
 
     const isNameValid = validateLocationField("name", formData.name || "");
     const isCityValid = validateLocationField("city", formData.city || "");
@@ -274,6 +306,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
     if (!coordinates) setLocationErrors(previous => ({ ...previous, mapCoordinates: "Enter valid latitude, longitude (for example: 20.5992, 72.9342)." }));
 
     if (!isNameValid || !isCityValid || !isEmailValid || !coordinates || !isOrganizationValid) {
+      setFormTab("details");
       toast({ title: "Validation Error", description: "Please correct the highlighted errors.", variant: "error" });
       return;
     }
@@ -306,7 +339,8 @@ export default function LocationManagement({ organizationId, embedded = false }:
   };
 
   const handleDelete = async () => {
-    if (!deletingId) return;
+    if (!deletingId || deactivating || !canManageLocations) return;
+    setDeactivating(true);
     try {
       await api.delete(scopedPath(`/onboarding/locations/${deletingId}`));
       toast({ title: "Success", description: "Location deactivated and archived safely.", variant: "success" });
@@ -318,624 +352,127 @@ export default function LocationManagement({ organizationId, embedded = false }:
         variant: "error",
       });
     } finally {
+      setDeactivating(false);
       setDeletingId(null);
     }
   };
 
   const formatTimings = (timingsStr: string | null | undefined): string => {
-    if (!timingsStr) return "Not specified";
+    if (!timingsStr) return "Hours not set";
     try {
       const data = JSON.parse(timingsStr);
-      const days = Object.keys(data);
-      if (days.length === 0) return timingsStr;
-
-      for (const day of days) {
-        if (data[day] && data[day].length > 0) {
-          const firstSlot = data[day][0];
-          return `Open ${firstSlot.start} - ${firstSlot.end} (${days.length} days/wk)`;
-        }
-      }
-      return "Not specified";
+      if (!data || typeof data !== "object") return "Hours not set";
+      const days = Object.keys(data).filter((day) => Array.isArray(data[day]) && data[day].length > 0);
+      if (!days.length) return "Hours not set";
+      const first = data[days[0]][0];
+      const sameHours = days.every((day) => JSON.stringify(data[day]) === JSON.stringify(data[days[0]]));
+      return `${sameHours && first?.start && first?.end ? `${first.start}–${first.end}` : "Varied hours"} · ${days.length} ${days.length === 1 ? "day" : "days"}`;
     } catch {
       return timingsStr;
     }
   };
 
-  const uniqueCities = Array.from(new Set(locations.map((c) => c.city).filter(Boolean)));
-  const availableAmenities = Array.from(
-    new Set(locations.flatMap((c) => (c.amenities as string[]) || []).filter(Boolean))
-  );
+  const rows = activeTab === "active" ? locations as Location[] : archivedLocations;
+  const cities = Array.from(new Set(rows.map((location) => location.city).filter(Boolean))).sort();
+  const query = search.trim().toLowerCase();
+  const filtered = rows.filter((location) => (!city || location.city === city) && [location.name, location.city, location.address || "", location.phone || "", location.email || ""].some((value) => value.toLowerCase().includes(query)));
+  const readError = activeTab === "active" ? locationLoadError : archivedError;
+  const reading = activeTab === "active" ? loading || locationsLoading : loadingArchived;
+  const Heading = embedded ? "h2" : "h1";
+  const locationIdentity = (location: Location) => <div className={styles.identity}>
+    <div className={styles.avatar}>{location.logo || location.image_url ? <LoadingImage src={location.logo || location.image_url!} alt="" className="h-full w-full object-cover" /> : <Building2 size={19} />}</div>
+    <div><strong>{location.name}</strong><span>{facilityTypeLabel(location.facilityType)} &middot; {location.city}</span>{location.address && <small>{location.address}</small>}</div>
+  </div>;
+  const publicationBadge = (location: Location) => <Badge size="sm" dot variant={activeTab === "archived" ? "neutral" : location.isPublished === false ? "default" : "success"}>{activeTab === "archived" ? "Archived" : location.isPublished === false ? "Unpublished" : "Published"}</Badge>;
+  const locationActions = (location: Location) => <div className={styles.rowActions}>
+    {activeTab === "archived" ? canManageLocations && <Button size="sm" variant="outline" loading={reactivatingId === location.id} disabled={Boolean(reactivatingId && reactivatingId !== location.id)} onClick={() => handleReactivate(location)}><RotateCcw size={15} /> Reactivate</Button> : <>
+      {canManageLocations && <Button size="sm" variant="outline" onClick={() => openEditModal(location)}><Edit3 size={15} /> Edit</Button>}
+      <Dropdown align="right" width="w-56" trigger={<Button size="sm" variant="ghost" className={styles.iconAction} aria-label={`Actions for ${location.name}`}><MoreHorizontal size={18} /></Button>} items={[
+        { label: "QR poster", icon: <QrCode size={16} />, onClick: () => setQrLocation(location) },
+        { label: "Website booking", icon: <Link2 size={16} />, onClick: () => openWebsiteBooking(location) },
+        ...(canManageLocations ? [{ divider: true, label: "" }, { label: "Deactivate location", icon: <Archive size={16} />, variant: "danger" as const, onClick: () => setDeletingId(location.id) }] : []),
+      ]} />
+    </>}
+  </div>;
 
-  return (
-    <div className={embedded ? "space-y-4 w-full min-w-0" : "space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12"}>
-      {(activeTab === "archived" ? archivedError : locationLoadError) && <Alert variant="error" title="Unable to load locations" action={<Button variant="outline" size="sm" onClick={reloadLocations} loading={isRefreshing}>Try again</Button>}>Locations could not be loaded. Check your connection and try again.</Alert>}
-      {/* ──────────────────────────────────────────────────────────────────────────
-          1. TOP HEADER BANNER
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Locations
-              </h1>
-              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                {locations.length === 1 ? "1 Active Location" : `${locations.length} Active Locations`}
-              </Badge>
-              {archivedLocations.length > 0 && (
-                <Badge variant="neutral" size="sm" className="font-semibold">
-                  {archivedLocations.length} Archived
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Manage your practice locations, operating schedules, and reception QR portals.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full sm:w-auto shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={reloadLocations}
-              disabled={isRefreshing}
-              className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] text-xs font-semibold transition-colors justify-center"
-             loading={isRefreshing}>
-              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
-              Refresh
-            </Button>
-
-            {canManageLocations && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={openModal}
-                className="w-full sm:w-auto min-h-[42px] sm:min-h-[36px] font-semibold justify-center"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Add Location
-              </Button>
-            )}
-          </div>
+  return <div className={styles.workspace}>
+    <header className={styles.header}>
+      <div><Heading>Locations</Heading><p>Contact details, hours and booking pages</p></div>
+      <div className={styles.headerActions}>
+        <Button size="sm" variant="ghost" className={styles.iconAction} aria-label="Refresh locations" disabled={isRefreshing} onClick={reloadLocations}><RotateCw size={17} className={isRefreshing ? "animate-spin" : ""} /></Button>
+        {canManageLocations && <Button size="sm" onClick={openModal}><Plus size={16} /> Add location</Button>}
+      </div>
+    </header>
+    <section className={styles.directory} aria-label="Location directory">
+      <div className={styles.toolbar}>
+        <Tabs variant="pills" scrollActiveIntoView={false} activeTab={activeTab} onChange={(value) => { setActiveTab(value as "active" | "archived"); setCity(""); }} tabs={[
+          { id: "active", label: "Active", badge: loading ? undefined : locations.length },
+          { id: "archived", label: "Archived", badge: archivedLoaded ? archivedLocations.length : undefined },
+        ]} />
+        <div className={styles.searchRow}>
+          <Input type="search" aria-label="Search locations" placeholder="Name, city or address" icon={<Search size={16} />} value={search} onChange={(event) => setSearch(event.target.value)} />
+          {(cities.length > 1 || city) && <Select aria-label="Filter by city" value={city} onChange={(event) => setCity(event.target.value)} options={[{ value: "", label: "All cities" }, ...cities.map((value) => ({ value, label: value }))]} />}
         </div>
       </div>
+      <Table key={activeTab} variant="flat" density="compact" fitContent searchable={false} showColumnVisibility={false} pagination={rows.length > 10} error={readError} onRetry={reloadLocations}
+        loading={reading} mobileCardView data={filtered} emptyMessage={readError ? "Locations are unavailable. Try again." : query || city ? "No locations match your search." : activeTab === "archived" ? "No archived locations. Deactivated locations appear here." : "No locations yet. Add your first location to get started."}
+        columns={[
+          { key: "name", header: "Location", render: locationIdentity },
+          { key: "contact", header: "Contact", render: (location: Location) => <div className={styles.contact}>{location.phone ? <a href={`tel:${location.phone}`}><Phone size={13} /><span>{location.phone}</span></a> : <span>No phone added</span>}{location.email && <a href={`mailto:${location.email}`}><Mail size={13} /><span>{location.email}</span></a>}</div> },
+          { key: "timings", header: "Hours", render: (location: Location) => <span className={styles.hours}>{formatTimings(location.timings)}</span> },
+          { key: "isPublished", header: "Public page", render: publicationBadge },
+          { key: "actions", header: "", align: "right", render: locationActions },
+        ]}
+        renderMobileCard={(location: Location) => <article key={location.id} className={styles.locationCard}>
+          {locationIdentity(location)}
+          <div className={styles.cardMeta}>{publicationBadge(location)}<span><Clock size={13} />{formatTimings(location.timings)}</span></div>
+          {location.phone && <a className={styles.phone} href={`tel:${location.phone}`}><Phone size={14} /> {location.phone}</a>}
+          {locationActions(location)}
+        </article>} />
+      {!reading && !readError && <footer className={styles.resultCount}>{filtered.length} of {rows.length} {activeTab} {rows.length === 1 ? "location" : "locations"}</footer>}
+    </section>
 
-      {/* ──────────────────────────────────────────────────────────────────────────
-          2. STATS (only show for multi-location)
-         ────────────────────────────────────────────────────────────────────────── */}
-      {!embedded && locations.length > 1 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <StatCard
-            label="Total Locations"
-            value={locations.length.toString()}
-            description="Active practice locations"
-            icon={<Building2 className="w-5 h-5 text-text-secondary" />}
-          />
-          <StatCard
-            label="Cities Covered"
-            value={uniqueCities.length.toString()}
-            description="Distinct geographic areas"
-            icon={<MapPin className="w-5 h-5 text-text-secondary" />}
-          />
-        </div>
-      )}
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          3. TAB SWITCHER: Active Locations vs. Archived Locations
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4 border-b border-border/60 pb-3">
-        <div className="inline-flex p-1 rounded-xl bg-surface-hover/80 border border-border/60 overflow-x-auto [scrollbar-width:none] w-full sm:w-auto">
-          <button
-            type="button"
-            data-testid="tab-active-branches"
-            onClick={() => setActiveTab("active")}
-            className={cn(
-              "flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer min-h-[44px] sm:min-h-[36px]",
-              activeTab === "active"
-                ? "bg-surface text-accent shadow-xs font-bold"
-                : "text-text-muted hover:text-text"
-            )}
-          >
-            <Building2 className="w-3.5 h-3.5 shrink-0" />
-            <span>Active Branches ({locations.length})</span>
-          </button>
-          <button
-            type="button"
-            data-testid="tab-archived-branches"
-            onClick={() => setActiveTab("archived")}
-            className={cn(
-              "flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer min-h-[44px] sm:min-h-[36px]",
-              activeTab === "archived"
-                ? "bg-surface text-accent shadow-xs font-bold"
-                : "text-text-muted hover:text-text"
-            )}
-          >
-            <Archive className="w-3.5 h-3.5 shrink-0" />
-            <span>Archived Branches ({archivedLocations.length})</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          4. CONTENT: ACTIVE TAB vs ARCHIVED TAB
-         ────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "active" ? (
-        (loading || locationsLoading) && locations.length === 0 ? (
-          <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-            <CardContent className="p-0"><LoadingState label="Loading locations"><SkeletonTable /></LoadingState></CardContent>
-          </Card>
-        ) : locations.length === 1 ? (
-        /* ── Smart Single-Location Card View ── */
-        <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-          <CardContent className="p-5 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-              <div className="space-y-4 flex-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-accent" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-text text-base sm:text-lg">{locations[0].name}</h3>
-                    <div className="flex items-center gap-1.5 text-xs text-text-muted">
-                      <MapPin className="w-3 h-3" />
-                      <span>{locations[0].city}{locations[0].address ? ` — ${locations[0].address}` : ""}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="flex items-center gap-2 text-xs text-text-secondary">
-                    <Phone className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                    <span>{(locations[0] as Location).phone || "No phone set"}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-text-secondary">
-                    <Mail className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                    <span>{(locations[0] as Location).email || "No email set"}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-text-secondary">
-                    <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                    <span>{formatTimings((locations[0] as Location).timings)}</span>
-                  </div>
-                </div>
-
-                {(locations[0] as Location).amenities && ((locations[0] as Location).amenities as string[]).length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {((locations[0] as Location).amenities as string[]).map((fac, idx) => (
-                      <Badge key={idx} variant="primary" size="sm" className="text-[10px] font-semibold">{fac}</Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-wrap sm:flex-col items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-border/60">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs font-semibold min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-initial justify-center"
-                  onClick={() => setQrLocation(locations[0] as Location)}
-                >
-                  <QrCode className="w-3.5 h-3.5 mr-1 text-accent" />
-                  QR Poster
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => openWebsiteBooking(locations[0] as Location)} className="text-xs font-semibold min-h-[44px] sm:min-h-[36px]">
-                  <Link2 className="w-3.5 h-3.5 mr-1" /> Website booking
-                </Button>
-                {canManageLocations && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs font-semibold min-h-[44px] sm:min-h-[36px] flex-1 sm:flex-initial justify-center"
-                    onClick={() => openEditModal(locations[0] as Location)}
-                  >
-                    <Edit3 className="w-3.5 h-3.5 mr-1 text-text-muted" />
-                    Edit
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {canManageLocations && (
-              <div className="mt-5 pt-4 border-t border-border/60">
-                <Button type="button" onClick={openModal} variant="ghost" size="xs" className="text-accent">
-                  <Plus className="w-3.5 h-3.5" />
-                  Add another location
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        /* ── Multi-Location Table View ── */
-        <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-          <CardContent className="p-0">
-            <Table
-              searchable
-              searchPlaceholder="Search locations by name, city, or address..."
-              loading={loading || locationsLoading || isRefreshing}
-              mobileCardView
-              columns={[
-                {
-                  key: "name",
-                  header: "Location Name",
-                  sortable: true,
-                  render: (row: Location) => (
-                    <div className="flex items-center gap-3 min-w-[180px]">
-                      <div className="w-10 h-10 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
-                        {row.image_url ? (
-                          <LoadingImage src={row.image_url} alt={row.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <Building2 className="w-5 h-5 text-accent" />
-                        )}
-                      </div>
-                      <div className="space-y-0.5 min-w-0">
-                        <span className="font-bold text-text text-xs sm:text-sm block truncate">{row.name}</span>
-                        <span className="text-xs text-text-secondary">{facilityTypeLabel(row.facilityType)}</span>
-                        {row.address && (
-                          <p className="text-xs text-text-muted truncate max-w-[200px]" title={row.address}>
-                            {row.address}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ),
-                },
-                {
-                  key: "city",
-                  header: "City",
-                  sortable: true,
-                  render: (row: Location) => (
-                    <div className="flex items-center gap-1 text-xs text-text-secondary">
-                      <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                      <span>{row.city}</span>
-                    </div>
-                  ),
-                },
-                {
-                  key: "phone",
-                  header: "Phone",
-                  render: (row: Location) => (
-                    <div className="flex items-center gap-1 text-xs text-text-secondary">
-                      <Phone className="w-3 h-3 text-text-muted shrink-0" />
-                      <span className="whitespace-nowrap">{row.phone || "—"}</span>
-                    </div>
-                  ),
-                },
-                {
-                  key: "timings",
-                  header: "Hours",
-                  render: (row: Location) => (
-                    <div className="flex items-center gap-1 text-xs text-text-secondary">
-                      <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                      <span>{formatTimings(row.timings)}</span>
-                    </div>
-                  ),
-                },
-                {
-                  key: "actions",
-                  header: "Actions",
-                  align: "right",
-                  width: "110px",
-                  render: (row: Location) => (
-                    <div className="flex items-center justify-end gap-1.5">
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        className="rounded-lg font-semibold text-xs min-h-[36px] px-2.5"
-                        onClick={() => setQrLocation(row)}
-                      >
-                        <QrCode className="w-3.5 h-3.5 mr-1 text-accent" />
-                        QR
-                      </Button>
-                      {canManageLocations && (
-                        <Dropdown
-                          align="right"
-                          trigger={
-                            <Button
-                              size="xs"
-                              variant="outline"
-                              className="h-9 w-9 p-0 flex items-center justify-center rounded-lg text-text-secondary hover:text-text min-h-[36px] min-w-[36px]"
-                              title="Row Actions"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          }
-                          items={[
-                            {
-                              label: "Reception QR Code",
-                              icon: <QrCode className="w-4 h-4 text-accent" />,
-                              onClick: () => setQrLocation(row),
-                            },
-                            { label: "Website booking link", icon: <Link2 className="w-4 h-4 text-accent" />, onClick: () => openWebsiteBooking(row) },
-                            {
-                              label: "Edit Location",
-                              icon: <Edit3 className="w-4 h-4 text-text-muted" />,
-                              onClick: () => openEditModal(row),
-                            },
-                            { divider: true, label: "" },
-                            {
-                              label: "Deactivate Location",
-                              icon: <Trash2 className="w-4 h-4 text-danger" />,
-                              variant: "danger" as any,
-                              onClick: () => setDeletingId(row.id),
-                            },
-                          ]}
-                        />
-                      )}
-                    </div>
-                  ),
-                },
-              ]}
-              data={locations as Location[]}
-              emptyMessage={locationLoadError ? "Locations are unavailable. Please try again." : "No locations configured yet. Click 'Add Location' to register your first branch."}
-              renderMobileCard={(row: Location) => (
-                <div
-                  key={row.id}
-                  className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-surface-alt border border-border flex items-center justify-center text-accent font-bold text-sm shrink-0 overflow-hidden shadow-2xs">
-                        {row.image_url ? (
-                          <LoadingImage src={row.image_url} alt={row.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <Building2 className="w-5 h-5 text-accent" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-text text-sm truncate">{row.name}</p>
-                        <p className="text-xs text-text-secondary">{facilityTypeLabel(row.facilityType)}</p>
-                        <p className="text-xs text-text-muted flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-text-muted shrink-0" />
-                          <span className="truncate">{row.city}</span>
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      className="rounded-xl font-semibold text-xs min-h-[36px] px-2.5 shrink-0"
-                      onClick={() => setQrLocation(row)}
-                    >
-                      <QrCode className="w-3.5 h-3.5 mr-1 text-accent" />
-                      QR
-                    </Button>
-                  </div>
-
-                  <div className="p-2.5 bg-surface-alt/70 rounded-xl border border-border/60 space-y-1.5 text-xs">
-                    {row.address && (
-                      <p className="text-text text-xs leading-snug line-clamp-2">
-                        {row.address}
-                      </p>
-                    )}
-                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40 text-[11px]">
-                      <span className="text-text-muted flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-text-muted" />
-                        <span>{formatTimings(row.timings)}</span>
-                      </span>
-                      {row.phone && (
-                        <a
-                          href={`tel:${row.phone}`}
-                          className="text-text-muted hover:text-accent transition-colors flex items-center gap-1 font-mono"
-                        >
-                          <Phone className="w-3 h-3 text-text-muted" />
-                          <span>{row.phone}</span>
-                        </a>
-                      )}
-                    </div>
-                  </div>
-
-                  {canManageLocations && (
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openEditModal(row)}
-                        className="w-full font-semibold text-xs min-h-[42px] flex items-center justify-center gap-1.5"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-text-muted" />
-                        <span>Edit Location</span>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setDeletingId(row.id)}
-                        className="w-full font-semibold text-xs min-h-[42px] text-danger-text hover:bg-danger/10 border-danger/30 flex items-center justify-center gap-1.5"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Deactivate</span>
-                      </Button>
-                    </div>
-                  )}
-                  <Button size="sm" variant="outline" onClick={() => openWebsiteBooking(row)} className="w-full min-h-[42px] text-xs font-semibold">
-                    Website booking link
-                  </Button>
-                </div>
-              )}
-            />
-          </CardContent>
-        </Card>
-      )) : (
-        /* ── Archived Locations View ── */
-        loadingArchived && archivedLocations.length === 0 ? (
-          <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-            <CardContent className="p-0"><LoadingState label="Loading archived locations"><SkeletonTable /></LoadingState></CardContent>
-          </Card>
-        ) : archivedLocations.length === 0 ? (
-          <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs p-8 text-center">
-            <Archive className="w-10 h-10 text-text-muted mx-auto mb-3 opacity-50" />
-            <h3 className="font-bold text-text text-base mb-1">No Archived Branches</h3>
-            <p className="text-xs text-text-muted max-w-md mx-auto leading-relaxed">
-              All registered locations are currently operational. When a branch is deactivated (for example, during a plan downgrade), it will be securely archived here with all historical records preserved.
-            </p>
-          </Card>
-        ) : (
-          <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-            <CardContent className="p-0">
-              <Table
-                searchable
-                searchPlaceholder="Search archived locations..."
-                loading={loadingArchived}
-                mobileCardView
-                columns={[
-                  {
-                    key: "name",
-                    header: "Location Name",
-                    sortable: true,
-                    render: (row: Location) => (
-                      <div className="space-y-0.5 min-w-[150px]">
-                        <div className="flex items-center gap-1.5">
-                          <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                          <span className="font-bold text-text text-xs sm:text-sm">{row.name}</span>
-                          <Badge variant="neutral" size="sm" className="text-[10px]">Archived</Badge>
-                        </div>
-                        {row.address && (
-                          <p className="text-xs text-text-muted truncate max-w-[200px]" title={row.address}>
-                            {row.address}
-                          </p>
-                        )}
-                      </div>
-                    ),
-                  },
-                  {
-                    key: "city",
-                    header: "City",
-                    sortable: true,
-                    render: (row: Location) => (
-                      <div className="flex items-center gap-1 text-xs text-text-secondary">
-                        <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                        <span>{row.city}</span>
-                      </div>
-                    ),
-                  },
-                  {
-                    key: "phone",
-                    header: "Phone",
-                    render: (row: Location) => (
-                      <div className="flex items-center gap-1 text-xs text-text-secondary">
-                        <Phone className="w-3 h-3 text-text-muted shrink-0" />
-                        <span className="whitespace-nowrap">{row.phone || "—"}</span>
-                      </div>
-                    ),
-                  },
-                  {
-                    key: "actions",
-                    header: "Actions",
-                    align: "right",
-                    width: "180px",
-                    render: (row: Location) => (
-                      <div className="flex items-center justify-end gap-2">
-                        {canManageLocations && (
-                          <Button
-                            size="sm"
-                            variant="primary"
-                            className="text-xs font-semibold min-h-[36px]"
-                            loading={reactivatingId === row.id}
-                            icon={<RotateCcw className="w-3.5 h-3.5" />}
-                            onClick={() => handleReactivate(row)}
-                          >
-                            Reactivate Branch
-                          </Button>
-                        )}
-                      </div>
-                    ),
-                  },
-                ]}
-                data={archivedLocations}
-                emptyMessage="No archived branches found."
-                renderMobileCard={(row: Location) => (
-                  <div
-                    key={row.id}
-                    className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-surface-alt border border-border flex items-center justify-center text-text-muted font-bold text-sm shrink-0">
-                          <Building2 className="w-5 h-5 text-text-muted" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-text text-sm truncate">{row.name}</p>
-                          <p className="text-xs text-text-muted flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-text-muted shrink-0" />
-                            <span className="truncate">{row.city}</span>
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant="neutral" size="sm" className="text-[10px]">Archived</Badge>
-                    </div>
-
-                    {row.address && (
-                      <p className="text-xs text-text-muted p-2.5 rounded-xl bg-surface-alt/70 border border-border/50 line-clamp-2">
-                        {row.address}
-                      </p>
-                    )}
-
-                    {canManageLocations && (
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        className="w-full font-semibold text-xs min-h-[44px] justify-center"
-                        loading={reactivatingId === row.id}
-                        icon={<RotateCcw className="w-3.5 h-3.5" />}
-                        onClick={() => handleReactivate(row)}
-                      >
-                        Reactivate Branch
-                      </Button>
-                    )}
-                  </div>
-                )}
-              />
-            </CardContent>
-          </Card>
-        )
-      )}
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          4. ADD / EDIT LOCATION MODAL
-         ────────────────────────────────────────────────────────────────────────── */}
-      <Modal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={`${editingId ? "Edit Location" : "Add New Location"}`}
-        description="Configure location details, operating hours, amenities, and contact information."
-        size="xl"
+      <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Edit Location" : "Add location"} description={editingId ? formData.name : "Add the details your team and patients need."} size="lg" busy={submitting}
+        bodyClassName={styles.dialogBody} headerClassName={styles.formHeader} header={<><h2>{editingId ? "Edit Location" : "Add location"}</h2><p>{editingId ? formData.name : "Add the details your team and patients need."}</p><Tabs className={styles.formTabs} variant="pills" activeTab={formTab} onChange={setFormTab} scrollActiveIntoView={false} tabs={[
+          { id: "details", label: "Details" }, { id: "hours", label: "Hours" }, { id: "payments", label: "Payments" }, { id: "public", label: "Public page" },
+        ]} /></>}
+        footer={<><Button type="button" size="sm" variant="outline" disabled={submitting} onClick={() => setIsModalOpen(false)}>Cancel</Button><Button type="submit" size="sm" form="location-settings" loading={submitting}>Save location</Button></>}
       >
-        <form onSubmit={handleSave} className="space-y-4 pt-1">
+        <form id="location-settings" onSubmit={handleSave} onInvalidCapture={(event) => {
+          const panel = (event.target as HTMLElement).closest<HTMLElement>("[data-location-section]");
+          if (panel?.hidden) {
+            event.preventDefault();
+            if (invalidFocusPending.current) return;
+            invalidFocusPending.current = true;
+            setFormTab(panel.dataset.locationSection || "details");
+            const target = event.target as HTMLElement;
+            requestAnimationFrame(() => { target.focus({ preventScroll: true }); invalidFocusPending.current = false; });
+          }
+        }}>
+          <section hidden={formTab !== "details"} data-location-section="details" aria-label="Location details" className={styles.formSection}>
           {/* Root Admin Target Organization Selector */}
-          {isRootUser(user) && !organizationId && organizations.length > 0 && (
+          {isRootUser(user) && !organizationId && (
             <div className="bg-primary-500/10 border border-primary-500/20 p-3.5 rounded-2xl space-y-1.5">
               <Select
-                label="Target Healthcare Organization *"
+                label="Organization *"
                 value={formData.organizationId || ""}
                 required
+                disabled={organizationsLoading}
                 error={locationErrors.organizationId}
                 onChange={(e) => setFormData({ ...formData, organizationId: e.target.value })}
                 options={organizations.map((o) => ({
                   value: o.id || o._id,
-                  label: `${o.name} (${o.city || "Main"}) — ${o.plan?.toUpperCase() || "STARTER"} Tier`,
+                  label: o.name,
                 }))}
               />
-              <p className="text-[11px] text-text-muted">
-                🛡️ <strong>Root Super-Admin Override</strong>: Select which organization tenant this location belongs to.
-              </p>
+              {organizationsLoading && <p className={styles.help}>Loading organizations...</p>}
+              {organizationsError && <div role="alert" className={styles.help}>Organizations could not be loaded.<Button type="button" size="sm" variant="outline" onClick={() => setOrganizationsRetry((value) => value + 1)}>Try again</Button></div>}
+
             </div>
           )}
 
-          {/* Section 1: Location Media & Basic Identity */}
-          <div className="space-y-3.5 border-b border-border/60 pb-4">
+
             <Select label="Location type" value={formData.facilityType || ""} options={[{ value: "", label: "Unclassified healthcare facility" }, ...facilityTypeOptions]} onChange={(event) => handleFieldChange("facilityType", event.target.value)} required={!editingId} />
-            <h3 className="text-xs font-bold text-accent uppercase tracking-wider">
-              1. Branding & Location Identity
-            </h3>
-
-            {/* Top Logo / Photo Uploader */}
-            <div className="bg-surface-alt p-3.5 border border-border/80 rounded-2xl">
-              <ImageUpload
-                label="Location Banner Photo / Logo"
-                value={formData.image_url || null}
-                onChange={(val) => setFormData({ ...formData, image_url: val })}
-              />
-            </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
               <Input
                 label="Location Name *"
@@ -976,7 +513,7 @@ export default function LocationManagement({ organizationId, embedded = false }:
             </div>
 
             <Input
-              label="Full Physical Address"
+              label="Address"
               value={formData.address || ""}
               onChange={(e) => handleFieldChange("address", e.target.value)}
               placeholder="e.g. 742 Evergreen Terrace, Suite 100"
@@ -989,6 +526,10 @@ export default function LocationManagement({ organizationId, embedded = false }:
               hint="Copy latitude, longitude from this location's pin in Google Maps to help nearby patients find you."
               error={locationErrors.mapCoordinates}
             />
+
+          </section>
+          <section hidden={formTab !== "hours"} data-location-section="hours" aria-label="Location hours" className={styles.formSection}>
+            <ScheduleEditor key={editingId || "new"} label="Operating hours" value={formData.timings || ""} onChange={(value) => setFormData((previous: any) => ({ ...previous, timings: value }))} />
             <Input
               label="Branch timezone (optional)"
               value={formData.timezone || ""}
@@ -997,23 +538,6 @@ export default function LocationManagement({ organizationId, embedded = false }:
               hint="Use an IANA timezone for branches in another time zone."
             />
 
-            <Input
-              label="Location Overview / Description"
-              placeholder="Brief summary of clinical specialties and services..."
-              value={formData.description || ""}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-            <Select label="Booking page accent" value={formData.brandColor || "#0F6F66"} onChange={(event) => setFormData({ ...formData, brandColor: event.target.value })} size="sm" options={[
-              { value: "#0F6F66", label: "Teal" }, { value: "#1D4ED8", label: "Blue" },
-              { value: "#6D28D9", label: "Violet" }, { value: "#9A3412", label: "Terracotta" },
-            ]} />
-          </div>
-
-          {/* Section 2: Amenities & Operating Hours */}
-          <div className="space-y-3.5">
-            <h3 className="text-xs font-bold text-accent uppercase tracking-wider">
-              2. Amenities & Operating Hours
-            </h3>
 
             <div className="space-y-2">
               <label className="text-xs font-semibold text-text block">Amenities and services</label>
@@ -1029,57 +553,54 @@ export default function LocationManagement({ organizationId, embedded = false }:
               </div>
             </div>
 
-            <div className="pt-1 space-y-2">
-              <ScheduleEditor
-                label="Operating Schedule & Working Days"
-                value={formData.timings || ""}
-                onChange={(val) => setFormData({ ...formData, timings: val })}
-              />
-              <div className="rounded-xl border border-border bg-surface-alt p-4">
-                <Checkbox label="Publish location on Ekavyu" checked={formData.isPublished !== false} onChange={(event) => setFormData({ ...formData, isPublished: event.target.checked })} />
-                <p className="mt-2 text-xs text-text-secondary">Published locations appear in the directory and can be shared. Unpublishing hides the public page, doctor links at this location and patient booking. Staff workflows and existing appointments remain available. Remove external appointment links when unpublishing.</p>
-              </div>
-            </div>
-          </div>
 
-          {/* Section 3: Digital Payments & Countertop UPI Soundbox Routing */}
-          <div className="space-y-3.5 border-b border-border/60 pb-4">
-            <div className="flex items-center gap-2">
-              <h3 className="text-xs font-bold text-success-text dark:text-success-text uppercase tracking-wider">
-                3. Digital Payments & Countertop UPI Soundbox Routing
-              </h3>
-              <Badge variant="success" size="sm" className="text-[10px] font-bold">
-                NPCI / Soundbox
-              </Badge>
-            </div>
-            <p className="text-[11px] text-text-muted">
-              Configure your location&apos;s direct UPI VPA for countertop dynamic QR generation, mobile 1-tap intent payments, and autonomous soundbox announcements.
-            </p>
-
+          </section>
+          <section hidden={formTab !== "payments"} data-location-section="payments" aria-label="Location payments" className={styles.formSection}>
+            <p className={styles.help}>UPI payments use this location's payment address and merchant name. Check both before sharing a payment QR.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <Input
-                label="Location UPI Virtual Payment Address (VPA)"
+                label="UPI address"
                 value={formData.upiVpa || ""}
                 onChange={(e) => handleFieldChange("upiVpa", e.target.value)}
                 placeholder="e.g. apollo.southmumbai@icici"
               />
               <Input
-                label="Official Merchant Settlement Name"
+                label="Merchant name"
                 value={formData.merchantName || ""}
                 onChange={(e) => handleFieldChange("merchantName", e.target.value)}
                 placeholder="e.g. Apollo South Mumbai Clinic Ltd"
               />
             </div>
-          </div>
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
-            <Button variant="outline" size="sm" type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submitting} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold">
-              {editingId ? "Update Location Configuration" : "Save Location"}
-            </Button>
-          </div>
+          </section>
+          <section hidden={formTab !== "public"} data-location-section="public" aria-label="Location public page" className={styles.formSection}>
+              <div className="rounded-xl border border-border bg-surface-alt p-4">
+                <Checkbox label="Publish location on Ekavyu" checked={formData.isPublished !== false} onChange={(event) => setFormData({ ...formData, isPublished: event.target.checked })} />
+                <p className="mt-2 text-xs text-text-secondary">Published locations appear in the directory and can be shared. Unpublishing hides the public page, doctor links at this location and patient booking. Staff workflows and existing appointments remain available. Remove external appointment links when unpublishing.</p>
+              </div>
+
+            {/* Top Logo / Photo Uploader */}
+            <div className="bg-surface-alt p-3.5 border border-border/80 rounded-2xl">
+              <ImageUpload
+                label="Photo or logo"
+                value={formData.image_url || null}
+                onChange={(val) => setFormData({ ...formData, image_url: val })}
+              />
+            </div>
+
+
+            <Input
+              label="Description"
+              placeholder="Brief summary of clinical specialties and services..."
+              value={formData.description || ""}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
+            <Select label="Booking page accent" value={formData.brandColor || "#0F6F66"} onChange={(event) => setFormData({ ...formData, brandColor: event.target.value })} size="sm" options={[
+              { value: "#0F6F66", label: "Teal" }, { value: "#1D4ED8", label: "Blue" },
+              { value: "#6D28D9", label: "Violet" }, { value: "#9A3412", label: "Terracotta" },
+            ]} />
+
+          </section>
         </form>
       </Modal>
 
@@ -1091,7 +612,8 @@ export default function LocationManagement({ organizationId, embedded = false }:
         onClose={() => setDeletingId(null)}
         onConfirm={handleDelete}
         title="Deactivate Location?"
-        description="Are you sure you want to deactivate this location? All patient encounters, appointments, and medical records will remain safely preserved. You can reactivate this branch anytime from the Archived Branches tab as permitted by your subscription plan."
+        description="This location will move to Archived. Existing patient records and appointments are preserved. Reactivation depends on your plan limits."
+        loading={deactivating}
         variant="danger"
         confirmLabel="Deactivate"
       />
@@ -1104,12 +626,12 @@ export default function LocationManagement({ organizationId, embedded = false }:
         onClose={() => setQrLocation(null)}
         location={qrLocation}
       />
-      <Modal open={!!websiteLocation} onClose={() => setWebsiteLocation(null)} title="Website booking" description="Share this location on your website, Google Search and Maps.">
+      <Modal open={!!websiteLocation} busy={publicationSaving} onClose={() => setWebsiteLocation(null)} title="Website booking" description={websiteLocation?.name} size="lg" bodyClassName={styles.dialogBody} footer={<Button size="sm" variant="outline" disabled={publicationSaving} onClick={() => setWebsiteLocation(null)}>Done</Button>}>
         <div className="space-y-4 text-sm">
-          <p className="text-text-secondary">Add this link to your website. Patients can view location information and check appointments when online booking is available.</p>
-          <div className="rounded-xl border border-border p-3"><p className="font-semibold">{websiteLocation?.isPublished === false ? "Public page unpublished" : "Public page published"}</p><p className="mt-1 text-xs text-text-secondary">You can change publication even when your plan has expired. Existing appointments and staff access are preserved.</p>{canManageLocations && <Button className="mt-3" size="sm" variant="outline" loading={publicationSaving} onClick={changePublication}>{websiteLocation?.isPublished === false ? "Publish page" : "Unpublish page"}</Button>}</div>
-          <div className="rounded-xl border border-border bg-surface-alt p-3" aria-live="polite">
-            <p className="font-semibold text-text">Public page readiness</p>
+          <p className="text-text-secondary">Share this location with patients or add the link to your website.</p>
+          <div><label htmlFor="location-booking-url" className="mb-1 block text-xs font-semibold text-text">Booking link</label><div className="flex gap-2"><Input id="location-booking-url" readOnly value={websiteUrl} containerClassName="min-w-0 flex-1" size="sm" variant="filled" /><Button size="sm" disabled={!websiteUrl} onClick={() => copyWebsiteText(websiteUrl, "Link copied")}>Copy link</Button></div></div>
+          <div className="rounded-xl border border-border p-3"><p className="font-semibold">{websiteLocation?.isPublished === false ? "Public page unpublished" : "Public page published"}</p><p className="mt-1 text-xs text-text-secondary">Publishing controls the public page. Existing appointments and staff access stay available.</p>{canManageLocations && <Button className="mt-3" size="sm" variant="outline" loading={publicationSaving} onClick={changePublication}>{websiteLocation?.isPublished === false ? "Publish page" : "Unpublish page"}</Button>}</div>
+          <details className={styles.readiness} open={websiteDetailError || undefined}><summary>Booking readiness <span>{websiteDetailLoading ? "Checking..." : websiteDetailError ? "Check failed" : publicBookingStatus === "check_availability" ? "Ready for booking" : "Review setup"}</span></summary><div aria-live="polite">
             {websiteDetailLoading && <p className="mt-2 text-xs text-text-secondary">Checking the public page…</p>}
             {websiteDetailError && <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-secondary"><span>Could not check the public page right now.</span><Button size="sm" variant="outline" onClick={retryWebsiteDetail}>Try again</Button></div>}
             {websitePublicDetail && <>
@@ -1117,13 +639,12 @@ export default function LocationManagement({ organizationId, embedded = false }:
               <ul className="mt-3 grid gap-1.5 text-xs sm:grid-cols-2">{websiteChecklist.map((item) => <li key={item.label} className="flex items-start gap-2"><span aria-hidden="true" className={item.complete ? "text-success-text" : "text-warning-text"}>{item.complete ? "✓" : "○"}</span><span>{item.label}</span></li>)}</ul>
               {websiteChecklist.some((item) => !item.complete) && <div className="mt-3 flex flex-wrap gap-3"><Button size="sm" variant="outline" onClick={() => { if (websiteLocation) { openEditModal(websiteLocation); setWebsiteLocation(null); } }}>Edit location details</Button><Link href={organizationId ? organizationWorkspaceUrl(organizationId, "members") : "/dashboard/staff"} className="inline-flex min-h-9 items-center text-xs font-semibold text-accent hover:underline">Manage doctors</Link></div>}
             </>}
-          </div>
-          <div><label htmlFor="location-booking-url" className="mb-1 block text-xs font-semibold text-text">Booking link</label><div className="flex gap-2"><Input id="location-booking-url" readOnly value={websiteUrl} containerClassName="min-w-0 flex-1" size="sm" variant="filled" /><Button size="sm" disabled={!websiteUrl} onClick={() => copyWebsiteText(websiteUrl, "Link copied")}>Copy link</Button></div></div>
-          <div><Textarea id="location-booking-html" readOnly value={buttonSnippet} rows={4} label="Paste-in HTML button" className="font-mono" /><Button size="sm" variant="outline" disabled={!buttonSnippet} onClick={() => copyWebsiteText(buttonSnippet, "Button code copied")}>Copy button code</Button></div>
-          <GoogleBookingLinks locationUrl={websiteUrl} available={publicBookingStatus === "check_availability"} doctors={websitePublicDetail?.doctors.map((doctor) => ({ id: doctor.id, name: doctor.name, url: `${window.location.origin}${doctorPath(doctor, websitePublicDetail)}` })) || []} onCopy={copyWebsiteText} />
+          </div></details>
+
+          <details className={styles.embedCode}><summary>Website button code</summary><div><Textarea id="location-booking-html" readOnly value={buttonSnippet} rows={4} label="Paste-in HTML button" className="font-mono" /><Button size="sm" variant="outline" disabled={!buttonSnippet} onClick={() => copyWebsiteText(buttonSnippet, "Button code copied")}>Copy button code</Button></div></details>
+          <details className={styles.embedCode}><summary>Google Search &amp; Maps setup</summary><div><GoogleBookingLinks locationUrl={websiteUrl} available={publicBookingStatus === "check_availability"} doctors={websitePublicDetail?.doctors.map((doctor) => ({ id: doctor.id, name: doctor.name, url: `${window.location.origin}${doctorPath(doctor, websitePublicDetail)}` })) || []} onCopy={copyWebsiteText} /></div></details>
           <p className="text-xs text-text-muted">The public page stays available while the location is active and published. If online appointments are paused, patients see contact options. No script, iframe, or website rebuild is required.</p>
         </div>
       </Modal>
-    </div>
-  );
+    </div>;
 }

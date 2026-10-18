@@ -16,6 +16,15 @@ function deferred() {
 }
 
 describe("Medical record read sequence", () => {
+  it("keeps the compact clinical view free of receipt requests when billing access is unavailable", async () => {
+    fixture.get.mockResolvedValue({ data: { data: [] } });
+    render(<PatientMedicalRecords patientId="patient" accessToken={null} compact includeReceipts={false} />);
+    expect(screen.getByRole("status", { name: "Loading medical records" })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: /Prescriptions/ })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Receipts/ })).not.toBeInTheDocument();
+    expect(fixture.get.mock.calls.some(([url]) => String(url).startsWith("/invoices"))).toBe(false);
+  });
+
   it("keeps approval controls available while waiting for both reads", async () => {
     const notes = deferred(), invoices = deferred();
     fixture.get.mockReturnValueOnce(notes.promise).mockReturnValueOnce(invoices.promise);

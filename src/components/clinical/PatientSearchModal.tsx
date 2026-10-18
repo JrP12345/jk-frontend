@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-import { Modal, Badge, Spinner, EmptyState, Input, Button } from "@/components/ui";
+import { Badge, Spinner, EmptyState, Input, Button } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
 
 export interface SearchResultItem {
   id: string;
@@ -107,7 +108,7 @@ export function PatientSearchModal({ isOpen, onClose, patientId }: PatientSearch
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Clinical Record Search (Cmd+K)" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title="Search patient record" size="lg">
       <div className="space-y-4" onKeyDown={handleKeyDown}>
         {/* Search input bar */}
         <div className="relative">
@@ -132,7 +133,7 @@ export function PatientSearchModal({ isOpen, onClose, patientId }: PatientSearch
         </div>
 
         {/* Search Results List */}
-        <div className="max-h-96 overflow-y-auto space-y-2 pt-2">
+        <div className="space-y-2 pt-2">
           {results.length > 0 ? (
             results.map((item, idx) => (
               <button

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, Badge, Button, Modal, Select, Input, Checkbox, Tabs, useToast, cn, Skeleton, SkeletonTable } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Table, Badge, Button, Select, Input, Checkbox, Tabs, useToast, cn, Skeleton, SkeletonTable } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
 import api from "@/lib/api";
 import { organizationPath } from "@/services/organization.service";
 
@@ -60,7 +61,6 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
   const [creatingRole, setCreatingRole] = useState(false);
 
   // Search Query States
-  const [matrixSearchQuery, setMatrixSearchQuery] = useState("");
   const [customSearchQuery, setCustomSearchQuery] = useState("");
 
   // Preset Role Permission Mapping Fallbacks
@@ -265,7 +265,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
 
   const handleAssignUserRole = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUser || !targetRole) return;
+    if (!selectedUser || !targetRole || roleUpdating) return;
     try {
       setRoleUpdating(true);
       await api.put(organizationPath(`/users/${selectedUser.id}/role`, organizationId), { role: targetRole });
@@ -289,7 +289,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
 
   const handleCreateCustomRole = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRoleName.trim()) return;
+    if (!newRoleName.trim() || creatingRole) return;
     try {
       setCreatingRole(true);
       const res = await api.post(organizationPath("/roles", organizationId), {
@@ -330,12 +330,12 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
   if (loading) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 rounded-2xl border border-border/80 shadow-xs">
+        <div className={organizationId ? "flex flex-wrap items-start justify-between gap-3 min-w-0" : "flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 rounded-2xl border border-border/80 shadow-xs"}>
           <div className="space-y-1.5">
             <Skeleton className="h-6 w-64 rounded" />
             <Skeleton className="h-4 w-96 rounded" />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Skeleton className="h-9 w-24 rounded-lg" />
             <Skeleton className="h-9 w-28 rounded-lg" />
           </div>
@@ -346,58 +346,53 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 min-w-0">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-4 rounded-2xl border border-border/80 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-text">RBAC Permission Matrix & Governance Console</h2>
+          <h2 className="text-base font-semibold text-text">Roles & permissions</h2>
           <p className="text-xs text-text-muted mt-0.5">
-            Database-backed permission tables, granular system entitlement policies, and role management.
+            Manage roles and permissions for your team.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             size="xs"
             variant="outline"
             onClick={() => setCustomModalOpen(true)}
             className="rounded-xl font-semibold"
           >
-            + Create Custom Role
+            + Create role
           </Button>
           <Button size="xs" variant="primary" onClick={fetchRBACData} className="rounded-xl font-bold">
-            Refresh Matrix
+            Refresh
           </Button>
         </div>
       </div>
 
       <Tabs
+        variant="pills"
+        scrollActiveIntoView={false}
         tabs={[
           {
             id: "matrix",
-            label: `Role Permission Matrix (${roles.length} Roles)`,
+            label: `Permissions (${roles.length})`,
             content: (
               <Card className="rounded-2xl border border-border bg-surface shadow-xs">
-                <CardHeader className="pb-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-base font-bold text-text">
-                      Granular Entitlement Matrix
-                    </CardTitle>
-                    <CardDescription className="text-xs text-text-muted">
-                      Select a role below to view and modify its active system permissions.
-                    </CardDescription>
-                  </div>
-
-                  <div className="flex items-center gap-2">
+                <CardHeader className="p-3">
+                  <div className="flex flex-wrap items-center gap-2 min-w-0">
                     <Select
                       size="sm"
+                      aria-label="Role permissions"
                       value={activeMatrixRole}
                       onChange={(e) => handleRoleSelectChange(e.target.value)}
                       options={roles.map((r) => ({
                         value: r.name,
                         label: `${r.isSystemRole ? "🔒" : "⚙️"} ${r.name.toUpperCase()} (${(r.permissions || []).length} perms)`,
                       }))}
-                      className="w-56 text-xs font-semibold"
+                      containerClassName="min-w-0 flex-1 basis-48"
+                      className="text-xs font-semibold"
                     />
 
                     <Button
@@ -407,17 +402,17 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                       loading={savingMatrix}
                       className="font-bold shrink-0"
                     >
-                      Save Matrix Changes
+                      Save permissions
                     </Button>
                   </div>
                 </CardHeader>
 
-                <CardContent className="pt-0 space-y-5">
+                <CardContent className="p-3 pt-0 space-y-3">
                   {/* Selected Role Meta Banner */}
                   {selectedRoleObj && (
-                    <div className="p-3 bg-surface-alt rounded-xl border border-border/80 flex items-center justify-between text-xs">
+                    <div className="p-3 bg-surface-alt rounded-xl border border-border/80 flex flex-wrap items-center justify-between gap-3 text-xs">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="font-bold text-text text-sm capitalize">{selectedRoleObj.name} Role</span>
                           <Badge variant={selectedRoleObj.isSystemRole ? "neutral" : "primary"}>
                             {selectedRoleObj.isSystemRole ? "System Built-in" : "Custom Facility Role"}
@@ -428,7 +423,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                         </div>
                         <p className="text-text-muted mt-0.5">{selectedRoleObj.description}</p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           size="xs"
                           variant="ghost"
@@ -456,7 +451,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                           <h4 className="text-xs font-bold text-accent uppercase tracking-wider border-b border-border/60 pb-1">
                             {cat}
                           </h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-3">
                             {catPerms.map((perm) => {
                               const isProtectedAdminPerm =
                                 (activeMatrixRole === "admin" || activeMatrixRole === "root") &&
@@ -486,8 +481,8 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                                       className="mt-0.5 pointer-events-none"
                                     />
                                       <div className="space-y-0.5 min-w-0 flex-1">
-                                        <div className="flex items-center gap-1.5 justify-between">
-                                          <p className="font-bold text-xs text-text truncate">{perm.name}</p>
+                                        <div className="flex flex-wrap items-center gap-1.5 justify-between">
+                                          <p className="font-bold text-xs text-text [overflow-wrap:anywhere]">{perm.name}</p>
                                           {isProtectedAdminPerm && (
                                             <span
                                               title="Mandatory System Core Entitlement: Protected to prevent administrative lockout."
@@ -497,7 +492,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                                             </span>
                                           )}
                                         </div>
-                                        <p className="font-mono text-[10px] text-text-muted">{perm.code}</p>
+                                        <p className="font-mono text-[10px] text-text-muted [overflow-wrap:anywhere]">{perm.code}</p>
                                         <p className="text-[11px] text-text-secondary leading-snug">{perm.description}</p>
                                         {isProtectedAdminPerm && (
                                           <p className="text-[10px] text-warning-text dark:text-warning-text font-semibold pt-1 flex items-center gap-1">
@@ -520,7 +515,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
           },
           {
             id: "users",
-            label: `Staff Role Assignments (${users.length} Users)`,
+            label: `Member roles (${users.length})`,
             content: (
               <Card className="rounded-2xl border border-border bg-surface shadow-xs">
                 <CardHeader className="pb-2">
@@ -595,6 +590,15 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                       },
                     ]}
                     data={users}
+                    variant="flat"
+                    density="compact"
+                    fitContent
+                    showColumnVisibility={false}
+                    mobileCardView
+                    renderMobileCard={(member) => <article className="p-3 border border-border rounded-xl space-y-3 bg-surface">
+                      <div className="min-w-0"><p className="text-sm font-semibold break-words">{member.name}</p><p className="text-xs text-text-muted break-all">{member.email}</p></div>
+                      <div className="flex items-center justify-between gap-2"><Badge variant="neutral" className="capitalize">{member.role.replaceAll("_", " ")}</Badge><Button size="sm" variant="outline" onClick={() => { setSelectedUser(member); setTargetRole(member.role); }}>Edit Role</Button></div>
+                    </article>}
                     searchable={true}
                     searchPlaceholder="Search staff by name, email, or role..."
                   />
@@ -610,9 +614,13 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
         <Modal
           isOpen={!!selectedUser}
           onClose={() => setSelectedUser(null)}
-          title={`✏️ Modify Role for ${selectedUser.name}`}
+          title="Change member role"
+          description={selectedUser.name}
+          size="sm"
+          busy={roleUpdating}
+          footer={<><Button variant="outline" size="sm" disabled={roleUpdating} onClick={() => setSelectedUser(null)}>Cancel</Button><Button type="submit" form="staff-role" size="sm" loading={roleUpdating}>Save Role Assignment</Button></>}
         >
-          <form onSubmit={handleAssignUserRole} className="space-y-4 text-xs">
+          <form id="staff-role" onSubmit={handleAssignUserRole} className="space-y-4 text-xs">
             <div className="p-3 bg-surface-alt rounded-xl border border-border space-y-1">
               <span className="font-bold text-text block">{selectedUser.name}</span>
               <span className="text-text-muted">{selectedUser.email}</span>
@@ -629,14 +637,6 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
               required
             />
 
-            <div className="pt-3 border-t border-border flex justify-end gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setSelectedUser(null)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" size="sm" loading={roleUpdating}>
-                Save Role Assignment
-              </Button>
-            </div>
           </form>
         </Modal>
       )}
@@ -645,14 +645,16 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
       <Modal
         isOpen={customModalOpen}
         onClose={() => setCustomModalOpen(false)}
-        title="⚙️ Create New Facility Custom Role"
+        title="Create custom role"
+        busy={creatingRole}
+        footer={<><Button variant="outline" size="sm" disabled={creatingRole} onClick={() => setCustomModalOpen(false)}>Cancel</Button><Button type="submit" form="staff-custom-role" size="sm" loading={creatingRole}>Create Custom Role</Button></>}
         size="2xl"
       >
-        <form onSubmit={handleCreateCustomRole} className="space-y-4 text-xs">
+        <form id="staff-custom-role" onSubmit={handleCreateCustomRole} className="space-y-4 text-xs">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Role Name *"
-              placeholder="e.g. TPA Desk Officer, Multi-Desk Manager, Chief Radiologist"
+              placeholder="e.g. Triage coordinator"
               value={newRoleName}
               onChange={(e) => setNewRoleName(e.target.value)}
               required
@@ -667,11 +669,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
           </div>
 
           {/* Quick Preset Role Combiner Bar */}
-          <div className="space-y-2 p-3.5 rounded-xl bg-primary-500/10 border border-primary-500/30">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-xs text-accent dark:text-accent">⚡ Combine Role Presets</span>
-              <span className="text-[10px] text-text-muted">Click to merge permissions from existing system roles</span>
-            </div>
+          <details className="p-3 rounded-xl bg-surface-alt border border-border"><summary className="cursor-pointer text-sm font-medium min-h-11 flex items-center">Combine role presets (optional)</summary>
             <div className="flex flex-wrap gap-2 pt-1">
               {[
                 { id: "receptionist", label: "Receptionist Desk" },
@@ -711,7 +709,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                 </Button>
               </div>
             )}
-          </div>
+          </details>
 
           {/* Search Permission Input */}
           <div className="space-y-2.5">
@@ -725,13 +723,14 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
             </div>
 
             <Input
-              placeholder="🔍 Search permissions by name, code, or description (e.g. invoice, queue, dispense)..."
+              placeholder="Search permissions"
+              aria-label="Search custom role permissions"
               value={customSearchQuery}
               onChange={(e) => setCustomSearchQuery(e.target.value)}
               className="text-xs"
             />
 
-            <div className="max-h-[460px] overflow-y-auto p-4 bg-surface-alt rounded-xl border border-border/80 space-y-5">
+            <div className="p-3 bg-surface-alt rounded-xl border border-border/80 space-y-5">
               {permissionCategories.map((cat) => {
                 const catPerms = permissionsCatalog.filter((p) => {
                   if (p.category !== cat) return false;
@@ -816,14 +815,6 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
             </div>
           </div>
 
-          <div className="pt-3 border-t border-border flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setCustomModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" size="sm" loading={creatingRole}>
-              Create Custom Role
-            </Button>
-          </div>
         </form>
       </Modal>
     </div>

@@ -1,0 +1,100 @@
+.sectionHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sectionHeader > div {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.iconAction {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding-inline: 0;
+}
+
+.checklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 0;
+}
+
+.checklist li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+.checklist li > span:last-child {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.sectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sectionActions > button {
+  flex: 1 1 auto;
+  min-height: 2.75rem;
+}
+
+.memberToolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.memberSearch {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.memberRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding: 1rem;
+  background: var(--surface);
+}
+
+.memberRow > div:first-child {
+  flex: 1 1 14rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.memberActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.memberActions button {
+  min-height: 2.75rem;
+}
+
+@container organizations (min-width: 40rem) {
+  .checklist {
+    column-gap: 1.5rem;
+  }
+
+  .sectionActions > button {
+    flex: 0 1 auto;
+  }
+}

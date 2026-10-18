@@ -1,0 +1,9 @@
+.compact { display: flex; flex-direction: column; gap: .75rem; min-width: 0; }
+.compactLoading { min-height: 20rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; color: var(--text-muted); font-size: .8125rem; }
+.compact > div > div > h2 { font-size: 1rem; }
+.compact > div:first-of-type { padding-bottom: .5rem; }
+.tabs > [role="tablist"] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .375rem; white-space: normal; }
+.tabs > [role="tablist"] > div { display: none; }
+.tabs > [role="tablist"] > button { min-width: 0; min-height: 44px; padding: .5rem; justify-content: center; gap: .375rem; border: 1px solid transparent; font-size: .8125rem; }
+.tabs > [role="tablist"] > button[aria-selected="true"] { background: var(--surface); border-color: var(--border); }
+.tabs > [role="tabpanel"] { padding-top: .75rem; animation: none; }

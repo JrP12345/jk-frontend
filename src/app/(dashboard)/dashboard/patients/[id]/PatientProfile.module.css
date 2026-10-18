@@ -1,0 +1,45 @@
+.workspace { display: flex; flex-direction: column; gap: .75rem; width: 100%; min-width: 0; margin-inline: 0; padding-bottom: 1.5rem; color: var(--text-primary); overflow-anchor: none; }
+.workspace :where(section, article, form) { min-width: 0; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.backLink { display: flex; align-items: center; gap: .375rem; min-height: 44px; color: var(--text-muted); font-size: .8125rem; }
+.backLink:hover { color: var(--accent); }
+.topActions { display: flex; align-items: center; gap: .375rem; }
+.topActions button { min-height: 44px; padding-inline: .625rem; font-size: .75rem; }
+.iconButton { width: 44px; min-width: 44px; padding: 0; }
+.patientBanner { min-width: 0; }
+.patientBanner > div { position: relative; z-index: auto; padding: .75rem; }
+.patientBanner > div > div { gap: .5rem; }
+.patientBanner > div > div > div:last-child { gap: .25rem .75rem; }
+.patientBanner > div > div > div:last-child > div { padding: .125rem 0; border: 0; border-radius: 0; background: transparent; }
+.patientBanner h2 { font-size: 1rem; }
+.profileTabs { min-width: 0; }
+.profileTabs > [role="tablist"] { gap: .25rem; border: 1px solid var(--border); background: var(--surface); scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.profileTabs > [role="tablist"]::-webkit-scrollbar { display: block; height: 3px; }
+.profileTabs > [role="tablist"]::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.profileTabs > [role="tablist"] > [role="tab"] { min-height: 44px; padding: .5rem .75rem; font-size: .75rem; gap: .25rem; }
+.profileTabs > [role="tablist"] > [role="tab"] > span + span { margin-left: 0; padding: .125rem .25rem; }
+.profileTabs > [role="tabpanel"] { padding-top: .75rem; animation: none; min-height: 20rem; }
+.profileTabs > [role="tabpanel"] > div { min-width: 0; }
+.historyRow { padding: .875rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .75rem; font-size: .8125rem; overflow-wrap: anywhere; }
+.historyRow > div:first-child { flex: 1 1 12rem; min-width: 0; }
+.historyRow > div:last-child { max-width: 100%; }
+.sectionHeader { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; padding: .875rem; }
+.sectionHeader > div:first-child { flex: 1 1 8rem; min-width: 0; }
+.sectionHeader h3 { font-size: .875rem; line-height: 1.4; }
+.sectionHeader > button { width: auto; min-height: 44px; padding-inline: .75rem; font-size: .75rem; }
+.historyRow :where(span, p) { white-space: normal; overflow-wrap: anywhere; }
+.accessPanels { display: grid; gap: .75rem; }
+.accessPanels > div { min-width: 0; }
+.accessPanels > div > div { padding: .875rem; }
+.accessPanels :where(h2, h3) { font-size: .875rem; }
+.accessPanels :where(p, label) { overflow-wrap: anywhere; }
+.accessPanels button { min-height: 44px; }
+.accessFooter:empty { display: none; }
+.emptyState, .loadingPanel { min-height: 14rem; padding: 1.5rem 1rem; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: .75rem; color: var(--text-muted); font-size: .8125rem; text-align: center; }
+.loadingBanner { display: flex; align-items: center; gap: .875rem; padding: .875rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--surface); }
+.loadingBanner > div:last-child { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+.loadingTabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .375rem; }
+.loadingPanel { border: 1px solid var(--border); border-radius: 1rem; background: var(--surface); }
+@media (max-width: 359px) { .topActions { gap: .125rem; } .topActions button { padding-inline: .5rem; font-size: .6875rem; } .backLink { font-size: .75rem; } }
+@media (min-width: 640px) { .workspace { gap: 1rem; } .profileTabs > [role="tablist"] > [role="tab"] { padding: .5rem .875rem; font-size: .8125rem; gap: .375rem; } .topActions button { font-size: .8125rem; padding-inline: .875rem; } }
+.bookLabel { white-space: nowrap; } @media (max-width: 399px) { .editLabel { display: none; } .topActions button:has(.editLabel) { width: 44px; min-width: 44px; padding-inline: 0; } }

@@ -1,0 +1,40 @@
+.workspace { width: 100%; min-width: 0; margin-inline: 0; display: flex; flex-direction: column; gap: .75rem; padding-bottom: 1rem; overflow-anchor: none; }
+.workspace :where(section, article, form) { min-width: 0; }
+.patientContext { min-width: 0; }
+.patientContext > div { position: relative; z-index: auto; padding: .75rem; }
+.patientContext h2 { font-size: 1rem; }
+.patientContext > div > div { gap: .5rem; }
+.patientContext > div > div > div:last-child { gap: .25rem .75rem; }
+.patientContext > div > div > div:last-child > div { border: 0; background: transparent; padding: 0; border-radius: 0; }
+.body { display: flex; flex-direction: column; gap: .75rem; min-width: 0; }
+.toolbar { display: flex; flex-direction: column; gap: .625rem; min-width: 0; }
+.tabs { min-width: 0; }
+.tabs > [role="tablist"] { border: 1px solid var(--border); background: var(--surface); scrollbar-width: thin; }
+.tabs > [role="tablist"]::-webkit-scrollbar { display: block; height: 3px; }
+.tabs > [role="tablist"]::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.tabs [role="tab"] { min-height: 44px; padding-inline: .75rem; font-size: .75rem; }
+.tabs [role="tab"] > span:has(svg) { display: none; }
+.tools { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; }
+.tools:empty { display: none; }
+.tools button { min-height: 44px; padding-inline: .875rem; font-size: .75rem; flex-shrink: 0; }
+.tools button span { white-space: nowrap; }
+.briefing { padding: .25rem .75rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); }
+.briefing summary { min-height: 36px; padding-block: .5rem; cursor: pointer; font-size: .75rem; color: var(--text-muted); }
+.sectionHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; padding: .75rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); }
+.sectionHeader h3 { font-size: .875rem; font-weight: 600; }
+.sectionHeader button { min-height: 44px; font-size: .75rem; }
+.orderList { min-width: 0; }
+.orderList > div > div { padding: 0; }
+.ordersLoading { display: grid; gap: .625rem; }
+.skeletonEditor { padding: .875rem; border: 1px solid var(--border); border-radius: .875rem; background: var(--surface); display: grid; gap: .875rem; }
+.skeletonFields { display: grid; gap: .875rem; }
+@media (min-width: 768px) { .skeletonFields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.orderList :where(td, th) { white-space: normal; overflow-wrap: anywhere; }
+.orderList table { min-width: 36rem; }
+.orderList :global(.overflow-x-auto) { overscroll-behavior-inline: contain; }
+.mobileOrder { padding: .75rem; display: flex; flex-direction: column; gap: .625rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); }
+.mobileOrder h3 { font-size: .8125rem; font-weight: 600; overflow-wrap: anywhere; }
+.orderMeta { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem; }
+.mobileOrder > div:last-child, .mobileOrder > div:last-child > div { flex-wrap: wrap; }
+.mobileOrder button { min-height: 44px; font-size: .75rem; }
+@media (min-width: 1100px) { .toolbar { flex-direction: row; align-items: center; } .tabs { flex: 1; } }

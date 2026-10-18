@@ -1,4 +1,5 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { datePickerInput } from "./datePickerTestUtils";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
@@ -20,6 +21,37 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("Inquiry workspace", () => {
+  it("keeps filter choices when collapsed and exposes only authorized workflow links", async () => {
+    render(<InquiryWorkspace />);
+    await screen.findByRole("button", { name: "Open inquiry" });
+    const navigation = screen.getByRole("navigation", { name: "Patient relationship workflows" });
+    expect(within(navigation).getByRole("link", { name: "Inquiries" })).toHaveAttribute("aria-current", "page");
+    expect(within(navigation).getByRole("link", { name: "Daily tasks" })).toHaveAttribute("href", "/dashboard/crm/tasks");
+    expect(within(navigation).queryByRole("link", { name: "Replies" })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole("link", { name: "Overview" })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole("link", { name: "Workflow settings" })).not.toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: "Filters" });
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Due or overdue" }));
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/crm/inquiries", expect.objectContaining({ params: expect.objectContaining({ overdue: "true" }) })));
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("checkbox", { name: "Due or overdue" })).toBeChecked();
+    fireEvent.change(screen.getByRole("textbox", { name: "Search caller or service" }), { target: { value: "Caller" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Search inquiries" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Search inquiries" }));
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/crm/inquiries", expect.objectContaining({ params: expect.objectContaining({ search: "Caller", overdue: "true" }) })));
+  });
+  it("links all five workflows for staff with communication, analytics and settings access", async () => {
+    useAuthStore.setState({ user: { ...useAuthStore.getState().user!, permissions: ["VIEW_CRM", "MANAGE_CRM_INQUIRIES", "COMMUNICATE_PATIENTS", "VIEW_CRM_ANALYTICS", "MANAGE_CRM_SETTINGS"] } });
+    render(<InquiryWorkspace />);
+    const navigation = screen.getByRole("navigation", { name: "Patient relationship workflows" });
+    expect(within(navigation).getAllByRole("link").map(link => link.getAttribute("href"))).toEqual([
+      "/dashboard/crm", "/dashboard/crm/tasks", "/dashboard/crm/communications", "/dashboard/crm/overview", "/dashboard/crm/settings",
+    ]);
+    await screen.findByRole("button", { name: "Open inquiry" });
+  });
   it('lets platform root explicitly open a CRM organization without impersonating staff', async () => {
     useAuthStore.setState({ user: { id: 'root', name: 'Root', email: 'root@example.test', role: 'root' } });
     vi.mocked(api.get).mockResolvedValue({ data: { data: [{ id: 'org', name: 'Clinic', status: 'active' }] } });
@@ -68,7 +100,7 @@ describe("Inquiry workspace", () => {
     render(<InquiryWorkspace />);
     fireEvent.click(await screen.findByRole("button", { name: "Capture inquiry" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Save inquiry" })).toBeEnabled());
-    fireEvent.change(screen.getByLabelText("Next action due (Asia/Kolkata)"), { target: { value: "2026-10-10T17:30" } });
+    fireEvent.change(datePickerInput(screen.getByLabelText("Next action due (Asia/Kolkata)")), { target: { value: "2026-10-10T17:30" } });
     fireEvent.click(screen.getByRole("button", { name: "Save inquiry" }));
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/crm/inquiries", expect.objectContaining({ callerName: "", phone: "", source: "unknown", ownerId: "staff", locationId: "branch",
       nextAction: { kind: "review", dueAt: "2026-10-10T12:00:00.000Z" }, clientRequestId: expect.any(String) })));

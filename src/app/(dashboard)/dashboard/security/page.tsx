@@ -72,8 +72,8 @@ export default function AccountSecurityPage() {
     finally { setBusy(null); }
   };
   if (user?.impersonatedBy) return <Card className="p-5">Return to your own account to manage account security.</Card>;
-  if (loadError) return <div className="space-y-4 max-w-4xl mx-auto"><h1 className="text-2xl font-bold">Account security</h1><Alert variant="error" title="Security settings unavailable" action={<Button variant="outline" onClick={load}>Try again</Button>}>Your passkeys and session policies could not be loaded.</Alert></div>;
-  return <div className="space-y-5 max-w-4xl mx-auto pb-24">
+  if (loadError) return <div className="space-y-4 w-full min-w-0"><h1 className="text-2xl font-bold">Account security</h1><Alert variant="error" title="Security settings unavailable" action={<Button variant="outline" onClick={load}>Try again</Button>}>Your passkeys and session policies could not be loaded.</Alert></div>;
+  return <div className="space-y-5 w-full min-w-0 pb-24">
     <div><h1 className="text-2xl font-bold text-text">Account security</h1><p className="text-sm text-text-secondary mt-1">Manage your passkeys and device preferences.</p></div>
     {user && !["patient", "family_member", "guest"].includes(user.role) && (user.twoFactorEnabled ? <Alert variant="success">Authenticator verification is enabled.</Alert> : <AuthenticatorEnrollment />)}
     <Card className="p-4 sm:p-6" contentClassName="gap-4 items-start">

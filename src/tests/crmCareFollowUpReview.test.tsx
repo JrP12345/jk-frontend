@@ -1,3 +1,4 @@
+import { datePickerInput } from "./datePickerTestUtils";
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '@/lib/api';
@@ -10,7 +11,7 @@ describe('Care follow-up review', () => {
     render(<CareFollowUpReview task={{ id: 'task', revision: 3, followUpReview: 'ambiguous' }} timezone='Asia/Kolkata' onClose={vi.fn()} onSaved={saved} />);
     expect(screen.getByRole('button', { name: 'Save follow-up review' })).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Administrative review evidence'), { target: { value: 'Patient reviewed clinician timing' } });
-    fireEvent.change(screen.getByLabelText('Clarified follow-up date (Asia/Kolkata)'), { target: { value: '2026-10-11T17:30' } });
+    fireEvent.change(datePickerInput(screen.getByLabelText('Clarified follow-up date (Asia/Kolkata)')), { target: { value: '2026-10-11T17:30' } });
     fireEvent.click(screen.getByRole('checkbox')); fireEvent.click(screen.getByRole('button', { name: 'Save follow-up review' }));
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/crm/tasks/task/review-follow-up', expect.objectContaining({ expectedRevision: 3, decision: 'recommendation', dueAt: '2026-10-11T12:00:00.000Z', identityVerified: true })));
     expect(saved).toHaveBeenCalledOnce();

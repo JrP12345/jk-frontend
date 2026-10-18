@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-import { Alert, Badge, Button, Card, Input, Pagination, Select, Table, LoadingState, SkeletonTable } from "@/components/ui";
+import { Alert, Button, ConfirmDialog, Input, Pagination, Select, Skeleton, Tabs } from "@/components/ui";
+import { ArrowRight, Plus, RotateCw, Search, Stethoscope } from "lucide-react";
+import { ConsultationVisitCard } from "@/components/clinical/ConsultationVisitCard";
+import styles from "@/components/clinical/Consultations.module.css";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
 import { hasAnyPermission } from "@/lib/permissions";
@@ -16,14 +19,14 @@ import { formatCurrency } from '@/lib/currency';
 
 interface Visit { id: string; status: string; tokenNumber?: number; appointmentType: string; patientId: WorkflowPatient; doctorId: { id: string; name: string }; appointmentTime: string }
 interface Summary { appointments: number; completed: number; byStatus: Record<string, number>; financialVisible?: boolean; moneyByCurrency?: Array<{ currency: string; collections: number; outstanding: number }> }
-export function TodayPatients({ onDetailedView, essentialEntry = false, currency = "INR" }: { onDetailedView: () => void; essentialEntry?: boolean; currency?: string }) {
+export function TodayPatients({ onDetailedView, essentialEntry = false }: { onDetailedView: () => void; essentialEntry?: boolean; currency?: string }) {
   const router = useRouter();
   const user = useAuthStore(state => state.user);
   const { locations, activeLocationId, fetchLocations, error: locationError } = useLocationStore();
   const [locationId, setLocationId] = useState(activeLocationId || "");
   const [doctors, setDoctors] = useState<LocationDoctorAssignment[]>([]);
   const [doctorId, setDoctorId] = useState("");
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState(user?.role === "doctor" ? "checked-in" : "all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
@@ -31,14 +34,22 @@ export function TodayPatients({ onDetailedView, essentialEntry = false, currency
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [summaryError, setSummaryError] = useState(false);
+  const [loadedScope, setLoadedScope] = useState("");
+  const [countsScope, setCountsScope] = useState("");
+  const readScope = JSON.stringify([locationId, doctorId, status, search.trim(), page]);
+  const scopeReady = readScope === loadedScope;
   const [busy, setBusy] = useState("");
   const [add, setAdd] = useState(false);
   const openEntry = () => { if (essentialEntry) setAdd(true); else router.push("/dashboard/appointments"); };
   const [paymentVisit, setPaymentVisit] = useState<Visit | null>(null);
+  const [arrivalConfirmation, setArrivalConfirmation] = useState<{ id: string; tokenNumber?: number } | null>(null);
   const beginRead = useLatestRead();
   const beginAssignments = useLatestRead();
   const location = locations.find(value => value.id === locationId);
   const timezone = location?.effectiveTimezone || location?.timezone || "Asia/Kolkata";
+  const summaryScope = JSON.stringify([locationId, doctorId, locationTodayRange(timezone)]);
+  const countsReady = countsScope === summaryScope;
   const canBook = hasAnyPermission(user, "MANAGE_APPOINTMENTS", "CREATE_APPOINTMENTS");
   const canStart = hasAnyPermission(user, "MANAGE_CLINICAL_NOTES") && hasAnyPermission(user, "MANAGE_APPOINTMENTS");
   const canQueue = hasAnyPermission(user, "MANAGE_QUEUE");
@@ -70,13 +81,18 @@ export function TodayPatients({ onDetailedView, essentialEntry = false, currency
     if (status !== "all") listParams.set("status", status);
     if (search.trim()) listParams.set("search", search.trim());
     try {
-      const [list, totals] = await Promise.all([api.get(`/appointments?${listParams}`, { signal: request.signal }), api.get(`/analytics/daily-summary?${params}&includeAppointments=false`, { signal: request.signal })]);
+      const [listResult, totalsResult] = await Promise.allSettled([api.get(`/appointments?${listParams}`, { signal: request.signal }), api.get(`/analytics/daily-summary?${params}&includeAppointments=false`, { signal: request.signal })]);
       if (!request.isCurrent()) return;
-      setVisits(list.data?.data || []); setPages(Number(list.headers["x-total-pages"]) || 1); setSummary(totals.data?.data || null);
-    } catch { if (request.isCurrent()) { setVisits([]); setSummary(null); setError("Today's patients could not be loaded. Refresh to retry."); } }
-    finally { if (request.isCurrent()) setLoading(false); }
-  }, [beginRead, locationId, locations, doctorId, page, search, status, timezone]);
-  useEffect(() => { const timer = setTimeout(() => { void load(); }, 200); return () => clearTimeout(timer); }, [load]);
+      const totals = totalsResult.status === "fulfilled" ? totalsResult.value : null;
+      setSummary(totals?.data?.data || null); setCountsScope(summaryScope);
+      setSummaryError(totalsResult.status === "rejected");
+      if (listResult.status === "rejected") throw listResult.reason;
+      const list = listResult.value;
+      setVisits(list.data?.data || []); setPages(Number(list.headers?.["x-total-pages"]) || 1);
+    } catch { if (request.isCurrent()) { setVisits([]); setError("Today's patients could not be loaded. Refresh to retry."); } }
+    finally { if (request.isCurrent()) { setLoading(false); setLoadedScope(readScope); } }
+  }, [beginRead, locationId, locations, doctorId, page, search, status, timezone, readScope, summaryScope]);
+  useEffect(() => { const timer = setTimeout(() => { void load(); }, 200); return () => { clearTimeout(timer); beginRead(); }; }, [load, beginRead]);
   useEffect(() => {
     let lastRefresh = Number.NEGATIVE_INFINITY;
     const focus = () => {
@@ -109,40 +125,57 @@ export function TodayPatients({ onDetailedView, essentialEntry = false, currency
     try {
       const response = await api.post("/queue/call-next", { locationId, doctorId, requireArrivalConfirmation: true, ...(confirmedAppointmentId ? { confirmedAppointmentId } : {}) });
       const visit = response.data?.data;
-      if (visit) router.push(`/dashboard/consultations/${recordId(visit)}`);
+      if (visit) { setArrivalConfirmation(null); router.push(`/dashboard/consultations/${recordId(visit)}`); }
       else setError("No waiting patients for this doctor today.");
     } catch (failure: unknown) {
       const response = (failure as { response?: { data?: { message?: string; details?: string; data?: { id: string; tokenNumber?: number } } } }).response?.data;
-      if (response?.details === "ARRIVAL_CONFIRMATION_REQUIRED" && response.data && window.confirm(`Token #${response.data.tokenNumber} has not checked in. Is this patient present and ready?`)) await next(response.data.id);
+      if (response?.details === "ARRIVAL_CONFIRMATION_REQUIRED" && response.data) setArrivalConfirmation(response.data);
       else setError(response?.message || "The next patient could not be called.");
     } finally { setBusy(""); }
   }
   const counts = summary?.byStatus || {};
-  const moneyTotals = summary?.moneyByCurrency?.length ? summary.moneyByCurrency : [{ currency, collections: 0, outstanding: 0 }];
-  const filters = [{ value: "all", label: `All (${summary?.appointments || 0})` }, { value: "checked-in", label: `Waiting (${counts["checked-in"] || 0})` }, { value: "in-consultation", label: `With doctor (${counts["in-consultation"] || 0})` }, { value: "completed", label: `Completed (${counts.completed || 0})` }, { value: "confirmed", label: `Booked (${counts.confirmed || 0})` }, { value: "pending", label: `Pending (${counts.pending || 0})` }, { value: "pending_payment", label: `Payment pending (${counts.pending_payment || 0})` }, { value: "cancelled", label: `Cancelled (${counts.cancelled || 0})` }, { value: "no-show", label: `No-show (${counts["no-show"] || 0})` }];
-  const actions = (visit: Visit) => <div className="flex flex-wrap gap-2">
+  const moneyTotals = summary?.moneyByCurrency || [];
+  const filters = [{ id: "checked-in", label: "Waiting" }, { id: "in-consultation", label: "In visit" }, { id: "confirmed", label: "Scheduled" }, { id: "completed", label: "Completed" }, { id: "all", label: "All" }, { id: "pending", label: "Pending" }, { id: "pending_payment", label: "Payment due" }, { id: "cancelled", label: "Cancelled" }, { id: "no-show", label: "No-show" }];
+  const actions = (visit: Visit) => <>
     {canBook && ["pending", "confirmed"].includes(visit.status) && <Button variant="outline" size="sm" disabled={Boolean(busy)} onClick={() => arrive(visit)}>Mark arrival</Button>}
-    {canStart && ["checked-in", "in-consultation"].includes(visit.status) && <Button size="sm" disabled={Boolean(busy)} onClick={() => arrive(visit, true)}>{visit.status === "in-consultation" ? "Open visit" : "Start consultation"}</Button>}
+    {canStart && ["checked-in", "in-consultation"].includes(visit.status) && <Button size="sm" disabled={Boolean(busy)} onClick={() => arrive(visit, true)}>{visit.status === "in-consultation" ? "Resume visit" : "Start consultation"}<ArrowRight size={15} /></Button>}
     {canStart && visit.status === "completed" && <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/consultations/${visit.id}`)}>Review visit</Button>}
     {canPay && <Button size="sm" variant="outline" onClick={() => setPaymentVisit(visit)}>Payments</Button>}
-  </div>;
-  return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-xl font-semibold">Today's patients</h1><p className="text-sm text-text-muted">{location?.name || "Choose a location"} · {timezone}</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={load} disabled={Boolean(busy)}>Refresh</Button>{canQueue && canStart && <Button onClick={() => next()} disabled={!doctorId || Boolean(busy)}>Next patient</Button>}{canBook && <Button onClick={openEntry} disabled={!locationId}>Add patient</Button>}</div></div>
-    {(error || locationError) && <Alert variant="error">{error || locationError}</Alert>}
-    <Card className="p-3 flex flex-wrap gap-x-6 gap-y-2 text-sm"><span>Seen today: <strong>{summary?.completed ?? "—"}</strong></span><span>Waiting: <strong>{counts["checked-in"] ?? "—"}</strong></span><span>With doctor: <strong>{counts["in-consultation"] ?? "—"}</strong></span>{summary?.financialVisible && moneyTotals.map(money => <span key={money.currency}>Collected: <strong>{formatCurrency(money.collections, money.currency, { minimumFractionDigits: money.currency === "JPY" ? 0 : 2 })}</strong> · Today's invoices outstanding: <strong>{formatCurrency(money.outstanding, money.currency, { minimumFractionDigits: money.currency === "JPY" ? 0 : 2 })}</strong></span>)}</Card>
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {locations.length > 1 && <Select label="Location" value={locationId} onChange={e => { setLocationId(e.target.value); setPage(1); }} options={[{ value: "", label: "Select location" }, ...locations.map(value => ({ value: value.id, label: value.name }))]} />}
-      {user?.role !== "doctor" && doctors.length > 1 && <Select label="Doctor" value={doctorId} onChange={e => { setDoctorId(e.target.value); setPage(1); }} options={[{ value: "", label: "All doctors (choose one to call next)" }, ...doctors.map(value => ({ value: recordId(value.doctorId), label: typeof value.doctorId === "object" ? value.doctorId.name || "Doctor" : "Doctor" }))]} />}
-      <Select label="Visit status" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} options={filters} />
-      <Input label="Search patient or token" placeholder="Name, phone, MRN or token" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-    </div>
-    {loading && visits.length === 0 ? <LoadingState label="Loading today's patients"><SkeletonTable columns={5} /></LoadingState> : <>
-      <div className="hidden md:block"><Table<Visit> data={visits} density="compact" pagination={false} columns={[{ header: "Token", accessor: visit => visit.tokenNumber || "—" }, { header: "Patient", accessor: visit => <div><p className="font-medium">{patientName(visit.patientId)}</p><p className="text-xs text-text-muted">{patientPhone(visit.patientId)} · {visit.patientId?.mrn}</p></div> }, { header: "Doctor / source", accessor: visit => <div>{visit.doctorId?.name}<p className="text-xs text-text-muted">{visit.appointmentType === "reception" ? "Phone / desk" : visit.appointmentType}</p></div> }, { header: "Status", accessor: visit => <Badge variant={visit.status === "completed" ? "success" : "outline"}>{visit.status.replaceAll("-", " ").replaceAll("_", " ")}</Badge> }, { header: "Actions", accessor: actions }]} /></div>
-      <div className="space-y-2 md:hidden">{visits.map(visit => <Card key={visit.id} className="p-3 space-y-3"><div className="flex items-start justify-between gap-2"><div><p className="font-medium">{visit.tokenNumber ? `#${visit.tokenNumber} · ` : ""}{patientName(visit.patientId)}</p><p className="text-xs text-text-muted">{patientPhone(visit.patientId)} · {visit.doctorId?.name}</p><p className="text-xs text-text-muted">{visit.appointmentType === "reception" ? "Phone / desk" : visit.appointmentType}</p></div><Badge variant="outline">{visit.status.replaceAll("-", " ").replaceAll("_", " ")}</Badge></div>{actions(visit)}</Card>)}</div>
-      {!visits.length && <p className="py-6 text-center text-sm text-text-muted">No visits match this view.</p>}
-      <Pagination currentPage={page} totalPages={pages} onPageChange={setPage} />
-    </>}
-    <div className="flex flex-wrap gap-4 text-sm"><Button variant="ghost" onClick={onDetailedView}>Detailed consultation list</Button><Link href="/dashboard/queue" className="inline-flex min-h-11 items-center text-accent">Full queue controls</Link><Link href="/dashboard/appointments" className="inline-flex min-h-11 items-center text-accent">Scheduling</Link>{canPay && <Link href="/dashboard/billing" className="inline-flex min-h-11 items-center text-accent">Billing and receipts</Link>}</div>
+  </>;
+  const initialLoading = !scopeReady && Boolean(locationId);
+  return <div className={styles.workspace}>
+    <header className={styles.header}>
+      <div><h1>Consultations</h1><p>{location?.name || "Choose a location"}</p></div>
+      <div className={styles.headerActions}>
+        <Button variant="ghost" className={styles.iconButton} aria-label="Refresh consultations" onClick={load} disabled={loading || Boolean(busy)}><RotateCw size={17} className={loading ? "animate-spin" : ""} /></Button>
+        {canQueue && canStart && <Button onClick={() => next()} disabled={!doctorId || !locationId || Boolean(busy) || initialLoading}>Next patient<ArrowRight size={15} /></Button>}
+        {canBook && !(canQueue && canStart) && <Button onClick={openEntry} disabled={!locationId}><Plus size={16} />Add patient</Button>}
+      </div>
+    </header>
+    {(error || locationError) && <Alert variant="error" action={<Button variant="outline" size="sm" onClick={load}>Try again</Button>}>{error || locationError}</Alert>}
+    {scopeReady && summaryError && <Alert variant="warning" title="Counts unavailable">Patient visits are available. Refresh to retry the daily totals.</Alert>}
+    <section className={styles.filters} aria-label="Consultation filters">
+      {(locations.length > 1 || (user?.role !== "doctor" && doctors.length > 1)) && <details className={styles.scopeSelection}><summary>Location &amp; doctor</summary><div className={styles.selection}>
+        {locations.length > 1 && <Select label="Location" value={locationId} onChange={event => { setLocationId(event.target.value); setPage(1); }} options={[{ value: "", label: "Select location" }, ...locations.map(value => ({ value: value.id, label: value.name }))]} />}
+        {user?.role !== "doctor" && doctors.length > 1 && <Select label="Doctor" value={doctorId} onChange={event => { setDoctorId(event.target.value); setPage(1); }} options={[{ value: "", label: "All doctors" }, ...doctors.map(value => ({ value: recordId(value.doctorId), label: typeof value.doctorId === "object" ? value.doctorId.name || "Doctor" : "Doctor" }))]} />}
+      </div></details>}
+      <div className={styles.filtersRow}>
+        <Tabs variant="pills" className={styles.tabs} activeTab={status} scrollActiveIntoView={false} onChange={id => { setStatus(id); setPage(1); }} tabs={filters.map(filter => ({ ...filter, badge: countsReady && summary ? filter.id === "all" ? summary.appointments : counts[filter.id] ?? 0 : "…" }))} />
+        <div className={styles.search}><Input type="search" icon={<Search size={16} />} aria-label="Search patient or token" placeholder="Name, phone, MRN or token" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></div>
+      </div>
+    </section>
+    <section className={styles.list} aria-label="Patient consultations" aria-busy={loading || initialLoading}>
+      {initialLoading || (loading && !visits.length) ? <div className={styles.loading} role="status" aria-label="Loading today's patients"><Skeleton height="100px" /><Skeleton height="100px" /><Skeleton height="100px" /></div> : scopeReady && visits.length ? visits.map(visit => <ConsultationVisitCard key={visit.id} name={patientName(visit.patientId)} phone={patientPhone(visit.patientId)} token={visit.tokenNumber} status={visit.status} context={[user?.role === "doctor" && visit.doctorId?.id === user.id ? "" : visit.doctorId?.name, visit.appointmentType === "reception" ? "Phone / desk" : (visit.appointmentType || "").replaceAll("_", " ").replaceAll("-", " ")].filter(Boolean).join(" · ")} actions={actions(visit)} />)
+        : !error && !locationError && <div className={styles.empty}><Stethoscope size={25} className="text-accent" /><h2>{!locationId ? "Choose a location" : search ? "No matching patients" : status === "checked-in" ? "No patients waiting" : "No visits match this view."}</h2><p>{!locationId ? "Select a location to see today's patients." : "Switch tabs or adjust your search to find a visit."}</p>{locationId && (status !== "all" || search) && <Button variant="outline" onClick={() => { setStatus("all"); setSearch(""); setPage(1); }}>Show all visits</Button>}</div>}
+    </section>
+    {scopeReady && <Pagination currentPage={page} totalPages={pages} onPageChange={setPage} />}
+    {scopeReady && summary?.financialVisible && <details className={styles.financial}><summary>Daily collections</summary>{moneyTotals.map(money => <p key={money.currency}>Collected: <strong>{formatCurrency(money.collections, money.currency, { minimumFractionDigits: money.currency === "JPY" ? 0 : 2 })}</strong> · Outstanding: <strong>{formatCurrency(money.outstanding, money.currency, { minimumFractionDigits: money.currency === "JPY" ? 0 : 2 })}</strong></p>)}</details>}
+    <nav className={styles.links} aria-label="Related consultation tools">
+      {canBook && canQueue && canStart && <Button variant="ghost" onClick={openEntry} disabled={!locationId}>Add patient</Button>}
+      <Button variant="ghost" onClick={onDetailedView}>Detailed view</Button><Link href="/dashboard/queue">Queue desk</Link><Link href="/dashboard/appointments">Appointments</Link>{canPay && <Link href="/dashboard/billing">Billing</Link>}
+    </nav>
+    <ConfirmDialog open={Boolean(arrivalConfirmation)} title="Confirm patient arrival" description={arrivalConfirmation?.tokenNumber !== undefined ? "Token #" + arrivalConfirmation.tokenNumber + " has not checked in. Is this patient present and ready?" : "This patient has not checked in. Are they present and ready?"}
+      confirmLabel="Mark arrival and start" loading={Boolean(busy)} onClose={() => { if (!busy) setArrivalConfirmation(null); }} onConfirm={() => { if (arrivalConfirmation && !busy) void next(arrivalConfirmation.id); }} />
     <PatientEntryModal open={add} onClose={() => setAdd(false)} locationId={locationId} onBooked={() => { setAdd(false); void load(); }} onFullRegistration={() => router.push("/dashboard/appointments")} />
     {paymentVisit && <VisitInvoices appointmentId={paymentVisit.id} patientName={patientName(paymentVisit.patientId)} locationId={locationId} onClose={() => setPaymentVisit(null)} onPaid={() => { void load(); }} />}
   </div>;

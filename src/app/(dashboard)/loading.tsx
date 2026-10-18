@@ -4,7 +4,7 @@ import { Skeleton, SkeletonCard, SkeletonTable } from "@/components/ui";
 
 export default function DashboardLoading() {
   return (
-    <div role="status" aria-label="Loading dashboard" aria-busy="true" className="w-full min-w-0 space-y-6 p-2">
+    <div role="status" aria-label="Loading dashboard" aria-busy="true" className="w-full min-w-0 space-y-6 p-2 md:p-0">
       {/* Top Banner / Header Skeleton */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-2 border-b border-border/40">
         <div className="space-y-2 min-w-0 max-w-full">

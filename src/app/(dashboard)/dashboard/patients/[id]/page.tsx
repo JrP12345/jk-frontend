@@ -7,8 +7,11 @@ import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { PatientService } from "@/services/patient.service";
-import { Alert, Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge, Table, Column, Spinner, Skeleton, SkeletonCard, Tabs, Modal, Input, Textarea, Select, useToast } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge, Table, Column, Spinner, Skeleton, Tabs, Input, Textarea, Select, useToast, DatePicker } from "@/components/ui";
 import dynamic from "next/dynamic";
+import Modal from "@/components/queue/QueueDialog";
+import { ArrowLeft, CalendarPlus, Pencil, RotateCw } from "lucide-react";
+import styles from "./PatientProfile.module.css";
 import PatientHistoryAccess from "@/components/ehr/PatientHistoryAccess";
 import { PatientHeader } from "@/components/clinical/PatientHeader";
 import { PatientOverviewCards } from "@/components/clinical/PatientOverviewCards";
@@ -53,8 +56,15 @@ export default function PatientDetailPage() {
   const canEditClinical = hasAnyPermission(user, "MANAGE_EHR", "MANAGE_CLINICAL_NOTES");
   const canReadClinical = hasAnyPermission(user, "VIEW_EHR");
   const canReadBilling = hasAnyPermission(user, "VIEW_BILLING", "MANAGE_BILLING");
+  const canReadAccess = canReadClinical || hasAnyPermission(user, "MANAGE_PATIENTS", "REVIEW_PATIENT_IDENTITY", "RECORD_COMMUNICATION_CONSENT", "ADMINISTRATIVE_GOVERNANCE", "EXPORT_CRM", "VIEW_CRM") || ["patient", "family_member"].includes(user?.role || "");
 
   const [patientData, setPatientData] = useState<any>(null);
+  const profileScope = JSON.stringify([patientId, user?.id, user?.organization_id]);
+  const [loadedProfileScope, setLoadedProfileScope] = useState("");
+  const profileReady = loadedProfileScope === profileScope;
+  const [secondaryLoading, setSecondaryLoading] = useState(true);
+  const [labError, setLabError] = useState(false);
+  const [billingError, setBillingError] = useState(false);
   const [recordAccessToken, setRecordAccessToken] = useState<string | null>(null);
   const profileRequest = useRef(0);
   const changeRecordAccess = useCallback((token: string | null) => {
@@ -106,6 +116,7 @@ export default function PatientDetailPage() {
       const appts = res.appointments || [];
 
       setPatientData(patient);
+      setLoadedProfileScope(profileScope);
       setAppointments(appts);
 
       // Populate edit form defaults
@@ -124,16 +135,16 @@ export default function PatientDetailPage() {
         abdmHealthId: patient.abdmHealthId || "",
       });
 
-      // Load lab orders & invoices asynchronously
-      Promise.all([
-        canReadClinical ? api.get(`/lab-orders?patientId=${encodeURIComponent(patientId)}`).catch(() => ({ data: { data: [] } })) : Promise.resolve({ data: { data: [] } }),
-        canReadBilling ? api.get(`/invoices?patientId=${encodeURIComponent(patientId)}`).catch(() => ({ data: { data: [] } })) : Promise.resolve({ data: { data: [] } }),
+      // Auxiliary failures stay distinct from an empty clinical or billing history.
+      setSecondaryLoading(true); setLabError(false); setBillingError(false);
+      Promise.allSettled([
+        canReadClinical ? api.get("/lab-orders?patientId=" + encodeURIComponent(patientId)) : Promise.resolve({ data: { data: [] } }),
+        canReadBilling ? api.get("/invoices?patientId=" + encodeURIComponent(patientId)) : Promise.resolve({ data: { data: [] } }),
       ]).then(([labRes, invRes]) => {
         if (requestId !== profileRequest.current) return;
-        const labs = labRes.data?.data || [];
-        const invs = invRes.data?.data || [];
-        setLabOrders(labs.filter((l: any) => String(l.patientId?.id || l.patientId?._id || l.patientId) === String(patientId)));
-        setInvoices(invs.filter((i: any) => String(i.patientId?.id || i.patientId?._id || i.patientId) === String(patientId)));
+        if (labRes.status === "fulfilled") { const labs = labRes.value.data?.data; if (Array.isArray(labs)) setLabOrders(labs.filter((lab: any) => String(lab.patientId?.id || lab.patientId?._id || lab.patientId) === String(patientId))); else setLabError(true); } else setLabError(true);
+        if (invRes.status === "fulfilled") { const bills = invRes.value.data?.data; if (Array.isArray(bills)) setInvoices(bills.filter((invoice: any) => String(invoice.patientId?.id || invoice.patientId?._id || invoice.patientId) === String(patientId))); else setBillingError(true); } else setBillingError(true);
+        setSecondaryLoading(false);
       });
 
     } catch (err: any) {
@@ -149,17 +160,18 @@ export default function PatientDetailPage() {
     }
   };
 
-  useEffect(() => { setPatientData(null); setAppointments([]); setLabOrders([]); setInvoices([]); setRecordAccessToken(null); }, [patientId, user?.organization_id]);
+  useEffect(() => { setPatientData(null); setAppointments([]); setLabOrders([]); setInvoices([]); setRecordAccessToken(null); setActiveTab("overview"); setEditModalOpen(false); }, [patientId, user?.id, user?.organization_id]);
 
   useEffect(() => {
     if (patientId) {
       loadPatientDetails();
     }
     return () => { profileRequest.current += 1; };
-  }, [patientId, recordAccessToken, user?.organization_id]);
+  }, [patientId, recordAccessToken, user?.id, user?.organization_id, canReadClinical, canReadBilling]);
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (editLoading || !canManagePatients) return;
     try {
       setEditLoading(true);
       const payload = {
@@ -195,57 +207,11 @@ export default function PatientDetailPage() {
     }
   };
 
-  if (loading && !patientData) {
-    return (
-      <div role="status" aria-live="polite" className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading patient medical records">
-        {/* Back navigation placeholder */}
-        <div className="flex items-center gap-2">
-          <Skeleton width="120px" height="1.75rem" rounded="xl" />
-        </div>
-
-        {/* Patient Header Banner Skeleton */}
-        <div className="p-5 sm:p-6 bg-surface border border-border/80 rounded-2xl shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Skeleton width="3.5rem" height="3.5rem" rounded="2xl" />
-              <div className="space-y-2">
-                <Skeleton width="180px" height="1.5rem" rounded="md" />
-                <div className="flex gap-2">
-                  <Skeleton width="100px" height="1rem" rounded="md" />
-                  <Skeleton width="80px" height="1rem" rounded="md" />
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Skeleton width="90px" height="2.25rem" rounded="xl" />
-              <Skeleton width="110px" height="2.25rem" rounded="xl" />
-            </div>
-          </div>
-        </div>
-
-        {/* Tab Pills Skeleton */}
-        <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-          <Skeleton width="90px" height="2rem" rounded="xl" />
-          <Skeleton width="110px" height="2rem" rounded="xl" />
-          <Skeleton width="120px" height="2rem" rounded="xl" />
-          <Skeleton width="80px" height="2rem" rounded="xl" />
-        </div>
-
-        {/* Content Area Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-6">
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
-          <div className="space-y-6">
-            <SkeletonCard />
-          </div>
-        </div>
-      </div>
-    );
+  if ((loading || !profileReady) && (!patientData || !profileReady) && !loadError) {
+    return <div className={styles.workspace} role="status" aria-label="Loading patient medical records" aria-busy="true"><Skeleton width="110px" height="2.75rem" /><div className={styles.loadingBanner}><Skeleton width="44px" height="44px" rounded="full" /><div><Skeleton width="150px" height="1.25rem" /><Skeleton width="220px" height=".875rem" /></div></div><div className={styles.loadingTabs}>{Array.from({ length: 4 }, (_, index) => <Skeleton key={index} height="44px" />)}</div><div className={styles.loadingPanel}><Spinner size="sm" /><span>Loading patient record...</span></div></div>;
   }
 
-  if (!patientData) {
+  if (!patientData || !profileReady) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center p-8">
         <Card className="max-w-md w-full p-6 text-center space-y-4 rounded-2xl border border-border bg-surface">
@@ -284,9 +250,9 @@ export default function PatientDetailPage() {
     name: patientName,
     gender: patientData.gender,
     dob: patientData.dob ? new Date(patientData.dob).toLocaleDateString() : undefined,
-    clinicalProfileRestricted: patientData.clinicalProfileRestricted,
-    allergies: patientData.allergies,
-    conditions: patientData.conditions,
+    clinicalProfileRestricted: patientData.clinicalProfileRestricted || !canReadClinical,
+    allergies: canReadClinical && !patientData.clinicalProfileRestricted ? patientData.allergies : [],
+    conditions: canReadClinical && !patientData.clinicalProfileRestricted ? patientData.conditions : [],
   };
 
   const overviewData = {
@@ -305,7 +271,7 @@ export default function PatientDetailPage() {
     emergencyContacts: patientData.emergencyContacts,
     insurancePolicies: patientData.insurancePolicies,
     totalAppointments: appointments.length,
-    activeAdmissions: 0,
+    clinicalProfileRestricted: patientData.clinicalProfileRestricted || !canReadClinical,
   };
 
   const appointmentColumns: Column<any>[] = [
@@ -373,68 +339,46 @@ export default function PatientDetailPage() {
   ];
 
   return (
-    <div className="space-y-5 w-full font-sans text-text antialiased animate-fade-in pb-12">
+    <div className={styles.workspace}>
       <h1 className="sr-only">Patient profile: {patientName}</h1>
       {loadError && <Alert variant="warning" title="Patient information may be out of date" action={<Button variant="outline" size="sm" onClick={loadPatientDetails}>Try again</Button>}>{loadError}</Alert>}
-      {/* Top Breadcrumb Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <Link href="/dashboard/patients" className="text-sm text-text-secondary hover:text-accent flex items-center gap-1 font-medium transition-colors min-h-11">
-          ← Back to Patients Directory
-        </Link>
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 w-full sm:w-auto">
-          {canManagePatients && (
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => setEditModalOpen(true)}
-              className="flex-1 sm:flex-initial min-h-[40px] rounded-xl font-semibold cursor-pointer"
-            >
-              ✏️ Edit Demographics
-            </Button>
-          )}
-          <Button
-            size="xs"
-            variant="primary"
-            onClick={() => router.push(`/dashboard/appointments?patientId=${patientId}`)}
-            className="flex-1 sm:flex-initial min-h-[40px] rounded-xl font-bold cursor-pointer"
-          >
-            + Book Appointment
-          </Button>
+      <header className={styles.topbar}>
+        <Link href="/dashboard/patients" className={styles.backLink}><ArrowLeft size={16} />Patients</Link>
+        <div className={styles.topActions}><Button variant="ghost" size="sm" className={styles.iconButton} aria-label="Refresh patient profile" disabled={loading} onClick={loadPatientDetails}><RotateCw size={16} className={loading ? "animate-spin" : ""} /></Button>
+          {canManagePatients && <Button size="sm" variant="outline" aria-label="Edit profile" onClick={() => setEditModalOpen(true)}><Pencil size={15} /><span className={styles.editLabel}>Edit profile</span></Button>}
+          {hasAnyPermission(user, "MANAGE_APPOINTMENTS") && <Button size="sm" onClick={() => router.push("/dashboard/appointments?patientId=" + patientId)}><CalendarPlus size={15} /><span className={styles.bookLabel}>Book visit</span></Button>}
         </div>
-      </div>
-
-      {/* Sticky Patient Banner */}
-      <PatientHeader patient={headerData} />
-      <PatientIdentityControls patientId={patientId} />
-      <PatientPrivacyControls patientId={patientId} />
-      <PatientRelationshipPanel patientId={patientId} />
-      {canReadClinical && <PatientHistoryAccess patientId={patientId} token={recordAccessToken} onChange={changeRecordAccess} />}
+      </header>
+      <div className={styles.patientBanner}><PatientHeader patient={headerData} compactMrn /></div>
 
       {/* Main Tabbed Interface */}
       <Tabs
+        className={styles.profileTabs}
+        scrollActiveIntoView={false}
         variant="pills"
         activeTab={activeTab}
         onChange={setActiveTab}
         tabs={[
           {
             id: "overview",
-            label: "Overview & Demographics",
+            label: "Overview",
             content: (
               <PatientOverviewCards
                 patient={overviewData}
+                visits={canReadClinical && !patientData.clinicalProfileRestricted ? appointments : []}
                 onEditProfile={canManagePatients ? () => setEditModalOpen(true) : undefined}
               />
             ),
           },
           {
             id: "appointments",
-            label: `Consultation History (${appointments.length})`,
+            label: "Visits", badge: appointments.length,
             content: (
               <Card className="rounded-2xl border border-border bg-surface shadow-xs">
-                <CardHeader>
-                  <CardTitle className="text-base font-bold">Appointment & Outpatient History</CardTitle>
+                <CardHeader className={styles.sectionHeader}>
+                  <CardTitle className="text-base font-bold">Visit history</CardTitle>
                   <CardDescription className="text-xs">
-                    Comprehensive log of all scheduled, active, and completed consultations for this patient.
+                    Appointments and consultations in this record.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -443,6 +387,9 @@ export default function PatientDetailPage() {
                     data={appointments}
                     loading={loading}
                     searchable={false}
+                    showColumnVisibility={false}
+                    fitContent
+                    density="compact"
                     pagination={true}
                     mobileCardView={true}
                     defaultRowsPerPage={10}
@@ -454,7 +401,7 @@ export default function PatientDetailPage() {
           },
           {
             id: "clinical",
-            label: "EHR Medical Timeline",
+            label: "Timeline",
             content: (
               <Card className="rounded-2xl border border-border bg-surface p-4 shadow-xs">
                 <PatientTimeline patientId={patientId} accessToken={recordAccessToken} />
@@ -463,14 +410,14 @@ export default function PatientDetailPage() {
           },
           {
             id: "laboratory",
-            label: `Lab Diagnostic Orders (${labOrders.length})`,
+            label: "Labs", badge: secondaryLoading ? "…" : labError ? "!" : labOrders.length,
             content: (
               <Card className="rounded-2xl border border-border bg-surface shadow-xs">
-                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
+                <CardHeader className={styles.sectionHeader}>
                   <div>
-                    <CardTitle className="text-base font-bold">Laboratory Orders & Diagnostic Reports</CardTitle>
+                    <CardTitle className="text-base font-bold">Laboratory orders</CardTitle>
                     <CardDescription className="text-xs text-text-muted mt-0.5">
-                      Diagnostic tests, pathology samples, and verified laboratory result entries.
+                      Tests, samples and recorded results.
                     </CardDescription>
                   </div>
                   <Button
@@ -479,11 +426,11 @@ export default function PatientDetailPage() {
                     onClick={() => router.push(`/dashboard/laboratory?patientId=${patientId}`)}
                     className="w-full sm:w-auto min-h-[40px] rounded-xl font-bold shrink-0"
                   >
-                    + Order Lab Test
+                    Order test
                   </Button>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
-                  {labOrders.length === 0 ? (
+                  {secondaryLoading ? <div className={styles.emptyState} role="status"><Spinner size="sm" /><p>Loading laboratory orders...</p></div> : labError ? <Alert variant="error" title="Laboratory orders unavailable" action={<Button variant="outline" onClick={loadPatientDetails}>Try again</Button>}>The orders could not be loaded. This is not an empty laboratory history.</Alert> : labOrders.length === 0 ? (
                     <div className="text-center py-12 text-xs text-text-muted space-y-2">
                       <p>No laboratory diagnostic orders recorded for this patient.</p>
                       <Button
@@ -504,9 +451,9 @@ export default function PatientDetailPage() {
                         else if (order.status === "cancelled") statusVariant = "error";
 
                         return (
-                          <div key={order.id || order._id} className="p-4 bg-surface-alt rounded-xl border border-border/80 flex items-center justify-between text-xs hover:border-primary-500/40 transition-colors">
+                          <div key={order.id || order._id} className={styles.historyRow}>
                             <div className="space-y-1">
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2 min-w-0">
                                 <span className="font-bold text-text text-sm">{order.testId?.name || "Lab Diagnostic Test"}</span>
                                 <Badge variant={statusVariant} size="sm" className="capitalize font-semibold">
                                   {order.status?.replace("_", " ") || "ordered"}
@@ -517,17 +464,17 @@ export default function PatientDetailPage() {
                                   </Badge>
                                 )}
                               </div>
-                              <div className="text-[11px] text-text-muted flex gap-3">
+                              <div className="text-xs text-text-muted flex flex-wrap gap-x-3 gap-y-1">
                                 <span><b>Dept:</b> {order.testId?.department || "General Lab"}</span>
-                                <span><b>Sample:</b> {order.testId?.sampleType || "Blood"}</span>
+                                <span><b>Sample:</b> {order.testId?.sampleType || "Not recorded"}</span>
                                 <span><b>Ordered:</b> {new Date(order.createdAt).toLocaleDateString()}</span>
                               </div>
                             </div>
                             <div className="text-right shrink-0">
-                              {order.resultValue ? (
+                              {order.resultValue !== undefined && order.resultValue !== null && order.resultValue !== "" ? (
                                 <div>
                                   <span className="font-mono font-black text-sm text-accent block">{order.resultValue}</span>
-                                  <span className="text-[10px] text-text-muted">Ref Range: {order.testId?.normalRange || "Standard"}</span>
+                                  <span className="text-[10px] text-text-muted">Ref Range: {order.testId?.normalRange || "Not recorded"}</span>
                                 </div>
                               ) : (
                                 <span className="text-[11px] text-warning-text dark:text-warning-text font-semibold italic">
@@ -546,14 +493,14 @@ export default function PatientDetailPage() {
           },
           {
             id: "billing",
-            label: `Billing & Invoices (${invoices.length})`,
+            label: "Billing", badge: secondaryLoading ? "…" : billingError ? "!" : invoices.length,
             content: (
               <Card className="rounded-2xl border border-border bg-surface shadow-xs">
-                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
+                <CardHeader className={styles.sectionHeader}>
                   <div>
-                    <CardTitle className="text-base font-bold">Billing Receipts & Financial Statements</CardTitle>
+                    <CardTitle className="text-base font-bold">Billing history</CardTitle>
                     <CardDescription className="text-xs text-text-muted mt-0.5">
-                      Outpatient invoices, service charges, discounts, and payment transaction logs.
+                      Recorded invoices and payment status.
                     </CardDescription>
                   </div>
                   <Button
@@ -562,11 +509,11 @@ export default function PatientDetailPage() {
                     onClick={() => router.push(`/dashboard/billing?patientId=${patientId}`)}
                     className="w-full sm:w-auto min-h-[40px] rounded-xl font-bold shrink-0"
                   >
-                    + Create Invoice
+                    Create invoice
                   </Button>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
-                  {invoices.length === 0 ? (
+                  {secondaryLoading ? <div className={styles.emptyState} role="status"><Spinner size="sm" /><p>Loading invoices...</p></div> : billingError ? <Alert variant="error" title="Invoices unavailable" action={<Button variant="outline" onClick={loadPatientDetails}>Try again</Button>}>The invoices could not be loaded. This is not an empty billing history.</Alert> : invoices.length === 0 ? (
                     <div className="text-center py-12 text-xs text-text-muted space-y-2">
                       <p>No billing invoices found for this patient.</p>
                       <Button
@@ -586,15 +533,15 @@ export default function PatientDetailPage() {
                         else if (inv.status === "unpaid") invStatusVariant = "error";
 
                         return (
-                          <div key={inv.id || inv._id} className="p-4 bg-surface-alt rounded-xl border border-border/80 flex items-center justify-between text-xs hover:border-primary-500/40 transition-colors">
+                          <div key={inv.id || inv._id} className={styles.historyRow}>
                             <div className="space-y-1">
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2 min-w-0">
                                 <span className="font-mono font-bold text-sm text-accent">#{inv.invoiceNumber || "INV"}</span>
                                 <Badge variant={invStatusVariant} size="sm" className="capitalize font-bold">
                                   {inv.status || "unpaid"}
                                 </Badge>
                                 <Badge variant="neutral" size="sm" className="capitalize text-[10px]">
-                                  Payment: {inv.paymentMethod || "Cash"}
+                                  Payment: {inv.paymentMethod || "Not recorded"}
                                 </Badge>
                               </div>
                               <p className="text-[11px] text-text-muted">
@@ -618,19 +565,25 @@ export default function PatientDetailPage() {
           },
           {
             id: "documents",
-            label: "Signed Health Documents",
-            content: <PatientMedicalRecords patientId={patientId} accessToken={recordAccessToken} />,
+            label: "Docs",
+            content: <PatientMedicalRecords patientId={patientId} accessToken={recordAccessToken} compact includeReceipts={canReadBilling} />,
           },
-        ].filter(tab => !["clinical", "laboratory", "documents"].includes(tab.id) || canReadClinical).filter(tab => tab.id !== "billing" || canReadBilling)}
+          { id: "access", label: "Access", content: <div className={styles.accessPanels}><PatientIdentityControls patientId={patientId} /><PatientPrivacyControls patientId={patientId} /><PatientRelationshipPanel patientId={patientId} /></div> },
+        ].filter(tab => !["clinical", "laboratory", "documents"].includes(tab.id) || canReadClinical).filter(tab => tab.id !== "billing" || canReadBilling).filter(tab => tab.id !== "access" || canReadAccess)}
       />
+
+      <div hidden={activeTab !== "access"} className={styles.accessFooter}>{canReadClinical && <PatientHistoryAccess patientId={patientId} token={recordAccessToken} onChange={changeRecordAccess} />}</div>
 
       {/* Edit Profile Modal */}
       <Modal
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
-        title="✏️ Edit Patient Demographics & Profile"
+        title="Edit patient profile"
+        size="lg"
+        busy={editLoading}
+        footer={<><Button variant="outline" disabled={editLoading} onClick={() => setEditModalOpen(false)}>Cancel</Button><Button type="submit" form="patient-profile-edit" loading={editLoading}>Save profile</Button></>}
       >
-        <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
+        <form id="patient-profile-edit" onSubmit={handleEditSubmit} className="space-y-4 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Full Name"
@@ -641,16 +594,16 @@ export default function PatientDetailPage() {
             <Input
               label="Contact Phone"
               value={editForm.phone}
-              readOnly type="tel" inputMode="tel" hint="Use organization contact correction above to update the contact."
+              readOnly type="tel" inputMode="tel" hint="Use contact correction in the Access tab to update this."
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Input
+            <DatePicker
               label="Date of Birth"
-              type="date"
+
               value={editForm.dob}
-              onChange={(e) => setEditForm({ ...editForm, dob: e.target.value })}
+              onChange={(value) => setEditForm({ ...editForm, dob: value })}
             />
             <Select
               label="Gender"
@@ -719,14 +672,7 @@ export default function PatientDetailPage() {
           />
           </fieldset>
 
-          <div className="pt-3 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setEditModalOpen(false)} className="w-full sm:w-auto min-h-[44px]">
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" size="sm" loading={editLoading} className="w-full sm:w-auto min-h-[44px]">
-              Save Profile Changes
-            </Button>
-          </div>
+
         </form>
       </Modal>
     </div>

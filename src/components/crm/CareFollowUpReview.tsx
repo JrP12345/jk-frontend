@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import api from '@/lib/api';
 import { locationLocalDateTimeInput, locationLocalTimeToIso } from '@/lib/locationTime';
-import { Alert, Button, Input, Modal, Select, Textarea, Checkbox } from '@/components/ui';
+import { Alert, Button, Modal, Select, Textarea, Checkbox, DatePicker } from '@/components/ui';
 export function CareFollowUpReview({ task, timezone, onClose, onSaved }: { task: { id: string; revision: number; followUpReview?: 'ambiguous' | 'legacy' }; timezone: string; onClose: () => void; onSaved: () => void }) {
   const [decision, setDecision] = useState(task.followUpReview === 'legacy' ? 'confirm_existing' : 'recommendation'), [reason, setReason] = useState(''), [verified, setVerified] = useState(false);
   const [due, setDue] = useState(() => locationLocalDateTimeInput(new Date(Date.now() + 86400000), timezone));
@@ -21,7 +21,7 @@ export function CareFollowUpReview({ task, timezone, onClose, onSaved }: { task:
     {error && <Alert variant='error'>{error} Close and reload to change submitted details.</Alert>}
     <fieldset disabled={pending || locked} className='space-y-3'>
       <Select label='Follow-up review decision' value={decision} onChange={event => setDecision(event.target.value)} options={[...(task.followUpReview === 'legacy' ? [{ value: 'confirm_existing', label: 'Patient reviewed the existing booking' }] : []), { value: 'recommendation', label: 'Record clarified recommendation timing' }, { value: 'declined', label: 'Patient declined follow-up' }]} />
-      {decision === 'recommendation' && <Input label={`Clarified follow-up date (${timezone})`} type='datetime-local' required value={due} onChange={event => setDue(event.target.value)} />}
+      {decision === 'recommendation' && <DatePicker label={`Clarified follow-up date (${timezone})`} mode="datetime" required value={due} onChange={value => setDue(value)} />}
       <Textarea label='Administrative review evidence' required maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} />
       <Checkbox checked={verified} onChange={event => setVerified(event.target.checked)} label="I reviewed the patient identity, booking authority and timing or existing booking with the patient." />
     </fieldset><div className='flex justify-end gap-2'><Button variant='outline' disabled={pending} onClick={onClose}>Close</Button><Button type='submit' loading={pending} disabled={pending || !verified || !reason.trim()}>{locked && error ? 'Retry submitted follow-up review' : 'Save follow-up review'}</Button></div>

@@ -1,574 +1,229 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { MoreHorizontal, Plus, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
 import api from "@/lib/api";
-import { useLatestRead } from "@/hooks/useLatestRead";
+import { authScopeKey } from "@/lib/authScope";
 import { hasAnyPermission } from "@/lib/permissions";
+import { userFacingError } from "@/lib/userFacingError";
 import { useAuthStore } from "@/store/authStore";
-import { Card, CardHeader, CardTitle, CardContent, Table, Button, Modal, Input, Select, Textarea, useToast, Badge, StatCard, Dropdown } from "@/components/ui";
-import { Plus, FileText, Stethoscope, FlaskConical, Building2 } from "lucide-react";
-import type { Column } from "@/components/ui";
+import { useLatestRead } from "@/hooks/useLatestRead";
+import { Alert, Badge, Button, Card, ConfirmDialog, Dropdown, Input, Select, Table, Tabs, Textarea, useToast, type Column } from "@/components/ui";
+import QueueDialog from "@/components/queue/QueueDialog";
+import { emptyServiceForm, readServiceCatalog, serviceCategories, validateServiceForm, type ServiceForm, type ServiceItem } from "@/components/billing/serviceCatalog";
+import { formatCurrency } from "@/lib/currency";
 
-interface ServiceItem {
-  _id: string;
-  id?: string;
-  code: string;
-  name: string;
-  department: string;
-  category: string;
-  price: number;
-  hsnSacCode: string;
-  gstRate: number;
-  isActive: boolean;
-  description?: string;
-}
+const money = (value: number) => formatCurrency(value, "INR");
+const categoryLabel = (value: string) => serviceCategories.find(category => category.value === value)?.label || value;
 
 export default function ServiceCatalogPage() {
   const { user } = useAuthStore();
-  const { toast } = useToast();
-  const canManageBilling = hasAnyPermission(user, "MANAGE_BILLING");
+  if (!hasAnyPermission(user, "VIEW_BILLING", "MANAGE_BILLING")) {
+    return <Alert title="Billing access required">Ask your administrator for access to the service catalog.</Alert>;
+  }
+  return <ServiceCatalogWorkspace key={authScopeKey(user)} />;
+}
 
+function ServiceCatalogWorkspace() {
+  const { user } = useAuthStore();
+  const scope = authScopeKey(user);
+  const canManage = hasAnyPermission(user, "MANAGE_BILLING");
+  const { toast } = useToast();
+  const startRead = useLatestRead();
+  const alive = useRef(true);
+  const writeLock = useRef(false);
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const startRead = useLatestRead();
-  const [filterCategory, setFilterCategory] = useState("");
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sort, setSort] = useState("name");
+  const [status, setStatus] = useState("all");
+  const [editor, setEditor] = useState<{ service: ServiceItem | null } | null>(null);
+  const [form, setForm] = useState<ServiceForm>(emptyServiceForm);
+  const [formTab, setFormTab] = useState("service");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState<{ service: ServiceItem; active: boolean } | null>(null);
+  const [seedOpen, setSeedOpen] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
 
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingService, setEditingService] = useState<ServiceItem | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [seeding, setSeeding] = useState(false);
-
-  // Form State
-  const [formData, setFormData] = useState({
-    code: "",
-    name: "",
-    department: "",
-    category: "consultation",
-    price: "",
-    hsnSacCode: "999312",
-    gstRate: "0",
-    description: "",
-    isActive: true,
-  });
-
-  const fetchServices = async () => {
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const fetchServices = useCallback(async () => {
     const request = startRead();
+    setLoading(true);
+    setLoadError(null);
     try {
-      setLoading(true);
-      setLoadError(null);
-      const params: string[] = [];
-      if (debouncedSearch) params.push(`search=${encodeURIComponent(debouncedSearch)}`);
-      if (filterCategory) params.push(`category=${filterCategory}`);
-
-      const queryString = params.length ? `?${params.join("&")}` : "";
-      const res = await api.get(`/service-catalog${queryString}`, { signal: request.signal });
+      const data = await readServiceCatalog(request.signal);
       if (!request.isCurrent()) return;
-      if (!Array.isArray(res.data?.data)) throw new Error("Invalid service response");
-      setServices(res.data.data);
-    } catch (err: any) {
-      if (!request.isCurrent()) return;
-      setLoadError("Services could not be loaded. Check your connection and try again.");
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to load service catalog", variant: "error" });
+      setServices(data);
+      setLoaded(true);
+    } catch {
+      if (request.isCurrent()) setLoadError("Services could not be loaded. Check your connection and try again.");
     } finally {
       if (request.isCurrent()) setLoading(false);
     }
+  }, [startRead]);
+  useEffect(() => { void fetchServices(); }, [fetchServices]);
+
+  const openEditor = (service: ServiceItem | null) => {
+    if (!canManage || busy || loading || loadError) return;
+    setForm(service ? {
+      code: service.code, name: service.name, department: service.department, category: service.category,
+      price: String(service.price), hsnSacCode: service.hsnSacCode || "", gstRate: String(service.gstRate ?? 0),
+      description: service.description || "", isActive: service.isActive,
+    } : emptyServiceForm());
+    setFormTab("service");
+    setFormError(null);
+    setEditor({ service });
   };
-
-  useEffect(() => {
-    fetchServices();
-  }, [debouncedSearch, filterCategory]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  const handleOpenAddModal = () => {
-    setEditingService(null);
-    setFormData({
-      code: "",
-      name: "",
-      department: "General Medicine",
-      category: "consultation",
-      price: "",
-      hsnSacCode: "999312",
-      gstRate: "0",
-      description: "",
-      isActive: true,
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleOpenEditModal = (service: ServiceItem) => {
-    setEditingService(service);
-    setFormData({
-      code: service.code,
-      name: service.name,
-      department: service.department,
-      category: service.category,
-      price: String(service.price),
-      hsnSacCode: service.hsnSacCode || "999312",
-      gstRate: String(service.gstRate || 0),
-      description: service.description || "",
-      isActive: service.isActive,
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.code || !formData.name || !formData.department || !formData.price) {
-      toast({ title: "Validation Error", description: "Please fill in Code, Name, Department, and Price", variant: "error" });
-      return;
-    }
-
-    setSubmitting(true);
+  const commit = async (kind: string, action: () => Promise<unknown>, success: string, done: () => void) => {
+    if (writeLock.current || !canManage || loading || loadError || authScopeKey(useAuthStore.getState().user) !== scope) return;
+    writeLock.current = true;
+    setBusy(kind);
     try {
-      const payload = {
-        code: formData.code.trim().toUpperCase(),
-        name: formData.name.trim(),
-        department: formData.department.trim(),
-        category: formData.category,
-        price: parseFloat(formData.price),
-        hsnSacCode: formData.hsnSacCode.trim(),
-        gstRate: parseFloat(formData.gstRate || "0"),
-        description: formData.description.trim(),
-        isActive: formData.isActive,
-      };
-
-      if (editingService) {
-        await api.put(`/service-catalog/${editingService._id || editingService.id}`, payload);
-        toast({ title: "Updated", description: "Service rate updated successfully", variant: "success" });
-      } else {
-        await api.post("/service-catalog", payload);
-        toast({ title: "Created", description: "New service item added to catalog", variant: "success" });
+      await action();
+      if (!alive.current || authScopeKey(useAuthStore.getState().user) !== scope) return;
+      done();
+      toast({ title: success, variant: "success" });
+      await fetchServices();
+    } catch (error) {
+      if (alive.current && authScopeKey(useAuthStore.getState().user) === scope) {
+        const response = (error as { response?: { status?: number; data?: { message?: string } } })?.response;
+        const message = kind === "save" && response?.status === 409 ? "This service code is already in use. Choose another code or edit the existing service."
+          : userFacingError(response?.data?.message, "Your request could not be completed. Check the catalog before retrying.");
+        if (kind === "save") setFormError(message);
+        toast({ title: "Could not save", description: message, variant: "error" });
       }
-
-      setIsModalOpen(false);
-      fetchServices();
-    } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Operation failed", variant: "error" });
     } finally {
-      setSubmitting(false);
+      writeLock.current = false;
+      if (alive.current) setBusy(null);
     }
   };
-
-  const handleDeactivate = async (service: ServiceItem) => {
-    try {
-      await api.delete(`/service-catalog/${service._id || service.id}`);
-      toast({ title: "Deactivated", description: `${service.name} deactivated`, variant: "success" });
-      fetchServices();
-    } catch (err: any) {
-      toast({ title: "Error", description: err.response?.data?.message || "Failed to deactivate service", variant: "error" });
-    }
+  const save = (event: FormEvent) => {
+    event.preventDefault();
+    if (!editor || writeLock.current) return;
+    const invalid = validateServiceForm(form);
+    if (invalid) { setFormTab(invalid.tab); setFormError(invalid.message); return; }
+    setFormError(null);
+    const payload = {
+      ...form, code: form.code.trim().toUpperCase(), name: form.name.trim(), department: form.department.trim(),
+      price: Number(form.price), gstRate: Number(form.gstRate), hsnSacCode: form.hsnSacCode.trim(), description: form.description.trim(),
+    };
+    const service = editor.service;
+    void commit("save", () => service ? api.put(`/service-catalog/${service._id || service.id}`, payload) : api.post("/service-catalog", payload), service ? "Service updated" : "Service added", () => setEditor(null));
   };
+  const update = <K extends keyof ServiceForm>(key: K, value: ServiceForm[K]) => setForm(current => ({ ...current, [key]: value }));
+  const disabled = Boolean(busy || loading || loadError);
+  const term = search.trim().toLowerCase();
+  const filtered = services.filter(service =>
+    (status === "all" || service.isActive === (status === "active")) && (!category || service.category === category) &&
+    (!term || [service.code, service.name, service.department, service.hsnSacCode, service.description].some(value => value?.toLowerCase().includes(term))))
+    .sort((a, b) => sort === "price-low" ? a.price - b.price : sort === "price-high" ? b.price - a.price : String(a[sort as "code" | "name" | "category" | "department"]).localeCompare(String(b[sort as "code" | "name" | "category" | "department"])));
+  const count = loaded ? services.length : undefined;
+  const activeCount = loaded ? services.filter(service => service.isActive).length : undefined;
+  const actions = (service: ServiceItem) => canManage ? <Dropdown align="right" trigger={
+    <Button variant="ghost" size="sm" className="h-11 min-h-11 w-11 min-w-11 p-0" aria-label={`Actions for ${service.name}`} disabled={disabled}><MoreHorizontal size={18} /></Button>
+  } items={[
+    { label: "Edit service", onClick: () => openEditor(service) },
+    { label: service.isActive ? "Deactivate" : "Reactivate", onClick: () => { if (!disabled) setConfirmation({ service, active: !service.isActive }); } },
+  ]} /> : null;
+  const columns: Column<ServiceItem>[] = [
+    { key: "name", header: "Service", render: service => <div className="grid min-w-0 gap-1 wrap-anywhere [&>strong]:text-sm [&>strong]:font-semibold [&>span]:text-xs [&>span]:text-text-muted"><strong>{service.name}</strong><span>{service.code}{service.description ? ` \u00b7 ${service.description}` : ""}</span></div> },
+    { key: "category", header: "Category", width: "8rem", render: service => <span className="whitespace-nowrap">{categoryLabel(service.category)}</span> },
+    { key: "department", header: "Department" },
+    { key: "price", header: "Base price", width: "7rem", align: "right", render: service => <strong className="whitespace-nowrap tabular-nums">{money(service.price)}</strong> },
+    { key: "gstRate", header: "GST / SAC", width: "6rem", render: service => <div className="grid min-w-0 gap-1 wrap-anywhere [&>strong]:text-sm [&>strong]:font-semibold [&>span]:text-xs [&>span]:text-text-muted"><span className="text-text">{service.gstRate ?? 0}% GST</span><span>{service.hsnSacCode || "Not set"}</span></div> },
+    { key: "isActive", header: "Status", width: "6rem", render: service => <Badge variant={service.isActive ? "success" : "default"} size="sm" dot>{service.isActive ? "Active" : "Inactive"}</Badge> },
+    ...(canManage ? [{ key: "actions", header: "", align: "right" as const, render: actions }] : []),
+  ];
+  const noMatches = Boolean(search || category || status !== "all");
+  const emptyMessage = noMatches ? "No services match these filters." : "No services yet.";
+  const gstOptions = [...new Set([0, 5, 12, 18, 28, Number(form.gstRate)])].sort((a, b) => a - b).map(rate => ({ value: String(rate), label: `${rate}%` }));
 
-  const handleSeedDefaults = async () => {
-    setSeeding(true);
-    try {
-      const res = await api.post("/service-catalog/seed");
-      toast({ title: "Catalog Seeded", description: res.data?.message || "Default services added", variant: "success" });
-      fetchServices();
-    } catch (err: any) {
-      toast({ title: "Seed Failed", description: err.response?.data?.message || "Could not seed catalog", variant: "error" });
-    } finally {
-      setSeeding(false);
-    }
-  };
-
-  const getCategoryBadgeVariant = (category: string) => {
-    switch (category) {
-      case "consultation": return "primary";
-      case "procedure": return "warning";
-      case "lab_test": return "success";
-      case "radiology": return "primary";
-      case "bed_charge": return "danger";
-      default: return "default";
-    }
-  };
-
-  // Stats calculation
-  const totalCount = services.length;
-  const consultationCount = services.filter((s) => s.category === "consultation").length;
-  const labCount = services.filter((s) => s.category === "lab_test").length;
-  const bedCount = services.filter((s) => s.category === "bed_charge").length;
-
-  return (
-    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12">
-      {/* ──────────────────────────────────────────────────────────────────────────
-          1. TOP EXECUTIVE HEADER BANNER
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-                Services & pricing
-              </h1>
-              <Badge variant="primary" size="sm" className="font-semibold">
-                Service rates
-              </Badge>
-            </div>
-            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              Manage service prices and tax details used on patient bills.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto shrink-0">
-            {canManageBilling && totalCount === 0 && !loading && !loadError && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSeedDefaults}
-                disabled={seeding}
-                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] text-xs font-semibold transition-colors"
-              >
-                Add default services
-              </Button>
-            )}
-            {canManageBilling && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleOpenAddModal}
-                className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px] font-semibold"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Add Service Item
-              </Button>
-            )}
-          </div>
-        </div>
+  return <div className="grid w-full min-w-0 gap-3 sm:gap-4">
+    <header className="flex flex-wrap items-center justify-between gap-3">
+      <div><h1 className="page-title">Services {count !== undefined && <span className="ml-1 text-xs font-normal tracking-normal text-text-muted tabular-nums">{count}</span>}</h1><p className="mt-1 hidden text-xs text-text-muted sm:block">Service rates and tax details for patient bills.</p></div>
+      <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+        <Button variant="ghost" size="sm" className="h-11 min-h-11 w-11 min-w-11 p-0" aria-label="Refresh services" onClick={() => void fetchServices()} disabled={loading || Boolean(busy)}><RefreshCw size={18} className={loading ? "animate-spin" : ""} /></Button>
+        {canManage && <Button size="sm" aria-label="Add service" onClick={() => openEditor(null)} disabled={disabled}><Plus size={16} /><span className="sm:hidden">Add</span><span className="hidden sm:inline">Add service</span></Button>}
       </div>
+    </header>
 
-      {/* ──────────────────────────────────────────────────────────────────────────
-          2. KPI STATS CARDS GRID
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <StatCard loading={loading}
-          label="Total Catalog Services"
-          value={totalCount.toString()}
-          description="Active chargemaster items"
-          icon={<FileText className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard loading={loading}
-          label="Consultation Tariffs"
-          value={consultationCount.toString()}
-          description="OPD / Specialist rates"
-          icon={<Stethoscope className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard loading={loading}
-          label="Diagnostic Lab Tests"
-          value={labCount.toString()}
-          description="Pathology & Lab tariff list"
-          icon={<FlaskConical className="w-5 h-5 text-text-secondary" />}
-        />
-        <StatCard loading={loading}
-          label="IPD Bed Charges"
-          value={bedCount.toString()}
-          description="Ward / ICU room tariffs"
-          icon={<Building2 className="w-5 h-5 text-text-secondary" />}
-        />
+    <section aria-label="Service filters"><Card padding="sm" contentClassName="grid min-w-0 gap-3 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center">
+      <Tabs className="min-w-0 [&_[role=tablist]]:gap-1 [&_[role=tab]]:min-h-11 [&_[role=tab]]:gap-1 [&_[role=tab]]:px-2 [&_[role=tab]]:text-xs [&_[role=tab]>span]:ml-0" variant="pills" activeTab={status} onChange={setStatus} scrollActiveIntoView={false} tabs={[
+        { id: "all", label: "All", badge: count }, { id: "active", label: "Active", badge: activeCount },
+        { id: "inactive", label: "Inactive", badge: count !== undefined && activeCount !== undefined ? count - activeCount : undefined },
+      ]} />
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 [&>button]:min-h-11">
+        <Input type="search" aria-label="Search services" placeholder="Search services" value={search} onChange={event => setSearch(event.target.value)} leftIcon={<Search size={16} />} />
+        <Button variant="outline" size="sm" aria-expanded={filtersOpen} aria-controls="service-filters" onClick={() => setFiltersOpen(open => !open)}><SlidersHorizontal size={16} /> Filters{category ? " (1)" : ""}</Button>
       </div>
+      {filtersOpen && <div id="service-filters" className="col-span-full grid gap-3 border-t border-border pt-3 sm:grid-cols-2">
+        <Select label="Category" value={category} onChange={event => setCategory(event.target.value)} options={[{ value: "", label: "All categories" }, ...serviceCategories]} />
+        <Select label="Sort by" value={sort} onChange={event => setSort(event.target.value)} options={[
+          { value: "name", label: "Name" }, { value: "code", label: "Code" }, { value: "category", label: "Category" }, { value: "department", label: "Department" },
+          { value: "price-low", label: "Price: low to high" }, { value: "price-high", label: "Price: high to low" },
+        ]} />
+      </div>}
+    </Card></section>
 
-      {/* Filters & Search */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-            <div className="w-full sm:w-72">
-              <Input
-                placeholder="Search by code, service name, HSN/SAC..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+    {loadError && <Alert variant="error" title="Catalog unavailable" action={<Button variant="outline" size="sm" onClick={() => void fetchServices()}>Try again</Button>}>{loadError}</Alert>}
+    <section className="min-w-0 md:overflow-hidden md:rounded-container md:border md:border-border md:bg-surface [&_table]:min-w-3xl" aria-label="Service catalog" aria-busy={loading}>
+      <Table variant="flat" density="compact" fitContent searchable={false} showColumnVisibility={false} pagination={filtered.length > 10} loading={loading && !loaded}
+        columns={columns} data={filtered} emptyMessage={loadError && !loaded ? "Results are unavailable. Please try again." : emptyMessage}
+        renderMobileCard={service => <article><Card padding="sm" contentClassName="grid min-w-0 gap-2.5">
+          <div className="flex items-start justify-between gap-2"><div className="grid min-w-0 gap-1 wrap-anywhere [&>strong]:text-sm [&>strong]:font-semibold [&>span]:text-xs [&>span]:text-text-muted"><strong>{service.name}</strong><span>{service.code} &middot; {categoryLabel(service.category)}</span></div>{actions(service)}</div>
+          <div className="flex items-center justify-between gap-2 text-xs text-text-muted wrap-anywhere"><span>{service.department}</span><Badge variant={service.isActive ? "success" : "default"} size="sm" dot>{service.isActive ? "Active" : "Inactive"}</Badge></div>
+          {service.description && <p className="text-xs text-text-muted wrap-anywhere">{service.description}</p>}
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border pt-2.5 [&>strong]:text-sm [&>strong]:tabular-nums [&_small]:text-xs [&_small]:font-normal [&_small]:text-text-muted [&>span]:text-xs [&>span]:text-text-muted [&>span]:wrap-anywhere"><strong>{money(service.price)} <small>base</small></strong><span>{service.gstRate ?? 0}% GST &middot; SAC/HSN {service.hsnSacCode || "Not set"}</span></div>
+        </Card></article>} />
+    </section>
+    {loaded && !loadError && <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted">
+      <span>{filtered.length} of {services.length} services</span>
+      {noMatches && <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setCategory(""); setStatus("all"); }}>Clear filters</Button>}
+      {canManage && services.length === 0 && <Button variant="outline" size="sm" onClick={() => setSeedOpen(true)} disabled={disabled}>Add default services</Button>}
+    </div>}
+
+    <QueueDialog open={Boolean(editor)} onClose={() => setEditor(null)} title={editor?.service ? "Edit service" : "Add service"}
+      description={editor?.service ? editor.service.code : "Create a billable service for your organization."} size="md" busy={Boolean(busy)}
+      footer={<><Button variant="outline" disabled={Boolean(busy)} onClick={() => setEditor(null)}>Cancel</Button><Button form="service-form" type="submit" loading={busy === "save"} disabled={loading || Boolean(loadError)}>Save service</Button></>}>
+      <form id="service-form" noValidate onSubmit={save} className="grid content-start gap-3">
+        <Tabs variant="pills" activeTab={formTab} onChange={setFormTab} scrollActiveIntoView={false} tabs={[{ id: "service", label: "Service" }, { id: "pricing", label: "Pricing & tax" }]} />
+        {formError && <Alert variant="error" title="Check service details">{formError}</Alert>}
+        <fieldset disabled={Boolean(busy)} className="m-0 min-w-0 border-0 p-0">
+          <div hidden={formTab !== "service"} className="grid gap-3 [&[hidden]]:hidden">
+            <div className="grid gap-3 min-[400px]:grid-cols-2">
+              <Input label="Service name *" value={form.name} onChange={event => update("name", event.target.value)} required />
+              <Input label="Service code *" placeholder="CONS-001" value={form.code} onChange={event => update("code", event.target.value.toUpperCase())} disabled={Boolean(editor?.service)} required />
+              <Select label="Category" value={form.category} onChange={event => update("category", event.target.value)} options={serviceCategories} />
+              <Input label="Department *" value={form.department} onChange={event => update("department", event.target.value)} required />
             </div>
-            <div className="flex gap-3 w-full sm:w-auto">
-              <Select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                options={[
-                  { value: "", label: "All Categories" },
-                  { value: "consultation", label: "Consultation" },
-                  { value: "procedure", label: "Procedure" },
-                  { value: "lab_test", label: "Lab Test" },
-                  { value: "radiology", label: "Radiology" },
-                  { value: "bed_charge", label: "Bed Charge" },
-                  { value: "pharmacy", label: "Pharmacy" },
-                  { value: "nursing", label: "Nursing Care" },
-                  { value: "other", label: "Other" },
-                ]}
-              />
+            <Textarea label="Description" value={form.description} onChange={event => update("description", event.target.value)} rows={2} placeholder="Optional service details" />
+            {editor?.service && <p className="text-xs leading-relaxed text-text-muted">The service code stays fixed. Use the catalog menu to deactivate or reactivate a service.</p>}
+          </div>
+          <div hidden={formTab !== "pricing"} className="grid gap-3 [&[hidden]]:hidden">
+            <div className="grid gap-3 min-[400px]:grid-cols-2">
+              <Input label="Base price (INR) *" type="number" min="0" step="0.01" inputMode="decimal" value={form.price} onChange={event => update("price", event.target.value)} required />
+              <Select label="GST rate" value={form.gstRate} onChange={event => update("gstRate", event.target.value)} options={gstOptions} />
             </div>
+            <Input label="SAC / HSN code" value={form.hsnSacCode} onChange={event => update("hsnSacCode", event.target.value)} placeholder="999312" />
+            <p className="text-xs leading-relaxed text-text-muted">Enter the base price before GST. A zero price is allowed. Confirm the applicable tax rate for this service.</p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Services Table */}
-      <Card>
-        <CardHeader className="p-4 border-b border-border flex justify-between items-center">
-          <CardTitle className="text-base font-bold">Service Rate Schedule</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table
-            error={loadError}
-            onRetry={fetchServices}
-            loading={loading}
-            mobileCardView
-            columns={([
-              {
-                key: "code",
-                header: "Service Code",
-                sortable: true,
-                render: (row: ServiceItem) => <span className="font-mono text-xs font-bold text-accent">{row.code}</span>,
-              },
-              {
-                key: "name",
-                header: "Service Name",
-                sortable: true,
-                render: (row: ServiceItem) => (
-                  <div>
-                    <p className="font-semibold text-text text-sm">{row.name}</p>
-                    {row.description && <p className="text-xs text-text-muted">{row.description}</p>}
-                  </div>
-                ),
-              },
-              {
-                key: "department",
-                header: "Department",
-                sortable: true,
-                render: (row: ServiceItem) => <span className="text-xs font-medium text-text-secondary">{row.department}</span>,
-              },
-              {
-                key: "category",
-                header: "Category",
-                sortable: true,
-                render: (row: ServiceItem) => (
-                  <Badge variant={getCategoryBadgeVariant(row.category)} className="capitalize text-[11px]">
-                    {row.category.replace("_", " ")}
-                  </Badge>
-                ),
-              },
-              {
-                key: "price",
-                header: "Base Price (₹)",
-                sortable: true,
-                render: (row: ServiceItem) => <span className="font-bold text-text">₹{row.price.toLocaleString("en-IN")}</span>,
-              },
-              {
-                key: "hsnSacCode",
-                header: "SAC / HSN",
-                render: (row: ServiceItem) => <span className="font-mono text-xs text-text-secondary">{row.hsnSacCode || "999312"}</span>,
-              },
-              {
-                key: "gstRate",
-                header: "GST Rate",
-                render: (row: ServiceItem) => <span className="text-xs text-text-secondary">{row.gstRate || 0}%</span>,
-              },
-              {
-                key: "isActive",
-                header: "Status",
-                render: (row: ServiceItem) => (
-                  <Badge variant={row.isActive ? "success" : "danger"}>
-                    {row.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                ),
-              },
-              {
-                key: "actions",
-                header: "Actions",
-                align: "right",
-                render: (row: ServiceItem) => (
-                  <div className="flex items-center justify-end">
-                    <Dropdown
-                      align="right"
-                      trigger={
-                        <Button size="sm" variant="outline" className="h-9 w-9 p-0 flex items-center justify-center rounded-lg cursor-pointer shrink-0 min-h-[36px] min-w-[36px]" title="Row Actions">
-                          <svg className="h-4 w-4 text-text-secondary" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                          </svg>
-                        </Button>
-                      }
-                      items={[
-                        { label: "Edit Rates & Tax", onClick: () => handleOpenEditModal(row) },
-                        ...(row.isActive ? [{ label: "Deactivate Item", onClick: () => handleDeactivate(row) }] : []),
-                      ]}
-                    />
-                  </div>
-                ),
-              },
-            ] satisfies Column<ServiceItem>[]).filter(column => column.key !== "actions" || canManageBilling)}
-            data={services}
-            emptyMessage={canManageBilling ? "No services match the current search or category. Clear filters or add a service." : "No services match the current search or category. Clear filters or ask your billing administrator to add services."}
-            renderMobileCard={(row: ServiceItem) => (
-              <div
-                key={row._id || row.id}
-                className="p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-bold text-accent dark:text-accent px-2 py-0.5 rounded-md bg-primary-500/10 border border-primary-500/20">
-                      {row.code}
-                    </span>
-                    <Badge variant={getCategoryBadgeVariant(row.category)} size="sm" className="capitalize text-[10px]">
-                      {row.category.replace("_", " ")}
-                    </Badge>
-                  </div>
-                  <Badge variant={row.isActive ? "success" : "danger"} size="sm" dot className="text-[10px]">
-                    {row.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-text text-sm">{row.name}</h3>
-                  {row.description && (
-                    <p className="text-xs text-text-muted mt-0.5 line-clamp-2">{row.description}</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs py-2 px-3 rounded-xl bg-surface-alt/70 border border-border/50">
-                  <div>
-                    <span className="text-text-muted text-[10px] uppercase font-bold block">Department</span>
-                    <span className="font-semibold text-text truncate mt-0.5 block">{row.department}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-text-muted text-[10px] uppercase font-bold block">Base Price</span>
-                    <span className="font-bold text-sm text-text mt-0.5 block">₹{row.price.toLocaleString("en-IN")}</span>
-                  </div>
-                  <div className="col-span-2 pt-1 border-t border-border/40 flex items-center justify-between text-text-secondary text-[11px]">
-                    <span>SAC/HSN: <strong className="font-mono text-text">{row.hsnSacCode || "999312"}</strong></span>
-                    <span>GST: <strong className="font-mono text-text">{row.gstRate || 0}%</strong></span>
-                  </div>
-                </div>
-
-                {canManageBilling && <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/60">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleOpenEditModal(row)}
-                    className="min-h-[38px] text-xs font-semibold flex-1 justify-center"
-                  >
-                    Edit Rates & Tax
-                  </Button>
-                  {row.isActive && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDeactivate(row)}
-                      className="min-h-[38px] text-xs font-semibold text-danger hover:bg-danger/10 px-3"
-                    >
-                      Deactivate
-                    </Button>
-                  )}
-                </div>}
-              </div>
-            )}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Add/Edit Service Modal */}
-      <Modal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingService ? `Edit Service: ${editingService.code}` : "Create Service Catalog Item"}
-        size="md"
-      >
-        <form onSubmit={handleFormSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Service Code *"
-              placeholder="e.g. SRV-CONS-001"
-              value={formData.code}
-              onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-              disabled={!!editingService}
-              required
-            />
-            <Input
-              label="Service Name *"
-              placeholder="e.g. Speciality Consultation"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Department *"
-              placeholder="e.g. General Medicine"
-              value={formData.department}
-              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-              required
-            />
-            <Select
-              label="Service Category *"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              options={[
-                { value: "consultation", label: "Consultation" },
-                { value: "procedure", label: "Procedure" },
-                { value: "lab_test", label: "Lab Test" },
-                { value: "radiology", label: "Radiology" },
-                { value: "bed_charge", label: "Bed Charge" },
-                { value: "pharmacy", label: "Pharmacy" },
-                { value: "nursing", label: "Nursing Care" },
-                { value: "other", label: "Other" },
-              ]}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Input
-              label="Price (₹) *"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="500"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              required
-            />
-            <Input
-              label="SAC / HSN Code"
-              placeholder="999312"
-              value={formData.hsnSacCode}
-              onChange={(e) => setFormData({ ...formData, hsnSacCode: e.target.value })}
-            />
-            <Select
-              label="GST Rate %"
-              value={formData.gstRate}
-              onChange={(e) => setFormData({ ...formData, gstRate: e.target.value })}
-              options={[
-                { value: "0", label: "0% (Exempt Healthcare)" },
-                { value: "5", label: "5%" },
-                { value: "12", label: "12%" },
-                { value: "18", label: "18%" },
-                { value: "28", label: "28%" },
-              ]}
-            />
-          </div>
-
-          <Textarea
-            label="Service Description (Optional)"
-            placeholder="Clinical details, scope of procedure..."
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          />
-
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 border-t border-border pt-4 mt-6">
-            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
-              Cancel
-            </Button>
-            <Button type="submit" loading={submitting} className="w-full sm:w-auto min-h-[44px] sm:min-h-[36px]">
-              {editingService ? "Save Changes" : "Create Item"}
-            </Button>
-          </div>
-        </form>
-      </Modal>
-    </div>
-  );
+        </fieldset>
+      </form>
+    </QueueDialog>
+    <ConfirmDialog open={Boolean(confirmation)} onClose={() => setConfirmation(null)} loading={busy === "status"}
+      title={confirmation?.active ? "Reactivate service?" : "Deactivate service?"} description={`${confirmation?.service.name || "This service"} will be marked ${confirmation?.active ? "active" : "inactive"}. You can change this later.`}
+      confirmLabel={confirmation?.active ? "Reactivate" : "Deactivate"} variant={confirmation?.active ? "primary" : "danger"} onConfirm={() => {
+        if (!confirmation) return;
+        const { service, active } = confirmation;
+        void commit("status", () => active ? api.put(`/service-catalog/${service._id || service.id}`, { isActive: true }) : api.delete(`/service-catalog/${service._id || service.id}`), active ? "Service reactivated" : "Service deactivated", () => setConfirmation(null));
+      }} />
+    <ConfirmDialog open={seedOpen} onClose={() => setSeedOpen(false)} loading={busy === "seed"} title="Add default services?"
+      description="Add the starter catalog. Review its prices and tax details before billing patients." confirmLabel="Add defaults" onConfirm={() => {
+        void commit("seed", () => api.post("/service-catalog/seed"), "Default services added", () => setSeedOpen(false));
+      }} />
+  </div>;
 }

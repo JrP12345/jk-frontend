@@ -27,6 +27,66 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); router.push.mockReset(); router.replace.mockReset(); window.history.replaceState(null, "", "/"); delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView; });
 
 describe("Root organization and identity scope", () => {
+  it("preserves server filters and organization scope across pagination and mobile filter disclosure", async () => {
+    window.history.replaceState(null, "", "/dashboard/admin/users?organizationId=org-b");
+    vi.mocked(api.get).mockImplementation(async path => response(path === "/organizations" ? organizations : { users: [identity], total: 75, totalPages: 3 }));
+    mount(<UsersPage />);
+    await screen.findByRole("list", { name: "Global identities" });
+    const summary = screen.getAllByRole("definition")[0].parentElement;
+    expect(summary).toHaveTextContent("Matching identities75");
+    const toggle = screen.getByRole("button", { name: "User filters" });
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(screen.getByRole("combobox", { name: "Global role" }));
+    fireEvent.click(screen.getByRole("option", { name: "nurse", exact: true }));
+    await waitFor(() => expect(userRequests().at(-1)?.[0]).toContain("role=nurse"));
+    await screen.findByRole("list", { name: "Global identities" });
+    fireEvent.click(screen.getByRole("button", { name: "Go to next page" }));
+    await waitFor(() => expect(userRequests().at(-1)?.[0]).toContain("page=2"));
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search global users" }), { target: { value: "Shared" } });
+    await waitFor(() => {
+      const request = new URLSearchParams(String(userRequests().at(-1)?.[0]).split("?")[1]);
+      expect(Object.fromEntries(request)).toMatchObject({ q: "Shared", role: "nurse", organizationId: "org-b", page: "1" });
+    });
+    expect(api.put).not.toHaveBeenCalled();
+  });
+
+  it("shows a failed identity read as unavailable and retries without displaying an empty result", async () => {
+    let fail = true;
+    vi.mocked(api.get).mockImplementation(async path => {
+      if (path === "/organizations") return response(organizations);
+      if (fail) throw new Error("offline");
+      return response({ users: [identity], total: 1, totalPages: 1 });
+    });
+    mount(<UsersPage />);
+    await screen.findByText("Unable to load identities");
+    expect(screen.queryByText("No identities match these filters.")).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText("Unavailable")).toHaveLength(3);
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("list", { name: "Global identities" })).toHaveTextContent(identity.name);
+  });
+
+  it("keeps self-account and inactive-identity actions restricted in the responsive directory", async () => {
+    const current = { ...identity, id: "root-1", name: "My platform account", role: "root", memberships: [] };
+    const inactive = { ...identity, id: "inactive", name: "Inactive staff", isActive: false };
+    vi.mocked(api.get).mockImplementation(async path => response(path === "/organizations" ? organizations : { users: [current, inactive], total: 2, totalPages: 1 }));
+    mount(<UsersPage />);
+    const list = await screen.findByRole("list", { name: "Global identities" });
+    const ownRow = within(list).getByText(current.name).closest("li")!;
+    const inactiveRow = within(list).getByText(inactive.name).closest("li")!;
+    expect(within(ownRow).getByText("Your account")).toBeInTheDocument();
+    expect(within(ownRow).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(inactiveRow).queryByRole("button", { name: "Login as" })).not.toBeInTheDocument();
+    fireEvent.click(within(inactiveRow).getByRole("button", { name: "Reactivate identity" }));
+    const dialog = screen.getByRole("dialog", { name: "Reactivate global identity?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(api.put).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().impersonate).not.toHaveBeenCalled();
+  });
+
   it("loads identities for the URL organization and links membership management to that workspace", async () => {
     window.history.replaceState(null, "", "/dashboard/admin/users?organizationId=org-b");
     mount(<UsersPage />);

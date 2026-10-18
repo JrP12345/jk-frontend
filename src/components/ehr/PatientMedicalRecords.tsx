@@ -2,16 +2,19 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import styles from "./PatientMedicalRecords.module.css";
 import PatientHistoryAccess from "./PatientHistoryAccess";
-import { Alert, Card, CardHeader, CardTitle, CardContent, Button, Badge, Tabs, LoadingState, Skeleton, SkeletonCardGrid } from "@/components/ui";
+import { Alert, Card, CardHeader, CardTitle, CardContent, Button, Badge, Tabs, Spinner, LoadingState, Skeleton, SkeletonCardGrid } from "@/components/ui";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "../clinical/UnifiedDocumentModal";
 
 interface PatientMedicalRecordsProps {
   patientId: string;
   accessToken?: string | null;
+  compact?: boolean;
+  includeReceipts?: boolean;
 }
 
-export function PatientMedicalRecords({ patientId, accessToken }: PatientMedicalRecordsProps) {
+export function PatientMedicalRecords({ patientId, accessToken, compact = false, includeReceipts = true }: PatientMedicalRecordsProps) {
   const [localAccessToken, setRecordAccessToken] = useState<string | null>(null);
   const recordAccessToken = accessToken === undefined ? localAccessToken : accessToken;
   const [notes, setNotes] = useState<any[]>([]);
@@ -35,7 +38,7 @@ export function PatientMedicalRecords({ patientId, accessToken }: PatientMedical
         setReadErrors({ notes: false, invoices: false });
         const [notesRead, invoiceRead] = await Promise.allSettled([
           api.get(`/patients/${patientId}/clinical-notes/history${recordAccessToken ? "?scope=all" : ""}`, { signal: controller.signal, headers: recordAccessToken ? { "X-Patient-Record-Access": recordAccessToken } : {} }),
-          api.get(`/invoices?patientId=${encodeURIComponent(patientId)}`, { signal: controller.signal }),
+          includeReceipts ? api.get(`/invoices?patientId=${encodeURIComponent(patientId)}`, { signal: controller.signal }) : Promise.resolve({ data: { data: [] } }),
         ]);
 
         if (controller.signal.aborted) return;
@@ -56,7 +59,7 @@ export function PatientMedicalRecords({ patientId, accessToken }: PatientMedical
 
     loadRecords();
     return () => controller.abort();
-  }, [patientId, recordAccessToken, readAttempt]);
+  }, [patientId, recordAccessToken, readAttempt, includeReceipts]);
 
   const handleDownloadPrescription = (note: any) => {
     setUnifiedDoc({
@@ -80,9 +83,11 @@ export function PatientMedicalRecords({ patientId, accessToken }: PatientMedical
     setRxModalOpen(true);
   };
 
+  if (loading && compact) return <div className={styles.compactLoading} role="status" aria-label="Loading medical records"><Spinner size="sm" /><p>Loading medical records...</p></div>;
+
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className={compact ? styles.compact : "space-y-6"}>
         {accessToken === undefined && <PatientHistoryAccess patientId={patientId} token={recordAccessToken} onChange={setRecordAccessToken} />}
         <LoadingState label="Loading medical records">
           <div className="border-b border-border pb-3 space-y-2">
@@ -101,23 +106,26 @@ export function PatientMedicalRecords({ patientId, accessToken }: PatientMedical
   }
 
   return (
-    <div className="space-y-6">
+    <div className={compact ? styles.compact : "space-y-6"}>
       {accessToken === undefined && <PatientHistoryAccess patientId={patientId} token={recordAccessToken} onChange={setRecordAccessToken} />}
       {(readErrors.notes || readErrors.invoices) && <Alert variant="error" title="Unable to load medical records" action={<Button variant="outline" size="sm" onClick={() => setReadAttempt(attempt => attempt + 1)}>Try again</Button>}>
         {readErrors.notes && readErrors.invoices ? "Consultation notes and receipts" : readErrors.notes ? "Consultation notes" : "Billing receipts"} could not be loaded. Check your connection and try again.
       </Alert>}
       <div className="flex items-center justify-between border-b border-border pb-3">
         <div>
-          <h2 className="text-xl font-bold text-text">Health Records & Documents</h2>
-          <p className="text-xs text-text-secondary">View signed consultation notes, Rx prescriptions, and payment receipts.</p>
+          <h2 className="text-xl font-bold text-text">{compact ? "Health documents" : "Health Records & Documents"}</h2>
+          <p className="text-xs text-text-secondary">{compact ? includeReceipts ? "Signed notes, prescriptions and receipts." : "Signed notes and prescriptions." : "View signed consultation notes, Rx prescriptions, and payment receipts."}</p>
         </div>
       </div>
 
       <Tabs
+        className={compact ? styles.tabs : undefined}
+        scrollActiveIntoView={!compact}
         tabs={[
           {
             id: "prescriptions",
-            label: `Signed Consultations & Rx${readErrors.notes ? "" : ` (${notes.length})`}`,
+            label: compact ? "Prescriptions" : `Signed Consultations & Rx${readErrors.notes ? "" : ` (${notes.length})`}`,
+            badge: compact && !readErrors.notes ? notes.length : undefined,
             content: (
               <div className="space-y-4">
                 {readErrors.notes ? null : notes.length === 0 ? (
@@ -192,7 +200,8 @@ export function PatientMedicalRecords({ patientId, accessToken }: PatientMedical
           },
           {
             id: "billing",
-            label: `Invoices & Receipts${readErrors.invoices ? "" : ` (${invoices.length})`}`,
+            label: compact ? "Receipts" : `Invoices & Receipts${readErrors.invoices ? "" : ` (${invoices.length})`}`,
+            badge: compact && !readErrors.invoices ? invoices.length : undefined,
             content: (
               <div className="space-y-4">
                 {readErrors.invoices ? null : invoices.length === 0 ? (
@@ -221,7 +230,7 @@ export function PatientMedicalRecords({ patientId, accessToken }: PatientMedical
               </div>
             ),
           },
-        ]}
+        ].filter(tab => includeReceipts || tab.id !== "billing")}
       />
 
       {/* Official Prescription Download Modal */}

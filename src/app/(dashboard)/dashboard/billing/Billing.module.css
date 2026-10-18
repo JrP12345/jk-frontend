@@ -1,0 +1,99 @@
+.workspace { width: 100%; margin-inline: 0; display: grid; gap: 12px; color: var(--text-primary); padding-bottom: 24px; overflow-anchor: none; }
+.workspace :where(div, section, header, footer) { min-width: 0; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.header h1 { font-size: 1.375rem; line-height: 1.4; font-weight: 700; letter-spacing: -.025em; }
+.header p { margin-top: 2px; color: var(--text-muted); font-size: .75rem; }
+.headerActions, .rowActions { display: flex; align-items: center; gap: 6px; }
+.headerActions { flex-shrink: 0; }
+.iconButton { width: 44px; min-width: 44px; height: 44px; padding: 0; }
+.directory { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+.filters { padding: 10px; display: grid; gap: 10px; border-bottom: 1px solid var(--border); }
+.filters [role="tablist"] { box-shadow: none; }
+.filters [role="tab"] { min-height: 44px; padding-inline: 14px; font-size: .75rem; }
+.searchRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.searchRow > :only-child { grid-column: 1 / -1; }
+.searchRow > :nth-child(2) { width: 200px; }
+.identity { display: flex; flex-direction: column; gap: 3px; overflow-wrap: anywhere; }
+.identity strong { font-size: .875rem; font-weight: 600; }
+.identity span, .identity small, .amount small { font-size: .75rem; color: var(--text-muted); }
+.identity > span { line-height: 1.5; }
+.amount { display: grid; gap: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.amount strong { font-size: .875rem; }
+.rowActions { justify-content: flex-end; }
+.rowActions button { min-height: 40px; }
+.invoiceCard { padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); display: grid; gap: 10px; }
+.cardHeading { display: flex; gap: 8px; justify-content: space-between; align-items: flex-start; }
+.cardHeading > :last-child { flex-shrink: 0; }
+.visit { color: var(--text-muted); font-size: .75rem; overflow-wrap: anywhere; }
+.cardAmounts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-block: 10px; border-block: 1px solid var(--border); }
+.cardAmounts > div, .summaryAmounts > div { display: grid; gap: 4px; }
+.cardAmounts small, .summaryAmounts small { color: var(--text-muted); font-size: .7rem; }
+.cardAmounts strong, .summaryAmounts strong { font-size: .875rem; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.cardAmounts > :last-child { text-align: right; }
+.pagination { padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: .75rem; }
+.pagination > div { display: flex; align-items: center; gap: 8px; }
+.pagination button { min-height: 40px; }
+.summary { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); font-size: .75rem; }
+.summary summary { padding: 12px; cursor: pointer; font-weight: 500; }
+.summary summary span { margin-left: 8px; color: var(--text-muted); font-weight: 400; }
+.summary p { padding: 0 12px 12px; color: var(--text-muted); line-height: 1.5; }
+.summaryAmounts { padding: 12px; border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.dialogActions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; width: 100%; }
+.dialogBody :where(p, span, strong) { overflow-wrap: anywhere; }
+.dialogBody form > :where(div, section) { min-width: 0; }
+.lineItems { display: grid; gap: 12px; }
+.lineItem { display: grid; grid-template-columns: minmax(0, 1fr) 110px 80px 44px; align-items: start; gap: 8px; }
+.lineItem > div { width: auto; }
+.lineItem :where(input, button) { width: 100%; }
+.lineItem > :last-child { padding-top: 0; }
+.lineItem > :last-child button { margin-top: 24px; }
+.dialogBody label { line-height: 1.5; }
+.readError { border: 1px solid var(--border); background: var(--surface-alt); border-radius: 12px; padding: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: .8125rem; }
+.feeEditor { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px; background: var(--warning-subtle, var(--surface)); border: 1px solid var(--border); border-radius: 10px; font-size: .75rem; }
+.feeEditor > :last-child { display: flex; align-items: center; gap: 6px; }
+.checkoutTotal { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px; border-radius: 12px; background: var(--surface-alt); border: 1px solid var(--border); }
+.receipt { display: grid; gap: 16px; font-size: .8125rem; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
+.receipt header { text-align: center; line-height: 1.6; }
+.receipt h3 { font-weight: 650; }
+.receipt header p { color: var(--text-muted); font-size: .75rem; }
+.receipt dl { display: grid; gap: 8px; }
+.receipt dl > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); align-items: baseline; gap: 12px; }
+.receipt dt { color: var(--text-muted); }
+.receipt dd { text-align: right; overflow-wrap: anywhere; }
+.receiptItems { display: grid; }
+.receiptItems > div { display: grid; grid-template-columns: minmax(0, 1fr) 30px minmax(60px, auto); gap: 8px; padding-block: 8px; border-bottom: 1px solid var(--border); }
+.receiptItems > div > :nth-child(n+2) { text-align: right; }
+.receiptItems > :first-child { color: var(--text-muted); font-size: .75rem; }
+.receiptStatus { text-align: center; font-size: .75rem; }
+.printFooter.printFooter > div { display: block; }
+.printFooter.printFooter > div > div { display: block; }
+.printFooter.printFooter > div > div > div { display: flex; width: 100%; }
+.printFooter.printFooter button { min-width: 0; flex: 1; }
+@media (max-width: 767px) {
+  .workspace { gap: 10px; }
+  .header { gap: 4px; }
+  .header h1 { font-size: 1.125rem; }
+  .header p { display: none; }
+  .headerActions { gap: 2px; }
+  .headerActions > button:not(.iconButton) { padding-inline: 10px; }
+  .filters { padding: 8px; gap: 8px; }
+  .filters [role="tab"] { padding-inline: 12px; }
+  .searchRow { grid-template-columns: 1fr; }
+  .searchRow > :nth-child(2) { width: 100%; }
+  .invoiceCard .rowActions > button { flex: 1; }
+  .invoiceCard .rowActions button { min-height: 44px; }
+  .directory { border: 0; background: transparent; }
+  .filters { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  .directory div:has(> div > .invoiceCard) { padding: 8px 0 0; }
+  .pagination { flex-wrap: wrap; padding: 8px; gap: 4px; }
+  .pagination > span { width: 100%; padding-inline: 8px; }
+  .pagination > div { width: 100%; justify-content: space-between; }
+}
+@media (max-width: 639px) {
+  .lineItem { grid-template-columns: minmax(0, 1fr) 70px 44px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .lineItem > :first-child { grid-column: 1 / -1; }
+  .summaryAmounts { grid-template-columns: 1fr; gap: 8px; }
+  .summaryAmounts > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .feeEditor { grid-template-columns: 1fr; gap: 8px; }
+  .feeEditor > :last-child > :nth-child(2) { width: auto; flex: 1; }
+}

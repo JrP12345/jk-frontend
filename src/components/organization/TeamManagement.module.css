@@ -1,0 +1,69 @@
+.workspace { width: 100%; margin-inline: 0; display: grid; gap: 12px; min-width: 0; color: var(--text-primary); overflow-anchor: none; padding-bottom: 16px; }
+.workspace :where(div, section, header) { min-width: 0; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.header h1, .header h2 { font-size: 1.25rem; font-weight: 650; letter-spacing: -.025em; }
+.header p { color: var(--text-muted); font-size: .75rem; margin-top: 3px; }
+.headerActions, .rowActions { display: flex; align-items: center; gap: 6px; }
+.headerActions { flex-shrink: 0; }
+.headerActions button { min-height: 44px; }
+.iconAction { min-width: 44px; width: 44px; min-height: 44px; padding: 0; }
+.selfSetup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.selfSetup p { font-size: .75rem; color: var(--text-muted); }
+.selfSetup button { padding-block: 4px; min-height: 36px; }
+.workspaceTabs > [role="tabpanel"] { padding-top: 10px; animation: none; }
+.workspaceTabs > [role="tablist"] { background: var(--surface); box-shadow: none; border: 1px solid var(--border); }
+.workspaceTabs > [role="tablist"] [role="tab"] { min-height: 44px; font-size: .8125rem; }
+.directory { border: 1px solid var(--border); background: var(--surface); border-radius: 14px; overflow: hidden; }
+.toolbar { display: grid; grid-template-columns: minmax(0,1fr) 210px; align-items: center; gap: 8px; padding: 10px; border-bottom: 1px solid var(--border); }
+.identity { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.identity > :last-child { display: grid; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
+.identity strong { font-size: .875rem; font-weight: 600; }
+.identity span { font-size: .75rem; color: var(--accent); }
+.identity small { font-size: .75rem; color: var(--text-muted); }
+.contact { display: grid; gap: 6px; color: var(--text-muted); font-size: .75rem; min-width: 0; overflow-wrap: anywhere; }
+.contact a { display: inline-flex; gap: 6px; align-items: center; }
+.contact a span { min-width: 0; overflow-wrap: anywhere; }
+.contact svg { flex-shrink: 0; }
+.directory td:has(.contact) { max-width: 20rem; }
+.rowActions { justify-content: flex-end; }
+.rowActions button { flex-shrink: 0; min-height: 40px; }
+.rowActions button span { white-space: nowrap; }
+.staffCard { display: grid; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.resultCount { padding: 12px; border-top: 1px solid var(--border); font-size: .75rem; color: var(--text-muted); }
+.dialogBody :where(div, section, form) { min-width: 0; }
+.dialogBody :where(p, span, strong) { overflow-wrap: anywhere; }
+.dialogBody [role="tablist"] { box-shadow: none; margin-bottom: 12px; }
+.dialogBody [role="tab"] { font-size: .8125rem; min-height: 44px; }
+.profileHeader.profileHeader { padding-right: 1rem; }
+.profileHeader h2, .profileHeader p { padding-right: 40px; }
+.profileHeader p { font-size: .75rem; color: var(--text-muted); margin-top: 3px; }
+.profileHeader [role="tablist"] { margin-top: 12px; box-shadow: none; }
+.profileHeader [role="tab"] { flex: 1; justify-content: center; font-size: .8125rem; min-height: 44px; }
+.formSection { display: grid; gap: 16px; }
+.formSection[hidden], .assignmentList[hidden] { display: none; }
+.formSection:not([hidden]) { margin-top: 12px; }
+.assignmentList { display: grid; gap: 10px; }
+.setupSteps { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; font-size: .75rem; color: var(--text-muted); }
+.setupSteps li { padding: 8px 4px; border-bottom: 2px solid var(--border); text-align: center; }
+.setupSteps [aria-current] { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+.bookingReview { font-size: .75rem; color: var(--accent); }
+.bookingReview a { display: inline-flex; align-items: center; min-height: 32px; }
+.assignmentCard { padding: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border: 1px solid var(--border); border-radius: 12px; }
+.assignmentCard > div:first-child { min-width: 0; flex: 1 1 12rem; overflow-wrap: anywhere; }
+.assignmentCard strong { font-size: .875rem; font-weight: 600; }
+.assignmentCard p { font-size: .75rem; color: var(--text-muted); margin-top: 4px; }
+.empty { padding: 24px 12px; text-align: center; color: var(--text-muted); font-size: .8125rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.help { padding: 12px; border: 1px solid var(--border); border-radius: 12px; font-size: .8125rem; color: var(--text-secondary); background: var(--surface-alt); line-height: 1.6; }
+.footerActions { display: flex; gap: 8px; width: 100%; justify-content: flex-end; }
+@media (max-width:767px) {
+  .workspace { gap: 10px; }
+  .header p { display: none; }
+  .header h1, .header h2 { font-size: 1.125rem; }
+  .toolbar { grid-template-columns: minmax(0,1fr) 135px; padding: 8px; border: 1px solid var(--border); background: var(--surface); border-radius: 12px; }
+  .directory { background: transparent; border: 0; }
+  .directory div:has(> div > .staffCard) { padding: 8px 0 0; }
+  .staffCard .rowActions { border-top: 1px solid var(--border); padding-top: 10px; }
+  .staffCard .rowActions > button { flex: 1; min-height: 44px; }
+  .resultCount { border: 0; padding: 10px 2px; }
+}
+@media (max-width:430px) { .toolbar { grid-template-columns: 1fr; } }

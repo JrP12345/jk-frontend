@@ -4,7 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
 import { userFacingError } from "@/lib/userFacingError";
 import PatientHistoryAccess from "./PatientHistoryAccess";
-import { Modal, Badge, Button, cn, LoadingState, SkeletonCardGrid, Input, Checkbox } from "@/components/ui";
+import { Badge, Button, cn, LoadingState, SkeletonCardGrid, Input, Checkbox } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
+import styles from "./PatientTimeline.module.css";
 import { Stethoscope, FlaskConical, Building2, CreditCard, FileText, Sparkles, Search } from "lucide-react";
 
 export interface TimelineEvent {
@@ -159,23 +161,25 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
   };
 
   return (
-    <div className="space-y-6">
+    <div className={styles.timeline}>
       {accessToken === undefined && <PatientHistoryAccess patientId={patientId} token={recordAccessToken} onChange={setRecordAccessToken} />}
       {/* Search & Filter Header Toolbar */}
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between p-3.5 sm:p-4 bg-surface rounded-2xl border border-border/80 shadow-xs">
+      <div className={styles.toolbar}>
         {/* Category Tabs */}
-        <div className="flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 overflow-x-auto w-fit max-w-full">
+        <div className={styles.categories} aria-label="History categories">
           {[
-            { id: "all", label: "All Events" },
-            { id: "consultation", label: "Consultations" },
-            { id: "lab", label: "Diagnostics" },
-            { id: "admission", label: "Admissions" },
-            { id: "billing", label: "Financial" },
+            { id: "all", label: "All Events", compact: "All" },
+            { id: "consultation", label: "Consultations", compact: "Visits" },
+            { id: "lab", label: "Diagnostics", compact: "Labs" },
+            { id: "admission", label: "Admissions", compact: "Stays" },
+            { id: "billing", label: "Financial", compact: "Billing" },
           ].map((cat) => (
             <button
               key={cat.id}
               type="button"
               aria-pressed={category === cat.id}
+              aria-label={cat.label}
+              title={cat.label}
               onClick={() => setCategory(cat.id)}
               className={cn(
                 "min-h-11 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
@@ -184,34 +188,35 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
                   : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
               )}
             >
-              {cat.label}
+              <span className={styles.longCategory}>{cat.label}</span><span className={styles.shortCategory}>{cat.compact}</span>
             </button>
           ))}
         </div>
 
         {/* Search & Financial Toggle */}
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <form onSubmit={handleSearchSubmit} className="relative flex-1 md:w-64">
+        <div className={styles.searchTools}>
+          <form onSubmit={handleSearchSubmit} className={styles.searchForm}>
 
-            <Input icon={<Search />} type="text" aria-label="Search patient history" placeholder="Search diagnoses, meds, labs..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} size="sm" variant="filled" />
+            <Input icon={<Search />} type="text" aria-label="Search patient history" placeholder="Search history" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} size="sm" variant="filled" />
           </form>
 
-          <Checkbox checked={includeFinancial} onChange={(e) => setIncludeFinancial(e.target.checked)} label="Include Financials" />
+          <Checkbox checked={includeFinancial} onChange={(e) => setIncludeFinancial(e.target.checked)} label="Financials" />
         </div>
       </div>
 
       {/* Timeline Stream View */}
+      <div className={styles.results} aria-busy={loading}>
       {loading && events.length === 0 ? (
-        <LoadingState label="Loading patient health records timeline"><SkeletonCardGrid count={3} columns={1} /></LoadingState>
+        <LoadingState label="Loading patient health records timeline"><SkeletonCardGrid count={1} columns={1} /></LoadingState>
       ) : error ? (
         <div role="alert" className="p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger-text dark:text-danger-text text-sm space-y-3">
           <p>{error}</p>
           <Button variant="outline" onClick={() => fetchTimeline()}>Try again</Button>
         </div>
       ) : events.length === 0 ? (
-        <div className="py-12 text-center text-sm text-text-muted">No clinical timeline events found matching filters.</div>
+        <div className={styles.empty}>No clinical timeline events found matching filters.</div>
       ) : (
-        <div className="relative pl-6 border-l-2 border-border dark:border-border space-y-6">
+        <div className={styles.events}>
           {events.map((event) => (
             <div key={event.id} className="relative group">
               {/* Timeline Marker Bullet */}
@@ -221,9 +226,9 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
 
               {/* Event Card */}
               <div className="p-4 bg-surface rounded-2xl border border-border/80 hover:border-primary-500/40 transition-all shadow-xs space-y-3">
-                <div className="flex items-start justify-between gap-4">
+                <div className={styles.eventHeading}>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className={styles.eventTitle}>
                       <h4 className="font-semibold text-sm text-text">{event.title}</h4>
                       <span className={`px-2 py-0.5 rounded-full text-xs border font-medium ${getCategoryBadgeClass(event.displayMetadata.badgeColor)}`}>
                         {event.displayMetadata.statusLabel}
@@ -256,10 +261,10 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
                 )}
 
                 {/* Footer Navigation Link & AI Explainer Trigger */}
-                <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-text-muted">
+                <div className={styles.eventFooter}>
                   <span>Actor: {event.actor.name}</span>
-                  <div className="flex items-center gap-3">
-                    <Button type="button" onClick={() => handleOpenExplainer(event)} variant="primary" size="xs" className="text-accent">
+                  <div className={styles.eventActions}>
+                    <Button type="button" onClick={() => handleOpenExplainer(event)} variant="outline" size="xs" className="text-accent">
                       <Sparkles className="w-3 h-3" />
                       <span>AI Explainer</span>
                     </Button>
@@ -277,6 +282,7 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
         </div>
       )}
 
+      </div>
       {hasMore && (
         <div className="text-center pt-4">
           <Button variant="ghost" size="sm"

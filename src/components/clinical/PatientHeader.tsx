@@ -2,6 +2,7 @@
 
 import { Badge, Button } from "@/components/ui";
 import { Search } from "lucide-react";
+import { PatientMrn } from "@/components/patients/PatientMrn";
 
 export interface PatientHeaderData {
   id: string;
@@ -20,9 +21,10 @@ export interface PatientHeaderData {
 interface PatientHeaderProps {
   patient: PatientHeaderData;
   onOpenSearch?: () => void;
+  compactMrn?: boolean;
 }
 
-export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
+export function PatientHeader({ patient, onOpenSearch, compactMrn = false }: PatientHeaderProps) {
   const allergies = patient.allergies && patient.allergies.length > 0 ? patient.allergies : [patient.clinicalProfileRestricted ? "Patient approval needed" : "Not recorded"];
   const conditions = patient.conditions && patient.conditions.length > 0 ? patient.conditions : [patient.clinicalProfileRestricted ? "Patient approval needed" : "Not recorded"];
 
@@ -48,7 +50,7 @@ export function PatientHeader({ patient, onOpenSearch }: PatientHeaderProps) {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="font-bold text-sm sm:text-base text-text break-words min-w-0">{patient.name}</h2>
-              {patient.mrn && <Badge variant="neutral" size="sm" className="max-w-full whitespace-normal break-all">MRN: {patient.mrn}</Badge>}
+              {patient.mrn && (compactMrn ? <PatientMrn key={patient.id} value={patient.mrn} /> : <Badge variant="neutral" size="sm" className="max-w-full whitespace-normal break-all">MRN: {patient.mrn}</Badge>)}
               {getRiskBadge(patient.recentNews2Risk, patient.recentNews2Score)}
             </div>
             <div className="text-xs text-text-secondary flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">

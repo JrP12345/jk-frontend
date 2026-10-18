@@ -1,14 +1,16 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Building2, CheckCircle2, RotateCw, ShieldCheck, Users } from "lucide-react";
+import { ArrowUpRight, Building2, LogIn, RotateCw, Search, SlidersHorizontal, UserRoundCheck, UserRoundX, Users, X } from "lucide-react";
 import api from "@/lib/api";
-import { Alert, Avatar, Badge, Button, Card, Input, Modal, Pagination, Select, StatCard, Table, useToast, LoadingState, SkeletonTable } from "@/components/ui";
+import { Alert, Avatar, Badge, Button, EmptyState, Input, Modal, Pagination, Select, useToast, LoadingState, Skeleton, SkeletonTable } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { organizationWorkspaceUrl, type OrganizationRecord } from "@/services/organization.service";
+
+import styles from "./PlatformUsers.module.css";
 
 interface GlobalUser {
   id: string; name: string; email: string; role: string; isActive: boolean;
@@ -41,6 +43,8 @@ function PlatformUsers() {
   const [target, setTarget] = useState<{ user: GlobalUser; action: "status" | "login" } | null>(null);
   const [organizationId, setOrganizationId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const filtersId = useId();
   const beginRead = useLatestRead();
   const beginScopeRead = useLatestRead();
   const selectedOrganization = organizations.find(org => org.id === selectedOrgId);
@@ -90,45 +94,45 @@ function PlatformUsers() {
     finally { setBusy(false); }
   }
   if (user?.role !== "root") return <Alert variant="error" title="Restricted">Global identity management is available to Root.</Alert>;
-  return <div className="space-y-6 min-w-0 pb-8 text-text">
-    <Card padding="lg" className="bg-gradient-to-br from-primary-500/10 via-surface to-surface border-primary-500/20">
-      <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div className="flex items-start gap-4 min-w-0"><span className="shrink-0 rounded-2xl bg-accent-subtle p-3 text-accent"><Users className="h-7 w-7" /></span><div><Badge variant="primary">Root administration</Badge><h1 className="text-xl sm:text-2xl font-semibold mt-2">Global users</h1><p className="text-sm text-text-secondary mt-2">Platform identities and account status. Membership and organization access are managed in the organization workspace.</p></div></div>
-        <Button variant="outline" onClick={load} disabled={loading || scopeUnavailable}><RotateCw className="h-4 w-4" />Refresh</Button>
-      </header>
-    </Card>
-    {selectedOrgId && <Card padding="sm"><div className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0"><p className="text-xs text-text-muted">Viewing organization identities</p><p className="font-semibold break-words mt-1">{selectedOrganization?.name || "Selected organization"}</p></div>{selectedOrganization && <Link href={organizationWorkspaceUrl(selectedOrgId, "members")} className="inline-flex min-h-11 items-center text-sm font-semibold text-accent hover:underline">Manage organization membership →</Link>}</div></Card>}
-    <div className="grid gap-3 sm:grid-cols-3">
-      <StatCard label="Matching identities" value={total} loading={loading || scopeUnavailable} icon={<Users />} description={selectedOrgId ? "Selected organization" : "Current filters"} />
-      <StatCard label="Active on this page" value={users.filter(row => row.isActive).length} loading={loading || scopeUnavailable} icon={<CheckCircle2 />} />
-      <StatCard label="Inactive on this page" value={users.filter(row => !row.isActive).length} loading={loading || scopeUnavailable} icon={<ShieldCheck />} />
-    </div>
-    <Card padding="sm"><div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_210px_230px]">
-      <Input aria-label="Search global users" maxLength={100} placeholder="Search name, email or phone" value={search} onChange={event => setSearch(event.target.value)} />
-      <Select aria-label="Global role" value={role} onChange={event => setRole(event.target.value)} options={["all", "root", "admin", "doctor", "receptionist", "nurse", "lab_tech", "pharmacist", "cashier", "patient", "family_member", ...users.map(row => row.role)].filter((value, index, all) => all.indexOf(value) === index).map(value => ({ value, label: value === "all" ? "All identity roles" : value.replaceAll("_", " ") }))} />
-      <Select aria-label="Filter by organization" value={selectedOrgId} disabled={orgLoading || orgError} onChange={event => chooseOrganization(event.target.value)} options={[{ value: "", label: "All organizations" }, ...organizations.map(org => ({ value: org.id, label: org.name })), ...(selectedOrgId && !selectedOrganization ? [{ value: selectedOrgId, label: "Organization unavailable" }] : [])]} />
-    </div></Card>
+  const listLoading = loading || (!!selectedOrgId && orgLoading);
+  const activeFilterCount = Number(role !== "all") + Number(!!selectedOrgId);
+  return <div className={styles.workspace}>
+    <header className={styles.header}><div><h1>Global users</h1><p>Manage platform identities and account status.</p></div><Button variant="outline" className={styles.iconAction} aria-label="Refresh global users" title="Refresh global users" onClick={load} disabled={loading || scopeUnavailable}><RotateCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} /></Button></header>
+    {selectedOrgId && <section className={styles.scope} aria-label="Selected organization"><div><p className="text-xs text-text-secondary">Viewing organization identities</p><p className="mt-1 text-sm font-semibold">{selectedOrganization?.name || "Selected organization"}</p></div><Button variant="ghost" className={styles.iconAction} aria-label="Clear organization filter" title="Clear organization filter" onClick={() => chooseOrganization("")}><X className="h-4 w-4" /></Button>{selectedOrganization && <Link href={organizationWorkspaceUrl(selectedOrgId, "members")} className={styles.scopeLink}>Manage organization membership<ArrowUpRight className="h-4 w-4 shrink-0" /></Link>}</section>}
+    <dl className={styles.summary} aria-label="Identity summary" aria-busy={listLoading || scopeUnavailable}>
+      {[{ label: "Matching identities", value: total }, { label: "Active on this page", value: users.filter(row => row.isActive).length }, { label: "Inactive on this page", value: users.filter(row => !row.isActive).length }].map(metric => <div key={metric.label}><dt>{metric.label}</dt><dd>{listLoading || scopeUnavailable ? <Skeleton width="2rem" height="1.5rem" /> : error ? <span aria-label="Unavailable">—</span> : metric.value}</dd></div>)}
+    </dl>
     {orgError && <Alert variant="warning" title="Organization filter unavailable" action={<Button variant="outline" onClick={loadOrganizations}>Retry organizations</Button>}>Organization choices could not be loaded.</Alert>}
-    {scopeUnavailable ? <Alert variant="warning" title="Selected organization unavailable" action={<Button variant="outline" onClick={() => chooseOrganization("")}>Show all organizations</Button>}>Choose an available organization before reviewing its identities.</Alert> : <Card padding="none" className="overflow-hidden"><Table<GlobalUser>
-      data={users} loading={loading || (!!selectedOrgId && orgLoading)} error={error || null} onRetry={load} searchable={false} pagination={false} showColumnVisibility={false}
-      emptyMessage="No identities match these filters."
-      columns={[
-        { key: "name", header: "Identity", render: row => <div className="flex items-start gap-3 min-w-0"><Avatar name={row.name} size="md" /><div className="min-w-0"><p className="font-semibold break-words">{row.name}</p><p className="text-xs text-text-muted break-all mt-1">{row.email}</p><p className="text-xs text-text-muted capitalize mt-1">{row.role.replaceAll("_", " ")}</p></div></div> },
-        { key: "memberships", header: "Organization access", render: row => {
-          const memberships = membershipsFor(row);
-          return memberships.length ? <ul className="space-y-2">{memberships.map(member => <li key={member.organizationId}><Link href={organizationWorkspaceUrl(member.organizationId, "members")} className="text-accent font-medium hover:underline break-words">{member.organizationName}</Link><p className="text-xs text-text-muted capitalize mt-1">{member.role.replaceAll("_", " ")}</p></li>)}</ul> : <span className="text-sm text-text-muted">{row.role === "root" ? "Platform account" : "No organization membership"}</span>;
-        } },
-        { key: "isActive", header: "Global status", render: row => <Badge variant={row.isActive ? "success" : "neutral"} dot>{row.isActive ? "Active identity" : "Inactive identity"}</Badge> },
-        { key: "actions", header: "Platform actions", align: "right", render: row => <div className="flex flex-wrap gap-2 justify-end">
-          {row.id !== user.id && row.role !== "root" && row.isActive && <Button variant="outline" size="sm" onClick={() => open(row, "login")}>Login as</Button>}
-          {row.id !== user.id && <Button variant="ghost" size="sm" onClick={() => open(row, "status")}>{row.isActive ? "Deactivate identity" : "Reactivate identity"}</Button>}
-          {row.id === user.id && <Badge variant="outline">Your account</Badge>}
-        </div> },
-      ]}
-    /></Card>}
-    {!scopeUnavailable && <div className="flex flex-wrap items-center justify-between gap-3 text-sm"><span className="text-text-muted">{total} identities · Page {page} of {pages}</span><Pagination currentPage={page} totalPages={pages} onPageChange={next => { if (!loading) setPagination({ key: filterKey, page: next }); }} /></div>}
-    <Card variant="flat" padding="sm"><p className="text-xs text-text-muted flex items-start gap-2"><Building2 className="h-4 w-4 shrink-0 text-accent" />Account status changes affect every organization. To remove access from one organization, manage its membership.</p></Card>
-    <Modal open={!!target} onClose={() => { if (!busy) setTarget(null); }} title={target?.action === "login" ? "Start login-as session" : target?.user.isActive ? "Deactivate global identity?" : "Reactivate global identity?"} size="md" busy={busy} footer={<div className="flex gap-3 justify-end"><Button variant="outline" disabled={busy} onClick={() => setTarget(null)}>Cancel</Button><Button onClick={confirm} loading={busy}>Confirm</Button></div>}>
+    <section aria-label="Global identity directory" className={styles.directory}>
+      <div className={styles.filterBar}>
+      <div className={styles.toolbar}>
+        <Input containerClassName={styles.search} aria-label="Search global users" type="search" icon={<Search />} maxLength={100} placeholder="Search name, email or phone" value={search} onChange={event => setSearch(event.target.value)} />
+        <Button variant="outline" className={styles.filterToggle} aria-label="User filters" aria-expanded={filtersExpanded} aria-controls={filtersId} onClick={() => setFiltersExpanded(value => !value)}><SlidersHorizontal className="h-4 w-4" />Filters{activeFilterCount > 0 && <span className={styles.filterCount}>{activeFilterCount}</span>}</Button>
+      </div>
+      <div id={filtersId} className={styles.filters} data-expanded={filtersExpanded}>
+        <Select label="Global role" value={role} onChange={event => setRole(event.target.value)} options={["all", "root", "admin", "doctor", "receptionist", "nurse", "lab_tech", "pharmacist", "cashier", "patient", "family_member", ...users.map(row => row.role)].filter((value, index, all) => all.indexOf(value) === index).map(value => ({ value, label: value === "all" ? "All identity roles" : value.replaceAll("_", " ") }))} />
+        <Select label="Filter by organization" value={selectedOrgId} disabled={orgLoading || orgError} onChange={event => chooseOrganization(event.target.value)} options={[{ value: "", label: "All organizations" }, ...organizations.map(org => ({ value: org.id, label: org.name })), ...(selectedOrgId && !selectedOrganization ? [{ value: selectedOrgId, label: "Organization unavailable" }] : [])]} />
+      </div>
+      </div>
+      {scopeUnavailable ? <div className="p-4"><Alert variant="warning" title="Selected organization unavailable" action={<Button variant="outline" onClick={() => chooseOrganization("")}>Show all organizations</Button>}>Choose an available organization before reviewing its identities.</Alert></div> : <>
+        <div aria-hidden="true" className={styles.columns}><span>Identity</span><span>Organization access</span><span>Global status</span><span className="text-right">Platform actions</span></div>
+        {error ? <div className="p-4"><Alert variant="error" title="Unable to load identities" action={<Button variant="outline" onClick={load}>Try again</Button>}>{error}</Alert></div> : listLoading ? <LoadingState label="Loading global users"><div className="space-y-3 p-4">{[0, 1, 2].map(item => <Skeleton key={item} height="8rem" />)}</div></LoadingState> : !users.length ? <EmptyState icon={<Users />} title="No identities match these filters." description="Try another name, role or organization." /> : <ul aria-label="Global identities" className={styles.list}>
+          {users.map(row => <li key={row.id} className={styles.row}>
+            <div className={styles.identity}><Avatar name={row.name} size="md" /><div><h2>{row.name || "Unnamed user"}</h2><p className={styles.identityEmail}>{row.email}</p><p className={styles.identityRole}>{row.role.replaceAll("_", " ")}</p></div></div>
+            <div className={styles.status}><span className={styles.fieldLabel}>Global status</span><Badge variant={row.isActive ? "success" : "neutral"} dot>{row.isActive ? "Active identity" : "Inactive identity"}</Badge></div>
+            <div className={styles.memberships}><p className={styles.fieldLabel}>Organization access</p>{membershipsFor(row).length ? <ul>{membershipsFor(row).map(member => <li key={member.organizationId}><Link href={organizationWorkspaceUrl(member.organizationId, "members")} className={styles.membershipLink}><span>{member.organizationName}</span><span>{member.role.replaceAll("_", " ")}</span></Link></li>)}</ul> : <p className="mt-1 text-sm text-text-secondary">{row.role === "root" ? "Platform account" : "No organization membership"}</p>}</div>
+            <div className={styles.actions}>
+              {row.id !== user.id && row.role !== "root" && row.isActive && <Button variant="outline" size="sm" onClick={() => open(row, "login")}><LogIn className="h-4 w-4 shrink-0" />Login as</Button>}
+              {row.id !== user.id && <Button variant="ghost" size="sm" onClick={() => open(row, "status")}>{row.isActive ? <UserRoundX className="h-4 w-4 shrink-0" /> : <UserRoundCheck className="h-4 w-4 shrink-0" />}{row.isActive ? "Deactivate identity" : "Reactivate identity"}</Button>}
+              {row.id === user.id && <Badge variant="outline">Your account</Badge>}
+            </div>
+          </li>)}
+        </ul>}
+        <footer className={styles.footer}><span>{error ? "Results unavailable" : listLoading ? "Loading identities..." : `${total} identities`}</span><span>Page {page} of {pages}</span><Pagination currentPage={page} totalPages={pages} onPageChange={next => { if (!loading) setPagination({ key: filterKey, page: next }); }} /></footer>
+      </>}
+    </section>
+    <p className={styles.notice}><Building2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" /><span>Account status changes affect every organization. To remove access from one organization, manage its membership.</span></p>
+    <Modal open={!!target} onClose={() => { if (!busy) setTarget(null); }} title={target?.action === "login" ? "Start login-as session" : target?.user.isActive ? "Deactivate global identity?" : "Reactivate global identity?"} size="md" busy={busy} footer={<div className={styles.modalActions}><Button variant="outline" disabled={busy} onClick={() => setTarget(null)}>Cancel</Button><Button onClick={confirm} loading={busy}>Confirm</Button></div>}>
       <div className="space-y-4"><div className="rounded-xl bg-surface-alt p-3"><p className="font-semibold break-words">{target?.user.name}</p><p className="text-sm text-text-muted break-all">{target?.user.email}</p></div><p className="text-sm">{target?.action === "login" ? "This session uses the selected identity's permissions. Choose the organization context for accounts with multiple memberships." : "Account status applies across all organizations. Deactivation revokes sessions. To remove only one organization's access, use its Members section."}</p>{target?.action === "login" && !!membershipsFor(target.user).length && <Select label="Organization context" value={organizationId} onChange={event => setOrganizationId(event.target.value)} options={membershipsFor(target.user).map(member => ({ value: member.organizationId, label: member.organizationName }))} />}</div>
     </Modal>
   </div>;

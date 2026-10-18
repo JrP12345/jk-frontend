@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { EncounterProvider } from "@/providers/EncounterProvider";
+import { ConsultationWorkspaceSkeleton } from "@/components/clinical/ConsultationWorkspaceSkeleton";
 import { EncounterWorkspace } from "@/components/clinical/EncounterWorkspace";
 import type { PatientHeaderData } from "@/components/clinical/PatientHeader";
-import { Alert, Button, Skeleton, SkeletonCard } from "@/components/ui";
+import { Alert, Button } from "@/components/ui";
 import { RotateCw, ArrowLeft } from "lucide-react";
 import { userFacingError } from "@/lib/userFacingError";
 import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
@@ -146,47 +147,7 @@ function ClinicalConsultationWorkspace({
     };
   }, [appointmentId, retryCount]);
 
-  if (loading || preferencesLoading) {
-    return (
-      <div role="status" aria-live="polite" className="space-y-6 animate-fade-in" aria-busy="true" aria-label="Loading consultation">
-        {/* Patient Header Banner Skeleton */}
-        <div className="p-4 sm:p-5 bg-surface border border-border/80 rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <Skeleton width="3rem" height="3rem" rounded="xl" />
-            <div className="space-y-1.5">
-              <Skeleton width="160px" height="1.25rem" rounded="md" />
-              <Skeleton width="220px" height="0.75rem" rounded="sm" />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Skeleton width="100px" height="2rem" rounded="xl" />
-            <Skeleton width="100px" height="2rem" rounded="xl" />
-          </div>
-        </div>
-
-        {/* Workspace Split Panels Skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 space-y-4">
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
-          <div className="lg:col-span-2 space-y-4">
-            <div className="bg-surface border border-border/80 rounded-2xl p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                <Skeleton width="140px" height="1.25rem" rounded="md" />
-                <Skeleton width="80px" height="1.75rem" rounded="xl" />
-              </div>
-              <div className="space-y-3">
-                <Skeleton width="100%" height="3.5rem" rounded="xl" />
-                <Skeleton width="100%" height="4.5rem" rounded="xl" />
-                <Skeleton width="100%" height="6rem" rounded="xl" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading || preferencesLoading) return <ConsultationWorkspaceSkeleton />;
 
   if (error || !encounterId || !patientData) {
     return (

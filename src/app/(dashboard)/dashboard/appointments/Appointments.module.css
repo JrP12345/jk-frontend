@@ -1,0 +1,80 @@
+.workspace { width: 100%; margin-inline: 0; display: flex; flex-direction: column; gap: .75rem; min-width: 0; padding-bottom: 1rem; color: var(--text-primary); }
+.header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.heading { display: flex; align-items: baseline; gap: .5rem; min-width: 0; }
+.heading h1 { font-size: 1.25rem; font-weight: 650; letter-spacing: -.025em; }
+.heading > span { color: var(--text-muted); font-size: .75rem; min-width: 1.25rem; }
+.headerActions { display: flex; align-items: center; gap: .25rem; flex-shrink: 0; }
+.headerActions button { min-height: 44px; gap: .375rem; }
+.iconButton { width: 44px; min-width: 44px; min-height: 44px; padding: 0; flex-shrink: 0; }
+.toolbar { border: 1px solid var(--border); border-radius: 1rem; background: var(--surface); padding: .5rem; display: flex; flex-direction: column; gap: .5rem; }
+.viewRow { display: flex; align-items: center; gap: .375rem; min-width: 0; }
+.viewRow > button { min-height: 44px; margin-left: auto; padding-inline: .625rem; font-size: .75rem; }
+.viewSwitch { display: flex; align-items: center; gap: .25rem; padding: .125rem; background: var(--surface-alt); border-radius: .75rem; }
+.viewSwitch button { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: .375rem; padding-inline: .75rem; border: 1px solid transparent; border-radius: .625rem; color: var(--text-muted); font-size: .8125rem; cursor: pointer; }
+.viewSwitch button[aria-pressed="true"] { background: var(--surface); color: var(--accent); border-color: var(--border); }
+.viewSwitch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.locationContext { display: none; }
+.searchRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; }
+.searchRow input { min-height: 44px; }
+.filterButton { position: relative; min-height: 44px; width: 44px; padding: 0; }
+.filterLabel { display: none; }
+.filterDot { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); right: 7px; top: 7px; }
+.filterSummary { display: flex; justify-content: space-between; gap: .5rem; padding: 0 .25rem .125rem; min-height: 1.25rem; color: var(--text-muted); font-size: .6875rem; }
+.filterSummary > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.filterSummary > :last-child { flex-shrink: 0; }
+.reviewNotice { color: var(--text-muted); font-size: .75rem; }
+.roster { min-height: 14rem; min-width: 0; }
+.calendarPlaceholder { min-height: 30rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--surface); color: var(--text-muted); font-size: .8125rem; }
+.mobileList { display: flex; flex-direction: column; gap: .625rem; }
+.desktopList { display: none; }
+.appointmentCard { padding: .75rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--surface); display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+.cardHeading { display: flex; align-items: flex-start; gap: .625rem; }
+.token { min-width: 44px; min-height: 44px; padding: .25rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .125rem; border-radius: .75rem; color: var(--accent); background: var(--surface-alt); border: 1px solid var(--border); font-size: .8125rem; cursor: pointer; }
+.patientIdentity { flex: 1; min-width: 0; padding-top: .125rem; overflow-wrap: anywhere; }
+.patientIdentity h2 { font-size: .875rem; font-weight: 650; line-height: 1.4; }
+.patientIdentity > span { font-size: .75rem; color: var(--text-muted); }
+.cardStatus { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
+.cardStatus > span:last-child { font-size: .6875rem; color: var(--text-muted); text-transform: capitalize; }
+.cardDetails { display: flex; flex-direction: column; gap: .375rem; padding-top: .5rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: .75rem; }
+.cardDetails > span { display: flex; align-items: flex-start; gap: .375rem; overflow-wrap: anywhere; }
+.cardDetails svg { flex-shrink: 0; margin-top: 1px; }
+.attendanceNotice { font-size: .75rem; color: var(--warning-text); }
+.emptyState { min-height: 14rem; padding: 1.5rem 1rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .625rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--surface); text-align: center; color: var(--text-muted); font-size: .8125rem; }
+.emptyState h2 { font-weight: 600; color: var(--text-primary); }
+.pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; font-size: .75rem; color: var(--text-muted); min-height: 1.5rem; }
+.pagination > div { display: flex; align-items: center; gap: .5rem; }
+.pagination button { min-height: 44px; }
+.bookingBody { display: flex; flex-direction: column; gap: 1rem; }
+.bookingProgress { display: flex; gap: .375rem; padding-bottom: .75rem; border-bottom: 1px solid var(--border); }
+.bookingProgress > span { flex: 1; font-size: .75rem; color: var(--text-muted); border-top: 3px solid var(--border); padding-top: .5rem; }
+.bookingProgress > span[aria-current="step"] { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+.slipDetails > div { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: .5rem; }
+.slipDetails > div > :last-child { text-align: right; overflow-wrap: anywhere; }
+.recordTable { overflow-x: auto; }
+.recordTable table { min-width: 26rem; }
+@media (max-width: 359px) { .heading h1 { font-size: 1.0625rem; } .headerActions > button:last-child { padding-inline: .625rem; font-size: .75rem; } .heading > span { display: none; } }
+@media (min-width: 640px) { .workspace { gap: 1rem; } .toolbar { padding: .75rem; } .filterButton { width: auto; padding-inline: .875rem; gap: .375rem; } .filterLabel { display: inline; } .locationContext { display: flex; gap: .375rem; align-items: center; color: var(--text-muted); font-size: .75rem; margin-left: auto; } .locationContext svg { flex-shrink: 0; } .viewRow > button { margin-left: 0; } }
+@media (min-width: 768px) { .heading h1 { font-size: 1.5rem; } .desktopList { display: block; border: 1px solid var(--border); border-radius: 1rem; overflow: hidden; background: var(--surface); } .mobileList { display: none; } }
+
+.scopeContext, .bookingPatient { display: flex; flex-direction: column; gap: .375rem; font-size: .8125rem; overflow-wrap: anywhere; }
+.scopeContext > span, .bookingPatient > span, .bookingPatient small { color: var(--text-muted); font-size: .75rem; }
+.scopeContext strong, .bookingPatient strong { font-weight: 600; }
+.bookingPatient { padding: .75rem; background: var(--surface-alt); border: 1px solid var(--border); border-radius: .75rem; }
+.patientDetails summary { cursor: pointer; min-height: 44px; padding-block: .75rem; color: var(--accent); font-size: .8125rem; }
+.patientDetails > div { padding-top: .5rem; }
+.printFooter > div { display: block; }
+.printFooter > div > p { margin-bottom: .5rem; }
+.printFooter > div > div, .printFooter > div > div > div { display: flex; flex-wrap: wrap; width: 100%; gap: .5rem; }
+.printFooter button { flex: 1 1 7rem; min-width: 7rem; white-space: nowrap; }
+.recordPreview { display: flex; flex-direction: column; gap: 1rem; overflow-wrap: anywhere; }
+.recordPreview > :first-child { gap: .75rem; }
+.recordPreview h2 { font-size: .9375rem; text-transform: none; letter-spacing: 0; }
+.recordMeta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; padding-bottom: .875rem; border-bottom: 1px solid var(--border); font-size: .8125rem; }
+.medications { display: grid; gap: .5rem; }
+.medications > div { padding: .75rem; border: 1px solid var(--border); border-radius: .75rem; font-size: .75rem; }
+.medications dt { font-weight: 600; margin-bottom: .375rem; }
+.medications dd { color: var(--text-muted); line-height: 1.5; }
+.recordTable { display: none; }
+.viewRow > button { min-width: 6rem; flex-shrink: 0; }
+.desktopList button { min-height: 40px; }
+@media (min-width: 640px) { .recordMeta { grid-template-columns: repeat(4, minmax(0, 1fr)); } .medications { display: none; } .recordTable { display: block; } }

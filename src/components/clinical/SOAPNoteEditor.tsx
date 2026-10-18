@@ -7,7 +7,9 @@ import { useUnsavedClinicalChanges } from "@/hooks/useUnsavedClinicalChanges";
 import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { SOAPService } from "@/services/soap.service";
-import { Modal, Button, Badge, Spinner, Textarea, Select, Dropdown, Input } from "@/components/ui";
+import { Button, Badge, Spinner, Textarea, Select, Dropdown, Input } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
+import styles from "./SOAPNoteEditor.module.css";
 import { UnifiedDocumentModal, UnifiedDocumentData } from "./UnifiedDocumentModal";
 import { PreviousVisitsSidebar } from "./PreviousVisitsSidebar";
 import { Sparkles, History, Save, Lock, CheckCircle2, Edit3, FileSpreadsheet, ChevronDown } from "lucide-react";
@@ -495,15 +497,16 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
   };
 
   return (
-    <div className="bg-surface rounded-2xl border border-border/80 p-5 sm:p-6 space-y-6 shadow-xs">
-      <p role="status" className="text-xs text-text-muted">{isSigned ? "Signed clinical note" : hasUnsavedChanges ? "Unsaved changes: use Save Draft before leaving" : currentNoteId ? "Draft saved to server" : "New clinical note"}</p>
+    <div className={styles.editor}>
+
       {/* Top Banner & Action Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
+      <div className={styles.toolbar}>
         <div>
-          <h2 className="text-lg font-bold text-text">Clinical SOAP Consultation Note</h2>
-          <p className="text-xs text-text-muted">Standardized medical documentation workspace</p>
+          <h2>Clinical notes</h2>
+          <p role="status" className="text-xs text-text-muted">{isSigned ? "Signed clinical note" : hasUnsavedChanges ? "Unsaved changes: use Save Draft before leaving" : currentNoteId ? "Draft saved to server" : "New clinical note"}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <div className={styles.actions}>
+          <details className={styles.noteTools}><summary>Note tools</summary><div>
           {/* Quick Load Clinical Template Dropdown & Real AI Generator */}
           {!isSigned && (
             <>
@@ -515,7 +518,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
                 className="font-semibold min-h-[38px]"
                loading={generatingAI}>
                 <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                <span>{generatingAI ? "Generating AI SOAP..." : "AI Auto-Draft SOAP"}</span>
+                <span>{generatingAI ? "Generating..." : "AI draft"}</span>
               </Button>
               <Dropdown
                 align="right"
@@ -526,7 +529,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
                     className="font-semibold shadow-xs text-xs gap-1.5 min-h-[38px]"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-text-secondary" />
-                    <span>Load Clinical Template...</span>
+                    <span>Templates</span>
                     <ChevronDown className="w-3 h-3 text-text-muted ml-0.5" />
                   </Button>
                 }
@@ -559,9 +562,10 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
             className="text-xs font-semibold shadow-xs min-h-[38px]"
           >
             <History className="w-3.5 h-3.5 mr-1.5 text-text-secondary" />
-            Version History
+            Versions
           </Button>
 
+          </div></details>
           {!isSigned ? (
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -572,7 +576,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
                 className="font-semibold min-h-[38px]"
                loading={loading}>
                 <Save className="w-3.5 h-3.5 mr-1.5" />
-                {loading ? "Saving..." : "Save Draft SOAP"}
+                {loading ? "Saving..." : "Save draft"}
               </Button>
 
               {currentNoteId && (
@@ -584,7 +588,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
                   className="font-semibold rounded-xl shadow-xs min-h-[38px]"
                  loading={signing}>
                   <Lock className="w-3.5 h-3.5 mr-1.5" />
-                  {signing ? "Signing..." : "Sign & Lock Note"}
+                  {signing ? "Signing..." : "Sign note"}
                 </Button>
               )}
             </div>
@@ -610,9 +614,9 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
       </div>
 
       {/* Main 2-Column Consultation Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={styles.content}>
         {/* Left Column: Active SOAP Note Editor */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="space-y-4">
 
       {message && (
         <div className={`p-3 rounded-lg text-sm border ${message.type === "success" ? "bg-success/10 border-success/20 text-success-text dark:text-success-text" : "bg-danger/10 border-danger/20 text-danger-text dark:text-danger-text"}`}>
@@ -621,12 +625,12 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
       )}
 
       {/* 4 SOAP Sections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className={styles.fields}>
         {/* S: Subjective */}
         <div className="p-4 sm:p-5 bg-surface-alt/70 rounded-2xl border border-border/80 space-y-3.5 shadow-2xs">
           <h3 className="font-bold text-sm text-accent dark:text-accent flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
-            S — Subjective (Patient Complaints)
+            S · Subjective
           </h3>
           <div>
 
@@ -646,7 +650,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
         <div className="p-4 sm:p-5 bg-surface-alt/70 rounded-2xl border border-border/80 space-y-3.5 shadow-2xs">
           <h3 className="font-bold text-sm text-accent dark:text-accent flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-            O — Objective (Vitals & Physical Exam)
+            O · Objective
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             <div>
@@ -680,7 +684,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
         <div className="p-4 sm:p-5 bg-surface-alt/70 rounded-2xl border border-border/80 space-y-3.5 shadow-2xs">
           <h3 className="font-bold text-sm text-accent dark:text-accent flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-            A — Assessment (Diagnosis & Coding)
+            A · Assessment
           </h3>
           <div>
 
@@ -713,7 +717,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
         <div className="p-4 sm:p-5 bg-surface-alt/70 rounded-2xl border border-border/80 space-y-3.5 shadow-2xs">
           <h3 className="font-bold text-sm text-warning-text dark:text-warning-text flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />
-            P — Plan (Treatment & Rx Builder)
+            P · Plan
           </h3>
           <div>
 
@@ -792,20 +796,20 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
     </div>
 
     {/* Right Column: Patient Previous Visits Sidebar */}
-        <div className="lg:col-span-1">
-          <PreviousVisitsSidebar
+        <div>
+          <details className={styles.previousVisits}><summary>Previous visits</summary><PreviousVisitsSidebar
             patientId={activePatientId || patientId}
             onCopyForward={handleCopyForwardVisit}
-          />
+          /></details>
         </div>
       </div>
 
       {/* Version History Modal */}
-      <Modal isOpen={historyOpen} onClose={() => setHistoryOpen(false)} title="Clinical Note Version History">
+      <Modal isOpen={historyOpen} onClose={() => setHistoryOpen(false)} title="Note versions" size="lg">
         {loadingHistory ? (
           <div className="py-8 text-center"><Spinner size="lg" label="Loading version tree..." /></div>
         ) : historyList.length > 0 ? (
-          <div className="space-y-3 max-h-96 overflow-y-auto">
+          <div className="space-y-3">
             {historyList.map((item) => (
               <div key={item.id || item._id} className="p-3 rounded-lg border border-border bg-surface text-xs space-y-1">
                 <div className="flex justify-between items-center font-bold">
@@ -823,8 +827,8 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
       </Modal>
 
       {/* Amend Note Modal */}
-      <Modal isOpen={amendOpen} onClose={() => setAmendOpen(false)} title="Amend Signed Clinical Note" busy={submittingAmend}>
-        <form onSubmit={handleAmendSubmit} className="space-y-4">
+      <Modal isOpen={amendOpen} onClose={() => { if (!submittingAmend) setAmendOpen(false); }} title="Amend signed note" busy={submittingAmend} footer={<><Button variant="outline" disabled={submittingAmend} onClick={() => setAmendOpen(false)}>Cancel</Button><Button type="submit" form="clinical-note-amendment" loading={submittingAmend} variant="warning">Save amendment</Button></>}>
+        <form id="clinical-note-amendment" onSubmit={handleAmendSubmit} className="space-y-4">
           <Textarea
             label="Reason for Amendment *"
             placeholder="e.g. Corrected patient reported duration of symptoms from 3 days to 5 days."
@@ -833,9 +837,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
             rows={3}
             required
           />
-          <Button type="submit" loading={submittingAmend} fullWidth variant="warning" className="min-h-[44px] rounded-xl font-bold">
-            Create Amended Version
-          </Button>
+
         </form>
       </Modal>
 

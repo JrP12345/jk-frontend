@@ -8,10 +8,11 @@ import { useLocationStore } from "@/store/locationStore";
 import { hasAnyPermission } from "@/lib/permissions";
 import api from "@/lib/api";
 import { localDateKey, todayRangeParams } from "@/lib/date";
-import { Alert, Badge, Button, useToast } from "@/components/ui";
+import { Alert, Button, useToast } from "@/components/ui";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { authScopeKey } from "@/lib/authScope";
 import { RotateCw, Plus, CalendarPlus } from "lucide-react";
+import styles from "@/components/dashboard/DashboardOverview.module.css";
 import { DashboardStatCards, DashboardAnalytics, DashboardAppointmentsQueue, DashboardQuickActions, DashboardFollowUpAlerts, DashboardLocations } from "@/components/dashboard";
 
 export default function DashboardOverview() {
@@ -219,143 +220,35 @@ function OperationalDashboard() {
 
   const subtitleText =
     user.role === "admin"
-      ? "Operational metrics, multi-branch activity, and clinical throughput."
+      ? "Today's appointments, collections and location activity."
       : user.role === "doctor"
-      ? "Your daily patient queue, consultation schedule, and roster."
+      ? "Your patient queue and consultation schedule."
       : user.role === "receptionist"
-      ? "Outpatient registration, patient check-ins, and daily queues."
-      : "Your medical appointments, care recommendations, and invoices.";
+      ? "Registration, check-ins and today's queue."
+      : "Your appointments, care reminders and bills.";
 
   return (
-    <div className="space-y-6 font-sans text-text antialiased animate-fade-up">
+    <div className={styles.workspace}>
       {loadError && <Alert variant="error" action={<Button variant="outline" onClick={fetchDashboardData}>Try again</Button>}>{loadError}</Alert>}
-      {/* 1. HEADER BANNER */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="page-title">
-                Welcome back, {cleanUserName}
-              </h1>
-              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                {roleBadgeLabel}
-              </Badge>
-            </div>
-            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              {subtitleText}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchDashboardData}
-              disabled={isRefreshing}
-              className="text-xs font-semibold transition-colors flex-1 sm:flex-initial justify-center min-h-[44px] sm:min-h-[36px]"
-             loading={isRefreshing}>
-              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary " />
-              Refresh
-            </Button>
-
-            {hasAnyPermission(user, "MANAGE_APPOINTMENTS") && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => router.push("/dashboard/appointments")}
-                className="text-xs font-semibold flex-1 sm:flex-initial justify-center min-h-[44px] sm:min-h-[36px]"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                New Booking
-              </Button>
-            )}
-
-            {isConsumer && (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => router.push("/browse")}
-                className="text-xs font-semibold flex-1 sm:flex-initial justify-center min-h-[44px] sm:min-h-[36px]"
-              >
-                <CalendarPlus className="h-3.5 w-3.5 mr-1.5" />
-                Book Consultation
-              </Button>
-            )}
-          </div>
+      <header className={styles.header}>
+        <div><h1>Welcome back, {cleanUserName}</h1><p>{roleBadgeLabel} · {subtitleText}</p></div>
+        <div className={styles.headerActions}>
+          {hasAnyPermission(user, "MANAGE_APPOINTMENTS") && <Button size="sm" aria-label="New Booking" className={styles.primaryAction} onClick={() => router.push("/dashboard/appointments")}><Plus className="h-4 w-4" /><span className={styles.wideLabel}>New Booking</span><span className={styles.shortLabel}>Book</span></Button>}
+          {isConsumer && <Button size="sm" aria-label="Book Consultation" className={styles.primaryAction} onClick={() => router.push("/browse")}><CalendarPlus className="h-4 w-4" /><span className={styles.wideLabel}>Book Consultation</span><span className={styles.shortLabel}>Book</span></Button>}
+          <Button variant="outline" size="sm" aria-label="Refresh" className={styles.iconAction} onClick={fetchDashboardData} disabled={isRefreshing} loading={isRefreshing}><RotateCw className="h-4 w-4" /></Button>
         </div>
-      </div>
+      </header>
 
       {/* 1.5 FIRST-TIME SETUP CHECKLIST (shown only for fresh tenant practices, NEVER for Root) */}
       {canViewOpsDashboard && canManageOrg && canReadStaff && !loadError &&
         !loading &&
         adminStats.doctors + adminStats.receptionists === 0 &&
         !setupDismissed && (
-          <div className="relative overflow-hidden rounded-2xl border border-primary-500/20 bg-primary-500/5 p-5 sm:p-6 shadow-xs animate-fade-in">
-            <Button type="button" onClick={() => {
-                setSetupDismissed(true);
-                try {
-                  localStorage.setItem("anant_setup_dismissed", "1");
-                } catch {}
-              }} variant="ghost" size="xs" className="absolute top-3 right-3">
-              Dismiss
-            </Button>
-
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <h2 className="text-base sm:text-lg font-bold text-text flex items-center gap-2">
-                  🎉 Welcome to your practice!
-                </h2>
-                <p className="text-xs text-text-muted">Complete these steps to start seeing patients.</p>
-              </div>
-
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="w-5 h-5 rounded-full bg-success/15 text-success-text flex items-center justify-center text-[11px] font-bold shrink-0">
-                    ✓
-                  </span>
-                  <span className="text-text-secondary line-through">Practice profile created</span>
-                </div>
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="w-5 h-5 rounded-full bg-surface-hover text-text-muted flex items-center justify-center text-[11px] font-bold shrink-0 border border-border/60">
-                    2
-                  </span>
-                  <span className="text-text font-semibold">Add your first team member</span>
-                </div>
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="w-5 h-5 rounded-full bg-surface-hover text-text-muted flex items-center justify-center text-[11px] font-bold shrink-0 border border-border/60">
-                    3
-                  </span>
-                  <span className="text-text-secondary">Set up schedule & availability</span>
-                </div>
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="w-5 h-5 rounded-full bg-surface-hover text-text-muted flex items-center justify-center text-[11px] font-bold shrink-0 border border-border/60">
-                    4
-                  </span>
-                  <span className="text-text-secondary">Book your first appointment</span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2.5 pt-1">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => router.push("/dashboard/staff")}
-                  className="text-xs font-semibold min-h-[36px]"
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Add Team Member
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.push("/dashboard/settings")}
-                  className="text-xs font-semibold min-h-[36px]"
-                >
-                  Configure Practice
-                </Button>
-              </div>
-            </div>
-          </div>
+          <section className={styles.setup}>
+            <div className={styles.setupHeading}><div><h2>Welcome to your practice!</h2><p>Complete these steps to start seeing patients.</p></div><Button variant="ghost" size="sm" onClick={() => { setSetupDismissed(true); try { localStorage.setItem("anant_setup_dismissed", "1"); } catch {} }}>Dismiss</Button></div>
+            <ol className="mt-4 grid gap-2 text-xs text-text-secondary"><li>1. Practice profile created</li><li>2. Add your first team member</li><li>3. Set up schedule &amp; availability</li><li>4. Book your first appointment</li></ol>
+            <div className={styles.setupActions}><Button size="sm" onClick={() => router.push("/dashboard/staff")}><Plus className="h-4 w-4" />Add Team Member</Button><Button variant="outline" size="sm" onClick={() => router.push("/dashboard/settings")}>Configure Practice</Button></div>
+          </section>
         )}
 
       {/* 2. PATIENT MEDICAL FOLLOW-UP ALERTS */}
@@ -376,18 +269,8 @@ function OperationalDashboard() {
         showStaffCounts={canReadStaff}
       />}
 
-      {/* 4. PURPOSEFUL CLINICAL & OPERATIONAL ANALYTICS */}
-      {!loadError && !isConsumer && <DashboardAnalytics
-        role={user.role}
-        loading={loading}
-        trendRange={trendRange}
-        setTrendRange={setTrendRange}
-        appointmentTrendData={appointmentTrendData}
-        locationThroughputData={locationThroughputData}
-      />}
-
       {/* 5. MAIN SECTION (APPOINTMENTS QUEUE + QUICK ACTIONS) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+      <div className={styles.operationsGrid}>
         {!loadError && (canReadAppointments || isConsumer) && <DashboardAppointmentsQueue
           appointments={user?.role === "patient" || user?.role === "family_member" ? appointments : todayAppointments}
           loading={loading}
@@ -401,6 +284,16 @@ function OperationalDashboard() {
           canViewOpsDashboard={canViewOpsDashboard}
         />
       </div>
+
+      {/* 4. PURPOSEFUL CLINICAL & OPERATIONAL ANALYTICS */}
+      {!loadError && !isConsumer && <DashboardAnalytics
+        role={user.role}
+        loading={loading}
+        trendRange={trendRange}
+        setTrendRange={setTrendRange}
+        appointmentTrendData={appointmentTrendData}
+        locationThroughputData={locationThroughputData}
+      />}
 
       {/* 6. LOCATION LOCATIONS OVERVIEW GRID (FOR ROOT & ADMINS) */}
       <DashboardLocations

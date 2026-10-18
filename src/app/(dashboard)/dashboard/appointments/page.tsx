@@ -9,7 +9,7 @@ import { useLatestRead } from "@/hooks/useLatestRead";
 import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
 import { patientName as appointmentPatientName, patientPhone as appointmentPatientPhone } from "@/lib/locationWorkflow";
 import { PatientEntryModal } from "@/components/appointments/PatientEntryModal";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { AppointmentLinkSummary } from "@/components/appointments/AppointmentLinkSummary";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
@@ -18,18 +18,20 @@ import { canRecordNoShow } from "@/lib/appointmentNoShow";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
 import { locationDateKey, locationLocalDateTimeInput, locationLocalTimeToIso } from "@/lib/locationTime";
-import { Alert, Card, CardContent, Table, Button, Modal, Input, DatePicker, Select, Textarea, useToast, Spinner, Badge, ConfirmDialog, Stepper, Dropdown, Checkbox, cn } from "@/components/ui";
+import { Alert, Table, Button, Input, DatePicker, Select, Textarea, useToast, Spinner, Badge, ConfirmDialog, Dropdown, Checkbox, cn } from "@/components/ui";
 import dynamic from "next/dynamic";
-import { RotateCw, Plus, LayoutList, Calendar, Search, Ticket, FileText, MoreHorizontal, Stethoscope, MapPin, User, Clock, UserPlus, ArrowRight, ArrowLeft, CheckCircle2, XCircle, CalendarClock, Phone, Building2, Mail, CalendarOff } from "lucide-react";
+import Modal from "@/components/queue/QueueDialog";
+import styles from "./Appointments.module.css";
+import { RotateCw, Plus, LayoutList, Calendar, Search, SlidersHorizontal, Ticket, FileText, MoreHorizontal, Stethoscope, MapPin, User, Clock, UserPlus, ArrowRight, ArrowLeft, CheckCircle2, XCircle, CalendarClock, Phone, Building2, Mail, CalendarOff } from "lucide-react";
 
 const AppointmentCalendarView = dynamic(
   () => import("@/components/clinical/AppointmentCalendarView").then((mod) => mod.AppointmentCalendarView),
   {
     ssr: false,
     loading: () => (
-      <div className="p-12 text-center text-text-muted space-y-3 bg-surface rounded-2xl border border-border">
-        <Spinner size="lg" className="mx-auto" />
-        <p className="text-xs font-semibold">Loading interactive schedule calendar...</p>
+      <div className={styles.calendarPlaceholder} role="status">
+        <Spinner size="sm" />
+        <p>Loading calendar…</p>
       </div>
     ),
   }
@@ -101,30 +103,34 @@ export default function AppointmentsPage() {
   const { toast } = useToast();
 
   const beginAppointmentsRead = useLatestRead();
+  const beginSlotsRead = useLatestRead();
+  const beginAssignmentsRead = useLatestRead();
+  const beginRecordRead = useLatestRead();
+  const beginPatientSearch = useLatestRead();
   const [listPage, setListPage] = useState(1);
   const [listSearch, setListSearch] = useState("");
   const [totalAppointments, setTotalAppointments] = useState(0);
   const [listPages, setListPages] = useState(1);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadedScope, setLoadedScope] = useState("");
+  const [readError, setReadError] = useState<{ scope: string; message: string } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Filter States
   const [doctors, setDoctors] = useState<any[]>([]);
-  const getTodayISO = () => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
+  const getTodayISO = () => locationDateKey(new Date(), timezoneForLocation(activeLocationId || ""));
 
   const [filterLocation, setFilterLocation] = useState(activeLocationId || "");
   const [filterDoctor, setFilterDoctor] = useState("");
   const [filterDate, setFilterDate] = useState(user?.role === "patient" ? "" : getTodayISO());
   const [filterStatus, setFilterStatus] = useState("");
   const [reviewOnly, setReviewOnly] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const readScope = JSON.stringify([user?.organization_id, user?.id, filterLocation, filterDoctor, filterDate, filterStatus, listPage, listSearch, reviewOnly]);
+  const loadError = readError?.scope === readScope ? readError.message : null;
+  const scopeReady = loadedScope === readScope;
+  const visibleAppointments = scopeReady ? appointments : [];
+  const loading = !scopeReady && !loadError;
 
   useEffect(() => {
     setFilterLocation(activeLocationId || "");
@@ -181,31 +187,39 @@ export default function AppointmentsPage() {
   }
   const [availableSlots, setAvailableSlots] = useState<SlotInfo[]>([]);
   const [fetchingSlots, setFetchingSlots] = useState(false);
+  const [slotError, setSlotError] = useState("");
+  const [slotRetry, setSlotRetry] = useState(0);
+  const [loadedSlotScope, setLoadedSlotScope] = useState("");
   const [selectedSlotDate, setSelectedSlotDate] = useState(new Date().toISOString().split("T")[0]);
 
   // Slot Lock State
   const [currentLockId, setCurrentLockId] = useState<string | null>(null);
+  const reservation = useRef<{ lockId: string; slotTime: string; locationId: string; doctorId: string } | null>(null);
   const [lockingSlot, setLockingSlot] = useState(false);
+  const slotLockPending = useRef(false);
   const [lockedSlotTime, setLockedSlotTime] = useState<string | null>(null);
 
   const [doctorBookingMode, setDoctorBookingMode] = useState<"time_slot" | "sequential_queue">("sequential_queue");
-  const [nextTokenNum, setNextTokenNum] = useState<number | null>(null);
-  const [tokensTodayCount, setTokensTodayCount] = useState<number>(0);
   const [doctorHolidayInfo, setDoctorHolidayInfo] = useState<{ isHoliday: boolean; reason: string | null } | null>(null);
 
+  const slotScope = [bookingLocationId, bookingDoctorId, selectedSlotDate].join(":");
+  const slotsReady = loadedSlotScope === slotScope && !slotError;
   useEffect(() => {
-    if (!bookingDoctorId || !selectedSlotDate) return;
+    const request = beginSlotsRead();
+    setSlotError("");
+    setBookingTime("");
+    if (!bookingLocationId || !bookingDoctorId || !selectedSlotDate) return;
     const fetchSlots = async () => {
       try {
         setFetchingSlots(true);
-        const res = await api.get(`/doctors/${bookingDoctorId}/slots?locationId=${bookingLocationId}&date=${selectedSlotDate}`);
+        const res = await api.get(`/doctors/${bookingDoctorId}/slots?locationId=${bookingLocationId}&date=${selectedSlotDate}`, { signal: request.signal });
+        if (!request.isCurrent()) return;
         const data = res.data?.data;
+        setLoadedSlotScope(slotScope);
         const slotsData = data?.slots || [];
         setAvailableSlots(slotsData);
         const mode = data?.bookingMode || "sequential_queue";
         setDoctorBookingMode(mode);
-        setNextTokenNum(data?.nextToken || null);
-        setTokensTodayCount(data?.tokensToday || 0);
 
         if (data?.isHoliday) {
           setDoctorHolidayInfo({ isHoliday: true, reason: data.holidayReason || "Doctor Holiday / Leave" });
@@ -217,19 +231,20 @@ export default function AppointmentsPage() {
           setBookingTime(`${selectedSlotDate}T00:00:00`);
         }
       } catch {
+        if (!request.isCurrent()) return;
         setAvailableSlots([]);
-        setDoctorBookingMode("sequential_queue");
-        setDoctorHolidayInfo(null);
+        setSlotError("Availability could not be loaded. Try again or choose another date.");
       } finally {
-        setFetchingSlots(false);
+        if (request.isCurrent()) setFetchingSlots(false);
       }
     };
     fetchSlots();
-  }, [bookingDoctorId, bookingLocationId, selectedSlotDate]);
+  }, [bookingDoctorId, bookingLocationId, selectedSlotDate, slotScope, beginSlotsRead, slotRetry]);
 
   // Status Update State
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [confirmStatus, setConfirmStatus] = useState<string | null>(null);
+  const [statusSaving, setStatusSaving] = useState(false);
 
   // Validation States for Patient Booking
   const [bookingErrors, setBookingErrors] = useState<Record<string, string>>({});
@@ -326,7 +341,6 @@ export default function AppointmentsPage() {
       const res = await api.patch(`/appointments/${rescheduleTargetAppt.id}/reschedule`, {
         newTime: locationLocalTimeToIso(rescheduleTime.slice(0, 10), rescheduleTime.slice(11, 16), timezoneForLocation((rescheduleTargetAppt.locationId as any)?.id || (rescheduleTargetAppt.locationId as any)?._id || "")),
         reason: rescheduleReason,
-        ...(currentLockId ? { lockId: currentLockId } : {}),
       });
 
       toast({
@@ -357,10 +371,18 @@ export default function AppointmentsPage() {
   // EHR Record Modal State
   const [recordModalOpen, setRecordModalOpen] = useState(false);
   const [activeRecord, setActiveRecord] = useState<any | null>(null);
+  const [recordLoading, setRecordLoading] = useState(false);
+  const [recordError, setRecordError] = useState("");
 
   const handleOpenRecordModal = async (appt: Appointment) => {
+    const request = beginRecordRead();
+    setActiveRecord(appt);
+    setRecordError("");
+    setRecordLoading(true);
+    setRecordModalOpen(true);
     try {
-      const res = await api.get(`/encounters/${appt.id}/summary-report`);
+      const res = await api.get(`/encounters/${appt.id}/summary-report`, { signal: request.signal });
+      if (!request.isCurrent()) return;
       const report = res.data?.data || res.data || {};
       const symptoms = report.chiefComplaint || (report.symptoms || []).join(", ") || "";
       const diagnosis =
@@ -373,10 +395,10 @@ export default function AppointmentsPage() {
         diagnosis,
         prescriptions,
       });
-      setRecordModalOpen(true);
     } catch {
-      setActiveRecord(appt);
-      setRecordModalOpen(true);
+      if (request.isCurrent()) setRecordError("The clinical record could not be loaded. No clinical findings are available in this view.");
+    } finally {
+      if (request.isCurrent()) setRecordLoading(false);
     }
   };
 
@@ -491,7 +513,7 @@ export default function AppointmentsPage() {
   const fetchAppointments = async () => {
     const request = beginAppointmentsRead();
     try {
-      setLoadError(null);
+      setReadError(null);
       setIsRefreshing(true);
       const queryParams = [`page=${listPage}`, "limit=50", `search=${encodeURIComponent(listSearch)}`];
       if (filterLocation) queryParams.push(`locationId=${filterLocation}`);
@@ -516,9 +538,12 @@ export default function AppointmentsPage() {
       setTotalAppointments(Number(res.headers["x-total-count"]) || 0);
       if (listPage > pages) { setListPage(pages); return; }
       setAppointments(res.data.data || []);
+      setLoadedScope(readScope);
     } catch {
       if (!request.isCurrent()) return;
-      setLoadError("Appointments could not be loaded. Check your connection and try again.");
+      if (!scopeReady) setAppointments([]);
+      setLoadedScope(readScope);
+      setReadError({ scope: readScope, message: "Appointments could not be loaded. Check your connection and try again." });
       toast({
         title: "Error",
         description: "Failed to load appointments list",
@@ -526,7 +551,6 @@ export default function AppointmentsPage() {
       });
     } finally {
       if (!request.isCurrent()) return;
-      setLoading(false);
       setIsRefreshing(false);
     }
   };
@@ -541,14 +565,14 @@ export default function AppointmentsPage() {
     }
   };
 
-  useEffect(() => { setListPage(1); setAppointments([]); }, [filterLocation, filterDoctor, filterDate, filterStatus, listSearch, reviewOnly]);
+  useEffect(() => { setListPage(1); setReadError(null); }, [filterLocation, filterDoctor, filterDate, filterStatus, listSearch, reviewOnly]);
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === "visible") void fetchAppointments(); };
     const initial = window.setTimeout(refresh, 250);
     const timer = window.setInterval(refresh, 15000);
     document.addEventListener("visibilitychange", refresh);
     return () => { window.clearTimeout(initial); window.clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
-  }, [filterLocation, filterDoctor, filterDate, filterStatus, listPage, listSearch, reviewOnly]);
+  }, [filterLocation, filterDoctor, filterDate, filterStatus, listPage, listSearch, reviewOnly, user?.id, user?.organization_id]);
 
   useEffect(() => {
     if (user) {
@@ -556,42 +580,44 @@ export default function AppointmentsPage() {
     }
   }, [user?.id, user?.role]);
 
-  // Fetch doctor assignments when booking location changes
+  // Clear the old practitioner immediately and ignore late assignment responses.
   useEffect(() => {
-    if (!bookingLocationId) {
-      setDoctorAssignments([]);
-      return;
-    }
-    const fetchAssignments = async () => {
-      try {
-        const res = await api.get(`/onboarding/doctors/assignments?locationId=${bookingLocationId}`);
-        setDoctorAssignments(res.data.data || []);
-      } catch {
-        console.error("Failed to load doctor assignments");
-      }
-    };
-    fetchAssignments();
-  }, [bookingLocationId]);
+    const request = beginAssignmentsRead();
+    setDoctorAssignments([]);
+    setBookingDoctorId("");
+    if (!bookingLocationId) return;
+    api.get("/onboarding/doctors/assignments?locationId=" + bookingLocationId, { signal: request.signal }).then(res => {
+      if (!request.isCurrent()) return;
+      const assignments = res.data.data || [];
+      setDoctorAssignments(assignments);
+      if (assignments.length === 1) setBookingDoctorId(assignments[0].doctorId?.id || assignments[0].doctorId?._id || assignments[0].doctorId);
+    }).catch(() => { if (request.isCurrent()) toast({ title: "Practitioners unavailable", description: "Select the location again to retry.", variant: "error" }); });
+  }, [bookingLocationId, beginAssignmentsRead, toast]);
 
   const handlePatientSearch = async () => {
-    if (!patientSearch) return;
+    if (!patientSearch.trim()) return;
+    const request = beginPatientSearch();
     setSearchLoading(true);
+    setSearchResults([]);
     try {
-      const res = await api.get(`/patients?search=${patientSearch}`);
+      const res = await api.get(`/patients?search=${encodeURIComponent(patientSearch.trim())}`, { signal: request.signal });
+      if (!request.isCurrent()) return;
       setSearchResults(res.data.data || []);
     } catch {
-      toast({ title: "Error", description: "Patient search failed", variant: "error" });
+      if (request.isCurrent()) toast({ title: "Error", description: "Patient search failed", variant: "error" });
     } finally {
-      setSearchLoading(false);
+      if (request.isCurrent()) setSearchLoading(false);
     }
   };
 
   const handleSelectPatient = (patient: any) => {
     setSelectedPatient(patient);
+    setIsNewPatient(false);
     setBookingStep(2);
   };
 
   const handleCreateNewPatient = () => {
+    setSelectedPatient(null);
     setIsNewPatient(true);
     setBookingStep(2);
   };
@@ -612,6 +638,10 @@ export default function AppointmentsPage() {
       }
     }
 
+    if (!slotsReady || fetchingSlots || lockingSlot || !bookingTime) {
+      toast({ title: "Choose an available appointment", description: "Wait for availability and select a valid date or time.", variant: "error" });
+      return;
+    }
     if (doctorHolidayInfo?.isHoliday && !forceBooking) {
       toast({
         title: "Doctor on Holiday / Leave",
@@ -653,6 +683,8 @@ export default function AppointmentsPage() {
         duration: 5000,
       });
 
+      reservation.current = null;
+      setCurrentLockId(null); setLockedSlotTime(null);
       setIsBookModalOpen(false);
       fetchAppointments();
       resetBookingForm();
@@ -668,6 +700,8 @@ export default function AppointmentsPage() {
   };
 
   const resetBookingForm = () => {
+    beginPatientSearch();
+    setSearchLoading(false);
     setBookingStep(1);
     setPatientSearch("");
     setSearchResults([]);
@@ -695,26 +729,16 @@ export default function AppointmentsPage() {
   };
 
   const releaseCurrentLock = async () => {
-    if (currentLockId && lockedSlotTime && bookingLocationId && bookingDoctorId) {
-      try {
-        await api.delete("/appointments/lock-slot", {
-          data: {
-            locationId: bookingLocationId,
-            doctorId: bookingDoctorId,
-            slotTime: lockedSlotTime,
-            lockId: currentLockId,
-          },
-        });
-      } catch {
-        // Non-critical: lock will auto-expire
-      }
-    }
-    setCurrentLockId(null);
-    setLockedSlotTime(null);
+    const held = reservation.current;
+    reservation.current = null;
+    setCurrentLockId(null); setLockedSlotTime(null);
+    if (!held) return;
+    try { await api.delete("/appointments/lock-slot", { data: held }); }
+    catch { /* The server reservation expires if release cannot be delivered. */ }
   };
 
   const handleSlotClick = async (slot: SlotInfo) => {
-    if (!slot.available || slot.lockedByOther) return;
+    if (!slot.available || slot.lockedByOther || slotLockPending.current) return;
     const fullSlotLocal = `${selectedSlotDate}T${slot.time}`;
     const fullSlotISO = locationLocalTimeToIso(selectedSlotDate, slot.time, timezoneForLocation(bookingLocationId));
 
@@ -723,16 +747,18 @@ export default function AppointmentsPage() {
       return;
     }
 
-    await releaseCurrentLock();
-
+    slotLockPending.current = true;
     setLockingSlot(true);
     try {
+      await releaseCurrentLock();
       const res = await api.post("/appointments/lock-slot", {
         locationId: bookingLocationId,
         doctorId: bookingDoctorId,
         slotTime: fullSlotISO,
       });
       const lockData = res.data?.data;
+      if (!lockData?.lockId) throw new Error("The slot reservation could not be confirmed.");
+      if (lockData?.lockId) reservation.current = { lockId: lockData.lockId, slotTime: fullSlotISO, locationId: bookingLocationId, doctorId: bookingDoctorId };
       setCurrentLockId(lockData?.lockId || null);
       setLockedSlotTime(fullSlotISO);
       setBookingTime(fullSlotLocal);
@@ -749,12 +775,16 @@ export default function AppointmentsPage() {
         setFetchingSlots(false);
       }
     } finally {
+      slotLockPending.current = false;
       setLockingSlot(false);
     }
   };
 
   const openBookModal = () => {
     resetBookingForm();
+    const locationId = filterLocation || (locations.length === 1 ? locations[0].id : "");
+    setBookingLocationId(locationId);
+    if (locationId) setSelectedSlotDate(locationDateKey(new Date(), timezoneForLocation(locationId)));
     setIsBookModalOpen(true);
   };
 
@@ -765,7 +795,8 @@ export default function AppointmentsPage() {
   };
 
   const handleUpdateStatus = async () => {
-    if (!updatingStatusId || !confirmStatus) return;
+    if (!updatingStatusId || !confirmStatus || statusSaving) return;
+    setStatusSaving(true);
     const targetId = updatingStatusId;
     const targetStatus = confirmStatus;
     try {
@@ -786,6 +817,7 @@ export default function AppointmentsPage() {
         variant: "error",
       });
     } finally {
+      setStatusSaving(false);
       setUpdatingStatusId(null);
       setConfirmStatus(null);
     }
@@ -832,6 +864,7 @@ export default function AppointmentsPage() {
       icon: <Ticket className="w-4 h-4 text-text-muted" />,
       onClick: () => handleViewSlip(row),
     },
+    ...(user?.role === "patient" && row.status === "completed" ? [{ label: "Review doctor", icon: <Stethoscope size={16} />, onClick: () => handleOpenReviewModal(row) }] : []),
     {
       label: "View Rx / EHR Summary",
       icon: <FileText className="w-4 h-4 text-text-muted" />,
@@ -847,7 +880,7 @@ export default function AppointmentsPage() {
           },
         }]
       : []),
-    ...(row.status !== "completed" && row.status !== "cancelled"
+    ...((canManageAppointments || ["patient", "family_member"].includes(user?.role || "")) && !["completed", "cancelled", "no-show"].includes(row.status)
       ? [
           {
             label: "Reschedule Appointment",
@@ -866,7 +899,7 @@ export default function AppointmentsPage() {
           },
         ]
       : []),
-    ...(row.status === "pending"
+    ...(canManageAppointments && row.status === "pending"
       ? [
           {
             label: "Mark Confirmed",
@@ -878,7 +911,7 @@ export default function AppointmentsPage() {
           },
         ]
       : []),
-    ...(row.status === "confirmed"
+    ...(canManageAppointments && row.status === "confirmed"
       ? [
           {
             label: "Mark Checked-In",
@@ -890,7 +923,7 @@ export default function AppointmentsPage() {
           },
         ]
       : []),
-    ...(row.status === "checked-in"
+    ...(canManageAppointments && row.status === "checked-in"
       ? [
           {
             label: "Start Consultation",
@@ -902,7 +935,7 @@ export default function AppointmentsPage() {
           },
         ]
       : []),
-    ...(row.status === "in-consultation"
+    ...(canManageAppointments && row.status === "in-consultation"
       ? [
           {
             label: "Mark Completed",
@@ -914,7 +947,7 @@ export default function AppointmentsPage() {
           },
         ]
       : []),
-    ...(row.status !== "completed" && row.status !== "cancelled"
+    ...(!["completed", "cancelled", "no-show"].includes(row.status)
       ? [
           { divider: true, label: "" },
           {
@@ -933,68 +966,21 @@ export default function AppointmentsPage() {
   if (!user) return null;
 
   return (
-    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-16">
+    <div className={styles.workspace}>
       <Suspense fallback={<p role="status">Loading linked booking...</p>}><AppointmentLinkSummary key={`${user.organization_id}:${user.id}`} /></Suspense>
       {loadError && <Alert variant="error" title="Unable to load appointments" action={<Button variant="outline" size="sm" onClick={fetchAppointments}>Try again</Button>}>{loadError}</Alert>}
-      {/* ──────────────────────────────────────────────────────────────────────────
-          1. TOP EXECUTIVE HEADER BANNER
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">Appointments</h1>
-              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                {user.role === "patient" ? "My Visits" : "Schedule & Visits"}
-              </Badge>
-            </div>
-            <p className="text-xs sm:text-sm text-text-muted leading-relaxed max-w-2xl">
-              {user.role === "patient"
-                ? "View your upcoming consultations, digital queue slips, and clinical visit history."
-                : "Book visits and manage arrivals."}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap w-full sm:w-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchAppointments}
-              disabled={isRefreshing}
-              className="text-xs font-semibold transition-colors min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
-             loading={isRefreshing}>
-              <RotateCw className="h-3.5 w-3.5 mr-1.5 text-text-secondary" />
-              Refresh
-            </Button>
-
-            {user.role === "patient" ? (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => router.push("/browse")}
-                className="font-semibold min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Book Consultation
-              </Button>
-            ) : canManageAppointments && user.role !== "doctor" ? (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => preferences.registration === "essential" ? setIsEssentialEntryOpen(true) : openBookModal()}
-                className="font-semibold min-h-[40px] sm:min-h-[36px] flex-1 sm:flex-none justify-center"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                New Appointment
-              </Button>
-            ) : null}
-          </div>
+      <header className={styles.header}>
+        <div className={styles.heading}><h1>Appointments</h1><span aria-live="polite">{scopeReady ? totalAppointments : "—"}</span></div>
+        <div className={styles.headerActions}>
+          <Button variant="ghost" size="sm" aria-label="Refresh appointments" onClick={fetchAppointments} disabled={isRefreshing} className={styles.iconButton}><RotateCw size={17} className={isRefreshing ? "animate-spin" : ""} /></Button>
+          {user.role === "patient" ? <Button size="sm" onClick={() => router.push("/browse")}><Plus size={16} /> Book visit</Button>
+            : canManageAppointments && user.role !== "doctor" ? <Button size="sm" onClick={() => preferences.registration === "essential" ? setIsEssentialEntryOpen(true) : openBookModal()}><Plus size={16} /> New booking</Button> : null}
         </div>
-      </div>
+      </header>
 
       {/* Live Patient Queue Tracker (if active appointment today) */}
       {user.role === "patient" && (() => {
-        const activeAppt = appointments.find((a: any) =>
+        const activeAppt = visibleAppointments.find((a: any) =>
           ["pending", "confirmed", "checked-in", "in-consultation"].includes(a.status) && a.reviewState !== "unresolved"
         );
         if (!activeAppt) return null;
@@ -1012,273 +998,75 @@ export default function AppointmentsPage() {
         );
       })()}
 
-      {/* ──────────────────────────────────────────────────────────────────────────
-          2. VIEW LAYOUT SWITCHER BAR
-         ────────────────────────────────────────────────────────────────────────── */}
-      {user && !["patient", "family_member"].includes(user.role) && <div className="flex flex-wrap items-center gap-3">
-        <Button size="sm" variant={reviewOnly ? "primary" : "outline"} aria-pressed={reviewOnly} onClick={() => {
-          const next = !reviewOnly;
-          setReviewOnly(next);
-          setFilterDate(next ? "" : getTodayISO());
-          setFilterStatus("");
-          if (next) setViewLayout("table");
-        }}>Needs review</Button>
-        {reviewOnly && <p className="text-xs text-text-secondary">Overdue and unresolved visits keep their recorded status until staff resolves them.</p>}
-      </div>}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm font-medium text-text-secondary">Schedule</span>
-        <div className="grid grid-cols-2 sm:flex items-center gap-1 p-1 bg-surface-alt/70 rounded-xl border border-border/70 w-full sm:w-fit">
-          <button
-            type="button"
-            onClick={() => setViewLayout("table")}
-            aria-pressed={viewLayout === "table"}
-            className={cn(
-              "px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 min-h-[40px] sm:min-h-[34px]",
-              viewLayout === "table"
-                ? "bg-surface text-text shadow-xs font-bold border border-border/60"
-                : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
-            )}
-          >
-            <LayoutList className={cn("h-3.5 w-3.5", viewLayout === "table" ? "text-accent" : "text-text-muted")} />
-            <span>List View</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewLayout("calendar")}
-            aria-pressed={viewLayout === "calendar"}
-            className={cn(
-              "px-3.5 py-2 sm:py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 min-h-[40px] sm:min-h-[34px]",
-              viewLayout === "calendar"
-                ? "bg-surface text-text shadow-xs font-bold border border-border/60"
-                : "text-text-muted hover:text-text hover:bg-surface/50 border border-transparent"
-            )}
-          >
-            <Calendar className={cn("h-3.5 w-3.5", viewLayout === "calendar" ? "text-accent" : "text-text-muted")} />
-            <span>Calendar View</span>
-          </button>
+      <section className={styles.toolbar} aria-label="Appointment controls">
+        <div className={styles.viewRow}>
+          <div className={styles.viewSwitch} role="group" aria-label="Schedule view">
+            <button type="button" aria-pressed={viewLayout === "table"} onClick={() => setViewLayout("table")}><LayoutList size={16} /> List</button>
+            <button type="button" aria-pressed={viewLayout === "calendar"} onClick={() => { setReviewOnly(false); setViewLayout("calendar"); }}><Calendar size={16} /> Calendar</button>
+          </div>
+          {!["patient", "family_member"].includes(user.role) && <Button size="sm" variant={reviewOnly ? "primary" : "ghost"} aria-pressed={reviewOnly} onClick={() => {
+            const next = !reviewOnly; setReviewOnly(next); setFilterDate(next ? "" : getTodayISO()); setFilterStatus(""); if (next) setViewLayout("table");
+          }}>Needs review</Button>}
+          {filterLocation && <span className={styles.locationContext}><MapPin size={14} />{locations.find(location => location.id === filterLocation)?.name}</span>}
         </div>
-      </div>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          3. MAIN APPOINTMENTS ROSTER (TABLE OR CALENDAR)
-         ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Input type="search" containerClassName="basis-full" aria-label="Search all appointments" placeholder="Patient, doctor or token" value={listSearch} onChange={e => setListSearch(e.target.value)} />
-        <span role="status" className="text-xs text-text-muted flex-1 min-w-0">{totalAppointments} matches · Page {listPage} of {listPages}<span className="block">Counts and exports cover this page.</span></span>
-        <Button variant="outline" size="sm" disabled={listPage <= 1 || isRefreshing} onClick={() => setListPage(p => p - 1)}>Previous</Button>
-        <Button variant="outline" size="sm" disabled={listPage >= listPages || isRefreshing} onClick={() => setListPage(p => p + 1)}>Next</Button>
-      </div>
+        <div className={styles.searchRow}>
+          <Input type="search" icon={<Search size={16} />} aria-label="Search all appointments" placeholder="Patient, doctor or token" value={listSearch} onChange={e => setListSearch(e.target.value)} />
+          <Button variant="outline" size="sm" aria-label="Filter appointments" onClick={() => setFiltersOpen(true)} className={styles.filterButton}><SlidersHorizontal size={16} /><span className={styles.filterLabel}>Filters</span>{(filterStatus || filterDoctor || (filterDate && filterDate !== getTodayISO())) && <i className={styles.filterDot} />}</Button>
+        </div>
+        <div className={styles.filterSummary}>
+          <span>{reviewOnly ? "Overdue and unresolved visits" : viewLayout === "calendar" ? "Calendar schedule" : filterDate ? filterDate.includes(" to ") ? filterDate.replace(" to ", " – ") : new Date(filterDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "All dates"}{filterStatus ? " · " + filterStatus.replaceAll("-", " ") : ""}</span>
+          <span role="status" aria-live="polite">{loading ? "Loading appointments…" : isRefreshing ? "Updating…" : scopeReady ? totalAppointments + " matches" : ""}</span>
+        </div>
+      </section>
+      {reviewOnly && <p className={styles.reviewNotice}>Recorded statuses stay unchanged until staff reviews attendance.</p>}
+      <Modal open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filter appointments" size="md" footer={<><Button variant="outline" onClick={() => { setFilterDoctor(""); setFilterStatus(""); setReviewOnly(false); if (viewLayout !== "calendar") setFilterDate(getTodayISO()); }}>Reset filters</Button><Button onClick={() => setFiltersOpen(false)}>Done</Button></>}>
+        <div className="space-y-4">
+          {locations.length > 1 && <Select label="Location" value={filterLocation} onChange={e => { setFilterLocation(e.target.value); setFilterDoctor(""); }} options={[{ value: "", label: "All locations" }, ...locations.map(location => ({ value: location.id, label: location.name }))]} />}
+          {doctors.length > 1 && <Select label="Doctor" value={filterDoctor} onChange={e => setFilterDoctor(e.target.value)} options={[{ value: "", label: "All doctors" }, ...doctors.map(doctor => ({ value: doctor.id, label: doctor.name }))]} />}
+          {viewLayout !== "calendar" && <DatePicker label="Date or date range" mode="range" value={filterDate} onChange={value => { setReviewOnly(false); setFilterDate(value); }} />}
+          <Select label="Status" value={filterStatus} onChange={e => { setReviewOnly(false); setFilterStatus(e.target.value); }} options={[{ value: "", label: "All statuses" }, ...["pending", "pending_payment", "confirmed", "checked-in", "in-consultation", "completed", "cancelled", "no-show"].map(value => ({ value, label: value.replaceAll("-", " ").replaceAll("_", " ") }))]} />
+        </div>
+      </Modal>
       {viewLayout === "calendar" ? (
         <AppointmentCalendarView
-          appointments={appointments as any}
+          appointments={visibleAppointments as any}
+          initialDate={filterDate.split(" to ")[0]}
+          timeZone={filterLocation ? timezoneForLocation(filterLocation) : undefined}
+          onRangeChange={(start, end) => setFilterDate(start === end ? start : `${start} to ${end}`)}
+          loading={loading || isRefreshing}
+          canReschedule={canManageAppointments || ["patient", "family_member"].includes(user.role)}
           onRescheduleClick={(appt: any) => handleOpenRescheduleModal(appt)}
         />
       ) : (
-        <Card padding="none" className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-          <CardContent className="p-0">
-            <Table
-
-              data={appointments || []}
-              exportFilename="appointments_page"
-              searchable={false}
-              pagination={false}
-              searchPlaceholder="Search by patient, doctor, or token..."
-              loading={loading}
-              mobileCardView
-              toolbarFilters={
-                user.role !== "patient" && (
-                  <>
-                    <div className="w-full sm:w-48">
-                      <DatePicker
-                        size="sm"
-                        variant="outline"
-                        mode="range"
-                        placeholder="Filter Date..."
-                        value={filterDate}
-                        onChange={(val) => { setReviewOnly(false); setFilterDate(val); }}
-                      />
-                    </div>
-                    {doctors.length > 1 && (
-                      <div className="w-full sm:w-40">
-                        <Select
-                          size="sm"
-                          icon={<Stethoscope className="w-3.5 h-3.5 text-text-muted" />}
-                          placeholder="All Doctors"
-                          value={filterDoctor}
-                          onChange={(e) => setFilterDoctor(e.target.value)}
-                          options={[
-                            { value: "", label: "All Doctors" },
-                            ...doctors.map((d) => ({
-                              value: d.id,
-                              label: `Dr. ${(d.name || "").replace(/^dr\.?\s+/i, "")}`,
-                            })),
-                          ]}
-                        />
-                      </div>
-                    )}
-                    <div className="w-full sm:w-36">
-                      <Select
-                        size="sm"
-                        icon={<CheckCircle2 className="w-3.5 h-3.5 text-text-muted" />}
-                        placeholder="All Statuses"
-                        value={filterStatus}
-                        onChange={(e) => { setReviewOnly(false); setFilterStatus(e.target.value); }}
-                        options={[
-                          { value: "", label: "All Statuses" },
-                          { value: "pending", label: "Pending" },
-                          { value: "confirmed", label: "Confirmed" },
-                          { value: "checked-in", label: "Checked-In" },
-                          { value: "in-consultation", label: "In Consultation" },
-                          { value: "completed", label: "Completed" },
-                          { value: "cancelled", label: "Cancelled" },
-                          { value: "no-show", label: "No Show" },
-                        ]}
-                      />
-                    </div>
-                  </>
-                )
-              }
-              renderMobileCard={(row: Appointment) => (
-                <div
-                  key={row.id}
-                  className="p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-3 relative overflow-hidden transition-all hover:border-primary-500/30"
-                >
-                  {/* Top Bar: Token Badge + Type Badge + Status Pill */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => handleViewSlip(row)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary-500/10 border border-primary-500/20 text-accent dark:text-accent font-mono font-bold text-xs hover:bg-primary-500/15 transition-colors cursor-pointer"
-                        title="View Booking Slip"
-                      >
-                        <Ticket className="w-3.5 h-3.5 shrink-0" />
-                        #{row.tokenNumber}
-                      </button>
-                      <span className="uppercase font-semibold text-[10px] tracking-wider px-2 py-0.5 rounded-md bg-surface-alt border border-border/60 text-text-secondary">
-                        {row.appointmentType}
-                      </span>
-                    </div>
-
-                    <Badge
-                      variant={getStatusBadgeVariant(row.status)}
-                      size="sm"
-                      dot
-                      className="capitalize font-semibold text-[11px]"
-                    >
-                      {row.status.replace("-", " ")}
-                    </Badge>
-                    {row.reviewState && <span className="block text-[11px] text-warning-text">
-                      {user?.role === "patient" ? "Please contact reception" : row.reviewState === "unresolved" ? "Unresolved · review needed" : "Overdue · verify attendance"}
-                    </span>}
-                  </div>
-
-                  {/* Doctor & Patient Information */}
-                  <div className="space-y-1 pt-0.5">
-                    <div className="flex flex-col sm:flex-row items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start gap-1.5 text-sm font-bold text-text">
-                          <Stethoscope className="w-3.5 h-3.5 text-accent shrink-0" />
-                          <span className="min-w-0 break-words">Dr. {(row.doctorId?.name || "Unassigned").replace(/^dr\.?\s+/i, "")}</span>
-                        </div>
-                        <p className="text-[11px] text-text-muted pl-5 truncate">
-                          {row.doctorId?.specialization || "General Medicine"}
-                        </p>
-                      </div>
-
-                      <div className="min-w-0 text-left sm:text-right sm:flex-1">
-                        <div className="flex items-start sm:justify-end gap-1 text-xs font-semibold text-text">
-                          <User className="w-3 h-3 text-text-muted shrink-0" />
-                          <span className="min-w-0 break-words">{appointmentPatientName(row.patientId)}</span>
-                        </div>
-                        {appointmentPatientPhone(row.patientId) && appointmentPatientPhone(row.patientId) !== "-" && (
-                          <p className="text-[10px] text-text-muted font-mono">{appointmentPatientPhone(row.patientId)}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Date, Time & Location Location */}
-                    <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 pt-2 border-t border-border/50 text-xs text-text-secondary">
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                        <span className="font-medium text-text">{formatDateTime(row.appointmentTime)}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                        <span className="truncate">{row.locationId?.name || "Location"}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions Footer */}
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      onClick={() => handleViewSlip(row)}
-                      className="font-semibold rounded-xl text-xs flex-1 min-h-[38px] justify-center"
-                    >
-                      <Ticket className="w-3.5 h-3.5 mr-1" />
-                      View Slip
-                    </Button>
-
-                    {user?.role === "doctor" &&
-                    (row.status === "confirmed" || row.status === "checked-in" || row.status === "in-consultation") && (
-                      <Button
-                        size="xs"
-                        variant="primary"
-                        onClick={() => router.push(`/dashboard/consultations/${row.id}`)}
-                        className="font-semibold rounded-xl text-xs flex-1 min-h-[38px] justify-center"
-                      >
-                        <Stethoscope className="w-3.5 h-3.5 mr-1" />
-                        Consult
-                      </Button>
-                    )}
-
-                    <Dropdown
-                      align="right"
-                      trigger={
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          className="h-[38px] w-[38px] min-h-[38px] min-w-[38px] p-0 flex items-center justify-center rounded-xl text-text-secondary hover:text-text cursor-pointer shrink-0"
-                          aria-label="Appointment options"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      }
-                      items={getAppointmentDropdownItems(row)}
-                    />
-                  </div>
+        <section className={styles.roster} aria-label="Appointment results" aria-busy={loading || isRefreshing}>
+          <div className={styles.mobileList}>
+            {loading ? <div className={styles.emptyState} role="status"><Spinner size="sm" /><p>Loading appointments…</p></div> : visibleAppointments.length ? visibleAppointments.map(row => (
+              <article key={row.id} className={styles.appointmentCard}>
+                <div className={styles.cardHeading}>
+                  <button type="button" onClick={() => handleViewSlip(row)} className={styles.token} aria-label={"View booking slip for token " + (row.tokenNumber || "unassigned")}><Ticket size={14} /><strong>{row.tokenNumber ? "#" + row.tokenNumber : "—"}</strong></button>
+                  <div className={styles.patientIdentity}><h2>{appointmentPatientName(row.patientId)}</h2><span>{appointmentPatientPhone(row.patientId) || "Phone not recorded"}</span></div>
+                  <Dropdown align="right" trigger={<Button variant="ghost" size="sm" className={styles.iconButton} aria-label={"Options for " + appointmentPatientName(row.patientId)}><MoreHorizontal size={18} /></Button>} items={getAppointmentDropdownItems(row)} />
                 </div>
-              )}
+                <div className={styles.cardStatus}><Badge variant={getStatusBadgeVariant(row.status)} size="sm" dot>{row.status.replaceAll("-", " ").replaceAll("_", " ")}</Badge><span>{row.appointmentType.replaceAll("-", " ").replaceAll("_", " ")}</span></div>
+                {row.reviewState && <p className={styles.attendanceNotice}>{user.role === "patient" ? "Please contact reception" : row.reviewState === "unresolved" ? "Unresolved · review needed" : "Overdue · verify attendance"}</p>}
+                <div className={styles.cardDetails}><span><Stethoscope size={14} />Dr. {(row.doctorId?.name || "Unassigned").replace(/^dr\.?\s+/i, "")}</span><span><Clock size={14} />{formatDateTime(row.appointmentTime)}</span><span><MapPin size={14} />{row.locationId?.name || "Location unavailable"}</span></div>
+                {user.role === "doctor" && ["confirmed", "checked-in", "in-consultation"].includes(row.status) && <Button size="sm" variant="outline" onClick={() => router.push("/dashboard/consultations/" + row.id)}>Open consultation <ArrowRight size={14} /></Button>}
+              </article>
+            )) : <div className={styles.emptyState}><Calendar size={24} /><h2>{loadError ? "Appointments unavailable" : "No appointments found"}</h2><p>{loadError ? "Try loading this view again." : "Change the search or filters to find a visit."}</p></div>}
+          </div>
+          <div className={styles.desktopList}>
+            <Table<Appointment> data={visibleAppointments} loading={loading || isRefreshing} density="compact" variant="flat" pagination={false} searchable={false} showColumnVisibility={false} mobileCardView={false}
               columns={[
-                {
-                  key: "tokenNumber",
-                  header: "Token",
-                  width: "80px",
-                  sortable: true,
-                  render: (row: Appointment) => (
-                    <button
-                      type="button"
-                      onClick={() => handleViewSlip(row)}
-                      className="font-mono font-bold text-xs sm:text-sm text-accent dark:text-accent hover:underline cursor-pointer focus:outline-none inline-flex items-center gap-1"
-                      title="View Booking Slip"
-                    >
-                      <Ticket className="w-3.5 h-3.5 shrink-0 opacity-70" />
-                      #{row.tokenNumber}
-                    </button>
-                  ),
-                },
                 {
                   key: "patientName",
                   header: "Patient",
-                  sortable: true,
+                  sortable: false,
                   render: (row: Appointment) => (
                     <div className="space-y-0.5 min-w-[140px]">
                       <span className="font-bold text-text text-xs sm:text-sm">
                         {appointmentPatientName(row.patientId)}
                       </span>
+                      <span className="text-xs text-accent block">{row.tokenNumber ? `Token #${row.tokenNumber}` : "Token not assigned"}</span>
                       {appointmentPatientPhone(row.patientId) && appointmentPatientPhone(row.patientId) !== "-" && (
                         <span className="text-xs text-text-muted block flex items-center gap-1">
                           <Phone className="w-3 h-3 text-text-muted shrink-0" />
@@ -1289,20 +1077,9 @@ export default function AppointmentsPage() {
                   ),
                 },
                 {
-                  key: "location",
-                  header: "Location",
-                  sortable: true,
-                  render: (row: Appointment) => (
-                    <div className="flex items-center gap-1.5 text-xs text-text-secondary min-w-[120px]">
-                      <Building2 className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                      <span>{row.locationId?.name || "Location"}</span>
-                    </div>
-                  ),
-                },
-                {
                   key: "doctor",
-                  header: "Doctor",
-                  sortable: true,
+                  header: "Practitioner",
+                  sortable: false,
                   render: (row: Appointment) => (
                     <div className="space-y-0.5 min-w-[140px]">
                       <div className="flex items-center gap-1 text-xs font-semibold text-text">
@@ -1310,7 +1087,7 @@ export default function AppointmentsPage() {
                         <span>Dr. {(row.doctorId?.name || "Unassigned").replace(/^dr\.?\s+/i, "")}</span>
                       </div>
                       <span className="text-[10px] text-text-muted block pl-4.5">
-                        {row.doctorId?.specialization || "General Medicine"}
+                        {row.locationId?.name || "Location unavailable"}
                       </span>
                     </div>
                   ),
@@ -1318,28 +1095,18 @@ export default function AppointmentsPage() {
                 {
                   key: "appointmentTime",
                   header: "Date & Time",
-                  sortable: true,
+                  sortable: false,
                   render: (row: Appointment) => (
                     <div className="flex items-center gap-1.5 text-xs text-text-secondary min-w-[140px]">
                       <Clock className="w-3.5 h-3.5 text-text-muted shrink-0" />
-                      <span>{formatDateTime(row.appointmentTime)}</span>
+                      <span>{formatDateTime(row.appointmentTime)}<small className="block text-text-muted mt-1 capitalize">{row.appointmentType.replaceAll("-", " ")}</small></span>
                     </div>
-                  ),
-                },
-                {
-                  key: "appointmentType",
-                  header: "Type",
-                  sortable: true,
-                  render: (row: Appointment) => (
-                    <span className="uppercase font-semibold text-[10px] tracking-wider px-1.5 py-0.5 rounded bg-surface-alt border border-border/60 text-text-secondary">
-                      {row.appointmentType}
-                    </span>
                   ),
                 },
                 {
                   key: "status",
                   header: "Status",
-                  sortable: true,
+                  sortable: false,
                   render: (row: Appointment) => (
                     <div className="space-y-1">
                     <Badge
@@ -1396,9 +1163,10 @@ export default function AppointmentsPage() {
                   : "No clinical appointments found for active filters."
               }
             />
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       )}
+      <footer className={styles.pagination}><span>{scopeReady ? `${visibleAppointments.length} of ${totalAppointments} appointments` : "Loading appointments"}{viewLayout === "calendar" && listPages > 1 ? " ? Calendar shows this page" : ""}</span>{listPages > 1 && <div><Button variant="outline" size="sm" disabled={listPage <= 1 || isRefreshing || !scopeReady} onClick={() => setListPage(page => page - 1)}>Previous</Button><span>{listPage} / {listPages}</span><Button variant="outline" size="sm" disabled={listPage >= listPages || isRefreshing || !scopeReady} onClick={() => setListPage(page => page + 1)}>Next</Button></div>}</footer>
 
       {/* Patient Medical Records & Prescription Downloads */}
       {user.role === "patient" && (
@@ -1416,17 +1184,14 @@ export default function AppointmentsPage() {
       <Modal
         open={isBookModalOpen}
         onClose={handleCloseBookModal}
-        title="Schedule Clinical Appointment"
-        description="Book a patient consultation, select practitioner time slot, and reserve queue token."
+        title="New appointment"
+        description="Choose a patient, practitioner and appointment time."
         size="lg"
-        busy={submitting}
-        loadingText="Reserving appointment slot & issuing token..."
+        busy={submitting || lockingSlot}
+        footer={bookingStep === 1 ? <Button variant="outline" onClick={handleCloseBookModal}>Cancel</Button> : <><Button variant="outline" disabled={submitting || lockingSlot} onClick={() => setBookingStep(bookingStep - 1)}><ArrowLeft size={15} /> Back</Button>{bookingStep === 2 ? <Button onClick={handleStep2Next} disabled={!bookingLocationId || !bookingDoctorId}>Continue <ArrowRight size={15} /></Button> : <Button type="submit" form="appointment-booking" loading={submitting} disabled={!slotsReady || fetchingSlots || lockingSlot || !bookingTime}>Confirm booking</Button>}</>}
       >
-        <div className="space-y-5">
-          {/* Stepper Progress */}
-          <div className="border border-border/80 bg-surface-alt/50 p-3 rounded-2xl">
-            <Stepper steps={BOOKING_STEPS} currentStep={bookingStep - 1} />
-          </div>
+        <div className={styles.bookingBody}>
+          <nav className={styles.bookingProgress} aria-label="Booking progress">{BOOKING_STEPS.map((step, index) => <span key={step.label} aria-current={bookingStep === index + 1 ? "step" : undefined}>{index + 1}. {step.label}</span>)}</nav>
 
           {/* STEP 1: Patient Selection */}
           {bookingStep === 1 && (
@@ -1481,6 +1246,7 @@ export default function AppointmentsPage() {
           {/* STEP 2: Location, Doctor & Registration */}
           {bookingStep === 2 && (
             <div className="space-y-4 animate-fade-in">
+              {!isNewPatient && selectedPatient && <div className={styles.bookingPatient}><span>Patient</span><strong>{appointmentPatientName(selectedPatient)}</strong><small>{appointmentPatientPhone(selectedPatient)}</small></div>}
               {isNewPatient && (
                 <div className="space-y-3.5 border-b border-border/60 pb-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-text">Patient Registration</h3>
@@ -1528,6 +1294,7 @@ export default function AppointmentsPage() {
                       onChange={(e) => handleNewPatientChange("phone", e.target.value)} type="tel" inputMode="tel"
                     />
                   </div>
+                  <details className={styles.patientDetails}><summary>More patient details</summary><div className="space-y-3.5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <Input
                       icon={<Mail className="w-4 h-4 text-text-muted" />}
@@ -1566,28 +1333,31 @@ export default function AppointmentsPage() {
                     onChange={(e) => setNewPatientForm({ ...newPatientForm, medicalNotes: e.target.value })}
                     rows={2}
                   />
+                  </div></details>
                 </div>
               )}
 
               <div className="space-y-3.5">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-text">Facility & Practitioner</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <Select
+                  {locations.length === 1 ? <div className={styles.scopeContext}><span>Location</span><strong>{locations[0].name}</strong></div> : <Select
                     icon={<Building2 className="w-4 h-4 text-text-muted" />}
                     label="Choose Location *"
+                    disabled={lockingSlot}
                     value={bookingLocationId}
                     onChange={(e) => {
+                      void releaseCurrentLock();
                       setBookingLocationId(e.target.value);
                       setSelectedSlotDate(locationDateKey(new Date(), timezoneForLocation(e.target.value)));
                     }}
                     options={[{ value: "", label: "Select location..." }, ...locations.map((c) => ({ value: c.id, label: c.name }))]}
                     required
-                  />
-                  <Select
+                  />}
+                  {doctorAssignments.length === 1 ? <div className={styles.scopeContext}><span>Practitioner</span><strong>{doctorAssignments[0].doctorId?.name || doctors.find(doctor => doctor.id === bookingDoctorId)?.name || "Assigned practitioner"}</strong></div> : <Select
                     icon={<Stethoscope className="w-4 h-4 text-text-muted" />}
                     label="Choose Doctor *"
                     value={bookingDoctorId}
-                    onChange={(e) => setBookingDoctorId(e.target.value)}
+                    onChange={(e) => { void releaseCurrentLock(); setBookingDoctorId(e.target.value); }}
                     options={[
                       { value: "", label: "Select practitioner..." },
                       ...doctorAssignments.map((a) => ({
@@ -1595,35 +1365,19 @@ export default function AppointmentsPage() {
                         label: `Dr. ${a.doctorId?.name} (${a.doctorId?.specialization || "General"})`,
                       })),
                     ]}
-                    disabled={!bookingLocationId}
+                    disabled={!bookingLocationId || lockingSlot}
                     required
-                  />
+                  />}
                 </div>
               </div>
 
-              <div className="flex flex-col-reverse sm:flex-row justify-between gap-2.5 border-t border-border/60 pt-3.5 mt-4">
-                <Button variant="outline" type="button" size="sm" onClick={() => setBookingStep(1)} className="min-h-[44px] w-full sm:w-auto justify-center">
-                  <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                  Back
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="primary"
-                  onClick={handleStep2Next}
-                  disabled={!bookingLocationId || !bookingDoctorId}
-                  className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
-                >
-                  Configure Schedule
-                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                </Button>
-              </div>
+
             </div>
           )}
 
           {/* STEP 3: Live Time Slots & Schedule Picker */}
           {bookingStep === 3 && (
-            <form onSubmit={handleConfirmBooking} className="space-y-4 animate-fade-in">
+            <form id="appointment-booking" onSubmit={handleConfirmBooking} className="space-y-4 animate-fade-in">
               <h3 className="text-xs font-bold uppercase tracking-wider text-text">Date & Time Slot</h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1631,7 +1385,8 @@ export default function AppointmentsPage() {
                   label="Select Date *"
                   mode="date"
                   value={selectedSlotDate}
-                  onChange={(val) => setSelectedSlotDate(val)}
+                  onChange={(val) => { void releaseCurrentLock(); setSelectedSlotDate(val); }}
+                  disabled={lockingSlot}
                   fullWidth
                 />
 
@@ -1648,8 +1403,9 @@ export default function AppointmentsPage() {
                 />
               </div>
 
+              {slotsReady && doctorHolidayInfo?.isHoliday && <Alert variant="warning" title="Practitioner unavailable">{doctorHolidayInfo.reason || "Leave has been recorded for this date."} Choose another date, or use the emergency override for an exceptional booking.</Alert>}
               {/* Slot Availability Grid OR Sequential Queue Notice */}
-              {doctorBookingMode === "sequential_queue" ? (
+              {!slotsReady || fetchingSlots ? <div className="min-h-32 flex items-center justify-center text-sm text-text-muted" role="status">{slotError ? <Alert variant="error" action={<Button variant="outline" size="sm" onClick={() => setSlotRetry(value => value + 1)}>Retry availability</Button>}>{slotError}</Alert> : <><Spinner size="sm" /> Loading availability...</>}</div> : doctorBookingMode === "sequential_queue" ? (
                 <div className="p-4 bg-primary-500/[0.04] border border-primary-500/20 rounded-2xl space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-xs sm:text-sm text-text">Sequential Token Queue</span>
@@ -1657,27 +1413,11 @@ export default function AppointmentsPage() {
                       Auto-Token
                     </Badge>
                   </div>
-                  <p className="text-xs text-text-secondary leading-relaxed">
-                    Practitioner operates in sequential queue mode. Confirming will issue Token{" "}
-                    <strong className="text-accent dark:text-accent font-bold">
-                      #{nextTokenNum || tokensTodayCount + 1}
-                    </strong>{" "}
-                    for today.
-                  </p>
+                  <p className="text-xs text-text-secondary leading-relaxed">A queue token will be assigned when the appointment is confirmed for the selected date.</p>
                 </div>
               ) : (
                 <div className="space-y-2 border-t border-border/60 pt-3">
-                  {doctorHolidayInfo?.isHoliday && (
-                    <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-2xl flex items-start gap-2.5 text-xs text-warning-text dark:text-warning-text animate-fade-in">
-                      <CalendarOff className="w-5 h-5 text-warning-text shrink-0 mt-0.5" />
-                      <div className="space-y-0.5">
-                        <p className="font-bold">Doctor is on Holiday / Leave on this date</p>
-                        <p className="text-[11px] leading-relaxed opacity-90">
-                          The practitioner has declared unavailability: <strong>{doctorHolidayInfo.reason}</strong>. Normal appointments cannot be scheduled on this day unless Emergency Override is checked below.
-                        </p>
-                      </div>
-                    </div>
-                  )}
+
 
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-text">Available Time Slots for {selectedSlotDate}</span>
@@ -1731,13 +1471,7 @@ export default function AppointmentsPage() {
                   )}
 
                   <div className="pt-2">
-                    <DatePicker
-                      label="Selected DateTime *"
-                      mode="datetime"
-                      value={bookingTime}
-                      onChange={(val) => setBookingTime(val)}
-                      fullWidth
-                    />
+                    <DatePicker mode="time" label="Selected time *" value={bookingTime.slice(11, 16)} onChange={value => { void releaseCurrentLock(); setBookingTime(value ? selectedSlotDate + "T" + value : ""); }} disabled={lockingSlot} required />
                   </div>
                 </div>
               )}
@@ -1771,21 +1505,7 @@ export default function AppointmentsPage() {
                 </p>
               </div>
 
-              <div className="flex flex-col-reverse sm:flex-row justify-between gap-2.5 border-t border-border/60 pt-3.5 mt-4">
-                <Button variant="outline" type="button" size="sm" onClick={() => setBookingStep(2)} className="min-h-[44px] w-full sm:w-auto justify-center">
-                  <ArrowLeft className="w-3.5 h-3.5 mr-1" />
-                  Back
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  variant="primary"
-                  loading={submitting}
-                  className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
-                >
-                  Confirm & Schedule
-                </Button>
-              </div>
+
             </form>
           )}
         </div>
@@ -1801,6 +1521,7 @@ export default function AppointmentsPage() {
           setConfirmStatus(null);
         }}
         onConfirm={handleUpdateStatus}
+        loading={statusSaving}
         title="Change Appointment Status?"
         description={confirmStatus === "no-show" ? "Confirm that this patient did not attend the scheduled visit. Reception will receive a recovery task; invoices and payments require separate review." : `Mark this appointment as ${confirmStatus}? Staff and the patient will see the updated status.`}
         variant={confirmStatus === "cancelled" || confirmStatus === "no-show" ? "danger" : "primary"}
@@ -1813,8 +1534,9 @@ export default function AppointmentsPage() {
       <Modal
         open={ticketModalOpen}
         onClose={() => setTicketModalOpen(false)}
-        title="Appointment Token Slip"
-        size="sm"
+        title="Appointment token slip"
+        size="md"
+        footerClassName={styles.printFooter}
         footer={<PrintDialogActions documentName="token slip" onPrint={() => handlePrintSlip(createdTicket)} onClose={() => setTicketModalOpen(false)} disabled={!createdTicket} closeLabel="Done" />}
       >
         {createdTicket && (
@@ -1844,7 +1566,7 @@ export default function AppointmentsPage() {
                 </Badge>
               </div>
 
-              <div className="space-y-2 text-xs text-text-secondary border-t border-border/60 pt-3">
+              <div className={cn(styles.slipDetails, "space-y-2 text-xs text-text-secondary border-t border-border/60 pt-3")}>
                 <div className="flex justify-between">
                   <span className="text-text-muted">Patient:</span>
                   <span className="font-semibold text-text">{createdTicket.patientName}</span>
@@ -1879,8 +1601,10 @@ export default function AppointmentsPage() {
         onClose={() => setReviewModalOpen(false)}
         title={`Review Dr. ${reviewDoctorName}`}
         size="sm"
+        busy={reviewSubmitting}
+        footer={<><Button variant="outline" disabled={reviewSubmitting} onClick={() => setReviewModalOpen(false)}>Cancel</Button><Button type="submit" form="appointment-review" loading={reviewSubmitting}>Submit review</Button></>}
       >
-        <form onSubmit={handleSubmitReview} className="space-y-4 pt-1">
+        <form id="appointment-review" onSubmit={handleSubmitReview} className="space-y-4 pt-1">
           <p className="text-xs text-text-muted leading-relaxed">
             How was your clinical consultation experience with Dr. {reviewDoctorName}? Please select a star rating.
           </p>
@@ -1899,14 +1623,7 @@ export default function AppointmentsPage() {
             ))}
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border/60">
-            <Button variant="outline" size="sm" type="button" onClick={() => setReviewModalOpen(false)} className="min-h-[44px] w-full sm:w-auto justify-center">
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" variant="primary" loading={reviewSubmitting} className="font-semibold min-h-[44px] w-full sm:w-auto justify-center">
-              Submit Review
-            </Button>
-          </div>
+
         </form>
       </Modal>
 
@@ -1916,11 +1633,13 @@ export default function AppointmentsPage() {
       <Modal
         open={recordModalOpen}
         onClose={() => {
+          beginRecordRead();
           setRecordModalOpen(false);
           setActiveRecord(null);
         }}
         title="Clinical Consultation Record"
         size="xl"
+        footerClassName={styles.printFooter}
         footer={<PrintDialogActions documentName="prescription" onPrint={async () => {
                   if (!activeRecord) return;
 
@@ -2050,15 +1769,16 @@ export default function AppointmentsPage() {
                   `);
 
                 }} onClose={() => {
+          beginRecordRead();
           setRecordModalOpen(false);
           setActiveRecord(null);
-        }} disabled={!activeRecord} />}
+        }} disabled={!activeRecord || recordLoading || !!recordError} />}
       >
-        {activeRecord && (
+        {recordLoading ? <div className={styles.emptyState} role="status"><Spinner size="sm" /><p>Loading clinical record...</p></div> : recordError ? <Alert variant="error" title="Clinical record unavailable" action={<Button variant="outline" onClick={() => activeRecord && handleOpenRecordModal(activeRecord)}>Try again</Button>}>{recordError}</Alert> : activeRecord && (
           <div className="space-y-4 pt-1">
             <div
               id="printable-prescription"
-              className="border border-border/80 rounded-2xl p-5 sm:p-6 bg-surface-alt text-text space-y-4 shadow-xs"
+              className={styles.recordPreview}
             >
               <div className="border-b border-border/60 pb-3 flex justify-between items-start">
                 <div>
@@ -2076,7 +1796,7 @@ export default function AppointmentsPage() {
               </div>
 
               {/* Consultation Summary Metas */}
-              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-surface border border-border/60 p-3.5 rounded-xl">
+              <div className={styles.recordMeta}>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-muted block">Patient</span>
                   <span className="font-bold text-text">{appointmentPatientName(activeRecord.patientId)}</span>
@@ -2099,7 +1819,7 @@ export default function AppointmentsPage() {
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-muted block">EHR Status</span>
-                  <span className="font-semibold text-success-text dark:text-success-text">Verified Record</span>
+                  <span className="font-semibold text-success-text dark:text-success-text">Recorded summary</span>
                 </div>
               </div>
 
@@ -2125,7 +1845,7 @@ export default function AppointmentsPage() {
                   Prescribed Medications
                 </span>
                 {activeRecord.prescriptions && activeRecord.prescriptions.length > 0 ? (
-                  <div className="border border-border/60 rounded-xl overflow-hidden bg-surface">
+                  <><dl className={styles.medications}>{activeRecord.prescriptions.map((med: any, index: number) => <div key={index}><dt>{med.name}</dt><dd>{med.dosage || "Instructions not recorded"}</dd><dd>Duration: {med.duration || "Not recorded"}</dd></div>)}</dl><div className={cn(styles.recordTable, "border border-border/60 rounded-xl bg-surface")}>
                     <table className="w-full text-xs text-left border-collapse">
                       <thead>
                         <tr className="bg-surface-alt border-b border-border/60 text-text font-bold uppercase text-[10px]">
@@ -2144,7 +1864,7 @@ export default function AppointmentsPage() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  </div></>
                 ) : (
                   <p className="text-xs italic text-text-muted">No medications prescribed.</p>
                 )}
@@ -2162,10 +1882,12 @@ export default function AppointmentsPage() {
       <Modal
         open={!!rescheduleTargetAppt}
         onClose={() => setRescheduleTargetAppt(null)}
-        title={`Reschedule Appointment #${rescheduleTargetAppt?.tokenNumber || ""}`}
+        title={`Reschedule appointment #${rescheduleTargetAppt?.tokenNumber || ""}`}
         size="md"
+        busy={submittingReschedule}
+        footer={<><Button variant="outline" disabled={submittingReschedule} onClick={() => setRescheduleTargetAppt(null)}>Cancel</Button><Button type="submit" form="appointment-reschedule" loading={submittingReschedule}>Confirm reschedule</Button></>}
       >
-        <form onSubmit={handleRescheduleSubmit} className="space-y-4 pt-1">
+        <form id="appointment-reschedule" onSubmit={handleRescheduleSubmit} className="space-y-4 pt-1">
           <div className="p-3.5 bg-surface-alt rounded-2xl border border-border/80 text-xs space-y-1">
             <p className="font-bold text-text">Patient: {appointmentPatientName(rescheduleTargetAppt?.patientId)}</p>
             <p className="text-text-muted">Doctor: Dr. {rescheduleTargetAppt?.doctorId?.name}</p>
@@ -2191,14 +1913,7 @@ export default function AppointmentsPage() {
             rows={2}
           />
 
-          <div className="flex flex-col-reverse sm:flex-row justify-between gap-2.5 border-t border-border/60 pt-3.5">
-            <Button variant="outline" type="button" size="sm" onClick={() => setRescheduleTargetAppt(null)} className="min-h-[44px] w-full sm:w-auto justify-center">
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" variant="primary" loading={submittingReschedule} className="font-semibold min-h-[44px] w-full sm:w-auto justify-center">
-              Confirm Reschedule
-            </Button>
-          </div>
+
         </form>
       </Modal>
     </div>

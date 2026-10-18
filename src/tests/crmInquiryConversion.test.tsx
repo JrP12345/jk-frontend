@@ -1,3 +1,4 @@
+import { datePickerInput } from "./datePickerTestUtils";
 ﻿import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import api from "@/lib/api";
@@ -16,7 +17,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 async function ready() {
   await waitFor(() => expect(api.get).toHaveBeenCalledWith(`/doctors/${doctorId}/slots`, expect.anything()));
-  fireEvent.change(screen.getByLabelText("Booking time (Asia/Kolkata)"), { target: { value: "2026-10-10T17:30" } });
+  fireEvent.change(datePickerInput(screen.getByLabelText("Booking time (Asia/Kolkata)")), { target: { value: "2026-10-10T17:30" } });
   fireEvent.click(screen.getByRole("checkbox"));
   await waitFor(() => expect(screen.getByRole("button", { name: "Convert to booking" })).toBeEnabled());
 }
@@ -55,7 +56,7 @@ describe("Inquiry conversion", () => {
     const command = { clientRequestId: 'original-key', expectedRevision: 2, patientId, doctorId, appointmentTime: '2026-10-10T12:00:00.000Z', identityVerified: true };
     vi.mocked(api.get).mockRejectedValue(new Error('availability unavailable'));
     render(<InquiryConversion inquiry={inquiry} timezone='Asia/Kolkata' initialCommand={command} onClose={vi.fn()} onConverted={vi.fn()} />);
-    expect(screen.getByLabelText('Booking time (Asia/Kolkata)')).toHaveValue('2026-10-10T17:30');
+    expect(datePickerInput(screen.getByLabelText('Booking time (Asia/Kolkata)'))).toHaveValue('2026-10-10T17:30');
     expect(screen.getByLabelText('Canonical patient reference')).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Retry submitted conversion' }));
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/crm/inquiries/inquiry/convert', command));
@@ -65,7 +66,7 @@ describe("Inquiry conversion", () => {
     vi.mocked(api.post).mockResolvedValueOnce({ data: { data: { lockId: "canonical-lock" } } }).mockRejectedValueOnce(new Error("lost response"));
     render(<InquiryConversion inquiry={inquiry} timezone="Asia/Kolkata" onClose={vi.fn()} onConverted={vi.fn()} />);
     await screen.findByRole("combobox", { name: "Available consultation slot" });
-    fireEvent.change(screen.getByLabelText("Booking time (Asia/Kolkata)"), { target: { value: "2026-10-10T17:30" } });
+    fireEvent.change(datePickerInput(screen.getByLabelText("Booking time (Asia/Kolkata)")), { target: { value: "2026-10-10T17:30" } });
     await waitFor(() => expect(screen.getByRole("combobox", { name: "Available consultation slot" })).toBeEnabled());
     fireEvent.click(screen.getByRole("combobox", { name: "Available consultation slot" }));
     fireEvent.click(await screen.findByRole("option", { name: "17:30" }));

@@ -8,6 +8,8 @@ Public headers and mobile bottom navigation are full-width. The dashboard toolba
 
 Use the shared title, section, body and caption scales, layout gutters and section spacing. Containers use the container radius; controls use the control radius. Keep compact, comfortable and spacious table density choices.
 
+Dashboard page gutters belong to `src/app/(dashboard)/layout.tsx`. The content frame and route workspaces fill the available width: do not add another centered page-level width cap or desktop horizontal padding. Side gutters are 12px on phones, 20px from 640px, and 24px from 768px, matching the desktop toolbar inset. Keep deliberate inner text, form, dialog, and empty-state widths; these are separate from the page frame. Loading views use the same frame as loaded content.
+
 ## Appearance
 
 Semantic surface, text, border, accent and status tokens in globals.css are the source of truth. Light appearance uses a warm neutral canvas; dark appearance uses layered charcoal surfaces. Fixed brand colors remain separate from semantic appearance. Print colors remain fixed for paper. Tenant brand colors and QR specifications are data.
@@ -19,6 +21,10 @@ ThemeProvider and the pre-hydration bootstrap share light/dark/system resolution
 ## Shared controls
 
 Input, Select, Textarea and DatePicker use controlStyles.ts. Preserve validation, IDs, described-by errors, readable disabled states and opaque keyboard focus. Buttons keep caller variants and asynchronous handling. Card offers default, outline and flat surfaces; a loading card is busy and inert. Static content has quiet surfaces.
+
+Dashboard forms use DatePicker for dates, local date-times (`mode="datetime"`) and time-only values (`mode="time"`), rather than native picker inputs. Use the existing Select and Checkbox controls for choices. Keep the same local date/time strings, required-field checks and date limits when migrating a form. Native backing fields inside shared controls provide form semantics; they are not separate visible controls.
+
+For dashboard refinements, reuse these components and established Tailwind utilities, including `page-title`, semantic tokens and `cn`. Use shared formatting helpers such as `formatCurrency`. Do not add page-specific CSS for appearances the component library and utilities already provide.
 
 Dialogs, sheets, menus and popovers retain portals, focus handling/restoration, dismissal and scroll locks. Material tokens are limited to the selected compact controls and elevated popovers. They have opaque rendering for unsupported filters, reduced transparency, increased contrast and forced colors. Navigation and large content surfaces stay solid. Avoid full-viewport blur and blanket GPU layers.
 

@@ -1,0 +1,433 @@
+.workspace {
+  container: organizations / inline-size;
+}
+
+.directoryWorkspace {
+  width: 100%;
+  margin-inline: 0;
+}
+
+.detailsHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.detailsHeading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.directoryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.directoryPanel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl, 1.25rem);
+  background: var(--surface);
+  box-shadow: var(--s-shadow-xs);
+}
+
+.addOrganization {
+  min-height: 2.75rem;
+}
+
+.iconAction {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding-inline: 0;
+}
+
+.directoryToolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.875rem;
+}
+
+.directoryToolbar input {
+  min-height: 2.75rem;
+}
+
+.directorySearch {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.statusFilter {
+  flex: 0 0 auto;
+  max-width: 45%;
+}
+
+.statusFilter button {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
+.resourceList {
+  --organization-columns: minmax(0, 1.4fr) minmax(0, 1.1fr) minmax(0, 0.75fr) 9.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.resourceColumns {
+  display: none;
+}
+
+.resourceRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "identity identity"
+    "subscription subscription"
+    "administrator administrator";
+  gap: 0.375rem 0.75rem;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.resourceRow + .resourceRow {
+  border-top: 1px solid var(--border);
+}
+
+.resourceIdentity {
+  grid-area: identity;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 2.75rem;
+}
+
+.organizationLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 1.5rem;
+  border-radius: 0.375rem;
+  text-align: start;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.organizationLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 0.375rem;
+}
+
+.organizationLink:focus-visible::after {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.organizationLink:focus-visible {
+  outline: none;
+}
+
+.resourceIdentity h2 {
+  margin-bottom: 0.25rem;
+}
+
+.organizationLink:hover {
+  color: var(--accent);
+}
+
+.administratorSummary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.resourceAdministrator {
+  grid-area: administrator;
+  min-width: 0;
+  margin-top: 0.375rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.desktopAdministrator {
+  display: none;
+}
+
+.administratorSummary {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2.75rem;
+  padding-inline-end: 9.5rem;
+  border-radius: 0.375rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  list-style: none;
+  cursor: pointer;
+}
+
+.administratorSummary::-webkit-details-marker {
+  display: none;
+}
+
+.mobileAdministrator[open] .administratorSummary > svg {
+  rotate: 180deg;
+}
+
+.resourceSubscription {
+  grid-area: subscription;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+  min-width: 0;
+  margin-top: 0.25rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  text-transform: capitalize;
+  overflow-wrap: anywhere;
+}
+
+.subscriptionLabel {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: none;
+}
+
+.resourceActions {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: start;
+  margin-top: 0.375rem;
+  padding-top: 0.5rem;
+}
+
+.resourceActions button {
+  min-height: 2.75rem;
+}
+
+.directoryFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.workspaceShortcuts {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.shortcutGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.workspaceShortcut {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  min-height: 3rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--surface);
+  text-align: start;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.workspaceShortcut > svg:last-child {
+  display: none;
+  margin-inline-start: auto;
+}
+
+.workspaceShortcut:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+
+.workspaceShortcut:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.wideLabel {
+  display: none;
+}
+
+.fieldGrid,
+.quotaGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.workspaceTabs { min-width: 0; }
+.workspaceTabs [role="tablist"] {
+  padding: 0.375rem;
+  border: 1px solid var(--border);
+  border-radius: 0.875rem;
+  background: var(--surface);
+  scroll-padding-inline: 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.workspaceTabs [role="tablist"]::-webkit-scrollbar { display: block; height: 4px; }
+.workspaceTabs [role="tablist"]::-webkit-scrollbar-thumb { background: var(--border); border-radius: 1rem; }
+.workspaceTabs [role="tab"] { min-height: 2.75rem; flex-shrink: 0; padding-inline: 0.875rem; font-size: 0.875rem; }
+.workspaceSummary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+.workspaceSummary > div { min-width: 0; padding: 1rem; border-bottom: 1px solid var(--border); }
+.workspaceSummary dt { margin-bottom: 0.375rem; color: var(--text-secondary); font-size: 0.75rem; }
+.workspaceSummary dd { font-size: 0.875rem; font-weight: 500; overflow-wrap: anywhere; }
+.configurationGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr)); align-items: start; gap: 1rem; }
+@container organizations (max-width: 35.999rem) {
+  .workspaceTabs [role="tab"] > span:first-child:has(svg) { display: none; }
+}
+
+.formContainer {
+  container: organization-form / inline-size;
+  min-width: 0;
+}
+
+@container organizations (min-width: 36rem) {
+  .organizationLink {
+    min-height: 2.75rem;
+  }
+
+  .resourceIdentity h2 {
+    margin-bottom: 0;
+  }
+
+  .shortcutGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .workspaceShortcut {
+    font-size: 0.875rem;
+    padding: 0.625rem;
+  }
+
+  .workspaceShortcut > svg:last-child {
+    display: block;
+  }
+
+  .resourceRow {
+    grid-template-areas:
+      "identity actions"
+      "administrator subscription";
+    align-items: center;
+    gap: 0.5rem 1.5rem;
+    padding: 1rem 1.25rem;
+  }
+
+  .resourceActions {
+    grid-area: actions;
+    align-self: center;
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  .resourceAdministrator {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .resourceSubscription {
+    margin-top: 0;
+    text-align: end;
+    justify-content: end;
+  }
+
+  .desktopAdministrator {
+    display: block;
+    padding-inline-start: 3.25rem;
+  }
+
+  .mobileAdministrator {
+    display: none;
+  }
+
+  .wideLabel {
+    display: inline;
+  }
+
+  .compactLabel {
+    display: none;
+  }
+}
+
+@container organizations (min-width: 56rem) {
+  .resourceColumns,
+  .resourceRow {
+    grid-template-columns: var(--organization-columns);
+    column-gap: 1rem;
+  }
+
+  .resourceColumns {
+    display: grid;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-muted);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .resourceRow {
+    grid-template-areas: "identity administrator subscription actions";
+  }
+
+  .desktopAdministrator {
+    padding-inline-start: 0;
+  }
+
+  .resourceSubscription {
+    text-align: start;
+    justify-content: start;
+  }
+
+  .subscriptionLabel {
+    display: none;
+  }
+}
+
+@container organization-form (min-width: 32rem) {
+  .fieldGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .quotaGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}

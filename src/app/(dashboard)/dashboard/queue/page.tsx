@@ -10,13 +10,16 @@ import { useWorkflowPreferences } from "@/hooks/useWorkflowPreferences";
 import { PatientEntryModal } from "@/components/appointments/PatientEntryModal";
 import { PatientService } from "@/services/patient.service";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { organizationWorkspaceUrl } from "@/services/organization.service";
 import api from "@/lib/api";
 import { createReconnectingSocket, type ReconnectingSocket } from "@/utils/websocket";
 import { authScopeKey } from "@/lib/authScope";
 import { hasAnyPermission } from "@/lib/permissions";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
-import { Alert, Card, CardContent, Button, Select, Input, DatePicker, useToast, Spinner, Badge, Modal, Textarea, Checkbox, Skeleton, SkeletonCard, ChartContainer, BarChart, cn, ConfirmDialog } from "@/components/ui";
+import { Alert, Card, CardContent, Button, Select, Input, DatePicker, useToast, Spinner, Badge, Textarea, Checkbox, Skeleton, SkeletonCard, ChartContainer, BarChart, cn, ConfirmDialog, Tabs, Dropdown } from "@/components/ui";
+import Modal from "@/components/queue/QueueDialog";
 import dynamic from "next/dynamic";
 import type { UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
 import type { ThermalTokenSlipData } from "@/components/clinical/ThermalTokenSlipModal";
@@ -61,8 +64,8 @@ const ClinicalDocumentGeneratorModal = dynamic(
   { ssr: false }
 );
 
-import { playChimeSound, CHIME_OPTIONS, ChimeType, announcePatientToken, VoiceAnnounceLanguage } from "@/utils/audioChimes";
-import { Megaphone, Volume2, RotateCw, Users, UserCheck, Stethoscope, Clock, ChevronUp, ChevronDown, CheckCircle2, Activity, UserX, XCircle, Plus, Trash2, Sparkles, Check, Play, CalendarClock, Phone, FileText, AlertTriangle, Zap, PauseCircle, Banknote, FlaskConical, History, Send, ShieldCheck } from "lucide-react";
+import { playChimeSound, announcePatientToken } from "@/utils/audioChimes";
+import { Megaphone, Volume2, RotateCw, Users, UserCheck, Stethoscope, Clock, ChevronUp, ChevronDown, CheckCircle2, Activity, UserX, XCircle, Plus, Trash2, Sparkles, Check, Play, CalendarClock, Phone, FileText, AlertTriangle, Zap, PauseCircle, Banknote, FlaskConical, History, Send, ShieldCheck, Search, MoreHorizontal, Printer, Settings2 } from "lucide-react";
 import { PatientTimeline } from "@/components/ehr/PatientTimeline";
 import { InCabinInvestigationViewerModal } from "@/components/clinical/InCabinInvestigationViewerModal";
 import { DrugAllergyAlert } from "@/components/clinical/DrugAllergyAlert";
@@ -70,6 +73,13 @@ import { InCabinLabOrderModal } from "@/components/clinical/InCabinLabOrderModal
 import { OpdClinicalPresetBar } from "@/components/clinical/OpdClinicalPresetBar";
 import { FollowUpRecallRegister } from "@/components/clinical/FollowUpRecallRegister";
 import { DrugInteractionAlert, evaluateDrugInteractions } from "@/components/clinical/DrugInteractionAlert";
+
+import styles from "./QueueWorkspace.module.css";
+import QueueLabResults from "@/components/queue/QueueLabResults";
+
+function hasVitalValue(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
 
 function getCriticalVitalsAlert(vitals?: Appointment["vitals"]) {
   if (!vitals) return null;
@@ -273,6 +283,7 @@ function QueueWorkspace() {
   const { user } = useAuthStore();
   const { fetchLocations, activeLocationId } = useLocationStore();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [loadingFilters, setLoadingFilters] = useState(true);
   const [loadingQueue, setLoadingQueue] = useState(false);
@@ -462,8 +473,9 @@ function QueueWorkspace() {
   const [conflictDoctorName, setConflictDoctorName] = useState("");
 
   // Standby / Parked Queue State
-  const [queueViewTab, setQueueViewTab] = useState<"active" | "standby" | "recalls">("active");
-  const [voiceLanguage, setVoiceLanguage] = useState<VoiceAnnounceLanguage>("en");
+  const [queueViewTab, setQueueViewTab] = useState<"active" | "standby" | "processed" | "recalls">("active");
+  const [patientSearch, setPatientSearch] = useState("");
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [parkingAppt, setParkingAppt] = useState<Appointment | null>(null);
   const [parkReason, setParkReason] = useState("Stepped out for lab / diagnostic tests");
   const [isParkModalOpen, setIsParkModalOpen] = useState(false);
@@ -516,6 +528,7 @@ function QueueWorkspace() {
 
   // Queue State
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [displayedQueueScope, setDisplayedQueueScope] = useState<string | null>(null);
 
   // Load initial dropdown values based on user role
   useEffect(() => {
@@ -658,6 +671,7 @@ function QueueWorkspace() {
       if (!request.isCurrent()) return;
       setQueueError(null);
       loadedQueueScope.current = scope;
+      setDisplayedQueueScope(scope);
       setAppointments(resQueue.data.data || []);
       setQueueStatusData(resStatus.data?.data || null);
       await Promise.all([fetchActiveOverride(), fetchTriageAppointments(), fetchDelayStatus()]);
@@ -1075,6 +1089,7 @@ function QueueWorkspace() {
     setQueueStatusData(null);
     queueReads.current.clear();
     loadedQueueScope.current = null;
+    setDisplayedQueueScope(null);
     setActiveOverride(null);
     setDelayStatus(null);
     setTriageAppointments([]);
@@ -1200,20 +1215,8 @@ function QueueWorkspace() {
     nextInLine: activeQueue.filter((a) => ["checked-in", "confirmed", "pending"].includes(a.status)).sort((a,b) => { const rank = (status: string) => status === "checked-in" ? 0 : status === "confirmed" ? 1 : 2; return rank(a.status) - rank(b.status) || (a.queuePosition ?? a.tokenNumber ?? 999) - (b.queuePosition ?? b.tokenNumber ?? 999); })[0]?.tokenNumber || null,
   };
 
-  const [chimeType, setChimeType] = useState<ChimeType>(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("ekavyu_queue_chime_sound") as ChimeType) || "bell";
-    }
-    return "bell";
-  });
-
-  const handleChimeChange = (newType: ChimeType) => {
-    setChimeType(newType);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("ekavyu_queue_chime_sound", newType);
-    }
-    playChimeSound(newType);
-  };
+  const chimeType = preferences.queueChime || "bell";
+  const voiceLanguage = preferences.queueVoiceLanguage || "en";
 
   // Status transitions
   const updateStatus = async (appointmentId: string, newStatus: string) => {
@@ -1707,8 +1710,45 @@ function QueueWorkspace() {
   const canManageQueue = hasAnyPermission(user, "MANAGE_QUEUE");
   const canCommunicatePatients = hasAnyPermission(user, "COMMUNICATE_PATIENTS");
 
+  const searchTerm = patientSearch.trim().toLowerCase().replace(/^#/, "");
+  const matchesPatient = (appt: Appointment) => !searchTerm || [
+    canonicalPatientName(appt.patientId),
+    appt.tokenNumber,
+    appt.patientId?.userId?.phone,
+    (appt.patientId as any)?.phone,
+  ].join(" ").toLowerCase().includes(searchTerm);
+  const scopeLoaded = displayedQueueScope === `${selectedLocation}:${selectedDoctor}:${selectedDate}`;
+
+  const reviewView = queueViewTab === "processed" || queueViewTab === "recalls";
+  const sessionReady = scopeLoaded && !queueError;
+  const sessionLabel = !scopeLoaded ? "Loading session..." : queueError ? "Session unavailable" : queueStatusData?.opdSession?.status === "active" ? (queueStatusData.opdSession.isOnBreak ? "OPD on break" : "OPD in progress") : queueStatusData?.opdSession?.status === "ended" ? "OPD ended" : "OPD not started";
+  const sessionVariant = !sessionReady ? "neutral" : queueStatusData?.opdSession?.status === "active" ? (queueStatusData.opdSession.isOnBreak ? "warning" : "success") : queueStatusData?.opdSession?.status === "ended" ? "neutral" : "warning";
+  const doctorName = doctors.find(doctor => (doctor.id || doctor._id) === selectedDoctor)?.name || "Choose a doctor";
+  const locationName = locations.find(location => (location.id || location._id) === selectedLocation)?.name || "Choose a location";
+  const canChooseLocation = locations.length > 1;
+  const canChooseDoctor = doctors.length > 1 && user.role !== "doctor";
+  const scopeIdentity = <span id="queue-scope" className={styles.scopeIdentity}><strong title={doctorName}>{doctorName}</strong><span title={locationName}>{locationName}</span></span>;
+  const queueTools = (<Dropdown align="right" width="w-64" trigger={<Button variant="outline" size="sm" aria-label="Queue tools" className={styles.toolsTrigger}><MoreHorizontal className="h-4 w-4" /></Button>} items={[
+          { label: "Refresh queue", icon: <RotateCw />, disabled: loadingQueue, onClick: fetchQueue },
+          { label: "Availability", icon: <CalendarClock />, disabled: !selectedLocation || !selectedDoctor, onClick: () => { fetchActiveOverride(); setIsAvailabilityModalOpen(true); } },
+          { label: "Preview poster", icon: <Printer />, disabled: !selectedLocation || selectedLocation === "all", onClick: () => { const location = locations.find(item => (item.id || item._id) === selectedLocation); setQrPosterLocation(location || { id: selectedLocation, name: "Our location" }); setQrPosterOpen(true); } },
+          { label: "ABHA registration", icon: <ShieldCheck />, onClick: () => setAbdmModalOpen(true) },
+          { label: "Certificates", icon: <FileText />, onClick: () => { setSelectedDocGenPatient(null); setClinicalDocGenOpen(true); } },
+          ...(!reviewView && canManageQueue && sessionReady ? [
+            { label: "", divider: true },
+            ...(queueStatusData?.opdSession?.status === "active" ? [
+              { label: queueStatusData.opdSession.isOnBreak ? "Resume OPD" : "Take break", icon: <PauseCircle />, disabled: isTogglingBreak, onClick: () => { if (queueStatusData?.opdSession?.isOnBreak) void handleToggleDoctorBreak(false); else setIsBreakModalOpen(true); } },
+              { label: "End OPD and reconcile", icon: <CheckCircle2 />, danger: true, onClick: handleOpenEndOpdModal },
+            ] : [{ label: queueStatusData?.opdSession?.status === "ended" ? "Reopen session" : "Start OPD", icon: <Play />, disabled: isStartingOpd, onClick: handleStartOpdSession }]),
+          ] : []),
+          ...(user.organization_id && hasAnyPermission(user, "MANAGE_ORGANIZATION") ? [
+            { label: "", divider: true },
+            { label: "Announcement settings", icon: <Settings2 />, onClick: () => router.push(organizationWorkspaceUrl(user.organization_id, "configuration")) },
+          ] : []),
+        ]} />);
+
   return (
-    <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased animate-fade-up pb-4 sm:pb-12">
+    <div className={styles.workspace}>
       <ConfirmDialog open={Boolean(arrivalConfirmation)} title="Confirm booked patient arrival"
         description={`Token #${arrivalConfirmation?.tokenNumber ?? ''} has not checked in. Call this booked patient now?`}
         confirmLabel="Confirm arrival and call" loading={callingNext}
@@ -1722,306 +1762,53 @@ function QueueWorkspace() {
           setArrivalConfirmation(null);
           void handleCallNext(pending.completePrevious, pending.id);
         }} />
-      {queueError && <Alert variant="error" title="Unable to load queue" action={<Button variant="outline" size="sm" onClick={fetchQueue} loading={loadingQueue}>Try again</Button>}>{queueError}</Alert>}
       {/* ──────────────────────────────────────────────────────────────────────────
           1. TOP HEADER BANNER
          ────────────────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 sm:p-6 shadow-xs ">
-        <div className="flex flex-col gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="page-title">
-                Patient queue
-              </h1>
-              <Badge variant="primary" size="sm" dot pulse className="font-semibold">
-                Live updates
-              </Badge>
-            </div>
-          </div>
-
-          <div className="flex flex-col md:flex-row md:items-center md:flex-wrap gap-2.5 min-w-0 w-full">
-            {/* Primary Action Row for Mobile: Call Next & Walk-In */}
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:flex items-center gap-2 w-full md:w-auto order-1 md:order-2">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={openQuickWalkInModal}
-                className="font-bold bg-success hover:bg-success text-background border-none justify-center min-h-[42px] sm:min-h-[36px]"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Walk-in</span>
-              </Button>
-
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => handleCallNext(false)}
-                loading={callingNext}
-                className="font-semibold justify-center min-h-[42px] sm:min-h-[36px]"
-              >
-                <Megaphone className="w-3.5 h-3.5" />
-                <span>Call Next</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={fetchQueue} loading={loadingQueue} aria-label="Refresh queue" className="min-h-11 min-w-11 p-2"><RotateCw className="h-4 w-4" /></Button>
-            </div>
-
-            {/* Secondary Tools Row: Chime & Operations */}
-            <details className="group min-w-0 w-full md:w-auto md:flex-1 order-2 md:order-1">
-              <summary className="min-h-11 cursor-pointer rounded-lg px-2 py-2.5 text-sm font-medium text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Availability &amp; queue tools</summary>
-              <div className="flex flex-wrap items-center gap-2 pt-2">
-              {/* Chime selector pill */}
-              <div className="flex items-center gap-1.5 bg-surface-alt p-1 rounded-xl border border-border/80 shrink-0">
-                <Select
-                  size="sm"
-                  aria-label="Queue chime"
-                  value={chimeType}
-                  onChange={(e) => handleChimeChange(e.target.value as ChimeType)}
-                  options={CHIME_OPTIONS.map((c) => ({ value: c.id, label: `${c.icon} ${c.label}` }))}
-                  className="w-36 sm:w-44 text-xs font-semibold"
-                />
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  type="button"
-                  onClick={() => playChimeSound(chimeType)}
-                  className="text-xs font-semibold rounded-lg px-2 hover:text-text min-h-[34px] min-w-[34px] flex items-center justify-center"
-                  title="Test Chime Sound"
-                  aria-label="Test chime sound"
-                >
-                  <Volume2 className="w-4 h-4" />
-                </Button>
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  fetchActiveOverride();
-                  setIsAvailabilityModalOpen(true);
-                }}
-                className="font-semibold border-border/80 whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
-              >
-                <CalendarClock className="w-3.5 h-3.5 mr-1.5 text-accent" />
-                Availability
-              </Button>
-
-              <PrintButton
-                variant="outline"
-                size="sm"
-                documentName="poster"
-                preview
-                disabled={!selectedLocation || selectedLocation === "all"}
-                onPrint={() => {
-                  const currentLocation = locations.find((c) => (c.id || c._id) === selectedLocation);
-                  setQrPosterLocation(currentLocation || { id: selectedLocation, name: "Our location" });
-                  setQrPosterOpen(true);
-                }}
-                className="font-semibold rounded-xl border-border/80 hover:bg-surface-hover text-text whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
-                title="Print A4 QR poster for location waiting room entrance"
-              >
-              </PrintButton>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setAbdmModalOpen(true)}
-                className="font-bold border-accent/40 text-accent hover:bg-accent-subtle dark:hover:bg-primary/30 dark:text-accent whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
-                title="Ayushman Bharat Digital Mission (ABHA) & 3-Second Counter Scan & Share"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-accent dark:text-accent" />
-                ABHA
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSelectedDocGenPatient(null);
-                  setClinicalDocGenOpen(true);
-                }}
-                className="font-semibold border-border/80 whitespace-nowrap shrink-0 min-h-[38px] sm:min-h-[36px]"
-                title="Generate Hospital Referral Letter, Medical Sick Leave, or Fitness Certificate"
-              >
-                <FileText className="w-3.5 h-3.5 mr-1.5 text-success-text" />
-                Certificates
-              </Button>
-
-
-              {/* Doorway Voice Calling Bell Language Selector */}
-              <div role="group" aria-label="Voice announcement language" className="flex flex-wrap items-center gap-1.5 p-1 bg-surface-alt rounded-xl border border-border/70 text-xs">
-                <Volume2 className="w-3.5 h-3.5 text-accent ml-1.5 shrink-0" />
-                <span className="text-[11px] font-bold text-text-muted hidden sm:inline">Voice Announcer:</span>
-                {(["off", "en", "hi", "both"] as const).map((lang) => (
-                  <button
-                    key={lang}
-                    type="button"
-                    aria-pressed={voiceLanguage === lang}
-                    onClick={() => {
-                      setVoiceLanguage(lang);
-                      if (lang !== "off") {
-                        playChimeSound("beep");
-                        toast({
-                          title: `Voice Announcer: ${lang.toUpperCase()}`,
-                          description: `Calling bell set to ${lang === "both" ? "Dual (English + Hindi)" : lang === "hi" ? "Hindi" : "English"}.`,
-                          variant: "default",
-                        });
-                      }
-                    }}
-                    className={cn(
-                      "min-h-11 min-w-11 px-2 py-0.5 rounded-lg text-xs font-medium uppercase transition-all cursor-pointer",
-                      voiceLanguage === lang
-                        ? "bg-primary-600 text-brand-mist shadow-2xs"
-                        : "text-text-muted hover:text-text hover:bg-surface"
-                    )}
-                    title={`Doorway Calling Bell: ${lang.toUpperCase()}`}
-                  >
-                    {lang === "both" ? "Dual" : lang}
-                  </button>
-                ))}
-              </div>
-              </div>
-            </details>
-          </div>
+      <h1 className="sr-only">Patient queue</h1>
+      <section className={styles.scopePanel} aria-label="Queue selection">
+        {canChooseLocation || canChooseDoctor ? <button type="button" aria-label="Change queue filters" aria-expanded={filtersExpanded} aria-controls="queue-scope-fields" onClick={() => setFiltersExpanded(!filtersExpanded)} className={styles.scopeHeading}>
+          {scopeIdentity}<ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        </button> : <div className={styles.scopeHeading}>{scopeIdentity}</div>}
+        <div className={styles.scopeDateSummary}>
+          {queueViewTab === "recalls" ? <span className={styles.scopeDate}>All dates</span> : <button type="button" className={styles.scopeDate} aria-label="Change queue date" aria-expanded={filtersExpanded} aria-controls="queue-scope-fields" onClick={() => setFiltersExpanded(!filtersExpanded)}><time dateTime={selectedDate}>{selectedDate ? new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Choose a date"}</time><ChevronDown className="h-3 w-3" aria-hidden="true" /></button>}
+          <div className={styles.scopeContext}>{reviewView ? <span>{queueViewTab === "recalls" ? "Follow-up register" : "Processed visits"}</span> : <Badge variant={sessionVariant} dot>{sessionLabel}</Badge>}</div>
         </div>
-      </div>
+        <div className={styles.scopeTools}>{queueTools}</div>
+        <div id="queue-scope-fields" className={cn(styles.scopeFields, (filtersExpanded || (!loadingFilters && (!selectedLocation || !selectedDoctor))) && styles.scopeFieldsOpen)}>
+          {loadingFilters ? [0, 1, 2].map(index => <div key={index} className={styles.fieldLoading}><Skeleton width="5rem" height="1.25rem" /><Skeleton height="2.75rem" /></div>) : <>
+            {locations.length === 1 ? <div className={styles.fixedScopeField}><span>Location</span><p title={locationName}>{locationName}</p></div> : <Select size="sm" label="Location" value={selectedLocation} disabled={!canChooseLocation} onChange={event => setSelectedLocation(event.target.value)} placeholder="Choose location" options={locations.map(location => ({ value: location.id || location._id, label: location.name }))} />}
+            {doctors.length === 1 || user.role === "doctor" ? <div className={styles.fixedScopeField}><span>Doctor</span><p title={doctorName}>Dr. {doctorName.replace(/^dr\.?\s+/i, "")}</p></div> : <Select size="sm" label="Doctor" value={selectedDoctor} disabled={!canChooseDoctor} onChange={event => setSelectedDoctor(event.target.value)} options={doctors.map(doctor => ({ value: doctor.id || doctor._id, label: `Dr. ${(doctor.name || "").replace(/^dr\.?\s+/i, "")}` }))} />}
+            {queueViewTab === "recalls" ? <div className={styles.recallRange}><span>Follow-up dates</span><p>All dates, filtered below</p></div> : <DatePicker label="Queue date" size="sm" value={selectedDate} onChange={setSelectedDate} />}
+          </>}
+        </div>
+      </section>
+      <nav aria-label="Patient queue views">
+        <Tabs className={styles.tabs} variant="pills" scrollActiveIntoView={false} activeTab={queueViewTab} onChange={id => { setQueueViewTab(id as typeof queueViewTab); setPatientSearch(""); }} tabs={[{ id: "active", label: "Queue" }, { id: "standby", label: "Standby" }, { id: "processed", label: "Processed" }, { id: "recalls", label: "Recalls" }]} />
+      </nav>
+      {!reviewView && <section className={styles.operationsBar} aria-label="OPD session and queue controls">
+        <div className={styles.sessionBar}>
+          {!scopeLoaded || queueError ? <span className="text-xs text-text-muted" role="status">{queueError ? "Session unavailable" : "Loading session..."}</span> : queueStatusData?.opdSession?.status === "active" ? <>
+            <Badge variant={queueStatusData.opdSession.isOnBreak ? "warning" : "success"} dot>{queueStatusData.opdSession.isOnBreak ? "OPD on break" : "OPD in progress"}</Badge>
+            {queueStatusData.opdSession.isOnBreak && <span className={styles.breakDetail}>{queueStatusData.opdSession.breakReason || "Intermission"} (~{queueStatusData.opdSession.breakExpectedMinutes || 15}m)</span>}
+            {canManageQueue && <Dropdown align="left" width="w-64" trigger={<Button variant="ghost" size="sm" className={styles.sessionTrigger} disabled={isTogglingBreak}>Session <ChevronDown className="h-3.5 w-3.5" /></Button>} items={[
+              queueStatusData.opdSession.isOnBreak
+                ? { label: "Resume OPD", icon: <Play />, onClick: () => handleToggleDoctorBreak(false) }
+                : { label: "Take break", icon: <PauseCircle />, onClick: () => setIsBreakModalOpen(true) },
+              { label: "End OPD and reconcile", icon: <CheckCircle2 />, variant: "danger", onClick: handleOpenEndOpdModal },
+            ]} />}
+          </> : <>
+            <Badge variant={queueStatusData?.opdSession?.status === "ended" ? "neutral" : "warning"} dot>{queueStatusData?.opdSession?.status === "ended" ? "OPD ended" : "OPD not started"}</Badge>
+            {canManageQueue && <Button size="sm" variant="outline" onClick={handleStartOpdSession} loading={isStartingOpd}>{queueStatusData?.opdSession?.status === "ended" ? "Reopen session" : "Start OPD"}</Button>}
+          </>}
+        </div>
+        <div className={styles.queueActions} role="group" aria-label="Queue controls">
+          <Button variant="outline" size="sm" onClick={openQuickWalkInModal} disabled={!selectedLocation || !selectedDoctor || loadingFilters}><Plus className="h-3.5 w-3.5" />Walk-in</Button>
+          <Button variant="primary" size="sm" onClick={() => handleCallNext(false)} loading={callingNext} disabled={!scopeLoaded || Boolean(queueError) || loadingFilters}><Megaphone className="h-3.5 w-3.5" />Call Next</Button>
+        </div>
+      </section>}
 
-      {/* ──────────────────────────────────────────────────────────────────────────
-          2. FILTER STRIP
-         ────────────────────────────────────────────────────────────────────────── */}
-      <Card className="p-3 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs">
-        {loadingFilters ? (
-          <div className="flex items-center gap-3 w-full">
-            <Skeleton height="2.25rem" rounded="lg" className="flex-1" />
-            <Skeleton height="2.25rem" rounded="lg" className="flex-1" />
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-3 w-full">
-            {doctors.length > 1 && user.role !== "doctor" && (
-              <div className="flex-1 min-w-[160px] sm:max-w-xs">
-                <Select
-                  size="sm"
-                  placeholder="Select Doctor"
-                  value={selectedDoctor}
-                  onChange={(e) => setSelectedDoctor(e.target.value)}
-                  options={doctors.map((d) => ({
-                    value: d.id,
-                    label: `Dr. ${(d.name || "").replace(/^dr\.?\s+/i, "")}`,
-                  }))}
-                />
-              </div>
-            )}
-            <div className="flex-1 min-w-[150px] sm:max-w-[180px]">
-              <DatePicker
-                size="sm"
-                variant="outline"
-                placeholder="Select Date"
-                value={selectedDate}
-                onChange={(val) => setSelectedDate(val)}
-              />
-            </div>
-
-            {/* Doctor OPD Session Controls */}
-            {selectedLocation && selectedDoctor && (
-              <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 flex-wrap">
-                {queueStatusData?.opdSession?.status === "active" ? (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {queueStatusData.opdSession.isOnBreak ? (
-                      <div className="px-3 py-1.5 rounded-xl bg-warning/10 border border-warning/30 text-warning-text dark:text-warning-text text-xs font-bold flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-warning animate-pulse" />
-                        ☕ On Break: {queueStatusData.opdSession.breakReason || "Intermission"}
-                        <span className="font-normal text-[11px] opacity-85">
-                          (~{queueStatusData.opdSession.breakExpectedMinutes || 15}m)
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="px-3 py-1.5 rounded-xl bg-success/10 border border-success/30 text-success-text dark:text-success-text text-xs font-bold flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-success animate-ping" />
-                        OPD In Progress
-                        {queueStatusData.opdSession.startedAt && (
-                          <span className="font-normal text-[11px] opacity-85">
-                            (since {new Date(queueStatusData.opdSession.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {canManageQueue && (
-                      <>
-                        {queueStatusData.opdSession.isOnBreak ? (
-                          <Button
-                            size="xs"
-                            variant="primary"
-                            onClick={() => handleToggleDoctorBreak(false)}
-                            loading={isTogglingBreak}
-                            className="font-bold text-xs rounded-xl bg-success hover:bg-success text-background"
-                          >
-                            <span>▶</span> Resume OPD
-                          </Button>
-                        ) : (
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            onClick={() => setIsBreakModalOpen(true)}
-                            loading={isTogglingBreak}
-                            className="font-bold text-xs rounded-xl border-warning/40 text-warning-text dark:text-warning-text hover:bg-warning/10"
-                          >
-                            <span>☕</span> Take Break
-                          </Button>
-                        )}
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          onClick={handleOpenEndOpdModal}
-                          className="font-bold text-xs rounded-xl border-danger/30 text-danger-text dark:text-danger-text hover:bg-danger/10"
-                        >
-                          <span>🛑</span> End OPD & Reconcile
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                ) : queueStatusData?.opdSession?.status === "ended" ? (
-                  <div className="flex items-center gap-2">
-                    <div className="px-3 py-1.5 rounded-xl bg-surface-hover/10 border border-border/30 text-text-muted text-xs font-bold flex items-center gap-1.5">
-                      <span>🏁</span> OPD Ended for Today
-                    </div>
-                    {canManageQueue && (
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        onClick={handleStartOpdSession}
-                        loading={isStartingOpd}
-                        className="font-bold text-xs rounded-xl text-accent border-primary-500/30 hover:bg-primary-500/10"
-                      >
-                        Re-open Session
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <div className="px-3 py-1.5 rounded-xl bg-warning/10 border border-warning/30 text-warning-text dark:text-warning-text text-xs font-bold flex items-center gap-1.5">
-                      <span>⏳</span> OPD Not Started
-                    </div>
-                    {canManageQueue && (
-                      <Button
-                        size="xs"
-                        variant="primary"
-                        onClick={handleStartOpdSession}
-                        loading={isStartingOpd}
-                        className="font-bold text-xs rounded-xl bg-success hover:bg-success text-background"
-                      >
-                        <span>🟢</span> Start OPD Session
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </Card>
-
-      {/* ──────────────────────────────────────────────────────────────────────────
-          2B. ACTIVE OVERRIDES & AT-RISK PATIENT BANNERS
-         ────────────────────────────────────────────────────────────────────────── */}
+      {queueError && <Alert variant="error" title="Unable to load queue" action={<Button variant="outline" size="sm" onClick={fetchQueue} loading={loadingQueue}>Try again</Button>}>{queueError}</Alert>}
       {activeOverride && (
         <div className={cn(
           "p-3.5 rounded-2xl border flex flex-wrap items-center justify-between gap-3 text-sm font-medium",
@@ -2133,61 +1920,25 @@ function QueueWorkspace() {
       {/* ──────────────────────────────────────────────────────────────────────────
           3. STATS OVERVIEW
          ────────────────────────────────────────────────────────────────────────── */}
-      {selectedLocation && selectedDoctor && (
-        <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-3 rounded-2xl border border-border bg-surface p-3 sm:p-4">
+      {selectedLocation && selectedDoctor && queueViewTab === "active" && (
+        <dl className={styles.summary} aria-label="Queue summary" aria-busy={loadingQueue || loadingFilters}>
           {[
-            { label: "Booked, not arrived", value: stats.waiting - stats.checkedIn },
-            { label: "Arrived and waiting", value: stats.checkedIn },
-            { label: "In consultation", value: stats.activeConsultation },
+            { label: "Not arrived", value: stats.waiting - stats.checkedIn },
+            { label: "Waiting", value: stats.checkedIn },
+            { label: "In visit", value: stats.activeConsultation },
             { label: "Next token", value: stats.nextInLine ? `#${stats.nextInLine}` : "None" },
-          ].map(({ label, value }) => <div key={label} className="flex min-w-0 items-start justify-between gap-2"><dt className="text-xs leading-snug text-text-secondary">{label}</dt><dd className="shrink-0 text-base font-semibold leading-snug tabular-nums text-text">{value}</dd></div>)}
+          ].map(({ label, value }) => <div key={label}><dt>{label}</dt><dd>{loadingQueue || loadingFilters || queueError || !scopeLoaded ? "—" : value}</dd></div>)}
         </dl>
       )}
 
       {/* ──────────────────────────────────────────────────────────────────────────
           4. HOURLY TRAFFIC & BOTTLENECK CHART
          ────────────────────────────────────────────────────────────────────────── */}
-      {selectedLocation && selectedDoctor && !loadingQueue && appointments.length > 0 && (
-        <details className="rounded-2xl border border-border bg-surface">
-          <summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Hourly patient flow</summary>
-        <ChartContainer
-          title="Hourly Patient Flow & Rush Distribution"
-          description="Distribution of patient tokens across operating hours"
-          loading={loadingQueue}
-          height={200}
-        >
-          <BarChart
-            data={["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"].map(
-              (hStr) => {
-                const targetHour = parseInt(hStr.split(":")[0], 10);
-                const apptsInHour = appointments.filter((a) => {
-                  if (!a.appointmentTime) return false;
-                  const d = new Date(a.appointmentTime);
-                  return d.getHours() === targetHour;
-                });
-                const waiting = apptsInHour.filter((a) => a.status === "pending" || a.status === "checked-in").length;
-                const consulted = apptsInHour.filter(
-                  (a) => a.status === "in-consultation" || a.status === "completed"
-                ).length;
-                return { label: hStr, waiting, consulted };
-              }
-            )}
-            series={[
-              { key: "waiting", name: "Waiting in Line", color: "var(--chart-3)" },
-              { key: "consulted", name: "Completed / Active", color: "var(--chart-2)" },
-            ]}
-            layout="stacked"
-            height={200}
-            valueFormatter={(v) => `${v} patients`}
-          />
-        </ChartContainer>
-        </details>
-      )}
-
       {/* ──────────────────────────────────────────────────────────────────────────
-          5. MAIN QUEUE WORKSPACE (ACTIVE LIST + SERVED SIDEBAR)
+          MAIN QUEUE WORKSPACE
          ────────────────────────────────────────────────────────────────────────── */}
-      {!selectedLocation || !selectedDoctor ? (
+      {queueViewTab !== "recalls" && <div className={styles.searchRow}><Input aria-label="Find patient in queue" type="search" placeholder="Find name, phone or token" icon={<Search className="h-4 w-4" />} value={patientSearch} onChange={event => setPatientSearch(event.target.value)} onClear={() => setPatientSearch("")} containerClassName={styles.patientSearch} /></div>}
+      {loadingFilters ? <div className={styles.queueLoading} aria-label="Loading queue"><SkeletonCard /></div> : !selectedLocation || !selectedDoctor ? (
         <Card className="text-center py-16 rounded-2xl border border-border/80 bg-surface">
           <CardContent className="space-y-3">
             <div className="mx-auto w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center text-text-secondary">
@@ -2199,83 +1950,30 @@ function QueueWorkspace() {
             </p>
           </CardContent>
         </Card>
-      ) : loadingQueue ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-3">
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
-          <div>
-            <SkeletonCard />
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {/* Left 2 Columns: Active Queue Waitlist */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2 border-b border-border/60 pb-3">
-              <div className="flex items-center gap-1.5 p-1 bg-surface-alt rounded-xl border border-border/70 text-xs flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setQueueViewTab("active")}
-                  className={cn(
-                    "min-h-11 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5",
-                    queueViewTab === "active"
-                      ? "bg-surface text-text shadow-xs border border-border/60"
-                      : "text-text-muted hover:text-text"
-                  )}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  Active Queue ({activeQueue.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQueueViewTab("standby")}
-                  className={cn(
-                    "min-h-11 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5",
-                    queueViewTab === "standby"
-                      ? "bg-warning text-background shadow-xs"
-                      : "text-warning-text dark:text-warning-text hover:text-warning-text"
-                  )}
-                >
-                  <PauseCircle className="w-3.5 h-3.5" />
-                  Parked / Standby ({standbyQueue.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQueueViewTab("recalls")}
-                  className={cn(
-                    "min-h-11 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5",
-                    queueViewTab === "recalls"
-                      ? "bg-success text-background shadow-xs"
-                      : "text-success-text dark:text-success-text hover:text-success-text"
-                  )}
-                >
-                  <CalendarClock className="w-3.5 h-3.5" />
-                  Follow-Up Recalls
-                </button>
-              </div>
-
-
-            </div>
+      ) : loadingQueue || (!scopeLoaded && !queueError) ? (
+        <div className={styles.queueLoading} aria-label="Loading queue"><SkeletonCard /></div>
+      ) : queueError && !scopeLoaded ? <div className={styles.emptyState}><p>Queue information is unavailable for this selection. Refresh to retry.</p></div> : (
+        <div className={styles.queueWorkspace}>
+          {/* Queue tabs and patient search */}
+          <div className={styles.queueList}>
 
             {/* View Tab 1: Active Queue */}
             {queueViewTab === "active" && (
               <>
-                {activeQueue.length === 0 ? (
-                  <Card className="py-14 text-center text-text-muted rounded-2xl border border-border/80 bg-surface">
+                {activeQueue.filter(matchesPatient).length === 0 ? (
+                  <Card padding="none" className={styles.emptyState}>
                     <CardContent className="space-y-2">
                       <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-success-text">
                         <CheckCircle2 className="w-6 h-6" />
                       </div>
-                      <p className="font-semibold text-text text-sm">No Active Patients in Queue</p>
-                      <p className="text-xs text-text-muted">All appointments for this shift have been processed or checked out.</p>
+                      <p className="font-semibold text-text text-sm">{patientSearch ? "No matching patients" : "No Active Patients in Queue"}</p>
+                      <p className="text-xs text-text-muted">{patientSearch ? "Try another name, phone number or token." : "All appointments for this shift have been processed or checked out."}</p>
                     </CardContent>
                   </Card>
                 ) : (
                   <div className="space-y-3">
                     {activeQueue.map((appt, idx) => {
+                      if (!matchesPatient(appt)) return null;
                       const isFirst = idx === 0;
                       const isLast = idx === activeQueue.length - 1;
                       const isInConsultation = appt.status === "in-consultation";
@@ -2283,13 +1981,22 @@ function QueueWorkspace() {
                       const isEmergency = Boolean(appt.isEmergency || appt.queuePosition === 0);
                       const criticalVitalsAlert = getCriticalVitalsAlert(appt.vitals);
                       const hasCriticalVitals = Boolean(criticalVitalsAlert && criticalVitalsAlert.length > 0);
+                      const vitals = appt.vitals;
+                      const recordedVitals = [
+                        ...(hasVitalValue(vitals?.bpSystolic) || hasVitalValue(vitals?.bpDiastolic) ? [{ label: "BP", value: `${hasVitalValue(vitals?.bpSystolic) ? vitals.bpSystolic : "—"}/${hasVitalValue(vitals?.bpDiastolic) ? vitals.bpDiastolic : "—"}` }] : []),
+                        ...(hasVitalValue(vitals?.pulse) ? [{ label: "HR", value: `${vitals.pulse} bpm` }] : []),
+                        ...(hasVitalValue(vitals?.spO2) ? [{ label: "SpO₂", value: `${vitals.spO2}%` }] : []),
+                        ...(hasVitalValue(vitals?.temperature) ? [{ label: "Temp", value: `${vitals.temperature}°${vitals.temperatureUnit || "F"}` }] : []),
+                        ...(hasVitalValue(vitals?.bmi) ? [{ label: "BMI", value: String(vitals.bmi) }] : []),
+                      ];
+                      const patientPhone = appt.patientId?.userId?.phone || (appt.patientId as any)?.phone;
 
                       return (
                         <Card
                           padding="none"
                           key={appt.id}
                           className={cn(
-                            "rounded-2xl border transition-all shadow-xs overflow-hidden",
+                            styles.patientCard,
                             isEmergency
                               ? "border-danger bg-danger/[0.04] dark:bg-danger/[0.08] ring-1 ring-danger/40"
                               : hasCriticalVitals
@@ -2301,12 +2008,13 @@ function QueueWorkspace() {
                               : "border-border/80 bg-surface"
                           )}
                         >
-                          <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <CardContent className={styles.queuePatientBody}>
+                            <div className={styles.patientInformation}>
                             {/* Token & Patient details */}
-                            <div className="flex items-center gap-3.5 min-w-0">
+                            <div className={styles.patientHeading}>
                               <div
                                 className={cn(
-                                  "w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-mono font-bold shadow-xs shrink-0",
+                                  "w-11 h-11 rounded-xl flex flex-col items-center justify-center font-mono font-bold shrink-0",
                                   isEmergency
                                     ? "bg-danger text-background shadow-danger/30 animate-pulse"
                                     : isInConsultation
@@ -2322,8 +2030,8 @@ function QueueWorkspace() {
                                 <span className="text-base leading-none">#{appt.tokenNumber}</span>
                               </div>
 
-                              <div className="space-y-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
+                              <div className={styles.patientIdentity}>
+                                <div className={styles.patientTitle}>
                                   <span className="min-w-0 font-bold text-text text-sm break-words">
                                     {canonicalPatientName(appt.patientId)}
                                   </span>
@@ -2353,43 +2061,28 @@ function QueueWorkspace() {
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-2 text-xs text-text-muted flex-wrap">
-                                  {appt.patientId?.userId?.phone && (
+                                <div className={styles.patientMeta}>
+                                  {patientPhone && (
                                     <span className="inline-flex items-center gap-1">
                                       <Phone className="w-3 h-3" />
-                                      {appt.patientId?.userId?.phone}
+                                      {patientPhone}
                                     </span>
                                   )}
-                                  <span>&bull;</span>
-                                  <span className="uppercase font-semibold text-[10px] tracking-wider px-1.5 py-0.5 rounded bg-surface-alt border border-border/60">
-                                    {appt.appointmentType}
-                                  </span>
+                                  {appt.appointmentType && <span className="capitalize">{appt.appointmentType.replace(/[_-]/g, " ")}</span>}
+                                  {!isInConsultation && <span className={styles.patientWait}><Clock className="h-3 w-3" aria-hidden="true" />{getWaitTimeLabel(appt.estimatedWaitTime)}</span>}
                                 </div>
                                 {appt.notes && (
-                                  <p className="text-xs text-text-muted italic line-clamp-1">
+                                  <p className={styles.patientNote} title={appt.notes}>
                                     Note: &ldquo;{appt.notes}&rdquo;
                                   </p>
                                 )}
 
+                              </div>
+                            </div>
                                 {/* Vitals Display Strip if Recorded */}
-                                {appt.vitals && (
-                                  <div className="flex items-center gap-1.5 flex-wrap text-xs pt-1">
-                                    <span className="inline-flex flex-wrap items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-alt border border-border/80 text-text font-medium text-[11px]">
-                                      <Stethoscope className="w-3 h-3 text-accent shrink-0" />
-                                      <span>BP: <strong>{appt.vitals.bpSystolic}/{appt.vitals.bpDiastolic}</strong></span>
-                                      <span>&bull;</span>
-                                      <span>HR: <strong>{appt.vitals.pulse}</strong></span>
-                                      <span>&bull;</span>
-                                      <span>SpO2: <strong>{appt.vitals.spO2}%</strong></span>
-                                      <span>&bull;</span>
-                                      <span>Temp: <strong>{appt.vitals.temperature}°{appt.vitals.temperatureUnit || "F"}</strong></span>
-                                      {appt.vitals.bmi && (
-                                        <>
-                                          <span>&bull;</span>
-                                          <span>BMI: <strong>{appt.vitals.bmi}</strong></span>
-                                        </>
-                                      )}
-                                    </span>
+                                {recordedVitals.length > 0 && appt.vitals && (
+                                  <div className={styles.vitalsStrip} aria-label="Recorded vitals">
+                                    <dl className={styles.vitalsValues}>{recordedVitals.map(vital => <div key={vital.label}><dt>{vital.label}</dt><dd>{vital.value}</dd></div>)}</dl>
                                     {((appt.vitals.bpSystolic && appt.vitals.bpSystolic >= 140) || (appt.vitals.bpDiastolic && appt.vitals.bpDiastolic >= 90)) && (
                                       <Badge variant="danger" size="sm" className="text-[9px] px-1.5 py-0">
                                         Stage 2 HTN
@@ -2416,204 +2109,12 @@ function QueueWorkspace() {
                                   </div>
                                 )}
 
-                                {/* Critical Vitals Early Warning Score (MEWS Alert Banner) */}
-                                {criticalVitalsAlert && (
-                                  <div className="mt-2 p-2.5 rounded-xl bg-danger/10 border border-danger/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
-                                    <div className="flex items-center gap-2 text-danger-text dark:text-danger-text">
-                                      <AlertTriangle className="w-4 h-4 text-danger-text dark:text-danger-text shrink-0" />
-                                      <div>
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                          <span className="font-bold uppercase tracking-wider text-[10px] text-danger-text dark:text-danger-text">
-                                            Critical Vitals MEWS Alert
-                                          </span>
-                                          <Badge variant="danger" size="sm" className="font-mono text-[9px] px-1 py-0">
-                                            HIGH TRIAGE RISK
-                                          </Badge>
-                                        </div>
-                                        <p className="text-[11px] text-danger-text dark:text-danger-text mt-0.5 font-medium">
-                                          {criticalVitalsAlert.join(" • ")}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    {!isEmergency && !isInConsultation && (
-                                      <Button
-                                        type="button"
-                                        size="xs"
-                                        onClick={() => {
-                                          setApptToStatEmergency(appt);
-                                          setEmergencyReason(`Critical Vitals MEWS Triage: ${criticalVitalsAlert.join(", ")}`);
-                                          setStatModalOpen(true);
-                                        }}
-                                        className="shrink-0 bg-danger hover:bg-danger text-background font-bold text-xs rounded-xl cursor-pointer"
-                                      >
-                                        <Zap className="w-3 h-3 mr-1 fill-white" />
-                                        Escalate to STAT Next
-                                      </Button>
-                                    )}
-                                  </div>
-                                )}
-
                                 {/* Investigation / Diagnostic Lab Results Strip */}
-                                {appt.investigationResults && appt.investigationResults.length > 0 && (
-                                  <div className="flex items-center gap-1.5 flex-wrap text-xs pt-1">
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 border border-accent/30 text-accent dark:text-accent font-medium text-[11px]">
-                                      <FlaskConical className="w-3.5 h-3.5 text-accent dark:text-accent shrink-0" />
-                                      <strong className="font-bold">Lab Findings:</strong>
-                                      {appt.investigationResults.map((inv, i) => (
-                                        <span key={i} className="inline-flex items-center gap-1">
-                                          {i > 0 && <span className="opacity-40">&bull;</span>}
-                                          <span className="font-medium">{inv.testName}:</span>
-                                          <strong className={inv.isAbnormal ? "text-danger-text dark:text-danger-text font-bold" : "text-success-text dark:text-success-text font-bold"}>
-                                            {inv.value} {inv.unit || ""}
-                                          </strong>
-                                          {inv.isAbnormal && (
-                                            <span className="text-[9px] px-1 py-0 rounded bg-danger/20 text-danger-text dark:text-danger-text font-bold">
-                                              Abnormal
-                                            </span>
-                                          )}
-                                        </span>
-                                      ))}
-                                    </span>
-                                    <Button type="button" onClick={() => openInvestigationViewer(appt)} title="Open in-cabin viewer & compare past diagnostic trends" variant="outline" size="xs" className="text-accent">
-                                      <Sparkles className="w-3 h-3 text-warning-text" />
-                                      <span>View Reports & Trends</span>
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
+
                             </div>
 
-                            {/* Controls & Action Buttons */}
-                            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                              {/* Wait Time Indicator */}
-                              {!isInConsultation && (
-                                <span className="text-xs bg-surface-alt border border-border/80 text-text-secondary px-2.5 py-1 rounded-xl font-medium inline-flex items-center gap-1">
-                                  <Clock className="w-3 h-3 text-text-muted" />
-                                  {getWaitTimeLabel(appt.estimatedWaitTime)}
-                                </span>
-                              )}
-
-                              {/* VIP Queue Reorder, Bump Late, and Park Standby */}
-                              {canManageQueue && (
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  {!isInConsultation && (
-                                    <Button type="button" onClick={() => openParkModal(appt)} title="Patient stepped out: Hold in Standby" variant="outline" size="xs">
-                                      <PauseCircle className="w-3.5 h-3.5" />
-                                      Park
-                                    </Button>
-                                  )}
-
-                                  <Button type="button" onClick={() => handleBumpBack(appt.id)} title="Late Arrival: Move 2 positions back in queue" variant="outline" size="xs">
-                                    Bump (+2)
-                                  </Button>
-
-                                  {canCommunicatePatients && <Button type="button" onClick={() => openResendTrackerModal(appt)} title="Queue live tracking link via WhatsApp" variant="outline" size="xs">
-                                    <Send className="w-3.5 h-3.5" />
-                                    Tracker
-                                  </Button>}
-
-                                  <div className="flex items-center bg-surface-alt border border-border/80 rounded-xl p-0.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => moveQueueItem(idx, "up")}
-                                      disabled={isFirst}
-                                      className={cn(
-                                        "p-2 rounded-lg transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center",
-                                        isFirst ? "text-text-muted/40 cursor-not-allowed" : "text-text-secondary hover:text-text hover:bg-surface"
-                                      )}
-                                      title="Move Up (VIP Override)"
-                                    >
-                                      <ChevronUp className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => moveQueueItem(idx, "down")}
-                                      disabled={isLast}
-                                      className={cn(
-                                        "p-2 rounded-lg transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center",
-                                        isLast ? "text-text-muted/40 cursor-not-allowed" : "text-text-secondary hover:text-text hover:bg-surface"
-                                      )}
-                                      title="Move Down (VIP Override)"
-                                    >
-                                      <ChevronDown className="h-4 w-4" />
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Consultation Flow Buttons */}
-                              {canManageQueue && (
-                                <div className="flex items-center gap-1.5">
-                                  {/* Longitudinal EHR Patient History Button */}
-                                  <Button
-                                    variant="outline"
-                                    size="xs"
-                                    onClick={() => {
-                                      const pId = typeof appt.patientId === "object" ? appt.patientId.id : appt.patientId;
-                                      const pName = canonicalPatientName(appt.patientId);
-                                      setTimelinePatient({ id: pId, name: pName });
-                                      setTimelineModalOpen(true);
-                                    }}
-                                    className="font-semibold text-xs rounded-xl border-border/80 text-text-secondary hover:text-text cursor-pointer"
-                                    title="View Patient's Longitudinal Medical History & Clinical Timeline"
-                                  >
-                                    <History className="w-3 h-3 mr-1 text-accent dark:text-accent" />
-                                    EHR History
-                                  </Button>
-
-                                  {/* In-Cabin Lab Reports & Comparison Button */}
-                                  <Button
-                                    variant="outline"
-                                    size="xs"
-                                    onClick={() => openInvestigationViewer(appt)}
-                                    className={cn(
-                                      "font-semibold text-xs rounded-xl cursor-pointer transition-all",
-                                      appt.investigationResults && appt.investigationResults.length > 0
-                                        ? "border-accent/40 bg-primary/10 text-accent dark:text-accent hover:bg-primary/20 shadow-xs"
-                                        : "border-border/80 text-text-secondary hover:bg-surface-hover hover:text-text"
-                                    )}
-                                    title="View Lab Reports, Attachments & 1-Click Trends"
-                                  >
-                                    <FlaskConical className="w-3 h-3 mr-1 text-accent dark:text-accent" />
-                                    Lab Reports{appt.investigationResults && appt.investigationResults.length > 0 ? ` (${appt.investigationResults.length})` : ""}
-                                  </Button>
-
-                                  {/* Nurse Vitals Entry Button (if not already recorded) */}
-                                  {!appt.vitals && !isInConsultation && (
-                                    <Button
-                                      variant="outline"
-                                      size="xs"
-                                      onClick={() => {
-                                        setSelectedVitalsAppt(appt);
-                                        setVitalsModalOpen(true);
-                                      }}
-                                      className="font-semibold text-xs rounded-xl border-primary-500/30 text-accent dark:text-accent hover:bg-primary-500/10 cursor-pointer"
-                                      title="Record pre-consultation nursing vitals"
-                                    >
-                                      <Stethoscope className="w-3 h-3 mr-1" />
-                                      Vitals
-                                    </Button>
-                                  )}
-
-                                  {/* STAT Emergency Priority Button */}
-                                  {!isEmergency && !isInConsultation && (
-                                    <Button
-                                      variant="outline"
-                                      size="xs"
-                                      onClick={() => {
-                                        setApptToStatEmergency(appt);
-                                        setEmergencyReason("");
-                                        setStatModalOpen(true);
-                                      }}
-                                      className="font-semibold text-xs rounded-xl border-danger/30 text-danger-text dark:text-danger-text hover:bg-danger/10 cursor-pointer"
-                                      title="STAT Emergency Priority (Interrupts queue to Position 0)"
-                                    >
-                                      <AlertTriangle className="w-3 h-3 mr-1" />
-                                      STAT
-                                    </Button>
-                                  )}
-
-                                  {appt.status !== "checked-in" && !isInConsultation && (
+                            {canManageQueue && <div className={styles.patientControls}>
+                                <div className={styles.primaryActions}>                                  {appt.status !== "checked-in" && !isInConsultation && (
                                     <Button
                                       variant="outline"
                                       size="xs"
@@ -2643,40 +2144,7 @@ function QueueWorkspace() {
                                     </Button>
                                   )}
 
-                                  {isInConsultation ? (
-                                    <div className="flex items-center gap-1.5">
-                                      <Button
-                                        variant="ghost"
-                                        size="xs"
-                                        onClick={() => {
-                                          announcePatientToken({
-                                            tokenNumber: appt.tokenNumber,
-                                            doctorName: appt.doctorId?.userId?.name || appt.doctorId?.name,
-                                            cabinName: appt.doctorId?.cabinNumber ? `Cabin ${appt.doctorId.cabinNumber}` : undefined,
-                                            language: voiceLanguage,
-                                            chimeType,
-                                          });
-                                          toast({
-                                            title: `Summoning Token #${appt.tokenNumber}`,
-                                            description: "Doorway voice announcer and calling chime sounded.",
-                                            variant: "default",
-                                          });
-                                        }}
-                                        className="font-bold text-xs rounded-xl border border-warning/30 text-warning-text dark:text-warning-text hover:bg-warning/10 cursor-pointer"
-                                        title="Sound doorway calling bell chime and re-summon patient"
-                                      >
-                                        <Volume2 className="w-3.5 h-3.5 mr-1 text-warning-text animate-pulse" />
-                                        Summon
-                                      </Button>
-                                      <Button
-                                        variant="outline"
-                                        size="xs"
-                                        onClick={() => handleOpenInvestigationModal(appt)}
-                                        className="font-bold text-xs rounded-xl border-accent/30 text-accent dark:text-accent hover:bg-primary/10"
-                                      >
-                                        <span>🔬</span> Send for Lab
-                                      </Button>
-                                      <Button
+{isInConsultation ? (<Button
                                         variant="primary"
                                         size="xs"
                                         onClick={() => openCompleteModal(appt)}
@@ -2685,10 +2153,7 @@ function QueueWorkspace() {
                                       >
                                         <CheckCircle2 className="w-3 h-3 mr-1" />
                                         Conclude Visit
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <Button
+                                      </Button>) : (<Button
                                       variant="primary"
                                       size="xs"
                                       onClick={() => {
@@ -2706,11 +2171,65 @@ function QueueWorkspace() {
                                     >
                                       <Stethoscope className="w-3 h-3 mr-1" />
                                       Call In
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                                    </Button>)}</div>
+                                <Dropdown align="right" width="w-64" className={styles.patientTools}
+                                  trigger={<Button variant="outline" size="xs" aria-label="More patient actions" title={`Actions for ${canonicalPatientName(appt.patientId)}`} className={styles.toolsTrigger}><MoreHorizontal className="h-4 w-4" aria-hidden="true" /></Button>}
+                                  items={[
+                                    ...(!isInConsultation ? [{ label: "Move to standby", icon: <PauseCircle />, onClick: () => openParkModal(appt) }] : []),
+                                    { label: "Move back 2 places", icon: <Clock />, onClick: () => handleBumpBack(appt.id) },
+                                    { label: "Move up", icon: <ChevronUp />, disabled: isFirst, onClick: () => moveQueueItem(idx, "up") },
+                                    { label: "Move down", icon: <ChevronDown />, disabled: isLast, onClick: () => moveQueueItem(idx, "down") },
+                                    { label: "", divider: true },
+                                    ...(canCommunicatePatients ? [{ label: "Send live tracker", icon: <Send />, onClick: () => openResendTrackerModal(appt) }] : []),
+                                    { label: "Patient history", icon: <History />, onClick: () => { const pId = typeof appt.patientId === "object" ? appt.patientId.id : appt.patientId; setTimelinePatient({ id: pId, name: canonicalPatientName(appt.patientId) }); setTimelineModalOpen(true); } },
+                                    { label: "Lab reports", icon: <FlaskConical />, onClick: () => openInvestigationViewer(appt) },
+                                    ...(recordedVitals.length === 0 && !isInConsultation ? [{ label: "Record vitals", icon: <Stethoscope />, onClick: () => { setSelectedVitalsAppt(appt); setVitalsModalOpen(true); } }] : []),
+                                    ...(isInConsultation ? [
+                                      { label: "Summon patient", icon: <Volume2 />, onClick: () => { announcePatientToken({ tokenNumber: appt.tokenNumber, doctorName: appt.doctorId?.userId?.name || appt.doctorId?.name, cabinName: appt.doctorId?.cabinNumber ? `Cabin ${appt.doctorId.cabinNumber}` : undefined, language: voiceLanguage, chimeType }); toast({ title: `Summoning Token #${appt.tokenNumber}`, description: "Doorway voice announcer and calling chime sounded.", variant: "default" }); } },
+                                      { label: "Send for lab", icon: <FlaskConical />, onClick: () => handleOpenInvestigationModal(appt) },
+                                    ] : []),
+                                    ...(!isEmergency && !isInConsultation ? [{ label: "", divider: true }, { label: "STAT priority", icon: <AlertTriangle />, danger: true, onClick: () => { setApptToStatEmergency(appt); setEmergencyReason(""); setStatModalOpen(true); } }] : []),
+                                  ]} />
+                            </div>}
+                                {/* Critical Vitals Early Warning Score (MEWS Alert Banner) */}
+                                {criticalVitalsAlert && (
+                                  <div className={styles.criticalAlert}>
+                                    <div className="flex items-center gap-2 text-danger-text dark:text-danger-text">
+                                      <AlertTriangle className="w-4 h-4 text-danger-text dark:text-danger-text shrink-0" />
+                                      <div>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className="font-bold uppercase tracking-wider text-[10px] text-danger-text dark:text-danger-text">
+                                            Critical Vitals MEWS Alert
+                                          </span>
+                                          <Badge variant="danger" size="sm" className="font-mono text-[9px] px-1 py-0">
+                                            HIGH TRIAGE RISK
+                                          </Badge>
+                                        </div>
+                                        <p className="text-[11px] text-danger-text dark:text-danger-text mt-0.5 font-medium">
+                                          {criticalVitalsAlert.join(" • ")}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {!isEmergency && !isInConsultation && (
+                                      <Button
+                                        type="button"
+                                        variant="danger"
+                                        size="xs"
+                                        onClick={() => {
+                                          setApptToStatEmergency(appt);
+                                          setEmergencyReason(`Critical Vitals MEWS Triage: ${criticalVitalsAlert.join(", ")}`);
+                                          setStatModalOpen(true);
+                                        }}
+                                        className="shrink-0 font-semibold text-xs rounded-xl"
+                                      >
+                                        <Zap className="w-3 h-3 mr-1 fill-white" />
+                                        Escalate to STAT Next
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+
+                            {Boolean(appt.investigationResults?.length) && <div className={styles.patientLabResults}><QueueLabResults results={appt.investigationResults || []} onOpen={() => openInvestigationViewer(appt)} /></div>}
                           </CardContent>
                         </Card>
                       );
@@ -2723,18 +2242,18 @@ function QueueWorkspace() {
             {/* View Tab 2: Parked / Standby Queue */}
             {queueViewTab === "standby" && (
               <div className="space-y-3">
-                {standbyQueue.length === 0 ? (
-                  <Card className="py-14 text-center text-text-muted rounded-2xl border border-border/80 bg-surface">
+                {standbyQueue.filter(matchesPatient).length === 0 ? (
+                  <Card padding="none" className={styles.emptyState}>
                     <CardContent className="space-y-2">
                       <div className="w-12 h-12 rounded-2xl bg-surface-alt border border-border flex items-center justify-center mx-auto text-warning-text">
                         <CheckCircle2 className="w-6 h-6" />
                       </div>
-                      <p className="font-semibold text-text text-sm">No Patients in Standby</p>
+                      <p className="font-semibold text-text text-sm">{patientSearch ? "No matching standby patients" : "No Patients in Standby"}</p>
                       <p className="text-xs text-text-muted">No checked-in patients are currently stepped out or held in standby.</p>
                     </CardContent>
                   </Card>
                 ) : (
-                  standbyQueue.map((appt) => {
+                  standbyQueue.filter(matchesPatient).map((appt) => {
                   const isReportReview = appt.consultationPhase === "initial_pending_investigation";
                   const isReturned = appt.patientReturned;
 
@@ -2751,7 +2270,7 @@ function QueueWorkspace() {
                           : "border-warning/30 bg-warning/[0.02]"
                       )}
                     >
-                      <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <CardContent className={styles.patientBody}>
                         <div className="flex items-center gap-3.5 min-w-0">
                           <div
                             className={cn(
@@ -2785,32 +2304,7 @@ function QueueWorkspace() {
                                 </Badge>
                               )}
 
-                              {appt.investigationResults && appt.investigationResults.length > 0 && (
-                                <div className="flex items-center gap-1.5 flex-wrap text-xs pt-1">
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/15 border border-accent/30 text-accent dark:text-accent font-medium text-[11px]">
-                                    <FlaskConical className="w-3.5 h-3.5 text-accent dark:text-accent shrink-0" />
-                                    <strong className="font-bold">Reports Ready:</strong>
-                                    {appt.investigationResults.map((inv, i) => (
-                                      <span key={i} className="inline-flex items-center gap-1">
-                                        {i > 0 && <span className="opacity-40">&bull;</span>}
-                                        <span>{inv.testName}:</span>
-                                        <strong className={inv.isAbnormal ? "text-danger-text dark:text-danger-text font-bold" : "text-success-text dark:text-success-text font-bold"}>
-                                          {inv.value} {inv.unit || ""}
-                                        </strong>
-                                        {inv.isAbnormal && (
-                                          <span className="text-[9px] px-1 py-0 rounded bg-danger/20 text-danger-text dark:text-danger-text font-bold">
-                                            ⚠️
-                                          </span>
-                                        )}
-                                      </span>
-                                    ))}
-                                  </span>
-                                  <Button type="button" onClick={() => openInvestigationViewer(appt)} title="Open in-cabin viewer & compare past trends" variant="outline" size="xs" className="text-accent">
-                                    <Sparkles className="w-3 h-3 text-warning-text" />
-                                    <span>Compare Trends</span>
-                                  </Button>
-                                </div>
-                              )}
+                              <QueueLabResults results={appt.investigationResults || []} onOpen={() => openInvestigationViewer(appt)} />
                             </div>
                             <div className="flex items-center gap-2 text-xs text-text-muted flex-wrap">
                               {appt.patientId?.userId?.phone && (
@@ -2828,7 +2322,7 @@ function QueueWorkspace() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className={styles.standbyActions}>
                           {canCommunicatePatients && <Button type="button" onClick={() => openResendTrackerModal(appt)} title="Queue live tracking link via WhatsApp" variant="outline" size="xs">
                             <Send className="w-3 h-3" />
                             Tracker
@@ -2884,27 +2378,27 @@ function QueueWorkspace() {
             )}
           </div>
 
-          {/* Right Column: Served & Inactive Queue */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
+          {/* Completed, cancelled and inactive visits */}
+          {queueViewTab === "processed" && <section className={styles.processed}>
+            <div className={styles.processedHeading}>
               <h3 className="text-base font-bold text-text">Processed Patients</h3>
               <Badge variant="neutral" size="sm" className="font-semibold">
-                {finishedQueue.length} Served
+                {finishedQueue.length} records
               </Badge>
             </div>
 
-            <Card className="rounded-2xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+            <Card padding="none" className={styles.processedPanel}>
               <CardContent className="p-0">
-                {finishedQueue.length === 0 ? (
+                {finishedQueue.filter(matchesPatient).length === 0 ? (
                   <div className="text-center py-14 px-4 text-text-muted text-xs">
-                    No completed patient visits recorded yet today.
+                    {patientSearch ? "No matching processed patients. Try another name, phone number or token." : "No processed visits for the selected date."}
                   </div>
                 ) : (
-                  <div className="divide-y divide-border/60 max-h-[520px] overflow-y-auto">
-                    {finishedQueue.map((appt) => (
+                  <div className={styles.processedList}>
+                    {finishedQueue.filter(matchesPatient).map((appt) => (
                       <div
                         key={appt.id}
-                        className="p-3.5 flex justify-between items-center hover:bg-surface-hover transition-colors gap-3"
+                        className={styles.processedRow}
                       >
                         <div className="space-y-0.5 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -2919,7 +2413,7 @@ function QueueWorkspace() {
                               {appt.status}
                             </Badge>
                           </div>
-                          <p className="text-xs font-bold text-text truncate">
+                          <p className="text-xs font-bold text-text break-words">
                             {canonicalPatientName(appt.patientId)}
                           </p>
                           <div className="flex items-center gap-1 text-[10px] text-text-muted">
@@ -2933,7 +2427,7 @@ function QueueWorkspace() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className={styles.processedActions}>
                           {appt.status === "completed" && (
                             <>
                               <PrintButton
@@ -2996,18 +2490,57 @@ function QueueWorkspace() {
                 )}
               </CardContent>
             </Card>
-          </div>
+          </section>}
         </div>
       )}
 
       {/* ──────────────────────────────────────────────────────────────────────────
           6. COMPLETE CONSULTATION & EHR DOCUMENTATION MODAL
          ────────────────────────────────────────────────────────────────────────── */}
+      {!reviewView && selectedLocation && selectedDoctor && !loadingQueue && appointments.length > 0 && (
+        <details className={styles.flowChart}>
+          <summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">Hourly patient flow</summary>
+        <ChartContainer
+          title="Hourly patient flow"
+          description="Distribution of patient tokens across operating hours"
+          loading={loadingQueue}
+          height="auto"
+          className={styles.chartPanel}
+        >
+          <BarChart
+            data={["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"].map(
+              (hStr) => {
+                const targetHour = parseInt(hStr.split(":")[0], 10);
+                const apptsInHour = appointments.filter((a) => {
+                  if (!a.appointmentTime) return false;
+                  const d = new Date(a.appointmentTime);
+                  return d.getHours() === targetHour;
+                });
+                const waiting = apptsInHour.filter((a) => a.status === "pending" || a.status === "checked-in").length;
+                const consulted = apptsInHour.filter(
+                  (a) => a.status === "in-consultation" || a.status === "completed"
+                ).length;
+                return { label: hStr, waiting, consulted };
+              }
+            )}
+            series={[
+              { key: "waiting", name: "Waiting in Line", color: "var(--chart-3)" },
+              { key: "consulted", name: "Completed / Active", color: "var(--chart-2)" },
+            ]}
+            layout="stacked"
+            height={200}
+            valueFormatter={(v) => `${v} patients`}
+          />
+        </ChartContainer>
+        </details>
+      )}
+
       <Modal
+        bodyClassName={styles.modalBody}
         open={completeModalOpen}
         onClose={() => setCompleteModalOpen(false)}
-        title="Complete Clinical Consultation"
-        description={`Document medical diagnosis, prescriptions, and follow-up plan for ${canonicalPatientName(apptToComplete?.patientId)} (Token #${apptToComplete?.tokenNumber}).`}
+        title="Complete consultation"
+        description={`${canonicalPatientName(apptToComplete?.patientId)} · Token #${apptToComplete?.tokenNumber}`}
         size="lg"
         footer={
           <>
@@ -3037,7 +2570,7 @@ function QueueWorkspace() {
         <form id="complete-consultation-form" onSubmit={handleCompleteConsultation} className="space-y-4 pt-1 pr-1">
           {/* Patient Quick Context & Longitudinal EHR Timeline Launcher */}
           {apptToComplete && (
-            <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-primary-500/10 border border-primary-500/20">
+            <div className={styles.clinicalContext}>
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-primary-600 text-brand-mist font-bold text-sm flex items-center justify-center shadow-xs">
                   {canonicalPatientName(apptToComplete.patientId)[0].toUpperCase()}
@@ -3065,7 +2598,7 @@ function QueueWorkspace() {
                   className="font-bold text-xs rounded-xl border-accent/40 text-accent dark:text-accent hover:bg-primary/15 cursor-pointer shadow-xs shrink-0"
                 >
                   <FlaskConical className="w-3.5 h-3.5 mr-1 text-accent" />
-                  Lab Reports & Compare
+                  Lab reports
                 </Button>
                 <Button
                   type="button"
@@ -3080,13 +2613,14 @@ function QueueWorkspace() {
                   className="font-bold text-xs rounded-xl border-primary-500/40 text-accent dark:text-accent hover:bg-primary-500/15 cursor-pointer shadow-xs shrink-0"
                 >
                   <History className="w-3.5 h-3.5 mr-1 text-accent" />
-                  View Longitudinal EHR History
+                  Patient history
                 </Button>
               </div>
             </div>
           )}
 
           {/* 1-Click OPD Clinical Presets & Custom Combos Bar */}
+          <details className={styles.clinicalPresets}><summary>Clinical presets<ChevronDown className="h-4 w-4" aria-hidden="true" /></summary>
           <OpdClinicalPresetBar
             onSelectPreset={(preset) => {
               setSymptoms(preset.symptoms);
@@ -3118,6 +2652,7 @@ function QueueWorkspace() {
             currentFollowUpNotes={followUpNotes}
             locationId={selectedLocation}
           />
+          </details>
 
           {/* Patient Clinical Context: Allergies & Triage Vitals Banner */}
           {apptToComplete && (apptToComplete.vitals || (apptToComplete.investigationResults && apptToComplete.investigationResults.length > 0)) && (
@@ -3280,13 +2815,13 @@ function QueueWorkspace() {
                 ))}
               </div>
 
-              <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+              <div className={styles.medicineList}>
                 {prescriptions.map((prescription, idx) => (
                   <div key={idx} className="p-2.5 rounded-xl bg-surface-alt/60 border border-border/70 space-y-1.5">
-                    <div className="flex gap-2.5 items-end">
+                    <div className={styles.medicineRow}>
                       <div className="flex-1">
                         <Input
-                          label={idx === 0 ? "Medicine Name" : ""}
+                          label="Medicine Name"
                           placeholder="e.g. Paracetamol 650mg"
                           value={prescription.name}
                           onChange={(e) => {
@@ -3298,7 +2833,7 @@ function QueueWorkspace() {
                       </div>
                       <div className="w-40">
                         <Input
-                          label={idx === 0 ? "Dosage" : ""}
+                          label="Dosage"
                           placeholder="e.g. 1-0-1 (After Food)"
                           value={prescription.dosage}
                           onChange={(e) => {
@@ -3310,7 +2845,7 @@ function QueueWorkspace() {
                       </div>
                       <div className="w-32">
                         <Input
-                          label={idx === 0 ? "Duration" : ""}
+                          label="Duration"
                           placeholder="e.g. 5 days"
                           value={prescription.duration}
                           onChange={(e) => {
@@ -3325,6 +2860,7 @@ function QueueWorkspace() {
                           type="button"
                           size="sm"
                           variant="danger"
+                          aria-label={`Remove medicine ${idx + 1}`}
                           className="mb-0.5 px-2.5 cursor-pointer"
                           onClick={() => {
                             setPrescriptions(prescriptions.filter((_, i) => i !== idx));
@@ -3465,10 +3001,30 @@ function QueueWorkspace() {
 
       {/* Doctor OPD Break Modal */}
       <Modal
+        bodyClassName={styles.modalBody}
         open={isBreakModalOpen}
         onClose={() => !isTogglingBreak && setIsBreakModalOpen(false)}
-        title="☕ Pause Consultations / Take OPD Break"
-      >
+        title="Take a break"
+       footer={<>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsBreakModalOpen(false)}
+              disabled={isTogglingBreak}
+              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => handleToggleDoctorBreak(true, breakReasonInput, breakMinutes)}
+              loading={isTogglingBreak}
+              className="font-bold bg-warning hover:bg-warning text-background min-h-[44px] w-full sm:w-auto justify-center"
+            >
+              Start Break ({breakMinutes}m)
+            </Button>
+          </>}>
         <div className="space-y-4 pt-2">
           <p className="text-xs text-text-muted">
             This will pause queue calls and display a soothing informational notice on the <strong>Waiting Room TV</strong> so patients are informed of your expected return.
@@ -3514,26 +3070,7 @@ function QueueWorkspace() {
             <span>Patients in waiting lounge will be notified via TV chime and display banner.</span>
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsBreakModalOpen(false)}
-              disabled={isTogglingBreak}
-              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => handleToggleDoctorBreak(true, breakReasonInput, breakMinutes)}
-              loading={isTogglingBreak}
-              className="font-bold bg-warning hover:bg-warning text-background min-h-[44px] w-full sm:w-auto justify-center"
-            >
-              Start Break ({breakMinutes}m)
-            </Button>
-          </div>
+
         </div>
       </Modal>
 
@@ -3601,45 +3138,23 @@ function QueueWorkspace() {
         }}
         appointmentId={selectedVitalsAppt?.id}
         patientId={selectedVitalsAppt?.patientId?.id || vitalsPatient?.id || ""}
-        patientName={selectedVitalsAppt?.patientId?.userId?.name || vitalsPatient?.name || "Patient"}
+        patientName={selectedVitalsAppt ? canonicalPatientName(selectedVitalsAppt.patientId) : vitalsPatient?.name || "Patient"}
         initialVitals={selectedVitalsAppt?.vitals}
         onSaved={fetchQueue}
       />
 
       {/* STAT Emergency Interruption Modal */}
       <Modal
+        bodyClassName={styles.modalBody}
         open={statModalOpen}
         onClose={() => {
           setStatModalOpen(false);
           setApptToStatEmergency(null);
           setEmergencyReason("");
         }}
-        title="🚨 STAT Emergency Priority Interruption"
+        title="STAT priority"
         size="md"
-      >
-        <div className="space-y-4 pt-1">
-          <div className="p-3.5 bg-danger/10 border border-danger/30 rounded-xl text-xs space-y-1 text-danger-text dark:text-danger-text">
-            <p className="font-bold flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 text-danger-text dark:text-danger-text" />
-              STAT Emergency Line Interruption
-            </p>
-            <p>
-              This action interrupts the scheduled queue sequence for Token #{apptToStatEmergency?.tokenNumber} (
-              {canonicalPatientName(apptToStatEmergency?.patientId)}), moving them to Position 0 (Stat Next) and sounding the waiting room emergency alert.
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-text mb-1">Emergency Triage Reason / Medical Indication</label>
-            <Input
-              placeholder="e.g. Acute chest pain, respiratory distress, severe trauma"
-              value={emergencyReason}
-              onChange={(e) => setEmergencyReason(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2 border-t border-border">
+       footer={<>
             <Button
               type="button"
               variant="outline"
@@ -3663,24 +3178,67 @@ function QueueWorkspace() {
             >
               🚨 Confirm STAT Priority
             </Button>
+          </>}>
+        <div className="space-y-4 pt-1">
+          <div className="p-3.5 bg-danger/10 border border-danger/30 rounded-xl text-xs space-y-1 text-danger-text dark:text-danger-text">
+            <p className="font-bold flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-danger-text dark:text-danger-text" />
+              STAT Emergency Line Interruption
+            </p>
+            <p>
+              This action interrupts the scheduled queue sequence for Token #{apptToStatEmergency?.tokenNumber} (
+              {canonicalPatientName(apptToStatEmergency?.patientId)}), moving them to Position 0 (Stat Next) and sounding the waiting room emergency alert.
+            </p>
           </div>
+
+          <div>
+            <label className="block text-xs font-bold text-text mb-1">Emergency Triage Reason / Medical Indication</label>
+            <Input
+              placeholder="e.g. Acute chest pain, respiratory distress, severe trauma"
+              value={emergencyReason}
+              onChange={(e) => setEmergencyReason(e.target.value)}
+              required
+            />
+          </div>
+
+
         </div>
       </Modal>
 
       {/* Doctor Availability Override Modal */}
       <Modal
+        bodyClassName={styles.modalBody}
         open={isAvailabilityModalOpen}
         onClose={() => setIsAvailabilityModalOpen(false)}
-        title="Manage Doctor's Real-Time Availability"
+        title="Doctor availability"
         size="md"
-      >
+        busy={savingOverride}
+       footer={<>
+              <Button
+                variant="outline"
+                type="button"
+                size="sm"
+                onClick={() => setIsAvailabilityModalOpen(false)}
+                disabled={savingOverride}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                loading={savingOverride}
+               form="queue-form-page-tsx-2">
+                Save Availability
+              </Button>
+          </>}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             handleSaveOverride();
           }}
           className="space-y-4 pt-1"
-        >
+         id="queue-form-page-tsx-2">
           <p className="text-xs text-text-secondary leading-relaxed">
             Set today&apos;s actual working status. Setting a doctor as unavailable or ending early will protect waiting patients, notify un-arrived bookings, and flag checked-in patients for immediate reassignment.
           </p>
@@ -3696,6 +3254,9 @@ function QueueWorkspace() {
                 {activeOverride.effectiveEndTime && ` | End: ${activeOverride.effectiveEndTime}`}
                 {activeOverride.reason && ` | Reason: ${activeOverride.reason}`}
               </p>
+              <Button type="button" variant="ghost" size="sm" onClick={handleRemoveOverride} disabled={savingOverride}>
+                Revert to Standard
+              </Button>
             </div>
           )}
 
@@ -3716,11 +3277,11 @@ function QueueWorkspace() {
 
           {overrideStatus === "delayed" && (
             <div className="space-y-1.5">
-              <Input
+              <DatePicker
                 label="New Effective Start Time *"
-                type="time"
+                mode="time"
                 value={overrideStartTime}
-                onChange={(e) => setOverrideStartTime(e.target.value)}
+                onChange={(value) => setOverrideStartTime(value)}
                 required
               />
             </div>
@@ -3728,17 +3289,17 @@ function QueueWorkspace() {
 
           {overrideStatus === "extended" && (
             <div className="grid grid-cols-2 gap-3">
-              <Input
+              <DatePicker
                 label="Effective Start Time"
-                type="time"
+                mode="time"
                 value={overrideStartTime}
-                onChange={(e) => setOverrideStartTime(e.target.value)}
+                onChange={(value) => setOverrideStartTime(value)}
               />
-              <Input
+              <DatePicker
                 label="New Effective End Time *"
-                type="time"
+                mode="time"
                 value={overrideEndTime}
-                onChange={(e) => setOverrideEndTime(e.target.value)}
+                onChange={(value) => setOverrideEndTime(value)}
                 required
               />
             </div>
@@ -3753,42 +3314,7 @@ function QueueWorkspace() {
             />
           </div>
 
-          <div className="flex justify-between items-center border-t border-border/60 pt-3">
-            {activeOverride ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleRemoveOverride}
-                disabled={savingOverride}
-                className="text-xs text-danger-text hover:text-danger-text hover:bg-danger/10 font-semibold"
-               loading={savingOverride}>
-                Revert to Standard
-              </Button>
-            ) : <div />}
 
-            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto justify-end">
-              <Button
-                variant="outline"
-                type="button"
-                size="sm"
-                onClick={() => setIsAvailabilityModalOpen(false)}
-                disabled={savingOverride}
-                className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                loading={savingOverride}
-                className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
-              >
-                Save Availability
-              </Button>
-            </div>
-          </div>
         </form>
       </Modal>
 
@@ -3798,14 +3324,39 @@ function QueueWorkspace() {
       <PatientEntryModal open={isQuickWalkInOpen && preferences.registration === "essential"} onClose={() => setIsQuickWalkInOpen(false)} locationId={selectedLocation}
         onBooked={() => { setIsQuickWalkInOpen(false); void fetchQueue(); }} />
       <Modal
+        bodyClassName={styles.modalBody}
         isOpen={isQuickWalkInOpen && preferences.registration !== "essential"}
         onClose={() => setIsQuickWalkInOpen(false)}
-        title="Quick Walk-In Patient Registration"
+        title="Add walk-in patient"
         size="md"
-      >
-        <form onSubmit={handleQuickWalkInSubmit} className="space-y-4 text-xs">
+       footer={<>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsQuickWalkInOpen(false)}
+              disabled={submittingWalkIn}
+              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={submittingWalkIn}
+              className={cn(
+                "font-bold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center",
+                walkInPriority === "emergency" ? "bg-danger hover:bg-danger text-background border-none" : "bg-success hover:bg-success text-background border-none"
+              )}
+             form="queue-form-page-tsx-3">
+              <Check className="w-3.5 h-3.5 mr-1.5" />
+              Register & Queue Token
+            </Button>
+          </>}>
+        <form onSubmit={handleQuickWalkInSubmit} className="space-y-4 text-xs" id="queue-form-page-tsx-3">
           <p className="text-text-muted leading-relaxed text-xs">
-            Register an arriving front-desk walk-in directly into the live OPD queue. Atomic token generation and automatic queue placement are executed immediately.
+            Register an arriving patient and add them to the selected doctor's queue.
           </p>
 
           {/* Priority Segmented Toggle */}
@@ -3904,31 +3455,7 @@ function QueueWorkspace() {
           </div>
 
           {/* Footer Actions */}
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsQuickWalkInOpen(false)}
-              disabled={submittingWalkIn}
-              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              loading={submittingWalkIn}
-              className={cn(
-                "font-bold rounded-xl shadow-xs min-h-[44px] w-full sm:w-auto justify-center",
-                walkInPriority === "emergency" ? "bg-danger hover:bg-danger text-background border-none" : "bg-success hover:bg-success text-background border-none"
-              )}
-            >
-              <Check className="w-3.5 h-3.5 mr-1.5" />
-              Register & Queue Token
-            </Button>
-          </div>
+
         </form>
       </Modal>
 
@@ -3947,28 +3474,12 @@ function QueueWorkspace() {
 
       {/* Single Active Consultation Conflict Modal (Pillar 2 Guard) */}
       <Modal
+        bodyClassName={styles.modalBody}
         open={conflictModalOpen}
         onClose={() => setConflictModalOpen(false)}
-        title="Active Consultation In Progress"
+        title="Active visit in progress"
         size="sm"
-      >
-        <div className="space-y-4 pt-1 font-sans text-xs">
-          <div className="p-3.5 rounded-xl bg-warning/10 border border-warning/25 text-warning-text dark:text-warning-text flex items-start gap-2.5">
-            <AlertTriangle className="w-5 h-5 text-warning-text shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-sm">Consultation Active</p>
-              <p className="mt-1 leading-relaxed">
-                Dr. {conflictDoctorName} currently has an ongoing consultation with a patient in room.
-                Platform safety rules mandate exactly one active consultation at a time.
-              </p>
-            </div>
-          </div>
-
-          <p className="text-text-secondary leading-relaxed">
-            Would you like to auto-complete the previous consultation and summon the next waiting patient now?
-           Save and sign required clinical notes first. This explicit close does not save or sign unsaved notes.</p>
-
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-border/60">
+       footer={<>
             <Button
               variant="outline"
               size="sm"
@@ -3986,18 +3497,57 @@ function QueueWorkspace() {
             >
               Complete & Call Next
             </Button>
+          </>}>
+        <div className="space-y-4 pt-1 font-sans text-xs">
+          <div className="p-3.5 rounded-xl bg-warning/10 border border-warning/25 text-warning-text dark:text-warning-text flex items-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-warning-text shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-sm">Consultation Active</p>
+              <p className="mt-1 leading-relaxed">
+                Dr. {conflictDoctorName} currently has an ongoing consultation with a patient in room.
+                Platform safety rules mandate exactly one active consultation at a time.
+              </p>
+            </div>
           </div>
+
+          <p className="text-text-secondary leading-relaxed">
+            Would you like to auto-complete the previous consultation and summon the next waiting patient now?
+           Save and sign required clinical notes first. This explicit close does not save or sign unsaved notes.</p>
+
+
         </div>
       </Modal>
 
       {/* Resend Live Tracker Modal (P3) */}
       <Modal
+        bodyClassName={styles.modalBody}
         open={isResendTrackerModalOpen}
         busy={resendingTracker}
         onClose={() => { if (!resendBusy.current) setIsResendTrackerModalOpen(false); }}
         title={`Resend Live Queue Tracker (Token #${resendTrackerAppt?.tokenNumber})`}
         size="sm"
-      >
+       footer={<>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsResendTrackerModalOpen(false)}
+              disabled={resendingTracker}
+              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleResendTrackerSubmit}
+              loading={resendingTracker}
+              disabled={!resendPhone.trim() || resendingTracker}
+              className="font-bold bg-success hover:bg-success text-background min-h-[44px] w-full sm:w-auto justify-center"
+            >
+              <Send className="w-3.5 h-3.5 mr-1.5" />
+              {resendLocked ? "Retry submitted tracker" : "Queue Live Tracker"}
+            </Button>
+          </>}>
         <div className="space-y-4 pt-1 font-sans text-xs">
           <div className="p-3.5 rounded-xl bg-success/10 border border-success/25 text-success-text dark:text-success-text flex items-start gap-2.5">
             <Send className="w-5 h-5 text-success-text shrink-0 mt-0.5" />
@@ -4040,12 +3590,22 @@ function QueueWorkspace() {
             </p>
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2 border-t border-border/60">
+
+        </div>
+      </Modal>
+
+      {/* Park Patient in Standby Modal */}
+      <Modal
+        bodyClassName={styles.modalBody}
+        open={isParkModalOpen}
+        onClose={() => setIsParkModalOpen(false)}
+        title={`Move Token #${parkingAppt?.tokenNumber} to Standby`}
+        size="sm"
+       footer={<>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setIsResendTrackerModalOpen(false)}
-              disabled={resendingTracker}
+              onClick={() => setIsParkModalOpen(false)}
               className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
             >
               Cancel
@@ -4053,25 +3613,13 @@ function QueueWorkspace() {
             <Button
               variant="primary"
               size="sm"
-              onClick={handleResendTrackerSubmit}
-              loading={resendingTracker}
-              disabled={!resendPhone.trim() || resendingTracker}
-              className="font-bold bg-success hover:bg-success text-background min-h-[44px] w-full sm:w-auto justify-center"
+              onClick={handleParkPatient}
+              loading={submittingPark}
+              className="font-bold bg-warning hover:bg-warning text-background min-h-[44px] w-full sm:w-auto justify-center"
             >
-              <Send className="w-3.5 h-3.5 mr-1.5" />
-              {resendLocked ? "Retry submitted tracker" : "Queue Live Tracker"}
+              Hold in Standby
             </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Park Patient in Standby Modal */}
-      <Modal
-        open={isParkModalOpen}
-        onClose={() => setIsParkModalOpen(false)}
-        title={`Move Token #${parkingAppt?.tokenNumber} to Standby`}
-        size="sm"
-      >
+          </>}>
         <div className="space-y-4 pt-1 font-sans text-xs">
           <p className="text-text-secondary leading-relaxed">
             Move <strong>{canonicalPatientName(parkingAppt?.patientId)}</strong> to Standby. This will temporarily hold their token without blocking the queue. When they return, you can resume them directly as <strong>Next Up</strong>.
@@ -4092,35 +3640,31 @@ function QueueWorkspace() {
             />
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-2 border-t border-border/60">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsParkModalOpen(false)}
-              className="font-semibold min-h-[44px] w-full sm:w-auto justify-center"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleParkPatient}
-              loading={submittingPark}
-              className="font-bold bg-warning hover:bg-warning text-background min-h-[44px] w-full sm:w-auto justify-center"
-            >
-              Hold in Standby
-            </Button>
-          </div>
+
         </div>
       </Modal>
 
       {/* Lab Diagnostic Investigation Modal */}
       <Modal
+        bodyClassName={styles.modalBody}
         open={isInvestigationModalOpen}
         onClose={() => setIsInvestigationModalOpen(false)}
         title={`Send Token #${investigationAppt?.tokenNumber} for Diagnostic Investigation`}
         size="md"
-      >
+       footer={<>
+            <Button variant="ghost" size="sm" onClick={() => setIsInvestigationModalOpen(false)} className="min-h-[44px] w-full sm:w-auto justify-center">
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleSendToInvestigation}
+              loading={isSubmittingInvestigation}
+              className="hover:bg-primary font-bold min-h-[44px] w-full sm:w-auto justify-center"
+            >
+              <span>🔬</span> Send for Tests & Free Room
+            </Button>
+          </>}>
         <div className="space-y-4 p-1">
           <p className="text-xs text-text-muted leading-relaxed">
             This patient will be placed on <strong>Standby</strong> while lab tests/investigations are conducted. The consultation room will be freed immediately for the next patient. When they return with reports, click <strong>Resume for Report Review</strong> to call them Next Up without duplicate fees.
@@ -4155,30 +3699,31 @@ function QueueWorkspace() {
             <Input type="text" placeholder="e.g. STAT Fasting sample, urgent lipid panel, fever workup" value={investigationNotes} onChange={(e) => setInvestigationNotes(e.target.value)} label="Additional Requisition Notes / Clinical Instructions" size="sm" />
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-border">
-            <Button variant="ghost" size="sm" onClick={() => setIsInvestigationModalOpen(false)} className="min-h-[44px] w-full sm:w-auto justify-center">
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSendToInvestigation}
-              loading={isSubmittingInvestigation}
-              className="hover:bg-primary font-bold min-h-[44px] w-full sm:w-auto justify-center"
-            >
-              <span>🔬</span> Send for Tests & Free Room
-            </Button>
-          </div>
+
         </div>
       </Modal>
 
       {/* End OPD Reconciliation Modal */}
       <Modal
+        bodyClassName={styles.modalBody}
         open={isEndOpdModalOpen}
         onClose={() => setIsEndOpdModalOpen(false)}
-        title="End OPD Shift & Reconcile Today's Queue"
+        title="Close OPD session"
         size="lg"
-      >
+       footer={!isLoadingEndOpdSummary && <>
+                <Button variant="ghost" size="sm" onClick={() => setIsEndOpdModalOpen(false)} className="min-h-[44px] w-full sm:w-auto justify-center">
+                  Keep OPD Open
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleExecuteEndOpdReconcile}
+                  loading={isSubmittingEndOpd}
+                  className="bg-danger hover:bg-danger text-background font-bold min-h-[44px] w-full sm:w-auto justify-center"
+                >
+                  <span>🛑</span> Confirm & Close OPD Shift
+                </Button>
+              </>}>
         <div className="space-y-5 p-1">
           {isLoadingEndOpdSummary ? (
             <div className="py-12 text-center space-y-2">
@@ -4216,30 +3761,7 @@ function QueueWorkspace() {
                 <p className="text-[11px] text-text-muted">
                   Patients who stepped out need individual follow-up before their outcome is recorded.
                 </p>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-1">
-                  <label className="flex items-center gap-2 text-xs cursor-pointer font-medium">
-                    <input
-                      type="radio"
-                      name="standbyAction"
-                      value="keep_unresolved"
-                      checked={standbyReconcileAction === "keep_unresolved"}
-                      onChange={() => setStandbyReconcileAction("keep_unresolved")}
-                      className="accent-primary-600"
-                    />
-                    <span>Keep unresolved for individual review</span>
-                  </label>
-                  <label className="flex items-center gap-2 text-xs cursor-pointer font-medium">
-                    <input
-                      type="radio"
-                      name="standbyAction"
-                      value="cancel"
-                      checked={standbyReconcileAction === "cancel"}
-                      onChange={() => setStandbyReconcileAction("cancel")}
-                      className="accent-primary-600"
-                    />
-                    <span>Cancel appointments; review invoices separately</span>
-                  </label>
-                </div>
+                <Select label="Standby outcome" value={standbyReconcileAction} onChange={event => setStandbyReconcileAction(event.target.value as "keep_unresolved" | "cancel")} options={[{ value: "keep_unresolved", label: "Keep unresolved for individual review" }, { value: "cancel", label: "Cancel appointments; review invoices separately" }]} />
               </div>
 
               {/* Waiting Reconciliation Policy */}
@@ -4250,46 +3772,10 @@ function QueueWorkspace() {
                 <p className="text-[11px] text-text-muted">
                   Registered patients who were not called before concluding consultations for today.
                 </p>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-1">
-                  <label className="flex items-center gap-2 text-xs cursor-pointer font-medium">
-                    <input
-                      type="radio"
-                      name="waitingAction"
-                      value="cancel"
-                      checked={waitingReconcileAction === "cancel"}
-                      onChange={() => setWaitingReconcileAction("cancel")}
-                      className="accent-primary-600"
-                    />
-                    <span>Cancel appointments; review invoices separately</span>
-                  </label>
-                  <label className="flex items-center gap-2 text-xs cursor-pointer font-medium">
-                    <input
-                      type="radio"
-                      name="waitingAction"
-                      value="keep_unresolved"
-                      checked={waitingReconcileAction === "keep_unresolved"}
-                      onChange={() => setWaitingReconcileAction("keep_unresolved")}
-                      className="accent-primary-600"
-                    />
-                    <span>Keep unresolved for individual review</span>
-                  </label>
-                </div>
+                <Select label="Waiting outcome" value={waitingReconcileAction} onChange={event => setWaitingReconcileAction(event.target.value as "keep_unresolved" | "cancel")} options={[{ value: "keep_unresolved", label: "Keep unresolved for individual review" }, { value: "cancel", label: "Cancel appointments; review invoices separately" }]} />
               </div>
 
-              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 pt-3 border-t border-border">
-                <Button variant="ghost" size="sm" onClick={() => setIsEndOpdModalOpen(false)} className="min-h-[44px] w-full sm:w-auto justify-center">
-                  Keep OPD Open
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleExecuteEndOpdReconcile}
-                  loading={isSubmittingEndOpd}
-                  className="bg-danger hover:bg-danger text-background font-bold min-h-[44px] w-full sm:w-auto justify-center"
-                >
-                  <span>🛑</span> Confirm & Close OPD Shift
-                </Button>
-              </div>
+
             </>
           )}
         </div>
@@ -4335,13 +3821,14 @@ function QueueWorkspace() {
           7. LONGITUDINAL PATIENT EHR TIMELINE & CLINICAL HISTORY MODAL
          ────────────────────────────────────────────────────────────────────────── */}
       <Modal
+        bodyClassName={styles.modalBody}
         open={timelineModalOpen}
         onClose={() => {
           setTimelineModalOpen(false);
           setTimelinePatient(null);
         }}
-        title={timelinePatient ? `Longitudinal EHR Medical Timeline: ${timelinePatient.name}` : "Patient EHR History"}
-        description="Comprehensive chronological record of medical encounters, previous prescriptions, historical vitals trajectories, and laboratory diagnostic reports."
+        title={timelinePatient ? `Patient history: ${timelinePatient.name}` : "Patient EHR History"}
+        description="Visits, prescriptions, vitals and diagnostic reports."
         size="xl"
       >
         {timelinePatient && (
@@ -4396,6 +3883,7 @@ function QueueWorkspace() {
           10. 1-CLICK DIGITAL e-PRESCRIPTION RE-DISPATCH MODAL
          ────────────────────────────────────────────────────────────────────────── */}
       <Modal
+        bodyClassName={styles.modalBody}
         open={isResendRxModalOpen}
         onClose={() => {
           if (!resendingRx) {
@@ -4412,7 +3900,31 @@ function QueueWorkspace() {
             : "Send official electronic prescription to patient."
         }
         size="md"
-      >
+       footer={<>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setIsResendRxModalOpen(false);
+                setResendRxAppt(null);
+              }}
+              disabled={resendingRx}
+              className="font-semibold cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleResendRxSubmit}
+              disabled={!resendRxReviewed}
+              loading={resendingRx}
+              className="bg-success hover:bg-success text-background font-bold flex items-center gap-1.5 cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {resendRxLocked ? 'Retry submitted prescription message' : 'Queue reviewed prescription'}
+            </Button>
+          </>}>
         <div className="space-y-4 pt-2">
           <div className="p-3 rounded-2xl bg-success/10 border border-success/20 text-xs space-y-1">
             <div className="font-bold text-success-text dark:text-success-text flex items-center gap-1.5">
@@ -4445,31 +3957,7 @@ function QueueWorkspace() {
           </div>
 
           <Checkbox disabled={resendRxLocked || resendingRx} checked={resendRxReviewed} onChange={event => setResendRxReviewed(event.target.checked)} label="I reviewed the selected patient and current prescription recipient." />
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 border-t border-border/60 pt-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setIsResendRxModalOpen(false);
-                setResendRxAppt(null);
-              }}
-              disabled={resendingRx}
-              className="font-semibold cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleResendRxSubmit}
-              disabled={!resendRxReviewed}
-              loading={resendingRx}
-              className="bg-success hover:bg-success text-background font-bold flex items-center gap-1.5 cursor-pointer min-h-[44px] w-full sm:w-auto justify-center"
-            >
-              <Send className="w-3.5 h-3.5" />
-              {resendRxLocked ? 'Retry submitted prescription message' : 'Queue reviewed prescription'}
-            </Button>
-          </div>
+
         </div>
       </Modal>
     </div>
