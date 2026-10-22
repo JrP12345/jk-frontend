@@ -23,6 +23,14 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
+it("offers pharmacy settings on the existing clinic without requiring location-edit permission", async () => {
+  useAuthStore.setState({ user: { ...useAuthStore.getState().user!, permissions: ["VIEW_LOCATIONS", "PHARMACY_MANAGE_SETTINGS"] } });
+  mount(); await action("Pharmacy settings");
+  expect(screen.getByRole("dialog", { name: "Pharmacy settings" })).toBeInTheDocument();
+  await waitFor(() => expect(fixture.get).toHaveBeenCalledWith("/pharmacy/locations/clinic/settings?organizationId=org-a", expect.anything()));
+  expect(screen.queryByRole("button", { name: "Edit", exact: true })).not.toBeInTheDocument();
+});
+
 it("keeps active and archive counts while searching and uses the same controls for every location", async () => {
   fixture.locations = [location, { ...location, id: "branch", name: "Branch clinic", city: "Valsad", isPublished: false }];
   fixture.get.mockResolvedValue(response([{ ...location, id: "archived", name: "Closed clinic" }]));

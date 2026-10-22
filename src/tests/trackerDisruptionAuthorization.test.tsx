@@ -8,6 +8,17 @@ import api from "@/lib/api";
 vi.mock("next/navigation", () => ({ useParams: () => ({ appointmentId: "visit" }), useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), post: vi.fn() }, getApiUrl: () => "http://localhost:5000/api" }));
 vi.mock("qrcode", () => ({ default: { toDataURL: vi.fn().mockResolvedValue("data:image/png;base64,fixture") } }));
+it("shows partial supply with the remaining quantity instead of a completed prescription", async () => {
+  window.history.replaceState({}, "", "/track/visit#t=private-tracker-proof");
+  const baseline = await api.get("/fixture");
+  vi.mocked(api.get).mockResolvedValue({ ...baseline, data: { data: { ...baseline.data.data, status: "completed", pharmacyStatus: "partially_dispensed",
+    consultationSummary: { completedAt: new Date().toISOString(), diagnoses: [], prescriptions: [{ id: "rx", medicineName: "Reviewed medicine", dosage: "As prescribed", duration: "30 days", frequency: "Daily", instructions: "", status: "active",
+      fulfillment: { authorizedQuantity: 30, baseUnit: "tablet", suppliedQuantity: 10, remainingQuantity: 20 } }] } } } });
+  render(<ThemeProvider><ToastProvider><Tracker /></ToastProvider></ThemeProvider>);
+  expect(await screen.findByText("Prescription Partially Supplied")).toBeInTheDocument();
+  expect(screen.getByText("Supplied 10 of 30 tablet; remaining 20")).toBeInTheDocument();
+  expect(screen.queryByText("Medications Ready for Pickup")).not.toBeInTheDocument();
+});
 
 beforeEach(() => {
   vi.clearAllMocks();

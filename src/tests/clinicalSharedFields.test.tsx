@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SOAPNoteEditor } from '@/components/clinical/SOAPNoteEditor';
 import api from '@/lib/api';
 import { ToastProvider } from '@/components/ui';
@@ -9,6 +9,15 @@ vi.mock('@/components/clinical/UnifiedDocumentModal', () => ({ UnifiedDocumentMo
 afterEach(() => { vi.restoreAllMocks(); });
 
 describe('Shared clinical fields', () => {
+  it('retains explicit prescriber quantity and base unit when a sealed note is displayed', () => {
+    vi.spyOn(api, 'get').mockResolvedValue({ data: { data: [] } });
+    render(<ToastProvider><SOAPNoteEditor patientId='patient' locationId='branch' encounterId='encounter' initialNoteId='note'
+      initialNoteData={{ status: 'signed', plan: { prescriptionIds: [{ medicineName: 'Reviewed medicine', dosage: 'As prescribed', duration: '30 days', authorizedQuantity: 30, authorizedBaseUnit: 'tablet' }] } }} /></ToastProvider>);
+    expect(screen.getByRole('spinbutton', { name: 'Authorized quantity for Reviewed medicine' })).toHaveValue(30);
+    expect(screen.getByRole('spinbutton', { name: 'Authorized quantity for Reviewed medicine' })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: 'Base unit for Reviewed medicine' })).toHaveTextContent('tablet');
+    expect(screen.getByRole('combobox', { name: 'Base unit for Reviewed medicine' })).toBeDisabled();
+  });
   it('keeps signed clinical notes disabled and displays only recorded findings', () => {
     vi.spyOn(api, 'get').mockResolvedValue({ data: { data: [] } });
     render(<ToastProvider><SOAPNoteEditor patientId='patient' locationId='branch' encounterId='encounter'
@@ -31,5 +40,14 @@ describe('Shared clinical fields', () => {
     expect(temperature).toHaveAttribute('step', '0.1');
     fireEvent.change(temperature, { target: { value: '98.6' } });
     expect(temperature).toHaveValue(98.6);
+  });
+  it('bounds autocomplete queries without truncating the clinician’s medication text', async () => {
+    const get = vi.spyOn(api, 'get').mockResolvedValue({ data: { data: [] } });
+    render(<ToastProvider><SOAPNoteEditor patientId='patient' locationId='branch' encounterId='encounter' /></ToastProvider>);
+    const description = 'Long formulation '.repeat(10);
+    const input = screen.getByRole('textbox', { name: 'Search medication catalog' });
+    fireEvent.change(input, { target: { value: description } });
+    await waitFor(() => expect(get).toHaveBeenCalledWith(`/medicines?search=${encodeURIComponent(description.trim().slice(0, 100))}`));
+    expect(input).toHaveValue(description);
   });
 });

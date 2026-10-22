@@ -4,11 +4,14 @@ export interface SaaSPlan {
   id: string;
   name: string;
   slug: string;
+  legacyTier?: "starter" | "professional" | "enterprise";
+  commercialFamily?: "location_products";
   description: string;
   monthlyPrice: number;
   annualPrice: number;
   currency: string;
   trialDays: number;
+  selfServicePharmacy?: boolean;
   status: string;
   displayOrder: number;
   isPopular: boolean;
@@ -40,7 +43,25 @@ export interface SubscriptionInfo {
   currentPeriodStart: string;
   currentPeriodEnd: string;
   planId: SaaSPlan;
+  commercialQuote?: { totalPaise: number; billingCycle: "monthly" | "annual"; commercialFamily: string };
   summary: SubscriptionSummary;
+  productEntitlements?: { mode: "legacy_included" | "configured" | "review_required"; enforcement: boolean; active: boolean;
+    limits: { maxLocations: number; maxDoctors: number; maxStaff: number }; clinicLocationIds: string[]; pharmacyLocationIds: string[] };
+}
+
+export interface ProductPlan extends SaaSPlan {
+  commercialFamily: "location_products";
+  commercialPricing: { revision: number; annual?: unknown };
+}
+export interface ProductQuoteInput {
+  planId: string; priceRevision: number; billingCycle: "monthly" | "annual"; doctorSeats: number;
+  locations: Array<{ locationId: string; clinic: boolean; pharmacy: boolean }>;
+}
+export interface ProductQuote {
+  version: 1; organizationId: string; planId: string; billingCycle: "monthly" | "annual"; fingerprint: string; currency: "INR"; expiresAt: string; purchaseAvailable: true; quoteToken: string;
+  subtotalPaise: number; taxPaise: number; totalPaise: number;
+  lines: Array<{ id: string; kind: string; quantity: number; amountPaise: number }>;
+  entitlements: { maxLocations: number; maxDoctors: number; maxStaff: number };
 }
 
 export interface BillingDetails {
@@ -112,6 +133,22 @@ export interface DowngradeValidationResult {
 }
 
 export const billingService = {
+  async getProductPlans(signal?: AbortSignal): Promise<ProductPlan[]> {
+    const response = await api.get("/billing/plans?kind=location_products", { signal });
+    if (!Array.isArray(response.data?.data)) throw new Error("Product catalogue response is incomplete");
+    return response.data.data;
+  },
+  async quoteProducts(input: ProductQuoteInput, organizationId: string): Promise<ProductQuote> {
+    const response = await api.post(`/billing/quote?organizationId=${encodeURIComponent(organizationId)}`, input);
+    const quote = response.data?.data as ProductQuote;
+    if (!quote || quote.version !== 1 || quote.organizationId !== organizationId || quote.planId !== input.planId || quote.billingCycle !== input.billingCycle || quote.currency !== "INR" || quote.purchaseAvailable !== true ||
+        typeof quote.quoteToken !== "string" || !quote.quoteToken.startsWith("enc:v1:") || quote.quoteToken.length > 150000 ||
+        !/^[a-f\d]{64}$/.test(quote.fingerprint) || !(Date.parse(quote.expiresAt) > Date.now()) ||
+        ![quote.subtotalPaise, quote.taxPaise, quote.totalPaise].every(value => Number.isSafeInteger(value) && value >= 0) || quote.subtotalPaise + quote.taxPaise !== quote.totalPaise ||
+        !Array.isArray(quote.lines) || !quote.lines.length || quote.lines.some(line => !Number.isSafeInteger(line.amountPaise) || line.amountPaise < 0 || !Number.isSafeInteger(line.quantity) || line.quantity <= 0) ||
+        !quote.entitlements || ![quote.entitlements.maxLocations, quote.entitlements.maxDoctors, quote.entitlements.maxStaff].every(value => Number.isSafeInteger(value) && value >= 0)) throw new Error("Product quote response is incomplete");
+    return quote;
+  },
   // Public Plans
   async getPlans(): Promise<SaaSPlan[]> {
     const res = await api.get("/billing/plans");
@@ -163,14 +200,19 @@ export const billingService = {
   },
 
   // Direct Switch Plan (zero-cost / free plan transition)
-  async directSwitchPlan(planId: string, billingCycle: "monthly" | "annual" = "monthly", organizationId?: string) {
-    const res = await api.post("/billing/switch-plan", { planId, billingCycle, ...(organizationId ? { organizationId } : {}) });
+  async directSwitchPlan(planId: string, billingCycle: "monthly" | "annual" = "monthly", organizationId?: string, quoteToken?: string) {
+    const res = await api.post("/billing/switch-plan", { planId, billingCycle, ...(quoteToken ? { quoteToken } : {}), ...(organizationId ? { organizationId } : {}) });
     return res.data.data;
   },
 
   // Checkout
-  async createCheckoutOrder(planId: string, billingCycle: "monthly" | "annual" = "monthly", organizationId?: string, checkoutIntentId?: string) {
-    const res = await api.post("/billing/checkout", { planId, billingCycle, checkoutIntentId, ...(organizationId ? { organizationId } : {}) });
+  async createCheckoutOrder(planId: string, billingCycle: "monthly" | "annual" = "monthly", organizationId?: string, checkoutIntentId?: string, quoteToken?: string) {
+    const res = await api.post("/billing/checkout", { planId, billingCycle, checkoutIntentId, ...(quoteToken ? { quoteToken } : {}), ...(organizationId ? { organizationId } : {}) });
+    return res.data.data;
+  },
+
+  async resumeCheckoutOrder(orderId: string, organizationId?: string) {
+    const res = await api.post("/billing/checkout", { orderId, ...(organizationId ? { organizationId } : {}) });
     return res.data.data;
   },
 

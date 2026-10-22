@@ -7,14 +7,16 @@ import Modal from "@/components/queue/QueueDialog";
 import { authScopeKey } from "@/lib/authScope";
 import { useAuthStore } from "@/store/authStore";
 import { organizationPath } from "@/services/organization.service";
+import { isPharmacyWorkspace } from "@/lib/workspaceProfile";
 
 /** Use the existing acceptance workflow for both new and existing identities. */
 export function InviteOrganizationMember({ organizationId, onClose }: { organizationId: string; onClose: () => void }) {
+  const { user } = useAuthStore();
+  const pharmacyOnly = organizationId === user?.organization_id && isPharmacyWorkspace(user);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("nurse");
+  const [role, setRole] = useState(pharmacyOnly ? "pharmacist" : "nurse");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const { user } = useAuthStore();
   const context = `${organizationId}:${authScopeKey(user)}`;
   const currentContext = useRef(context);
   useEffect(() => { currentContext.current = context; return () => { currentContext.current = ""; }; }, [context]);
@@ -37,8 +39,8 @@ export function InviteOrganizationMember({ organizationId, onClose }: { organiza
     }}>
       {error && <Alert variant="error" title="Invitation failed">{error}</Alert>}
       <Input label="Email" type="email" required value={email} onChange={event => setEmail(event.target.value)} disabled={busy} />
-      <Select label="Role" value={role} onChange={event => setRole(event.target.value)} disabled={busy} options={["admin", "doctor", "receptionist", "nurse", "lab_tech", "pharmacist", "cashier"].map(value => ({ value, label: value.replaceAll("_", " ") }))} />
-      <p className="text-sm text-text-muted">The member chooses whether to join. For a doctor or receptionist, complete their clinical profile and location assignments after acceptance.</p>
+      <Select label="Role" value={role} onChange={event => setRole(event.target.value)} disabled={busy} options={(pharmacyOnly ? ["admin", "pharmacist", "cashier"] : ["admin", "doctor", "receptionist", "nurse", "lab_tech", "pharmacist", "cashier"]).map(value => ({ value, label: value.replaceAll("_", " ") }))} />
+      <p className="text-sm text-text-muted">{pharmacyOnly ? "The member chooses whether to join. Review their branch access and pharmacist registration before restricted supply." : "The member chooses whether to join. For a doctor or receptionist, complete their clinical profile and location assignments after acceptance."}</p>
     </form>
   </Modal>;
 }

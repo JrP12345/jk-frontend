@@ -16,6 +16,16 @@ beforeEach(() => { fixture.post.mockReset().mockResolvedValue({ data: { data: {}
 afterEach(cleanup);
 function mount() { return render(<ToastProvider><EncounterWorkspace patient={{ id: "patient", name: "Sample patient" }} appointmentId="visit" /></ToastProvider>); }
 
+it("labels unsupplied prescription rows as unbilled in encounter charges", async () => {
+  fixture.get.mockResolvedValue({ data: { data: {
+    items: [{ description: "Consultation", category: "consultation", amount: 100, quantity: 1, gstRate: 0 }],
+    subtotal: 100, totalAmount: 100, cgstTotal: 0, sgstTotal: 0, igstTotal: 0,
+    unfilledPrescriptions: [{ prescriptionId: "rx", medicineName: "Pending medicine" }],
+  } } });
+  mount(); fireEvent.click(screen.getByRole("button", { name: "Charges" }));
+  expect(await screen.findByText("Awaiting pharmacy supply (unbilled): Pending medicine.")).toBeInTheDocument();
+});
+
 it("retains an unsaved note when switching to another workspace tab", () => {
   mount(); fireEvent.change(screen.getByRole("textbox", { name: "Clinical draft" }), { target: { value: "Unsaved clinical text" } });
   fireEvent.click(screen.getByRole("tab", { name: /Orders/ }));

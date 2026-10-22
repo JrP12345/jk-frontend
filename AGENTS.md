@@ -8,6 +8,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
+## Project stage
+
+This entire project is in development, with no production customers or legacy production data (user clarification, 20 October 2026). Skip migration/backfill and compatibility layers solely for hypothetical legacy deployments. Use current intended contracts while preserving and verifying current clinical, financial, security and inventory flows when shared code changes. Synthetic fixtures are development coverage, not legacy production obligations.
+
 ## Verification for coding agents
 
 Classify the highest risk of the files changed before running checks. Use [the verification workflow](docs/verification-workflow.md) for the exact commands and escalation rules. Do not run every available test, lint, type check, and build simply to show that work was done.

@@ -16,7 +16,11 @@ const sections: Record<string, string[]> = {
 };
 
 /** Order existing, permission-filtered entries without creating role-specific sidebars. */
-export function orderNavigation<T extends NavigationEntry>(items: readonly T[], role: string | undefined): T[] {
+export function orderNavigation<T extends NavigationEntry>(items: readonly T[], role: string | undefined, pharmacyFirst = false): T[] {
+  if (pharmacyFirst) {
+    const routes = ["/dashboard", "/dashboard/pharmacy", "/dashboard/locations", "/dashboard/staff", "/dashboard/settings", "/dashboard/organizations", "/dashboard/audit", "/dashboard/notifications"];
+    return [...items].sort((a, b) => (routes.indexOf(a.href) < 0 ? routes.length : routes.indexOf(a.href)) - (routes.indexOf(b.href) < 0 ? routes.length : routes.indexOf(b.href)));
+  }
   const groups = sections[role || ""];
   if (!groups) return [...items]; // Patient and platform groups already follow their own workflows.
   const visits = role === "doctor" || role === "nurse"

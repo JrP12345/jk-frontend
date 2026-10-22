@@ -1,0 +1,12 @@
+.paper { width: 100%; min-width: 0; overflow-wrap: anywhere; color: var(--text); }
+.paper :global(table) { width: 100%; border-collapse: collapse; }
+.paper :global(th), .paper :global(td) { padding: 5px; text-align: left; vertical-align: top; }
+.paper :global(tr), .paper :global(header) { break-inside: avoid; }
+.paper :global(thead) { display: table-header-group; }
+.thermal { font-size: 10px; line-height: 1.4; }
+.thermal :global(h2) { font-size: 14px; }
+.thermal :global(table), .thermal :global(tbody), .thermal :global(tr), .thermal :global(td) { display: block; width: 100%; }
+.thermal :global(thead) { display: none; }
+.thermal :global(tr) { padding-block: 6px; border-bottom: 1px solid var(--border); }
+.thermal :global(td) { border: 0; padding: 1px 0; }
+.thermal :global(td)::before { content: attr(data-label) ": "; font-weight: 600; }

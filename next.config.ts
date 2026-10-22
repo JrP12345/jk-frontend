@@ -10,7 +10,7 @@ if (process.env.NODE_ENV === "production") {
   }
 }
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   // Allow mobile devices on LAN (hotspot/Wi-Fi) to access dev resources (HMR, hot reload)
   // Configure LAN origins through ALLOWED_DEV_ORIGINS.
   output: "standalone",
@@ -71,6 +71,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-};
+} satisfies NextConfig;
 
 export default nextConfig;

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { NavigationPending } from "@/components/ui/RouteProgress";
 import { LayoutDashboard, Calendar, Clock, Users, FileText, Receipt, Building2, Menu, FlaskConical, Pill } from "lucide-react";
 import { cn } from "@/components/ui/utils";
+import { isPharmacyWorkspace, pharmacyWorkspaceRoute } from "@/lib/workspaceProfile";
 
 interface MobileBottomNavProps {
   user: any;
@@ -32,6 +33,12 @@ export function MobileBottomNav({
 
   // Determine top 4 tabs based on user role + 5th tab is always "More" (drawer)
   const getTabsForRole = (): NavTab[] => {
+    if (isPharmacyWorkspace(user)) return [
+      { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+      { label: "Pharmacy", href: "/dashboard/pharmacy", icon: Pill },
+      { label: "Staff", href: "/dashboard/staff", icon: Users },
+      { label: "Branches", href: "/dashboard/locations", icon: Building2 },
+    ];
     switch (user.role) {
       case "doctor":
         return [
@@ -102,7 +109,7 @@ export function MobileBottomNav({
   };
 
   const preferred = getTabsForRole().filter((tab) => !availableItems || availableItems.some((item) => item.href === tab.href));
-  const remaining: NavTab[] = (availableItems || []).filter((item) => !preferred.some((tab) => tab.href === item.href)).map((item) => ({ ...item, icon: FileText }));
+  const remaining: NavTab[] = (availableItems || []).filter((item) => (!isPharmacyWorkspace(user) || pharmacyWorkspaceRoute(item.href)) && !preferred.some((tab) => tab.href === item.href)).map((item) => ({ ...item, icon: FileText }));
   const tabs: NavTab[] = [
     ...[...preferred, ...remaining].slice(0, 4),
     { label: "More", icon: Menu, isAction: true },

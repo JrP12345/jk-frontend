@@ -5,6 +5,7 @@ export const facilityTypeOptions = [
   { value: "diagnostic_center", label: "Diagnostic center" },
   { value: "medical_center", label: "Medical center" },
   { value: "specialty_center", label: "Specialty center" },
+  { value: "pharmacy", label: "Pharmacy" },
   { value: "other", label: "Other healthcare facility" },
 ] as const;
 

@@ -633,6 +633,7 @@ export default function LoginPage() {
                   <ArrowRight className="w-3 h-3 inline" strokeWidth={2} />
                 </Link>
               </div>
+              <p className="mt-3 text-center text-xs text-text-secondary"><Link href="/pharmacy-start" className="font-semibold text-accent hover:underline">Start an independent pharmacy business</Link></p>
             </div>
           ) : (
             /* Forgot Password Form */

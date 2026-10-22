@@ -1,0 +1,19 @@
+# Pharmacy catalogue contract
+
+T10 is implemented locally. Existing Medicine IDs and location ownership remain authoritative. This is catalogue configuration; receiving stock and reviewing tax or restricted-drug evidence remain separate actions.
+
+`POST /api/medicines` requires `locationId`, `name`, `genericName` and a finite non-negative retail `price`. Omitted stock starts at zero. An empty product needs no batch, expiry or acquisition cost and creates no stock movement. Catalogue permission is sufficient; supplying acquisition cost additionally requires cost permission. The legacy opening-stock body still requires receiving and cost permission, an actual batch/expiry pair and cost. Positive opening stock cannot be combined with a new unit definition: configure the empty product, then receive stock.
+
+Create/update metadata includes manufacturer, strength, composition (`genericName`), dosage form (`category`), schedule classification, reorder level, barcode aliases and explicit units. Zero reorder, price and GST values survive round trips. Metadata writes cannot change stock, approve tax evidence or change an existing reviewed schedule classification. Existing reviewed classification endpoints retain their revision checks. Numeric strings and null stock/money values are rejected before schema coercion.
+
+`unitDefinition` contains `baseUnit`, `packUnit`, `unitsPerPack` and a server-owned version. Conversion factors are whole numbers from 1 to 1,000,000 and multiplication must remain a safe integer. An edit supplies `expectedUnitVersion` (zero for an absent definition). Changing units requires zero stock and no batch history, including depleted batches; a concurrent first receipt prevents the edit. Legacy units remain absent rather than being guessed or silently converted. T11/T25 establish reviewed lot and opening-unit snapshots.
+
+Up to 20 distinct barcode strings are accepted; each is at most 64 characters, using letters, digits, dot, underscore, slash or hyphen. Leading zeros and case are preserved. An active barcode is unique within a location; soft-deleted products release aliases. The new partial unique barcode index must be reviewed and prepared through the existing deployment tooling. No live index or backfill was applied during implementation.
+
+`GET /api/medicines` supports a bounded `search` (100 characters), exact `barcode` (64 characters), `stockFilter=all|low|out|expired`, `page`, `limit` (maximum 100), and up to 100 comma-separated `medicineIds`. Search covers name, generic composition, strength, manufacturer, batch and exact aliases. Results have deterministic name/ID order and existing pagination headers. Tenant assertions and branch authority are checked; cost remains redacted without its grant.
+
+The workspace requests one catalogue page at a time. Search and filters run on the server. Low-stock alerts page independently, and page charts describe only the visible page. Opening a prescription performs a bounded lookup of its exact stock IDs; search selections remain cached for that draft. Scanner Enter searches without submitting a dispense. The clinical editor bounds catalogue queries while preserving the original prescription text.
+
+T11 now routes products with explicit units into [captured stock/opening receipts](pharmacy-stock-receipts.md). Legacy products retain their original batch dialog. Historical units and quantities still require T25 reconciliation before conversion or index cutover.
+
+Verification: 177 distinct backend cases across eight inventory, catalogue, authorization, capability, fulfillment, tax and register files passed after the scoped corrections. Frontend workspace, alerts and clinical consumers passed 61 cases across four files. Both package type checks, backend API/four-worker build and changed-file lint passed (six warnings, zero errors). No full suite, frontend production build, browser/printer certification, migration or deployment ran.

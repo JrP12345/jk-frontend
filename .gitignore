@@ -42,3 +42,7 @@ next-env.d.ts
 
 !.env.example
 polish-cleanup-*.log
+/dist/
+.vinext/
+.cloudflare/
+cloudflare-*.log

@@ -457,6 +457,13 @@ export default function AdminBillingPage() {
                 value={editingPlan.trialDays || 15}
                 onChange={(e) => setEditingPlan({ ...editingPlan, trialDays: Number(e.target.value) })}
               />
+              <Toggle
+                label="Publish independent pharmacy signup"
+                description="Offers this configured product plan as a one-branch pharmacy trial. Review INR pricing, limits and trial duration before publishing."
+                checked={editingPlan.selfServicePharmacy === true}
+                disabled={editingPlan.commercialFamily !== "location_products"}
+                onChange={(checked) => setEditingPlan({ ...editingPlan, selfServicePharmacy: checked })}
+              />
             </div>
 
             <div className="border-t border-border/60 pt-3.5 space-y-2">

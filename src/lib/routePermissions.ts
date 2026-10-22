@@ -1,4 +1,5 @@
 import { isPrivilegedRole } from "./permissions";
+import { pharmacyEntryPermissions } from "./pharmacyCapabilities";
 
 export const routePermissions: Record<string, string[]> = {
   "/dashboard/crm": ["VIEW_CRM"],
@@ -11,7 +12,7 @@ export const routePermissions: Record<string, string[]> = {
   "/dashboard/consultations":       ["VIEW_EHR", "MANAGE_CLINICAL_NOTES"],
   "/dashboard/billing":             ["MANAGE_BILLING", "VIEW_BILLING"],
   "/dashboard/billing/services":    ["MANAGE_BILLING", "VIEW_BILLING"],
-  "/dashboard/pharmacy":            ["MANAGE_MEDICINES", "VIEW_EHR"],
+  "/dashboard/pharmacy":            pharmacyEntryPermissions,
   "/dashboard/staff":               ["MANAGE_STAFF", "VIEW_STAFF"],
   "/dashboard/locations":             ["MANAGE_LOCATIONS", "VIEW_LOCATIONS"],
   "/dashboard/shifts":              ["MANAGE_STAFF"],

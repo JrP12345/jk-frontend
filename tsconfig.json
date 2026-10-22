@@ -37,6 +37,10 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
+    ".cloudflare",
+    "cloudflare",
+    "cloudflare.config.ts",
+    "vite.config.ts",
     "node_modules",
     ".next",
     "src/tests",

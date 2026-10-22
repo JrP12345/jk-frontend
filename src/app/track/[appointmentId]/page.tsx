@@ -27,6 +27,7 @@ interface PrescribedMedicine {
   duration: string;
   instructions: string;
   status: string;
+  fulfillment?: { authorizedQuantity: number | null; baseUnit: string | null; suppliedQuantity: number; remainingQuantity: number | null };
 }
 
 interface ConsultationSummary {
@@ -129,7 +130,7 @@ interface TrackerData {
     recordedByName?: string;
   } | null;
   consultationSummary?: ConsultationSummary | null;
-  pharmacyStatus?: "none" | "sent_to_pharmacy" | "dispensed";
+  pharmacyStatus?: "none" | "sent_to_pharmacy" | "partially_dispensed" | "dispensed";
   followUpAppointment?: {
     id: string;
     tokenNumber: number;
@@ -1183,7 +1184,7 @@ export default function PublicLiveQueueTracker() {
                       <span className="font-bold text-xs sm:text-sm">
                         {data.pharmacyStatus === "dispensed"
                           ? "Medications Ready for Pickup"
-                          : "Order Sent to In-House Pharmacy"}
+                          : data.pharmacyStatus === "partially_dispensed" ? "Prescription Partially Supplied" : "Order Sent to In-House Pharmacy"}
                       </span>
                     </div>
                     <Badge
@@ -1193,13 +1194,13 @@ export default function PublicLiveQueueTracker() {
                       pulse={data.pharmacyStatus !== "dispensed"}
                       className="font-bold text-[10px]"
                     >
-                      {data.pharmacyStatus === "dispensed" ? "Ready at Counter 2" : "Packing in Progress"}
+                      {data.pharmacyStatus === "dispensed" ? "Supplied" : data.pharmacyStatus === "partially_dispensed" ? "Partially supplied" : "Pending supply"}
                     </Badge>
                   </div>
                   <p className="text-[11px] leading-relaxed text-text-muted">
                     {data.pharmacyStatus === "dispensed"
                       ? "Your prescribed medications have been prepared and batch-verified. Please proceed to Pharmacy Counter 2 for collection."
-                      : "Your doctor has routed your e-prescription to the location pharmacy desk. Medicines are being prepared and verified."}
+                      : data.pharmacyStatus === "partially_dispensed" ? "Some prescribed quantities have been supplied. Contact the pharmacy about the remaining authorized quantities." : "Your doctor has routed your e-prescription to the location pharmacy desk. Medicines are being prepared and verified."}
                   </p>
                 </div>
               )}
@@ -1223,6 +1224,7 @@ export default function PublicLiveQueueTracker() {
                             <span className="font-bold text-sm text-text">{rx.medicineName}</span>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
+                            {rx.fulfillment?.authorizedQuantity != null && <span className="text-xs">Supplied {rx.fulfillment.suppliedQuantity} of {rx.fulfillment.authorizedQuantity} {rx.fulfillment.baseUnit}; remaining {rx.fulfillment.remainingQuantity}</span>}
                             <span
                               className={cn(
                                 "text-[10px] font-bold px-2 py-0.5 rounded-md",

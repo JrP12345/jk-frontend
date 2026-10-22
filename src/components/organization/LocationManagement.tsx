@@ -22,6 +22,7 @@ import { facilityTypeLabel, facilityTypeOptions, type FacilityType } from "@/lib
 import { hasAnyPermission, isRootUser } from "@/lib/permissions";
 import { RotateCw, Plus, Building2, Phone, Mail, QrCode, MoreHorizontal, Edit3, Archive, RotateCcw, Clock, Link2, Search } from "lucide-react";
 import LocationQrPosterModal from "@/components/dashboard/LocationQrPosterModal";
+import { PharmacyCapabilitySettings } from "@/components/pharmacy/PharmacyCapabilitySettings";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -58,6 +59,8 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
   const { user } = useAuthStore();
   const { locations, fetchLocations, isLoading: locationsLoading, error: locationLoadError } = useOrganizationLocations(organizationId);
   const canManageLocations = hasAnyPermission(user, "MANAGE_LOCATIONS");
+  const canManagePharmacy = hasAnyPermission(user, "PHARMACY_MANAGE_SETTINGS", "MANAGE_ORGANIZATION");
+  const [pharmacyLocation, setPharmacyLocation] = useState<Location | null>(null);
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [organizationsError, setOrganizationsError] = useState(false);
   const [organizationsLoading, setOrganizationsLoading] = useState(false);
@@ -390,6 +393,7 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
       <Dropdown align="right" width="w-56" trigger={<Button size="sm" variant="ghost" className={styles.iconAction} aria-label={`Actions for ${location.name}`}><MoreHorizontal size={18} /></Button>} items={[
         { label: "QR poster", icon: <QrCode size={16} />, onClick: () => setQrLocation(location) },
         { label: "Website booking", icon: <Link2 size={16} />, onClick: () => openWebsiteBooking(location) },
+        ...(canManagePharmacy ? [{ label: "Pharmacy settings", onClick: () => setPharmacyLocation(location) }] : []),
         ...(canManageLocations ? [{ divider: true, label: "" }, { label: "Deactivate location", icon: <Archive size={16} />, variant: "danger" as const, onClick: () => setDeletingId(location.id) }] : []),
       ]} />
     </>}
@@ -431,6 +435,8 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
         </article>} />
       {!reading && !readError && <footer className={styles.resultCount}>{filtered.length} of {rows.length} {activeTab} {rows.length === 1 ? "location" : "locations"}</footer>}
     </section>
+
+      {pharmacyLocation && canManagePharmacy && <PharmacyCapabilitySettings key={pharmacyLocation.id} location={pharmacyLocation} organizationId={organizationId} onClose={() => setPharmacyLocation(null)} onSaved={() => { void fetchLocations(true); }} />}
 
       <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingId ? "Edit Location" : "Add location"} description={editingId ? formData.name : "Add the details your team and patients need."} size="lg" busy={submitting}
         bodyClassName={styles.dialogBody} headerClassName={styles.formHeader} header={<><h2>{editingId ? "Edit Location" : "Add location"}</h2><p>{editingId ? formData.name : "Add the details your team and patients need."}</p><Tabs className={styles.formTabs} variant="pills" activeTab={formTab} onChange={setFormTab} scrollActiveIntoView={false} tabs={[

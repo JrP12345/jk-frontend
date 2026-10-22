@@ -30,6 +30,8 @@ jobs:
         run: npm ci
       - name: Check payment boundary
         run: npm run check:payments
+      - name: Check glob tooling consumers
+        run: npm run check:glob-tooling
       - name: Security Vulnerability Audit (High/Critical Only)
         run: npm audit --audit-level=high
       - name: TypeScript type check

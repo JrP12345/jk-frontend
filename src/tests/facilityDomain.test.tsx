@@ -13,6 +13,7 @@ beforeEach(() => { vi.restoreAllMocks(); useLocationStore.getState().reset(); lo
 describe("Physical facility metadata and selection", () => {
   it("does not guess clinic type for old, invalid or unclassified metadata", () => {
     expect(facilityTypeLabel("hospital")).toBe("Hospital");
+    expect(facilityTypeLabel("pharmacy")).toBe("Pharmacy");
     expect(facilityTypeLabel("diagnostic_center")).toBe("Diagnostic center");
     for (const value of [null, undefined, "Legacy Hospital", "unexpected_type"]) expect(facilityTypeLabel(value)).toBe("Healthcare facility");
   });

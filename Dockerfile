@@ -5,6 +5,7 @@ FROM node:24-alpine AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY packages/fast-glob ./packages/fast-glob
 RUN npm ci
 
 # ─── Stage 2: Build Next.js production bundle ─────────────────────────────

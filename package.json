@@ -11,20 +11,31 @@
     "brand:assets": "node scripts/generate-brand-assets.mjs",
     "brand:social": "node scripts/generate-home-social.mjs",
     "check:payments": "node scripts/check-payment-boundary.mjs",
-    "test": "vitest run --pool=forks --maxWorkers=2 --no-file-parallelism"
+    "check:glob-tooling": "node --test scripts/tests/glob-tooling.mjs",
+    "test": "vitest run --pool=forks --maxWorkers=2 --no-file-parallelism",
+    "dev:vinext": "vite dev --port 3001",
+    "build:vinext": "vite build",
+    "start:vinext": "vite preview",
+    "deploy:vinext": "vinext-cloudflare deploy",
+    "check:cloudflare:types": "tsc -p tsconfig.cloudflare.json",
+    "check:cloudflare:local": "node scripts/check-cloudflare-local.mjs"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^14.0.0",
     "@tanstack/react-query": "^5.101.4",
+    "@vinext/cloudflare": "^1.1.1",
     "axios": "^1.15.2",
     "lucide-react": "^1.43.0",
     "next": "^16.3.4",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-server-dom-webpack": "^19.3.1",
+    "vinext": "^1.2.1",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^2.0.0-beta.v.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.1",
@@ -34,21 +45,29 @@
     "@types/react": "^19",
     "@types/react-dom": "^19.2.7",
     "@typescript/native": "npm:typescript@^7.0.2",
+    "@vitejs/plugin-react": "^6.1.2",
+    "@vitejs/plugin-rsc": "^0.5.38",
+    "cf": "^1.0.0-beta.18",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.4",
+    "fast-glob": "file:packages/fast-glob",
     "jsdom": "^29.1.1",
+    "postcss": "^8.5.30",
     "sharp": "0.35.5",
     "tailwindcss": "^4",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.2.2",
+    "vite": "^8.3.3",
+    "vite-css-modules": "^1.16.0",
     "vitest": "^5.0.0"
   },
   "overrides": {
-    "@next/eslint-plugin-next@16.3.8": {
-      "fast-glob": "npm:tinyglobby@0.2.17"
-    }
+    "satori": {
+      "fflate": "0.7.5"
+    },
+    "fast-glob": "$fast-glob"
   },
   "engines": {
     "node": ">=24 <25"
-  }
+  },
+  "type": "module"
 }

@@ -13,6 +13,7 @@ import { useOrganizationLocations } from "@/hooks/useOrganizationLocations";
 import { organizationPath, organizationWorkspaceUrl } from "@/services/organization.service";
 import { recordId, validSingleChoice } from "@/lib/locationWorkflow";
 import { authScopeKey } from "@/lib/authScope";
+import { isPharmacyWorkspace } from "@/lib/workspaceProfile";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { InviteOrganizationMember } from "./InviteOrganizationMember";
 import { RBACPermissionMatrix } from "@/components/clinical/RBACPermissionMatrix";
@@ -74,6 +75,7 @@ function TeamWorkspace({ organizationId, embedded }: { organizationId?: string; 
   const { toast } = useToast();
   const { uploadFile } = useR2Upload();
   const { user } = useAuthStore();
+  const pharmacyOnly = !organizationId || organizationId === user?.organization_id ? isPharmacyWorkspace(user) : false;
   const { locations: organizationLocations, fetchLocations, activeLocationId } = useOrganizationLocations(organizationId);
   const locations = useMemo(() => organizationLocations.filter(location => location.isActive !== false), [organizationLocations]);
   const canManageStaff = hasAnyPermission(user, "MANAGE_STAFF");
@@ -115,7 +117,7 @@ function TeamWorkspace({ organizationId, embedded }: { organizationId?: string; 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<string>("doctor");
+  const [modalType, setModalType] = useState<string>(pharmacyOnly ? "pharmacist" : "doctor");
   const [formData, setFormData] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -148,8 +150,8 @@ function TeamWorkspace({ organizationId, embedded }: { organizationId?: string; 
       }
     });
 
-    return options;
-  }, [roles]);
+    return pharmacyOnly ? options.filter(option => !["doctor", "receptionist", "nurse", "lab_tech"].includes(option.value)) : options;
+  }, [roles, pharmacyOnly]);
 
   const allStaffMembers = useMemo(() => {
     if (loadedStaffScope !== staffReadScope) return [];
@@ -450,7 +452,7 @@ function TeamWorkspace({ organizationId, embedded }: { organizationId?: string; 
   };
 
   const fetchSetupAssignments = async () => {
-    if (!targetOrganizationId || !hasAnyPermission(user, "VIEW_LOCATIONS", "MANAGE_LOCATIONS")) return;
+    if (pharmacyOnly || !targetOrganizationId || !hasAnyPermission(user, "VIEW_LOCATIONS", "MANAGE_LOCATIONS")) return;
     const request = beginSetupRead();
     const readContext = context;
     setSetupError(false);
@@ -823,12 +825,12 @@ function TeamWorkspace({ organizationId, embedded }: { organizationId?: string; 
       {canManageStaff && setupError && <Alert variant="warning" title="Booking setup could not be checked" action={<Button variant="outline" size="sm" onClick={fetchSetupAssignments}>Retry setup check</Button>}>Your team remains available. Retry to check which doctors need location assignments.</Alert>}
 
       <header className={styles.header}><div><Heading>Staff</Heading><p>Profiles, location assignments and availability</p></div><div className={styles.headerActions}><Button variant="ghost" size="sm" className={styles.iconAction} aria-label="Refresh staff" disabled={isRefreshing} onClick={loadData}><RotateCw size={17} className={isRefreshing ? "animate-spin" : ""} /></Button>{canManageStaff && <Button size="sm" onClick={() => setMemberChoiceOpen(true)}><UserPlus size={16} /> Add Member</Button>}</div></header>
-      {canManageStaff && <div className={styles.selfSetup}><Button variant="ghost" size="sm" disabled={readingStaff || user?.role === "root" || (!!organizationId && organizationId !== user?.organization_id)} onClick={() => ownDoctor ? openAssignmentsModal(ownDoctor) : setIsAdminDoctorModalOpen(true)}><UserCheck size={15} />{ownDoctor ? "My doctor setup" : "Set up myself as a doctor"}</Button>{user?.role === "root" && <p>To link an administrator's doctor profile, use their organization session.</p>}</div>}
+      {canManageStaff && !pharmacyOnly && <div className={styles.selfSetup}><Button variant="ghost" size="sm" disabled={readingStaff || user?.role === "root" || (!!organizationId && organizationId !== user?.organization_id)} onClick={() => ownDoctor ? openAssignmentsModal(ownDoctor) : setIsAdminDoctorModalOpen(true)}><UserCheck size={15} />{ownDoctor ? "My doctor setup" : "Set up myself as a doctor"}</Button>{user?.role === "root" && <p>To link an administrator's doctor profile, use their organization session.</p>}</div>}
 
       <Modal open={memberChoiceOpen} onClose={() => setMemberChoiceOpen(false)} title="Add a team member" description="Choose how this person joins your organization." size="sm" bodyClassName={styles.dialogBody} footer={<Button variant="outline" size="sm" onClick={() => setMemberChoiceOpen(false)}>Cancel</Button>}>
         <div className="space-y-4">
           <div><Button disabled={!targetOrganizationId} onClick={() => { setMemberChoiceOpen(false); setInviteOpen(true); }}>Use an existing account</Button><p className="mt-2 text-sm text-text-muted">Invite them by email. Their existing account and other organization memberships are retained.</p></div>
-          <div><Button variant="outline" onClick={() => { setMemberChoiceOpen(false); openModal("doctor"); }}>Create a new account</Button><p className="mt-2 text-sm text-text-muted">Register a new team member and configure their clinical profile.</p></div>
+          <div><Button variant="outline" onClick={() => { setMemberChoiceOpen(false); openModal(pharmacyOnly ? "pharmacist" : "doctor"); }}>Create a new account</Button><p className="mt-2 text-sm text-text-muted">{pharmacyOnly ? "Create a pharmacy staff account and assign its branch permissions." : "Register a new team member and configure their clinical profile."}</p></div>
         </div>
       </Modal>
       {inviteOpen && targetOrganizationId && <InviteOrganizationMember key={targetOrganizationId} organizationId={targetOrganizationId} onClose={() => setInviteOpen(false)} />}
@@ -836,7 +838,7 @@ function TeamWorkspace({ organizationId, embedded }: { organizationId?: string; 
       {embedded ? directory : <Tabs className={styles.workspaceTabs} variant="pills" activeTab={workspaceTab} onChange={setWorkspaceTab} scrollActiveIntoView={false} tabs={[
         { id: "directory", label: "Staff", badge: readingStaff ? undefined : allStaffMembers.length, content: directory },
         ...(canManageStaff ? [{ id: "rbac", label: "Permissions", content: <RBACPermissionMatrix organizationId={organizationId} users={allStaffMembers.map(member => ({ id: member.id, name: member.name, email: member.email, role: member.roleType, permissions: member.permissions || [] }))} onRefresh={loadData} /> }] : []),
-        ...(canViewAnalytics(user) ? [{ id: "analytics", label: "Insights", content: <ExecutiveAnalytics /> }] : []),
+        ...(!pharmacyOnly && canViewAnalytics(user) ? [{ id: "analytics", label: "Insights", content: <ExecutiveAnalytics /> }] : []),
       ]} />}
 
       <Modal

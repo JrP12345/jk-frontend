@@ -5,6 +5,8 @@ import PrintDialogActions from "@/components/ui/PrintDialogActions";
 
 import { getPrintBrandStyles, printHtml, PrintPreparationError } from "@/lib/printBrand";
 import { formatCurrency } from "@/lib/currency";
+import { PharmacyInvoiceDocument } from "@/components/pharmacy/PharmacyInvoiceDocument";
+import { canPrintPharmacyInvoice, pharmacyDocumentTitle, type IssuedPharmacyInvoice } from "@/lib/pharmacyInvoice";
 
 import React, { useRef, useState, useEffect } from "react";
 import Modal from "@/components/queue/QueueDialog";
@@ -41,7 +43,7 @@ export interface UnifiedDocumentData {
   referenceNumber?: string;
 
   // Specific payload sections
-  prescriptions?: Array<{ name: string; dosage: string; frequency?: string; duration: string; instructions?: string }>;
+  prescriptions?: Array<{ name: string; dosage: string; frequency?: string; duration: string; instructions?: string; authorizedQuantity?: number; authorizedBaseUnit?: string }>;
   diagnoses?: Array<{ code?: string; description: string }>;
   symptoms?: string;
   advice?: string;
@@ -49,6 +51,7 @@ export interface UnifiedDocumentData {
   followUpNotes?: string;
   vitals?: Record<string, any>;
   invoiceItems?: Array<{ description: string; quantity: number; amount: number }>;
+  pharmacyInvoice?: IssuedPharmacyInvoice;
   invoiceTotals?: { subtotal: number; tax: number; discount: number; total: number; status: string };
   labResults?: Array<{ testName: string; result: string; unit?: string; referenceRange?: string; status: string }>;
   dischargeSummary?: { admissionDate: string; dischargeDate: string; summary: string; advice: string };
@@ -121,6 +124,9 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
   const isPreprinted = letterheadMode === "preprinted_stationery" && isPrescription;
 
   const handlePrint = async () => {
+    if (document.pharmacyInvoice && !canPrintPharmacyInvoice(document.pharmacyInvoice)) throw new PrintPreparationError("not-ready");
+    const printTitle = document.pharmacyInvoice ? `${pharmacyDocumentTitle(document.pharmacyInvoice.taxDocument.kind)} #${document.pharmacyInvoice.invoiceNumber}` : document.title;
+    const printRecipient = document.pharmacyInvoice?.taxDocument.recipient.name || document.patientName;
     const printContent = printRef.current?.innerHTML;
     if (!printContent) throw new PrintPreparationError("not-ready");
 
@@ -128,7 +134,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${escapePrintText(document.title)} — ${escapePrintText(document.patientName)}</title>
+          <title>${escapePrintText(printTitle)} — ${escapePrintText(printRecipient)}</title>
           <style>${getPrintBrandStyles()}
             @page {
               size: A4;
@@ -300,6 +306,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
             isPreprinted ? "pt-16 p-6" : "p-6"
           }`}
         >
+          {document.pharmacyInvoice ? <PharmacyInvoiceDocument invoice={document.pharmacyInvoice} /> : <>
           {/* Letterhead Header (Suppressed in Pre-Printed Stationery Mode) */}
           <div
             className={`border-b-2 border-primary-600 pb-3 flex justify-between items-start ${
@@ -458,7 +465,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
                       {document.prescriptions.map((rx, idx) => (
                         <tr key={idx}>
                           <td style={{ textAlign: "center", fontWeight: "bold" }}>{idx + 1}</td>
-                          <td style={{ fontWeight: "bold", color: "var(--print-accent)" }}>{rx.name}</td>
+                          <td style={{ fontWeight: "bold", color: "var(--print-accent)" }}>{rx.name}{rx.authorizedQuantity != null && <div>Authorized quantity: {rx.authorizedQuantity} {rx.authorizedBaseUnit}</div>}</td>
                           <td>{rx.dosage}</td>
                           <td>{rx.duration}</td>
                           <td style={{ color: "var(--print-secondary)" }}>{rx.instructions || "As directed"}</td>
@@ -851,6 +858,7 @@ export function UnifiedDocumentModal({ open, onClose, document }: UnifiedDocumen
               )}
             </div>
           </div>
+          </>}
         </div>
 
         {/* Modal Action Footer */}

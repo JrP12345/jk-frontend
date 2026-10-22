@@ -41,6 +41,8 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
 
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [permissionsCatalog, setPermissionsCatalog] = useState<PermissionItem[]>([]);
+  const [pharmacyPresets, setPharmacyPresets] = useState<Array<{ name: string; label: string; permissions: string[] }>>([]);
+  const [pharmacyPresetError, setPharmacyPresetError] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // User Role Switcher Modal State
@@ -63,57 +65,12 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
   // Search Query States
   const [customSearchQuery, setCustomSearchQuery] = useState("");
 
-  // Preset Role Permission Mapping Fallbacks
-  const PRESET_PERMISSIONS_MAP: Record<string, string[]> = {
-    location_manager: [
-      "VIEW_PATIENTS", "MANAGE_PATIENTS", "OPD_CHECKIN", "QUEUE_MANAGE",
-      "VIEW_APPOINTMENTS", "MANAGE_APPOINTMENTS", "INVOICE_VIEW", "INVOICE_CREATE",
-      "INVOICE_COLLECT", "PHARMACY_VIEW", "PHARMACY_DISPENSE", "LAB_VIEW", "INVENTORY_VIEW"
-    ],
-    receptionist: [
-      "VIEW_PATIENTS", "MANAGE_PATIENTS", "OPD_CHECKIN", "QUEUE_MANAGE",
-      "VIEW_APPOINTMENTS", "MANAGE_APPOINTMENTS"
-    ],
-    cashier: [
-      "VIEW_PATIENTS", "INVOICE_VIEW", "INVOICE_CREATE", "INVOICE_COLLECT"
-    ],
-    pharmacist: [
-      "PHARMACY_VIEW", "PHARMACY_MANAGE", "PHARMACY_DISPENSE", "INVENTORY_VIEW"
-    ],
-    nurse: [
-      "VIEW_PATIENTS", "EVALUATE_NEWS2", "VITALS_RECORD", "MAR_ADMINISTER", "BED_TRANSFER"
-    ],
-    doctor: [
-      "VIEW_PATIENTS", "VIEW_EHR", "MANAGE_CLINICAL_NOTES", "PRESCRIBE_MEDICINE", "ORDER_LAB_TESTS"
-    ],
-    lab_tech: [
-      "LAB_VIEW", "LAB_MANAGE", "LAB_COLLECT_SAMPLE", "LAB_UPLOAD_RESULT"
-    ],
-  };
-
   const getPresetPermissions = (presetRoleName: string): string[] => {
+    const pharmacyPreset = pharmacyPresets.find(preset => preset.name === presetRoleName);
+    if (pharmacyPreset) return pharmacyPreset.permissions.filter(code => permissionsCatalog.some(permission => permission.code === code));
     const presetRoleObj = roles.find((r) => r.name === presetRoleName);
-    let perms: string[] = presetRoleObj?.permissions || [];
-
-    if (perms.length === 0 && PRESET_PERMISSIONS_MAP[presetRoleName]) {
-      perms = PRESET_PERMISSIONS_MAP[presetRoleName];
-    }
-
-    if (presetRoleName === "location_manager") {
-      const catalogManagerCodes = permissionsCatalog
-        .map((p) => p.code)
-        .filter((code) =>
-          code.startsWith("OPD_") ||
-          code.startsWith("INVOICE_") ||
-          code.startsWith("PHARMACY_") ||
-          code.startsWith("PATIENT_") ||
-          code.startsWith("QUEUE_") ||
-          code.startsWith("APPOINTMENT_")
-        );
-      perms = Array.from(new Set([...PRESET_PERMISSIONS_MAP.location_manager, ...catalogManagerCodes]));
-    }
-
-    return perms;
+    // An explicit empty role stays empty; catalogue additions never widen a legacy preset.
+    return (presetRoleObj?.permissions || []).filter(code => permissionsCatalog.some(permission => permission.code === code));
   };
 
   const isPresetActive = (presetRoleName: string): boolean => {
@@ -160,10 +117,17 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
   const fetchRBACData = async () => {
     try {
       setLoading(true);
-      const [rolesRes, catalogRes] = await Promise.all([
+      const [rolesResult, catalogResult, pharmacyResult] = await Promise.allSettled([
         api.get(organizationPath("/roles", organizationId)),
         api.get("/permissions"),
+        api.get(organizationPath("/pharmacy/role-presets", organizationId)),
       ]);
+      if (rolesResult.status === "rejected") throw rolesResult.reason;
+      if (catalogResult.status === "rejected") throw catalogResult.reason;
+      const rolesRes = rolesResult.value, catalogRes = catalogResult.value;
+      const templates = pharmacyResult.status === "fulfilled" ? pharmacyResult.value.data?.data : null;
+      setPharmacyPresets(Array.isArray(templates) ? templates : []);
+      setPharmacyPresetError(!Array.isArray(templates));
 
       const loadedRoles: RoleRecord[] = (rolesRes.data?.data || []).filter((role: RoleRecord) => !organizationId || role.name !== "root");
       const loadedCatalog: PermissionItem[] = catalogRes.data?.data || [];
@@ -679,6 +643,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
                 { id: "doctor", label: "Doctor Clinical" },
                 { id: "lab_tech", label: "Lab Tech LIS" },
                 { id: "location_manager", label: "Practice manager" },
+                ...pharmacyPresets.map(preset => ({ id: preset.name, label: preset.label })),
               ].map((preset) => {
                 const active = isPresetActive(preset.id);
                 return (
@@ -710,6 +675,7 @@ export function RBACPermissionMatrix({ users, onRefresh, organizationId }: RBACP
               </div>
             )}
           </details>
+          {pharmacyPresetError && <p role="status" className="text-sm text-text-muted">Pharmacy presets could not be loaded. Permissions can still be selected individually.</p>}
 
           {/* Search Permission Input */}
           <div className="space-y-2.5">

@@ -14,16 +14,16 @@ export default function StaffWorkspaceSwitcher() {
   const [busy, setBusy] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const enabled = Boolean(user && !["root", "patient", "family_member"].includes(user.role) && !user.impersonatedBy);
+  const enabled = Boolean(user && user.role !== "root" && user.role !== "guest" && (!["patient", "family_member"].includes(user.role) || user.hasStaffWorkspaces) && !user.impersonatedBy);
   const query = useQuery({ queryKey: ["staff-workspaces", user?.id, user?.organization_id], enabled,
     queryFn: async ({ signal }): Promise<StaffWorkspace[]> => (await api.get("/auth/workspaces", { signal })).data.data,
   });
   if (!enabled) return null;
   if (query.isError) return <Button size="sm" variant="outline" className="max-w-full whitespace-normal" onClick={() => void query.refetch()}>Reload workspaces</Button>;
-  if (!query.data || query.data.length < 2) return null;
+  if (!query.data?.length || query.data.length === 1 && query.data[0].organizationId === user?.organization_id) return null;
   return <div className="flex-1 min-w-0 lg:flex-none lg:w-48">
     <Select aria-label="Organization workspace" value={user?.organization_id || ""} disabled={busy}
-      options={query.data.map(workspace => ({ value: workspace.organizationId, label: workspace.name }))}
+      options={[...(!user?.organization_id ? [{ value: "", label: "Open a business workspace" }] : []), ...query.data.map(workspace => ({ value: workspace.organizationId, label: workspace.name }))]}
       onChange={async event => {
         if (busy || event.target.value === user?.organization_id) return;
         setBusy(true);

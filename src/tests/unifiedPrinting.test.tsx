@@ -9,6 +9,13 @@ import { forceResetScrollLock } from "@/lib/scrollLock";
 import QRCode from "qrcode";
 
 vi.mock("qrcode", () => ({ default: { toDataURL: vi.fn() } }));
+it("prints the sealed authorized quantity alongside the original prescription instructions", () => {
+  const document: UnifiedDocumentData = { documentType: "prescription", title: "Prescription", locationName: "Clinic", patientName: "Patient", date: "2026-10-21",
+    prescriptions: [{ name: "Reviewed medicine", dosage: "As prescribed", duration: "30 days", authorizedQuantity: 30, authorizedBaseUnit: "tablet" }] };
+  render(<ToastProvider><UnifiedDocumentModal open document={document} onClose={vi.fn()} /></ToastProvider>);
+  expect(screen.getByText("Authorized quantity: 30 tablet")).toBeInTheDocument();
+  expect(screen.getByText("As prescribed")).toBeInTheDocument();
+});
 beforeEach(() => {
   vi.mocked(QRCode.toDataURL).mockReset();
   vi.mocked(QRCode.toDataURL).mockResolvedValue("data:image/png;base64,qr");

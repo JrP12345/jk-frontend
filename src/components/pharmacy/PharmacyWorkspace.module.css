@@ -42,6 +42,7 @@
 .fieldGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
 .dialog :where(p, strong, span) { overflow-wrap: anywhere; }
 .summary { border: 1px solid var(--border); background: var(--surface-alt); padding: 10px 12px; border-radius: 12px; font-size: .8125rem; line-height: 1.6; }
+.reference { overflow-wrap: anywhere; }
 .rx { padding: 12px; border: 1px solid var(--border); border-radius: 12px; display: grid; gap: 10px; }
 .rx h3 { font-size: .875rem; font-weight: 600; overflow-wrap: anywhere; }
 .rx p { color: var(--text-muted); font-size: .75rem; line-height: 1.6; }
@@ -60,9 +61,15 @@
   .panel div:has(> div > .card) { padding: 8px 0 0; }
   .count { border: 0; padding: 10px 2px; }
   .tabs > [role=tablist], .alertTabs > [role=tablist] { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 2px; }
+  .tabs > [role=tablist]:has(> [role=tab]:nth-child(4)) { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  .tabs > [role=tablist]:has(> [role=tab]:nth-child(5)) { grid-template-columns: repeat(3,minmax(0,1fr)); }
   .tabs > [role=tablist] [role=tab], .alertTabs > [role=tablist] [role=tab] { min-width: 0; justify-content: center; gap: 4px; padding-inline: 4px; font-size: .75rem; }
 }
 @media (max-width:430px) {
   .mapping { grid-template-columns: minmax(0,1fr) 80px; }
   .fieldGrid { grid-template-columns: 1fr; }
 }
+.reportTable { overflow-x: auto; max-width: 100%; }
+.reportTable table { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
+.reportTable th, .reportTable td { padding: 0.625rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; min-width: 7rem; overflow-wrap: anywhere; }
+.reportTable tfoot { font-weight: 600; }

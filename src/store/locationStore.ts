@@ -7,6 +7,7 @@ export interface LocationInfo {
   name: string;
   city: string;
   facilityType?: FacilityType | null;
+  pharmacyCapability?: { enabled: boolean; revision: number };
   timezone?: string;
   effectiveTimezone?: string;
   address?: string;

@@ -1,0 +1,4 @@
+# Workers Static Assets headers also apply when vinext reads through ASSETS.
+# Preserve next.config.ts's service-worker update policy.
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate

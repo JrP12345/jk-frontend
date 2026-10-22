@@ -9,6 +9,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { hasRoutePermission } from "@/lib/routePermissions";
 import { orderNavigation } from "@/lib/navigationOrder";
+import { isPharmacyWorkspace, pharmacyWorkspaceRoute } from "@/lib/workspaceProfile";
 import { getDisabledRouteModule, requiresTenantModules } from "@/lib/routeModules";
 import dynamic from "next/dynamic";
 import { useOverlayFocus } from "@/hooks/useOverlayFocus";
@@ -79,6 +80,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [user, isLoading, modulesLoaded, fetchModules]);
 
   useEffect(() => {
+    if (!isLoading && isPharmacyWorkspace(user) && !pharmacyWorkspaceRoute(pathname)) { router.replace("/dashboard"); return; }
     if (!isLoading && user && !hasRoutePermission(pathname, user.role, user.permissions)) {
       if ((user.role as string) === "guest") {
         router.replace("/login");
@@ -100,7 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [pathname, user, isLoading, router, toast]);
 
   useEffect(() => {
-    if (!modulesLoaded) return;
+    if (!modulesLoaded || isPharmacyWorkspace(user) && !pharmacyWorkspaceRoute(pathname)) return;
 
     if (getDisabledRouteModule(pathname, user, isModuleEnabled)) {
       toast({
@@ -244,6 +246,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const filteredNavItems = (isLoading || !user)
     ? []
     : orderNavigation(allNavItems.filter((item) => {
+        if (isPharmacyWorkspace(user) && !pharmacyWorkspaceRoute(item.href)) return false;
         // Overview and Notifications are always visible to authenticated users
         if (item.href === "/dashboard" || item.href === "/browse" || item.href === "/dashboard/notifications") return true;
 
@@ -261,7 +264,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         return true;
-      }), user.role);
+      }), user.role, isPharmacyWorkspace(user));
 
   const locationSelector = user && hasAnyPermission(user, "VIEW_LOCATIONS") && user.role !== "patient" && !isRootAdmin && headerLocations.length > 1 ? <Select
     size="sm"
@@ -276,6 +279,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (isLoggingOut) return <div role="status" aria-live="polite" className="min-h-dvh flex items-center justify-center bg-background text-text-secondary text-sm">Signing out…</div>;
   if (user?.mfaEnrollmentRequired) return <main className="min-h-dvh bg-background p-4 sm:p-8 flex items-center"><AuthenticatorEnrollment required /></main>;
+  if (isPharmacyWorkspace(user) && !pharmacyWorkspaceRoute(pathname)) return <div role="status" className="min-h-dvh flex items-center justify-center">Opening pharmacy workspace...</div>;
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background relative">

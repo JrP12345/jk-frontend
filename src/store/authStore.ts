@@ -18,6 +18,8 @@ export interface User {
   permissions?: string[];
   twoFactorEnabled?: boolean;
   mfaEnrollmentRequired?: boolean;
+  workspaceProfile?: "clinic" | "pharmacy";
+  hasStaffWorkspaces?: boolean;
   impersonatedBy?: {
     id: string;
     email: string;

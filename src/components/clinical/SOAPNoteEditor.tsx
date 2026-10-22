@@ -112,8 +112,9 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
   const [medName, setMedName] = useState("");
   const [medDosage, setMedDosage] = useState("");
   const [medDuration, setMedDuration] = useState("");
-  const [prescriptions, setPrescriptions] = useState<Array<{ name: string; dosage: string; duration: string; frequency?: string; instructions?: string; medicineId?: string }>>((initialNoteData?.plan?.prescriptionIds || []).map((value: any) => ({
+  const [prescriptions, setPrescriptions] = useState<Array<{ name: string; dosage: string; duration: string; frequency?: string; instructions?: string; medicineId?: string; authorizedQuantity?: number; authorizedBaseUnit?: string }>>((initialNoteData?.plan?.prescriptionIds || []).map((value: any) => ({
     name: value.medicineName, dosage: value.dosage, duration: value.duration, frequency: value.frequency, instructions: value.instructions, medicineId: typeof value.medicineId === "object" ? value.medicineId?.id || value.medicineId?._id : value.medicineId,
+    authorizedQuantity: value.authorizedQuantity, authorizedBaseUnit: value.authorizedBaseUnit,
   })));
 
   const draftSnapshot = JSON.stringify({ chiefComplaint, historyOfPresentIllness, symptomsText,
@@ -260,7 +261,7 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
     const timer = setTimeout(async () => {
       try {
         setSearchingMeds(true);
-        const res = await api.get(`/medicines?search=${encodeURIComponent(medName.trim())}`);
+        const res = await api.get(`/medicines?search=${encodeURIComponent(medName.trim().slice(0, 100))}`);
         const list = res.data?.data || [];
         setMedicineResults(list);
         setShowMedDropdown(list.length > 0);
@@ -779,8 +780,10 @@ export function SOAPNoteEditor({ patientId, locationId, encounterId: initialEnco
             {prescriptions.length > 0 && (
               <div className="space-y-1.5 pt-1">
                 {prescriptions.map((p, i) => (
-                  <div key={i} className="text-xs text-text bg-surface px-3 py-2 rounded-xl border border-border flex justify-between items-center shadow-2xs">
+                  <div key={i} className="text-xs text-text bg-surface px-3 py-2 rounded-xl border border-border flex flex-wrap gap-2 justify-between items-center shadow-2xs">
                     <span><b>{i + 1}.</b> {p.name} — {p.dosage} ({p.duration})</span>
+                    <Input aria-label={`Authorized quantity for ${p.name}`} label="Authorized quantity" type="number" min="1" max="1000000" step="1" value={p.authorizedQuantity ?? ""} disabled={isSigned} onChange={event => setPrescriptions(previous => previous.map((row, index) => index === i ? { ...row, authorizedQuantity: event.target.value === "" ? undefined : Number(event.target.value) } : row))} />
+                    <Select label={`Base unit for ${p.name}`} value={p.authorizedBaseUnit || ""} disabled={isSigned} options={[{ value: "", label: "Choose base unit" }, ...["tablet", "capsule", "ml", "g", "piece", "dose"].map(value => ({ value, label: value }))]} onChange={event => setPrescriptions(previous => previous.map((row, index) => index === i ? { ...row, authorizedBaseUnit: event.target.value || undefined } : row))} />
                     {!isSigned && (
                       <Button type="button" onClick={() => setPrescriptions((prev) => prev.filter((_, idx) => idx !== i))} variant="ghost" size="xs" className="text-danger-text">
                         ✕ Remove

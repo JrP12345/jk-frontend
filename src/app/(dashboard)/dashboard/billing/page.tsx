@@ -1,5 +1,6 @@
 "use client";
 
+import { PharmacyTill } from "@/components/pharmacy/PharmacyTill";
 import PrintDialogActions from "@/components/ui/PrintDialogActions";
 import { RefundReconciliationAction } from "@/components/billing/RefundReconciliationAction";
 
@@ -9,8 +10,9 @@ import { authScopeKey } from "@/lib/authScope";
 import styles from "./Billing.module.css";
 
 import { getPrintBrandStyles, printElement, printHtml } from "@/lib/printBrand";
+import { canPrintPharmacyInvoice, pharmacyDocumentTitle, type IssuedPharmacyInvoice, type PharmacyTaxDocument } from "@/lib/pharmacyInvoice";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { hasAnyPermission } from "@/lib/permissions";
@@ -21,6 +23,20 @@ import { Table, Button, Input, Select, Textarea, useToast, Spinner, Badge, Dropd
 import { UnifiedDocumentModal, UnifiedDocumentData } from "@/components/clinical/UnifiedDocumentModal";
 import { RotateCw, Plus, FileText, IndianRupee, Receipt, CheckCircle2, Printer, Search, MoreHorizontal, Banknote, AlertTriangle, Trash2 } from "lucide-react";
 
+const tillEvidenceLabels: Record<string, string> = {
+  missing_invoice_organization: "Historical payment ownership requires reconciliation",
+  different_currency: "Payment currency differs from this location",
+  unknown_payment_method: "Payment method needs review",
+  reversal_or_deleted_invoice: "Refund, cancellation or deletion needs reconciliation",
+  invalid_receipt_ledger: "Receipt history needs review",
+  missing_receipt_date: "Collection date is missing",
+  invalid_receipt_amount: "Collected amount needs review",
+  duplicate_receipt_identity: "Repeated receipt reference needs review",
+  future_receipt_date: "Collection date is in the future",
+  receipt_balance_mismatch: "Invoice paid balance does not match its receipts",
+  incomplete_legacy_payment_evidence: "Historical payment details are incomplete",
+};
+
 interface InvoiceItem {
   description: string;
   amount: number;
@@ -28,6 +44,12 @@ interface InvoiceItem {
 }
 
 interface Invoice {
+  documentVersion?: number;
+  issuedAt?: string;
+  financialYear?: string;
+  taxDocument?: PharmacyTaxDocument;
+  cgstTotal?: number;
+  sgstTotal?: number;
   id: string;
   invoiceNumber: string;
   currency?: string;
@@ -137,11 +159,17 @@ function BillingWorkspace() {
   const [submittingPartial, setSubmittingPartial] = useState(false);
 
   // Cashier Till Reconciliation & Z-Report State
+  const [isDrawerModalOpen, setIsDrawerModalOpen] = useState(false);
+  const reportCommand = useRef<{ key: string; body: object } | null>(null);
   const [isTillModalOpen, setIsTillModalOpen] = useState(false);
   const [tillLocationId, setTillLocationId] = useState("");
   const [tillSummary, setTillSummary] = useState<{
     date: string;
     locationId: string;
+    collectionBasis?: string;
+    timezone?: string;
+    currency?: string;
+    reconciliation?: { requiresReview: boolean; issueCount: number; issues: Array<{ invoiceId: string; invoiceNumber: string; reason: string }> };
     systemTotals: {
       cash: number;
       upi: number;
@@ -149,6 +177,8 @@ function BillingWorkspace() {
       other: number;
       total: number;
       invoiceCount: number;
+      receiptCount?: number;
+      legacyReceiptCount?: number;
     };
     latestShift?: any;
   } | null>(null);
@@ -158,6 +188,8 @@ function BillingWorkspace() {
   const [handoverNotes, setHandoverNotes] = useState("");
   const [submittingTillClose, setSubmittingTillClose] = useState(false);
   const [zReportSlip, setZReportSlip] = useState<any | null>(null);
+  const tillCurrency = tillSummary?.currency || "INR";
+  const reportCurrency = zReportSlip?.currency || "INR";
 
   // 1-Click Consolidated OPD Checkout State
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
@@ -179,6 +211,7 @@ function BillingWorkspace() {
     sgstTotal: number;
     totalAmount: number;
     existingInvoice?: any;
+    unfilledPrescriptions?: Array<{ prescriptionId: string; medicineName: string }>;
     isAlreadyPaid: boolean;
     feeType?: string;
     consultationFee?: number;
@@ -293,13 +326,13 @@ function BillingWorkspace() {
         variant: "success",
       });
 
-      // Prepare Unified Document Modal for immediate Tax Invoice printing
+      // Clinical checkout remains an invoice/receipt; pharmacy tax documents use their issued snapshot.
       const appt = checkoutPreview.appointment;
       const patientName = appt?.patientId?.userId?.name || appt?.patientId?.name || "Patient";
       const invoiceDoc: UnifiedDocumentData = {
         documentType: "invoice",
         currency: invoiceData?.currency || "INR",
-        title: "Tax Invoice & OPD Settlement Receipt",
+        title: "OPD Invoice & Settlement Receipt",
         locationName: appt?.locationId?.name || "Healthcare facility",
         locationAddress: appt?.locationId?.address || "",
         doctorName: (appt?.doctorId as any)?.name || "Attending Physician",
@@ -370,7 +403,7 @@ function BillingWorkspace() {
 
   const handleCloseTill = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submittingTillClose || !canManageBilling || loadingTillSummary || !tillSummary || tillSummary.locationId !== tillLocationId) return;
+    if (submittingTillClose || !canManageBilling || loadingTillSummary || !tillSummary || tillSummary.locationId !== tillLocationId || tillSummary.reconciliation?.requiresReview) return;
     if (!tillLocationId) {
       toast({ title: "Validation Error", description: "Please select a location for till closeout.", variant: "error" });
       return;
@@ -387,7 +420,7 @@ function BillingWorkspace() {
     if (variance !== 0 && !varianceReason.trim()) {
       toast({
         title: "Variance Reason Required",
-        description: `Please enter an explanation for the ₹${Math.abs(variance)} cash ${variance < 0 ? "shortage" : "surplus"}.`,
+        description: `Please enter an explanation for the ${formatCurrency(Math.abs(variance), tillCurrency)} cash ${variance < 0 ? "shortage" : "surplus"}.`,
         variant: "error",
       });
       return;
@@ -395,25 +428,30 @@ function BillingWorkspace() {
 
     setSubmittingTillClose(true);
     try {
-      const res = await api.post("/billing/till/close", {
+      const body = {
         locationId: tillLocationId,
         actualCashCounted: counted,
         varianceReason: varianceReason.trim() || undefined,
         handoverNotes: handoverNotes.trim() || undefined,
-      });
+      };
+      if (reportCommand.current && JSON.stringify(reportCommand.current.body) !== JSON.stringify(body)) throw new Error("Check or retry the original report before changing its details");
+      reportCommand.current ||= { key: crypto.randomUUID(), body };
+      const res = await api.post("/billing/till/close", reportCommand.current.body, { headers: { "Idempotency-Key": reportCommand.current.key } });
+      reportCommand.current = null;
 
       const shiftData = res.data?.data || res.data;
       setZReportSlip(shiftData);
       toast({
-        title: "Till Shift Closed",
-        description: res.data?.message || "Cashier till closed successfully and Z-Report generated.",
+        title: "Collection report saved",
+        description: res.data?.message || "Daily collection report saved. Physical drawers close separately.",
         variant: "success",
       });
       fetchInvoices();
     } catch (err: any) {
+      if ([400, 409, 428].includes(err.response?.status)) reportCommand.current = null;
       toast({
-        title: "Close Till Error",
-        description: err.response?.data?.message || "Failed to close till",
+        title: "Collection report needs attention",
+        description: err.response?.data?.message || err.message || "Could not confirm the collection report",
         variant: "error",
       });
     } finally {
@@ -490,16 +528,21 @@ function BillingWorkspace() {
   const [unifiedDoc, setUnifiedDoc] = useState<UnifiedDocumentData | null>(null);
 
   const handleOpenPrintInvoice = (inv: Invoice) => {
+    if (inv.documentVersion === 1 && !canPrintPharmacyInvoice(inv)) {
+      toast({ title: "Invoice unavailable", description: "Reload the issued document before printing.", variant: "error" });
+      return;
+    }
     setUnifiedDoc({
       documentType: "invoice",
-      title: `INVOICE #${inv.invoiceNumber}`,
-      locationName: inv.locationId?.name || "Healthcare Center",
-      locationAddress: inv.locationId?.address || inv.locationId?.city,
+      title: `${inv.taxDocument ? pharmacyDocumentTitle(inv.taxDocument.kind) : "INVOICE"} #${inv.invoiceNumber}`,
+      pharmacyInvoice: inv.documentVersion === 1 ? inv as unknown as IssuedPharmacyInvoice : undefined,
+      locationName: inv.taxDocument?.issuer.legalName || inv.locationId?.name || "Healthcare Center",
+      locationAddress: inv.taxDocument?.issuer.address || inv.locationId?.address || inv.locationId?.city,
       doctorName: inv.doctorId?.name,
       doctorSpecialization: inv.doctorId?.specialization,
-      patientName: patientName(inv),
+      patientName: inv.taxDocument?.recipient.name || patientName(inv),
       patientId: inv.patientId?.id,
-      date: new Date(inv.createdAt).toLocaleDateString("en-US", {
+      date: new Date(inv.issuedAt || inv.createdAt).toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -923,7 +966,8 @@ function BillingWorkspace() {
           <Dropdown align="right" width="w-56" trigger={<Button variant="ghost" size="sm" className={styles.iconButton} aria-label="Billing tools"><MoreHorizontal size={19} /></Button>} items={[
             ...(canManageBilling ? [
               { label: "OPD checkout", icon: <Receipt size={16} />, onClick: handleOpenCheckoutModal },
-              { label: "Close till / daily report", icon: <Banknote size={16} />, onClick: handleOpenTillModal },
+              { label: "Physical cash drawer", icon: <Banknote size={16} />, onClick: () => { setTillLocationId(activeLocationId === "all" ? locations[0]?.id || "" : activeLocationId || locations[0]?.id || ""); setIsDrawerModalOpen(true); } },
+              { label: "Daily collection report", icon: <Banknote size={16} />, onClick: handleOpenTillModal },
             ] : []),
             { label: "Service rates", icon: <FileText size={16} />, onClick: () => router.push("/dashboard/billing/services") },
           ]} />
@@ -1433,15 +1477,16 @@ function BillingWorkspace() {
       {/* ──────────────────────────────────────────────────────────────────────────
           8. CASHIER TILL RECONCILIATION & SHIFT CLOSE (Z-REPORT) MODAL
          ────────────────────────────────────────────────────────────────────────── */}
+      <Modal open={isDrawerModalOpen} onClose={() => setIsDrawerModalOpen(false)} title="Physical cash drawer" size="lg"><Select label="Drawer location" value={tillLocationId} onChange={event => setTillLocationId(event.target.value)} options={locations.map(location => ({ value: location.id, label: location.name }))} />{tillLocationId && <PharmacyTill key={tillLocationId} locationId={tillLocationId} channel="billing" canOpen={canManageBilling} canClose={canManageBilling} canMove={canManageBilling} />}</Modal>
       <Modal
         open={isTillModalOpen}
         onClose={() => {
           setIsTillModalOpen(false);
           setZReportSlip(null);
         }}
-        title="Close till"
+        title="Daily collection report"
         footerClassName={zReportSlip ? styles.printFooter : undefined}
-        description="Count the cash, check any difference, and save the daily report."
+        description="Save a comparison against gross cash receipts. Open and close physical drawers separately."
         size="md"
         busy={submittingTillClose}
         bodyClassName={styles.dialogBody}
@@ -1463,11 +1508,11 @@ function BillingWorkspace() {
                     size="sm"
                     variant="primary"
                     loading={submittingTillClose}
-                    disabled={loadingTillSummary || !tillSummary || Boolean(tillError) || tillSummary.locationId !== tillLocationId}
+                    disabled={loadingTillSummary || !tillSummary || Boolean(tillError) || tillSummary.locationId !== tillLocationId || Boolean(tillSummary.reconciliation?.requiresReview)}
                     className="w-full sm:w-auto min-h-[44px] font-bold bg-warning hover:bg-warning text-background"
                   >
                     <Banknote className="w-3.5 h-3.5 mr-1.5" />
-                    Close till & save report
+                    Save daily collection report
                   </Button>
                 </div>)}
       >
@@ -1478,9 +1523,9 @@ function BillingWorkspace() {
                 <h3 className="font-bold text-sm tracking-wide uppercase text-text">
                   {locations.find((c) => c.id === tillLocationId)?.name || "Ekavyu Healthcare"}
                 </h3>
-                <p className="text-[11px] text-text-muted">OFFICIAL END-OF-DAY Z-REPORT SLIP</p>
+                <p className="text-[11px] text-text-muted">{zReportSlip.collectionBasis === "receipt_v1" ? "DAILY COLLECTION SNAPSHOT" : "LEGACY DAILY REPORT"}</p>
                 <p className="text-[10px] text-text-muted mt-0.5">
-                  Shift Date: {zReportSlip.shiftDate} • Closed: {zReportSlip.endedAt ? new Date(zReportSlip.endedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Not recorded"}
+                  Report Date: {zReportSlip.shiftDate} • Saved: {zReportSlip.endedAt ? new Date(zReportSlip.endedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: zReportSlip.timezone }) : "Not recorded"} {zReportSlip.timezone || ""}
                 </p>
                 <p className="text-[10px] text-text-muted">
                   Cashier: <strong>{zReportSlip.cashierName || user?.name}</strong>
@@ -1489,41 +1534,42 @@ function BillingWorkspace() {
 
               <div className="space-y-1.5 pt-1">
                 <div className="flex justify-between text-text-muted">
-                  <span>Settled Invoices:</span>
+                  <span>{zReportSlip.collectionBasis === "receipt_v1" ? "Invoices with collections:" : "Settled Invoices:"}</span>
                   <span className="font-bold text-text">
-                    {zReportSlip.systemTotals?.invoiceCount ?? tillSummary?.systemTotals?.invoiceCount ?? 0}
+                    {zReportSlip.systemTotals?.invoiceCount ?? 0}
                   </span>
                 </div>
                 <div className="flex justify-between text-text-muted">
                   <span>System Cash Total:</span>
                   <span className="font-bold text-text">
-                    ₹{(zReportSlip.systemTotals?.cash ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    {formatCurrency(zReportSlip.systemTotals?.cash, reportCurrency, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
+                {zReportSlip.collectionBasis === "receipt_v1" && <p className="text-text-muted">{zReportSlip.systemTotals?.receiptCount || 0} receipts · {zReportSlip.systemTotals?.legacyReceiptCount || 0} recorded legacy payments</p>}
                 <div className="flex justify-between text-text-muted">
-                  <span>BharatPe UPI / QR:</span>
+                    <span>UPI / QR:</span>
                   <span className="font-bold text-text">
-                    ₹{(zReportSlip.systemTotals?.upi ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    {formatCurrency(zReportSlip.systemTotals?.upi, reportCurrency, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex justify-between text-text-muted">
                   <span>Card / POS Terminals:</span>
                   <span className="font-bold text-text">
-                    ₹{(zReportSlip.systemTotals?.card ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    {formatCurrency(zReportSlip.systemTotals?.card, reportCurrency, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 {(zReportSlip.systemTotals?.other || 0) > 0 && (
                   <div className="flex justify-between text-text-muted">
                     <span>Other / Online:</span>
                     <span className="font-bold text-text">
-                      ₹{(zReportSlip.systemTotals?.other ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      {formatCurrency(zReportSlip.systemTotals?.other, reportCurrency, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between border-t border-dashed border-border/80 pt-1.5 font-bold text-text">
                   <span>Total Day Collections:</span>
                   <span className="text-accent dark:text-accent">
-                    ₹{(zReportSlip.systemTotals?.total ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    {formatCurrency(zReportSlip.systemTotals?.total, reportCurrency, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
@@ -1532,7 +1578,7 @@ function BillingWorkspace() {
                 <div className="flex justify-between">
                   <span className="font-bold text-text">Physical Cash Counted:</span>
                   <span className="font-bold text-text">
-                    ₹{(zReportSlip.actualCashCounted ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    {formatCurrency(zReportSlip.actualCashCounted, reportCurrency, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex justify-between items-center pt-1 border-t border-border/60">
@@ -1548,10 +1594,10 @@ function BillingWorkspace() {
                     )}
                   >
                     {zReportSlip.cashVariance === 0
-                      ? "BALANCED (₹0.00)"
+                      ? `BALANCED (${formatCurrency(0, reportCurrency, { minimumFractionDigits: 2 })})`
                       : zReportSlip.cashVariance < 0
-                      ? `SHORTAGE (-₹${Math.abs(zReportSlip.cashVariance).toFixed(2)})`
-                      : `SURPLUS (+₹${zReportSlip.cashVariance.toFixed(2)})`}
+                      ? `SHORTAGE (-${formatCurrency(Math.abs(zReportSlip.cashVariance), reportCurrency, { minimumFractionDigits: 2 })})`
+                      : `SURPLUS (+${formatCurrency(zReportSlip.cashVariance, reportCurrency, { minimumFractionDigits: 2 })})`}
                   </span>
                 </div>
                 {zReportSlip.varianceReason && (
@@ -1613,7 +1659,7 @@ function BillingWorkspace() {
                       System Collections ({tillSummary?.date || new Date().toISOString().slice(0, 10)})
                     </span>
                     <span className="text-xs font-bold text-text">
-                      {tillSummary?.systemTotals?.invoiceCount ?? 0} Invoices Settled
+                      {tillSummary?.systemTotals?.invoiceCount ?? 0} invoices with collections
                     </span>
                   </div>
 
@@ -1621,29 +1667,36 @@ function BillingWorkspace() {
                     <div className="p-2.5 rounded-xl bg-surface border border-border/60">
                       <p className="text-[10px] text-text-muted font-semibold">CASH DRAWER</p>
                       <p className="text-sm font-bold text-success-text dark:text-success-text font-mono mt-0.5">
-                        ₹{(tillSummary?.systemTotals?.cash ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        {formatCurrency(tillSummary?.systemTotals?.cash, tillCurrency, { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                     <div className="p-2.5 rounded-xl bg-surface border border-border/60">
-                      <p className="text-[10px] text-text-muted font-semibold">BHARATPE UPI</p>
+                      <p className="text-[10px] text-text-muted font-semibold">UPI / QR</p>
                       <p className="text-sm font-bold text-accent dark:text-accent font-mono mt-0.5">
-                        ₹{(tillSummary?.systemTotals?.upi ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        {formatCurrency(tillSummary?.systemTotals?.upi, tillCurrency, { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                     <div className="p-2.5 rounded-xl bg-surface border border-border/60">
                       <p className="text-[10px] text-text-muted font-semibold">POS / CARDS</p>
                       <p className="text-sm font-bold text-accent dark:text-accent font-mono mt-0.5">
-                        ₹{(tillSummary?.systemTotals?.card ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        {formatCurrency(tillSummary?.systemTotals?.card, tillCurrency, { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                     <div className="p-2.5 rounded-xl bg-surface border border-border/60">
                       <p className="text-[10px] text-text-muted font-semibold">TOTAL RECEIPTS</p>
                       <p className="text-sm font-bold text-text font-mono mt-0.5">
-                        ₹{(tillSummary?.systemTotals?.total ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        {formatCurrency(tillSummary?.systemTotals?.total, tillCurrency, { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
 
+                  <p className="text-xs text-text-muted">Gross receipts by collection date{tillSummary?.timezone ? ` · ${tillSummary.timezone}` : ""}. Use Physical cash drawer to reconcile opening float, refunds, payouts and handover.</p>
+                  {tillSummary?.systemTotals.receiptCount !== undefined && <p className="text-xs">{tillSummary.systemTotals.receiptCount} receipts · {tillSummary.systemTotals.legacyReceiptCount || 0} recorded legacy payments</p>}
+                  {(tillSummary?.systemTotals.other || 0) > 0 && <p className="text-xs">Other / online payments: {formatCurrency(tillSummary?.systemTotals.other, tillCurrency, { minimumFractionDigits: 2 })}</p>}
+                  {tillSummary?.reconciliation?.requiresReview && <div role="alert" className={styles.readError}>
+                    {tillSummary.reconciliation.issueCount} payment evidence issues need reconciliation before closing. Review the affected invoices; uncertain amounts are excluded from these totals.
+                    <ul>{tillSummary.reconciliation.issues.map((issue, index) => <li key={`${issue.invoiceId}-${index}`}>{issue.invoiceNumber}: {tillEvidenceLabels[issue.reason] || "Payment details need review"}</li>)}</ul>
+                  </div>}
                   {tillSummary?.latestShift && (
                     <div className="p-2 rounded-xl bg-warning/10 border border-warning/20 text-xs text-warning-text dark:text-warning-text flex items-center justify-between">
                       <span>
@@ -1657,7 +1710,7 @@ function BillingWorkspace() {
                         onClick={() => setZReportSlip(tillSummary.latestShift)}
                         className="text-[10px] font-bold border-warning/30"
                       >
-                        View Last Z-Report
+                        View last collection report
                       </Button>
                     </div>
                   )}
@@ -1667,7 +1720,7 @@ function BillingWorkspace() {
                 <div className="space-y-3 pt-1">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                     <Input
-                      label="Actual Physical Cash Counted (₹) *"
+                      label={`Actual Physical Cash Counted (${tillCurrency}) *`}
                       type="number"
                       min="0"
                       step="0.01"
@@ -1703,12 +1756,12 @@ function BillingWorkspace() {
                           ) : isShort ? (
                             <>
                               <AlertTriangle className="w-4 h-4 text-danger-text shrink-0" />
-                              <span>SHORTAGE: -₹{Math.abs(diff).toFixed(2)}</span>
+                              <span>SHORTAGE: -{formatCurrency(Math.abs(diff), tillCurrency, { minimumFractionDigits: 2 })}</span>
                             </>
                           ) : (
                             <>
                               <IndianRupee className="w-4 h-4 text-accent shrink-0" />
-                              <span>SURPLUS: +₹{diff.toFixed(2)}</span>
+                              <span>SURPLUS: +{formatCurrency(diff, tillCurrency, { minimumFractionDigits: 2 })}</span>
                             </>
                           )}
                         </div>
@@ -1852,6 +1905,9 @@ function BillingWorkspace() {
                   </div>
                 )}
 
+                {Boolean(checkoutPreview.unfilledPrescriptions?.length) && (
+                  <p className="text-xs text-text-secondary" role="status">Awaiting pharmacy supply (unbilled): {checkoutPreview.unfilledPrescriptions!.map(rx => rx.medicineName).join(", ")}.</p>
+                )}
                 <div className="divide-y divide-border/60 max-h-48 overflow-y-auto">
                   {checkoutPreview.items.map((item, idx) => (
                     <div key={idx} className="py-2 flex items-center justify-between text-xs gap-3">

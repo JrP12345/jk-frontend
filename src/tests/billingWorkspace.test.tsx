@@ -11,7 +11,7 @@ vi.mock("@/store/locationStore", () => ({ useLocationStore: Object.assign(() => 
 const invoice = { id: "invoice-a", invoiceNumber: "INV-001", patientId: { id: "patient", name: "Sample walk-in", phone: "9876543210" }, locationId: fixture.locations[0], doctorId: { id: "doctor", name: "Sample doctor" }, items: [{ description: "Consultation", amount: 500, quantity: 1 }], subtotal: 500, tax: 0, discount: 0, totalAmount: 500, amountPaid: 100, balanceDue: 400, currency: "INR", status: "partially_paid", createdAt: "2026-10-18T08:00:00Z" };
 const appointment = (id: string) => ({ id, tokenNumber: id === "a" ? 1 : 2, patientId: { name: "Patient " + id }, status: "completed", locationId: fixture.locations[0], paymentStatus: "unpaid" });
 const preview = (id: string, extra = {}) => ({ appointment: appointment(id), items: [{ description: "Charges for " + id, category: "consultation", amount: 500, quantity: 1, gstRate: 0 }], subtotal: 500, totalAmount: 500, cgstTotal: 0, sgstTotal: 0, consultationFee: 500, isAlreadyPaid: false, ...extra });
-const summary = (locationId: string) => ({ locationId, date: "2026-10-18", systemTotals: { cash: 500, upi: 200, card: 100, other: 0, total: 800, invoiceCount: 3 } });
+const summary = (locationId: string) => ({ locationId, date: "2026-10-18", timezone: "Asia/Kolkata", currency: "INR", collectionBasis: "receipt_v1", systemTotals: { cash: 500, upi: 200, card: 100, other: 0, total: 800, invoiceCount: 3, receiptCount: 5, legacyReceiptCount: 1 }, reconciliation: { requiresReview: false, issueCount: 0, issues: [] } });
 const response = (data: unknown, count = 1, pages = 1) => ({ data: { data }, headers: { "x-total-count": String(count), "x-total-pages": String(pages) } });
 const deferred = () => { let resolve!: (value: unknown) => void; let reject!: (reason: unknown) => void; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const changeSelect = (element: HTMLElement, value: string) => { const select = element instanceof HTMLSelectElement ? element : document.getElementById(element.id.replace(/-trigger$/, "")); if (!select) throw new Error("Native select missing"); fireEvent.change(select, { target: { value } }); };
@@ -119,6 +119,15 @@ it("never settles a stale checkout preview after changing the appointment", asyn
   await waitFor(() => expect(fixture.post).toHaveBeenCalledWith("/billing/checkout/consolidate", expect.objectContaining({ appointmentId: "b", amountPaid: 500, paymentMethod: "cash", discount: 0 })));
 });
 
+it("labels prescribed medicines awaiting supply as unbilled in checkout", async () => {
+  const original = fixture.get.getMockImplementation()!;
+  fixture.get.mockImplementation((url: string) => url.includes("/checkout/preview/") ? Promise.resolve(response(preview("a", {
+    unfilledPrescriptions: [{ prescriptionId: "rx", medicineName: "Pending medicine" }],
+  }))) : original(url));
+  mount(); await screen.findAllByText("Sample walk-in"); await tools("OPD checkout");
+  expect(await screen.findByText("Awaiting pharmacy supply (unbilled): Pending medicine.")).toBeInTheDocument();
+});
+
 it("blocks already-paid checkout and exposes a retry for failed charge reads", async () => {
   const original = fixture.get.getMockImplementation()!;
   fixture.get.mockImplementation((url: string) => url.includes("/checkout/preview/") ? Promise.reject(new Error("offline")) : original(url));
@@ -131,8 +140,8 @@ it("blocks already-paid checkout and exposes a retry for failed charge reads", a
 });
 
 it("waits for a location-specific till summary and requires a reason for a difference", async () => {
-  mount(); await screen.findAllByText("Sample walk-in"); await tools("Close till / daily report");
-  const dialog = screen.getByRole("dialog", { name: "Close till" }); const save = within(dialog).getByRole("button", { name: "Close till & save report" });
+  mount(); await screen.findAllByText("Sample walk-in"); await tools("Daily collection report");
+  const dialog = screen.getByRole("dialog", { name: "Daily collection report" }); const save = within(dialog).getByRole("button", { name: "Save daily collection report" });
   await within(dialog).findByLabelText(/Actual Physical Cash Counted/);
   const original = fixture.get.getMockImplementation()!;
   const read = deferred(); fixture.get.mockImplementation((url: string) => url.includes("/till/summary") ? read.promise : original(url));
@@ -144,7 +153,61 @@ it("waits for a location-specific till summary and requires a reason for a diffe
   fireEvent.submit(document.getElementById("close-till")!); expect(fixture.post).not.toHaveBeenCalled();
   fireEvent.change(within(dialog).getByLabelText("Reason for difference *"), { target: { value: "Verified shortage" } });
   expect((save as HTMLButtonElement).form?.id).toBe("close-till"); fireEvent.click(save);
-  await waitFor(() => expect(fixture.post).toHaveBeenCalledWith("/billing/till/close", expect.objectContaining({ locationId: "branch", actualCashCounted: 450, varianceReason: "Verified shortage" })));
+  await waitFor(() => expect(fixture.post).toHaveBeenCalledWith("/billing/till/close", expect.objectContaining({ locationId: "branch", actualCashCounted: 450, varianceReason: "Verified shortage" }), { headers: { "Idempotency-Key": expect.any(String) } }));
+});
+it("retries an uncertain daily report with its original key and allows correction after a definite rejection", async () => {
+  fixture.post.mockRejectedValueOnce(new Error("Synthetic report timeout"));
+  mount(); await screen.findAllByText("Sample walk-in"); await tools("Daily collection report"); const dialog = screen.getByRole("dialog", { name: "Daily collection report" });
+  const cash = await within(dialog).findByLabelText(/Actual Physical Cash Counted/); fireEvent.change(cash, { target: { value: "500" } });
+  const save = within(dialog).getByRole("button", { name: "Save daily collection report" }); fireEvent.click(save); await screen.findByText("Synthetic report timeout");
+  const original = fixture.post.mock.calls[0]; fireEvent.change(cash, { target: { value: "499" } }); fireEvent.change(within(dialog).getByLabelText("Reason for difference *"), { target: { value: "Counted shortage" } }); fireEvent.click(save); await screen.findByText("Check or retry the original report before changing its details"); expect(fixture.post).toHaveBeenCalledOnce();
+  fireEvent.change(within(dialog).getByLabelText("Reason for difference *"), { target: { value: "" } }); fireEvent.change(cash, { target: { value: "500" } }); fixture.post.mockRejectedValueOnce({ response: { status: 409, data: { message: "Synthetic receipt source changed" } } }); fireEvent.click(save); await screen.findByText("Synthetic receipt source changed"); expect(fixture.post.mock.calls[1]).toEqual(original);
+  fireEvent.change(cash, { target: { value: "499" } }); fireEvent.change(within(dialog).getByLabelText("Reason for difference *"), { target: { value: "Actual reviewed shortage" } }); fireEvent.click(save); await waitFor(() => expect(fixture.post).toHaveBeenCalledTimes(3)); expect(fixture.post.mock.calls[2][2].headers["Idempotency-Key"]).not.toBe(original[2].headers["Idempotency-Key"]);
+});
+
+it("shows receipt counts, local day and other online collections without calling installments settled invoices", async () => {
+  const original = fixture.get.getMockImplementation()!;
+  fixture.get.mockImplementation((url: string) => url.includes("/till/summary") ? Promise.resolve(response({ ...summary("clinic"), systemTotals: { ...summary("clinic").systemTotals, other: 10, total: 810 } })) : original(url));
+  mount(); await screen.findAllByText("Sample walk-in"); await tools("Daily collection report");
+  const dialog = screen.getByRole("dialog", { name: "Daily collection report" });
+  expect(await within(dialog).findByText("5 receipts · 1 recorded legacy payments")).toBeInTheDocument();
+  expect(within(dialog).getByText("3 invoices with collections")).toBeInTheDocument();
+  expect(within(dialog).getByText(/Gross receipts by collection date.*Asia\/Kolkata/)).toBeInTheDocument();
+  expect(within(dialog).getByText(/Other \/ online payments:.*10.00/)).toBeInTheDocument();
+  expect(within(dialog).queryByText(/Invoices Settled/)).not.toBeInTheDocument();
+});
+
+it("blocks till close and explains missing receipt evidence even on direct form submission", async () => {
+  const original = fixture.get.getMockImplementation()!;
+  fixture.get.mockImplementation((url: string) => url.includes("/till/summary") ? Promise.resolve(response({ ...summary("clinic"), reconciliation: { requiresReview: true, issueCount: 1, issues: [{ invoiceId: "bad", invoiceNumber: "INV-REVIEW", reason: "missing_receipt_date" }] } })) : original(url));
+  mount(); await screen.findAllByText("Sample walk-in"); await tools("Daily collection report");
+  const dialog = screen.getByRole("dialog", { name: "Daily collection report" });
+  expect(await within(dialog).findByText(/INV-REVIEW: Collection date is missing/)).toBeInTheDocument();
+  expect(within(dialog).getByRole("button", { name: "Save daily collection report" })).toBeDisabled();
+  fireEvent.change(within(dialog).getByLabelText(/Actual Physical Cash Counted/), { target: { value: "500" } });
+  fireEvent.submit(document.getElementById("close-till")!); expect(fixture.post).not.toHaveBeenCalled();
+});
+
+it("uses the till currency for collection amounts and counted-cash labels", async () => {
+  const original = fixture.get.getMockImplementation()!;
+  fixture.get.mockImplementation((url: string) => url.includes("/till/summary") ? Promise.resolve(response({ ...summary("clinic"), currency: "USD", timezone: "America/New_York" })) : original(url));
+  mount(); await screen.findAllByText("Sample walk-in"); await tools("Daily collection report");
+  const dialog = screen.getByRole("dialog", { name: "Daily collection report" });
+  expect(await within(dialog).findByText("$500.00")).toBeInTheDocument();
+  expect(within(dialog).getByLabelText("Actual Physical Cash Counted (USD) *")).toBeInTheDocument();
+  expect(within(dialog).queryByText("₹500.00")).not.toBeInTheDocument();
+});
+
+it("prints historical report amounts using their saved basis rather than current receipt totals", async () => {
+  const original = fixture.get.getMockImplementation()!;
+  const latestShift = { shiftDate: "2026-10-18", endedAt: "2026-10-18T12:00:00Z", collectionBasis: "legacy_invoice_totals", cashierName: "Historical cashier", systemTotals: { cash: 999, upi: 0, card: 0, other: 0, total: 999, invoiceCount: 7 }, actualCashCounted: 999, cashVariance: 0 };
+  fixture.get.mockImplementation((url: string) => url.includes("/till/summary") ? Promise.resolve(response({ ...summary("clinic"), latestShift })) : original(url));
+  mount(); await screen.findAllByText("Sample walk-in"); await tools("Daily collection report");
+  const dialog = screen.getByRole("dialog", { name: "Daily collection report" }); fireEvent.click(await within(dialog).findByRole("button", { name: "View last collection report" }));
+  expect(await within(dialog).findByText("LEGACY DAILY REPORT")).toBeInTheDocument();
+  expect(within(dialog).getAllByText("₹999.00").length).toBeGreaterThan(0);
+  expect(within(dialog).getByText("7")).toBeInTheDocument();
+  expect(within(dialog).queryByText("DAILY COLLECTION SNAPSHOT")).not.toBeInTheDocument();
 });
 
 it("uses the configured zero fee without inventing a charge and preserves manual invoice creation", async () => {

@@ -1,0 +1,10 @@
+{
+  "name": "fast-glob",
+  "version": "3.3.3-ekavyu.1",
+  "private": true,
+  "description": "Checked glob adapter for the project's Next lint and Vite dynamic-import tooling",
+  "main": "index.cjs",
+  "exports": { ".": { "import": "./index.mjs", "require": "./index.cjs" }, "./package.json": "./package.json" },
+  "dependencies": { "tinyglobby": "0.2.17" },
+  "engines": { "node": ">=24 <25" }
+}

@@ -7,8 +7,8 @@ import { useLocationStore } from "@/store/locationStore";
 import { useAuthStore } from "@/store/authStore";
 import { ThemeProvider, ToastProvider } from "@/components/ui";
 
-const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => router, usePathname: () => "/dashboard" }));
+const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), pathname: "/dashboard" }));
+vi.mock("next/navigation", () => ({ useRouter: () => router, usePathname: () => router.pathname }));
 vi.mock("@/store/moduleStore", () => {
   const state = { isLoaded: true, fetchModules: vi.fn(), isModuleEnabled: () => true, reset: vi.fn() };
   return { useModuleStore: Object.assign(() => state, { getState: () => state }) };
@@ -21,6 +21,7 @@ vi.mock("next/dynamic", () => ({ default: () => () => null }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  router.pathname = "/dashboard";
   vi.spyOn(api, "get").mockResolvedValue({ data: { data: [] } });
   vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
   HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -30,6 +31,20 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("Dashboard location navigation", () => {
+  it("does not mount a clinical child in an independent pharmacy workspace", async () => {
+    router.pathname = "/dashboard/patients";
+    useAuthStore.setState({ user: { id: "owner", name: "Owner", email: "owner@example.test", role: "admin", organization_id: "organization", workspaceProfile: "pharmacy", permissions: ["MANAGE_ORGANIZATION"] } });
+    const mounted = vi.fn(); function ClinicalChild() { mounted(); return <p>Clinical child</p>; }
+    render(<QueryClientProvider client={new QueryClient()}><ThemeProvider><ToastProvider><DashboardLayout><ClinicalChild /></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
+    expect(screen.getByText("Opening pharmacy workspace...")).toHaveAttribute("role", "status"); expect(mounted).not.toHaveBeenCalled(); await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/dashboard"));
+  });
+  it("shows pharmacy navigation for a pharmacy cashier without general clinical access", () => {
+    useAuthStore.setState({ user: { id: "cashier", name: "Cashier", email: "cashier@example.test", role: "pharmacy_cashier", organization_id: "organization", permissions: ["PHARMACY_VIEW_STOCK", "VIEW_LOCATIONS"] } });
+    render(<QueryClientProvider client={new QueryClient()}><ThemeProvider><ToastProvider><DashboardLayout><p>Stock workspace</p></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
+    expect(screen.getAllByRole("link", { name: "Pharmacy Inventory" })[0]).toHaveAttribute("href", "/dashboard/pharmacy");
+    expect(screen.queryByRole("link", { name: "Patients" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Billing" })).not.toBeInTheDocument();
+  });
   it('shows a patient relationship entry in the platform root menu', () => {
     useAuthStore.setState({ user: { id: 'root', name: 'Root', email: 'root@example.test', role: 'root' } });
     render(<QueryClientProvider client={new QueryClient()}><ThemeProvider><ToastProvider><DashboardLayout><p>Platform</p></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);

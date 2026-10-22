@@ -17,7 +17,7 @@ const catalog = [{ code: "VIEW_PATIENTS", name: "View patients", description: "R
 const users = [{ id: "sample", name: "Sample nurse", email: "sample@example.test", role: "nurse" }];
 const mountRoles = () => render(<ToastProvider><RBACPermissionMatrix organizationId="org" users={users} onRefresh={vi.fn()} /></ToastProvider>);
 beforeEach(() => {
-  fixture.get.mockReset().mockImplementation(async (url: string) => response(url.includes("/roles") ? roles : catalog));
+  fixture.get.mockReset().mockImplementation(async (url: string) => response(url.includes("/role-presets") ? [] : url.includes("/roles") ? roles : catalog));
   fixture.post.mockReset().mockResolvedValue(response({ name: "Triage" })); fixture.put.mockReset().mockResolvedValue(response({}));
   Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 });
@@ -60,4 +60,28 @@ it("does not present a failed insights source as zero records and supports retry
   expect(screen.getByText("Billed amount")).toBeInTheDocument(); expect(screen.getAllByText(/500/).length).toBeGreaterThan(0); expect(screen.getByText(/List limits may exclude older records/)).toBeInTheDocument();
   fixture.get.mockRejectedValue(new Error("offline")); fireEvent.click(screen.getByRole("button", { name: "Refresh" })); await screen.findByText("Insights could not be refreshed");
   expect(screen.getByText("Billed amount")).toBeInTheDocument(); expect(screen.getAllByText(/500/).length).toBeGreaterThan(0);
+});
+
+it("creates an opt-in pharmacy cashier role without EHR, cost or general billing grants", async () => {
+  const permissions = ["VIEW_LOCATIONS", "PHARMACY_VIEW_STOCK", "PHARMACY_SELL", "PHARMACY_COLLECT_PAYMENT", "PHARMACY_CLOSE_TILL"];
+  const expandedCatalog = [...catalog, ...permissions.map(code => ({ code, name: code, description: code, category: "Pharmacy" }))];
+  fixture.get.mockImplementation(async (url: string) => response(url.includes("/role-presets") ? [{ name: "pharmacy_cashier", label: "Pharmacy cashier", permissions }] : url.includes("/roles") ? roles : expandedCatalog));
+  mountRoles(); fireEvent.click(await screen.findByRole("button", { name: "+ Create role" }));
+  const dialog = screen.getByRole("dialog", { name: "Create custom role" });
+  fireEvent.click(within(dialog).getByText("Combine role presets (optional)"));
+  fireEvent.change(within(dialog).getByLabelText("Role Name *"), { target: { value: "Branch cashier" } });
+  fireEvent.click(within(dialog).getByRole("button", { name: /Pharmacy cashier/ }));
+  fireEvent.click(within(dialog).getByRole("button", { name: "Create Custom Role" }));
+  await waitFor(() => expect(fixture.post).toHaveBeenCalledWith("/roles?organizationId=org", { name: "Branch cashier", description: "", permissions }));
+});
+
+it("does not widen an explicit empty legacy preset when the permission catalogue grows", async () => {
+  fixture.get.mockImplementation(async (url: string) => response(url.includes("/role-presets") ? [] : url.includes("/roles") ? [...roles, { name: "location_manager", permissions: [], description: "Reviewed empty role" }] : [...catalog, { code: "PHARMACY_VIEW_COST", name: "View costs", category: "Pharmacy" }]));
+  mountRoles(); fireEvent.click(await screen.findByRole("button", { name: "+ Create role" }));
+  const dialog = screen.getByRole("dialog", { name: "Create custom role" });
+  fireEvent.click(within(dialog).getByText("Combine role presets (optional)"));
+  fireEvent.click(within(dialog).getByRole("button", { name: /Practice manager/ }));
+  expect(await screen.findByText("No Permissions Found")).toBeInTheDocument();
+  expect(within(dialog).getAllByRole("checkbox").every(input => !(input as HTMLInputElement).checked)).toBe(true);
+  expect(fixture.put).not.toHaveBeenCalled(); expect(fixture.post).not.toHaveBeenCalled();
 });

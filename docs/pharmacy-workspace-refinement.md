@@ -4,6 +4,11 @@ Current module: `/dashboard/pharmacy`, inventory, prescriptions, alerts and exis
 Status: implementation and scoped local verification complete, 2026-10-18.
 Highest verification risk: Level 4 (inventory, prescription fulfillment and invoice creation).
 
+For the proposed next implementation scope and copyable final prompt, see
+[Existing pharmacy: implementation plan](pharmacy-implementation-plan.md).
+This report records the completed workspace refinement; the linked plan distinguishes
+that baseline from proposed further work.
+
 ## Changes and confirmed defects
 
 - Replaced the large banner, summary cards and long navigation with compact Inventory / Dispense / Alerts tabs. Stock overview is expandable; desktop rows and mobile cards share data and actions.

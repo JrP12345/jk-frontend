@@ -511,6 +511,9 @@ export function EncounterWorkspace({
                 <Badge variant="primary">Auto-Compiled</Badge>
               </div>
 
+              {Boolean(chargePreview.unfilledPrescriptions?.length) && (
+                <p className="text-xs text-text-secondary" role="status">Awaiting pharmacy supply (unbilled): {chargePreview.unfilledPrescriptions.map((rx: { medicineName: string }) => rx.medicineName).join(", ")}.</p>
+              )}
               {chargePreview.isFeeEditable && (
                 <div className="p-3.5 bg-warning/10 border border-warning/20 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>

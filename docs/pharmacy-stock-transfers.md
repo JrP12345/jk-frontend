@@ -1,0 +1,26 @@
+# Controlled branch stock transfers (T29)
+
+Implemented locally; no production activation, legal approval or live stock changes are asserted. Each transfer selects one actual source lot and one explicitly matching destination product within the same organization. Multiple products/lots use separate reviewed transfer records. There is no new stock balance or payment engine.
+
+The existing pharmacy workspace has a **Stock transfers** tab for staff with `PHARMACY_TRANSFER` (or organization-management authority) and independent acquisition-cost access. Product searches, source lot pages, history and custody events are bounded to 20 records. The current branch and shared location selector remain authoritative. Search and selection never infer identity from a fuzzy name: the command compares normalized name/formulation/manufacturer/strength, category/schedule, tax classification and complete unit definition before allowing a map.
+
+Preparation requires an active India/INR organization, both live branch grants, current pharmacy products/capabilities, actual issuer/licence profiles and real review/delivery-document references. Only the same reviewed legal issuer, state, registration type and GSTIN are supported. Distinct GST registrations, interstate or electronic-reporting requirements need a separately validated document workflow and are blocked here. The application records the actual manual document reference; it does not issue a tax invoice, e-way bill or transport approval.
+
+Stages use existing transaction/operation receipts and explicit expected transfer revisions:
+
+- Prepare a draft without reserving or moving stock; an approver with both branch grants reviews the immutable product, lot and issuer snapshots.
+- Dispatch the approved batch at the source. Lot and aggregate decrement together; that quantity is now in transit and cannot be sold at either branch.
+- The destination records partial actual saleable or quarantine receipts. Each creates a distinct captured lot and `transfer_in` stock movement. Expired stock can enter quarantine, never saleable stock.
+- A source receiver can record in-transit goods physically returned to source quarantine. A reviewed loss requires current authority at both branches. Dispatched goods cannot be cancelled; unshipped drafts/approvals can.
+
+`dispatched = saleable received + quarantine received + lost + returned + in transit` at every committed stage. Conditional transfer/stock revisions and unique custody-event revisions prevent concurrent dispatch/receipt from exceeding the approved physical quantity. Current receipt/event indexes are readiness requirements and are prepared through the explicit T25 setup command; requests never drop or create indexes.
+
+Incoming lots retain the original exact cost numerator/denominator, printed batch/expiry precision/cutoff, unit/MRP/price evidence and a transfer/event/source-lot lineage. A 1-unit receipt from a 10-unit lot costing 10,001 paise keeps `10001 / 10` paise per base unit. It is not rounded into another purchase cost. These lots work with the existing FEFO, counter quotes, returns and valuation paths. Quarantine is ineligible for sale.
+
+H/H1 approval requires current reviewed classification and branch pharmacist evidence at both branches; dispatch and saleable receipt recheck the responsible branch's current professional evidence. Quarantine reception does not pretend to be a patient supply. X/narcotic movement remains blocked. No prescription, patient, register sale or invoice is fabricated for a transfer.
+
+New preparation/approval/dispatch pins active commercial/capability access. Authorized completion of already dispatched goods remains a custody correction; quarantine receipt/return and loss do not require a new purchase. The actual receiving branch/product must be available. Archiving an emptied source catalogue item does not prevent physical reception at its active destination. Changed product/unit evidence or issuer requirements require review; a changed issuer can use quarantine rather than an unsupported saleable receipt.
+
+Every stage records an append-only custody event, stock source links, required audit and encrypted immutable replay result atomically. The UI retains only an opaque stage key/action/transfer identity in session storage. Lost responses are recovered with that reference; retries keep the same frozen request/key. A recorded outcome must be acknowledged before another stage. Account, permission and branch changes clear private views. Current grants are required for all reads and recovery; consumer roles and foreign tenants cannot probe transfers. Earlier custody events remain cursor-accessible beyond the latest 20.
+
+Level 4 checks: 21 transfer integration cases plus 78 lot/return/report/setup regressions; 59 transfer/workspace UI cases; both package types, changed-file lint and five backend bundles. Coverage includes actual partial custody, concurrent stages, audit rollback, exact fractional cost, existing counter quote validation, expired transit, restricted professional revocation, client mapping/recovery, foreign/consumer denial and paginated physical history. Real professional, transport, browser/device, restore and release evidence remains T26.

@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import PlatformOwnerDashboard from "@/components/dashboard/PlatformOwnerDashboard";
+import { PharmacyHome } from "@/components/pharmacy/PharmacyHome";
+import { isPharmacyWorkspace } from "@/lib/workspaceProfile";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
@@ -19,6 +21,7 @@ export default function DashboardOverview() {
   const user = useAuthStore(state => state.user);
   if (!user) return null;
   if (user.role === "root" && !user.impersonatedBy?.id) return <PlatformOwnerDashboard />;
+  if (isPharmacyWorkspace(user)) return <PharmacyHome />;
   return <OperationalDashboard key={authScopeKey(user)} />;
 }
 

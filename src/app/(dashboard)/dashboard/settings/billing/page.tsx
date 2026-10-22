@@ -3,11 +3,13 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Badge, ProgressBar, Table, Modal, Skeleton, SkeletonStats, SkeletonForm, useToast } from "@/components/ui";
-import { billingService, SaaSPlan, SubscriptionInfo, UsageInfo, DowngradeValidationResult } from "@/services/billing.service";
+import { billingService, SaaSPlan, SubscriptionInfo, UsageInfo, DowngradeValidationResult, type ProductQuote } from "@/services/billing.service";
 import api from "@/lib/api";
 import { AlertTriangle, Building2, Users, ExternalLink, CheckCircle2 } from "lucide-react";
 import { loadRazorpayScript } from "@/lib/razorpay";
 import { useAuthStore } from "@/store/authStore";
+import { ProductQuotePanel } from "@/components/billing/ProductQuotePanel";
+import { authScopeKey } from "@/lib/authScope";
 
 interface BillingSettingsPageProps {
   selectedOrgId?: string;
@@ -15,12 +17,20 @@ interface BillingSettingsPageProps {
   orgsLoading?: boolean;
 }
 
-export default function BillingSettingsPage({
+export default function BillingSettingsPage(props: BillingSettingsPageProps) {
+  const user = useAuthStore(state => state.user);
+  return <BillingSettingsWorkspace key={`${authScopeKey(user)}:${props.selectedOrgId || ""}`} {...props} />;
+}
+
+function BillingSettingsWorkspace({
   selectedOrgId,
   isRoot: propIsRoot,
   orgsLoading = false,
 }: BillingSettingsPageProps) {
   const { user } = useAuthStore();
+  const scope = authScopeKey(user), alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  function currentScope() { return alive.current && authScopeKey(useAuthStore.getState().user) === scope; }
   const { toast } = useToast();
   const [plans, setPlans] = useState<SaaSPlan[]>([]);
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
@@ -204,14 +214,17 @@ export default function BillingSettingsPage({
     }
   }
 
-  async function handleInitiateCheckout(plan: SaaSPlan, resume = false) {
-    if (checkoutBusy.current || (pendingOrderId && !resume)) return;
+  async function handleInitiateCheckout(plan: SaaSPlan, resume = false, product?: ProductQuote) {
+    if (!currentScope() || checkoutBusy.current || (pendingOrderId && !resume)) return;
+    if (product && (product.planId !== plan.id || product.organizationId !== (effectiveOrgId || user?.organization_id) || Date.parse(product.expiresAt) <= Date.now())) {
+      toast({ title: "Quote expired or changed", description: "Preview your product selection again.", variant: "error" }); return;
+    }
     checkoutBusy.current = true;
     setIsProcessing(true);
     setSelectedPlan(plan);
 
     // 1. Pre-flight check: validate if active resources fit within target plan
-    try {
+    if (!product && !resume) try {
       const validation = await billingService.validatePlanDowngrade(plan.id, effectiveOrgId);
       if (!validation.canDowngrade) {
         setDowngradeValidation(validation);
@@ -232,15 +245,18 @@ export default function BillingSettingsPage({
       return;
     }
 
-    const cycle = resume ? pendingCycle : billingCycle;
-    const intentKey = `${effectiveOrgId || user?.organization_id}:${plan.id}:${cycle}`;
+    if (!currentScope()) return;
+    const cycle = product?.billingCycle || (resume ? pendingCycle : billingCycle);
+    const intentKey = `${effectiveOrgId || user?.organization_id}:${plan.id}:${cycle}:${product?.fingerprint || ""}`;
     if (checkoutIntent.current?.key !== intentKey) checkoutIntent.current = { key: intentKey, id: crypto.randomUUID() };
-    const price = cycle === "annual" ? plan.annualPrice : plan.monthlyPrice;
+    const price = product ? product.totalPaise / 100 : cycle === "annual" ? plan.annualPrice : plan.monthlyPrice;
 
     // 2. Direct switch for free plans (e.g. Starter at ₹0)
-    if (price === 0) {
+    if (price === 0 && !resume) {
       try {
-        await billingService.directSwitchPlan(plan.id, cycle, effectiveOrgId);
+        if (product) await billingService.directSwitchPlan(plan.id, cycle, effectiveOrgId, product.quoteToken);
+        else await billingService.directSwitchPlan(plan.id, cycle, effectiveOrgId);
+        if (!currentScope()) return;
         toast({
           title: "Plan Changed Successfully",
           description: `Your subscription has been switched to ${plan.name} (${cycle}).`,
@@ -250,7 +266,8 @@ export default function BillingSettingsPage({
         setDowngradeModalOpen(false);
         loadBillingData();
       } catch (err: any) {
-        if (err.response?.status === 409) {
+        if (!currentScope()) return;
+        if (err.response?.status === 409 && !product) {
           const violationData = err.response?.data?.data || err.response?.data;
           setDowngradeValidation(violationData);
           setDowngradeModalOpen(true);
@@ -270,7 +287,10 @@ export default function BillingSettingsPage({
     // 3. Paid plan: Proceed to Razorpay checkout order creation
     let checkoutOpened = false;
     try {
-      const order = await billingService.createCheckoutOrder(plan.id, cycle, effectiveOrgId, checkoutIntent.current.id);
+      const order = resume && pendingOrderId ? await billingService.resumeCheckoutOrder(pendingOrderId, effectiveOrgId) : product
+        ? await billingService.createCheckoutOrder(plan.id, cycle, effectiveOrgId, checkoutIntent.current.id, product.quoteToken)
+        : await billingService.createCheckoutOrder(plan.id, cycle, effectiveOrgId, checkoutIntent.current.id);
+      if (!currentScope()) return;
       if (order.alreadyCompleted) {
         checkoutIntent.current = null;
         setPendingOrderId(null);
@@ -278,12 +298,19 @@ export default function BillingSettingsPage({
         toast({ title: "Payment already confirmed", description: "Your current subscription details have been refreshed.", variant: "success" });
         return;
       }
+      if (typeof order.orderId === "string" && /^order_[a-zA-Z0-9_-]{1,100}$/.test(order.orderId)) {
+        setPendingOrderId(order.orderId); setPendingPlanId(plan.id); setPendingCycle(cycle);
+      }
+      const payablePaise = Math.round(order.amount * 100);
+      if (!order.orderId || !order.keyId || order.currency !== "INR" || typeof order.amount !== "number" || !Number.isSafeInteger(payablePaise) || payablePaise <= 0 || Math.abs(order.amount * 100 - payablePaise) > 0.000001 ||
+          product && payablePaise !== product.totalPaise) throw new Error("The checkout does not match the reviewed total. Check payment status before trying again.");
       setPendingOrderId(order.orderId);
       setPendingPlanId(plan.id);
       setPendingCycle(cycle);
 
       // Load official Razorpay Checkout SDK
       const isLoaded = await loadRazorpayScript();
+      if (!currentScope()) return;
       if (!isLoaded) {
         toast({
           title: "Payment Gateway Unavailable",
@@ -302,12 +329,14 @@ export default function BillingSettingsPage({
         description: `${plan.name} Plan (${cycle}) Subscription`,
         order_id: order.orderId,
         handler: async (response: any) => {
+          if (!currentScope()) return;
           try {
             const verification = await billingService.verifyPayment({
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
             }, effectiveOrgId);
+            if (!currentScope()) return;
             if (!verification.success) {
               if (verification.requiresReview) {
                 toast({ title: "Payment needs review", description: verification.message, variant: "default" });
@@ -333,6 +362,7 @@ export default function BillingSettingsPage({
             setDowngradeModalOpen(false);
             loadBillingData();
           } catch {
+            if (!currentScope()) return;
             setPendingOrderId(order.orderId);
             statusPolls.current = 0;
             setVerificationPending(true);
@@ -357,6 +387,7 @@ export default function BillingSettingsPage({
 
       const razorpayInstance = new (window as any).Razorpay(options);
       razorpayInstance.on("payment.failed", (resp: any) => {
+        if (!currentScope()) return;
         toast({
           title: "Payment Failed",
           description: resp.error?.description || "Transaction failed at Razorpay gateway.",
@@ -366,7 +397,8 @@ export default function BillingSettingsPage({
       razorpayInstance.open();
       checkoutOpened = true;
     } catch (err: any) {
-      if (err.response?.status === 409) {
+      if (!currentScope()) return;
+      if (err.response?.status === 409 && !product && !resume) {
         const violationData = err.response?.data?.data || err.response?.data;
         setDowngradeValidation(violationData);
         setDowngradeModalOpen(true);
@@ -427,7 +459,8 @@ export default function BillingSettingsPage({
   const summary = subscription?.summary;
   const isTrial = summary?.basis === "trial";
   const statusLabel = summary?.status?.replaceAll("_", " ") || "Unavailable";
-  const displayedPrice = billingCycle === "annual" ? currentPlan?.annualPrice : currentPlan?.monthlyPrice;
+  const displayedCycle = subscription?.commercialQuote?.billingCycle || billingCycle;
+  const displayedPrice = subscription?.commercialQuote ? subscription.commercialQuote.totalPaise / 100 : displayedCycle === "annual" ? currentPlan?.annualPrice : currentPlan?.monthlyPrice;
   const formatDate = (value: string | null | undefined) => value
     ? new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
     : "Not available";
@@ -440,8 +473,8 @@ export default function BillingSettingsPage({
           <p className="mt-1 text-text-muted">Your existing plan stays active until Razorpay confirms payment. Order {pendingOrderId}.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button variant="secondary" size="xs" onClick={() => refreshCheckoutStatus(pendingOrderId).catch(() => {})}>Check payment status</Button>
-            {!verificationPending && pendingPlanId && plans.some((plan) => plan.id === pendingPlanId) && (
-              <Button variant="primary" size="xs" disabled={isProcessing} onClick={() => handleInitiateCheckout(plans.find((plan) => plan.id === pendingPlanId)!, true)}>Resume payment</Button>
+            {!verificationPending && pendingPlanId && (
+              <Button variant="primary" size="xs" disabled={isProcessing} onClick={() => handleInitiateCheckout(plans.find((plan) => plan.id === pendingPlanId) || { id: pendingPlanId, name: "Reviewed products" } as SaaSPlan, true)}>Resume payment</Button>
             )}
             {!verificationPending && <Button variant="secondary" size="xs" disabled={abandoning || isProcessing} onClick={abandonPendingCheckout}>Choose another plan</Button>}
           </div>
@@ -493,7 +526,7 @@ export default function BillingSettingsPage({
 
               <h2 className="text-2xl font-bold text-text">
                 {typeof displayedPrice === "number" ? `₹${displayedPrice.toLocaleString("en-IN")}` : "Price unavailable"}{" "}
-                <span className="text-xs font-normal text-text-muted">/ {billingCycle === "annual" ? "year" : "month"}</span>
+                <span className="text-xs font-normal text-text-muted">/ {displayedCycle === "annual" ? "year" : "month"}</span>
               </h2>
 
               {summary?.daysRemaining !== null && summary?.daysRemaining !== undefined && summary.bookingAvailable && (
@@ -548,42 +581,43 @@ export default function BillingSettingsPage({
             <div className="p-4 rounded-xl border border-border/70 bg-surface-alt/30 space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold text-text">
                 <span>Locations</span>
-                <span className="font-bold text-accent">{usage.locationsCount} / {limits.maxLocations || 1}</span>
+                <span className="font-bold text-accent">{usage.locationsCount} / {limits.maxLocations ?? 1}</span>
               </div>
-              <ProgressBar value={usage.locationsCount} max={limits.maxLocations || 1} size="md" color="primary" />
+              {(limits.maxLocations ?? 1) > 0 && <ProgressBar value={usage.locationsCount} max={limits.maxLocations ?? 1} size="md" color="primary" />}
             </div>
 
             {/* Doctors */}
             <div className="p-4 rounded-xl border border-border/70 bg-surface-alt/30 space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold text-text">
                 <span>Doctor Profiles</span>
-                <span className="font-bold text-accent">{usage.doctorsCount} / {limits.maxDoctors || 2}</span>
+                <span className="font-bold text-accent">{usage.doctorsCount} / {limits.maxDoctors ?? 2}</span>
               </div>
-              <ProgressBar value={usage.doctorsCount} max={limits.maxDoctors || 2} size="md" color="primary" />
+              {(limits.maxDoctors ?? 2) > 0 && <ProgressBar value={usage.doctorsCount} max={limits.maxDoctors ?? 2} size="md" color="primary" />}
             </div>
 
             {/* Staff */}
             <div className="p-4 rounded-xl border border-border/70 bg-surface-alt/30 space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold text-text">
                 <span>Operational Staff</span>
-                <span className="font-bold text-accent">{usage.staffCount} / {limits.maxStaff || 5}</span>
+                <span className="font-bold text-accent">{usage.staffCount} / {limits.maxStaff ?? 5}</span>
               </div>
-              <ProgressBar value={usage.staffCount} max={limits.maxStaff || 5} size="md" color="primary" />
+              {(limits.maxStaff ?? 5) > 0 && <ProgressBar value={usage.staffCount} max={limits.maxStaff ?? 5} size="md" color="primary" />}
             </div>
 
             {/* Patients */}
             <div className="p-4 rounded-xl border border-border/70 bg-surface-alt/30 space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold text-text">
                 <span>Patient Records</span>
-                <span className="font-bold text-accent">{usage.patientsCount} / {(limits.maxPatients || 500).toLocaleString()}</span>
+                <span className="font-bold text-accent">{usage.patientsCount} / {(limits.maxPatients ?? 500).toLocaleString()}</span>
               </div>
-              <ProgressBar value={usage.patientsCount} max={limits.maxPatients || 500} size="md" color="primary" />
+              {(limits.maxPatients ?? 500) > 0 && <ProgressBar value={usage.patientsCount} max={limits.maxPatients ?? 500} size="md" color="primary" />}
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Commercial Plans Matrix */}
+      <ProductQuotePanel organizationId={effectiveOrgId} busy={isProcessing || !!pendingOrderId} onPurchase={(plan, quote) => { void handleInitiateCheckout(plan, false, quote); }} />
       <Card className="border border-border/80 shadow-xs">
         <CardHeader className="border-b border-border/60 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>

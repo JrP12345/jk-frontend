@@ -48,8 +48,14 @@ function mutationFingerprint(config: { url?: string; method?: string; data?: unk
 // authorization context. Tenant scope is derived from the authenticated session.
 api.interceptors.request.use((config) => {
   const path = config.url || "";
+  // The dispensing workspace owns a deliberate, recoverable operation key.
+  // Never mint a replacement here on a retry or token refresh.
+  if (config.method === "post" && path.split("?")[0] === "/pharmacy/dispense" &&
+      !/^[a-zA-Z0-9_-]{8,100}$/.test(String(config.headers.get("Idempotency-Key") || ""))) {
+    throw new Error("A stable dispense reference is required before submitting.");
+  }
   if (["/auth/logout", "/auth/login"].includes(path)) pendingMutations.clear();
-  if (config.method === "post" && (path === "/billing/checkout/consolidate" || /^\/invoices\/[^/]+\/payments$/.test(path))) {
+  if (config.method === "post" && (path === "/billing/checkout/consolidate" || /^\/invoices\/[^/]+\/payments$/.test(path)) || config.method === "put" && /^\/invoices\/[^/]+\/pay$/.test(path)) {
     const fingerprint = mutationFingerprint(config);
     let key = pendingMutations.get(fingerprint);
     if (!key) {
@@ -84,6 +90,7 @@ api.interceptors.response.use(
       requestPath !== "/auth/logout" &&
       requestPath !== "/auth/login" &&
       requestPath !== "/auth/login/workspace" &&
+      !requestPath?.startsWith("/pharmacy/onboarding/") &&
       !requestPath?.startsWith("/auth/passkeys/login/") &&
       requestPath !== "/auth/login/verify-2fa"
     ) {
