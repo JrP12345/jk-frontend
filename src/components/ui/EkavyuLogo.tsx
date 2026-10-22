@@ -31,7 +31,9 @@ export function EkavyuIcon({ className = "h-10 w-10" }: { className?: string }) 
   return (
     <div className={cn("relative inline-flex shrink-0 items-center justify-center", className)}>
       <LoadingImage
-        src="/ekavyu-leaf.png?v=website-1"
+        src="/ekavyu-leaf-160.webp?v=website-2"
+        srcSet="/ekavyu-leaf-96.webp?v=website-2 96w, /ekavyu-leaf-160.webp?v=website-2 160w, /ekavyu-leaf-240.webp?v=website-2 240w"
+        sizes="80px"
         alt="Ekavyu"
         width={512}
         height={512}

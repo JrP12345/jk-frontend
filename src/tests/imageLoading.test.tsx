@@ -18,6 +18,8 @@ describe("Shared image loading", () => {
     const { rerender } = render(<LoadingImage src="/logo.png" alt="Clinic" width={48} height={48} fallback={<span>Unavailable</span>} onLoad={onLoad} />);
     const image = screen.getByRole("img", { name: "Clinic" });
     expect(image).toHaveClass("skeleton-shimmer");
+    expect(image).toHaveClass("text-transparent");
+    expect(image).not.toHaveAttribute("style");
     expect(image).toHaveAttribute("width", "48");
     expect(screen.queryByText("Unavailable")).not.toBeInTheDocument();
     fireEvent.load(image);

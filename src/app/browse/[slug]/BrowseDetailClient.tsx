@@ -1153,7 +1153,7 @@ export default function BrowseDetailClient({
   if (bookingOnly && !selectedDoctor && !ticketModalOpen) return <div role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">Preparing available appointments at {location.name}…</div>;
 
   return (
-    <div className={bookingOnly ? "" : "min-h-screen bg-surface-alt pt-16 pb-24 font-sans text-text antialiased"}>
+    <div role={bookingOnly ? undefined : "main"} className={bookingOnly ? "" : "min-h-screen bg-surface-alt pt-16 pb-24 font-sans text-text antialiased"}>
       {!bookingOnly && <>
       <MarketplaceNavbar brand={{ name: hasMultipleLocations(location) ? location.organization?.name || location.name : location.name, logoUrl: location.organization?.logo_url || location.logo_url, href: locationPath(location) }} />
 
@@ -1183,7 +1183,7 @@ export default function BrowseDetailClient({
           {/* Visual Cover Header */}
           {hasCoverImage && <div className="h-24 sm:h-40 w-full relative bg-surface-alt overflow-hidden">
             {location.image_url ? (
-              <LoadingImage src={location.image_url} alt={location.name} className="w-full h-full object-cover" />
+              <LoadingImage src={location.image_url} alt={location.name} fetchPriority="high" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-surface border-b border-border/40">
                 <Building2 className="w-8 h-8 text-text-muted" strokeWidth={1.75} aria-hidden="true" />
@@ -1361,7 +1361,7 @@ export default function BrowseDetailClient({
                 >
                   <div className="space-y-3.5">
                     {/* Header Avatar & Details */}
-                    <Link href={doctorPath(doc, location)} className="flex items-start gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" aria-label={`View Dr. ${doc.name.replace(/^Dr\.?\s*/i, "")}'s profile`}>
+                    <Link href={doctorPath(doc, location)} className="flex items-start gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
                       <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
                         {doc.image_url ? (
                           <LoadingImage src={doc.image_url} alt={doc.name} loading="lazy" className="w-full h-full object-cover rounded-xl" />

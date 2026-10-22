@@ -30,8 +30,8 @@ function ImageSource({ fallback, loadingEffect = true, className, style, alt = "
       decoding={decoding}
       data-image-state={status}
       aria-busy={status === "loading" || undefined}
-      className={cn(className, loadingEffect && (status === "loading" ? "skeleton-shimmer" : "animate-fade-in"))}
-      style={loadingEffect && status === "loading" ? { ...style, color: "transparent" } : style}
+      className={cn(className, loadingEffect && (status === "loading" ? "skeleton-shimmer text-transparent" : "animate-fade-in"))}
+      style={style}
       onLoad={(event) => { setStatus("loaded"); onLoad?.(event); }}
       onError={(event) => { setStatus("error"); onError?.(event); }}
     />

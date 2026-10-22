@@ -22,7 +22,6 @@ const sizeConfig: Record<
   {
     container: string;
     strokeWidth: number;
-    dotSize: number;
     barHeight: string;
     labelClass: string;
     secondaryClass: string;
@@ -32,7 +31,6 @@ const sizeConfig: Record<
   xs: {
     container: "h-3.5 w-3.5",
     strokeWidth: 3.5,
-    dotSize: 1.5,
     barHeight: "h-2.5",
     labelClass: "text-[11px]",
     secondaryClass: "text-[9px]",
@@ -41,7 +39,6 @@ const sizeConfig: Record<
   sm: {
     container: "h-4 w-4",
     strokeWidth: 3.2,
-    dotSize: 2,
     barHeight: "h-3",
     labelClass: "text-xs",
     secondaryClass: "text-[10px]",
@@ -50,7 +47,6 @@ const sizeConfig: Record<
   md: {
     container: "h-6 w-6",
     strokeWidth: 3,
-    dotSize: 2.8,
     barHeight: "h-4",
     labelClass: "text-xs sm:text-sm",
     secondaryClass: "text-[11px]",
@@ -59,7 +55,6 @@ const sizeConfig: Record<
   lg: {
     container: "h-10 w-10",
     strokeWidth: 2.8,
-    dotSize: 3.5,
     barHeight: "h-6",
     labelClass: "text-sm",
     secondaryClass: "text-xs",
@@ -68,7 +63,6 @@ const sizeConfig: Record<
   xl: {
     container: "h-14 w-14",
     strokeWidth: 2.6,
-    dotSize: 4.5,
     barHeight: "h-8",
     labelClass: "text-sm sm:text-base font-semibold",
     secondaryClass: "text-xs sm:text-sm",
@@ -77,7 +71,6 @@ const sizeConfig: Record<
   "2xl": {
     container: "h-20 w-20",
     strokeWidth: 2.4,
-    dotSize: 5.5,
     barHeight: "h-12",
     labelClass: "text-base sm:text-lg font-semibold",
     secondaryClass: "text-xs sm:text-sm",
@@ -101,16 +94,11 @@ const Spinner = memo(function Spinner({
     // ── Variant: 3 Harmonic Wave Dots ──
     if (variant === "dots") {
       return (
-        <div className={cn("inline-flex items-center gap-1 shrink-0", color)} aria-hidden="true">
+        <div data-size={size in sizeConfig ? size : "md"} className={cn("inline-flex items-center gap-1 shrink-0", "ekavyu-spinner-dots", color)} aria-hidden="true">
           {[0, 1, 2].map((idx) => (
             <span
               key={idx}
               className="rounded-full bg-current animate-dot-bounce"
-              style={{
-                width: `${cfg.dotSize * 1.5}px`,
-                height: `${cfg.dotSize * 1.5}px`,
-                animationDelay: `${idx * 0.16}s`,
-              }}
             />
           ))}
         </div>
@@ -120,15 +108,11 @@ const Spinner = memo(function Spinner({
     // ── Variant: Harmonic Equalizer Wave Bars ──
     if (variant === "bars") {
       return (
-        <div className={cn("inline-flex items-center gap-1 shrink-0", cfg.barHeight, color)} aria-hidden="true">
+        <div className={cn("inline-flex items-center gap-1 shrink-0", cfg.barHeight, "ekavyu-spinner-bars", color)} aria-hidden="true">
           {[0, 1, 2, 3].map((idx) => (
             <span
               key={idx}
               className="w-1 rounded-full bg-current animate-wave-bar"
-              style={{
-                height: "100%",
-                animationDelay: `${idx * 0.15}s`,
-              }}
             />
           ))}
         </div>

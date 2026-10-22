@@ -604,7 +604,7 @@ export default function BrowseClient({
 
                     {/* Single Doctor Highlight or Multi-Doctor Preview */}
                     {hasSingleDoctor && singleDoctor ? (
-                      <Link href={doctorPath(singleDoctor, location)} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block bg-surface-alt/70 p-3 rounded-xl text-xs mb-3 space-y-1 hover:bg-primary-500/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                      <Link href={doctorPath(singleDoctor, location)} prefetch={false} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block bg-surface-alt/70 p-3 rounded-xl text-xs mb-3 space-y-1 hover:bg-primary-500/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="text-[11px] font-medium text-text-muted">
                             {"Practicing Specialist"}
@@ -630,7 +630,7 @@ export default function BrowseClient({
                         </div>
                         <div className="space-y-1">
                           {previewDoctors.slice(0, 2).map((doc) => (
-                            <Link key={doc.id} href={doctorPath(doc, location)} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block space-y-0.5 rounded-lg text-xs hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                            <Link key={doc.id} href={doctorPath(doc, location)} prefetch={false} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block space-y-0.5 rounded-lg text-xs hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
                               <span className="block font-medium text-text break-words">
                                 Dr. {doc.name.replace(/^Dr\.?\s*/i, "")}
                               </span>

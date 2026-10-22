@@ -290,7 +290,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center px-4 py-20 bg-surface-alt relative font-sans text-text animate-page-enter">
+    <main className="min-h-dvh flex flex-col items-center justify-center px-4 py-20 bg-surface-alt relative font-sans text-text animate-page-enter">
       {/* Background ambient glow & subtle pattern */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 brand-wash" />
@@ -777,6 +777,6 @@ export default function LoginPage() {
           </form>
         </Modal>
       )}
-    </div>
+    </main>
   );
 }

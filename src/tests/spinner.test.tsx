@@ -36,6 +36,7 @@ describe("Spinner Component Tests", () => {
     variants.forEach((variant) => {
       const { unmount } = render(<Spinner variant={variant} label={`Variant ${variant}`} />);
       expect(screen.getByText(`Variant ${variant}`)).toBeInTheDocument();
+      expect(screen.getByRole("status").querySelector("[style]")).toBeNull();
       unmount();
     });
   });

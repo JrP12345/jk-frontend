@@ -429,7 +429,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {user ? (
               <Dropdown
                 trigger={
-                  <button type="button" aria-label="Account menu" className="min-h-11 min-w-11 flex items-center gap-2 hover:bg-surface-hover p-1 pr-1.5 sm:pr-2 rounded-full transition-colors shrink-0 cursor-pointer">
+                  <button type="button" aria-label={`Account menu: ${user.name}, ${user.role}`} className="min-h-11 min-w-11 flex items-center gap-2 hover:bg-surface-hover p-1 pr-1.5 sm:pr-2 rounded-full transition-colors shrink-0 cursor-pointer">
                     <Avatar src={user.image_url} name={user.name} size="sm" status="online" />
                     <div className="text-left hidden sm:block">
                       <p className="text-xs font-semibold text-text leading-tight truncate max-w-[120px]">{user.name}</p>

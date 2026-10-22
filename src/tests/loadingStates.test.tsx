@@ -38,6 +38,18 @@ describe("Loading regions", () => {
 });
 
 describe("Skeleton dimensions", () => {
+  it("renders shared design sizes without CSP-blocked inline styles", () => {
+    const { container } = render(<Skeleton width="65%" height="2rem" />);
+    expect(container.firstElementChild).toHaveAttribute("data-width", "65%");
+    expect(container.firstElementChild).toHaveAttribute("data-height", "2rem");
+    expect(container.firstElementChild).not.toHaveAttribute("style");
+  });
+
+  it("preserves custom dimensions outside the shared design sizes", () => {
+    const { container } = render(<Skeleton width="123px" height="7.125rem" />);
+    expect(container.firstElementChild).toHaveStyle({ width: "123px", height: "7.125rem" });
+  });
+
   it("allows utility sizes to define the intended layout", () => {
     const { container } = render(<Skeleton className="h-32 w-72" />);
     const element = container.firstElementChild as HTMLElement;
@@ -57,7 +69,9 @@ describe("Skeleton dimensions", () => {
 
   it("respects explicit dimensions and caller style overrides", () => {
     const { container } = render(<Skeleton width="65%" height="2rem" style={{ height: "3rem" }} />);
-    expect(container.firstElementChild).toHaveStyle({ width: "65%", height: "3rem" });
+    expect(container.firstElementChild).toHaveAttribute("data-width", "65%");
+    expect(container.firstElementChild).toHaveAttribute("data-height", "2rem");
+    expect(container.firstElementChild).toHaveStyle({ height: "3rem" });
   });
 });
 

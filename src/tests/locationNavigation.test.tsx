@@ -109,7 +109,7 @@ describe("Dashboard location navigation", () => {
     expect(continueWork).toHaveBeenCalledOnce();
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
     expect(router.replace).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Account menu:/ }));
     expect(screen.getAllByRole("menuitem").map(item => item.textContent?.trim())).toEqual(["Profile & Settings", "Account security", "Sign out"]);
     fireEvent.click(screen.getByRole("menuitem", { name: "Account security" }));
     expect(router.push).toHaveBeenCalledWith("/dashboard/security");

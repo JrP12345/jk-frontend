@@ -138,7 +138,7 @@ export function MobileBottomNav({
                     ? "text-accent dark:text-accent font-bold"
                     : "text-text-muted hover:text-text hover:bg-surface-hover/50"
                 )}
-                aria-label="Open Full Navigation Menu"
+                aria-label="Menu: Open Full Navigation Menu"
                 aria-expanded={isMenuOpen}
                 aria-controls="dashboard-navigation"
               >

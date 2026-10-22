@@ -14,6 +14,7 @@ async function appIcon(markSource, name, size, background, scale = 0.92) {
 }
 
 async function main() {
+  if (process.argv.includes('--website-only')) return websiteMarks();
   const metadata = await sharp(source).metadata();
   if (!metadata.hasAlpha) throw new Error('The source logo must retain transparency.');
   // The supplied image has transparent margins and a few nearly invisible
@@ -53,7 +54,16 @@ async function main() {
   await appIcon(markSource, 'app-icon-180.png', 180, '#F7F7F2', 0.78);
   // Fit the actual leaf silhouette inside the maskable safe circle, with margin.
   await appIcon(markSource, 'app-icon-maskable-512.png', 512, '#F7F7F2', Math.min(0.78, 0.39 / radius));
+  await websiteMarks();
   console.log('Generated Ekavyu UI, favicon, Apple and PWA assets from public/image.png.');
+}
+
+async function websiteMarks() {
+  for (const size of [96, 160, 240]) {
+    await sharp(path.join(publicDir, 'ekavyu-leaf.png'))
+      .resize(size, size).webp({ quality: 88 })
+      .toFile(path.join(publicDir, `ekavyu-leaf-${size}.webp`));
+  }
 }
 
 main().catch(error => { console.error(error); process.exitCode = 1; });

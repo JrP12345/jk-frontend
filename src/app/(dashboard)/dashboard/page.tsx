@@ -236,7 +236,7 @@ function OperationalDashboard() {
       <header className={styles.header}>
         <div><h1>Welcome back, {cleanUserName}</h1><p>{roleBadgeLabel} · {subtitleText}</p></div>
         <div className={styles.headerActions}>
-          {hasAnyPermission(user, "MANAGE_APPOINTMENTS") && <Button size="sm" aria-label="New Booking" className={styles.primaryAction} onClick={() => router.push("/dashboard/appointments")}><Plus className="h-4 w-4" /><span className={styles.wideLabel}>New Booking</span><span className={styles.shortLabel}>Book</span></Button>}
+          {hasAnyPermission(user, "MANAGE_APPOINTMENTS") && <Button size="sm" aria-label="Book: New Booking" className={styles.primaryAction} onClick={() => router.push("/dashboard/appointments")}><Plus className="h-4 w-4" /><span className={styles.wideLabel}>New Booking</span><span className={styles.shortLabel}>Book</span></Button>}
           {isConsumer && <Button size="sm" aria-label="Book Consultation" className={styles.primaryAction} onClick={() => router.push("/browse")}><CalendarPlus className="h-4 w-4" /><span className={styles.wideLabel}>Book Consultation</span><span className={styles.shortLabel}>Book</span></Button>}
           <Button variant="outline" size="sm" aria-label="Refresh" className={styles.iconAction} onClick={fetchDashboardData} disabled={isRefreshing} loading={isRefreshing}><RotateCw className="h-4 w-4" /></Button>
         </div>
@@ -260,6 +260,7 @@ function OperationalDashboard() {
       )}
 
       {/* 3. METRICS & KPI CARDS */}
+      {!loadError && <h2 className="sr-only">Practice summary</h2>}
       {!loadError && <DashboardStatCards
         role={user.role}
         canViewOpsDashboard={canViewOpsDashboard}

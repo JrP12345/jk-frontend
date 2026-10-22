@@ -265,7 +265,7 @@ describe("responsive controls", () => {
   ])("keeps the %s mobile destination available", (role, label, href) => {
     render(<MobileBottomNav user={{ role }} pathname="/dashboard" onOpenMenu={vi.fn()} isMenuOpen={false} />);
     expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
-    expect(screen.getByRole("button", { name: "Open Full Navigation Menu" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Menu: Open Full Navigation Menu" })).toBeInTheDocument();
   });
 
   it("bounds a wide popup at 320px and opens above when there is more space", () => {

@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { cn } from "./utils";
+import { skeletonSizes } from "./skeletonSizes";
 
 export interface SkeletonProps {
   width?: string;
@@ -27,12 +28,17 @@ const Skeleton = memo(function Skeleton({
   className = "",
   style,
 }: SkeletonProps) {
+  const customWidth = width !== undefined && !skeletonSizes.has(width);
+  const customHeight = height !== undefined && !skeletonSizes.has(height);
   return (
     <div
       aria-hidden="true"
-      style={{ ...(width === undefined ? {} : { width }), ...(height === undefined ? {} : { height }), ...style }}
+      data-width={customWidth ? undefined : width}
+      data-height={customHeight ? undefined : height}
+      style={style || customWidth || customHeight ? { ...(customWidth ? { width } : {}), ...(customHeight ? { height } : {}), ...style } : undefined}
       className={cn(
         "skeleton-shimmer max-w-full min-w-0 select-none",
+        "ekavyu-skeleton-dimension",
         width === undefined && !/(?:^|\s)!?(?:w|size)-/.test(className) && "w-full",
         height === undefined && !/(?:^|\s)!?(?:h|size)-/.test(className) && "h-4",
         roundedMap[rounded],
