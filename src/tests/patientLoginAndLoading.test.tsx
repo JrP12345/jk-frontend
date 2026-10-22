@@ -20,11 +20,42 @@ const patient = { id: "patient-1", role: "patient" as const, name: "Patient", em
 beforeEach(() => {
   vi.clearAllMocks();
   HTMLElement.prototype.scrollIntoView = vi.fn();
-  useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: false });
+  useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: false, authError: null });
 });
 afterEach(() => { vi.restoreAllMocks(); window.history.replaceState(null, "", "/login"); });
 
 describe("Patient identifier sign in", () => {
+  it.each([
+    { success: true, data: { success: false } },
+    { success: false },
+  ])("does not announce OTP delivery for a rejected result %j", async (data) => {
+    const post = vi.spyOn(api, "post").mockResolvedValueOnce({ data });
+    render(<LoginPage />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Email or mobile number" }), { target: { value: patient.email } });
+    fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Verification code could not be sent", variant: "error" })));
+    expect(screen.getByRole("textbox", { name: "Email or mobile number" })).toHaveValue(patient.email);
+    expect(screen.queryByRole("textbox", { name: /6-Digit Verification OTP/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send Verification OTP" })).toBeEnabled();
+    expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }));
+    expect(post).toHaveBeenCalledOnce();
+  });
+
+  it("preserves the entered OTP and explains a timeout without blaming the code or retrying", async () => {
+    const post = vi.spyOn(api, "post").mockResolvedValueOnce({ data: { data: { success: true } } }).mockRejectedValueOnce({ code: "ECONNABORTED" });
+    render(<LoginPage />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Email or mobile number" }), { target: { value: patient.email } });
+    fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+    const input = await screen.findByRole("textbox", { name: /6-Digit Verification OTP/ });
+    fireEvent.change(input, { target: { value: "482910" } });
+    fireEvent.click(screen.getByRole("button", { name: "Verify & Sign In" }));
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Verification Failed", description: expect.stringMatching(/temporarily unavailable/) })));
+    expect(input).toHaveValue("482910");
+    expect(screen.getByRole("button", { name: "Verify & Sign In" })).toBeEnabled();
+    expect(post).toHaveBeenCalledTimes(2);
+    expect(replace).not.toHaveBeenCalled();
+  });
+
   it("shows the shared phone country selector before typing and omits the footer badges", () => {
     render(<LoginPage />);
     expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("+91");

@@ -3,6 +3,7 @@ import { useAuthStore } from "../store/authStore";
 import { useModuleStore } from "../store/moduleStore";
 import { hasRoutePermission } from "../lib/routePermissions";
 import api from "../lib/api";
+import { AxiosError } from "axios";
 import { getDisabledRouteModule } from "../lib/routeModules";
 
 describe("Frontend Auth Store & RBAC Integration Tests", () => {
@@ -25,6 +26,7 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
       isAuthenticated: false,
       isLoading: false,
       isLoggingOut: false,
+      authError: null,
     });
     useModuleStore.setState({
       modules: [],
@@ -32,6 +34,58 @@ describe("Frontend Auth Store & RBAC Integration Tests", () => {
       isLoading: false,
       error: null,
     });
+  });
+
+  it.each([{ code: "ECONNABORTED" }, { code: "ERR_NETWORK" }, ...[403, 429, 500, 502, 503, 504].map(status => ({ response: { status } }))])("suspends authority without destroying a session during verification failure %j", async (error) => {
+    useAuthStore.getState().login({ id: "doctor-1", name: "Doctor", email: "doctor@test", role: "doctor", organization_id: "org-a" });
+    vi.spyOn(api, "get").mockRejectedValueOnce(error);
+    const post = vi.spyOn(api, "post");
+    await useAuthStore.getState().checkAuth();
+    expect(useAuthStore.getState()).toMatchObject({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: false, authError: expect.any(String) });
+    expect(document.cookie).toContain("ekavyu_session=1");
+    expect(post).not.toHaveBeenCalled();
+    vi.mocked(api.get).mockResolvedValueOnce({ data: { data: { user: { id: "doctor-1", name: "Doctor", email: "doctor@test", role: "doctor", organization_id: "org-a" } } } });
+    await useAuthStore.getState().checkAuth();
+    expect(useAuthStore.getState()).toMatchObject({ isAuthenticated: true, authError: null, isLoading: false });
+  });
+
+  it("clears the session indicator only when verification confirms a rejected session", async () => {
+    document.cookie = "ekavyu_session=1; path=/";
+    vi.spyOn(api, "get").mockRejectedValueOnce({ response: { status: 401 } });
+    await useAuthStore.getState().checkAuth();
+    expect(useAuthStore.getState()).toMatchObject({ user: null, isAuthenticated: false, isLoading: false, authError: null });
+    expect(document.cookie).not.toContain("ekavyu_session=1");
+  });
+
+  it("suspends private access on an actual refresh outage and recovers through verified auth", async () => {
+    const originalAdapter = api.defaults.adapter;
+    const user = { id: "doctor-1", name: "Doctor", email: "doctor@test", role: "doctor" as const, organization_id: "org-a" };
+    useAuthStore.getState().login(user);
+    api.defaults.adapter = async config => {
+      const status = config.url === "/auth/refresh" ? 503 : 401;
+      throw new AxiosError("Unavailable", "ERR_BAD_RESPONSE", config, undefined, { config, status, statusText: "Error", headers: {}, data: {} });
+    };
+    const post = vi.spyOn(api, "post");
+    try {
+      await useAuthStore.getState().checkAuth();
+      expect(useAuthStore.getState()).toMatchObject({ user: null, isAuthenticated: false, isLoading: false, authError: expect.any(String) });
+      expect(document.cookie).toContain("ekavyu_session=1");
+      expect(post).toHaveBeenCalledWith("/auth/refresh");
+      expect(post).not.toHaveBeenCalledWith("/auth/logout");
+      api.defaults.adapter = async config => ({ config, status: 200, statusText: "OK", headers: {}, data: { data: { user } } });
+      await useAuthStore.getState().checkAuth();
+      expect(useAuthStore.getState()).toMatchObject({ user: expect.objectContaining({ id: user.id }), isAuthenticated: true, authError: null });
+    } finally { api.defaults.adapter = originalAdapter; }
+  });
+
+  it("does not restore private access from an auth read invalidated by an outage", async () => {
+    let resolve!: (value: unknown) => void;
+    vi.spyOn(api, "get").mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    const read = useAuthStore.getState().checkAuth();
+    window.dispatchEvent(new Event("auth-unavailable"));
+    resolve({ data: { data: { user: { id: "stale", name: "Stale", role: "doctor" } } } });
+    await read;
+    expect(useAuthStore.getState()).toMatchObject({ user: null, isAuthenticated: false, isLoading: false, authError: expect.any(String) });
   });
 
   it("hides authenticated state immediately and sends one logout request even if it fails", async () => {

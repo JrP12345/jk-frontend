@@ -62,6 +62,7 @@ export default async function RootLayout({
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <script
+          id="ekavyu-theme-bootstrap"
           nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var m=localStorage.getItem("ekavyu-mode")||"light";if(m==="system"){m=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}if(m!=="dark"){m="light";}var d=document.documentElement;d.setAttribute("data-mode",m);d.classList.toggle("dark",m==="dark");d.style.colorScheme=m;}catch(e){}})();`,

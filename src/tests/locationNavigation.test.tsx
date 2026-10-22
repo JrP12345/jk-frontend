@@ -21,6 +21,7 @@ vi.mock("next/dynamic", () => ({ default: () => () => null }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  useAuthStore.setState({ authError: null });
   router.pathname = "/dashboard";
   vi.spyOn(api, "get").mockResolvedValue({ data: { data: [] } });
   vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
@@ -31,6 +32,21 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("Dashboard location navigation", () => {
+  it("hides private children during an outage and re-verifies the session before recovery", async () => {
+    useAuthStore.setState({ user: null, isAuthenticated: false, authError: "Session verification is unavailable." });
+    const mounted = vi.fn();
+    function PrivateChild() { mounted(); return <p>Verified workspace</p>; }
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}><ThemeProvider><ToastProvider><DashboardLayout><PrivateChild /></DashboardLayout></ToastProvider></ThemeProvider></QueryClientProvider>);
+    expect(screen.getByRole("alert")).toHaveTextContent("Unable to verify your session");
+    expect(mounted).not.toHaveBeenCalled();
+    expect(router.replace).not.toHaveBeenCalled();
+    vi.mocked(api.get).mockResolvedValueOnce({ data: { data: { user: { id: "patient", name: "Patient", email: "patient@test", role: "patient" } } } });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Verified workspace")).toBeInTheDocument();
+    expect(api.get).toHaveBeenCalledWith("/auth/me");
+    expect(useAuthStore.getState().authError).toBeNull();
+    expect(router.replace).not.toHaveBeenCalled();
+  });
   it("does not mount a clinical child in an independent pharmacy workspace", async () => {
     router.pathname = "/dashboard/patients";
     useAuthStore.setState({ user: { id: "owner", name: "Owner", email: "owner@example.test", role: "admin", organization_id: "organization", workspaceProfile: "pharmacy", permissions: ["MANAGE_ORGANIZATION"] } });

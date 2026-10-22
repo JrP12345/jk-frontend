@@ -23,6 +23,9 @@ const nextConfig = {
   // Resolve metadata before sending headers so missing profiles and upstream
   // failures retain their HTTP status, with the same content for every visitor.
   htmlLimitedBots: /.*/,
+  async redirects() {
+    return [{ source: "/favicon.ico", destination: "/favicon-32.png?v=brand-3", permanent: false }];
+  },
   async rewrites() {
     const backendUrl =
       process.env.BACKEND_INTERNAL_URL ||

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore, type User } from "@/store/authStore";
 import api from "@/lib/api";
+import { apiErrorMessage } from "@/lib/apiError";
 import PasskeySignIn from "@/components/auth/PasskeySignIn";
 import LoginWorkspacePicker from "@/components/auth/LoginWorkspacePicker";
 import type { WorkspaceSelection } from "@/types/workspace";
@@ -141,6 +142,7 @@ export default function LoginPage() {
     setOtpAction("sending");
     try {
       const res = await api.post("/auth/otp/request", { ...target, purpose: "authentication" });
+      if (res.data?.success === false || res.data?.data?.success === false) throw new Error("Verification code delivery is unavailable. Please try again shortly.");
       setOtpTarget(target);
       setOtpSent(true);
       setResendTimer(30);
@@ -157,7 +159,7 @@ export default function LoginPage() {
       triggerShake();
       toast({
         title: "Verification code could not be sent",
-        description: err.response?.data?.message || "Please try again.",
+        description: apiErrorMessage(err, "Please try again."),
         variant: "error",
       });
     } finally {
@@ -187,7 +189,7 @@ export default function LoginPage() {
       triggerShake();
       toast({
         title: "Verification Failed",
-        description: err.response?.data?.message || "Invalid OTP code",
+        description: apiErrorMessage(err, "The code could not be verified. Please try again."),
         variant: "error",
       });
     } finally {
@@ -251,7 +253,7 @@ export default function LoginPage() {
       triggerShake();
       toast({
         title: "Login Failed",
-        description: err.response?.data?.message || "Invalid credentials. Please verify your email and password.",
+        description: apiErrorMessage(err, "Sign-in could not be completed. Please try again."),
         variant: "error",
         duration: 4000,
       });
@@ -278,7 +280,7 @@ export default function LoginPage() {
     } catch (err: any) {
       toast({
         title: "Request Failed",
-        description: err.response?.data?.message || "Unable to process recovery request. Please try again later.",
+        description: apiErrorMessage(err, "Unable to process recovery request. Please try again later."),
         variant: "error",
         duration: 4000,
       });

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import api from "@/lib/api";
+import { apiErrorKind, SESSION_UNAVAILABLE_MESSAGE } from "@/lib/apiError";
 import { useLocationStore } from "./locationStore";
 import { useModuleStore } from "./moduleStore";
 import { authScopeKey } from "@/lib/authScope";
@@ -33,6 +34,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isLoggingOut: boolean;
+  authError: string | null;
 
   // Actions
   checkAuth: (options?: { allowAnonymous?: boolean }) => Promise<void>;
@@ -63,7 +65,7 @@ async function changeWorkspace(loadUser: () => Promise<User>) {
   if (changingWorkspace || useAuthStore.getState().isLoggingOut) throw new Error("A session change is already in progress");
   changingWorkspace = true;
   authRevision++;
-  useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: true });
+  useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: true, authError: null });
   const revision = authRevision;
   try {
     const user = normalizeUser(await loadUser());
@@ -75,10 +77,10 @@ async function changeWorkspace(loadUser: () => Promise<User>) {
         else localStorage.removeItem("ekavyu_active_org_id");
       }
     } catch { /* Server session remains authoritative when storage is unavailable. */ }
-    useAuthStore.setState({ user, isAuthenticated: true, isLoading: false });
+    useAuthStore.setState({ user, isAuthenticated: true, isLoading: false, authError: null });
   } catch (error) {
     // A failed request may have changed the HttpOnly cookie; never retain the old workspace.
-    if (revision === authRevision) useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
+    if (revision === authRevision) useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false, authError: apiErrorKind(error) === "unauthenticated" ? null : SESSION_UNAVAILABLE_MESSAGE });
     throw error;
   } finally {
     changingWorkspace = false;
@@ -90,15 +92,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   isLoading: true, // Initially true so we don't flash login page on load
   isLoggingOut: false,
+  authError: null,
 
   checkAuth: async (options) => {
     if (get().isLoggingOut || changingWorkspace) return;
     if (options?.allowAnonymous && typeof document !== "undefined" && !document.cookie.split("; ").includes("ekavyu_session=1") && !get().user) {
-      set({ isLoading: false });
+      set({ isLoading: false, authError: null });
       return;
     }
     const revision = authRevision;
     const read = ++authRead;
+    if (!get().user) set({ isLoading: true });
     try {
       const res = await api.get("/auth/me");
       if (get().isLoggingOut || revision !== authRevision || read !== authRead) return;
@@ -107,7 +111,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (typeof window !== "undefined") {
           document.cookie = "ekavyu_session=guest; path=/; max-age=604800; SameSite=Lax";
         }
-        set({ user: null, isAuthenticated: false, isLoading: false });
+        set({ user: null, isAuthenticated: false, isLoading: false, authError: null });
         return;
       }
       if (typeof window !== "undefined") {
@@ -119,13 +123,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           } catch { /* Browser preferences do not determine the verified session. */ }
         }
       }
-      set({ user: user ? normalizeUser(user) : null, isAuthenticated: Boolean(user), isLoading: false });
-    } catch {
+      set({ user: user ? normalizeUser(user) : null, isAuthenticated: Boolean(user), isLoading: false, authError: null });
+    } catch (error) {
       if (get().isLoggingOut || revision !== authRevision || read !== authRead) return;
-      if (typeof window !== "undefined" && !document.cookie.split("; ").includes("ekavyu_session=guest")) {
+      const rejected = apiErrorKind(error) === "unauthenticated";
+      if (rejected && typeof window !== "undefined" && !document.cookie.split("; ").includes("ekavyu_session=guest")) {
         document.cookie = "ekavyu_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       }
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      // Fail closed without destroying a potentially valid server session.
+      set({ user: null, isAuthenticated: false, isLoading: false, authError: rejected ? null : SESSION_UNAVAILABLE_MESSAGE });
     }
   },
 
@@ -133,7 +139,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     authRevision++;
     user = normalizeUser(user);
     if ((user?.role as string) === "guest") {
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      set({ user: null, isAuthenticated: false, isLoading: false, authError: null });
       return;
     }
     if (typeof window !== "undefined") {
@@ -145,13 +151,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         } catch { /* Browser preferences do not determine the verified session. */ }
       }
     }
-    set({ user, isAuthenticated: true, isLoading: false, isLoggingOut: false });
+    set({ user, isAuthenticated: true, isLoading: false, isLoggingOut: false, authError: null });
   },
 
   logout: async () => {
     if (get().isLoggingOut) return;
     authRevision++;
-    set({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: true });
+    set({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: true, authError: null });
     const revision = authRevision;
     clearRecentTracker();
     aiSDK.cancelAllStreams();
@@ -176,7 +182,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
         try { sessionStorage.clear(); } catch { /* Private in-memory state was already cleared. */ }
       }
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      set({ user: null, isAuthenticated: false, isLoading: false, authError: null });
     }
   },
 
@@ -219,12 +225,12 @@ if (typeof window !== "undefined") {
     if (e.key === "ekavyu_active_org_id") {
       // Re-verify auth when organization changes across tabs
       authRevision++;
-      useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: true });
+      useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: true, authError: null });
       useAuthStore.getState().checkAuth();
     }
     if (e.key === "ekavyu_logout_at") {
       authRevision++;
-      useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: true });
+      useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false, isLoggingOut: true, authError: null });
       clearRecentTracker();
       window.dispatchEvent(new Event("auth-logout"));
       window.location.replace("/browse?logout=1");
@@ -236,6 +242,11 @@ if (typeof window !== "undefined") {
   // API logout first leaves the stale HttpOnly cookies in place long enough for
   // proxy middleware to bounce `/login` back to `/dashboard`.
   let handlingExpiredSession = false;
+  window.addEventListener("auth-unavailable", () => {
+    if (useAuthStore.getState().isLoggingOut) return;
+    authRevision++;
+    useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false, authError: SESSION_UNAVAILABLE_MESSAGE });
+  });
   window.addEventListener("auth-expired", () => {
     if (handlingExpiredSession || useAuthStore.getState().isLoggingOut) return;
     handlingExpiredSession = true;
@@ -246,7 +257,7 @@ if (typeof window !== "undefined") {
 
     // Clear state so no component remains in its authentication loading state.
     authRevision++;
-    useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
+    useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false, authError: null });
 
     // Best-effort server-side cleanup. `/auth/logout` is excluded from refresh
     // handling, so it cannot join a failed refresh cycle.

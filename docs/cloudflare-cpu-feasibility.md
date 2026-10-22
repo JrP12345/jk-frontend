@@ -1,6 +1,13 @@
 # One focused Workers CPU feasibility pass
 
-2026-10-18; branch `cloudflare/ekavyu-dev-vinext`. Recommendation: retain existing
+Platform follow-up, 2026-10-22: the approved temporary Free staging experiment
+is complete and both Workers were removed. Actual SSR CPU exceeded Free's
+documented allowance. **Free CPU suitability: FAIL; retain Node hosting.** See
+[platform results and limitations](cloudflare-free-staging-results.md). The local
+profiling evidence and original staging plan below are historical.
+
+Profiling pass: 2026-10-18. As of 2026-10-22, the migration changes are on `main`;
+the temporary migration branch has been deleted. Recommendation: retain existing
 Node hosting until isolated Cloudflare staging measurements establish Free CPU
 headroom. Neither unavoidable framework CPU above 10 ms nor Free suitability has
 been demonstrated. No runtime optimization was justified by the samples, so no
@@ -108,7 +115,8 @@ one pass rather than make speculative edits.
   run was necessary: production code/config and the measured artifact did not
   change. The preceding scoped build/types/security evidence still applies.
 - The local preview was stopped after measurement. All prior working changes
-  remain on the same branch; nothing was pushed or deployed.
+  were preserved on the migration branch during this pass; nothing was pushed
+  or deployed during the pass. Those changes are now on `main`, as noted above.
 
 Reproduce using the existing report's loopback build/preview setup, then:
 
@@ -122,7 +130,9 @@ node scripts/profile-cloudflare-cpu.mjs before --analyze
 The script refuses to profile an artifact whose configured upstream is not the
 specified loopback fixture. Use a new label to preserve existing captures.
 
-## Controlled Free staging measurement plan — requires approval
+## Original controlled Free staging measurement plan
+
+Subsequently approved and executed on 2026-10-22; see the platform results above.
 
 1. Approve a temporary, isolated `ekavyu-cpu-probe` Worker on a confirmed Free
    account, using workers.dev only. No route/domain/DNS, no production service
@@ -166,7 +176,7 @@ specified loopback fixture. Use a new label to preserve existing captures.
 8. After recording results, remove only the approved temporary probe/fixture
    resources. Never modify ekavyu-dev or dev.ekavyu.com during this experiment.
 
-No staging configuration/resource has been created or deployed in this pass.
+No staging configuration/resource was created or deployed during this local pass.
 Free is a candidate for this controlled measurement, not yet a deployment
 recommendation. Keep the existing Node hosting path for the demo until measured.
 

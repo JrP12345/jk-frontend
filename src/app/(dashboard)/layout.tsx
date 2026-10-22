@@ -35,7 +35,7 @@ interface NavItem {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout, stopImpersonation, checkAuth, isLoading, isLoggingOut } = useAuthStore();
+  const { user, logout, stopImpersonation, checkAuth, isLoading, isLoggingOut, authError } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -147,10 +147,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [router, toast]);
 
   useEffect(() => {
-    if (!isLoading && !isLoggingOut && !user) {
+    if (!isLoading && !isLoggingOut && !user && !authError) {
       router.replace("/login");
     }
-  }, [isLoading, isLoggingOut, user, router]);
+  }, [isLoading, isLoggingOut, user, authError, router]);
 
   const handleLogout = async () => {
     await logout();
@@ -278,6 +278,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   /> : null;
 
   if (isLoggingOut) return <div role="status" aria-live="polite" className="min-h-dvh flex items-center justify-center bg-background text-text-secondary text-sm">Signing out…</div>;
+  if (!user && authError) return (
+    <main className="min-h-dvh bg-background p-6 flex items-center justify-center">
+      <div role="alert" className="max-w-md space-y-4 text-text">
+        <h1 className="text-xl font-semibold">Unable to verify your session</h1>
+        <p className="text-text-secondary">{authError}</p>
+        <Button loading={isLoading} onClick={() => void checkAuth()}>Try again</Button>
+      </div>
+    </main>
+  );
   if (user?.mfaEnrollmentRequired) return <main className="min-h-dvh bg-background p-4 sm:p-8 flex items-center"><AuthenticatorEnrollment required /></main>;
   if (isPharmacyWorkspace(user) && !pharmacyWorkspaceRoute(pathname)) return <div role="status" className="min-h-dvh flex items-center justify-center">Opening pharmacy workspace...</div>;
 

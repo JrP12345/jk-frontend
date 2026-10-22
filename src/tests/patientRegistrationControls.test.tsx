@@ -9,8 +9,22 @@ const api = vi.hoisted(() => ({ post: vi.fn() }));
 vi.mock("@/lib/api", () => ({ default: api }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 beforeEach(() => {
-  api.post.mockReset().mockResolvedValue({ data: { success: false } });
+  api.post.mockReset().mockResolvedValue({ data: { success: true, data: {} } });
   Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
+});
+
+it("keeps registration details when delivery fails inside a successful HTTP response", async () => {
+  api.post.mockResolvedValueOnce({ data: { success: true, data: { success: false } } });
+  render(<ThemeProvider><ToastProvider><RegisterPage /></ToastProvider></ThemeProvider>);
+  fireEvent.change(screen.getByLabelText("Full Name *"), { target: { value: "Test Patient" } });
+  fireEvent.change(screen.getByLabelText("Mobile Phone Number *"), { target: { value: "9876543210" } });
+  fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+  expect(await screen.findByText("Verification code could not be sent")).toBeInTheDocument();
+  expect(screen.getByLabelText("Full Name *")).toHaveValue("Test Patient");
+  expect(screen.getByLabelText("Mobile Phone Number *")).toHaveValue("9876543210");
+  expect(screen.queryByLabelText("6-Digit Verification Code *")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Send Verification OTP" })).toBeEnabled();
+  expect(api.post).toHaveBeenCalledOnce();
 });
 
 it("keeps a selected birth date and its autofill metadata through OTP verification", async () => {

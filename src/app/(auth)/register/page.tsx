@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
+import { apiErrorMessage } from "@/lib/apiError";
 import { detectPatientOtpTarget } from "@/lib/patientLogin";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, Select, useToast, ModeSwitcher, EkavyuLogo, cn, DatePicker } from "@/components/ui";
 
@@ -70,6 +71,7 @@ export default function RegisterPage() {
         purpose: "authentication",
       });
 
+      if (res.data?.success === false || res.data?.data?.success === false) throw new Error("Verification code delivery is unavailable. Please try again shortly.");
       setOtpSent(true);
       setResendTimer(30);
       toast({
@@ -84,7 +86,7 @@ export default function RegisterPage() {
       triggerShake();
       toast({
         title: "Verification code could not be sent",
-        description: err.response?.data?.message || "Please try again.",
+        description: apiErrorMessage(err, "Please try again."),
         variant: "error",
       });
     } finally {
@@ -125,7 +127,7 @@ export default function RegisterPage() {
       triggerShake();
       toast({
         title: "Code could not be verified",
-        description: err.response?.data?.message || "Check the code and try again.",
+        description: apiErrorMessage(err, "The code could not be verified. Please try again."),
         variant: "error",
       });
     } finally {

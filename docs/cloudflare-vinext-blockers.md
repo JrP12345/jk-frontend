@@ -1,6 +1,13 @@
 ﻿# Ekavyu Cloudflare migration validation
 
-Reviewed 2026-10-18 on `cloudflare/ekavyu-dev-vinext`.
+Original review: 2026-10-18. As of 2026-10-22, the migration changes are on
+`main`; the temporary migration branch has been deleted.
+
+Platform follow-up, 2026-10-22: the approved isolated Free experiment is complete.
+**Free CPU suitability: FAIL.** Representative SSR medians were 23–50 ms versus
+the documented 10 ms allowance. Both temporary Workers were deleted; the existing
+application and domain were untouched. See [actual measurements, sampling limits
+and remaining integration checks](cloudflare-free-staging-results.md).
 
 Release follow-up, 21 October 2026: the pharmacy release pass verified both the
 native Next production build and the existing vinext build after the dependency
@@ -13,12 +20,14 @@ Workers Free capacity or authorize a Cloudflare deployment.
 
 The two original blockers are resolved locally: the Cloudflare production build
 passes and native authenticated WebSocket forwarding works through the built
-Worker. **Workers Free suitability remains unproven**. The focused CPU pass found
+Worker. Workers Free suitability was unresolved in the original local pass; the
+subsequent platform experiment above failed the CPU suitability check. The focused CPU pass found
 that the earlier duration-summing method can count network waiting as CPU; it is
 not evidence of exceeding Free's CPU limit. See [the corrected CPU assessment](cloudflare-cpu-feasibility.md).
 This is a reviewable migration draft, not approval to deploy on Free.
-No push, deployment, auto-deployment connection, DNS change, Render change, MongoDB
-access or production credential change occurred. Existing working changes remain.
+During the original local pass, no push, deployment, auto-deployment connection,
+DNS change, Render change, MongoDB access or production credential change occurred.
+The separately approved temporary staging deployment is documented above.
 
 ## Files and rationale
 
@@ -159,8 +168,8 @@ Do not connect automatic Git deployment now.
 | Setting | Value |
 | --- | --- |
 | Product / name | Workers / ekavyu-dev |
-| Plan | Free target, requires platform CPU measurement; local durations are not CPU proof |
-| Repo root / review branch | `/` / cloudflare/ekavyu-dev-vinext (frontend is its own repository) |
+| Plan | Free not recommended: actual SSR CPU exceeded its allowance; see platform results |
+| Repo root / review branch | `/` / `main` (frontend is its own repository) |
 | Build | `npm run build:vinext` |
 | Deploy | `npm run deploy:vinext -- --skip-build` |
 | Node | NODE_VERSION=24 |

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { apiErrorKind } from "./apiError";
 
 export const getApiUrl = () => {
   // 1. Explicitly configured API base URL has top priority (e.g. in production)
@@ -109,10 +110,11 @@ api.interceptors.response.use(
         await refreshPromise;
         return api(originalRequest);
       } catch (err) {
-        // Only the request that started the refresh announces expiry. This avoids
-        // several simultaneous 401s triggering competing redirects.
+        // Only the request that started the refresh announces its outcome. This
+        // avoids competing redirects or recovery transitions for concurrent 401s.
         if (startsRefresh && typeof window !== "undefined") {
-          window.dispatchEvent(new Event("auth-expired"));
+          // A timeout, rate limit or server outage does not establish revocation.
+          window.dispatchEvent(new Event(apiErrorKind(err) === "unauthenticated" ? "auth-expired" : "auth-unavailable"));
         }
         return Promise.reject(err);
       }
