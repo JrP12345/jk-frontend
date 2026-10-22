@@ -1,3 +1,4 @@
+import { datePickerInput } from "./datePickerTestUtils";
 import { drawerFixture } from "./fixtures/pharmacyDrawer";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -23,7 +24,7 @@ function financialResult(url: string, body: any, config: any) {
   if (url.endsWith("/returns")) return { returnId: "supplier-return", purchaseId: "purchase", locationId: "branch", expectedCreditPaise: 5900, supplierCreditConfirmed: false, settlementRevision: 1, requestKey };
   return { eventId: "event", locationId: "branch", partyId: body.supplierId, invoiceId: body.invoiceId, kind: url.split("/").at(-1)!.replaceAll("-", "_"), amountPaise: body.amountPaise, currency: "INR", paymentMethod: body.paymentMethod, referenceNumber: body.referenceNumber, recordedAt: "2026-10-20T06:30:00Z", allocations: body.allocations || [{ invoiceId: body.invoiceId, amountPaise: body.amountPaise }], after: body.invoiceId ? { refundPayablePaise: 1000 - body.amountPaise } : { purchases: [] }, requestKey };
 }
-function change(label: string, value: string) { const node = screen.getByLabelText(label), input = node.getAttribute("role") === "combobox" ? document.getElementById(node.id.replace(/-trigger$/, ""))! : node; fireEvent.change(input, { target: { value } }); }
+function change(label: string, value: string) { const node = screen.getByLabelText(label), input = node.getAttribute("aria-haspopup") === "dialog" ? datePickerInput(node) : node.getAttribute("role") === "combobox" ? document.getElementById(node.id.replace(/-trigger$/, ""))! : node; fireEvent.change(input, { target: { value } }); }
 const mount = (props: Partial<PharmacyFinanceProps> = {}) => render(<ToastProvider><PharmacyFinance {...defaults} {...props} /></ToastProvider>);
 async function chooseSupplier() { fireEvent.click(screen.getByRole("button", { name: "Search supplier statements" })); fireEvent.click(await screen.findByRole("button", { name: "Open supplier statement Actual supplier" })); await screen.findByRole("region", { name: "Supplier balance statement" }); }
 function supplierEvidence(amount = "118") { change("Actual supplier amount (INR)", amount); change("Actual supplier document/payment reference", "ACTUAL-PAYMENT-001"); change("Supplier settlement review reference", "Actual reviewed money movement"); fireEvent.click(screen.getByRole("checkbox", { name: /supplier money movement actually completed/ })); }

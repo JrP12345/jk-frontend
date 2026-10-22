@@ -1,5 +1,6 @@
+import { datePickerInput } from "./datePickerTestUtils";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import { PharmacyStockReceipts } from "@/components/pharmacy/PharmacyStockReceipts";
 import { ToastProvider } from "@/components/ui";
@@ -20,7 +21,7 @@ function Harness({ initialTarget, canReceive }: { initialTarget: typeof medicine
 const mount = (target: typeof medicine | null = medicine, canReceive = true) => render(<Harness initialTarget={target} canReceive={canReceive} />);
 const change = (label: string, value: string) => {
   const control = screen.getByLabelText(label);
-  const input = control.getAttribute("role") === "combobox" ? document.getElementById(control.id.replace(/-trigger$/, ""))! : control;
+  const input = control.getAttribute("aria-haspopup") === "dialog" ? datePickerInput(control) : control.getAttribute("role") === "combobox" ? document.getElementById(control.id.replace(/-trigger$/, ""))! : control;
   fireEvent.change(input, { target: { value } });
 };
 function fill() {
@@ -53,6 +54,23 @@ it("posts exact paise, base-unit inputs and one durable key, then clears only a 
   fireEvent.click(screen.getByRole("button", { name: "Done with stock receipt" }));
   await waitFor(() => expect(localStorage.getItem(stockReceiptScope(user, "branch"))).toBeNull());
   expect(fixture.committed).toHaveBeenCalled();
+});
+it.each(["month", "day"])("posts the exact printed %s precision selected through the shared picker", async precision => {
+  mount(); fill();
+  fireEvent.click(screen.getByRole("button", { name: "Printed expiry *" }));
+  let popup = await screen.findByRole("dialog", { name: "Choose Printed expiry *" });
+  fireEvent.click(within(popup).getByRole("button", { name: "November 2099" }));
+  if (precision === "day") {
+    change("Printed expiry precision", "day");
+    expect(datePickerInput(screen.getByRole("button", { name: "Printed expiry *" }))).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: "Printed expiry *" }));
+    popup = await screen.findByRole("dialog", { name: "Choose Printed expiry *" });
+    fireEvent.click(within(popup).getByRole("button", { name: /28.*November.*2099|November.*28.*2099/ }));
+  }
+  fireEvent.click(screen.getByRole("button", { name: "Record stock receipt" }));
+  await screen.findByText("Stock receipt confirmed");
+  expect(fixture.post).toHaveBeenCalledTimes(1);
+  expect(fixture.post.mock.calls[0][1].expiry).toEqual({ precision, value: precision === "month" ? "2099-11" : "2099-11-28" });
 });
 it("keeps an uncertain outcome pinned and retries the same payload and reference", async () => {
   fixture.post.mockRejectedValueOnce(new Error("Connection lost after send"));

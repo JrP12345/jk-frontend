@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Alert, Button, Input, Select } from "@/components/ui";
+import { Alert, Button, Input, Select, DatePicker } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
 import { authScopeKey } from "@/lib/authScope";
 import { useAuthStore } from "@/store/authStore";
@@ -79,7 +79,7 @@ function ReceiptForm({ medicine, resuming, disabled, busy, error, onClose, onSub
         {form.kind === "opening" && <Input label="Opening source reference *" maxLength={120} value={form.source} onChange={event => edit("source", event.target.value)} />}
         <Input label="Printed batch number *" maxLength={100} value={form.batchNumber} onChange={event => edit("batchNumber", event.target.value)} />
         <div className={styles.fieldGrid}><Select label="Printed expiry precision" value={form.precision} onChange={event => setForm(previous => ({ ...previous, precision: event.target.value, expiry: "" }))} options={[{ value: "month", label: "Month and year" }, { value: "day", label: "Exact day" }]} />
-          <Input label="Printed expiry *" type={form.precision === "month" ? "month" : "date"} value={form.expiry} onChange={event => edit("expiry", event.target.value)} /></div>
+          <DatePicker label="Printed expiry *" mode={form.precision === "month" ? "month" : "date"} value={form.expiry} onChange={value => edit("expiry", value)} /></div>
         <div className={styles.fieldGrid}><Input label={`Full packs (${unit.packUnit}) *`} type="number" min="0" step="1" value={form.packs} onChange={event => edit("packs", event.target.value)} /><Input label={`Loose units (${unit.baseUnit}) *`} type="number" min="0" max={unit.unitsPerPack - 1} step="1" value={form.looseUnits} onChange={event => edit("looseUnits", event.target.value)} /></div>
         <Input label="Total acquisition cost (INR) *" type="number" min="0" step="0.01" value={form.purchaseTotal} onChange={event => edit("purchaseTotal", event.target.value)} />
         <div className={styles.fieldGrid}><Input label={`Selling price per ${unit.baseUnit} (INR) *`} type="number" min="0" step="0.01" value={form.sellingPrice} onChange={event => edit("sellingPrice", event.target.value)} /><Input label={`MRP per ${unit.baseUnit} (INR)`} type="number" min="0" step="0.01" value={form.mrp} onChange={event => edit("mrp", event.target.value)} /></div>

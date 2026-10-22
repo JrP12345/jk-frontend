@@ -30,6 +30,25 @@ const eslintConfig = defineConfig([
       "react-hooks/purity": "warn",
     },
   },
+  {
+    files: ["src/**/*.tsx"],
+    // Native form elements belong inside the shared controls. Tests can use
+    // native fixtures to exercise browser form semantics.
+    ignores: ["src/components/ui/**", "src/tests/**"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXOpeningElement[name.name=/^(input|select|textarea)$/]",
+          message: "Use the shared Input, Select, Textarea or Checkbox component from @/components/ui.",
+        },
+        {
+          selector: "JSXOpeningElement[name.name='Input'] JSXAttribute[name.name='type'] Literal[value=/^(date|datetime-local|time|month|checkbox)$/]",
+          message: "Use DatePicker (including month/time modes) or Checkbox instead of a native picker through Input.",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

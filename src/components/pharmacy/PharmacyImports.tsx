@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Input, Select } from "@/components/ui";
+import { Alert, Button, Input, Select, Checkbox } from "@/components/ui";
 import { authScopeKey } from "@/lib/authScope";
 import { useAuthStore } from "@/store/authStore";
 import { downloadImport, importError, inspectImport, listImports, pharmacyImportLabels, postImportChunk, previewImport, readImport, type ImportInspection, type ImportView, type PharmacyImportKind } from "@/lib/pharmacyImports";
@@ -105,7 +105,7 @@ function ImportSession({ locationId, allowedKinds, onCommitted }: Props) {
         const unit = view.units.find(item => item.sourceKey === row.sourceKey)!;
         return <tr key={row.sourceLine}><td>{row.sourceLine}</td><td>{row.sourceId || "Missing"}</td><td>{unit.status}</td><td>{row.error || unit.error || (unit.status === "posted" ? "Original source result recorded" : unit.status === "invalid" ? "Another row in this product group needs review" : "Reviewed source; awaiting posting")}</td></tr>;
       })}</tbody></table></div>
-      {pending > 0 && <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />I confirm these valid sources match the reviewed physical stock or actual opening dues. Post only valid source units.</label>}
+      {pending > 0 && <Checkbox label="I confirm these valid sources match the reviewed physical stock or actual opening dues. Post only valid source units." checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} />}
       <div className={styles.actions}><Button disabled={busy || !confirmed || !pending} loading={busy} onClick={() => { void post(); }}>Post next {Math.min(10, pending)} source units</Button>
         <Button variant="outline" disabled={busy} onClick={() => { void check(); }}>Check saved import</Button><Button variant="outline" disabled={busy} onClick={() => { void download(); }}>Download reconciliation CSV</Button></div>
       <p className="text-sm text-text-secondary">After a connection failure, check this saved import before retrying. Posted source facts cannot be overwritten by changing the file, mapping or review reference. Use the existing reviewed stock/credit correction workflow for a posted error.</p>

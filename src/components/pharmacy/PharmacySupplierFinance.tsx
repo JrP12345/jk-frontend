@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Input, Select } from "@/components/ui";
+import { Alert, Button, Input, Select, Checkbox, DatePicker } from "@/components/ui";
 import { PharmacyDrawerGate } from "./PharmacyDrawerGate";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { pharmacyFinanceMessage } from "@/hooks/usePharmacyFinanceCommand";
@@ -42,9 +42,9 @@ function SupplierSettlementForm({ statement, kind, disabled, onSubmit }: { state
   }
   return <section className={styles.rx} aria-label="Supplier settlement allocation">{error && <Alert variant="error" title="Check supplier evidence">{error}</Alert>}{!credit && <PharmacyDrawerGate locationId={statement.locationId} onReady={setDrawerReady} />}<form onSubmit={submit}><fieldset className={styles.form} disabled={disabled || !credit && !drawerReady}>
     <Input label="Actual supplier amount (INR)" type="number" min="0.01" step="0.01" value={actual} onChange={event => setActual(event.target.value)} />{!credit && <Select label="Supplier money method" value={method} onChange={event => setMethod(event.target.value)} options={["cash", "upi", "card", "bank"].map(value => ({ value, label: value.toUpperCase() }))} />}
-    <Input label="Actual supplier document/payment reference" value={reference} maxLength={200} onChange={event => setReference(event.target.value)} />{credit && <Input label="Actual supplier credit date" type="date" value={sourceDate} onChange={event => setSourceDate(event.target.value)} />}<Input label="Supplier settlement review reference" value={review} maxLength={200} onChange={event => setReview(event.target.value)} />
+    <Input label="Actual supplier document/payment reference" value={reference} maxLength={200} onChange={event => setReference(event.target.value)} />{credit && <DatePicker label="Actual supplier credit date" value={sourceDate} onChange={value => setSourceDate(value)} />}<Input label="Supplier settlement review reference" value={review} maxLength={200} onChange={event => setReview(event.target.value)} />
     {available.slice(page * 25, (page + 1) * 25).map(target => <Input key={`${target.field}:${target.id}`} label={`Allocate ${target.label} (INR)`} hint={`Remaining ${money(target.maximum / 100)}`} type="number" min="0" step="0.01" value={amounts[`${target.field}:${target.id}`] || ""} onChange={event => setAmounts(previous => ({ ...previous, [`${target.field}:${target.id}`]: event.target.value }))} />)}{!available.length && <p>No remaining source balance supports this action.</p>}{page > 0 && <Button size="sm" variant="outline" onClick={() => setPage(value => value - 1)}>Previous allocation page</Button>}{(page + 1) * 25 < available.length && <Button size="sm" variant="outline" onClick={() => setPage(value => value + 1)}>Next allocation page</Button>}
-    <label><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} /> {credit ? "I verified this actual supplier credit note" : "I confirmed this supplier money movement actually completed"}</label><Button size="sm" type="submit" disabled={!available.length}>{credit ? "Record confirmed supplier credit" : kind === "supplier_payment" ? "Record actual supplier payment" : "Record supplier refund received"}</Button>
+    <Checkbox label={credit ? "I verified this actual supplier credit note" : "I confirmed this supplier money movement actually completed"} checked={confirmed} onChange={event => setConfirmed(event.target.checked)} /><Button size="sm" type="submit" disabled={!available.length}>{credit ? "Record confirmed supplier credit" : kind === "supplier_payment" ? "Record actual supplier payment" : "Record supplier refund received"}</Button>
   </fieldset></form></section>;
 }
 function SupplierReturnEditor({ source, disabled, onSubmit }: { source: SupplierReturnSource; disabled: boolean; onSubmit: (input: object) => void }) {

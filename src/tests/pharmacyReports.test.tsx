@@ -1,3 +1,4 @@
+import { datePickerInput } from "./datePickerTestUtils";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { PharmacyReports } from "@/components/pharmacy/PharmacyReports";
@@ -10,7 +11,7 @@ vi.mock("@/lib/api", () => ({ default: api }));
 const response = (data: unknown) => ({ data: { data } }), filters = { locationId: "branch", limit: 25, days: 90 };
 const mount = () => render(<ToastProvider><PharmacyReports locationId="branch" /></ToastProvider>);
 const load = async () => { fireEvent.click(await screen.findByRole("button", { name: "Load report" })); return screen.findByRole("region", { name: "Reviewed report page" }); };
-function select(label: string, value: string) { const control = screen.getByLabelText(label); fireEvent.change(control.getAttribute("role") === "combobox" ? document.getElementById(control.id.replace(/-trigger$/, ""))! : control, { target: { value } }); }
+function select(label: string, value: string) { const control = screen.getByLabelText(label); fireEvent.change(control.getAttribute("aria-haspopup") === "dialog" ? datePickerInput(control) : control.getAttribute("role") === "combobox" ? document.getElementById(control.id.replace(/-trigger$/, ""))! : control, { target: { value } }); }
 beforeEach(() => {
   useAuthStore.setState({ user: { id: "reporter", name: "Reporter", role: "stock", email: "reporter@example.test", organization_id: "org", permissions: ["PHARMACY_VIEW_REPORTS", "PHARMACY_VIEW_STOCK"] } });
   api.get.mockReset().mockImplementation(async (url: string, config: any) => url === "/pharmacy/reports" ? response({ locationId: "branch", items: [{ kind: "stock", label: "Stock and eligible units" }, { kind: "movements", label: "Stock movements" }] }) : response(reportFixture(url.endsWith("movements") ? "movements" : "stock", "branch", [stockReportRow], { ...config.params, cursor: config.params.cursor || null })));

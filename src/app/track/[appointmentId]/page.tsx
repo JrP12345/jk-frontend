@@ -15,7 +15,7 @@ import Link from "next/link";
 import api, { getApiUrl } from "@/lib/api";
 import { createReconnectingSocket, type ReconnectingSocket } from "@/utils/websocket";
 import { userFacingError } from "@/lib/userFacingError";
-import { Card, Button, Badge, Skeleton, Modal, useToast, cn, EkavyuIcon, ModeSwitcher } from "@/components/ui";
+import { Card, Button, Badge, Skeleton, Modal, DatePicker, useToast, cn, EkavyuIcon, ModeSwitcher } from "@/components/ui";
 import { Clock, Users, CheckCircle2, AlertCircle, Stethoscope, MapPin, RotateCw, Calendar, Sparkles, ShieldCheck, BellRing, Phone, Receipt, CreditCard, Pill, Volume2, VolumeX, Smartphone, Copy } from "lucide-react";
 import QRCode from "qrcode";
 
@@ -1742,16 +1742,13 @@ export default function PublicLiveQueueTracker() {
                 Choose your preferred date to reschedule your consultation with Dr. {data.doctor.name}.
                 Your booking will be placed with priority at the top of the schedule.
               </p>
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-text">Select Date</label>
-                <input
-                  type="date"
-                  value={effectiveRescheduleDate}
-                  min={locationTomorrow}
-                  onChange={(e) => setRescheduleTargetDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-surface text-text text-sm focus:outline-hidden focus:ring-2 focus:ring-focus-ring"
-                />
-              </div>
+              <DatePicker
+                label="Select Date"
+                value={effectiveRescheduleDate}
+                minDate={locationTomorrow}
+                onChange={setRescheduleTargetDate}
+                isClearable={false}
+              />
             </>
           ) : (
             <p className="text-xs text-text-muted leading-relaxed">

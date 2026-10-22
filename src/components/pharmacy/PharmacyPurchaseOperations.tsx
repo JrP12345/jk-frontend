@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Input, Select } from "@/components/ui";
+import { Alert, Button, Input, Select, DatePicker } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
 import api from "@/lib/api";
 import { authScopeKey } from "@/lib/authScope";
@@ -123,7 +123,7 @@ export function PharmacyPurchaseOperations({ purchase, canManage, canReceive, on
         return <fieldset className={styles.rx} key={line.lineId} aria-label={`Delivery line ${index + 1}`}><Select label={`Source purchase line ${index + 1}`} value={line.purchaseLineId} onChange={event => edit("purchaseLineId", event.target.value)} options={purchase.lines.map((row, number) => ({ value: row.lineId, label: `${number + 1}. ${row.medicineSnapshot.name}` }))} />
           <p>Remaining: {source.billedBaseUnits - (progress?.billedBaseUnits || 0)} billed, {source.freeBaseUnits - (progress?.freeBaseUnits || 0)} free {source.unitSnapshot.baseUnit}.</p>
           <div className={styles.fieldGrid}><Input label={`Received billed base units ${index + 1}`} type="number" min="0" step="1" value={line.billed} onChange={event => edit("billed", event.target.value)} /><Input label={`Received free base units ${index + 1}`} type="number" min="0" step="1" value={line.free} onChange={event => edit("free", event.target.value)} /></div>
-          <Input label={`Printed batch ${index + 1}`} value={line.batch} maxLength={100} onChange={event => edit("batch", event.target.value)} /><Select label={`Expiry precision ${index + 1}`} value={line.precision} onChange={event => { edit("precision", event.target.value); edit("expiry", ""); }} options={[{ value: "month", label: "Printed month" }, { value: "day", label: "Printed day" }]} /><Input label={`Printed expiry ${index + 1}`} type={line.precision === "month" ? "month" : "date"} value={line.expiry} onChange={event => edit("expiry", event.target.value)} />
+          <Input label={`Printed batch ${index + 1}`} value={line.batch} maxLength={100} onChange={event => edit("batch", event.target.value)} /><Select label={`Expiry precision ${index + 1}`} value={line.precision} onChange={event => { edit("precision", event.target.value); edit("expiry", ""); }} options={[{ value: "month", label: "Printed month" }, { value: "day", label: "Printed day" }]} /><DatePicker label={`Printed expiry ${index + 1}`} mode={line.precision === "month" ? "month" : "date"} value={line.expiry} onChange={value => edit("expiry", value)} />
           <Button size="sm" variant="ghost" onClick={() => setLines(previous => previous.filter(row => row.lineId !== line.lineId))}>Remove delivery line {index + 1}</Button>
         </fieldset>;
       })}

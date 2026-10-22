@@ -9,6 +9,11 @@ This page does not authorize a live pharmacy launch. No deployment was performed
 the local Docker daemon is unavailable, so container and host checks remain part
 of the steps below.
 
+The subsequent shared form-control correction passed its scoped tests, types,
+lint and local browser checks; see the latest follow-up in the release evidence.
+The full-suite/build counts above describe the preceding baseline. Include the
+correction in exact-revision CI and rebuild the actual deployment images.
+
 ## Deploy a staging installation
 
 The existing target is **https://dev.ekavyu.com**, with native Next.js, the Node

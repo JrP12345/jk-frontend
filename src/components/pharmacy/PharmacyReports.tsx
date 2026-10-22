@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Input, Select } from "@/components/ui";
+import { Alert, Button, Select, DatePicker } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import { authScopeKey } from "@/lib/authScope";
 import { useLatestRead } from "@/hooks/useLatestRead";
@@ -43,7 +43,7 @@ function ReportSession({ locationId }: { locationId: string }) {
     {catalogueBusy ? <p role="status">Checking report access...</p> : !choices.length ? <><p>No report source is available with your current permissions.</p><Button size="sm" onClick={() => { setCatalogueBusy(true); setError(""); setRetry(value => value + 1); }}>Recheck report access</Button></> : <>
       <form className={styles.form} onSubmit={event => { event.preventDefault(); void load(); }}><fieldset className={styles.form} disabled={exporting}>
         <Select label="Operational report" value={kind} onChange={event => change(() => setKind(event.target.value as PharmacyReportKind))} options={choices.map(row => ({ value: row.kind, label: row.label }))} />
-        {!currentKinds.has(kind) && <><Input label="Report start date" type="date" value={start} onChange={event => change(() => setStart(event.target.value))} /><Input label="Report end date" type="date" value={end} onChange={event => change(() => setEnd(event.target.value))} /><p>Choose both local dates, up to 93 calendar days. Leave both empty for the branch's last 30 days.</p></>}
+        {!currentKinds.has(kind) && <><DatePicker label="Report start date" value={start} onChange={value => change(() => setStart(value))} /><DatePicker label="Report end date" value={end} onChange={value => change(() => setEnd(value))} /><p>Choose both local dates, up to 93 calendar days. Leave both empty for the branch's last 30 days.</p></>}
         {["expiry", "dead_stock"].includes(kind) && <Select label="Report elapsed-day window" value={days} onChange={event => change(() => setDays(event.target.value))} options={[30, 60, 90, 180, 365].map(value => ({ value: String(value), label: `${value} days` }))} />}
         <Select label="Source page size" value={limit} onChange={event => change(() => setLimit(event.target.value))} options={[1, 5, 10, 25].map(value => ({ value: String(value), label: `${value} source records` }))} /><Button size="sm" type="submit" disabled={busy}>Load report</Button>
       </fieldset></form>{busy && <p role="status">Loading report sources...</p>}

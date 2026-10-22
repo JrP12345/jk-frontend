@@ -92,3 +92,80 @@ it("keeps the parent modal open when nested date and time popovers close", async
   await waitFor(() => expect(screen.queryByRole("dialog", { name: "Choose Visit time" })).not.toBeInTheDocument());
   expect(screen.getByRole("dialog", { name: "Booking" })).toBeInTheDocument(); expect(close).not.toHaveBeenCalled();
 });
+
+it("selects and clears a printed expiry month without inventing a day", async () => {
+  const change = vi.fn();
+  function Form() {
+    const [value, setValue] = useState("2026-10");
+    return <form aria-label="Expiry"><DatePicker label="Printed expiry" name="expiry" mode="month" value={value} onChange={value => { change(value); setValue(value); }} /></form>;
+  }
+  render(<Form />);
+  const trigger = screen.getByRole("button", { name: "Printed expiry" });
+  expect(trigger).toHaveTextContent("October 2026");
+  trigger.focus();
+  fireEvent.click(trigger);
+  const popup = await screen.findByRole("dialog", { name: "Choose Printed expiry" });
+  expect(within(popup).getByRole("button", { name: "October 2026" })).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(within(popup).getByRole("button", { name: "November 2026" }));
+  expect(change).toHaveBeenCalledExactlyOnceWith("2026-11");
+  const form = screen.getByRole("form", { name: "Expiry" }) as HTMLFormElement;
+  expect(new FormData(form).get("expiry")).toBe("2026-11");
+  expect(trigger).toHaveFocus();
+  fireEvent.click(screen.getByRole("button", { name: "Clear date" }));
+  expect(change).toHaveBeenLastCalledWith("");
+  expect(new FormData(form).get("expiry")).toBe("");
+});
+
+it("bounds month selection with Date/string limits and preserves the bounds", async () => {
+  const min = new Date(2026, 9, 18, 10, 30), original = min.getTime();
+  render(<DatePicker label="Expiry" mode="month" value="2026-10" minDate={min} maxDate="2026-11" />);
+  const trigger = screen.getByRole("button", { name: "Expiry" });
+  const input = datePickerInput(trigger);
+  expect(input).toHaveAttribute("min", "2026-10");
+  expect(input).toHaveAttribute("max", "2026-11");
+  fireEvent.click(trigger);
+  const popup = await screen.findByRole("dialog", { name: "Choose Expiry" });
+  expect(within(popup).getByRole("button", { name: "September 2026" })).toBeDisabled();
+  expect(within(popup).getByRole("button", { name: "October 2026" })).toBeEnabled();
+  expect(within(popup).getByRole("button", { name: "November 2026" })).toBeEnabled();
+  expect(within(popup).getByRole("button", { name: "December 2026" })).toBeDisabled();
+  expect(min.getTime()).toBe(original);
+  fireEvent.change(input, { target: { value: "2026-09" } });
+  let valid = true; act(() => { valid = input.checkValidity(); }); expect(valid).toBe(false);
+});
+
+it("navigates expiry years and returns from year selection to months", async () => {
+  const change = vi.fn();
+  render(<DatePicker label="Expiry" mode="month" value="2026-12" onChange={change} />);
+  fireEvent.click(screen.getByRole("button", { name: "Expiry" }));
+  const popup = await screen.findByRole("dialog", { name: "Choose Expiry" });
+  fireEvent.click(within(popup).getByRole("button", { name: "Next Year" }));
+  fireEvent.click(within(popup).getByRole("button", { name: "Previous Year" }));
+  fireEvent.click(within(popup).getByRole("button", { name: "2026", exact: true }));
+  fireEvent.click(within(popup).getByRole("button", { name: "2027", exact: true }));
+  fireEvent.click(within(popup).getByRole("button", { name: "January 2027" }));
+  expect(change).toHaveBeenCalledExactlyOnceWith("2027-01");
+});
+
+it("validates a required month and retains browser autofill metadata", async () => {
+  const submit = vi.fn();
+  render(<form onSubmit={event => { event.preventDefault(); submit(); }}><DatePicker label="Expiry" mode="month" required autoComplete="off" /><button type="submit">Save</button></form>);
+  const trigger = screen.getByRole("button", { name: "Expiry" });
+  expect(datePickerInput(trigger)).toHaveAttribute("autocomplete", "off");
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(submit).not.toHaveBeenCalled();
+  expect(await screen.findByRole("alert")).toHaveTextContent("Choose a month.");
+  expect(trigger).toHaveFocus();
+});
+
+it.each(["date", "month"] as const)("ignores an open %s popup when its original fieldset becomes locked", async mode => {
+  const change = vi.fn();
+  const view = render(<fieldset><DatePicker label="Source date" mode={mode} value={mode === "month" ? "2026-10" : "2026-10-18"} onChange={change} /></fieldset>);
+  fireEvent.click(screen.getByRole("button", { name: "Source date" }));
+  const popup = await screen.findByRole("dialog", { name: "Choose Source date" });
+  view.rerender(<fieldset disabled><DatePicker label="Source date" mode={mode} value={mode === "month" ? "2026-10" : "2026-10-18"} onChange={change} /></fieldset>);
+  fireEvent.click(within(popup).getByRole("button", { name: mode === "month" ? "November 2026" : /19.*October.*2026|October.*19.*2026/ }));
+  expect(change).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Source date" })).toBeDisabled();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});

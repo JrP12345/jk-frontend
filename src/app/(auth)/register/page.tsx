@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/api";
 import { detectPatientOtpTarget } from "@/lib/patientLogin";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, Select, useToast, ModeSwitcher, EkavyuLogo, cn } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, Select, useToast, ModeSwitcher, EkavyuLogo, cn, DatePicker } from "@/components/ui";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -224,11 +224,10 @@ export default function RegisterPage() {
                     />
                   </div>
 
-                  <Input
+                  <DatePicker
                     label="Date of Birth"
-                    type="date"
                     value={formData.dateOfBirth}
-                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    onChange={value => setFormData({ ...formData, dateOfBirth: value })}
                     autoComplete="bday"
                   />
                 </div>

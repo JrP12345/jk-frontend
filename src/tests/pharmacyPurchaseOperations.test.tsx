@@ -1,3 +1,4 @@
+import { datePickerInput } from "./datePickerTestUtils";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { PharmacyPurchaseOperations } from "@/components/pharmacy/PharmacyPurchaseOperations";
@@ -17,7 +18,7 @@ const posted: PurchaseDraft = { ...purchase, status: "posted", revision: 1, post
 const response = (data: unknown) => ({ data: { data } });
 const mount = (record = purchase, canManage = true, canReceive = true) => render(<ToastProvider><PharmacyPurchaseOperations purchase={record} canManage={canManage} canReceive={canReceive} onClose={close} onChanged={changed} /></ToastProvider>);
 function change(label: string, value: string) {
-  const control = screen.getByLabelText(label), input = control.getAttribute("role") === "combobox" ? document.getElementById(control.id.replace(/-trigger$/, ""))! : control;
+  const control = screen.getByLabelText(label), input = control.getAttribute("aria-haspopup") === "dialog" ? datePickerInput(control) : control.getAttribute("role") === "combobox" ? document.getElementById(control.id.replace(/-trigger$/, ""))! : control;
   fireEvent.change(input, { target: { value } });
 }
 async function review() {

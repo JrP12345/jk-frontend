@@ -2,7 +2,15 @@
 
 Local checkpoint: 22 October 2026. **Local engineering gates passed; live pharmacy activation is not approved.** T01–T25 and T27–T31 have technical implementations. The final backend auditor generated an approved engineering manifest; that result does not supply host, business or professional approval. This record distinguishes automated evidence from work requiring the actual business, operating environment and professional reviewers. No live deployment, account/price publication, remote index creation, provider charge or database restoration was performed.
 
-## Engineering gates
+## Latest frontend follow-up — 22 October 2026
+
+The shared-control correction follows the full release baseline below. Seven native checkboxes and ten browser date/month controls now use the existing shared `Checkbox` and `DatePicker` components in pharmacy, registration and tracker rescheduling. DatePicker adds exact month selection without inventing an expiry day, retains canonical strings, required/min/max/autofill semantics and checks inherited fieldset locking before portaled calendar actions. Application-level raw inputs/selects/textareas and native date/month/time/checkbox types through `Input` are now lint errors; native elements remain inside the shared controls.
+
+**Scoped verification passed:** 172 distinct cases across 16 files, package TypeScript, scoped ESLint with zero errors (existing warnings), six lint-policy probes, and a source audit with zero remaining application-level native form elements/pickers. Integration covers month/day expiry payloads and precision resets, collections/refunds/returns/import confirmations, exact source dates, registration OTP birth-date retention and branch-local rescheduling with the original private proof. Existing patient-entry, disruption and clinical-document regressions passed. Three isolated local Chrome checks on the development registration view passed at 320/440/1440 pixels, including popup bounds, dismissal/focus restoration and zero runtime exceptions; the 320-pixel screenshot was reviewed. Generated screenshots/report are under `.next/shared-controls-render`. API requests were intercepted as signed out; no backend/provider write occurred.
+
+The first browser attempt clicked before hydration; the hydration-aware rerun passed. The new month-focus test was corrected to focus the trigger before opening it, matching the interaction it asserts; all 13 picker cases then passed. Passing unrelated checks were retained. No dependency/backend change, full-suite rerun or new production build was needed for this scoped correction. **The full-suite/build evidence below belongs to the preceding baseline; exact-revision CI and rebuilt deployment images must include this follow-up.**
+
+## Engineering gates (preceding release baseline)
 
 Run the existing repository CI/release commands once after shared changes settle. A failed gate stays failed until its cause is resolved and the affected checks pass. Do not substitute scoped tests for full CI or remove failing security checks.
 

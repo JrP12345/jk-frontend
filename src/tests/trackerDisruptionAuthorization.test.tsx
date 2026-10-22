@@ -4,6 +4,7 @@ import Tracker from "@/app/track/[appointmentId]/page";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
 import api from "@/lib/api";
+import { datePickerInput } from "./datePickerTestUtils";
 
 vi.mock("next/navigation", () => ({ useParams: () => ({ appointmentId: "visit" }), useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), post: vi.fn() }, getApiUrl: () => "http://localhost:5000/api" }));
@@ -48,6 +49,18 @@ it('reports payment pending after a disruption reschedule', async () => {
   render(<ThemeProvider><ToastProvider><Tracker /></ToastProvider></ThemeProvider>);
   fireEvent.click(await screen.findByRole('button', { name: 'Confirm Reschedule' }));
   expect(await screen.findByText('The replacement booking is recorded. Payment is required before confirmation.')).toBeInTheDocument();
+});
+
+it("uses the shared date picker and preserves branch-local bounds and the private reschedule proof", async () => {
+  window.history.replaceState({}, "", "/track/visit?action=reschedule#t=private-tracker-proof");
+  render(<ThemeProvider><ToastProvider><Tracker /></ToastProvider></ThemeProvider>);
+  const trigger = await screen.findByRole("button", { name: "Select Date" });
+  const input = datePickerInput(trigger);
+  expect(input).toHaveAttribute("min", input.value);
+  const date = input.value;
+  expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  fireEvent.click(screen.getByRole("button", { name: "Confirm Reschedule" }));
+  await waitFor(() => expect(api.post).toHaveBeenCalledWith("/doctor-overrides/patient-action", expect.objectContaining({ appointmentId: "visit", action: "reschedule", targetDate: date }), { headers: { "x-tracker-token": "private-tracker-proof" } }));
 });
 
 it('keeps unanswered disruption available for a patient decision without an automatic cancellation threat', async () => {

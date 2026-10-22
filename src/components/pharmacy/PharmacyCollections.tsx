@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Input, Select } from "@/components/ui";
+import { Alert, Button, Input, Select, Checkbox } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
 import { PharmacyDrawerGate } from "./PharmacyDrawerGate";
 import { useLatestRead } from "@/hooks/useLatestRead";
@@ -135,7 +135,7 @@ export function PharmacyCollectionForm({ invoice, canCollect, busy, onClose, onS
       </fieldset>; })}
       <Button size="sm" variant="outline" disabled={entries.length >= 10} onClick={() => setEntries(previous => [...previous, { componentId: crypto.randomUUID(), amount: "", paymentMethod: "cash", referenceNumber: "" }])}>Add split payment</Button>
       <Input label="Cash tendered (INR)" type="number" min="0" step="0.01" value={tender} onChange={event => setTender(event.target.value)} />
-      <label><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} /> I confirmed that these amounts were actually received</label>
+      <Checkbox label="I confirmed that these amounts were actually received" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />
       <Button size="sm" type="submit" loading={busy}>Record confirmed collection</Button>
     </fieldset></form>}
     <section aria-label="Saved collection receipts"><h3>Saved receipts</h3>{historyError && <Alert variant="error" title="Receipt history unavailable">{historyError}<Button size="sm" onClick={() => { void loadHistory(); }}>Retry receipt history</Button></Alert>}{history.map(receipt => <div key={receipt.receiptId}><CollectionReceiptSummary receipt={receipt} /><PharmacyDocumentButton invoice={invoice} receipt={receipt} /></div>)}{cursor && <Button size="sm" variant="outline" onClick={() => { void loadHistory(cursor); }}>Next receipt page</Button>}</section>

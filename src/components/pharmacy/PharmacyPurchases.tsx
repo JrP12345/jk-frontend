@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Button, Input, Select, Tabs } from "@/components/ui";
+import { Alert, Button, Input, Select, Tabs, DatePicker } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
 import { useLatestRead } from "@/hooks/useLatestRead";
 import { useAuthStore } from "@/store/authStore";
@@ -90,7 +90,7 @@ function PartyForm({ current, locationId, onClose, onSaved }: { current?: Pharma
       <Input label="Business name *" value={form.name} maxLength={200} onChange={event => edit("name", event.target.value)} /><Select label="Party roles" value={form.kind} onChange={event => edit("kind", event.target.value)} options={[{ value: "supplier", label: "Supplier" }, { value: "customer", label: "Customer" }, { value: "both", label: "Supplier and customer" }]} />
       <Input label="Business address *" value={form.address} maxLength={500} onChange={event => edit("address", event.target.value)} /><div className={styles.fieldGrid}><Input label="Business phone" value={form.phone} onChange={event => edit("phone", event.target.value)} /><Input label="Business email" type="email" value={form.email} onChange={event => edit("email", event.target.value)} /></div>
       <Select label="GST registration" value={form.gstRegistration} onChange={event => edit("gstRegistration", event.target.value)} options={[{ value: "unregistered", label: "Unregistered" }, { value: "registered", label: "Registered" }]} />{form.gstRegistration === "registered" && <Input label="GSTIN *" value={form.gstin} maxLength={15} onChange={event => edit("gstin", event.target.value)} />}
-      {form.kind !== "customer" && <div className={styles.fieldGrid}><Input label="Supplier licence number *" value={form.licence} maxLength={80} onChange={event => edit("licence", event.target.value)} /><Input label="Supplier licence valid until (if recorded)" type="date" value={form.validUntil} onChange={event => edit("validUntil", event.target.value)} /></div>}
+      {form.kind !== "customer" && <div className={styles.fieldGrid}><Input label="Supplier licence number *" value={form.licence} maxLength={80} onChange={event => edit("licence", event.target.value)} /><DatePicker label="Supplier licence valid until (if recorded)" value={form.validUntil} onChange={value => edit("validUntil", value)} /></div>}
       {current && <Select label="Business party status" value={form.archived ? "archived" : "active"} onChange={event => edit("archived", event.target.value === "archived")} options={[{ value: "active", label: "Active" }, { value: "archived", label: "Archived; retain history" }]} />}
     </fieldset></form>
   </Modal>;
@@ -158,7 +158,7 @@ function DraftForm({ current, locationId, canManage, onClose, onSaved, onPost }:
       <fieldset className={styles.form} disabled={disabled}>
         <Input label="Search suppliers" maxLength={100} value={partySearch} onChange={event => { setPartySearch(event.target.value); setSearchError(""); }} /><Select label="Purchase supplier *" value={supplierId} onChange={event => { setSupplierId(event.target.value); setSelectedParty(supplierOptions.find(row => row.id === event.target.value) || null); }} options={[{ value: "", label: "Choose supplier" }, ...supplierOptions.map(party => ({ value: party.id, label: party.name, disabled: party.archived }))]} />
         {current && <p className={styles.meta}>Saved supplier snapshot: {current.supplierSnapshot.name}. {current.supplierSnapshot.address}</p>}
-        <div className={styles.fieldGrid}><Input label="Supplier invoice number *" maxLength={80} value={header.number} onChange={event => setHeader({ ...header, number: event.target.value })} /><Input label="Supplier invoice date *" type="date" value={header.date} onChange={event => setHeader({ ...header, date: event.target.value })} /></div>
+        <div className={styles.fieldGrid}><Input label="Supplier invoice number *" maxLength={80} value={header.number} onChange={event => setHeader({ ...header, number: event.target.value })} /><DatePicker label="Supplier invoice date *" value={header.date} onChange={value => setHeader({ ...header, date: value })} /></div>
         <Input label="Supplier stated total (INR) *" type="number" min="0" step="0.01" value={header.total} onChange={event => setHeader({ ...header, total: event.target.value })} />
         <Input label="Search purchase products" maxLength={100} value={productSearch} onChange={event => { setProductSearch(event.target.value); setSearchError(""); }} /><Select label="Purchase product" value={productId} onChange={event => setProductId(event.target.value)} options={[{ value: "", label: "Choose product with recorded units" }, ...products.map(product => ({ value: product.id, label: product.name }))]} /><Button size="sm" variant="outline" disabled={!productId || lines.length >= 100} onClick={addProduct}>Add purchase line</Button>
         {lines.map((line, index) => { const edit = (field: keyof FormLine, value: string) => setLines(previous => previous.map(row => row.lineId === line.lineId ? { ...row, [field]: value } : row)); return <fieldset className={styles.rx} key={line.lineId} aria-label={`Purchase line ${index + 1}: ${line.product.name}`}>

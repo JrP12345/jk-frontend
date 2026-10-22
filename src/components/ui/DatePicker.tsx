@@ -11,7 +11,7 @@ import Select from "./Select";
 
 export type DatePickerVariant = "outline" | "filled" | "ghost" | "danger";
 export type DatePickerSize = "sm" | "md" | "lg";
-export type DatePickerMode = "date" | "datetime" | "range" | "time";
+export type DatePickerMode = "date" | "datetime" | "range" | "time" | "month";
 
 export interface DateRangeValue {
   startDate: string;
@@ -31,6 +31,7 @@ export interface DatePickerProps {
   onChange?: (value: string) => void;
   onRangeChange?: (range: DateRangeValue) => void;
   name?: string;
+  autoComplete?: string;
   id?: string;
   placeholder?: string;
   minDate?: string | Date;
@@ -69,6 +70,10 @@ function parseISOValue(valStr?: string, mode: DatePickerMode = "date"): { dateOb
   if (!valStr) return { dateObj: null, timeStr: "09:00" };
 
   try {
+    if (mode === "month") {
+      const d = new Date(`${valStr}-01T00:00:00`);
+      return { dateObj: isNaN(d.getTime()) ? null : d, timeStr: "09:00" };
+    }
     if (mode === "datetime" && valStr.includes("T")) {
       const parts = valStr.split("T");
       const d = new Date(parts[0] + "T00:00:00");
@@ -93,6 +98,7 @@ function formatDateISO(date: Date | null, timeStr: string = "09:00", mode: DateP
   if (!date) return "";
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
+  if (mode === "month") return `${year}-${month}`;
   const day = String(date.getDate()).padStart(2, "0");
   const dateFormatted = `${year}-${month}-${day}`;
 
@@ -148,6 +154,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     onChange,
     onRangeChange,
     name,
+    autoComplete,
     id: propId,
     placeholder,
     minDate,
@@ -198,7 +205,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     const [viewDate, setViewDate] = useState<Date>(
       initialParsed.dateObj || initialRange.start || new Date()
     );
-    const [viewMode, setViewMode] = useState<"days" | "months" | "years">("days");
+    const [viewMode, setViewMode] = useState<"days" | "months" | "years">(mode === "month" ? "months" : "days");
     const [timeScreenOpen, setTimeScreenOpen] = useState(false);
     const [timeDraft, setTimeDraft] = useState(initialParsed.timeStr || "09:00");
 
@@ -226,10 +233,12 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
       }
     }, []);
 
+    const interactionDisabled = () => disabled || Boolean(buttonRef.current?.matches(":disabled"));
     const handleToggle = () => {
-      if (disabled) return;
+      if (interactionDisabled()) return;
       if (!isOpen) {
         updateCoords();
+        setViewMode(mode === "month" ? "months" : "days");
         setTimeDraft(selectedTime || "09:00");
         setTimeScreenOpen(false);
       }
@@ -329,6 +338,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
 
     const handleClear = (e: React.MouseEvent) => {
       e.stopPropagation();
+      if (interactionDisabled()) return;
       if (mode === "range") {
         setRangeStart(null);
         setRangeEnd(null);
@@ -341,11 +351,11 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     };
 
     const handlePrevMonth = () => {
-      setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+      setViewDate((prev) => mode === "month" ? new Date(prev.getFullYear() - 1, prev.getMonth(), 1) : new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
     };
 
     const handleNextMonth = () => {
-      setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+      setViewDate((prev) => mode === "month" ? new Date(prev.getFullYear() + 1, prev.getMonth(), 1) : new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
     };
 
     const handlePreset = (presetKey: string) => {
@@ -424,6 +434,17 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
       );
     };
 
+    const isMonthDisabled = (month: number) => {
+      const target = viewYear * 12 + month;
+      const monthIndex = (value: string | Date) => {
+        if (typeof value !== "string") return value.getFullYear() * 12 + value.getMonth();
+        const parsed = /^(\d{4})-(\d{2})(?:-|$)/.exec(value);
+        return parsed ? Number(parsed[1]) * 12 + Number(parsed[2]) - 1 : NaN;
+      };
+      return Boolean(minDate && (!Number.isFinite(monthIndex(minDate)) || target < monthIndex(minDate)) ||
+        maxDate && (!Number.isFinite(monthIndex(maxDate)) || target > monthIndex(maxDate)));
+    };
+
     const isSingleSelected = (day: number) =>
       selectedDate &&
       selectedDate.getFullYear() === viewYear &&
@@ -459,7 +480,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
         ? "Select date range..."
         : mode === "datetime"
         ? "Select date & time..."
-        : "Select date...";
+        : mode === "month" ? "Select month..." : "Select date...";
 
     let displayString = "";
     if (mode === "range") {
@@ -475,7 +496,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
     } else if (mode === "time") {
       displayString = selectedTime;
     } else if (selectedDate) {
-      displayString = formatShortDate(selectedDate) + (mode === "datetime" ? `, ${selectedTime}` : "");
+      displayString = mode === "month" ? selectedDate.toLocaleDateString("en-US", { month: "long", year: "numeric" }) : formatShortDate(selectedDate) + (mode === "datetime" ? `, ${selectedTime}` : "");
     }
 
     const hasValue = mode === "time" ? Boolean(selectedTime) : mode === "range" ? !!(rangeStart || rangeEnd) : !!selectedDate;
@@ -499,9 +520,10 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             aria-hidden="true"
             required={required}
             disabled={disabled}
-            min={typeof minDate === "string" ? minDate : minDate ? formatDateISO(minDate) : undefined}
-            max={typeof maxDate === "string" ? maxDate : maxDate ? formatDateISO(maxDate) : undefined}
+            min={typeof minDate === "string" ? mode === "month" ? minDate.slice(0, 7) : minDate : minDate ? formatDateISO(minDate, "09:00", mode === "month" ? "month" : "date") : undefined}
+            max={typeof maxDate === "string" ? mode === "month" ? maxDate.slice(0, 7) : maxDate : maxDate ? formatDateISO(maxDate, "09:00", mode === "month" ? "month" : "date") : undefined}
             name={name}
+            autoComplete={autoComplete}
             id={id}
             onChange={event => {
               const parsed = parseISOValue(event.target.value, mode);
@@ -513,7 +535,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             onInvalid={event => {
               event.preventDefault();
               setNativeError(event.currentTarget.validity.valueMissing
-                ? mode === "time" ? "Choose a time." : mode === "datetime" ? "Choose a date and time." : "Choose a date."
+                ? mode === "time" ? "Choose a time." : mode === "month" ? "Choose a month." : mode === "datetime" ? "Choose a date and time." : "Choose a date."
                 : "Choose a value within the allowed range.");
               buttonRef.current?.focus();
             }}
@@ -578,6 +600,15 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
             id={`datepicker-portal-${id}`}
             ref={popupRef}
             role="dialog"
+            onClickCapture={event => {
+              // Portals are outside a disabled form fieldset. Recheck the
+              // original trigger before any calendar action changes a draft.
+              if (interactionDisabled()) {
+                event.preventDefault();
+                event.stopPropagation();
+                setIsOpen(false);
+              }
+            }}
             aria-label={label ? `Choose ${label}` : "Choose date and time"}
             tabIndex={-1}
             data-overlay-owner={owner}
@@ -670,7 +701,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                     type="button"
                     onClick={handlePrevMonth}
                     className="p-1 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text transition-colors cursor-pointer shrink-0"
-                    aria-label="Previous Month"
+                    aria-label={mode === "month" ? "Previous Year" : "Previous Month"}
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -680,7 +711,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                   <div className="flex items-center gap-1 font-semibold text-xs text-text">
                     <button
                       type="button"
-                      onClick={() => setViewMode(viewMode === "months" ? "days" : "months")}
+                      onClick={() => setViewMode(mode === "month" ? "months" : viewMode === "months" ? "days" : "months")}
                       className={cn(
                         "px-2 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold",
                         viewMode === "months"
@@ -696,7 +727,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
 
                     <button
                       type="button"
-                      onClick={() => setViewMode(viewMode === "years" ? "days" : "years")}
+                      onClick={() => setViewMode(viewMode === "years" ? mode === "month" ? "months" : "days" : "years")}
                       className={cn(
                         "px-2 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold",
                         viewMode === "years"
@@ -715,7 +746,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                     type="button"
                     onClick={handleNextMonth}
                     className="p-1 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-text transition-colors cursor-pointer shrink-0"
-                    aria-label="Next Month"
+                    aria-label={mode === "month" ? "Next Year" : "Next Month"}
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -727,17 +758,29 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                 {viewMode === "months" && (
                   <div className="grid grid-cols-3 gap-2 py-2 animate-in fade-in zoom-in-95 duration-150">
                     {MONTH_NAMES.map((mName, idx) => {
-                      const isCurrentMonth = idx === viewMonth;
+                      const isCurrentMonth = mode === "month" ? selectedDate?.getFullYear() === viewYear && selectedDate?.getMonth() === idx : idx === viewMonth;
+                      const disabledMonth = mode === "month" && isMonthDisabled(idx);
                       return (
                         <button
                           key={mName}
                           type="button"
+                          aria-label={mode === "month" ? `${mName} ${viewYear}` : undefined}
+                          aria-pressed={mode === "month" ? isCurrentMonth : undefined}
+                          disabled={disabledMonth}
                           onClick={() => {
-                            setViewDate(new Date(viewYear, idx, 1));
-                            setViewMode("days");
+                            const target = new Date(viewYear, idx, 1);
+                            setViewDate(target);
+                            if (mode === "month") {
+                              setSelectedDate(target);
+                              emitSingleChange(target);
+                              setIsOpen(false);
+                            } else {
+                              setViewMode("days");
+                            }
                           }}
                           className={cn(
                             "py-2 px-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer text-center",
+                            disabledMonth && "opacity-30 cursor-not-allowed",
                             isCurrentMonth
                               ? "bg-primary-600 border-primary-600 text-brand-mist font-semibold shadow-sm"
                               : "bg-surface border-border/60 text-text hover:bg-surface-hover hover:border-text-secondary"
@@ -761,7 +804,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
                           type="button"
                           onClick={() => {
                             setViewDate(new Date(yr, viewMonth, 1));
-                            setViewMode("days");
+                            setViewMode(mode === "month" ? "months" : "days");
                           }}
                           className={cn(
                             "py-1.5 px-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-center",
