@@ -19,6 +19,7 @@ import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { NavigationPending } from "@/components/ui/RouteProgress";
 import api from "@/lib/api";
 import { vibrateFeedback } from "@/lib/haptics";
 import { locationDateKey, locationClockMinutes, addCalendarDays, locationLocalTimeToIso } from "@/lib/locationTime";
@@ -1362,6 +1363,7 @@ export default function BrowseDetailClient({
                   <div className="space-y-3.5">
                     {/* Header Avatar & Details */}
                     <Link href={doctorPath(doc, location)} className="flex items-start gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                      <NavigationPending />
                       <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
                         {doc.image_url ? (
                           <LoadingImage src={doc.image_url} alt={doc.name} loading="lazy" className="w-full h-full object-cover rounded-xl" />
@@ -1446,6 +1448,7 @@ export default function BrowseDetailClient({
                       <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" strokeWidth={2} />
                     </Button>
                     <Link href={doctorPath(doc, location)} className="mt-2 inline-flex min-h-11 w-full items-center justify-center text-xs font-semibold text-accent underline-offset-2 hover:underline">
+                      <NavigationPending />
                       View & share doctor profile
                     </Link>
                   </div>

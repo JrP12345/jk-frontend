@@ -54,12 +54,21 @@ export const getDoctor = cache(async function getDoctor(slug: string, locationSl
 async function getLocationForBooking(locationSlug: string, doctorSlug: string): Promise<LocationDetail | null> {
   try {
     const response = await fetch(`${publicBackendUrl()}/api/public/locations/${encodeURIComponent(locationSlug)}?doctorId=${encodeURIComponent(doctorSlug)}`, {
-      cache: "no-store", signal: AbortSignal.timeout(3000),
+      cache: "no-store", signal: AbortSignal.timeout(5000),
     });
     if (!response.ok) return null;
     const result = await response.json();
     return result.data?.slug === locationSlug && Array.isArray(result.data?.doctors) ? result.data : null;
   } catch { return null; }
+}
+
+async function DoctorBooking({ location, doctorId, initialLocation }: {
+  location: DoctorProfile["locations"][number];
+  doctorId: string;
+  initialLocation: Promise<LocationDetail | null>;
+}) {
+  const bookingLocation = await initialLocation;
+  return <BrowseDetailClient key={location.id} slug={location.slug!} initialLocation={bookingLocation} bookingDoctorId={doctorId} bookingOnly bookingName={location.name} />;
 }
 
 function consultationFee(location: DoctorProfile["locations"][number], currency: string) {
@@ -85,16 +94,15 @@ export default async function DoctorPage({ params, searchParams }: { params: Pro
   const { slug } = await params;
   const query = await searchParams;
   const locationSlug = query.location;
-  const [doctor, requestedLocation] = await Promise.all([
-    getDoctor(slug, locationSlug),
-    locationSlug ? getLocationForBooking(locationSlug, slug) : Promise.resolve(null),
-  ]);
+  // Start both reads together, but only the profile gates the page and its metadata.
+  const requestedLocation = locationSlug ? getLocationForBooking(locationSlug, slug) : Promise.resolve(null);
+  const doctor = await getDoctor(slug, locationSlug);
   if (!doctor) notFound();
   const locations = doctor?.locations || [];
   const selectedLocation = locations.find((location) => location.slug === locationSlug) || locations[0];
   const bookingLocation = selectedLocation
-    ? selectedLocation.slug === locationSlug ? requestedLocation : await getLocationForBooking(selectedLocation.slug!, doctor!.slug!)
-    : null;
+    ? selectedLocation.slug === locationSlug ? requestedLocation : getLocationForBooking(selectedLocation.slug!, doctor.slug!)
+    : Promise.resolve(null);
   const profileUrl = selectedLocation ? absolutePublicUrl(doctorPath(doctor, selectedLocation)) : undefined;
   const profileImage = publicImageUrl(doctor.imageUrl);
 
@@ -151,7 +159,10 @@ export default async function DoctorPage({ params, searchParams }: { params: Pro
             </section>
           </div>
           <aside id="booking" className="order-2 min-w-0 scroll-mt-24 lg:col-start-2 lg:row-span-3 lg:row-start-1" aria-label="Book an appointment">
-            {selectedLocation && <Suspense fallback={<LoadingState label="Loading booking options"><SkeletonForm fields={3} /></LoadingState>}><BrowseDetailClient key={selectedLocation.id} slug={selectedLocation.slug!} initialLocation={bookingLocation} bookingDoctorId={doctor.id} bookingOnly bookingName={selectedLocation.name} /></Suspense>}
+            {selectedLocation && <Suspense fallback={selectedLocation.onlineBookingAvailable
+              ? <LoadingState label="Loading booking options"><SkeletonForm fields={3} /></LoadingState>
+              : <LoadingState label="Loading contact options" className="rounded-2xl border border-border bg-surface p-5 text-sm"><div className="h-5 animate-pulse rounded bg-surface-alt" /><div className="mt-2 h-5 w-3/4 animate-pulse rounded bg-surface-alt" /></LoadingState>
+            }><DoctorBooking location={selectedLocation} doctorId={doctor.id} initialLocation={bookingLocation} /></Suspense>}
           </aside>
         </div>
       </>}

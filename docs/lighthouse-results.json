@@ -292,5 +292,528 @@
         }
       ]
     }
+  },
+  "followUps": {
+    "2026-10-23": {
+      "environment": {
+        "next": "16.4.2",
+        "chrome": "155.0.8059.86",
+        "lighthouse": "13.5.0",
+        "node": "24.7.0",
+        "platform": "Windows",
+        "profile": "mobile simulated; 150 ms RTT; about 1.6 Mbps; CPU 4x",
+        "backend": "synthetic loopback; clinic details 3500 ms; other APIs 40 ms; online booking disabled",
+        "baselineBuildId": "WQLo0KGb6IQNXGtBWMZNr",
+        "finalBuildId": "rfgy_nT8oRHwlQQVmaO0O"
+      },
+      "before": {
+        "directory": {
+          "runs": 3,
+          "medians": {
+            "performance": 93,
+            "accessibility": 100,
+            "best-practices": 100,
+            "seo": 100,
+            "fcp": 921.8559999999999,
+            "lcp": 2328.2135000000003,
+            "tbt": 147,
+            "cls": 0.0001065516310518786,
+            "observedFcp": 265,
+            "observedLcp": 265
+          },
+          "performanceRange": [
+            92,
+            97
+          ],
+          "samples": [
+            {
+              "performance": 92,
+              "lcp": 3130.3810000000003,
+              "tbt": 147,
+              "cls": 0.0001065516310518786,
+              "benchmarkIndex": 2198
+            },
+            {
+              "performance": 93,
+              "lcp": 2198.424,
+              "tbt": 280.072,
+              "cls": 0.0001065516310518786,
+              "benchmarkIndex": 1783
+            },
+            {
+              "performance": 97,
+              "lcp": 2328.2135000000003,
+              "tbt": 130.5,
+              "cls": 0.0001065516310518786,
+              "benchmarkIndex": 2009.5
+            }
+          ]
+        },
+        "clinic": {
+          "runs": 3,
+          "medians": {
+            "performance": 76,
+            "accessibility": 100,
+            "best-practices": 100,
+            "seo": 100,
+            "fcp": 925.9281000000001,
+            "lcp": 3685.1771,
+            "tbt": 336.0000000000002,
+            "cls": 0,
+            "observedFcp": 3908,
+            "observedLcp": 4221
+          },
+          "performanceRange": [
+            68,
+            86
+          ],
+          "samples": [
+            {
+              "performance": 76,
+              "lcp": 3778.44115,
+              "tbt": 336.0000000000002,
+              "cls": 0,
+              "benchmarkIndex": 2216.5
+            },
+            {
+              "performance": 86,
+              "lcp": 3306.4101250000003,
+              "tbt": 150.00000000000045,
+              "cls": 0,
+              "benchmarkIndex": 2243
+            },
+            {
+              "performance": 68,
+              "lcp": 3685.1771,
+              "tbt": 632.2743,
+              "cls": 0,
+              "benchmarkIndex": 2219
+            }
+          ]
+        },
+        "doctor": {
+          "runs": 3,
+          "medians": {
+            "performance": 68,
+            "accessibility": 100,
+            "best-practices": 100,
+            "seo": 100,
+            "fcp": 912.3043,
+            "lcp": 4209.4479999999985,
+            "tbt": 453.8478499999999,
+            "cls": 0.06954558673620442,
+            "observedFcp": 3326,
+            "observedLcp": 7048
+          },
+          "performanceRange": [
+            64,
+            69
+          ],
+          "samples": [
+            {
+              "performance": 68,
+              "lcp": 4217.304300000001,
+              "tbt": 453.8478499999999,
+              "cls": 0.06954558673620442,
+              "benchmarkIndex": 2102
+            },
+            {
+              "performance": 69,
+              "lcp": 4140.1547,
+              "tbt": 434.92265,
+              "cls": 0.06954558673620442,
+              "benchmarkIndex": 963
+            },
+            {
+              "performance": 64,
+              "lcp": 4209.4479999999985,
+              "tbt": 605.2760000000001,
+              "cls": 0.06954558673620442,
+              "benchmarkIndex": 2257
+            }
+          ]
+        }
+      },
+      "final": {
+        "directory": {
+          "runs": 3,
+          "medians": {
+            "performance": 97,
+            "accessibility": 100,
+            "best-practices": 100,
+            "seo": 100,
+            "fcp": 918.4204,
+            "lcp": 2351.0640000000003,
+            "tbt": 135.5,
+            "cls": 0.0001065516310518786,
+            "observedFcp": 209,
+            "observedLcp": 209
+          },
+          "performanceRange": [
+            92,
+            97
+          ],
+          "samples": [
+            {
+              "performance": 92,
+              "lcp": 3091.3049999999994,
+              "tbt": 141.5,
+              "cls": 0,
+              "benchmarkIndex": 2180
+            },
+            {
+              "performance": 97,
+              "lcp": 2351.0640000000003,
+              "tbt": 114,
+              "cls": 0.0001065516310518786,
+              "benchmarkIndex": 2137
+            },
+            {
+              "performance": 97,
+              "lcp": 2324.2357,
+              "tbt": 135.5,
+              "cls": 0.0001065516310518786,
+              "benchmarkIndex": 2219
+            }
+          ]
+        },
+        "clinic": {
+          "runs": 3,
+          "medians": {
+            "performance": 84,
+            "accessibility": 100,
+            "best-practices": 100,
+            "seo": 100,
+            "fcp": 917.7197000000001,
+            "lcp": 2916.946575,
+            "tbt": 131.5,
+            "cls": 0,
+            "observedFcp": 3915,
+            "observedLcp": 3915
+          },
+          "performanceRange": [
+            74,
+            89
+          ],
+          "samples": [
+            {
+              "performance": 84,
+              "lcp": 3546.66475,
+              "tbt": 131.5,
+              "cls": 0,
+              "benchmarkIndex": 2217
+            },
+            {
+              "performance": 89,
+              "lcp": 2916.946575,
+              "tbt": 98.87334999999996,
+              "cls": 0,
+              "benchmarkIndex": 2225
+            },
+            {
+              "performance": 74,
+              "lcp": 2905.7291750000004,
+              "tbt": 616.64015,
+              "cls": 0,
+              "benchmarkIndex": 2263.5
+            }
+          ]
+        },
+        "doctor": {
+          "runs": 3,
+          "medians": {
+            "performance": 93,
+            "accessibility": 100,
+            "best-practices": 100,
+            "seo": 100,
+            "fcp": 911.8119999999999,
+            "lcp": 2904.2600000000007,
+            "tbt": 207.5,
+            "cls": 0.0001065516310518786,
+            "observedFcp": 217,
+            "observedLcp": 217
+          },
+          "performanceRange": [
+            91,
+            94
+          ],
+          "samples": [
+            {
+              "performance": 91,
+              "lcp": 3048.812,
+              "tbt": 207.5,
+              "cls": 0.0001065516310518786,
+              "benchmarkIndex": 2124.5
+            },
+            {
+              "performance": 94,
+              "lcp": 2422.5,
+              "tbt": 235,
+              "cls": 0.0001065516310518786,
+              "benchmarkIndex": 2293
+            },
+            {
+              "performance": 93,
+              "lcp": 2904.2600000000007,
+              "tbt": 156,
+              "cls": 0.0001065516310518786,
+              "benchmarkIndex": 2328
+            }
+          ]
+        }
+      },
+      "browser": {
+        "profile": "unthrottled; mobile 390x844 DPR2 then desktop 1440x1000 DPR1; single observations",
+        "before": {
+          "rows": [
+            {
+              "selector": "a[href=\"/browse/audit-clinic\"]",
+              "layout": 3855,
+              "useful": 3855,
+              "booking": null,
+              "path": "/browse/audit-clinic",
+              "mainCount": 1,
+              "requests": [
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/locations/audit-clinic"
+                }
+              ]
+            },
+            {
+              "selector": "a[href=\"/doctor/audit-doctor?location=audit-clinic\"]",
+              "layout": 3158.2999999970198,
+              "useful": 3158.2999999970198,
+              "booking": 6709.19999999553,
+              "path": "/doctor/audit-doctor",
+              "mainCount": 1,
+              "requests": [
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/doctors/audit-doctor/profile?location=audit-clinic"
+                },
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/locations/audit-clinic?doctorId=audit-doctor"
+                },
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/doctors/audit-doctor/profile?location=audit-clinic"
+                },
+                {
+                  "kind": "browser-api",
+                  "path": "/api/public/locations/audit-clinic"
+                }
+              ]
+            },
+            {
+              "path": "/browse/missing-profile",
+              "status": 404
+            },
+            {
+              "path": "/doctor/missing-profile",
+              "status": 404
+            },
+            {
+              "path": "/browse/upstream-failure",
+              "status": 500
+            },
+            {
+              "path": "/doctor/upstream-failure",
+              "status": 500
+            },
+            {
+              "selector": "a[href=\"/browse/audit-clinic\"]",
+              "layout": 3679.60000000149,
+              "useful": 3679.60000000149,
+              "booking": null,
+              "path": "/browse/audit-clinic",
+              "mainCount": 1,
+              "requests": [
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/locations/audit-clinic"
+                }
+              ]
+            },
+            {
+              "selector": "a[href=\"/doctor/audit-doctor?location=audit-clinic\"]",
+              "layout": 3141.2999999970198,
+              "useful": 3141.2999999970198,
+              "booking": 6680.39999999851,
+              "path": "/doctor/audit-doctor",
+              "mainCount": 1,
+              "requests": [
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/doctors/audit-doctor/profile?location=audit-clinic"
+                },
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/locations/audit-clinic?doctorId=audit-doctor"
+                },
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/doctors/audit-doctor/profile?location=audit-clinic"
+                },
+                {
+                  "kind": "browser-api",
+                  "path": "/api/public/locations/audit-clinic"
+                }
+              ]
+            }
+          ],
+          "violations": [],
+          "failures": []
+        },
+        "final": {
+          "rows": [
+            {
+              "selector": "a[href=\"/browse/audit-clinic\"]",
+              "feedback": 163.59999999403954,
+              "layout": 3697.39999999851,
+              "useful": 3993.5,
+              "booking": null,
+              "path": "/browse/audit-clinic",
+              "mainCount": 1,
+              "requests": [
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/locations/audit-clinic"
+                }
+              ]
+            },
+            {
+              "selector": "a[href=\"/doctor/audit-doctor?location=audit-clinic\"]",
+              "feedback": null,
+              "layout": 125.40000000596046,
+              "useful": 125.40000000596046,
+              "booking": 3571.2000000029802,
+              "path": "/doctor/audit-doctor",
+              "mainCount": 1,
+              "requests": [
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/locations/audit-clinic?doctorId=audit-doctor"
+                },
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/doctors/audit-doctor/profile?location=audit-clinic"
+                },
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/doctors/audit-doctor/profile?location=audit-clinic"
+                }
+              ]
+            },
+            {
+              "path": "/browse/missing-profile",
+              "status": 404
+            },
+            {
+              "path": "/doctor/missing-profile",
+              "status": 404
+            },
+            {
+              "path": "/browse/upstream-failure",
+              "status": 500
+            },
+            {
+              "path": "/doctor/upstream-failure",
+              "status": 500
+            },
+            {
+              "selector": "a[href=\"/browse/audit-clinic\"]",
+              "feedback": 164.69999999552965,
+              "layout": 3676.1999999955297,
+              "useful": 3676.1999999955297,
+              "booking": null,
+              "path": "/browse/audit-clinic",
+              "mainCount": 1,
+              "requests": [
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/locations/audit-clinic"
+                }
+              ]
+            },
+            {
+              "selector": "a[href=\"/doctor/audit-doctor?location=audit-clinic\"]",
+              "feedback": null,
+              "layout": 113.70000000298023,
+              "useful": 113.70000000298023,
+              "booking": 3542.9000000059605,
+              "path": "/doctor/audit-doctor",
+              "mainCount": 1,
+              "requests": [
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/locations/audit-clinic?doctorId=audit-doctor"
+                },
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/doctors/audit-doctor/profile?location=audit-clinic"
+                },
+                {
+                  "kind": "ssr-api",
+                  "route": "",
+                  "path": "/api/public/doctors/audit-doctor/profile?location=audit-clinic"
+                }
+              ]
+            }
+          ],
+          "violations": [],
+          "failures": []
+        }
+      },
+      "database": {
+        "profile": "isolated existing Mongo integration fixture; warmed public reads; operation counts, not production latency",
+        "directory": {
+          "before": 20,
+          "final": 13
+        },
+        "clinicTwoDoctors": {
+          "before": 22,
+          "final": 16
+        },
+        "doctorProfile": {
+          "before": 11,
+          "final": 11
+        }
+      },
+      "verification": {
+        "highestRisk": 4,
+        "frontendDistinctCases": 44,
+        "backendCases": 50,
+        "changedFileLint": "passed with seven existing Browse hook warnings",
+        "backendTypes": "passed",
+        "productionBuild": "passed; synthetic isolated artifact; do not deploy",
+        "fullSuite": "not run",
+        "deployment": "not performed"
+      },
+      "limitations": [
+        "Separate dataset from the existing 40 ms backend results and earlier live Render audit.",
+        "Fixed API delays do not measure backend query latency improvements.",
+        "Clinic and directory scores vary; do not infer a production API speedup.",
+        "Collector recorded a directory 503 in both stages outside the saved network audit; final browser smoke did not reproduce it.",
+        "Route loading files were removed because they changed missing-profile HTTP status to 200.",
+        "No JavaScript-size improvement, live cold-start, production DB timing or post-deployment improvement is claimed."
+      ]
+    }
   }
 }

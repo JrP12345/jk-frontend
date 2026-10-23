@@ -1,5 +1,132 @@
 # Lighthouse performance changes
 
+## Public reads and navigation follow-up: 23 October 2026
+
+Implemented the approved public-read and doctor-rendering changes in the frontend
+and sibling backend. Nothing was deployed, no dependencies or hosting settings
+changed, and no patient data or live availability cache was introduced.
+
+### Retained changes
+
+- Backend `controllers/public.ts`: reuse the existing `publicSlugs` batch helper;
+  overlap independent directory/profile enrichment reads; fetch current clinic
+  queue counts and current/upcoming overrides in batches. Keep active provider,
+  organization/location visibility, subscription entitlement, selected assignment,
+  scheduling, cutoff and timezone checks. The scheduling service still performs
+  its own fresh override read. No schema/index or public response field changed.
+- Frontend `src/app/doctor/[slug]/page.tsx`: start profile and selected-clinic reads
+  together, render the profile after its own read, and await booking data inside
+  an async child of the existing `Suspense`. Give that one booking read the same
+  bounded five-second timeout as public profiles, instead of routinely discarding
+  it at three seconds and fetching again in the browser. Preserve client recovery
+  on a genuine failure. Use a compact contact fallback when booking is unavailable.
+- `BrowseClient.tsx` and `BrowseDetailClient.tsx`: use existing `NavigationPending`
+  inside the clinic title/action and doctor-profile links. No navigation target,
+  card click handler, prefetch policy or booking handler changed.
+
+New clinic/doctor `loading.tsx` files were tested and **removed**. Production
+verification showed a missing profile returning HTTP 200, and the clinic fallback
+still waited for metadata. The final build retains `htmlLimitedBots: /.*/` and
+correct 404/500 responses. Link-pending feedback supplements the actual data-flow
+changes; it does not make the backend faster.
+
+### Comparable production-build measurements
+
+These are a **separate dataset** from the 22 October results below. Chrome
+155.0.8059.86, Lighthouse 13.5.0, Next 16.4.2, Node 24.7.0, Windows. Three fresh
+browser contexts per route, mobile simulation (150 ms RTT, about 1.6 Mbps, CPU 4x),
+per-metric medians. Both builds use identical synthetic clinics with online
+booking disabled: clinic-detail responses take a fixed **3,500 ms**; other API
+responses take 40 ms. This deliberately reproduces the old three-second timeout
+without connecting to Render, Atlas, accounts or patient records. It does **not**
+measure the backend query optimizations' network latency benefit.
+
+| Route | Performance before → final | FCP ms | LCP ms | TBT ms | CLS |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `/browse` | 93 → 97 | 922 → 918 | 2,328 → 2,351 | 147 → 136 | 0.0001 → 0.0001 |
+| `/browse/audit-clinic` | 76 → 84 | 926 → 918 | 3,685 → 2,917 | 336 → 132 | 0 → 0 |
+| `/doctor/audit-doctor?location=audit-clinic` | 68 → 93 | 912 → 912 | 4,209 → 2,904 | 454 → 208 | 0.0695 → 0.0001 |
+
+Accessibility, best practices and SEO are 100 for all three local representatives
+before/final. Synthetic-origin SEO is not the live development site's indexing
+policy. Performance ranges remain wide: clinic 68–86 before / 74–89 final;
+doctor 64–69 / 91–94. An intermediate candidate with the removed route boundaries
+had a 14,907 ms clinic TBT outlier; it is retained in temporary evidence but is not
+the final implementation. Do not interpret the clinic/Browse score differences
+as proven API latency gains. Clinic trace-observed FCP is essentially unchanged
+(3,908 → 3,915 ms) under the fixed backend delay.
+
+Doctor trace-observed FCP changes from 3,326 to 217 ms. The old late contact panel
+was LCP at 7,048 ms; the final profile becomes useful earlier, while contact data
+still waits for its fresh request. No JavaScript size improvement is claimed:
+doctor script transfer is 283,155 → 283,191 bytes; directory 251,377 → 251,387.
+Clinic script transfer included an additional prefetched chunk in some runs
+(before 268,787–283,155 bytes; final 283,191).
+
+Separate unthrottled browser checks use mobile 390×844/DPR 2 and desktop
+1440×1000/DPR 1; they are single observations, not Lighthouse medians:
+
+| Transition | Mobile before → final | Desktop before → final |
+| --- | ---: | ---: |
+| Click → useful clinic details | 3,855 → 3,994 ms | 3,680 → 3,676 ms |
+| Clinic click → useful doctor profile | 3,158 → 125 ms | 3,141 → 114 ms |
+| Clinic click → doctor contact details | 6,709 → 3,571 ms | 6,680 → 3,543 ms |
+
+Clinic link feedback appears at 164/165 ms on mobile/desktop. The doctor transition
+finishes before the existing 150 ms progress threshold, so no progress bar is
+necessary. The old selected-clinic SSR attempt plus browser retry becomes one
+primary SSR detail read, with zero browser clinic-detail retries in the final
+comparison. Other framework prefetch/RSC requests remain; these are not per-user
+production request budgets. Both final views have one main landmark. Refresh and
+back navigation pass; missing profiles return 404 and upstream failures 500 on
+both public route families. The final smoke records zero CSP violations and no
+failed responses. The directory collector recorded a 503 in both Lighthouse stages,
+outside the saved network audit; its origin was not isolated and the final smoke
+did not reproduce it. This is not a passing live-service check.
+
+### Backend read measurements and verification
+
+The existing isolated Mongo integration fixture measures steady-state operations:
+
+| Public read | Operations before → final | Explanation |
+| --- | ---: | --- |
+| Sorted directory | 20 → 13 | Eight individual slug reads become one batch read. |
+| Clinic details with two doctors | 22 → 16 | Batch links, waiting counts and today's/upcoming leaves; retain schedule reads. |
+| Doctor profile | 11 → 11 | Same checks/read count; independent stages now overlap. |
+
+`tests/publicLocationCatalog.test.ts` checks repeat response equality, stable links,
+bounded slug enrichment and no writes on warmed reads. A fresh-read case changes
+queue statuses and leave records between requests, checks doctor/location scoping
+and confirms patient identifiers and another location's override reason are absent.
+Cold slug creation remains covered by existing discovery tests.
+
+Highest risk: Level 4. Fifty backend cases passed across `publicLocationCatalog`,
+`publicDiscovery`, `publicOrganizationDto`, `browseBookingSecurityPolish` and
+`doctorAvailabilityAndSmartBooking`, followed by backend `check:fast`. Forty-four
+distinct frontend cases passed across `publicCanonicalLinks`, `publicProfileError`,
+`browseDoctorDetail`, `publicDiscovery` and `browseAndMobilePolish`; affected Browse
+cases were repeated after adding pending feedback. New server-component tests
+verify that the page resolves while booking data is pending, successful/failed/
+wrong-location responses, and one default-practice booking read. Changed-file
+ESLint passed with seven existing Browse hook warnings. The final isolated Next
+production build passed compilation, application types and route generation;
+application TypeScript does not cover test files. No full suite/release gate ran.
+
+Before/final raw reports are under the OS temporary directory
+`C:/Users/Jay/AppData/Local/Temp/ekavyu-lighthouse-audit-20261022/focused-{before,final}`;
+browser comparisons are in `runtime-{before,final}`. Build IDs, samples, ranges and
+operation counts are appended under `followUps.2026-10-23` in
+`lighthouse-results.json`. Temporary scripts/tooling are not repository dependencies.
+The synthetic `.next/focused-performance` build must never be deployed.
+
+Live Render cold starts, production database execution/pool timings, deployment
+regions and post-deployment improvements remain unmeasured. The prior live warm
+audit is a different dataset and is not an after result. No auth, API-client,
+geolocation, payment, booking-write or infrastructure change was made. Production
+benefits require deploying **both repositories**, with separate deployment approval.
+
+## Earlier measurement set: 22 October 2026
+
 Reviewed 2026-10-22. Local production build, Next 16.4.2, React 19.3.1,
 Chrome 155.0.8059.85, Lighthouse 13.5.0, Node 24.7.0 on Windows.
 Measurements use synthetic clinics, a synthetic doctor/session and a loopback

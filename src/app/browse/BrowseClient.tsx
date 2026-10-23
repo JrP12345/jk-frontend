@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
+import { NavigationPending } from "@/components/ui/RouteProgress";
 import { useRouter } from "next/navigation";
 import { locationPath, doctorPath, hasMultipleLocations } from "@/lib/publicPaths";
 import api from "@/lib/api";
@@ -542,7 +543,7 @@ export default function BrowseClient({
                               className="text-base font-semibold text-text group-hover:text-accent transition-colors min-w-0"
                               title={location.name}
                             >
-                              <Link href={locationPath(location)} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block line-clamp-2 break-words focus-visible:outline-none focus-visible:underline">{location.name}</Link>
+                              <Link href={locationPath(location)} onClick={(event) => { event.stopPropagation(); rememberPosition(); }} className="block line-clamp-2 break-words focus-visible:outline-none focus-visible:underline"><NavigationPending />{location.name}</Link>
                             </h2>
                           </div>
                           {hasMultipleLocations(location) && location.organizationName && location.organizationName !== location.name && (
@@ -690,6 +691,7 @@ export default function BrowseClient({
                         onClick={(event) => { event.stopPropagation(); rememberPosition(); }}
                         className="group/btn inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-3.5 text-sm font-bold text-brand-mist shadow-xs hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                       >
+                        <NavigationPending />
                         <span className="min-w-0 text-center">
                           {bookingStatus === "contact_location"
                             ? "View contact options"
