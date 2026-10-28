@@ -1,10 +1,10 @@
 "use client";
-import { facilityTypeLabel, type FacilityType } from "@/lib/facility";
+import { type FacilityType } from "@/lib/facility";
 
-import { locationPath, doctorPath, hasMultipleLocations } from "@/lib/publicPaths";
 import LoadingImage from "@/components/ui/LoadingImage";
-import PublicProfileShare from "@/components/PublicProfileShare";
 import BrowseDetailSkeleton from "@/components/ui/BrowseDetailSkeleton";
+import FacilityProfile from "./FacilityProfile";
+import marketplace from "@/components/MarketplaceLayout.module.css";
 import PrintButton from "@/components/ui/PrintButton";
 
 import { rememberTracker } from "@/store/trackerStore";
@@ -19,20 +19,19 @@ import { useOverlayFocus } from "@/hooks/useOverlayFocus";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { NavigationPending } from "@/components/ui/RouteProgress";
 import api from "@/lib/api";
 import { vibrateFeedback } from "@/lib/haptics";
 import { locationDateKey, locationClockMinutes, addCalendarDays, locationLocalTimeToIso } from "@/lib/locationTime";
 import { getPublicBookingStatus, type PublicBookingStatus } from "@/lib/publicBooking";
 import { useAuthStore } from "@/store/authStore";
-import { Card, CardContent, CardHeader, CardTitle, Button, Modal, Input, Select, useToast, Badge, Breadcrumbs, LoadingState, SkeletonForm } from "@/components/ui";
+import { Card, CardContent, Button, Modal, Input, Select, useToast, Badge, LoadingState, SkeletonForm } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
-import { AlertCircle, MapPin, Phone, Clock, Building2, Calendar, ExternalLink, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, Star, UserCheck, User, Smartphone, Mail, FileText, CalendarOff, Camera, X, ChevronLeft, MessageSquare, Search } from "lucide-react";
+import { AlertCircle, Clock, Building2, Calendar, ExternalLink, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, UserCheck, User, Smartphone, Mail, FileText, CalendarOff, X, ChevronLeft } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { detectPatientOtpTarget } from "@/lib/patientLogin";
 import { LocationStatusBadge } from "@/components/ui/LocationStatusBadge";
 
-interface Doctor {
+export interface Doctor {
   id: string;
   slug?: string;
   name: string;
@@ -71,6 +70,7 @@ export interface LocationDetail {
   address: string;
   latitude?: number | null;
   longitude?: number | null;
+  googleMapsEmbedUrl?: string;
   phone: string;
   email: string;
   description: string;
@@ -1118,7 +1118,7 @@ export default function BrowseDetailClient({
 
   if (locationError) {
     if (bookingOnly) return <div role="alert" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">{locationError === "not_found" ? "This practice location is no longer available." : "We couldn't load booking details."}{locationError === "load_failed" && <Button className="ml-3" onClick={() => setLocationRetry((value) => value + 1)}>Try again</Button>}</div>;
-    return <div className="min-h-screen bg-surface-alt text-text"><MarketplaceNavbar /><main className="max-w-lg mx-auto px-4 pt-28"><Card><CardContent className="p-6 space-y-4"><h1 className="text-lg font-semibold">{locationError === "not_found" ? "Location page unavailable" : "We couldn't load this location"}</h1><p className="text-sm text-text-muted">{locationError === "not_found" ? "This location link may have changed or the location is no longer listed." : "Check your connection and try again."}</p><div className="flex flex-wrap gap-3">{locationError === "load_failed" && <Button onClick={() => setLocationRetry((value) => value + 1)}>Try again</Button>}<Link href="/browse" className="text-sm text-accent py-2">Browse locations</Link></div></CardContent></Card></main></div>;
+    return <div className={marketplace.page}><MarketplaceNavbar showSignUp /><main className="max-w-lg mx-auto px-4 pt-12"><Card><CardContent className="p-6 space-y-4"><h1 className="text-lg font-semibold">{locationError === "not_found" ? "Location page unavailable" : "We couldn't load this location"}</h1><p className="text-sm text-text-muted">{locationError === "not_found" ? "This location link may have changed or the location is no longer listed." : "Check your connection and try again."}</p><div className="flex flex-wrap gap-3">{locationError === "load_failed" && <Button onClick={() => setLocationRetry((value) => value + 1)}>Try again</Button>}<Link href="/browse" className="text-sm text-accent py-2">Browse locations</Link></div></CardContent></Card></main></div>;
   }
 
   if (loading || (location && location.slug !== slug)) {
@@ -1129,7 +1129,8 @@ export default function BrowseDetailClient({
   if (!location) return null;
 
   const hasCoordinates = typeof location.latitude === "number" && Number.isFinite(location.latitude) && location.latitude >= -90 && location.latitude <= 90
-    && typeof location.longitude === "number" && Number.isFinite(location.longitude) && location.longitude >= -180 && location.longitude <= 180;
+    && typeof location.longitude === "number" && Number.isFinite(location.longitude) && location.longitude >= -180 && location.longitude <= 180
+    && !(location.latitude === 0 && location.longitude === 0);
   const streetAddress = location.address?.trim();
   const destination = hasCoordinates
     ? `${location.latitude},${location.longitude}`
@@ -1147,444 +1148,27 @@ export default function BrowseDetailClient({
   const locationSpecialties = Array.from(new Set(location.doctors.map((doctor) => doctor.specialization?.trim()).filter((specialty): specialty is string => Boolean(specialty)))).sort();
   const matchingDoctors = location.doctors.filter((doctor) => (!locationSpecialty || doctor.specialization?.trim() === locationSpecialty) && `${doctor.name} ${doctor.specialization}`.toLocaleLowerCase().includes(doctorQuery.trim().toLocaleLowerCase()));
   const visibleDoctors = showAllDoctors || doctorQuery || locationSpecialty ? matchingDoctors : matchingDoctors.slice(0, 12);
-  const hasCoverImage = Boolean(location.image_url && location.image_url !== location.logo_url);
 
   if (bookingOnly && !bookingDoctor) return <div role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">This doctor is no longer listed at {location.name}. Choose another practice location or contact reception.</div>;
   if (bookingOnly && bookingStatus === "contact_location") return <div role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary"><p className="font-semibold text-text">Online booking is unavailable at {location.name}.</p><p className="mt-2">{location.phone ? <>Please <a className="font-semibold text-accent underline" href={`tel:${location.phone.replace(/\s+/g, "")}`}>call {location.phone}</a> for help.</> : "Please contact reception for help."}</p></div>;
   if (bookingOnly && !selectedDoctor && !ticketModalOpen) return <div role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">Preparing available appointments at {location.name}…</div>;
 
   return (
-    <div role={bookingOnly ? undefined : "main"} className={bookingOnly ? "" : "min-h-screen bg-surface-alt pt-16 pb-24 font-sans text-text antialiased"}>
+    <div role={bookingOnly ? undefined : "main"} className={bookingOnly ? "" : `${marketplace.page} pb-24 lg:pb-8`}>
       {!bookingOnly && <>
-      <MarketplaceNavbar brand={{ name: hasMultipleLocations(location) ? location.organization?.name || location.name : location.name, logoUrl: location.organization?.logo_url || location.logo_url, href: locationPath(location) }} />
-
-      {/* Navigation Breadcrumbs Bar */}
-      <div className="bg-surface border-b border-border/40 px-4 sm:px-6 py-2.5 sm:py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
-          <Breadcrumbs
-            items={[
-              { label: "Browse Locations", href: "/browse" },
-              { label: location.name },
-            ]}
-          />
-          <Link
-            href="/browse"
-            aria-label={"Back to locations"}
-            className="text-sm font-medium text-text-muted hover:text-accent inline-flex items-center gap-1 shrink-0 py-1 px-2 rounded-lg hover:bg-surface-alt min-h-11"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.75} />
-            <span className="hidden xs:inline">{"Back to Locations"}</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* Location Header Showcase Banner - Clean Healthcare Design Standard */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6">
-        <div className="public-brand-border bg-surface border border-border rounded-2xl sm:rounded-3xl overflow-hidden shadow-xs">
-          {/* Visual Cover Header */}
-          {hasCoverImage && <div className="h-24 sm:h-40 w-full relative bg-surface-alt overflow-hidden">
-            {location.image_url ? (
-              <LoadingImage src={location.image_url} alt={location.name} fetchPriority="high" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-surface border-b border-border/40">
-                <Building2 className="w-8 h-8 text-text-muted" strokeWidth={1.75} aria-hidden="true" />
-              </div>
-            )}
-            <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex flex-wrap gap-1.5 sm:gap-2">
-              <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-text bg-surface/90  border border-border px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-xs">
-                <MapPin className="w-3 h-3 text-text-muted" strokeWidth={1.75} />
-                <span>{location.city}</span>
-              </span>
-            </div>
-
-            {/* View Photos Button if images available */}
-            {location.images && location.images.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setLightboxIndex(0)}
-                className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-mist bg-black/60 hover:bg-black/80  px-3 py-1.5 rounded-xl border border-white/20 shadow-sm transition-colors cursor-pointer z-10"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                <span>{"View"} {location.images.length} {"Photos"}</span>
-              </button>
-            )}
-          </div>}
-
-          {/* Title & Clinical Contact Bar */}
-          <div className="p-4 sm:p-6 border-t border-border/40 space-y-3">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex min-w-0 items-center gap-3.5">
-                {(location.logo_url || location.organization?.logo_url) && (
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-surface border-2 border-surface shadow-md overflow-hidden shrink-0 -mt-8 sm:-mt-12 z-10 relative">
-                    <LoadingImage
-                      src={location.logo_url || location.organization?.logo_url}
-                      alt={location.name}
-                      fallback={location.name.slice(0, 1)}
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                )}
-                <div className="space-y-0.5 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-xl sm:text-3xl font-extrabold text-text tracking-tight break-words">{location.name}</h1>
-                    {location.timings && <LocationStatusBadge timings={location.timings} pill showSecondary={false} />}
-                  </div>
-                  <p className="text-sm text-text-secondary">{facilityTypeLabel(location.facilityType)}</p>
-                  {hasMultipleLocations(location) && location.organization?.name && location.organization.name !== location.name && (
-                    <p className="text-xs text-text-muted font-medium">
-                      {"Branch of"} {location.organization.name}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Quick Action Buttons Bar */}
-              <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] gap-2 sm:flex sm:w-auto sm:flex-wrap xl:shrink-0 xl:flex-nowrap">
-                <PublicProfileShare title={location.name} path={locationPath(location)} />
-                {directionsUrl && (
-                  <a
-                    href={directionsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-center text-xs font-semibold text-text shadow-2xs hover:bg-surface-hover"
-                  >
-                    <MapPin className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
-                    <span>{"Get Directions"}</span>
-                    <ExternalLink className="w-3 h-3 text-text-muted" strokeWidth={1.75} />
-                  </a>
-                )}
-                {location.phone && (
-                  <>
-                    <a
-                      href={`https://wa.me/${location.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello, I would like to inquire about appointments and doctors at ${location.name}.`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-center text-xs font-semibold text-success-text shadow-2xs transition-colors hover:bg-success/20 dark:text-success-text"
-                      title="Chat on WhatsApp"
-                      aria-label="Chat on WhatsApp"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5 text-success-text" strokeWidth={1.75} />
-                      <span>{"WhatsApp"}</span>
-                    </a>
-                    <a
-                      href={`tel:${location.phone.replace(/\s+/g, "")}`}
-                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-primary-600 px-3 py-2 text-center text-xs font-semibold text-brand-mist shadow-2xs hover:bg-primary-700"
-                    >
-                      <Phone className="w-3.5 h-3.5" strokeWidth={1.75} />
-                      <span>{"Call reception"}</span>
-                    </a>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Address & Timings Row */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-secondary">
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" strokeWidth={1.75} />
-                <span className="truncate">{location.address && location.address.trim() !== "." ? location.address : location.city}</span>
-              </div>
-              <span className="hidden sm:inline text-border">•</span>
-              <div className="flex items-center gap-1.5 text-text-muted">
-                <Clock className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
-                <span>{getHeaderTimingSummary(location.timings)}</span>
-              </div>
-            </div>
-
-            {location.description && <details className="border-t border-border pt-2"><summary className="cursor-pointer py-2 text-sm font-medium">About this location</summary><p className="max-w-3xl whitespace-pre-line text-sm leading-6 text-text-secondary pb-2">{location.description}</p></details>}
-
-            {/* Facilities Tags */}
-            {location.amenities && location.amenities.length > 0 && (
-              <details className="border-t border-border pt-2"><summary className="cursor-pointer py-2 text-sm font-medium">Amenities ({location.amenities.length})</summary><div className="flex flex-wrap gap-1.5 pb-2">
-                {location.amenities.map((fac, idx) => (
-                  <span key={idx} className="text-[10px] font-medium bg-surface-alt text-text-secondary px-2 py-0.5 rounded-md border border-border">
-                    {fac}
-                  </span>
-                ))}
-              </div></details>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Layout - Specialists First on Mobile for Rapid Access */}
-      {bookingStatus === "contact_location" && <div role="status" className="max-w-6xl mx-auto px-4 sm:px-6 pt-5">
-        <div className="rounded-2xl border border-border bg-surface p-4 text-sm text-text-secondary">
-          <p className="font-semibold text-text">Online booking is temporarily unavailable.</p>
-          <p className="mt-1">Please contact reception directly.{location.phone && <> <a className="font-medium text-accent underline" href={`tel:${location.phone.replace(/\s+/g, "")}`}>Call {location.phone}</a></>}</p>
-        </div>
-      </div>}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-24 lg:pb-12 flex flex-col lg:grid lg:grid-cols-3 gap-6">
-        {/* Right Column: Specialists Practitioner Cards (Renders First on Mobile) */}
-        <div className="order-1 lg:order-2 lg:col-span-2 space-y-4 sm:space-y-5">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <h2 className="text-lg sm:text-xl font-bold text-text flex items-center gap-2">
-                <span>Doctors at {location.name}</span>
-                <Badge variant="neutral" className="text-xs font-semibold">
-                  {location.doctors.length}
-                </Badge>
-              </h2>
-              <p className="text-xs text-text-muted">{bookingStatus === "check_availability" ? "Select a doctor to check dates and times." : "View doctors and contact reception about appointments."}</p>
-            </div>
-          </div>
-
-          {location.doctors.length > 8 && <Input
-            icon={<Search className="h-4 w-4" aria-hidden="true" />}
-            value={doctorQuery}
-            onChange={(event) => { setDoctorQuery(event.target.value); setShowAllDoctors(false); }}
-            placeholder="Search doctors or specialties"
-            aria-label="Search doctors at this location"
-          />}
-          {locationSpecialties.length > 1 && <Select
-            label="Specialty"
-            value={locationSpecialty}
-            onChange={(event) => { setLocationSpecialty(event.target.value); setShowAllDoctors(false); }}
-            options={[{ value: "", label: "All specialties" }, ...locationSpecialties.map((specialty) => ({ value: specialty, label: specialty }))]}
-          />}
-          {(doctorQuery || locationSpecialty) && <p role="status" className="text-xs text-text-secondary">Showing {matchingDoctors.length} {matchingDoctors.length === 1 ? "doctor" : "doctors"}</p>}
-
-          {location.doctors.length === 0 ? (
-            <Card className="p-8 text-center text-text-muted text-xs border-dashed rounded-2xl bg-surface">
-              <p>No doctors are listed for online booking at this location right now.</p>
-              <div className="mt-3 flex flex-wrap justify-center gap-3">
-                {location.phone && <a href={`tel:${location.phone.replace(/\s+/g, "")}`} className="font-semibold text-accent underline min-h-11 inline-flex items-center">Call reception</a>}
-                <Link href="/browse" className="font-semibold text-accent underline min-h-11 inline-flex items-center">Browse other locations</Link>
-              </div>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-            {matchingDoctors.length === 0 ? <p role="status" className="rounded-2xl border border-border bg-surface p-5 text-sm text-text-secondary">No doctors match this search. Try a name or specialty.</p> : <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-              {visibleDoctors.map((doc) => (
-                <Card
-                  key={doc.id}
-                  className="group hover:shadow-md hover:border-primary-500/40 transition-all duration-150 p-4 sm:p-5 rounded-2xl border border-border bg-surface flex flex-col justify-between"
-                >
-                  <div className="space-y-3.5">
-                    {/* Header Avatar & Details */}
-                    <Link href={doctorPath(doc, location)} className="flex items-start gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-                      <NavigationPending />
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-surface-alt border border-border flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
-                        {doc.image_url ? (
-                          <LoadingImage src={doc.image_url} alt={doc.name} loading="lazy" className="w-full h-full object-cover rounded-xl" />
-                        ) : (
-                          <span className="text-xs sm:text-sm font-bold text-text-muted">DR</span>
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1">
-                          <h3 className="text-sm sm:text-base font-bold text-text group-hover:text-accent transition-colors break-words">
-                            Dr. {doc.name.replace(/^Dr\.?\s*/i, "")}
-                          </h3>
-                          {doc.rating != null && (doc.reviewsCount || 0) > 0 && <span className="text-xs font-semibold text-text-secondary flex items-center gap-1 shrink-0" aria-label={`${doc.rating} out of 5 from ${doc.reviewsCount} reviews`}>
-                            <Star className="w-3 h-3 text-warning-text fill-warning" strokeWidth={1.75} />
-                            <span>{doc.rating.toFixed(1)}</span>
-                          </span>}
-                        </div>
-                        <p className="text-xs font-semibold text-accent dark:text-accent mt-0.5 break-words">{doc.specialization || "Specialty not listed"}</p>
-                        {doc.qualification && <p className="text-[11px] text-text-muted break-words mt-0.5">{doc.qualification}</p>}
-                      </div>
-                    </Link>
-
-                    {/* Experience & Fees Row */}
-                    <div className="grid grid-cols-2 gap-2 bg-surface-alt p-2.5 rounded-xl border border-border text-xs">
-                      <div>
-                        <span className="text-[10px] text-text-muted block font-medium uppercase tracking-wider">{"Experience"}</span>
-                        <span className="font-semibold text-text">{doc.experience_years ? `${doc.experience_years}+ ${"Years"}` : "Not listed"}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-text-muted block font-medium uppercase tracking-wider">{"Consultation Fee"}</span>
-                        <span className="font-semibold text-text">{doctorFeeLabel(doc, location.currency || "INR")}</span>
-                      </div>
-                    </div>
-
-                    {/* Queue or Slot Mode Indicator & Status Badges */}
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-text-secondary">
-                      <span className="inline-flex items-center gap-1 bg-surface-alt px-2 py-0.5 rounded-md border border-border font-medium">
-                        {doc.bookingMode === "sequential_queue" ? (
-                          <>
-                            <Users className="w-3 h-3 text-text-muted" strokeWidth={1.75} />
-                            <span>{"Queue Token System"}</span>
-                          </>
-                        ) : (
-                          <>
-                            <Clock className="w-3 h-3 text-text-muted" strokeWidth={1.75} />
-                            <span>{"Scheduled Time Slot"}</span>
-                          </>
-                        )}
-                      </span>
-                      {doc.isOnlineBookingClosed && (
-                        <Badge variant="warning" size="sm" className="font-semibold text-[10px]">
-                          {"Online Closed Today"}
-                        </Badge>
-                      )}
-                      {doc.isAvailable === false && (
-                        <Badge variant="danger" size="sm" className="font-semibold text-[10px]">
-                          {"Unavailable Today"}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Book Button */}
-                  <div className="pt-3 border-t border-border/50 mt-3.5">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="public-brand-action w-full font-bold min-h-[44px] flex items-center justify-center gap-1.5 group/btn cursor-pointer"
-                      onClick={() => handleOpenBooking(doc)}
-                      disabled={bookingStatus !== "check_availability"}
-                    >
-                      <span>
-                        {bookingStatus !== "check_availability"
-                          ? "Contact reception for appointments"
-                          : doc.isAvailable === false
-                          ? "Schedule Upcoming Date"
-                          : doc.isOnlineBookingClosed
-                          ? "Schedule Next Available Date"
-                          : "Check appointments"}
-                      </span>
-                      <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" strokeWidth={2} />
-                    </Button>
-                    <Link href={doctorPath(doc, location)} className="mt-2 inline-flex min-h-11 w-full items-center justify-center text-xs font-semibold text-accent underline-offset-2 hover:underline">
-                      <NavigationPending />
-                      View & share doctor profile
-                    </Link>
-                  </div>
-                </Card>
-              ))}
-            </div>}
-            {!showAllDoctors && !doctorQuery && !locationSpecialty && matchingDoctors.length > visibleDoctors.length && <Button variant="outline" className="w-full min-h-11" onClick={() => setShowAllDoctors(true)}>Show all {matchingDoctors.length} doctors</Button>}
-            </div>
-          )}
-        </div>
-
-        {/* Left Column: About & Operating Hours */}
-        <div className="order-2 lg:order-1 lg:col-span-1 space-y-6">
-          <Card className="rounded-2xl border border-border bg-surface">
-            <CardHeader className="pb-3 border-b border-border/40">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-text-muted" strokeWidth={1.75} />
-                <span>Plan your visit</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4">
-              <div>
-                <h4 className="text-xs font-semibold text-text mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-text-muted" strokeWidth={1.75} />
-                  <span>{"Location Operating Hours"}</span>
-                </h4>
-                {renderTimings(location.timings)}
-              </div>
-
-              {/* Direct Help & Reception Contact */}
-              <div className="pt-3 border-t border-border/40 space-y-2">
-                <h4 className="text-xs font-semibold text-text uppercase tracking-wider">{"Reception & Inquiries"}</h4>
-                <div className="space-y-1.5 text-xs text-text-secondary">
-                  {location.phone && (
-                    <a
-                      href={`tel:${location.phone.replace(/\s+/g, "")}`}
-                      className="flex items-center gap-2 text-accent hover:underline font-semibold min-h-[36px]"
-                    >
-                      <Phone className="w-3.5 h-3.5" strokeWidth={1.75} />
-                      <span>{location.phone}</span>
-                    </a>
-                  )}
-                  {location.email && (
-                    <p className="flex items-center gap-2 text-text-muted">
-                      <span>{"Email:"}</span>
-                      <span>{location.email}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* About Parent Organization & Clinical Governance Card */}
-          {hasMultipleLocations(location) && location.organization && (
-            <Card className="rounded-2xl border border-border bg-surface overflow-hidden shadow-xs">
-              <CardHeader className="pb-3 border-b border-border/40">
-                <CardTitle className="text-sm font-bold flex items-center gap-2 text-text">
-                  <Building2 className="w-4 h-4 text-accent" strokeWidth={1.75} />
-                  <span>{"Part of"} {location.organization.name}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-3.5 space-y-3">
-                {location.organization.logo_url && (
-                  <div className="flex items-center gap-3">
-                    <LoadingImage
-                      src={location.organization.logo_url}
-                      alt={location.organization.name}
-                      className="w-10 h-10 rounded-xl object-contain border border-border p-1 bg-surface-alt shadow-2xs"
-                    />
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-text truncate">{location.organization.name}</p>
-                      <p className="text-[10px] text-text-muted">{"Parent Healthcare System"}</p>
-                    </div>
-                  </div>
-                )}
-                {location.organization.description && (
-                  <p className="text-xs text-text-secondary leading-relaxed line-clamp-3">
-                    {location.organization.description}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Facility Photo Gallery Showcase */}
-          {location.images && location.images.length > 0 && (
-            <Card className="rounded-2xl border border-border bg-surface overflow-hidden shadow-xs">
-              <CardHeader className="pb-3 border-b border-border/40 flex flex-row items-center justify-between">
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <Camera className="w-4 h-4 text-accent" strokeWidth={1.75} />
-                  <span>{"Facility Showcase"}</span>
-                </CardTitle>
-                <span className="text-xs text-text-muted font-semibold">{location.images.length} {"Photos"}</span>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-3">
-                <div className="grid grid-cols-3 gap-2">
-                  {location.images.slice(0, 6).map((img, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setLightboxIndex(idx)}
-                      className="relative aspect-square rounded-xl overflow-hidden border border-border/60 group hover:opacity-90 transition-opacity cursor-pointer bg-surface-alt"
-                    >
-                      <LoadingImage
-                        src={img}
-                        alt={`Facility photo ${idx + 1}`}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                      />
-                      {idx === 5 && location.images!.length > 6 && (
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-brand-mist text-xs font-bold">
-                          +{location.images!.length - 6}
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-xs font-semibold cursor-pointer"
-                  onClick={() => setLightboxIndex(0)}
-                >
-                  {"Browse Campus Gallery"}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
+      <FacilityProfile
+        location={location} bookingStatus={bookingStatus} directionsUrl={directionsUrl}
+        doctorQuery={doctorQuery} onQuery={value => { setDoctorQuery(value); setShowAllDoctors(false); }}
+        specialty={locationSpecialty} onSpecialty={value => { setLocationSpecialty(value); setShowAllDoctors(false); }}
+        specialties={locationSpecialties} matchingDoctors={matchingDoctors} visibleDoctors={visibleDoctors}
+        onShowAll={() => setShowAllDoctors(true)} onBook={handleOpenBooking} onPhoto={setLightboxIndex}
+        feeLabel={doctorFeeLabel} hours={renderTimings(location.timings)} hoursSummary={getHeaderTimingSummary(location.timings)}
+      />
 
       {/* Sticky Mobile Bottom Booking Bar (For single-doctor clinics) */}
       {hasSingleDoctor && singleDoctor && bookingStatus === "check_availability" && !isBookingOpen && !ticketModalOpen && (
-        <div className="fixed bottom-0 left-0 right-0 pt-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface/95 border-t border-border z-40 lg:hidden shadow-lg flex flex-wrap items-center justify-between gap-3">
+        <div role="region" aria-label="Appointment booking" className="fixed bottom-0 left-0 right-0 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface/95 border-t border-border z-40 lg:hidden shadow-lg">
+          <div className={`${marketplace.content} flex flex-wrap items-center justify-between gap-3`}>
           <div className="min-w-0 flex-1 basis-32">
             <p className="text-xs font-bold text-text truncate">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
             <p className="text-[11px] text-text-secondary font-semibold">{doctorFeeLabel(singleDoctor, location.currency || "INR")} · Consultation fee</p>
@@ -1593,10 +1177,11 @@ export default function BrowseDetailClient({
             variant="primary"
             size="sm"
             onClick={() => handleOpenBooking(singleDoctor)}
-            className="font-bold px-5 min-h-[44px] shrink-0"
+            className="font-bold px-5 min-h-11! shrink-0"
           >
             {"Check times"} →
           </Button>
+          </div>
         </div>
       )}
       </>}
@@ -1717,15 +1302,15 @@ export default function BrowseDetailClient({
                         <span className="text-[10px] font-semibold uppercase tracking-wider block opacity-85">{d.dayShort}</span>
                         <span className="text-xs sm:text-sm font-bold block mt-0.5">{d.dateNum}</span>
                         {d.isHoliday ? (
-                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-white/20 text-brand-mist" : "bg-warning/20 text-warning-text dark:text-warning-text"}`}>
+                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-primary-900 text-brand-mist" : "bg-warning/20 text-warning-text dark:text-warning-text"}`}>
                             {"Holiday"}
                           </span>
                         ) : d.isToday ? (
-                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-white/20 text-brand-mist" : "bg-primary-500/10 text-accent"}`}>
+                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-primary-900 text-brand-mist" : "bg-primary-500/10 text-accent"}`}>
                             {"Today"}
                           </span>
                         ) : d.isTomorrow ? (
-                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-white/20 text-brand-mist" : "bg-surface-alt text-text-muted"}`}>
+                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-primary-900 text-brand-mist" : "bg-surface-alt text-text-muted"}`}>
                             {"Tmrw"}
                           </span>
                         ) : null}

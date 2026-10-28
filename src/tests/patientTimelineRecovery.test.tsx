@@ -20,16 +20,16 @@ describe("Shared patient history recovery", () => {
       .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     render(<PatientTimeline patientId="patient" accessToken="approved" />);
     await screen.findByText(event.title);
-    const category = screen.getByRole("button", { name: "Diagnostics" });
+    const category = screen.getByRole("button", { name: /^Diagnostics/ });
     const search = screen.getByRole("textbox", { name: "Search patient history" });
     fireEvent.click(category);
     expect(await screen.findByRole("status", { name: "Loading patient health records timeline" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Diagnostics" })).toBe(category);
+    expect(screen.getByRole("button", { name: /^Diagnostics/ })).toBe(category);
     expect(screen.getByRole("textbox", { name: "Search patient history" })).toBe(search);
     expect(screen.queryByText(event.title)).not.toBeInTheDocument();
     await act(async () => { finish({ data: { data: { events: [] } } }); });
     expect(await screen.findByText("No clinical timeline events found matching filters.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Diagnostics" })).toBe(category);
+    expect(screen.getByRole("button", { name: /^Diagnostics/ })).toBe(category);
   });
 
   it("ignores a cancelled patient's late history response", async () => {
@@ -58,9 +58,9 @@ describe("Shared patient history recovery", () => {
     fixture.get.mockResolvedValue({ data: { data: { events: [] } } });
     render(<PatientTimeline patientId="patient" events={[]} />);
     expect(screen.getByText("Patient history approval controls")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Diagnostics" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Diagnostics/ }));
     await waitFor(() => expect(fixture.get).toHaveBeenCalledWith("/patients/patient/timeline?category=lab", expect.objectContaining({ headers: {} })));
-    expect(screen.getByRole("button", { name: "Diagnostics" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /^Diagnostics/ })).toHaveAttribute("aria-pressed", "true");
   });
   it("retains the original record and reports failed explanation requests accurately", async () => {
     fixture.get.mockResolvedValue({ data: { data: { events: [event] } } });

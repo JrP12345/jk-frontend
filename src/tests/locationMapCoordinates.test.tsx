@@ -4,6 +4,7 @@ import LocationManagement from "../components/organization/LocationManagement";
 import { ToastProvider } from "../components/ui";
 import { useAuthStore } from "../store/authStore";
 import { parseLocationCoordinates } from "../lib/geo/locationCoordinates";
+import { normalizeGoogleMapsEmbed } from "../lib/geo/googleMapsEmbed";
 import api from "../lib/api";
 
 const fixtures = vi.hoisted(() => ({ fetchLocations: vi.fn(), location: { id: "clinic-1", name: "Existing clinic", city: "Valsad", latitude: 0, longitude: -73 } }));
@@ -22,6 +23,28 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("Clinic map pin configuration", () => {
+  it("extracts a safe embed URL without executing pasted HTML", () => {
+    const url = "https://www.google.com/maps/embed?pb=!1m18!2m3!1d0";
+    expect(normalizeGoogleMapsEmbed(`<iframe src="${url}" width="600" height="450" loading="lazy"></iframe>`)).toBe(url);
+    expect(normalizeGoogleMapsEmbed(url)).toBe(url);
+    expect(normalizeGoogleMapsEmbed(" ")).toBe("");
+    for (const invalid of ["https://maps.app.goo.gl/short", "javascript:alert(1)", "https://www.google.com.evil.test/maps/embed?pb=x", "http://www.google.com/maps/embed?pb=x", "https://www.google.com/url?pb=x", "https://www.google.com/maps/embed?pb=x&url=https://evil.test", '<iframe srcdoc="bad"></iframe>', '<script>alert(1)</script>']) expect(normalizeGoogleMapsEmbed(invalid)).toBeNull();
+  });
+
+  it("validates and saves only the extracted map URL to the selected organization", async () => {
+    render(<ToastProvider><LocationManagement organizationId="org-1" embedded /></ToastProvider>);
+    fireEvent.click((await screen.findAllByRole("button", { name: "Edit", exact: true }))[0]);
+    const dialog = await screen.findByRole("dialog", { name: "Edit Location" });
+    const input = within(dialog).getByRole("textbox", { name: "Google Maps embed (optional)" });
+    fireEvent.change(input, { target: { value: "https://evil.test/map" } });
+    fireEvent.submit(dialog.querySelector("form")!);
+    expect(await within(dialog).findByText(/Use Google Maps > Share/)).toBeInTheDocument();
+    expect(api.put).not.toHaveBeenCalled();
+    const url = "https://www.google.com/maps/embed?pb=!1m18!2m3!1d0";
+    fireEvent.change(input, { target: { value: `<iframe src="${url}"></iframe>` } });
+    fireEvent.submit(dialog.querySelector("form")!);
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith("/onboarding/locations/clinic-1?organizationId=org-1", expect.objectContaining({ googleMapsEmbedUrl: url })));
+  });
   it("validates coordinate pairs without replacing missing pins with zero", () => {
     expect(parseLocationCoordinates(" ")).toEqual({ latitude: null, longitude: null });
     expect(parseLocationCoordinates("0, -73")).toEqual({ latitude: 0, longitude: -73 });

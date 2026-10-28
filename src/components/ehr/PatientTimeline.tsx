@@ -46,10 +46,11 @@ export interface TimelineEvent {
 interface PatientTimelineProps {
   patientId: string;
   accessToken?: string | null;
+  eventHeadingLevel?: "h2" | "h3";
   events?: TimelineEvent[] | any[];
 }
 
-export function PatientTimeline({ patientId, events: initialEvents, accessToken }: PatientTimelineProps) {
+export function PatientTimeline({ patientId, events: initialEvents, accessToken, eventHeadingLevel: EventHeading = "h3" }: PatientTimelineProps) {
   const [localAccessToken, setRecordAccessToken] = useState<string | null>(null);
   const recordAccessToken = accessToken === undefined ? localAccessToken : accessToken;
   const requestRef = useRef<AbortController | null>(null);
@@ -166,7 +167,7 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
       {/* Search & Filter Header Toolbar */}
       <div className={styles.toolbar}>
         {/* Category Tabs */}
-        <div className={styles.categories} aria-label="History categories">
+        <div className={styles.categories} role="group" aria-label="History categories">
           {[
             { id: "all", label: "All Events", compact: "All" },
             { id: "consultation", label: "Consultations", compact: "Visits" },
@@ -178,7 +179,7 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
               key={cat.id}
               type="button"
               aria-pressed={category === cat.id}
-              aria-label={cat.label}
+              aria-label={cat.label === cat.compact ? cat.label : `${cat.label}: ${cat.compact}`}
               title={cat.label}
               onClick={() => setCategory(cat.id)}
               className={cn(
@@ -229,7 +230,7 @@ export function PatientTimeline({ patientId, events: initialEvents, accessToken 
                 <div className={styles.eventHeading}>
                   <div>
                     <div className={styles.eventTitle}>
-                      <h4 className="font-semibold text-sm text-text">{event.title}</h4>
+                      <EventHeading className="font-semibold text-sm text-text">{event.title}</EventHeading>
                       <span className={`px-2 py-0.5 rounded-full text-xs border font-medium ${getCategoryBadgeClass(event.displayMetadata.badgeColor)}`}>
                         {event.displayMetadata.statusLabel}
                       </span>

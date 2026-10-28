@@ -85,14 +85,14 @@ describe("Ekavyu appearance", () => {
 
 describe("standalone print branding", () => {
   it("exports the fixed paper palette from CSS rather than the current dark screen colors", () => {
-    document.documentElement.style.setProperty("--print-text", "#0E2A28");
-    document.documentElement.style.setProperty("--print-accent", "#0F6F66");
-    document.documentElement.style.setProperty("--text-primary", "#F7F7F2");
+    document.documentElement.style.setProperty("--print-text", "#0B2F2A");
+    document.documentElement.style.setProperty("--print-accent", "#1F5C52");
+    document.documentElement.style.setProperty("--text-primary", "#F6F2E8");
     const css = getPrintBrandStyles();
-    expect(css).toContain("--print-text:#0E2A28;");
-    expect(css).toContain("--print-accent:#0F6F66;");
+    expect(css).toContain("--print-text:#0B2F2A;");
+    expect(css).toContain("--print-accent:#1F5C52;");
     expect(css).toContain("color-scheme:light;");
-    expect(css).not.toContain("#F7F7F2");
+    expect(css).not.toContain("#F6F2E8");
   });
 });
 
@@ -114,6 +114,18 @@ function contrast(a: string, b: string) {
 }
 describe.each(["light", "dark"] as const)("%s semantic contrast", mode => {
   const value = palette(mode);
+  it("keeps canvas and content surfaces in the intended neutral family", () => {
+    for (const surface of ["background", "surface", "surface-muted", "surface-elevated"]) {
+      const [red, green, blue] = value(surface).slice(1).match(/../g)!.map(channel => parseInt(channel, 16));
+      if (mode === "dark") {
+        expect(Math.max(red, green, blue), surface).toBeLessThan(64);
+        expect(Math.max(red, green, blue) - Math.min(red, green, blue), surface).toBeLessThanOrEqual(8);
+      } else {
+        expect(red - blue, surface).toBeGreaterThanOrEqual(8);
+        expect(green, surface).toBeGreaterThan(blue);
+      }
+    }
+  });
   it.each(["background", "surface", "surface-muted", "surface-elevated"])("keeps all body text AA-readable on %s", surface => {
     for (const text of ["text-primary", "text-secondary", "text-muted", "accent"]) {
       expect(contrast(value(text), value(surface)), `${text} on ${surface}`).toBeGreaterThanOrEqual(4.5);

@@ -16,6 +16,28 @@ Completion releases the consultation lock, records audit/notifications and follo
 
 Payments use current invoices and receipt APIs, including balances and partial payments. Daily totals use actual payment dates and invoice currencies and require billing visibility. Today's invoices outstanding is the balance on invoices issued today. No separate registration, prescription or financial pipeline is introduced.
 
+## Service catalog
+
+`/dashboard/billing/services` loads every API page before exposing complete
+counts. Search, All/Active/Inactive tabs, category filtering and sorting reuse the
+loaded catalog. A failed later page cannot become a successful partial catalog.
+Refresh failures preserve the previous view with retry; writes require a fresh
+successful read.
+
+Service and Pricing & tax editor panels retain drafts and select validation
+errors, including zero-price, decimal and finite-value checks. Duplicate codes
+and failed submissions remain recoverable; inactive status and nonstandard GST
+rates survive edits. Starter-service provisioning and status changes require
+confirmation. `VIEW_BILLING` is read-only; `MANAGE_BILLING` controls writes, with
+backend authorization authoritative. Organization/authority changes clear drafts
+and ignore obsolete responses. The editor does not change tax applicability or
+backend billing calculations.
+
+Use shared controls, `QueueDialog` and `formatCurrency`; preserve mobile cards,
+desktop rate rows and pinned actions. Existing regressions: `catalogContinuity`,
+`servicesWorkspace` and `billingWorkspace`. Live pricing and billing persistence
+remain release-environment checks.
+
 ## Boundaries and verification
 
 Tenant and location permissions remain enforced for patient search, booking, clinical completion and collection. Transactions require production MongoDB prerequisites. Historical clinical and financial authority is not rewritten by this UI flow.

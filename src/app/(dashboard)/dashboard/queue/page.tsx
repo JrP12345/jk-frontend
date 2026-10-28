@@ -69,7 +69,6 @@ import { Megaphone, Volume2, RotateCw, Users, UserCheck, Stethoscope, Clock, Che
 import { PatientTimeline } from "@/components/ehr/PatientTimeline";
 import { InCabinInvestigationViewerModal } from "@/components/clinical/InCabinInvestigationViewerModal";
 import { DrugAllergyAlert } from "@/components/clinical/DrugAllergyAlert";
-import { InCabinLabOrderModal } from "@/components/clinical/InCabinLabOrderModal";
 import { OpdClinicalPresetBar } from "@/components/clinical/OpdClinicalPresetBar";
 import { FollowUpRecallRegister } from "@/components/clinical/FollowUpRecallRegister";
 import { DrugInteractionAlert, evaluateDrugInteractions } from "@/components/clinical/DrugInteractionAlert";
@@ -311,7 +310,6 @@ function QueueWorkspace() {
 
   // Nurse Vitals Modal State
   const [vitalsModalOpen, setVitalsModalOpen] = useState(false);
-  const [vitalsPatient, setVitalsPatient] = useState<{ id: string; name: string } | null>(null);
   const [selectedVitalsAppt, setSelectedVitalsAppt] = useState<Appointment | null>(null);
 
   // STAT Emergency Modal State
@@ -355,15 +353,6 @@ function QueueWorkspace() {
     setViewerTokenNumber(appt.tokenNumber);
     setViewerInitialResults(appt.investigationResults || []);
     setIsInvestigationViewerOpen(true);
-  };
-
-  // In-Cabin Lab Order Modal State
-  const [isLabOrderModalOpen, setIsLabOrderModalOpen] = useState(false);
-  const [labOrderAppt, setLabOrderAppt] = useState<Appointment | null>(null);
-
-  const openLabOrderModal = (appt: Appointment) => {
-    setLabOrderAppt(appt);
-    setIsLabOrderModalOpen(true);
   };
 
   // 1-Click Digital Rx Resend Modal State
@@ -466,7 +455,6 @@ function QueueWorkspace() {
   // Disruption Triage State
   const [triageAppointments, setTriageAppointments] = useState<any[]>([]);
   const [triageModalOpen, setTriageModalOpen] = useState(false);
-  const [loadingTriage, setLoadingTriage] = useState(false);
 
   // Single-Consultation Conflict Modal (Pillar 2)
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
@@ -480,7 +468,6 @@ function QueueWorkspace() {
   const [parkReason, setParkReason] = useState("Stepped out for lab / diagnostic tests");
   const [isParkModalOpen, setIsParkModalOpen] = useState(false);
   const [submittingPark, setSubmittingPark] = useState(false);
-  const [resumingApptId, setResumingApptId] = useState<string | null>(null);
 
   // Resend Live Tracker State (P3)
   const [isResendTrackerModalOpen, setIsResendTrackerModalOpen] = useState(false);
@@ -610,15 +597,12 @@ function QueueWorkspace() {
       return;
     }
     try {
-      setLoadingTriage(true);
       const res = await api.get(`/doctor-overrides/triage?locationId=${selectedLocation}&date=${selectedDate}`, { signal: request.signal });
       if (!request.isCurrent()) return;
       setTriageAppointments(res.data?.data || []);
     } catch {
       if (!request.isCurrent()) return;
       console.error("fetchTriageAppointments error:");
-    } finally {
-      if (request.isCurrent()) setLoadingTriage(false);
     }
   };
 
@@ -874,7 +858,6 @@ function QueueWorkspace() {
 
   const handleResumePatient = async (appointmentId: string) => {
     try {
-      setResumingApptId(appointmentId);
       const res = await api.post(`/queue/${appointmentId}/resume`);
       toast({
         title: "Patient Resumed as Next Up! ⚡",
@@ -888,8 +871,6 @@ function QueueWorkspace() {
         description: err.response?.data?.message || "Could not resume patient from standby.",
         variant: "error",
       });
-    } finally {
-      setResumingApptId(null);
     }
   };
 
@@ -1324,28 +1305,6 @@ function QueueWorkspace() {
     }
   };
 
-  const openThermalSlip = (appt: Appointment) => {
-    const locationObj = locations.find((c) => (c.id || c._id) === selectedLocation);
-    const doctorObj = doctors.find((d) => (d.id || d._id) === selectedDoctor || (d.id || d._id) === appt.doctorId);
-    const apptIdx = activeQueue.findIndex((a) => a.id === appt.id);
-    const ahead = apptIdx >= 0 ? apptIdx : 0;
-
-    setThermalSlipData({
-      appointmentId: appt.id,
-      tokenNumber: appt.tokenNumber,
-      locationName: locationObj?.name || "Healthcare facility",
-      locationAddress: typeof locationObj?.address === "string" ? locationObj.address : locationObj?.city || "",
-      locationPhone: locationObj?.phone || "",
-      doctorName: doctorObj?.name || user?.name || "Doctor",
-      doctorSpecialization: doctorObj?.specialization || "OPD Consultation",
-      patientName: canonicalPatientName(appt.patientId),
-      appointmentTime: new Date(appt.appointmentTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      patientsAhead: ahead,
-      date: new Date(appt.appointmentTime).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
-    });
-    setThermalSlipOpen(true);
-  };
-
   const openQuickWalkInModal = () => {
     walkInRegistrationRequest.current = crypto.randomUUID();
     setWalkInName("");
@@ -1725,6 +1684,7 @@ function QueueWorkspace() {
   const sessionVariant = !sessionReady ? "neutral" : queueStatusData?.opdSession?.status === "active" ? (queueStatusData.opdSession.isOnBreak ? "warning" : "success") : queueStatusData?.opdSession?.status === "ended" ? "neutral" : "warning";
   const doctorName = doctors.find(doctor => (doctor.id || doctor._id) === selectedDoctor)?.name || "Choose a doctor";
   const locationName = locations.find(location => (location.id || location._id) === selectedLocation)?.name || "Choose a location";
+  const queueDateLabel = selectedDate ? new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Choose a date";
   const canChooseLocation = locations.length > 1;
   const canChooseDoctor = doctors.length > 1 && user.role !== "doctor";
   const scopeIdentity = <span id="queue-scope" className={styles.scopeIdentity}><strong title={doctorName}>{doctorName}</strong><span title={locationName}>{locationName}</span></span>;
@@ -1767,11 +1727,11 @@ function QueueWorkspace() {
          ────────────────────────────────────────────────────────────────────────── */}
       <h1 className="sr-only">Patient queue</h1>
       <section className={styles.scopePanel} aria-label="Queue selection">
-        {canChooseLocation || canChooseDoctor ? <button type="button" aria-label="Change queue filters" aria-expanded={filtersExpanded} aria-controls="queue-scope-fields" onClick={() => setFiltersExpanded(!filtersExpanded)} className={styles.scopeHeading}>
+        {canChooseLocation || canChooseDoctor ? <button type="button" aria-label={`Change queue filters: ${doctorName} ${locationName}`} aria-expanded={filtersExpanded} aria-controls="queue-scope-fields" onClick={() => setFiltersExpanded(!filtersExpanded)} className={styles.scopeHeading}>
           {scopeIdentity}<ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         </button> : <div className={styles.scopeHeading}>{scopeIdentity}</div>}
         <div className={styles.scopeDateSummary}>
-          {queueViewTab === "recalls" ? <span className={styles.scopeDate}>All dates</span> : <button type="button" className={styles.scopeDate} aria-label="Change queue date" aria-expanded={filtersExpanded} aria-controls="queue-scope-fields" onClick={() => setFiltersExpanded(!filtersExpanded)}><time dateTime={selectedDate}>{selectedDate ? new Date(`${selectedDate}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Choose a date"}</time><ChevronDown className="h-3 w-3" aria-hidden="true" /></button>}
+          {queueViewTab === "recalls" ? <span className={styles.scopeDate}>All dates</span> : <button type="button" className={styles.scopeDate} aria-label={`Change queue date: ${queueDateLabel}`} aria-expanded={filtersExpanded} aria-controls="queue-scope-fields" onClick={() => setFiltersExpanded(!filtersExpanded)}><time dateTime={selectedDate}>{queueDateLabel}</time><ChevronDown className="h-3 w-3" aria-hidden="true" /></button>}
           <div className={styles.scopeContext}>{reviewView ? <span>{queueViewTab === "recalls" ? "Follow-up register" : "Processed visits"}</span> : <Badge variant={sessionVariant} dot>{sessionLabel}</Badge>}</div>
         </div>
         <div className={styles.scopeTools}>{queueTools}</div>
@@ -3137,8 +3097,8 @@ function QueueWorkspace() {
           setSelectedVitalsAppt(null);
         }}
         appointmentId={selectedVitalsAppt?.id}
-        patientId={selectedVitalsAppt?.patientId?.id || vitalsPatient?.id || ""}
-        patientName={selectedVitalsAppt ? canonicalPatientName(selectedVitalsAppt.patientId) : vitalsPatient?.name || "Patient"}
+        patientId={selectedVitalsAppt?.patientId?.id || ""}
+        patientName={selectedVitalsAppt ? canonicalPatientName(selectedVitalsAppt.patientId) : "Patient"}
         initialVitals={selectedVitalsAppt?.vitals}
         onSaved={fetchQueue}
       />
@@ -3861,24 +3821,6 @@ function QueueWorkspace() {
       {/* ──────────────────────────────────────────────────────────────────────────
           9. IN-CABIN 1-CLICK DIAGNOSTIC LAB REQUISITION MODAL
          ────────────────────────────────────────────────────────────────────────── */}
-      {isLabOrderModalOpen && labOrderAppt && (
-        <InCabinLabOrderModal
-          open={isLabOrderModalOpen}
-          onClose={() => {
-            setIsLabOrderModalOpen(false);
-            setLabOrderAppt(null);
-          }}
-          appointmentId={labOrderAppt.id}
-          patientName={
-            labOrderAppt.patientId?.userId?.name ||
-            (labOrderAppt.patientId as any)?.name ||
-            "Patient"
-          }
-          tokenNumber={labOrderAppt.tokenNumber}
-          onSuccess={fetchQueue}
-        />
-      )}
-
       {/* ──────────────────────────────────────────────────────────────────────────
           10. 1-CLICK DIGITAL e-PRESCRIPTION RE-DISPATCH MODAL
          ────────────────────────────────────────────────────────────────────────── */}

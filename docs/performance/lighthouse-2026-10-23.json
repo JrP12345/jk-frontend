@@ -1,0 +1,2625 @@
+{
+  "date": "2026-10-23",
+  "scope": "Local synthetic production audits; not deployed or whole-app completion",
+  "finalArtifact": ".next/wide-performance-validated",
+  "comparisons": [
+    {
+      "route": "home",
+      "mobile": {
+        "before": {
+          "performance": 96,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "fcp": 1067.7497,
+          "lcp": 2623.7774,
+          "tbt": 90.5,
+          "cls": 0,
+          "samples": 3,
+          "performanceRuns": [
+            94,
+            98,
+            96
+          ]
+        },
+        "after": {
+          "performance": 97,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "fcp": 1068.2068,
+          "lcp": 2436.4136,
+          "tbt": 79.5,
+          "cls": 0,
+          "samples": 3,
+          "performanceRuns": [
+            93,
+            97,
+            98
+          ]
+        }
+      },
+      "desktop": {
+        "before": {
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "fcp": 296.0491999999999,
+          "lcp": 674.0491999999998,
+          "tbt": 0,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        },
+        "after": {
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "fcp": 319.9976,
+          "lcp": 705.9963999999999,
+          "tbt": 0,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        }
+      }
+    },
+    {
+      "route": "pricing",
+      "mobile": {
+        "before": {
+          "performance": 98,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "fcp": 911.9786999999999,
+          "lcp": 2111.9787,
+          "tbt": 144,
+          "cls": 0.0001065516310518786,
+          "samples": 3,
+          "performanceRuns": [
+            95,
+            98,
+            98
+          ]
+        },
+        "after": {
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "fcp": 915.6991,
+          "lcp": 2696.6990999999994,
+          "tbt": 150.50000000000023,
+          "cls": 0.0001065516310518786,
+          "samples": 3,
+          "performanceRuns": [
+            94,
+            95,
+            94
+          ]
+        }
+      },
+      "desktop": {
+        "before": {
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "fcp": 258.2307,
+          "lcp": 626.2307,
+          "tbt": 0,
+          "cls": 0.0001025305905787584,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        },
+        "after": {
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "fcp": 255.37400000000002,
+          "lcp": 588.374,
+          "tbt": 0,
+          "cls": 0.0001025305905787584,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        }
+      }
+    },
+    {
+      "route": "login",
+      "mobile": {
+        "before": {
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 914.2412999999999,
+          "lcp": 3161.3603000000003,
+          "tbt": 145.5,
+          "cls": 0,
+          "samples": 3,
+          "performanceRuns": [
+            92,
+            92,
+            92
+          ]
+        },
+        "after": {
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 915.3967,
+          "lcp": 3170.0706,
+          "tbt": 153.49999999999955,
+          "cls": 0,
+          "samples": 3,
+          "performanceRuns": [
+            92,
+            92,
+            89
+          ]
+        }
+      },
+      "desktop": {
+        "before": {
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 264.6218,
+          "lcp": 683.6217999999999,
+          "tbt": 0,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        },
+        "after": {
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 267.6399,
+          "lcp": 727.6398999999999,
+          "tbt": 6,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        }
+      }
+    },
+    {
+      "route": "register",
+      "mobile": {
+        "before": {
+          "performance": 90,
+          "accessibility": 98,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 914.4399000000001,
+          "lcp": 3068.4399000000003,
+          "tbt": 238,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            90
+          ]
+        },
+        "after": {
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 912.4975,
+          "lcp": 3115.9567,
+          "tbt": 141.5,
+          "cls": 0,
+          "samples": 3,
+          "performanceRuns": [
+            90,
+            93,
+            92
+          ]
+        }
+      },
+      "desktop": {
+        "before": {
+          "performance": 100,
+          "accessibility": 98,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 252.8601,
+          "lcp": 683.8601000000001,
+          "tbt": 6,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        },
+        "after": {
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 262.4857,
+          "lcp": 691.9857,
+          "tbt": 2,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        }
+      }
+    },
+    {
+      "route": "reset",
+      "mobile": {
+        "before": {
+          "performance": 94,
+          "accessibility": 98,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 912.0381,
+          "lcp": 3000.0380999999998,
+          "tbt": 113,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            94
+          ]
+        },
+        "after": {
+          "performance": 91,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 917.9742000000001,
+          "lcp": 3006.9742000000006,
+          "tbt": 207.5,
+          "cls": 0,
+          "samples": 3,
+          "performanceRuns": [
+            94,
+            88,
+            91
+          ]
+        }
+      },
+      "desktop": {
+        "before": {
+          "performance": 100,
+          "accessibility": 98,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 250.7867,
+          "lcp": 611.7866999999999,
+          "tbt": 0,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        },
+        "after": {
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 267.5345,
+          "lcp": 644.5345,
+          "tbt": 0,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        }
+      }
+    },
+    {
+      "route": "invite",
+      "mobile": {
+        "before": {
+          "performance": 98,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 916.8354999999999,
+          "lcp": 2179.2532499999998,
+          "tbt": 82,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            98
+          ]
+        },
+        "after": {
+          "performance": 97,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 914.0182,
+          "lcp": 2177.589,
+          "tbt": 136,
+          "cls": 0,
+          "samples": 3,
+          "performanceRuns": [
+            97,
+            98,
+            91
+          ]
+        }
+      },
+      "desktop": {
+        "before": {
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 274.065,
+          "lcp": 501.09749999999997,
+          "tbt": 6.999999999999943,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        },
+        "after": {
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 257.308,
+          "lcp": 474.616,
+          "tbt": 0,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        }
+      }
+    },
+    {
+      "route": "onboarding",
+      "mobile": {
+        "before": {
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "fcp": 913.5259000000001,
+          "lcp": 2847.5258999999996,
+          "tbt": 130.5,
+          "cls": 0,
+          "samples": 3,
+          "performanceRuns": [
+            94,
+            96,
+            92
+          ]
+        },
+        "after": {
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "fcp": 918.5239999999999,
+          "lcp": 2838.2624,
+          "tbt": 179,
+          "cls": 0,
+          "samples": 3,
+          "performanceRuns": [
+            79,
+            95,
+            94
+          ]
+        }
+      },
+      "desktop": {
+        "before": {
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "fcp": 260.995,
+          "lcp": 635.995,
+          "tbt": 5,
+          "cls": 0.0000326280535855004,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        },
+        "after": {
+          "performance": 99,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "fcp": 264.308,
+          "lcp": 916.308,
+          "tbt": 3,
+          "cls": 0.0000326280535855004,
+          "samples": 1,
+          "performanceRuns": [
+            99
+          ]
+        }
+      }
+    },
+    {
+      "route": "verify",
+      "mobile": {
+        "before": {
+          "performance": 94,
+          "accessibility": 98,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 912.2181,
+          "lcp": 2721.2181,
+          "tbt": 165.5,
+          "cls": 0.02053115380234186,
+          "samples": 1,
+          "performanceRuns": [
+            94
+          ]
+        },
+        "after": {
+          "performance": 95,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 913.7315000000001,
+          "lcp": 2701.3439,
+          "tbt": 148,
+          "cls": 0.02053115380234186,
+          "samples": 3,
+          "performanceRuns": [
+            89,
+            95,
+            95
+          ]
+        }
+      },
+      "desktop": {
+        "before": {
+          "performance": 100,
+          "accessibility": 98,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 282.2437,
+          "lcp": 663.2437,
+          "tbt": 37,
+          "cls": 0.00440339987741879,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        },
+        "after": {
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "fcp": 262.0368,
+          "lcp": 588.0368,
+          "tbt": 0,
+          "cls": 0.00440339987741879,
+          "samples": 1,
+          "performanceRuns": [
+            100
+          ]
+        }
+      }
+    },
+    {
+      "route": "pharmacy-start",
+      "mobile": {
+        "before": {
+          "performance": 86,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "fcp": 911.6151,
+          "lcp": 2711.6151,
+          "tbt": 50.5,
+          "cls": 0.22007279965923265,
+          "samples": 3,
+          "performanceRuns": [
+            86,
+            86,
+            85
+          ]
+        },
+        "after": {
+          "performance": 98,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "fcp": 911.2605000000001,
+          "lcp": 2266.1715,
+          "tbt": 90.99999999999977,
+          "cls": 0,
+          "samples": 3,
+          "performanceRuns": [
+            98,
+            96,
+            98
+          ]
+        }
+      },
+      "desktop": {
+        "before": {
+          "performance": 97,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "fcp": 261.003,
+          "lcp": 855.0029999999998,
+          "tbt": 0,
+          "cls": 0.09830835011528472,
+          "samples": 1,
+          "performanceRuns": [
+            97
+          ]
+        },
+        "after": {
+          "performance": 99,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "fcp": 256.7093,
+          "lcp": 862.7093,
+          "tbt": 0,
+          "cls": 0,
+          "samples": 1,
+          "performanceRuns": [
+            99
+          ]
+        }
+      }
+    }
+  ],
+  "navigation": {
+    "navigationMs": 133,
+    "planReads": {
+      "before": 1,
+      "after": 1
+    },
+    "sameDocument": true,
+    "pharmacy": {
+      "mainCount": 1,
+      "overflow": false,
+      "buttonDisabled": false
+    },
+    "doctorProfileVisible": true,
+    "missingStatus": 404,
+    "initialScripts": [
+      "http://127.0.0.1:8798/_next/static/chunks/05fyccxow1i72.js",
+      "http://127.0.0.1:8798/_next/static/chunks/063al_q720fkj.js",
+      "http://127.0.0.1:8798/_next/static/chunks/turbopack-3-ry682tkyiqk.js",
+      "http://127.0.0.1:8798/_next/static/chunks/0-xr0z9g4m8-y.js",
+      "http://127.0.0.1:8798/_next/static/chunks/0pblum0_3aqh1.js",
+      "http://127.0.0.1:8798/_next/static/chunks/2mc1o10l3-v34.js",
+      "http://127.0.0.1:8798/_next/static/chunks/3la9ilw1kxlod.js",
+      "http://127.0.0.1:8798/_next/static/chunks/0o8albvsyzsme.js",
+      "http://127.0.0.1:8798/_next/static/chunks/2x7glc7s0w5pb.js",
+      "http://127.0.0.1:8798/_next/static/chunks/10t6u57vxxtp7.js",
+      "http://127.0.0.1:8798/_next/static/chunks/022gselaydrje.js",
+      "http://127.0.0.1:8798/_next/static/chunks/0rq6ydkd7q3cm.js",
+      "http://127.0.0.1:8798/_next/static/chunks/0cz1d0mv5g_q7.js",
+      "http://127.0.0.1:8798/_next/static/chunks/157zmg7j_jyjr.js",
+      "http://127.0.0.1:8798/_next/static/chunks/3_1kpbd8aih6c.js"
+    ],
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  "stages": [
+    {
+      "stage": "baseline",
+      "rows": [
+        {
+          "profile": "mobile",
+          "route": "home",
+          "run": 1,
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcp": 3022.2261,
+          "cls": 0,
+          "fcp": 1072.2261,
+          "tbt": 78.5,
+          "speedIndex": 1185.68703999758,
+          "elapsedMs": 10492,
+          "requestCount": 1,
+          "errors": [],
+          "heading": [
+            "Run your practice.Connect every visit."
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pricing",
+          "run": 1,
+          "performance": 93,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcp": 2638.5463,
+          "cls": 0.0001065516310518786,
+          "fcp": 919.5463,
+          "tbt": 236,
+          "speedIndex": 919.5463,
+          "elapsedMs": 8415,
+          "requestCount": 2,
+          "errors": [
+            "Failed to load resource: the server responded with a status of 503 ()"
+          ],
+          "heading": [
+            "Plans for your practice"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "login",
+          "run": 1,
+          "performance": 87,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3222.4753999999994,
+          "cls": 0,
+          "fcp": 923.9754,
+          "tbt": 279.49999999999955,
+          "speedIndex": 1260.0268352822384,
+          "elapsedMs": 8850,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Sign in"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "register",
+          "run": 1,
+          "performance": 90,
+          "accessibility": 98,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3068.4399000000003,
+          "cls": 0,
+          "fcp": 914.4399000000001,
+          "tbt": 238,
+          "speedIndex": 1094.7699874654777,
+          "elapsedMs": 8522,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Patient Registration"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "reset",
+          "run": 1,
+          "performance": 94,
+          "accessibility": 98,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3000.0380999999998,
+          "cls": 0,
+          "fcp": 912.0381,
+          "tbt": 113,
+          "speedIndex": 912.0381,
+          "elapsedMs": 8139,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Reset Password"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "invite",
+          "run": 1,
+          "performance": 98,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 2179.2532499999998,
+          "cls": 0,
+          "fcp": 916.8354999999999,
+          "tbt": 82,
+          "speedIndex": 916.8354999999999,
+          "elapsedMs": 7642,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Accept your staff invitation"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "onboarding",
+          "run": 1,
+          "performance": 95,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2834.9514,
+          "cls": 0,
+          "fcp": 913.9513999999999,
+          "tbt": 100.5,
+          "speedIndex": 913.9513999999999,
+          "elapsedMs": 7669,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Request organization setup"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "verify",
+          "run": 1,
+          "performance": 94,
+          "accessibility": 98,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 2721.2181,
+          "cls": 0.02053115380234186,
+          "fcp": 912.2181,
+          "tbt": 165.5,
+          "speedIndex": 912.2181,
+          "elapsedMs": 7832,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Verification Link Missing"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "baseline-repeat-mobile",
+      "rows": [
+        {
+          "profile": "mobile",
+          "route": "dashboard-doctor",
+          "run": 1,
+          "performance": 66,
+          "accessibility": 100,
+          "bestPractices": 92,
+          "seo": 66,
+          "lcp": 5188.759549999999,
+          "cls": 0,
+          "fcp": 1075.8397,
+          "tbt": 595.08015,
+          "speedIndex": 1649.9554239818444,
+          "elapsedMs": 13159,
+          "requestCount": 20,
+          "errors": [
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-Mzk2YmFmOTctYmFmMC00OTE3LTk5OWYtNGM2MTJkNDEyZTc2''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection.",
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-YTM0ZjJlYTctNWMzZS00OWJiLWIyMzQtNWY5NzcxYzk4ODRk''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection."
+          ],
+          "heading": [
+            "Welcome back, Synthetic Doctor"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "dashboard-doctor",
+          "run": 2,
+          "performance": 63,
+          "accessibility": 100,
+          "bestPractices": 92,
+          "seo": 66,
+          "lcp": 5194.41755,
+          "cls": 0,
+          "fcp": 1065.6117,
+          "tbt": 723,
+          "speedIndex": 1137.407426127952,
+          "elapsedMs": 14075,
+          "requestCount": 19,
+          "errors": [
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-OTVkNGM2YmUtZDhiNi00NDMwLWIzZTctMDRhOTQzYTUxNTFj''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection.",
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-Mzc2YjRiM2MtYTNkMy00ZmRiLWEwNzUtYjNhYzA4NzExNjY2''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED"
+          ],
+          "heading": [
+            "Welcome back, Synthetic Doctor"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "dashboard-doctor",
+          "run": 3,
+          "performance": 65,
+          "accessibility": 100,
+          "bestPractices": 92,
+          "seo": 66,
+          "lcp": 5128.51195,
+          "cls": 0,
+          "fcp": 1068.3413,
+          "tbt": 653,
+          "speedIndex": 1068.3413,
+          "elapsedMs": 12923,
+          "requestCount": 20,
+          "errors": [
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-YmJmYWU2ZTctOTVkMi00Nzg2LWJhNDEtMjNkMTZkNWI5NWZh''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection.",
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-ODRiYzdjMTAtMjc0Ny00MGNjLWJlNTktOGNmNzM2NzQyOTgy''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection."
+          ],
+          "heading": [
+            "Welcome back, Synthetic Doctor"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "home",
+          "run": 1,
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcp": 3016.7682000000004,
+          "cls": 0,
+          "fcp": 1068.7682,
+          "tbt": 90.5,
+          "speedIndex": 1068.7682,
+          "elapsedMs": 8963,
+          "requestCount": 1,
+          "errors": [],
+          "heading": [
+            "Run your practice.Connect every visit."
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "home",
+          "run": 2,
+          "performance": 98,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcp": 2160.7497000000003,
+          "cls": 0,
+          "fcp": 1067.7497,
+          "tbt": 98.12515000000008,
+          "speedIndex": 1067.7497,
+          "elapsedMs": 8874,
+          "requestCount": 1,
+          "errors": [],
+          "heading": [
+            "Run your practice.Connect every visit."
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "home",
+          "run": 3,
+          "performance": 96,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcp": 2623.7774,
+          "cls": 0,
+          "fcp": 1066.7774,
+          "tbt": 78,
+          "speedIndex": 1066.7774,
+          "elapsedMs": 8822,
+          "requestCount": 1,
+          "errors": [],
+          "heading": [
+            "Run your practice.Connect every visit."
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pricing",
+          "run": 1,
+          "performance": 95,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcp": 2606.7172,
+          "cls": 0.0001065516310518786,
+          "fcp": 913.7172,
+          "tbt": 144.5,
+          "speedIndex": 913.7172,
+          "elapsedMs": 8118,
+          "requestCount": 2,
+          "errors": [
+            "Failed to load resource: the server responded with a status of 503 ()"
+          ],
+          "heading": [
+            "Plans for your practice"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pricing",
+          "run": 2,
+          "performance": 98,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcp": 2110.0086,
+          "cls": 0.0001065516310518786,
+          "fcp": 910.0085999999999,
+          "tbt": 121.5,
+          "speedIndex": 910.0085999999999,
+          "elapsedMs": 8238,
+          "requestCount": 2,
+          "errors": [
+            "Failed to load resource: the server responded with a status of 503 ()"
+          ],
+          "heading": [
+            "Plans for your practice"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pricing",
+          "run": 3,
+          "performance": 98,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcp": 2111.9787,
+          "cls": 0.0001065516310518786,
+          "fcp": 911.9786999999999,
+          "tbt": 144,
+          "speedIndex": 911.9786999999999,
+          "elapsedMs": 8325,
+          "requestCount": 2,
+          "errors": [
+            "Failed to load resource: the server responded with a status of 503 ()"
+          ],
+          "heading": [
+            "Plans for your practice"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "login",
+          "run": 1,
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3203.2413,
+          "cls": 0,
+          "fcp": 914.2412999999999,
+          "tbt": 145.5,
+          "speedIndex": 914.2412999999999,
+          "elapsedMs": 8145,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Sign in"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "login",
+          "run": 2,
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3084.8028,
+          "cls": 0,
+          "fcp": 916.3027999999999,
+          "tbt": 150.99999999999977,
+          "speedIndex": 1087.0796294880163,
+          "elapsedMs": 9096,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Sign in"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "login",
+          "run": 3,
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3161.3603000000003,
+          "cls": 0,
+          "fcp": 910.3603,
+          "tbt": 134.5,
+          "speedIndex": 1029.0043542193148,
+          "elapsedMs": 8784,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Sign in"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "onboarding",
+          "run": 1,
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2847.5258999999996,
+          "cls": 0,
+          "fcp": 913.5259000000001,
+          "tbt": 130.5,
+          "speedIndex": 913.5259000000001,
+          "elapsedMs": 7749,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Request organization setup"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "onboarding",
+          "run": 2,
+          "performance": 96,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2830.3833999999997,
+          "cls": 0,
+          "fcp": 912.3833999999999,
+          "tbt": 57.5,
+          "speedIndex": 912.3833999999999,
+          "elapsedMs": 7835,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Request organization setup"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "onboarding",
+          "run": 3,
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2946.2715,
+          "cls": 0,
+          "fcp": 914.2715000000001,
+          "tbt": 183,
+          "speedIndex": 914.2715000000001,
+          "elapsedMs": 7929,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Request organization setup"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pharmacy-start",
+          "run": 1,
+          "performance": 86,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2711.6151,
+          "cls": 0.22007279965923265,
+          "fcp": 911.6151,
+          "tbt": 53.5,
+          "speedIndex": 911.6151,
+          "elapsedMs": 7941,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Start your pharmacy workspace"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pharmacy-start",
+          "run": 2,
+          "performance": 86,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2708.5474999999997,
+          "cls": 0.22007279965923265,
+          "fcp": 908.5474999999999,
+          "tbt": 50,
+          "speedIndex": 908.5474999999999,
+          "elapsedMs": 7583,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Start your pharmacy workspace"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pharmacy-start",
+          "run": 3,
+          "performance": 85,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2739.7738,
+          "cls": 0.22007279965923265,
+          "fcp": 912.7737999999999,
+          "tbt": 50.5,
+          "speedIndex": 912.7737999999999,
+          "elapsedMs": 7708,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Start your pharmacy workspace"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "baseline-desktop",
+      "rows": [
+        {
+          "profile": "desktop",
+          "route": "dashboard-doctor",
+          "run": 1,
+          "performance": 97,
+          "accessibility": 100,
+          "bestPractices": 92,
+          "seo": 66,
+          "lcp": 1265.3341,
+          "cls": 0.01600717742170855,
+          "fcp": 284.8894,
+          "tbt": 74,
+          "speedIndex": 789.6718968414898,
+          "elapsedMs": 14854,
+          "requestCount": 20,
+          "errors": [
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-OGQzYzFhN2ItOGIwMi00MjA4LWJmNzQtYmNmM2IwM2Y5ZjFm''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection.",
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-ZTAwZWQ2MjQtMGU3My00MzJiLWJmOTMtNTM4NzdmZmRhNzI1''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection."
+          ],
+          "heading": [
+            "Welcome back, Synthetic Doctor"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "home",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcp": 674.0491999999998,
+          "cls": 0,
+          "fcp": 296.0491999999999,
+          "tbt": 0,
+          "speedIndex": 344.61836608390496,
+          "elapsedMs": 9802,
+          "requestCount": 1,
+          "errors": [],
+          "heading": [
+            "Run your practice.Connect every visit."
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "pricing",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcp": 626.2307,
+          "cls": 0.0001025305905787584,
+          "fcp": 258.2307,
+          "tbt": 0,
+          "speedIndex": 299.3963135009089,
+          "elapsedMs": 8882,
+          "requestCount": 2,
+          "errors": [
+            "Failed to load resource: the server responded with a status of 503 ()"
+          ],
+          "heading": [
+            "Plans for your practice"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "login",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 683.6217999999999,
+          "cls": 0,
+          "fcp": 264.6218,
+          "tbt": 0,
+          "speedIndex": 395.2729387036004,
+          "elapsedMs": 9059,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Sign in"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "register",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 98,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 683.8601000000001,
+          "cls": 0,
+          "fcp": 252.8601,
+          "tbt": 6,
+          "speedIndex": 345.2379749500375,
+          "elapsedMs": 8922,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Patient Registration"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "reset",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 98,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 611.7866999999999,
+          "cls": 0,
+          "fcp": 250.7867,
+          "tbt": 0,
+          "speedIndex": 260.14117883196275,
+          "elapsedMs": 8167,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Reset Password"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "invite",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 501.09749999999997,
+          "cls": 0,
+          "fcp": 274.065,
+          "tbt": 6.999999999999943,
+          "speedIndex": 294.9821500018164,
+          "elapsedMs": 8071,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Accept your staff invitation"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "onboarding",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 635.995,
+          "cls": 0.0000326280535855004,
+          "fcp": 260.995,
+          "tbt": 5,
+          "speedIndex": 345.9401754146634,
+          "elapsedMs": 8074,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Request organization setup"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "verify",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 98,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 663.2437,
+          "cls": 0.00440339987741879,
+          "fcp": 282.2437,
+          "tbt": 37,
+          "speedIndex": 381.11212516635544,
+          "elapsedMs": 8444,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Verification Link Missing"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "pharmacy-start",
+          "run": 1,
+          "performance": 97,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 855.0029999999998,
+          "cls": 0.09830835011528472,
+          "fcp": 261.003,
+          "tbt": 0,
+          "speedIndex": 261.003,
+          "elapsedMs": 7969,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Start your pharmacy workspace"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "validated-mobile",
+      "rows": [
+        {
+          "profile": "mobile",
+          "route": "home",
+          "run": 1,
+          "performance": 93,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 3088.72755,
+          "cls": 0,
+          "fcp": 1077.1517,
+          "tbt": 94.5,
+          "speedIndex": 1295.626680007093,
+          "elapsedMs": 11700,
+          "requestCount": 1,
+          "errors": [],
+          "heading": [
+            "Run your practice.Connect every visit."
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "home",
+          "run": 2,
+          "performance": 97,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 2430.0788000000002,
+          "cls": 0,
+          "fcp": 1065.0394000000001,
+          "tbt": 79.5,
+          "speedIndex": 1065.0394000000001,
+          "elapsedMs": 9076,
+          "requestCount": 1,
+          "errors": [],
+          "heading": [
+            "Run your practice.Connect every visit."
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "home",
+          "run": 3,
+          "performance": 98,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 2436.4136,
+          "cls": 0,
+          "fcp": 1068.2068,
+          "tbt": 62,
+          "speedIndex": 1068.2068,
+          "elapsedMs": 9052,
+          "requestCount": 1,
+          "errors": [],
+          "heading": [
+            "Run your practice.Connect every visit."
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pricing",
+          "run": 1,
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 2864.7501,
+          "cls": 0.0001065516310518786,
+          "fcp": 914.7501,
+          "tbt": 117.99999999999955,
+          "speedIndex": 914.7501,
+          "elapsedMs": 8387,
+          "requestCount": 2,
+          "errors": [
+            "Failed to load resource: the server responded with a status of 503 ()"
+          ],
+          "heading": [
+            "Plans for your practice"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pricing",
+          "run": 2,
+          "performance": 95,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 2117.2153,
+          "cls": 0.0001065516310518786,
+          "fcp": 917.2153000000001,
+          "tbt": 233.00000000000023,
+          "speedIndex": 917.2153000000001,
+          "elapsedMs": 8227,
+          "requestCount": 2,
+          "errors": [
+            "Failed to load resource: the server responded with a status of 503 ()"
+          ],
+          "heading": [
+            "Plans for your practice"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pricing",
+          "run": 3,
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 2696.6990999999994,
+          "cls": 0.0001065516310518786,
+          "fcp": 915.6991,
+          "tbt": 150.50000000000023,
+          "speedIndex": 915.6991,
+          "elapsedMs": 8592,
+          "requestCount": 2,
+          "errors": [
+            "Failed to load resource: the server responded with a status of 503 ()"
+          ],
+          "heading": [
+            "Plans for your practice"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "login",
+          "run": 1,
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3057.8966999999993,
+          "cls": 0,
+          "fcp": 915.3967,
+          "tbt": 153.49999999999955,
+          "speedIndex": 1125.6645371346551,
+          "elapsedMs": 8622,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Sign in"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "login",
+          "run": 2,
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3170.0706,
+          "cls": 0,
+          "fcp": 911.5706,
+          "tbt": 147,
+          "speedIndex": 986.7752645284122,
+          "elapsedMs": 8286,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Sign in"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "login",
+          "run": 3,
+          "performance": 89,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3274.7822,
+          "cls": 0,
+          "fcp": 916.7822000000001,
+          "tbt": 212.5,
+          "speedIndex": 1039.8529547666371,
+          "elapsedMs": 8389,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Sign in"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "register",
+          "run": 1,
+          "performance": 90,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3115.9567,
+          "cls": 0,
+          "fcp": 916.9567,
+          "tbt": 219.5,
+          "speedIndex": 916.9567,
+          "elapsedMs": 8292,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Patient Registration"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "register",
+          "run": 2,
+          "performance": 93,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3010.9599,
+          "cls": 0,
+          "fcp": 910.4599000000001,
+          "tbt": 141.5,
+          "speedIndex": 994.573288264267,
+          "elapsedMs": 8538,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Patient Registration"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "register",
+          "run": 3,
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3150.4975000000004,
+          "cls": 0,
+          "fcp": 912.4975,
+          "tbt": 137.5,
+          "speedIndex": 912.4975,
+          "elapsedMs": 8942,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Patient Registration"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "reset",
+          "run": 1,
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 2910.3182,
+          "cls": 0,
+          "fcp": 915.3181999999999,
+          "tbt": 134,
+          "speedIndex": 915.3181999999999,
+          "elapsedMs": 8300,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Reset Password"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "reset",
+          "run": 2,
+          "performance": 88,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3182.6367,
+          "cls": 0,
+          "fcp": 926.6367,
+          "tbt": 271,
+          "speedIndex": 926.6367,
+          "elapsedMs": 8374,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Reset Password"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "reset",
+          "run": 3,
+          "performance": 91,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3006.9742000000006,
+          "cls": 0,
+          "fcp": 917.9742000000001,
+          "tbt": 207.5,
+          "speedIndex": 917.9742000000001,
+          "elapsedMs": 8664,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Reset Password"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "invite",
+          "run": 1,
+          "performance": 97,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 2273.0173999999997,
+          "cls": 0,
+          "fcp": 911.5087000000001,
+          "tbt": 136,
+          "speedIndex": 911.5087000000001,
+          "elapsedMs": 8312,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Accept your staff invitation"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "invite",
+          "run": 2,
+          "performance": 98,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 2114.0182,
+          "cls": 0,
+          "fcp": 914.0182,
+          "tbt": 99.49999999999977,
+          "speedIndex": 914.0182,
+          "elapsedMs": 8333,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Accept your staff invitation"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "invite",
+          "run": 3,
+          "performance": 91,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 2177.589,
+          "cls": 0,
+          "fcp": 915.7260000000001,
+          "tbt": 136.99999999999977,
+          "speedIndex": 6482.284200002336,
+          "elapsedMs": 13050,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Accept your staff invitation"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "onboarding",
+          "run": 1,
+          "performance": 79,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 3944.740799999999,
+          "cls": 0,
+          "fcp": 927.7408,
+          "tbt": 359,
+          "speedIndex": 1015.159278001271,
+          "elapsedMs": 8181,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Request organization setup"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "onboarding",
+          "run": 2,
+          "performance": 95,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2838.2624,
+          "cls": 0,
+          "fcp": 917.2624000000001,
+          "tbt": 68.00000000000023,
+          "speedIndex": 917.2624000000001,
+          "elapsedMs": 7665,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Request organization setup"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "onboarding",
+          "run": 3,
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2773.524,
+          "cls": 0,
+          "fcp": 918.5239999999999,
+          "tbt": 179,
+          "speedIndex": 918.5239999999999,
+          "elapsedMs": 7774,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Request organization setup"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "verify",
+          "run": 1,
+          "performance": 89,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 2845.7315000000003,
+          "cls": 0.02053115380234186,
+          "fcp": 913.7315000000001,
+          "tbt": 313,
+          "speedIndex": 913.7315000000001,
+          "elapsedMs": 7989,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Verification Link Missing"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "verify",
+          "run": 2,
+          "performance": 95,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 2607.9223,
+          "cls": 0.02053115380234186,
+          "fcp": 919.9223,
+          "tbt": 148,
+          "speedIndex": 919.9223,
+          "elapsedMs": 12239,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Verification Link Missing"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "verify",
+          "run": 3,
+          "performance": 95,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 2701.3439,
+          "cls": 0.02053115380234186,
+          "fcp": 910.3439000000001,
+          "tbt": 137.5,
+          "speedIndex": 910.3439000000001,
+          "elapsedMs": 8514,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Verification Link Missing"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pharmacy-start",
+          "run": 1,
+          "performance": 98,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2266.1715,
+          "cls": 0,
+          "fcp": 910.781,
+          "tbt": 116,
+          "speedIndex": 910.781,
+          "elapsedMs": 8152,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Start your pharmacy workspace"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pharmacy-start",
+          "run": 2,
+          "performance": 96,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2711.2605000000003,
+          "cls": 0,
+          "fcp": 911.2605000000001,
+          "tbt": 60.5,
+          "speedIndex": 911.2605000000001,
+          "elapsedMs": 7873,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Start your pharmacy workspace"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pharmacy-start",
+          "run": 3,
+          "performance": 98,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2190.09755,
+          "cls": 0,
+          "fcp": 914.7317,
+          "tbt": 90.99999999999977,
+          "speedIndex": 914.7317,
+          "elapsedMs": 7998,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Start your pharmacy workspace"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "validated-desktop",
+      "rows": [
+        {
+          "profile": "desktop",
+          "route": "home",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 705.9963999999999,
+          "cls": 0,
+          "fcp": 319.9976,
+          "tbt": 0,
+          "speedIndex": 596.4152508370571,
+          "elapsedMs": 11190,
+          "requestCount": 1,
+          "errors": [],
+          "heading": [
+            "Run your practice.Connect every visit."
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "pricing",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 588.374,
+          "cls": 0.0001025305905787584,
+          "fcp": 255.37400000000002,
+          "tbt": 0,
+          "speedIndex": 255.37400000000002,
+          "elapsedMs": 9355,
+          "requestCount": 2,
+          "errors": [
+            "Failed to load resource: the server responded with a status of 503 ()"
+          ],
+          "heading": [
+            "Plans for your practice"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "login",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 727.6398999999999,
+          "cls": 0,
+          "fcp": 267.6399,
+          "tbt": 6,
+          "speedIndex": 507.3000149327529,
+          "elapsedMs": 9521,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Sign in"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "register",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 691.9857,
+          "cls": 0,
+          "fcp": 262.4857,
+          "tbt": 2,
+          "speedIndex": 334.25882935570644,
+          "elapsedMs": 8562,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Patient Registration"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "reset",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 644.5345,
+          "cls": 0,
+          "fcp": 267.5345,
+          "tbt": 0,
+          "speedIndex": 271.58534208435464,
+          "elapsedMs": 8676,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Reset Password"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "invite",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 474.616,
+          "cls": 0,
+          "fcp": 257.308,
+          "tbt": 0,
+          "speedIndex": 257.308,
+          "elapsedMs": 7989,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Accept your staff invitation"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "onboarding",
+          "run": 1,
+          "performance": 99,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 916.308,
+          "cls": 0.0000326280535855004,
+          "fcp": 264.308,
+          "tbt": 3,
+          "speedIndex": 360.26003583677084,
+          "elapsedMs": 8412,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Request organization setup"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "verify",
+          "run": 1,
+          "performance": 100,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 588.0368,
+          "cls": 0.00440339987741879,
+          "fcp": 262.0368,
+          "tbt": 0,
+          "speedIndex": 262.0368,
+          "elapsedMs": 9021,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Verification Link Missing"
+          ]
+        },
+        {
+          "profile": "desktop",
+          "route": "pharmacy-start",
+          "run": 1,
+          "performance": 99,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 862.7093,
+          "cls": 0,
+          "fcp": 256.7093,
+          "tbt": 0,
+          "speedIndex": 256.7093,
+          "elapsedMs": 8064,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Start your pharmacy workspace"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "dashboard-baseline",
+      "rows": [
+        {
+          "profile": "mobile",
+          "route": "dashboard-doctor",
+          "run": 1,
+          "performance": 65,
+          "accessibility": 100,
+          "bestPractices": 92,
+          "seo": 66,
+          "lcp": 5367.827,
+          "cls": 0,
+          "fcp": 1127.218,
+          "tbt": 566,
+          "speedIndex": 2619.290844490809,
+          "elapsedMs": 14148,
+          "requestCount": 20,
+          "errors": [
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-OTk0YzllMzgtY2M0OC00ZmZhLWFkYTMtYjg0MDMxZjQ5NWRj''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection.",
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-ODhjYjFhNGEtNzIzYy00MmE0LWI0ODktNDkzZDgyMWJkZGFl''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection."
+          ],
+          "heading": [
+            "Welcome back, Synthetic Doctor"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "round2-mobile",
+      "rows": [
+        {
+          "profile": "mobile",
+          "route": "dashboard-doctor",
+          "run": 1,
+          "performance": 63,
+          "accessibility": 100,
+          "bestPractices": 92,
+          "seo": 66,
+          "lcp": 5042.753899999999,
+          "cls": 0,
+          "fcp": 1070.5026,
+          "tbt": 730.5,
+          "speedIndex": 1411.5531105921998,
+          "elapsedMs": 13491,
+          "requestCount": 20,
+          "errors": [
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-NTM1Mzg4NDQtZGViZS00M2VlLWFmYmItOTI1ZTA2MjQ5NTUw''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection.",
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-NWI3MGY1YTctZDJjMC00ZWRkLTgyNWMtYjI4MTljZDQ2ODRk''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection."
+          ],
+          "heading": [
+            "Welcome back, Synthetic Doctor"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pharmacy-start",
+          "run": 1,
+          "performance": 96,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2607.9782999999998,
+          "cls": 0,
+          "fcp": 915.9783,
+          "tbt": 103.00000000000045,
+          "speedIndex": 915.9783,
+          "elapsedMs": 8458,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Start your pharmacy workspace"
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "final-repeat-mobile",
+      "rows": [
+        {
+          "profile": "mobile",
+          "route": "dashboard-doctor",
+          "run": 1,
+          "performance": 55,
+          "accessibility": 100,
+          "bestPractices": 92,
+          "seo": 66,
+          "lcp": 5751.752349999999,
+          "cls": 0.1028478982557515,
+          "fcp": 1073.8349,
+          "tbt": 929.0825499999994,
+          "speedIndex": 1658.1113552675215,
+          "elapsedMs": 14064,
+          "requestCount": 20,
+          "errors": [
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-OTJhNjYzYTgtOWMxYS00M2YxLWFiZDktZGMyZmQ4M2Q0YWE3''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection.",
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-MThiN2NmMTUtYWVkNS00OThhLWJiYTYtZDc5MjczZmExNzFl''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection."
+          ],
+          "heading": [
+            "Welcome back, Synthetic Doctor"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "dashboard-doctor",
+          "run": 2,
+          "performance": 66,
+          "accessibility": 100,
+          "bestPractices": 92,
+          "seo": 66,
+          "lcp": 5111.8175,
+          "cls": 0,
+          "fcp": 1066.327,
+          "tbt": 591.8365000000001,
+          "speedIndex": 1066.327,
+          "elapsedMs": 13185,
+          "requestCount": 20,
+          "errors": [
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-ODYzOWQ3OTgtM2ZkMi00ZjU5LWJmOTMtMzlkNzMyNDZkODMx''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection.",
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-MzExYjhjZjctZGMxZi00NzZkLWI2MjEtNmI0M2I2ZjE2Mzlj''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection."
+          ],
+          "heading": [
+            "Welcome back, Synthetic Doctor"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "dashboard-doctor",
+          "run": 3,
+          "performance": 65,
+          "accessibility": 100,
+          "bestPractices": 92,
+          "seo": 66,
+          "lcp": 5160.745650000001,
+          "cls": 0,
+          "fcp": 1066.4971,
+          "tbt": 631,
+          "speedIndex": 1160.568479045949,
+          "elapsedMs": 11801,
+          "requestCount": 20,
+          "errors": [
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-NjE0NTQ0OTktMmIzZi00ZmRhLWI3NGQtZmRhMmU5OGZhMzBj''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection.",
+            "Applying inline style violates the following Content Security Policy directive 'style-src 'self' 'nonce-NjljYjVlOTktMDUxMi00OWNjLThkOGQtYjU3ZTFiODhlODlk''. Either the 'unsafe-inlin",
+            "WebSocket connection to 'wss://api.example.invalid/api/ws' failed: Error in connection establishment: net::ERR_NAME_NOT_RESOLVED",
+            "EventSource's response has a MIME type (\"application/json\") that is not \"text/event-stream\". Aborting the connection."
+          ],
+          "heading": [
+            "Welcome back, Synthetic Doctor"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "home",
+          "run": 1,
+          "performance": 95,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 2927.9677999999994,
+          "cls": 0,
+          "fcp": 1065.9678,
+          "tbt": 69.5,
+          "speedIndex": 1065.9678,
+          "elapsedMs": 8847,
+          "requestCount": 1,
+          "errors": [],
+          "heading": [
+            "Run your practice.Connect every visit."
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "home",
+          "run": 2,
+          "performance": 98,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 2160.3977,
+          "cls": 0,
+          "fcp": 1064.3977,
+          "tbt": 98.5,
+          "speedIndex": 1064.3977,
+          "elapsedMs": 8803,
+          "requestCount": 1,
+          "errors": [],
+          "heading": [
+            "Run your practice.Connect every visit."
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "home",
+          "run": 3,
+          "performance": 99,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 2160.7522,
+          "cls": 0,
+          "fcp": 1065.7522,
+          "tbt": 60.5,
+          "speedIndex": 1065.7522,
+          "elapsedMs": 8803,
+          "requestCount": 1,
+          "errors": [],
+          "heading": [
+            "Run your practice.Connect every visit."
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pricing",
+          "run": 1,
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 2624.7351000000003,
+          "cls": 0.0001065516310518786,
+          "fcp": 913.7351000000001,
+          "tbt": 191.5,
+          "speedIndex": 913.7351000000001,
+          "elapsedMs": 8508,
+          "requestCount": 2,
+          "errors": [
+            "Failed to load resource: the server responded with a status of 503 ()"
+          ],
+          "heading": [
+            "Plans for your practice"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pricing",
+          "run": 2,
+          "performance": 96,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 2579.3304000000003,
+          "cls": 0.0001065516310518786,
+          "fcp": 912.3304,
+          "tbt": 93.00000000000023,
+          "speedIndex": 912.3304,
+          "elapsedMs": 8415,
+          "requestCount": 2,
+          "errors": [
+            "Failed to load resource: the server responded with a status of 503 ()"
+          ],
+          "heading": [
+            "Plans for your practice"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pricing",
+          "run": 3,
+          "performance": 91,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcp": 2039.6781,
+          "cls": 0.0001065516310518786,
+          "fcp": 920.6781000000001,
+          "tbt": 357,
+          "speedIndex": 920.6781000000001,
+          "elapsedMs": 9693,
+          "requestCount": 2,
+          "errors": [
+            "Failed to load resource: the server responded with a status of 503 ()"
+          ],
+          "heading": [
+            "Plans for your practice"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "login",
+          "run": 1,
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3168.1342999999993,
+          "cls": 0,
+          "fcp": 916.1342999999999,
+          "tbt": 140.5,
+          "speedIndex": 1084.7246220892064,
+          "elapsedMs": 9032,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Sign in"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "login",
+          "run": 2,
+          "performance": 91,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3180.667,
+          "cls": 0,
+          "fcp": 912.1669999999999,
+          "tbt": 155.5,
+          "speedIndex": 1053.9682376061196,
+          "elapsedMs": 8684,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Sign in"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "login",
+          "run": 3,
+          "performance": 91,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 66,
+          "lcp": 3153.8451000000014,
+          "cls": 0,
+          "fcp": 910.8451,
+          "tbt": 166.00000000000045,
+          "speedIndex": 910.8451,
+          "elapsedMs": 8728,
+          "requestCount": 0,
+          "errors": [],
+          "heading": [
+            "Sign in"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "onboarding",
+          "run": 1,
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2855.9645,
+          "cls": 0,
+          "fcp": 914.9645,
+          "tbt": 127.5,
+          "speedIndex": 914.9645,
+          "elapsedMs": 7721,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Request organization setup"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "onboarding",
+          "run": 2,
+          "performance": 91,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2940.9012,
+          "cls": 0,
+          "fcp": 911.9012,
+          "tbt": 205.5,
+          "speedIndex": 911.9012,
+          "elapsedMs": 7899,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Request organization setup"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "onboarding",
+          "run": 3,
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2881.3872,
+          "cls": 0,
+          "fcp": 916.3871999999999,
+          "tbt": 149,
+          "speedIndex": 916.3871999999999,
+          "elapsedMs": 7615,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Request organization setup"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pharmacy-start",
+          "run": 1,
+          "performance": 95,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2177.5173999999997,
+          "cls": 0,
+          "fcp": 911.7587000000001,
+          "tbt": 220.49999999999977,
+          "speedIndex": 911.7587000000001,
+          "elapsedMs": 7963,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Start your pharmacy workspace"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pharmacy-start",
+          "run": 2,
+          "performance": 96,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2711.0019999999995,
+          "cls": 0,
+          "fcp": 911.002,
+          "tbt": 58.5,
+          "speedIndex": 911.002,
+          "elapsedMs": 7563,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Start your pharmacy workspace"
+          ]
+        },
+        {
+          "profile": "mobile",
+          "route": "pharmacy-start",
+          "run": 3,
+          "performance": 94,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 63,
+          "lcp": 2170.8523999999998,
+          "cls": 0,
+          "fcp": 915.4262000000001,
+          "tbt": 258.5,
+          "speedIndex": 915.4262000000001,
+          "elapsedMs": 8074,
+          "requestCount": 2,
+          "errors": [],
+          "heading": [
+            "Start your pharmacy workspace"
+          ]
+        }
+      ]
+    }
+  ]
+}

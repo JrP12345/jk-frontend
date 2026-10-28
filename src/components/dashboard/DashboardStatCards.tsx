@@ -1,6 +1,6 @@
 "use client";
 
-import { StatCard, SkeletonCard } from "@/components/ui";
+import { StatCard } from "@/components/ui";
 import { IndianRupee, AlertCircle, Building2, Stethoscope, Calendar, Clock, CheckCircle2, Receipt } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 
@@ -54,10 +54,10 @@ export function DashboardStatCards({
       <div className={styles.operationalStats}>
         {loading ? (
           <>
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
+            <StatCard loading value="" className={styles.operationalStat} />
+            <StatCard loading value="" className={styles.operationalStat} />
+            <StatCard loading value="" className={styles.operationalStat} />
+            <StatCard loading value="" className={styles.operationalStat} />
           </>
         ) : (
           <>
@@ -101,9 +101,9 @@ export function DashboardStatCards({
       <div className={styles.doctorStats}>
         {loading ? (
           <>
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
+            <StatCard loading value="" className={styles.operationalStat} />
+            <StatCard loading value="" className={styles.operationalStat} />
+            <StatCard loading value="" className={styles.operationalStat} />
           </>
         ) : (
           <>
@@ -139,8 +139,8 @@ export function DashboardStatCards({
       <div className={styles.patientStats}>
         {loading ? (
           <>
-            <SkeletonCard />
-            <SkeletonCard />
+            <StatCard loading value="" className={styles.operationalStat} />
+            <StatCard loading value="" className={styles.operationalStat} />
           </>
         ) : (
           <>

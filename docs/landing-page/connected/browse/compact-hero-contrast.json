@@ -1,0 +1,130 @@
+[
+  {
+    "width": 768,
+    "dark": false,
+    "text": "CARE CLOSE TO YOU",
+    "minimumContrast": 5.8,
+    "required": 4.5,
+    "passed": true
+  },
+  {
+    "width": 768,
+    "dark": false,
+    "text": "Find care that",
+    "minimumContrast": 10.73,
+    "required": 3,
+    "passed": true
+  },
+  {
+    "width": 768,
+    "dark": false,
+    "text": "fits your needs",
+    "minimumContrast": 6.39,
+    "required": 3,
+    "passed": true
+  },
+  {
+    "width": 768,
+    "dark": false,
+    "text": "Discover clinics and hospitals, explore doctors, and choose your next visit.",
+    "minimumContrast": 5.34,
+    "required": 4.5,
+    "passed": true
+  },
+  {
+    "width": 1024,
+    "dark": false,
+    "text": "CARE CLOSE TO YOU",
+    "minimumContrast": 5.76,
+    "required": 4.5,
+    "passed": true
+  },
+  {
+    "width": 1024,
+    "dark": false,
+    "text": "Find care that",
+    "minimumContrast": 10.66,
+    "required": 3,
+    "passed": true
+  },
+  {
+    "width": 1024,
+    "dark": false,
+    "text": "fits your needs",
+    "minimumContrast": 6.38,
+    "required": 3,
+    "passed": true
+  },
+  {
+    "width": 1024,
+    "dark": false,
+    "text": "Discover clinics and hospitals, explore doctors, and choose your next visit.",
+    "minimumContrast": 6,
+    "required": 4.5,
+    "passed": true
+  },
+  {
+    "width": 1440,
+    "dark": false,
+    "text": "CARE CLOSE TO YOU",
+    "minimumContrast": 5.92,
+    "required": 4.5,
+    "passed": true
+  },
+  {
+    "width": 1440,
+    "dark": false,
+    "text": "Find care that",
+    "minimumContrast": 10.66,
+    "required": 3,
+    "passed": true
+  },
+  {
+    "width": 1440,
+    "dark": false,
+    "text": "fits your needs",
+    "minimumContrast": 6.32,
+    "required": 3,
+    "passed": true
+  },
+  {
+    "width": 1440,
+    "dark": false,
+    "text": "Discover clinics and hospitals, explore doctors, and choose your next visit.",
+    "minimumContrast": 6,
+    "required": 4.5,
+    "passed": true
+  },
+  {
+    "width": 1440,
+    "dark": true,
+    "text": "CARE CLOSE TO YOU",
+    "minimumContrast": 9.29,
+    "required": 4.5,
+    "passed": true
+  },
+  {
+    "width": 1440,
+    "dark": true,
+    "text": "Find care that",
+    "minimumContrast": 12.88,
+    "required": 3,
+    "passed": true
+  },
+  {
+    "width": 1440,
+    "dark": true,
+    "text": "fits your needs",
+    "minimumContrast": 9.34,
+    "required": 3,
+    "passed": true
+  },
+  {
+    "width": 1440,
+    "dark": true,
+    "text": "Discover clinics and hospitals, explore doctors, and choose your next visit.",
+    "minimumContrast": 10.05,
+    "required": 4.5,
+    "passed": true
+  }
+]

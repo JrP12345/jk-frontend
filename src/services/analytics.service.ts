@@ -6,11 +6,6 @@ export class AnalyticsService {
     return res.data?.data || res.data;
   }
 
-  public static async getQualityMetrics() {
-    const res = await api.get("/analytics/quality-metrics");
-    return res.data?.data || res.data;
-  }
-
   public static async getNabhKpis() {
     const res = await api.get("/analytics/nabh-kpis");
     return res.data?.data || res.data;

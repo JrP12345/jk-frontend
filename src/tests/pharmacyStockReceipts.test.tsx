@@ -57,13 +57,13 @@ it("posts exact paise, base-unit inputs and one durable key, then clears only a 
 });
 it.each(["month", "day"])("posts the exact printed %s precision selected through the shared picker", async precision => {
   mount(); fill();
-  fireEvent.click(screen.getByRole("button", { name: "Printed expiry *" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Printed expiry/ }));
   let popup = await screen.findByRole("dialog", { name: "Choose Printed expiry *" });
   fireEvent.click(within(popup).getByRole("button", { name: "November 2099" }));
   if (precision === "day") {
     change("Printed expiry precision", "day");
-    expect(datePickerInput(screen.getByRole("button", { name: "Printed expiry *" }))).toHaveValue("");
-    fireEvent.click(screen.getByRole("button", { name: "Printed expiry *" }));
+    expect(datePickerInput(screen.getByRole("button", { name: /^Printed expiry/ }))).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: /^Printed expiry/ }));
     popup = await screen.findByRole("dialog", { name: "Choose Printed expiry *" });
     fireEvent.click(within(popup).getByRole("button", { name: /28.*November.*2099|November.*28.*2099/ }));
   }

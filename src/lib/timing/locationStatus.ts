@@ -1,3 +1,5 @@
+import { locationClockMinutes, locationDateKey } from "../locationTime";
+
 /**
  * Location Operational Status Engine
  * Handles ANY arbitrary opening & closing times, split shifts, cross-midnight shifts,
@@ -79,7 +81,7 @@ export function parseTimeToMinutes(timeStr: string): number | null {
   if (standardMatch) {
     const hours = parseInt(standardMatch[1], 10);
     const minutes = parseInt(standardMatch[2], 10);
-    return (hours % 24) * 60 + (minutes % 60);
+    return hours === 24 && minutes === 0 ? 1440 : (hours % 24) * 60 + (minutes % 60);
   }
 
   // Single hour (e.g. "9" -> 09:00 if reasonable)
@@ -182,7 +184,7 @@ export function parseWeeklySchedule(timingsStr: string | null | undefined): {
         if (start !== null && end !== null) {
           const slots: TimeSlot[] = [{
             startMinutes: start,
-            endMinutes: end < start ? end + 1440 : end, // Cross-midnight support
+            endMinutes: end < start || (start === 0 && end === 0) ? end + 1440 : end, // Cross-midnight support
             isOvernight: end < start,
           }];
           return {
@@ -195,7 +197,7 @@ export function parseWeeklySchedule(timingsStr: string | null | undefined): {
               friday: slots,
               saturday: slots,
             },
-            is24x7: start === 0 && (end === 1440 || end === 0),
+            is24x7: false,
             hasExplicitSchedule: true,
           };
         }
@@ -211,7 +213,7 @@ export function parseWeeklySchedule(timingsStr: string | null | undefined): {
             if (start !== null && end !== null) {
               slots.push({
                 startMinutes: start,
-                endMinutes: end < start ? end + 1440 : end,
+                endMinutes: end < start || (start === 0 && end === 0) ? end + 1440 : end,
                 isOvernight: end < start,
               });
             }
@@ -263,7 +265,7 @@ export function parseWeeklySchedule(timingsStr: string | null | undefined): {
                   if (start !== null && end !== null) {
                     slotList.push({
                       startMinutes: start,
-                      endMinutes: end < start ? end + 1440 : end,
+                      endMinutes: end < start || (start === 0 && end === 0) ? end + 1440 : end,
                       isOvernight: end < start,
                     });
                   }
@@ -281,7 +283,7 @@ export function parseWeeklySchedule(timingsStr: string | null | undefined): {
         }
 
         if (validDayFound) {
-          return { schedule: resultSchedule, is24x7: false, hasExplicitSchedule: true };
+          return { schedule: resultSchedule, is24x7: DAYS_OF_WEEK.every(day => resultSchedule[day].some(slot => slot.startMinutes === 0 && slot.endMinutes >= 1440)), hasExplicitSchedule: true };
         }
       }
     } catch {
@@ -301,7 +303,7 @@ export function parseWeeklySchedule(timingsStr: string | null | undefined): {
       if (start !== null && end !== null) {
         parsedSlots.push({
           startMinutes: start,
-          endMinutes: end < start ? end + 1440 : end,
+          endMinutes: end < start || (start === 0 && end === 0) ? end + 1440 : end,
           isOvernight: end < start,
         });
       }
@@ -342,7 +344,8 @@ export function formatDayName(day: DayOfWeek): string {
  */
 export function getLocationOperationalStatus(
   timingsStr: string | null | undefined,
-  referenceDate: Date = new Date()
+  referenceDate: Date = new Date(),
+  timeZone?: string,
 ): OperationalStatusResult {
   const { schedule, is24x7, hasExplicitSchedule } = parseWeeklySchedule(timingsStr);
 
@@ -372,9 +375,15 @@ export function getLocationOperationalStatus(
     };
   }
 
-  const currentDayIndex = referenceDate.getDay(); // 0 = Sunday, 1 = Monday, ...
+  let currentDayIndex = referenceDate.getDay(); // 0 = Sunday, 1 = Monday, ...
+  let currentMinutes = referenceDate.getHours() * 60 + referenceDate.getMinutes();
+  if (timeZone) {
+    try {
+      currentDayIndex = new Date(`${locationDateKey(referenceDate, timeZone)}T12:00:00Z`).getUTCDay();
+      currentMinutes = locationClockMinutes(referenceDate, timeZone);
+    } catch { return getLocationOperationalStatus(null, referenceDate); }
+  }
   const currentDayName = DAYS_OF_WEEK[currentDayIndex];
-  const currentMinutes = referenceDate.getHours() * 60 + referenceDate.getMinutes();
 
   const todaySlots = schedule[currentDayName] || [];
 

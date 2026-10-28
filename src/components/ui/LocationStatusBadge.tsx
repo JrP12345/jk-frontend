@@ -8,36 +8,34 @@ import { cn } from "@/components/ui/utils";
 
 export interface LocationStatusBadgeProps {
   timings?: string | null;
-  compact?: boolean;
   showSecondary?: boolean;
   className?: string;
   pill?: boolean;
+  timezone?: string;
 }
 
 export function LocationStatusBadge({
   timings,
-  compact = false,
   showSecondary = true,
   className = "",
   pill = false,
+  timezone,
 }: LocationStatusBadgeProps) {
-  const [mounted, setMounted] = useState(false);
   const [status, setStatus] = useState<OperationalStatusResult>(() =>
-    getLocationOperationalStatus(timings)
+    getLocationOperationalStatus(timings, new Date(), timezone)
   );
 
   useEffect(() => {
-    setMounted(true);
-    // Recalculate with actual client browser local time
-    setStatus(getLocationOperationalStatus(timings));
+    // Recalculate in the facility timezone when one is supplied.
+    setStatus(getLocationOperationalStatus(timings, new Date(), timezone));
 
     // Re-check every 60 seconds so status transitions seamlessly (e.g. at 5:00 PM or after midnight)
     const interval = setInterval(() => {
-      setStatus(getLocationOperationalStatus(timings));
+      setStatus(getLocationOperationalStatus(timings, new Date(), timezone));
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [timings]);
+  }, [timings, timezone]);
 
   const primaryLabel = status.defaultLabel;
 

@@ -1,6 +1,6 @@
 # Ekavyu interface system
 
-Current decisions, 2026-10-07. The implementation uses Next App Router, Tailwind 4, globals.css and shared React primitives in src/components/ui. Keep one shared control and appearance system.
+Current interface rules, with the brand palette and artwork updated on 2026-10-24. The implementation uses Next App Router, Tailwind 4, globals.css and shared React primitives in src/components/ui. Keep one shared control and appearance system.
 
 ## Navigation and layout
 
@@ -12,7 +12,7 @@ Dashboard page gutters belong to `src/app/(dashboard)/layout.tsx`. The content f
 
 ## Appearance
 
-Semantic surface, text, border, accent and status tokens in globals.css are the source of truth. Light appearance uses a warm neutral canvas; dark appearance uses layered charcoal surfaces. Fixed brand colors remain separate from semantic appearance. Print colors remain fixed for paper. Tenant brand colors and QR specifications are data.
+Semantic surface, text, border, accent and status tokens in globals.css are the source of truth. Light appearance uses coordinated cream surfaces; dark appearance uses neutral charcoal surfaces. Forest, emerald, sage and gold are brand accents, not a green canvas. Print colors remain fixed for paper. Tenant brand colors and QR specifications are data.
 
 Use bg-surface, bg-surface-elevated, text-text-secondary, border-input-border and status subtle/text pairs. Consumers use canonical semantic variables directly. Numbered secondary/status aliases and unused surface aliases have been removed. The primary ramp remains a current brand scale.
 
@@ -37,3 +37,74 @@ The responsive BarChart has one measured-width implementation. Labels, legends a
 Preserve keyboard focus, semantic labels, mobile 44px targets, reduced motion and text enlargement. Public page illustrations/layout belong in CSS Modules. Keep current control contracts and business rules.
 
 Use [verification-workflow.md](verification-workflow.md) to select direct controls, theme/overlay and consumer checks. Package TypeScript does not cover frontend test files. Prior viewport reviews are recorded in [production-readiness-tracker.md](production-readiness-tracker.md); final cleanup validation is recorded in [pre-production-cleanup.md](pre-production-cleanup.md).
+
+## Brand assets and print appearance
+
+Current identity, 2026-10-24. Product name: Ekavyu. Tagline: **Care That Keeps Moving**. The transparent ribbon-and-star SVG comes from `05_VECTOR_ALTERNATE/EKAVYU_Pathways_Vector_Approximation.svg` in the supplied handoff, selected following the user's vector/no-background correction. It is path-based gradient artwork with no embedded image or background. It is the supplied vector variant, not an exact reproduction of the metallic raster rendering.
+
+### Brand and appearance
+
+| Brand token | Value |
+| --- | --- |
+| brand-primary | Deep Forest #0B2F2A |
+| brand-secondary | Emerald #1F5C52 |
+| brand-soft | Sage #668B7A |
+| brand-warm | Champagne Gold #D4AF7A |
+| brand-ink | Deep Forest #0B2F2A |
+| brand-mist | Ivory #F6F2E8 |
+
+Screen colors come from semantic tokens in src/app/globals.css. Brand colors identify the product; opaque content surfaces keep clinical information readable. Sage and gold are supporting colors, not small body text on white. Dark mode uses lighter sage-derived foregrounds for contrast.
+
+| Semantic color | Light | Dark |
+| --- | --- | --- |
+| background | #F6F2E8 | #121314 |
+| surface | #F8F5ED | #1B1D1F |
+| surface-muted | #F1EDE3 | #232528 |
+| surface-elevated | #FBF8F0 | #282B2E |
+| text-primary | #29332E | #F6F2E8 |
+| text-secondary | #555B56 | #D2D1CB |
+| text-muted | #66675F | #B3B2AA |
+| border | #DCD6CA | #42464B |
+| input-border | #898879 | #858C94 |
+| accent | #1F5C52 | #BDD8C6 |
+| focus-ring | #1F5C52 | #D4AF7A |
+
+Success, warning and danger use dedicated semantic foreground/background pairs. Charts retain labels and distinct series colors. Screen controls follow [design-system.md](design-system.md). Navigation retains full-width geometry and the separate dashboard toolbar.
+
+ThemeProvider and the hydration bootstrap store light/dark/system appearance under ekavyu-mode. There is no selectable color palette. Shared controls use canonical semantic tokens; unused surface and numbered status aliases have been removed.
+
+### Assets, installation and print
+
+`assets/brand/ekavyu-mark.svg` retains the supplied vector master. `EkavyuLogo` uses the transparent `public/brand/ekavyu-mark.svg`, with theme-aware live wordmark text. The optimized file is about 63 KB uncompressed / 15 KB gzip and is cached independently of application JavaScript. Run `npm run brand:assets`, then `npm run brand:social` to regenerate exports. Browser favicons retain transparency; OS install icons use a deliberate opaque ivory canvas and the maskable safe circle. Superseded raster logo files are removed.
+
+Login and the public marketplace header use `EkavyuLogo layout="stacked"`: the transparent symbol sits above a small, centered title-case name. Dense workspace and landing headers retain the horizontal option.
+
+The background essence uses three static CSS gradients: low-opacity gold light,
+a fine curved highlight and a neutral warm wash. It appears behind introductory sections
+and the dashboard canvas; cards, data tables and dialogs keep opaque fills. No
+image request, animation, blur filter, fixed overlay or JavaScript rendering loop
+is added for this effect. Both themes have their own restrained gradient opacity.
+
+Current assets are app-icon-192.png, app-icon-512.png, app-icon-maskable-512.png, app-icon-180.png and the favicon files referenced by metadata. Root metadata owns manifest/icon tags once. Manifest ID remains ekavyu-healthcare-pwa; start URL is /dashboard and scope is /. Brand URLs use `brand-5`; the service worker uses `ekavyu-cache-v13` and allowlists only the public SVG mark. Its private-data cache restrictions remain intact. An existing OS home-screen shortcut may need reinstalling to adopt a changed icon.
+
+Cookies, current application storage and infrastructure names use Ekavyu. The retired offline database name is retained solely to erase previously cached patient data. Cryptographic derivation constants remain stable because they bind existing authenticated ciphertext; they are not visible branding.
+
+PrintBrand copies fixed paper colors into standalone documents, location QR posters, tickets, prescriptions, invoices and laboratory output. Thermal output remains monochrome. QR/payment values retain provider-required formats.
+
+Cleanup validation and the remaining operational release checks are in [pre-production-cleanup.md](pre-production-cleanup.md) and [production-readiness-tracker.md](production-readiness-tracker.md). Source validation does not certify live provider transactions.
+
+## Shared form policy
+
+- Use `DatePicker` for date, date-time, time and exact expiry-month entry.
+  Preserve local `YYYY-MM-DD`, `HH:mm`, `YYYY-MM-DDTHH:mm` and `YYYY-MM`
+  values; an unconfirmed time edit must not change the saved value.
+- Keep required/min/max validation on the non-visible backing field and route
+  validation focus to the visible control. Do not mutate incoming Date objects.
+  A locked fieldset also locks its portaled calendar. Nested selects retain the
+  owning picker and parent modal.
+- Use `Select`, `Checkbox` and `Input` for reconciliation choices, schedule
+  flags and filters. The application lint policy enforces shared form controls;
+  native backing fields remain inside the shared primitives.
+- Use `Card`, semantic utilities, `page-title` and `formatCurrency` for ordinary
+  service-catalog composition. `QueueDialog` owns pinned Cancel/Save layout;
+  saving blocks dismissal and restoration stays beside the active override.

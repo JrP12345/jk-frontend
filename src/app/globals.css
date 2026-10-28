@@ -301,23 +301,23 @@ select:-webkit-autofill {
 
 /* Fixed Ekavyu identity. */
 :root {
-  --brand-primary: #0F6F66;
-  --brand-secondary: #49B39D;
-  --brand-soft: #8EDFD3;
-  --brand-warm: #DCC9A3;
-  --brand-ink: #0E2A28;
-  --brand-mist: #F7F7F2;
-  --p-50: #EFF9F5;
-  --p-100: #DDF2E9;
-  --p-200: #B7E7DB;
-  --p-300: var(--brand-soft);
-  --p-400: var(--brand-secondary);
-  --p-500: var(--brand-primary);
-  --p-600: #0C6159;
-  --p-700: #0B534D;
-  --p-800: #10443E;
-  --p-900: var(--brand-ink);
-  --p-950: #081C1A;
+  --brand-primary: #0B2F2A;
+  --brand-secondary: #1F5C52;
+  --brand-soft: #668B7A;
+  --brand-warm: #D4AF7A;
+  --brand-ink: #0B2F2A;
+  --brand-mist: #F6F2E8;
+  --p-50: #EEF3EF;
+  --p-100: #DFE9E1;
+  --p-200: #BCD0C3;
+  --p-300: #9BBBA8;
+  --p-400: var(--brand-soft);
+  --p-500: var(--brand-secondary);
+  --p-600: #184C43;
+  --p-700: #123F37;
+  --p-800: var(--brand-primary);
+  --p-900: #082720;
+  --p-950: #061D19;
   --print-border: #D3DED5;
   --print-text: var(--brand-ink);
   --print-secondary: #425F59;
@@ -330,26 +330,27 @@ select:-webkit-autofill {
   --print-accent-strong: #0B534D;
   --print-success: #246D50;
   --print-success-subtle: #E9F5EB;
-  --brand-gradient: linear-gradient(115deg, var(--brand-primary), var(--brand-secondary) 42%, var(--brand-soft) 76%, var(--brand-warm));
+  --brand-gradient: linear-gradient(115deg, var(--brand-primary), var(--brand-secondary) 48%, var(--brand-soft) 82%, var(--brand-warm));
 }
 
 :root, [data-mode="light"] {
   --background: var(--brand-mist);
-  --surface: #FFFFFF;
-  --surface-muted: #F0F2EF;
-  --surface-hover: #E9EDE9;
-  --surface-elevated: #FFFFFF;
-  --text-primary: #202B29;
-  --text-secondary: #505D58;
-  --text-muted: #64716B;
-  --border: #DDE3DD;
-  --input-border: #7A8982;
-  --accent: var(--brand-primary);
-  --accent-hover: #0B534D;
-  --accent-subtle: #E4F3EC;
-  --selected: #DDF2E9;
-  --active: #D5E8DE;
-  --focus-ring: var(--brand-primary);
+  --surface: #F8F5ED;
+  --surface-muted: #F1EDE3;
+  --surface-hover: #EEE8DC;
+  --surface-elevated: #FBF8F0;
+  --text-primary: #29332E;
+  --text-secondary: #555B56;
+  --text-muted: #66675F;
+  --border: #DCD6CA;
+  --input-border: #898879;
+  --accent: var(--brand-secondary);
+  --accent-hover: var(--brand-primary);
+  --accent-subtle: #E4EDE3;
+  --selected: #DFE9E1;
+  --active: #D5E2D6;
+  --focus-ring: var(--brand-secondary);
+  --brand-essence: radial-gradient(ellipse 65% 42% at 100% 0%, rgb(212 175 122 / .13), transparent 76%), radial-gradient(ellipse 100% 80% at -16% -35%, transparent 60%, rgb(212 175 122 / .09) 61%, rgb(251 248 240 / .4) 62%, transparent 65%), radial-gradient(ellipse 55% 44% at 0% 0%, rgb(212 175 122 / .04), transparent 75%);
   --success: #246D50;
   --success-text: #205F46;
   --success-subtle: #E9F5EB;
@@ -360,8 +361,8 @@ select:-webkit-autofill {
   --danger-text: #A42E2D;
   --danger-subtle: #FCEDE9;
   --overlay: rgb(14 42 40 / 0.48);
-  --skeleton: #D3DED5;
-  --skeleton-shimmer: #EDF5EF;
+  --skeleton: #DED9CE;
+  --skeleton-shimmer: #F4F0E6;
   --chart-1: var(--brand-primary);
   --chart-2: #347B64;
   --chart-3: #946B30;
@@ -427,22 +428,23 @@ select:-webkit-autofill {
 
 /* ── Deep Obsidian & Precision Slate Dark Mode ────────────── */
 .dark, [data-mode="dark"] {
-  --background: #141A19;
-  --surface: #1C2422;
-  --surface-muted: #222C29;
-  --surface-hover: #303D38;
-  --surface-elevated: #2A3531;
+  --background: #121314;
+  --surface: #1B1D1F;
+  --surface-muted: #232528;
+  --surface-hover: #2C2F32;
+  --surface-elevated: #282B2E;
   --text-primary: var(--brand-mist);
-  --text-secondary: #CFD8D2;
-  --text-muted: #AFBEB5;
-  --border: #46544D;
-  --input-border: #7C9186;
-  --accent: var(--brand-soft);
-  --accent-hover: #B7E7DB;
-  --accent-subtle: #204940;
-  --selected: #245347;
-  --active: #2B594D;
-  --focus-ring: var(--brand-soft);
+  --text-secondary: #D2D1CB;
+  --text-muted: #B3B2AA;
+  --border: #42464B;
+  --input-border: #858C94;
+  --accent: #BDD8C6;
+  --accent-hover: #D6E7DC;
+  --accent-subtle: #28322F;
+  --selected: #303A35;
+  --active: #35423B;
+  --focus-ring: var(--brand-warm);
+  --brand-essence: radial-gradient(ellipse 65% 42% at 100% 0%, rgb(212 175 122 / .035), transparent 76%), radial-gradient(ellipse 100% 80% at -16% -35%, transparent 60%, rgb(212 175 122 / .035) 61%, rgb(246 242 232 / .02) 62%, transparent 65%), radial-gradient(ellipse 55% 44% at 0% 0%, rgb(246 242 232 / .015), transparent 75%);
   --success: #8ED6AE;
   --success-text: #B0E6C4;
   --success-subtle: #214A36;
@@ -453,10 +455,10 @@ select:-webkit-autofill {
   --danger-text: #FFC0B7;
   --danger-subtle: #4B2D2A;
   --overlay: rgb(4 17 15 / 0.72);
-  --skeleton: #35423B;
-  --skeleton-shimmer: #46544D;
-  --chart-1: var(--brand-soft);
-  --chart-2: var(--brand-secondary);
+  --skeleton: #303338;
+  --skeleton-shimmer: #42464B;
+  --chart-1: #BDD8C6;
+  --chart-2: #86B49A;
   --chart-3: var(--brand-warm);
   --chart-4: #B9CB96;
   --chart-5: #F19A91;
@@ -563,33 +565,32 @@ html.no-transitions *::after {
 }
 
 /* Soft brand wash is reserved for public and authentication introductions. */
-.brand-wash {
-  background: linear-gradient(120deg,
-    color-mix(in srgb, var(--brand-primary) 7%, var(--background)),
-    color-mix(in srgb, var(--brand-secondary) 9%, var(--background)) 35%,
-    color-mix(in srgb, var(--brand-soft) 14%, var(--background)) 72%,
-    color-mix(in srgb, var(--brand-warm) 12%, var(--background)));
+.brand-wash, .brand-essence {
+  background-color: var(--background);
+  background-image: var(--brand-essence);
+  background-repeat: no-repeat;
+  background-size: 100% 48rem;
 }
 
 /* Functional materials: navigation, compact controls and small overlays only.
    Content surfaces keep their opaque semantic fills. */
 :root, [data-mode="light"] {
-  --material-navigation-fill: rgb(255 255 255 / 0.84);
-  --material-subtle-fill: rgb(255 255 255 / 0.9);
-  --material-control-fill: rgb(255 255 255 / 0.84);
-  --material-overlay-fill: rgb(255 255 255 / 0.96);
-  --material-edge: rgb(255 255 255 / 0.9);
-  --material-highlight: rgb(255 255 255 / 0.3);
+  --material-navigation-fill: rgb(248 245 237 / 0.94);
+  --material-subtle-fill: rgb(248 245 237 / 0.96);
+  --material-control-fill: rgb(248 245 237 / 0.94);
+  --material-overlay-fill: rgb(251 248 240 / 0.98);
+  --material-edge: rgb(251 248 240 / 0.9);
+  --material-highlight: rgb(251 248 240 / 0.3);
   --material-shadow: rgb(14 42 40 / 0.14);
   --material-saturation: 125%;
 }
 .dark, [data-mode="dark"] {
-  --material-navigation-fill: rgb(42 53 49 / 0.84);
-  --material-subtle-fill: rgb(42 53 49 / 0.94);
-  --material-control-fill: rgb(42 53 49 / 0.9);
-  --material-overlay-fill: rgb(42 53 49 / 0.96);
-  --material-edge: rgb(207 216 210 / 0.18);
-  --material-highlight: rgb(207 216 210 / 0.06);
+  --material-navigation-fill: rgb(40 43 46 / 0.9);
+  --material-subtle-fill: rgb(40 43 46 / 0.96);
+  --material-control-fill: rgb(40 43 46 / 0.94);
+  --material-overlay-fill: rgb(40 43 46 / 0.98);
+  --material-edge: rgb(210 209 203 / 0.18);
+  --material-highlight: rgb(210 209 203 / 0.06);
   --material-shadow: rgb(0 8 6 / 0.4);
   --material-saturation: 115%;
 }
@@ -697,6 +698,9 @@ body {
   font-family: var(--font-sans);
   color: var(--text-primary);
   background-color: var(--background);
+  background-image: var(--brand-essence);
+  background-repeat: no-repeat;
+  background-size: 100% 48rem;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

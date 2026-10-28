@@ -1,0 +1,48 @@
+[
+  {
+    "viewport": "desktop",
+    "checks": [
+      {
+        "route": "/browse",
+        "heading": "Find and book care that fits your needs",
+        "passed": true
+      },
+      {
+        "route": "/pricing",
+        "heading": "Plans for your practice",
+        "passed": true
+      },
+      {
+        "route": "/onboarding",
+        "heading": "Request organization setup",
+        "passed": true
+      }
+    ],
+    "errors": [],
+    "blockedWrites": [],
+    "passed": true
+  },
+  {
+    "viewport": "mobile",
+    "checks": [
+      {
+        "route": "/browse",
+        "heading": "Find and book care that fits your needs",
+        "passed": true
+      },
+      {
+        "route": "/pricing",
+        "heading": "Plans for your practice",
+        "passed": true
+      },
+      {
+        "route": "/onboarding",
+        "heading": "Request organization setup",
+        "passed": true
+      }
+    ],
+    "errors": [],
+    "blockedWrites": [],
+    "passed": true
+  }
+]

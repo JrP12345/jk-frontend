@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getCrmLocations, CrmBranchScopeError } from '@/lib/crmLocations';
+import { getCrmLocations } from '@/lib/crmLocations';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { hasAnyPermission } from '@/lib/permissions';

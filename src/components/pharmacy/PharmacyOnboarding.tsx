@@ -64,18 +64,20 @@ function SetupSession() {
   return <main className="min-h-dvh bg-background px-4 py-8 sm:py-12"><section aria-label="Independent pharmacy signup" className="mx-auto max-w-xl space-y-5 rounded-2xl border border-border bg-surface p-5 sm:p-8">
     <div><Link href="/" className="font-semibold text-accent">Ekavyu</Link><h1 className="mt-4 text-2xl font-semibold">Start your pharmacy workspace</h1><p className="mt-2 text-sm text-text-secondary">Verify your business email, create one pharmacy branch, and secure staff access with an authenticator. Your existing account and patient records are retained.</p></div>
     {error && <Alert variant="error" title="Setup needs attention">{error}</Alert>}{notice && <Alert variant="info" title="Business setup">{notice}</Alert>}
-    {resuming && <p role="status">Checking your saved setup...</p>}
+    {resuming && <p className={proof ? "text-sm text-text-secondary" : "sr-only"} role="status">Checking your saved setup...</p>}
     {storageError && <Button variant="outline" onClick={fresh}>Begin new verification</Button>}
     {user?.role === "root" ? <p>Use platform organization provisioning for this account. <Link href="/dashboard/organizations">Open organizations</Link></p> : <>
       {phase === "details" && <form aria-label="Pharmacy business details" className="space-y-4" onSubmit={event => { event.preventDefault(); if (!selected) return; void work(async () => {
         const result = await startPharmacySetup({ ownerName: ownerName.trim(), email: email.trim().toLowerCase(), ...(password ? { password } : {}), businessName: businessName.trim(), city: city.trim(), address: address.trim(), ...(phone.trim() ? { businessPhone: phone.trim() } : {}), planId: selected.id, planFingerprint: selected.fingerprint });
         if (!current()) return; sessionStorage.setItem(storageKey, JSON.stringify(result.proof)); setProof(result.proof); setPassword(""); setPhase("verify"); setNotice(result.deliveryAvailable ? "Check your email for the six-digit setup code. No business access is granted until verification." : "Email delivery is unavailable. Keep this reference and resend later.");
       }); }}>
-        {loading && <p role="status">Loading published pharmacy trials...</p>}
-        {!loading && !options.length && <Alert variant="info" title="Signup is not available">No reviewed pharmacy trial is currently published. Existing accounts can still sign in.</Alert>}
         <fieldset disabled={busy || resuming || loading || !options.length || storageError} className="min-w-0 space-y-4">
           <Select label="Published pharmacy trial *" value={planId} onChange={event => setPlanId(event.target.value)} options={options.map(option => ({ value: option.id, label: `${option.name} / ${option.trialDays} days` }))} />
-          {selected && <p className="text-sm">{selected.trialDays}-day trial for one pharmacy branch. Current monthly total: {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(selected.monthlyTotalPaise / 100)}. Configured staff limit: {selected.maxStaff}. Paid activation is a separate reviewed checkout.</p>}
+          <div className="min-h-28 sm:min-h-20" aria-live="polite" aria-busy={loading}>
+            {loading && <><p role="status" className="sr-only">Loading published pharmacy trials...</p><div aria-hidden="true" className="animate-pulse space-y-2"><div className="h-4 rounded bg-surface-alt" /><div className="h-4 rounded bg-surface-alt" /><div className="h-4 w-3/4 rounded bg-surface-alt" /></div></>}
+            {!loading && !options.length && <Alert variant="info" title="Signup is not available">No reviewed pharmacy trial is currently published. Existing accounts can still sign in.</Alert>}
+            {selected && <p className="text-sm">{selected.trialDays}-day trial for one pharmacy branch. Current monthly total: {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(selected.monthlyTotalPaise / 100)}. Configured staff limit: {selected.maxStaff}. Paid activation is a separate reviewed checkout.</p>}
+          </div>
           <Input label="Owner name *" value={ownerName} maxLength={120} minLength={2} required onChange={event => setOwnerName(event.target.value)} />
           <Input label="Business account email *" type="email" value={email} maxLength={254} required readOnly={Boolean(user?.email)} onChange={event => setEmail(event.target.value)} />
           {!user && <Input label="Password for a new account" type="password" autoComplete="new-password" value={password} maxLength={72} onChange={event => setPassword(event.target.value)} hint="Choose a strong password for a new identity. Existing account credentials are kept." />}

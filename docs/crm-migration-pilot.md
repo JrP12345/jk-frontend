@@ -1,8 +1,14 @@
-# CRM migration and pilot package
+# CRM operator review and pilot
 
-This package prepares a controlled rollout. No production migration, index write,
-provider configuration or deployment has been executed. The implementation tracker
-is [crm-implementation-progress.md](crm-implementation-progress.md).
+This guide retains the existing operator tools and pilot acceptance procedure.
+The project has no production customers or legacy production data. Fresh setup
+uses current provisioning and schema indexes; it does not require a historical
+backfill. Snapshot/manifest instructions below apply only when an operator
+explicitly chooses to investigate existing development records.
+
+No production migration, index write, provider configuration or deployment is
+performed by this documentation cleanup. See the [workflow and acceptance matrix](crm-workflows.md#workflow-and-remaining-acceptance-matrix)
+for actual local observations and open acceptance work.
 
 ## Review before writes
 
@@ -12,7 +18,8 @@ defaults were upgraded explicitly on 2026-10-12 using
 `--apply --confirm-database=<exact-development-database>`. It requires one active
 root and preserves customized/empty roles and organization overrides. It refuses
 production mode and is not a production migration or an automatic permission
-backfill. Production role grants still require explicit review before rollout.
+backfill. Current role grants require explicit review. The completed upgrader's
+proposed removal remains pending approval in [the cleanup plan](pre-production-cleanup.md).
 
 Use a restored, reviewed snapshot and a read-only database account. Run from the
 backend repository with the connection supplied through the operator's environment:
@@ -79,7 +86,7 @@ or reinterpret old survey attribution as patient-submitted.
 
 The bounded operator CLI is implemented; its underlying transactional commands
 are verified on a synthetic replica set.
-An approved manifest and a live write window remain pending. Supported actions
+Any use requires an approved manifest and explicit write window. Supported actions
 prepare human review tasks for legacy links or recommendations, or initialize a
 missing relationship for a patient already owned by the reviewed organization.
 They do not initialize patient identities, consent or financial records.

@@ -18,10 +18,6 @@ export function hasLocationCoordinates(location: DetectedLocation | null): locat
     typeof location.longitude === "number" && Number.isFinite(location.longitude) && Math.abs(location.longitude) <= 180;
 }
 
-export function findMatchingLocationCity(detectedCity: string, locationCities: string[]): string | null {
-  return locationCities.find(city => city.trim().toLowerCase() === detectedCity.trim().toLowerCase()) || null;
-}
-
 function cache(location: DetectedLocation): DetectedLocation {
   try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ...location, detectedAt: Date.now() })); } catch { /* Optional cache. */ }
   return location;

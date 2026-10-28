@@ -25,6 +25,17 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); window.history.replaceState(null, "", "/login"); });
 
 describe("Patient identifier sign in", () => {
+  it("switches patient and staff sign-in panels with the keyboard", () => {
+    render(<LoginPage />);
+    const patientTab = screen.getByRole("tab", { name: "Patient Sign In" });
+    patientTab.focus();
+    fireEvent.keyDown(patientTab, { key: "ArrowRight" });
+    expect(screen.getByRole("tab", { name: "Staff Email" })).toHaveFocus();
+    expect(screen.getByLabelText("Staff Email Address *")).toBeVisible();
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Staff Email" }), { key: "ArrowLeft" });
+    expect(patientTab).toHaveFocus();
+    expect(screen.getByRole("textbox", { name: "Email or mobile number" })).toBeVisible();
+  });
   it.each([
     { success: true, data: { success: false } },
     { success: false },

@@ -347,7 +347,7 @@ export default function NursingShiftRosterPage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h4 className="font-bold text-text text-sm">{s.staffName}</h4>
+                    <h2 className="font-bold text-text text-sm">{s.staffName}</h2>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <Badge variant="neutral" size="sm" className="text-[10px]">{s.staffRole}</Badge>
                       <span className="text-xs text-text-muted">&bull; {s.ward}</span>

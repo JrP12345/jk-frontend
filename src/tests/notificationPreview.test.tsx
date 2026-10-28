@@ -8,7 +8,7 @@ import { forceResetScrollLock } from "@/lib/scrollLock";
 const mocks = vi.hoisted(() => ({ read: vi.fn(), all: vi.fn(), snooze: vi.fn(), pin: vi.fn(), toast: vi.fn(), push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock("@/hooks/useNotifications", () => ({ useNotifications: () => ({ unreadCount: 1, markAsRead: mocks.read, markAllAsRead: mocks.all, snoozeNotification: mocks.snooze, togglePinNotification: mocks.pin }) }));
-vi.mock("@/components/ui", async original => ({ ...await original<typeof import("@/components/ui")>(), useToast: () => ({ toast: mocks.toast }) }));
+vi.mock("@/components/ui/Toast", async original => ({ ...await original<typeof import("@/components/ui/Toast")>(), useToast: () => ({ toast: mocks.toast }) }));
 const notification = { id: "notice", category: "auth", title: "New account login", message: "Review your recent sign-in activity.", createdAt: "2026-09-27T08:00:00Z", readAt: null, pinned: false, severity: "info" };
 class TouchPointer extends MouseEvent {
   pointerId: number; pointerType: string; isPrimary: boolean;
@@ -49,7 +49,7 @@ it("closes on a horizontal swipe over a notification without hijacking vertical 
 afterEach(() => { client.clear(); forceResetScrollLock(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 async function openPreview() {
   render(<QueryClientProvider client={client}><NotificationBell /></QueryClientProvider>);
-  const trigger = screen.getByRole("button", { name: "Open Notifications" });
+  const trigger = screen.getByRole("button", { name: /^Open Notifications/ });
   trigger.focus();
   fireEvent.click(trigger);
   const dialog = await screen.findByRole("dialog", { name: "Notifications" });

@@ -1,6 +1,6 @@
 # Risk-based verification workflow
 
-This workflow covers the standalone frontend and sibling backend checkouts, reviewed on 2026-10-07. It defines **when** checks run during development; CI/release owns the complete gates.
+This workflow covers the standalone frontend and sibling backend checkouts, reviewed on 2026-10-24. It defines **when** checks run during development; CI/release owns the complete gates.
 
 ## A. Current bottlenecks
 
@@ -8,10 +8,10 @@ This workflow covers the standalone frontend and sibling backend checkouts, revi
 | --- | --- | --- | --- |
 | Frontend changed-file `npx eslint src/path/file.tsx` | Available, but broad `npm run lint` is often used instead | Usually seconds; parses only requested files | Yes for changed code when lint can catch an error |
 | Frontend `npm run lint` | CI and frequently local | Whole repository, including unrelated pages; historical warnings add output | No; CI/release |
-| Frontend `npx tsc --noEmit` | CI and often local | Whole app type graph; `src/tests` is excluded by `tsconfig.json` | No for styling; yes for changed types/shared contracts |
-| Frontend `npm test` | CI and often local | 81 files / 477 current cases; test transforms and jsdom setup recur | No; target affected files locally |
+| Frontend `npm run check:types` | CI and local | Explicit TypeScript 7 compiler and ignored incremental cache; whole app graph; `src/tests` is excluded by `tsconfig.json` | No for styling; yes for changed types/shared contracts |
+| Frontend `npm test` | CI and often local | 163 files / 1,202 cases at the latest cleanup baseline; transforms and jsdom setup recur | No; target affected files locally |
 | Frontend `npm run build` | CI and often local | Next production compile, TypeScript, page-data collection and route output; duration depends on compiler caches and machine load | No; config, routing, environment, dependency or release changes warrant it |
-| Backend `npm test` | Called by release auditor in CI; sometimes local | 155 files / 879 current cases, serial by `vitest.config.ts`; `tests/setup.ts` starts/stops a MongoDB memory server per file; first run may fetch its test binary | No; select affected integration files |
+| Backend `npm test` | Called by release auditor in CI; sometimes local | 221 files / 1,949 cases at the latest cleanup baseline, serial by `vitest.config.ts`; `tests/setup.ts` starts/stops a MongoDB memory server per file; first run may fetch its test binary | No; select affected integration files |
 | Backend `npm run check:fast` | Available locally; release auditor separately invokes TypeScript | Full backend TypeScript graph, including tests and scripts; cost depends on incremental cache | No for docs; yes for changed contracts or backend logic where compiler errors matter |
 | Backend `npm run build` | CI/release, sometimes local | esbuild API plus four workers; recorded isolated build 0.57 seconds (not install/startup time) | Useful for entry/bundling changes; no need after each test-only edit |
 | Backend `npm run audit:release` | CI/release | Runs full TypeScript and serial full Vitest again, scans fitness rules, writes manifest/history | Never routine local development |
@@ -59,8 +59,8 @@ Run commands from the named repository root. Replace example paths with actual a
 | Situation | Commands and scope |
 | --- | --- |
 | Tiny frontend UI change | `git diff --check`; `npx eslint src/app/browse/BrowseClient.tsx`; inspect `/browse` at the affected width if available. No build by default. |
-| Normal frontend behavior | `npx eslint <changed files>`; `npm test -- src/tests/browseAndMobilePolish.test.tsx` (or actual affected tests); inspect the flow. Add `npx tsc --noEmit` for altered types/contracts. |
-| Shared frontend component | Changed-file ESLint; direct and consumer test files, e.g. `npm test -- src/tests/components.test.tsx src/tests/responsiveControls.test.tsx`; `npx tsc --noEmit` if the shared interface changed. |
+| Normal frontend behavior | `npx eslint <changed files>`; `npm test -- src/tests/browseAndMobilePolish.test.tsx` (or actual affected tests); inspect the flow. Add `npm run check:types` for altered types/contracts. |
+| Shared frontend component | Changed-file ESLint; direct and consumer test files, e.g. `npm test -- src/tests/components.test.tsx src/tests/responsiveControls.test.tsx`; `npm run check:types` if the shared interface changed. |
 | Normal backend behavior | `npm test -- tests/appointment.test.ts` (replace with the affected file); `npm run check:fast` for changed TypeScript contracts. A MongoDB test run may need its cached test binary. |
 | Shared backend/API business logic | Targeted direct + dependent `tests/*.test.ts`; `npm run check:fast`; `npm run build` for API/worker entry or bundle behavior. Add security/tenant/transaction tests for their respective boundaries. |
 | Security-sensitive or migration work | Related auth/RBAC/tenant/persistence integration files plus adverse/edge cases, `npm run check:fast`, `npm run build`; use `npm run check:tenants` only when tenant-scoping source changes and inspect its behavior first. Do not run migrations against data as a test. |
@@ -85,7 +85,7 @@ Inspect the diff, run changed-file ESLint for frontend code, affected tests for 
 - Repeating a successful full build after a tiny final CSS/text edit gives little added confidence; use changed-file lint and visual inspection. Rebuild only when the later edit affects compile/build behavior.
 - Frontend CI uses `npm test`, which owns the Vitest worker and file-parallelism limits; there is no second set of CLI limits to keep in sync.
 - Running backend `npm test` and then `npm run audit:release` locally repeats the complete serial Mongo suite; select tests during development and let the single release auditor own the full suite at its checkpoint.
-- Running `npx tsc --noEmit` immediately before a Next build duplicates some type work; during local development choose the gate that addresses the risk. CI keeps both for now.
+- Running `npm run check:types` immediately before a Next build duplicates some type work; during local development choose the gate that addresses the risk. CI keeps both for now.
 - Re-running unrelated frontend and backend suites because both repositories are open adds wait without coverage of the changed module. A changed API contract is the exception.
 
 Nothing here removes tests, changes lint rules, changes CI coverage, or treats a passed scoped check as a substitute for the release gate.

@@ -1,0 +1,124 @@
+{
+  "crmReport": {
+    "asOf": "2026-10-09T18:30:00Z",
+    "startDate": "2026-10-01",
+    "endDate": "2026-10-09",
+    "branches": [
+      {
+        "locationId": "branch",
+        "name": "Visible branch",
+        "timezone": "Asia/Kolkata"
+      }
+    ],
+    "inquiries": {
+      "total": 0,
+      "converted": 0,
+      "unreconciled": 0,
+      "active": 0,
+      "closed": 0,
+      "conversionPercent": null,
+      "responseCount": 0,
+      "averageFirstReportedCallMinutes": null,
+      "sources": []
+    },
+    "tasks": {
+      "total": 0,
+      "overdue": 0,
+      "unassigned": 0,
+      "snoozed": 0,
+      "kinds": [],
+      "workload": [],
+      "workloadCapped": false
+    },
+    "appointments": {
+      "total": 0,
+      "states": {},
+      "resolvedAttendance": 0,
+      "noShowPercent": null,
+      "returningCompletedVisits": 0,
+      "completedVisits": 0
+    },
+    "communications": {
+      "states": [
+        {
+          "channel": "whatsapp",
+          "status": "accepted",
+          "total": 2
+        }
+      ],
+      "costExplanation": "Provider costs unavailable."
+    },
+    "definitions": {
+      "inquiries": "Canonical conversion cohort.",
+      "tasks": "Current unfinished work.",
+      "appointments": "Recorded attendance only.",
+      "communications": "Acceptance is not delivery.",
+      "response": "Staff reports only.",
+      "returning": "Authorized branches only."
+    }
+  },
+  "crmSettings": {
+    "revision": 3,
+    "automationEnabled": false,
+    "campaignsEnabled": false,
+    "defaultInquiryHours": 4,
+    "defaultTaskHours": 12,
+    "reminderStartHour": 8,
+    "reminderEndHour": 20,
+    "feedbackRecoveryRating": 2,
+    "entitlementActive": true,
+    "organizationWideAccess": true
+  },
+  "traffic": {
+    "summary": {
+      "todayVisits": 24,
+      "todayVisitors": 12,
+      "yesterdayVisits": 18,
+      "yesterdayVisitors": 9,
+      "sevenDayVisits": 100,
+      "thirtyDayVisits": 300,
+      "totalVisits": 600
+    },
+    "dailyTrends": [
+      {
+        "date": "2026-10-16",
+        "visits": 0,
+        "uniqueVisitors": 0
+      },
+      {
+        "date": "2026-10-17",
+        "visits": 24,
+        "uniqueVisitors": 12
+      }
+    ],
+    "locationAttribution": [
+      {
+        "locationId": "location",
+        "locationName": "Aarogya Clinic",
+        "organizationName": "Aarogya Healthcare",
+        "city": "Surat",
+        "visits": 24,
+        "uniqueVisitors": 12,
+        "percentShare": 100
+      }
+    ],
+    "topPages": [
+      {
+        "path": "/browse/aarogya-clinic",
+        "visits": 24
+      }
+    ],
+    "devices": [
+      {
+        "name": "Mobile",
+        "count": 12
+      }
+    ],
+    "browsers": [
+      {
+        "name": "Safari",
+        "count": 12
+      }
+    ]
+  }
+}

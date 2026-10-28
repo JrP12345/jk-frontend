@@ -15,3 +15,17 @@ export function absolutePublicUrl(path: string): string | undefined {
   const origin = getSiteUrl();
   return origin ? new URL(path, origin).href : undefined;
 }
+
+/** Development and provider preview hosts must never become search results. */
+export function isPreviewHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, "");
+  return /^(?:dev|development|staging|stage|preview|test|testing)(?:[.-]|$)/.test(host) ||
+    host.endsWith(".vercel.app") || host === "localhost" || host.endsWith(".localhost") ||
+    host === "0.0.0.0" || host === "[::1]" || host.startsWith("127.");
+}
+
+export function canIndexPublicSite(): boolean {
+  const origin = getSiteUrl();
+  return Boolean(origin && !isPreviewHost(origin.hostname) &&
+    !["preview", "development"].includes(process.env.VERCEL_ENV || ""));
+}

@@ -12,6 +12,7 @@ export interface TimeRangeOption {
 
 export interface ChartContainerProps {
   title: string;
+  headingLevel?: "h2" | "h3";
   description?: string;
   badge?: ReactNode;
   headerAction?: ReactNode;
@@ -28,6 +29,7 @@ export interface ChartContainerProps {
 
 export const ChartContainer = memo(function ChartContainer({
   title,
+  headingLevel = "h2",
   description,
   badge,
   headerAction,
@@ -48,7 +50,7 @@ export const ChartContainer = memo(function ChartContainer({
       <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 px-4 sm:px-5 pt-4 border-b border-border/40 shrink-0">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <CardTitle className="text-sm sm:text-base font-bold text-text tracking-tight flex items-center gap-2">
+            <CardTitle as={headingLevel} className="text-sm sm:text-base font-bold text-text tracking-tight flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0 shadow-xs" />
               {title}
             </CardTitle>

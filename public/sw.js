@@ -1,7 +1,7 @@
 // Only explicit public resources can enter the offline cache.
-const CACHE_NAME = 'ekavyu-cache-v11';
+const CACHE_NAME = 'ekavyu-cache-v13';
 const PUBLIC_PAGES = new Set(['/browse', '/pricing']);
-const PUBLIC_FILES = new Set(['/manifest.json', '/ekavyu-leaf.png', '/ekavyu-leaf-96.webp', '/ekavyu-leaf-160.webp', '/ekavyu-leaf-240.webp', '/ekavyu-home-social.png', '/favicon.ico', '/favicon-16.png', '/favicon-32.png', '/app-icon-180.png', '/app-icon-192.png', '/app-icon-512.png', '/app-icon-maskable-512.png']);
+const PUBLIC_FILES = new Set(['/manifest.json', '/brand/ekavyu-mark.svg', '/ekavyu-home-social.png', '/favicon.ico', '/favicon-16.png', '/favicon-32.png', '/app-icon-180.png', '/app-icon-192.png', '/app-icon-512.png', '/app-icon-maskable-512.png']);
 function allowed(url) {
   return url.origin === self.location.origin && (PUBLIC_PAGES.has(url.pathname) || PUBLIC_FILES.has(url.pathname) || url.pathname.startsWith('/_next/static/'));
 }

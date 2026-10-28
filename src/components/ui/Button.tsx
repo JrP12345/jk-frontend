@@ -63,6 +63,11 @@ const iconSizes: Record<ButtonSize, string> = {
   lg: "[&>svg]:h-5 [&>svg]:w-5 h-5 w-5",
 };
 
+/** The same appearance for native links; navigation retains anchor semantics. */
+export function buttonClassName({ variant = "primary", size = "md", fullWidth = false, loading = false, className = "" }: Pick<ButtonProps, "variant" | "size" | "fullWidth" | "loading" | "className"> = {}) {
+  return cn(base, variants[variant], !semanticForeground.test(className) && foregrounds[variant], sizes[size], fullWidth && "w-full", !loading && "disabled:opacity-50", loading && "cursor-wait select-none", className);
+}
+
 const Button = memo(
   forwardRef<HTMLButtonElement, ButtonProps>(
     (
@@ -101,16 +106,7 @@ const Button = memo(
           disabled={isBasicallyDisabled}
           aria-busy={loading ? "true" : undefined}
           aria-disabled={isBasicallyDisabled ? "true" : undefined}
-          className={cn(
-            base,
-            variants[variant],
-            !semanticForeground.test(className) && foregrounds[variant],
-            sizes[size],
-            fullWidth && "w-full",
-            !loading && "disabled:opacity-50",
-            loading && "cursor-wait select-none",
-            className
-          )}
+          className={buttonClassName({ variant, size, fullWidth, loading, className })}
           {...rest}
           aria-label={rest["aria-label"] || (loading ? loadingText : undefined)}
           onClick={(event) => {

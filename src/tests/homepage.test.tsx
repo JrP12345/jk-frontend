@@ -31,11 +31,22 @@ describe("Public homepage entry", () => {
     fixture.cookies.set("ekavyu_session", "guest");
     fixture.cookies.set("access_token", "booking-session");
     render(await Home());
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Run your practice.Connect every visit.");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Find your doctor.Manage your clinic day.");
+    expect(screen.getByText(/Explore doctors and clinics, and book appointments where available/)).toHaveTextContent("available. For clinic teams");
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Find care" }).every(link => link.getAttribute("href") === "/browse")).toBe(true);
-    expect(screen.getAllByRole("link", { name: "Request setup" }).every(link => link.getAttribute("href") === "/onboarding?mode=new_org")).toBe(true);
+    expect(screen.getByRole("group", { name: "Explore patient screens" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Explore clinic screens" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Explore communications screens" })).toBeInTheDocument();
+    expect(screen.getByText(/Every person, visit and total in this example is fictional/)).toBeInTheDocument();
+    expect(screen.getByText(/Provider acceptance does not guarantee delivery or reading/)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Find a Doctor" }).every(link => link.getAttribute("href") === "/browse")).toBe(true);
+    expect(screen.getAllByRole("link", { name: "For Clinics" }).every(link => link.getAttribute("href") === "#for-organizations")).toBe(true);
+    expect(screen.getAllByRole("link", { name: "Request clinic setup" }).every(link => link.getAttribute("href") === "/onboarding?mode=new_org")).toBe(true);
     expect(screen.getAllByRole("link", { name: "Plans" })[0]).toHaveAttribute("href", "#plans");
+    for (const link of screen.getAllByRole("link")) {
+      const href = link.getAttribute("href");
+      if (href?.startsWith("#")) expect(document.getElementById(href.slice(1))).toBeTruthy();
+    }
   });
 
   it.each(["refresh_token", "access_token", "ekavyu_session"])("preserves the dashboard redirect for a signed-in %s session", name => {
@@ -76,7 +87,7 @@ describe("Homepage interactions", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(toggle).toHaveFocus();
     fireEvent.click(toggle);
-    fireEvent.click(screen.getAllByRole("link", { name: "For healthcare teams" })[1]);
+    fireEvent.click(screen.getAllByRole("link", { name: "For Clinics" })[1]);
     expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 

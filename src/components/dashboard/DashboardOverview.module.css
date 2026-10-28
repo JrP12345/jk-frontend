@@ -666,6 +666,7 @@
 
 .operationalStat {
   min-width: 0;
+  min-height: 8.5rem;
   box-shadow: none;
 }
 
@@ -674,7 +675,7 @@
   font-size: 0.75rem;
 }
 
-.operationalStat div[aria-hidden="true"] {
+.operationalStat > div > div > div[aria-hidden="true"] {
   display: none;
 }
 

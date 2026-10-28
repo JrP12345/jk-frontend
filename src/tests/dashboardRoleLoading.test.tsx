@@ -37,4 +37,19 @@ describe("Dashboard authoritative role loading", () => {
     expect(fixture.get).toHaveBeenCalledTimes(1);
     expect(fixture.get.mock.calls[0][0]).toContain("trendDays=7");
   });
+  it("loads a custom receptionist dashboard without requesting location or staff management data", async () => {
+    useAuthStore.setState({ user: { id: "desk", name: "Receptionist", email: "desk@example.test", role: "receptionist", organization_id: "org", permissions: ["VIEW_PATIENTS", "MANAGE_APPOINTMENTS", "MANAGE_QUEUE", "VIEW_BILLING", "MANAGE_BILLING", "MANAGE_ORDERS", "MANAGE_MEDICINES", "VIEW_APPOINTMENTS", "MANAGE_PATIENTS"] } });
+    fixture.get.mockImplementation(async (path: string) => {
+      if (path.includes("daily-summary")) return { data: { data: { locationCount: 1, appointments: 4, completed: 1, pending: 3, financialVisible: true, collections: 150, outstanding: 50, recentAppointments: [] } } };
+      if (path.startsWith("/invoices")) return { data: { data: [] } };
+      throw new Error("Unauthorized management read: " + path);
+    });
+    render(<ToastProvider><DashboardOverview /></ToastProvider>);
+    await waitFor(() => expect(screen.getByTestId("statistics")).toHaveTextContent('"appointments":4'));
+    expect(screen.getByTestId("statistics")).toHaveTextContent('"locations":1');
+    expect(screen.getByTestId("charts")).toHaveTextContent('"showLocationActivity":false');
+    expect(fixture.fetchLocations).not.toHaveBeenCalled();
+    expect(fixture.get).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });

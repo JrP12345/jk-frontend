@@ -181,11 +181,11 @@ it("shows a single doctor and location as context while keeping the queue date e
   expect(scope).toHaveTextContent("Care Clinic");
   expect(scope).toHaveTextContent("Doctor");
   expect(within(scope).queryByRole("combobox")).not.toBeInTheDocument();
-  expect(within(scope).queryByRole("button", { name: "Change queue filters" })).not.toBeInTheDocument();
-  const changeDate = within(scope).getByRole("button", { name: "Change queue date" });
+  expect(within(scope).queryByRole("button", { name: /^Change queue filters/ })).not.toBeInTheDocument();
+  const changeDate = within(scope).getByRole("button", { name: /^Change queue date/ });
   fireEvent.click(changeDate);
   expect(changeDate).toHaveAttribute("aria-expanded", "true");
-  const datePicker = within(scope).getByRole("button", { name: "Queue date", exact: true });
+  const datePicker = within(scope).getByRole("button", { name: /^Queue date/ });
   expect(datePicker).toBeEnabled();
   fireEvent.click(datePicker);
   expect(datePicker).toHaveAttribute("aria-expanded", "true");
@@ -199,7 +199,7 @@ it("offers only the location selector when several locations share one doctor", 
   fixture.get.mockImplementation((url: string) => url === "/onboarding/staff" ? Promise.resolve({ data: { data: { doctors: [{ id: "doctor", name: "Doctor" }] } } }) : read(url));
   render(<ToastProvider><QueuePage /></ToastProvider>);
   await screen.findByText("Ananya Shah");
-  fireEvent.click(screen.getByRole("button", { name: "Change queue filters" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Change queue filters/ }));
   expect(screen.queryByRole("combobox", { name: "Doctor" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("combobox", { name: "Location" }));
   fireEvent.click(await screen.findByRole("option", { name: "Branch Clinic" }));
@@ -256,7 +256,7 @@ it("disables calling and hides prior patients when a newly selected doctor's que
   render(<ToastProvider><QueuePage /></ToastProvider>);
   await screen.findByText("Ananya Shah");
   expect(screen.getByRole("button", { name: "Call Next" })).toBeEnabled();
-  fireEvent.click(screen.getByRole("button", { name: "Change queue filters" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Change queue filters/ }));
   fireEvent.click(screen.getByRole("combobox", { name: "Doctor" }));
   fireEvent.click(await screen.findByRole("option", { name: "Dr. Other Doctor" }));
   expect(screen.getByRole("button", { name: "Call Next" })).toBeDisabled();
@@ -355,7 +355,7 @@ it("keeps navigation and search mounted while a different queue loads", async ()
   await screen.findByText("Ananya Shah");
   const tabs = screen.getByRole("tablist");
   const search = screen.getByRole("searchbox", { name: "Find patient in queue" });
-  fireEvent.click(screen.getByRole("button", { name: "Change queue filters" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Change queue filters/ }));
   fireEvent.click(screen.getByRole("combobox", { name: "Doctor" }));
   fireEvent.click(await screen.findByRole("option", { name: "Dr. Other Doctor" }));
   await waitFor(() => expect(finish).toBeDefined());

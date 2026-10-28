@@ -467,6 +467,7 @@ function BillingSettingsWorkspace({
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full font-sans text-text antialiased">
+      <h1 className="text-xl sm:text-2xl font-bold text-text">Subscription and billing</h1>
       {pendingOrderId && (
         <Card className="p-4 border border-warning/40 bg-warning/10 text-sm">
           <p role="status" className="font-semibold">{verificationPending ? "Checking payment confirmation…" : "Checkout is awaiting payment or confirmation."}</p>

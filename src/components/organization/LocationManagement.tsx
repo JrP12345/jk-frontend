@@ -9,6 +9,7 @@ import { getPublicBookingStatus } from "@/lib/publicBooking";
 import { locationPath, doctorPath } from "@/lib/publicPaths";
 import GoogleBookingLinks from "@/components/organization/GoogleBookingLinks";
 import { parseLocationCoordinates } from "@/lib/geo/locationCoordinates";
+import { normalizeGoogleMapsEmbed } from "@/lib/geo/googleMapsEmbed";
 import { Table, Button, Input, useToast, Badge, Checkbox, ConfirmDialog, ScheduleEditor, ImageUpload, Select, Dropdown, Tabs, Textarea } from "@/components/ui";
 import Modal from "@/components/queue/QueueDialog";
 import { useLatestRead } from "@/hooks/useLatestRead";
@@ -282,6 +283,7 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
       merchantName: row.merchantName || "",
       brandColor: row.brandColor || "#0F6F66",
       mapCoordinates: typeof row.latitude === "number" && typeof row.longitude === "number" ? `${row.latitude}, ${row.longitude}` : "",
+      googleMapsEmbedUrl: row.googleMapsEmbedUrl || "",
     });
     setLocationErrors({});
     setIsModalOpen(true);
@@ -307,8 +309,10 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
     if (!isOrganizationValid) setLocationErrors(previous => ({ ...previous, organizationId: "Select an organization" }));
     const coordinates = parseLocationCoordinates(formData.mapCoordinates || "");
     if (!coordinates) setLocationErrors(previous => ({ ...previous, mapCoordinates: "Enter valid latitude, longitude (for example: 20.5992, 72.9342)." }));
+    const googleMapsEmbedUrl = normalizeGoogleMapsEmbed(formData.googleMapsEmbedUrl || "");
+    if (googleMapsEmbedUrl === null) setLocationErrors(previous => ({ ...previous, googleMapsEmbedUrl: "Use Google Maps > Share > Embed a map > Copy HTML, or paste its embed URL." }));
 
-    if (!isNameValid || !isCityValid || !isEmailValid || !coordinates || !isOrganizationValid) {
+    if (!isNameValid || !isCityValid || !isEmailValid || !coordinates || googleMapsEmbedUrl === null || !isOrganizationValid) {
       setFormTab("details");
       toast({ title: "Validation Error", description: "Please correct the highlighted errors.", variant: "error" });
       return;
@@ -318,6 +322,7 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
     try {
       const finalData = { ...formData, ...coordinates };
       delete finalData.mapCoordinates;
+      finalData.googleMapsEmbedUrl = googleMapsEmbedUrl;
       if (!finalData.facilityType) delete finalData.facilityType; // Leave unclassified locations unclassified during unrelated edits.
 
       await saveWithBranding([finalData.image_url], organizationId || finalData.organizationId || user?.organization_id, async ([reference]) => {
@@ -531,6 +536,15 @@ function LocationsWorkspace({ organizationId, embedded }: { organizationId?: str
               placeholder="20.5992, 72.9342"
               hint="Copy latitude, longitude from this location's pin in Google Maps to help nearby patients find you."
               error={locationErrors.mapCoordinates}
+            />
+            <Textarea
+              label="Google Maps embed (optional)"
+              value={formData.googleMapsEmbedUrl || ""}
+              onChange={event => handleFieldChange("googleMapsEmbedUrl", event.target.value)}
+              placeholder="Paste the Google Maps embed URL or copied iframe HTML"
+              hint="In Google Maps, choose Share > Embed a map > Copy HTML. Paste it here to display this branch's map on its public page. A regular share link opens Maps but cannot be embedded."
+              error={locationErrors.googleMapsEmbedUrl}
+              rows={3}
             />
 
           </section>

@@ -32,6 +32,7 @@ function OperationalDashboard() {
   const { toast } = useToast();
   const isConsumer = user?.role === "patient" || user?.role === "family_member";
   const canReadStaff = hasAnyPermission(user, "VIEW_STAFF");
+  const canReadLocations = hasAnyPermission(user, "VIEW_LOCATIONS");
   const canReadAppointments = hasAnyPermission(user, "VIEW_APPOINTMENTS", "MANAGE_APPOINTMENTS");
   const canReadBilling = hasAnyPermission(user, "VIEW_BILLING", "MANAGE_BILLING");
   const beginRead = useLatestRead();
@@ -155,14 +156,14 @@ function OperationalDashboard() {
         const [staffRes, invoicesRes, dailyRes, locationsRes] = await Promise.allSettled([
           canReadStaff && canViewOpsDashboard ? api.get('/onboarding/staff', { signal: request.signal }) : Promise.resolve(null),
           canReadBilling && canViewOpsDashboard ? api.get('/invoices?limit=5', { signal: request.signal }) : Promise.resolve(null),
-          api.get(dailyPath, { signal: request.signal }), fetchLocations(),
+          api.get(dailyPath, { signal: request.signal }), canReadLocations ? fetchLocations() : Promise.resolve(null),
         ]);
         if (!request.isCurrent()) return;
         if (dailyRes.status !== 'fulfilled') throw new Error('Daily summary unavailable');
         const daily = dailyRes.value.data.data;
         const staff = staffRes.status === 'fulfilled' ? staffRes.value?.data.data : null;
         const invoiceList = invoicesRes.status === 'fulfilled' ? invoicesRes.value?.data.data || [] : [];
-        setAdminStats({ locations: locationsRes.status === 'fulfilled' ? locationsRes.value?.length || 0 : 0,
+        setAdminStats({ locations: daily.locationCount ?? (locationsRes.status === 'fulfilled' ? locationsRes.value?.length || 0 : 0),
           doctors: staff?.doctors?.length || 0, receptionists: staff?.receptionists?.length || 0,
           appointments: daily.appointments, collections: daily.collections, outstanding: daily.outstanding });
         setFinancialVisible(Boolean(daily.financialVisible && canReadBilling));
@@ -190,7 +191,7 @@ function OperationalDashboard() {
       setLoadError('Dashboard information could not be loaded. Refresh to retry.');
       setAppointments([]); setTodayAppointments([]); setInvoices([]); setTrends(null); setFinancialVisible(false);
     } finally { if (request.isCurrent()) { setLoading(false); setIsRefreshing(false); } }
-  }, [beginRead, canReadAppointments, canReadBilling, canReadStaff, canViewOpsDashboard, fetchLocations, isConsumer, trendRange, user]);
+  }, [beginRead, canReadAppointments, canReadBilling, canReadLocations, canReadStaff, canViewOpsDashboard, fetchLocations, isConsumer, trendRange, user]);
 
   useEffect(() => {
     void fetchDashboardData();
@@ -292,6 +293,7 @@ function OperationalDashboard() {
       {/* 4. PURPOSEFUL CLINICAL & OPERATIONAL ANALYTICS */}
       {!loadError && !isConsumer && <DashboardAnalytics
         role={user.role}
+        showLocationActivity={canReadLocations}
         loading={loading}
         trendRange={trendRange}
         setTrendRange={setTrendRange}

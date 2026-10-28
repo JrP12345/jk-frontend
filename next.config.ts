@@ -24,7 +24,7 @@ const nextConfig = {
   // failures retain their HTTP status, with the same content for every visitor.
   htmlLimitedBots: /.*/,
   async redirects() {
-    return [{ source: "/favicon.ico", destination: "/favicon-32.png?v=brand-3", permanent: false }];
+    return [{ source: "/favicon.ico", destination: "/favicon-32.png?v=brand-5", permanent: false }];
   },
   async rewrites() {
     const backendUrl =

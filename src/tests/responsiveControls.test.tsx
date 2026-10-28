@@ -179,7 +179,7 @@ describe("responsive controls", () => {
 
   it("names date controls and restores focus after closing the calendar", async () => {
     render(<DatePicker label="Visit date" value="2026-09-27" />);
-    const trigger = screen.getByRole("button", { name: "Visit date" });
+    const trigger = screen.getByRole("button", { name: /^Visit date/ });
     trigger.focus(); fireEvent.click(trigger);
     const popup = await screen.findByRole("dialog", { name: "Choose Visit date" });
     fireEvent.keyDown(popup, { key: "Escape" });
@@ -190,7 +190,7 @@ describe("responsive controls", () => {
   it("emits one canonical value for a selected date", async () => {
     const onChange = vi.fn();
     render(<DatePicker label="Visit date" name="visitDate" value="2026-09-27" onChange={onChange} />);
-    fireEvent.click(screen.getByRole("button", { name: "Visit date" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Visit date/ }));
     const popup = await screen.findByRole("dialog", { name: "Choose Visit date" });
     fireEvent.click(within(popup).getByRole("button", { name: "Monday, 28 September 2026" }));
     expect(onChange).toHaveBeenCalledExactlyOnceWith("2026-09-28");
@@ -265,7 +265,7 @@ describe("responsive controls", () => {
   ])("keeps the %s mobile destination available", (role, label, href) => {
     render(<MobileBottomNav user={{ role }} pathname="/dashboard" onOpenMenu={vi.fn()} isMenuOpen={false} />);
     expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
-    expect(screen.getByRole("button", { name: "Menu: Open Full Navigation Menu" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "More: Open full navigation menu" })).toBeInTheDocument();
   });
 
   it("bounds a wide popup at 320px and opens above when there is more space", () => {

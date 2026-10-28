@@ -31,7 +31,7 @@ it("keeps a selected birth date and its autofill metadata through OTP verificati
   render(<ThemeProvider><ToastProvider><RegisterPage /></ToastProvider></ThemeProvider>);
   fireEvent.change(screen.getByLabelText("Full Name *"), { target: { value: "Test Patient" } });
   fireEvent.change(screen.getByLabelText("Mobile Phone Number *"), { target: { value: "9876543210" } });
-  const trigger = screen.getByRole("button", { name: "Date of Birth" });
+  const trigger = screen.getByRole("button", { name: /^Date of Birth/ });
   expect(datePickerInput(trigger)).toHaveAttribute("autocomplete", "bday");
   fireEvent.click(trigger);
   const popup = await screen.findByRole("dialog", { name: "Choose Date of Birth" });

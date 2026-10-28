@@ -1,60 +1,37 @@
 # Ekavyu homepage and public entry
 
-Updated 7 October 2026.
+Current implementation, 24 October 2026. This guide replaces the superseded landing-page design and refinement reports.
 
-## Current direction
+## Current page and ownership
 
-A short introduction to practice management, with the headline **Your care team. One clear workspace.** The primary action is **Request setup**; patients can use **Find care** without signing in. The product serves healthcare organizations with one or several locations; a location may be a clinic, hospital or another supported facility type. See [the domain audit](domain-model-audit.md).
+The headline is **Find your doctor. Manage your clinic day.** Patients reach `/browse`; clinics inspect real product evidence and request assisted setup at `/onboarding?mode=new_org`. Existing auth-aware homepage redirects, private tracker handling and public configured plans remain authoritative. Setup requests do not instantly activate an organization.
 
-The previous page repeated the visit journey across a hero snapshot, an interactive walkthrough, team capabilities, practice-size progression and patient information. The new page keeps one compact, static example and three practical benefits. Removing the interactive preview from the homepage reduces the initial client-side work and the amount visitors must interpret.
+The design uses coordinated cream surfaces in light mode and neutral charcoal surfaces in dark mode, with forest, emerald and sage as brand accents. The application's system sans-serif, editorial serif accents, numbered chapters and CSS appointment sculpture connect the sections. The subtle gold background essence is static CSS with no image or animation cost. The shared logo uses the supplied transparent, path-based SVG. The sculpture is explicitly conceptual. Actual product evidence below it follows fictional Anaya Sen and Dr. Mira Shah at Aster Grove Clinic through discovery, reception, queues, consultation, billing and supported communications. No runtime 3D library or live dashboard is embedded in the landing page.
 
-## Ideas considered
+`src/app/page.tsx` owns content and metadata. `HomeNavigation`, `HomePricing`, the shared public plan cards and logo/theme controls remain reused components. `LivingAppointment` explains stages; `ProductScreenshots` provides native selection buttons, responsive lazy images, fixed frames and a missing-image fallback. `PatientDiscovery`, `ClinicExperience` and `Communications` supply the screenshot definitions. Styles live in `home.module.css`; state colors change immediately to avoid transient low contrast. The social image is regenerated with `npm run brand:social`.
 
-| Direction | Benefit | Decision |
-| --- | --- | --- |
-| Minimal introduction and compact product example | Clear category, concrete functions and an immediate action | Selected |
-| Large product screenshot | Direct product evidence, but crowded on small screens | Keep for a future dedicated product tour |
-| Guided booking-to-records walkthrough | Explains the visit handoff in detail | Too much detail for the landing page |
+## Feature truth and demonstration data
 
-Reference: [Jane's practice management landing page](https://jane.app/). Its visible practice category, recognizable functions and guided getting-started path informed the emphasis on clarity. Ekavyu uses its own existing capabilities and brand; no testimonials or marketing claims from that reference were reused.
+Patient discovery, booking options, walk-ins, reception, doctor queue, consultation notes, invoice states, team notifications and organization WhatsApp delivery views are implemented. Access follows roles, locations, enabled modules and plans. Booking confirmation can depend on payment and provider setup.
 
-## Page structure
+WhatsApp requires a configured sender, recorded consent, recipient authorization, applicable plan access, approved templates and shared-mode credits. Supported workflows include status-appropriate booking updates, configured turn alerts, staff-triggered delay alerts and completed-visit prescription sharing. Accepted, delivered and read are distinct states. Do not promise a booking chatbot, automatic 24-hour reminders, SMS fallback, guaranteed delivery or clinical outcomes. Relevant backend authorities are `AppointmentCommunicationEvents`, `PatientCommunicationPolicy`, `WhatsAppSendPolicy`, `PrescriptionCommunicationService`, `PaymentReceiptEvents`, and the queue/WhatsApp management controllers.
 
-1. Product introduction and setup / find-care actions.
-2. One static illustrative workflow: booking, check-in, consultation.
-3. Three essentials: appointments, queue and consultation context.
-4. A short patient discovery band.
-5. Existing configured plans and billing-cycle controls.
-6. Three concise practical questions and a final setup action.
+`scripts/performance/landing-demo.mjs` defines an isolated fictional practice: 3 doctors, 2 locations, 8 patients/appointments, 5 invoices, 3 schedules, a SOAP draft and notification/delivery examples. Summary totals derive from its invoices. Contacts use `example.test`, phone placeholders are non-routable and message recipients are masked. Snapshots show successive illustrative stages, rather than a live event stream.
 
-The example contains no live patient information. There are no invented metrics, customer quotes or compliance claims. Team access follows roles and enabled modules; patient records must be available and linked to the patient's account.
+`capture-connected-product.mjs` renders the actual app with Playwright and a loopback-only in-memory API. It blocks external services and writes, closes real-time sockets and simulates only the encounter provider's initialization in memory. It never seeds a database, saves/signs a note, sends a message or records payment. Public pages use the real server/browser clock; authenticated captures use the fixed illustrative day. Analytics POST attempts are blocked and retained in provenance.
 
-## Setup requests
+The actual routes captured are `/browse`, `/doctor/mira-shah?location=aster-grove`, `/dashboard/appointments`, `/dashboard/queue`, `/dashboard/consultations/555555555555555555555555`, `/dashboard/billing`, `/dashboard`, organization configuration's Connection and delivery panel, and `/dashboard/notifications`. The 24 October brand refresh and subsequent Browse card refinement produced eighteen desktop/mobile WebPs, totaling 582,006 bytes. Served assets are under `public/landing/product/`; original captures and SHA-256 provenance are under `docs/landing-page/connected/product/`.
 
-The public form submits practice and contact details to the backend. It no longer opens an email draft.
+## Verification and retained evidence
 
-SetupRequest stores submissions. A submission key prevents duplicate records after uncertain network responses. Public submissions are rate limited and validated; selected plans must be active configured plans. A request does not provision an organization or activate a subscription.
+The brand correction passed focused `ekavyuTheme`, `homepage`, `homeExperience`, service-worker privacy and PWA recovery tests; the theme file has 20 cases, including neutral-dark and warm-light surface regressions. Scoped lint and the final Next production build passed. The [nine-scenario Playwright results](landing-page/connected/review/results.json) cover desktop/tablet, 390px/320px mobile, reduced motion, disabled WebGL/JavaScript, slow mobile and dark mode. Desktop, mobile and dark desktop were rechecked after the final clinic-section/banner CSS correction. All nine screenshot alternatives loaded, menu Escape restored focus, native keyboard controls worked, anchors resolved, no overflow/page errors occurred and Axe found zero default/changed-state violations. Gradient backgrounds retain manual contrast-review flags. Eight additional login/dashboard views across both themes and two widths passed; the static coming-soon page passed at both widths. [Six conversion-route checks](landing-page/connected/journeys/journeys.json) previously passed without submitting forms.
 
-Root reviews entries at **/dashboard/admin/setup-requests**, reachable from the root dashboard and organization management. The inbox shows contact details, selected plan, received date and New / Contacted / Closed statuses, with filtering, pagination and retry. Backend authorization requires the root account outside impersonation; ordinary users cannot read or update entries.
+The [compact Lighthouse measurements](landing-page/connected/lighthouse-summary.json) retain both the corrected final samples and earlier diagnostic observations. Final desktop performance was 100; mobile was 87/91/93 (median 91). Accessibility/best-practices were 100; CLS was zero. Mobile LCP remained 3.04–3.23 seconds, above 2.5 seconds. Local SEO was 66 because indexing is intentionally blocked. These are local lab results, not field Core Web Vitals, a backend E2E test or deployment approval. Full HTML reports and superseded design captures are not source artifacts.
 
-## Public browsing and login
+- Final page: [desktop](landing-page/connected/review/desktop-full.png), [mobile](landing-page/connected/review/mobile-full.png), [tablet](landing-page/connected/review/tablet-full.png), [dark desktop](landing-page/connected/review/dark-desktop-full.png).
+- Real product: [consultation](landing-page/connected/product/doctor-desktop.png), [queue](landing-page/connected/product/queue-desktop.png), [billing](landing-page/connected/product/billing-desktop.png), [WhatsApp](landing-page/connected/product/whatsapp-desktop.png), [notifications](landing-page/connected/product/notifications-desktop.png), [capture provenance](landing-page/connected/product/capture-provenance.json).
+- Harness setup and commands: [performance tools](../scripts/performance/README.md).
 
-- Location and doctor URLs use stable readable slugs with a random suffix to distinguish duplicate names. PublicLink maps them to internal records.
-- Provider routes accept published slugs only. Booking and follow-up query options are retained.
-- Organization affiliation appears only for multiple active locations. Counts are independent of search filters and pagination.
-- Website sharing uses the resolved public link. Availability and booking operations retain authoritative internal IDs after resolution.
-- Anonymous public entry skips the initial session request. Signed-in sessions are verified; dashboards retain authentication.
-- Passkey challenge cookies share the session domain, secure and SameSite settings. Cancellation gives visible guidance. HTTPS (or localhost), an enrolled passkey and existing two-factor requirements still apply.
-- Queue reconciliation continues every 15 seconds and through real-time events. Loaded rows stay mounted during refreshes. Changing location, doctor or date resets the view; a failed refresh retains rows and shows retry guidance.
+The user's Enblox/Hello references and public Pinterest studies informed whitespace, hierarchy and concentrated depth, without copying UI/assets: [healthcare composition](https://www.pinterest.com/pin/1114640976525252579/), [editorial typography](https://www.pinterest.com/pin/702913454372533688/), [dimensional light](https://www.pinterest.com/pin/561613016042120971/). Research images are not application assets.
 
-## Verification
-
-Highest risk: **Level 4**, because authentication, booking references, saved submissions and root access are involved. Both repositories received focused tests and type checks. Changed-file frontend ESLint completed with no errors; warnings remain, including the inbox's existing-style effect-based loading pattern. The backend bundle build passed.
-
-Backend tests cover cryptographic passkey enrollment/login, cross-site challenge cookies, zero-counter credentials, incorrect origins, retained two-factor requirements, provider visibility and stable links, location counts, duplicate submissions, validation and root authorization.
-
-Frontend regressions cover anonymous entry, auth and workspace isolation, passkey cancellation, browsing and availability through slugs, slug-only routes, setup submission/retry, root inbox access, queue continuity, pricing and affected organization screens.
-
-The production compile passed using temporary HTTPS API placeholders: the existing production guard rejects the local development API URL. No environment file was changed; no deployment occurred.
-
-Browser checks cover public home and setup entry, mobile navigation, one H1, overflow, initial scroll position and absence of anonymous session requests. Hardware passkey prompts and a deployed setup submission were not exercised; protocol and persistence behavior were tested against an isolated backend test database.
+Live booking, payment, activation, provider communications, assistive-technology certification and user research were not exercised. Dynamic plans, screenshot switching and mobile-menu interaction require JavaScript; default evidence and ordinary links remain accessible without it.

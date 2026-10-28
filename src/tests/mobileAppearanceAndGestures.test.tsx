@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
@@ -42,6 +42,28 @@ function swipe(target: Element, dx: number, dy = 0, options: { pointerType?: str
 }
 
 describe("Appearance preferences", () => {
+  it("distinguishes an initial account check from signing out", () => {
+    useAuthStore.setState({ isLoading: true, isLoggingOut: false });
+    render(<ThemeProvider><MarketplaceNavbar showSignUp /></ThemeProvider>);
+    expect(screen.getByText("Checking account…")).toHaveAttribute("role", "status");
+    expect(screen.queryByText("Signing out…")).not.toBeInTheDocument();
+    act(() => useAuthStore.setState({ isLoading: false }));
+    expect(screen.queryByText("Checking account…")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /^sign in$/i }).every(link => link.getAttribute("href") === "/login")).toBe(true);
+  });
+
+  it("provides a native directory search and an accessible mobile search dialog", async () => {
+    render(<ThemeProvider><MarketplaceNavbar /></ThemeProvider>);
+    const form = screen.getByRole("search");
+    expect(form).toHaveAttribute("action", "/browse");
+    expect(form).toHaveAttribute("method", "get");
+    expect(within(form).getByRole("searchbox")).toHaveAttribute("name", "search");
+    fireEvent.click(screen.getByRole("button", { name: "Search clinics and doctors" }));
+    const dialog = screen.getByRole("dialog", { name: "Find care" });
+    expect(within(dialog).getByRole("searchbox")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Find care" })).not.toBeInTheDocument());
+  });
 
 
   it("keeps appearance and sign-in directly available to guests on Browse", () => {
@@ -159,7 +181,8 @@ describe("Gallery navigation", () => {
   it("swipes through photos without closing the gallery and retains arrow and keyboard controls", () => {
     const location: LocationDetail = { id: "clinic", slug: "clinic", name: "Test Clinic", city: "Surat", address: "Test street", phone: "", email: "", description: "Care", image_url: "", timings: "09:00-17:00", doctors: [], images: ["/first.jpg", "/second.jpg"] };
     render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={location} /></ToastProvider></ThemeProvider>);
-    fireEvent.click(screen.getByRole("button", { name: "Browse Campus Gallery" }));
+    fireEvent.click(screen.getByText("Facilities & photos", { selector: "summary" }));
+    fireEvent.click(screen.getByRole("button", { name: "View all photos" }));
     const gallery = screen.getByRole("dialog", { name: "Photo gallery" });
     swipe(within(gallery).getByRole("img", { name: "Facility showcase 1" }), -100);
     const second = within(gallery).getByRole("img", { name: "Facility showcase 2" });

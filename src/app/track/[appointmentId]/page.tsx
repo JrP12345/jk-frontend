@@ -704,10 +704,10 @@ export default function PublicLiveQueueTracker() {
       {/* Top Floating App Bar */}
       <header data-app-header className="sticky top-0 z-40 bg-surface/90  border-b border-border/70 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="max-w-lg mx-auto flex items-center justify-between">
-          <Link href="/browse" aria-label="Return to locations" className="flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+          <Link href="/browse" aria-label="Ekavyu Live Patient Tracker: Return to locations" className="flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
             <EkavyuIcon className="h-8 w-8 shadow-xs" />
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-text">Ekavyu</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-text">Ekavyu</span>{" "}
               <span className="text-[10px] text-text-muted hidden sm:block -mt-0.5">Live Patient Tracker</span>
             </div>
           </Link>
@@ -744,7 +744,7 @@ export default function PublicLiveQueueTracker() {
              loading={refreshing}>
               <RotateCw className="w-4 h-4" />
             </Button>
-            <span aria-label={stale ? "Reconnecting" : "Tracking updated"} title={stale ? "Reconnecting" : "Tracking updated"} className={`sm:hidden h-2 w-2 rounded-full shrink-0 ${stale ? "bg-warning" : "bg-success"}`} />
+            <span role="img" aria-label={stale ? "Reconnecting" : "Tracking updated"} title={stale ? "Reconnecting" : "Tracking updated"} className={`sm:hidden h-2 w-2 rounded-full shrink-0 ${stale ? "bg-warning" : "bg-success"}`} />
             <div className={cn("hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[10px] font-semibold", stale ? "bg-warning/10 border-warning/20 text-warning-text" : "bg-success/10 border-success/20 text-success-text")}>
               <span className={cn("w-1.5 h-1.5 rounded-full", stale ? "bg-warning" : "bg-success")} />
               {stale ? "Reconnecting" : "Updated"}
@@ -754,6 +754,7 @@ export default function PublicLiveQueueTracker() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 pt-4 space-y-4">
+        <h1 className="sr-only">Track your visit</h1>
         {stale && <p role="alert" className="p-3 rounded-xl border border-warning text-sm">Updates are unavailable. Showing the last received queue information{lastUpdated ? ` from ${lastUpdated.toLocaleTimeString()}` : ""}. Check with reception before relying on this ETA.</p>}
         {/* Doctor Availability Warning Banner if override active */}
         {doctorUnavailable && (
@@ -1003,7 +1004,7 @@ export default function PublicLiveQueueTracker() {
                         ? "text-accent dark:text-accent font-bold"
                         : step.done
                         ? "text-text"
-                        : "text-text-muted"
+                        : "text-text-secondary"
                     )}
                   >
                     {step.label}
@@ -1616,7 +1617,7 @@ export default function PublicLiveQueueTracker() {
         {/* Footer Info */}
         <div className="text-center text-[10px] text-text-muted space-y-1 pt-2">
           <p>Last synced: {lastUpdated.toLocaleTimeString()}</p>
-          <p className="opacity-80">Ekavyu Smart Healthcare Cloud • Zero-Login Mobile Patient Tracker</p>
+          <p>Ekavyu Smart Healthcare Cloud • Zero-Login Mobile Patient Tracker</p>
         </div>
       </main>
 

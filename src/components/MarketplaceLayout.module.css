@@ -1,0 +1,18 @@
+.page { min-height: 100vh; padding-top: 64px; background: var(--surface); color: var(--text-primary); }
+.content { width: 100%; max-width: 1600px; margin-inline: auto; padding-inline: 32px; }
+.detailsColumns { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.statusBadge { min-height: 24px; padding: 4px 8px; font-size: 11px; line-height: 1.2; }
+.directoryHeader > div { max-width: 1600px; }
+.directorySearch { flex: 1; min-width: 0; max-width: 720px; margin-inline: 24px; }
+@media (max-width: 1099px) { .directorySearch { margin-inline: 12px; } }
+@media (max-width: 767px) {
+  .directoryHeader { height: 126px; }
+  .directoryHeader > div { height: 64px; }
+  .directorySearch { position: absolute; top: 70px; left: 16px; right: 16px; margin: 0; max-width: none; }
+}
+.page :is(a, button, input, [role=combobox]) { scroll-margin-top: var(--marketplace-scroll-offset, 80px); }
+.page :is(a[href], button:not(:disabled), [role=combobox]:not([aria-disabled=true])) { cursor: pointer; }
+.page :is(button:disabled, input:disabled) { cursor: not-allowed; }
+@media (max-width: 767px) { .content { padding-inline: 16px; } }
+@media (max-width: 1199px) { .detailsColumns { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
+@media (max-width: 899px) { .detailsColumns { grid-template-columns: minmax(0, 1fr); } }

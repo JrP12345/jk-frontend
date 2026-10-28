@@ -43,7 +43,6 @@ export default function AnalyticsPage() {
   const { toast } = useToast();
 
   const [data, setData] = useState<AnalyticsData | null>(null);
-  const [qualityMetrics, setQualityMetrics] = useState<any | null>(null);
   const [nabhKpis, setNabhKpis] = useState<any | null>(null);
 
   const displayMetric = (value: unknown, suffix = "") => value === null || value === undefined ? "—" : `${value}${suffix}`;
@@ -54,15 +53,13 @@ export default function AnalyticsPage() {
     try {
       setLoading(true);
       setLoadError(false);
-      const [execData, qData, nabhData] = await Promise.all([
+      const [execData, nabhData] = await Promise.all([
         AnalyticsService.getExecutiveAnalytics(),
-        AnalyticsService.getQualityMetrics().catch(() => null),
         AnalyticsService.getNabhKpis().catch(() => null),
       ]);
       setData(execData);
-      setQualityMetrics(qData);
       setNabhKpis(nabhData);
-    } catch (err) {
+    } catch {
       setLoadError(true);
       toast({
         title: "Error",
@@ -190,7 +187,7 @@ export default function AnalyticsPage() {
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader className="py-4 px-5 border-b border-border">
-              <CardTitle className="text-lg font-bold text-text">Multi-Location Performance Comparison</CardTitle>
+              <CardTitle as="h2" className="text-lg font-bold text-text">Multi-Location Performance Comparison</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table
@@ -236,7 +233,7 @@ export default function AnalyticsPage() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h4 className="font-bold text-text text-sm">{row.name}</h4>
+                        <h3 className="font-bold text-text text-sm">{row.name}</h3>
                         <Badge variant="neutral" size="sm" className="mt-1 text-[10px]">{row.city}</Badge>
                       </div>
                       <span className="text-xs text-text-secondary bg-surface-alt px-2.5 py-1 rounded-lg border border-border/50 font-semibold">
@@ -289,7 +286,7 @@ export default function AnalyticsPage() {
           {/* Referral loops performance card */}
           <Card>
             <CardHeader className="py-4 px-5 border-b border-border">
-              <CardTitle className="text-base font-bold text-text">Referral Loop Performance</CardTitle>
+              <CardTitle as="h2" className="text-base font-bold text-text">Referral Loop Performance</CardTitle>
             </CardHeader>
             <CardContent className="p-5 space-y-5">
               <div className="flex justify-between items-center text-sm">
@@ -320,7 +317,7 @@ export default function AnalyticsPage() {
           {nabhKpis && (
             <Card>
               <CardHeader className="py-4 px-5 border-b border-border flex justify-between items-center">
-                <CardTitle className="text-base font-bold text-text">NABH Quality Standards (5th Ed.)</CardTitle>
+                <CardTitle as="h2" className="text-base font-bold text-text">NABH Quality Standards (5th Ed.)</CardTitle>
                 <Badge variant="primary" className="text-[10px]">Reported indicators</Badge>
               </CardHeader>
               <CardContent className="p-5 space-y-3 text-xs">

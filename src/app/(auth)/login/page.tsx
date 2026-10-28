@@ -6,14 +6,15 @@ import Link from "next/link";
 import { useAuthStore, type User } from "@/store/authStore";
 import api from "@/lib/api";
 import { apiErrorMessage } from "@/lib/apiError";
+import AuthPageShell from "@/components/auth/AuthPageShell";
 import PasskeySignIn from "@/components/auth/PasskeySignIn";
 import LoginWorkspacePicker from "@/components/auth/LoginWorkspacePicker";
 import type { WorkspaceSelection } from "@/types/workspace";
 import { detectPatientOtpTarget, patientOtpDestination, type PatientOtpTarget } from "@/lib/patientLogin";
 import { COUNTRIES, phoneCountryOptions, type CountryCode } from "@/lib/countries";
 import { NavigationPending } from "@/components/ui/RouteProgress";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Select, Button, Modal, useToast, ModeSwitcher, EkavyuLogo, cn } from "@/components/ui";
-import { AlertTriangle, Smartphone, Mail, Lock, KeyRound, Eye, EyeOff, ArrowLeft, ArrowRight, ShieldCheck, CheckCircle2, Clock, RotateCcw, Sparkles } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Select, Button, Modal, useToast, Tabs } from "@/components/ui";
+import { AlertTriangle, Smartphone, Mail, Lock, KeyRound, Eye, EyeOff, ArrowLeft, ArrowRight, ShieldCheck, CheckCircle2, Clock, RotateCcw } from "lucide-react";
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -289,43 +290,221 @@ export default function LoginPage() {
     }
   };
 
-  return (
-    <main className="min-h-dvh flex flex-col items-center justify-center px-4 py-20 bg-surface-alt relative font-sans text-text animate-page-enter">
-      {/* Background ambient glow & subtle pattern */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 brand-wash" />
-      </div>
+  const signInPanel = authTab === "mobile" ? (
+    /* Patient OTP Form */
+    !otpSent ? (
+      <form onSubmit={handleRequestPatientOtp} noValidate className="space-y-4 animate-fade-in">
+        <Input
+          label="Email or mobile number"
+          type="text"
+          placeholder={enteringPhone ? "Email or mobile number" : "Enter your email address"}
+          icon={!enteringPhone ? <Mail className="w-4 h-4 text-text-muted" /> : undefined}
+          leadingControl={enteringPhone ? <Select
+            aria-label="Country code"
+            value={phoneCountry}
+            options={phoneCountryOptions}
+            renderValue={() => COUNTRIES[phoneCountry].callingCode}
+            variant="flush"
+            containerClassName="w-24 shrink-0"
+            className="rounded-l-xl px-3 focus-visible:ring-0"
+            minMenuWidth={240}
+            disabled={otpLoading}
+            onChange={(event) => {
+              if (patientIdentifier.trim().startsWith("+")) {
+                const digits = `+${patientIdentifier.replace(/\D/g, "")}`;
+                if (digits.startsWith(COUNTRIES[phoneCountry].callingCode)) setPatientIdentifier(digits.slice(COUNTRIES[phoneCountry].callingCode.length));
+              }
+              setPhoneCountry(event.target.value as CountryCode);
+              setPatientIdentifierError("");
+            }}
+          /> : undefined}
+          value={patientIdentifier}
+          onChange={(e) => {
+            const value = e.target.value;
+            setPatientIdentifier(value);
+            setPatientIdentifierError("");
+            if (value.trim().startsWith("+")) {
+              const digits = `+${value.replace(/\D/g, "")}`;
+              if (!digits.startsWith(COUNTRIES[phoneCountry].callingCode)) {
+                const country = (Object.keys(COUNTRIES) as CountryCode[]).find(code => digits.startsWith(COUNTRIES[code].callingCode));
+                if (country) setPhoneCountry(country);
+              }
+            }
+          }}
+          error={patientIdentifierError}
+          aria-describedby="patient-sign-in-hint"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          disabled={otpLoading}
+          required
+        />
 
-      {/* Top Header Navigation */}
-      <div className="absolute top-[max(1.25rem,env(safe-area-inset-top))] left-4 sm:left-8 z-20">
-        <Link
-          href="/browse"
-          className="text-xs font-semibold text-text-secondary hover:text-text flex items-center gap-2 bg-surface/80 hover:bg-surface  px-3.5 py-2 rounded-full border border-border/80 hover:border-primary-500/30 transition-all shadow-2xs hover:shadow-xs group min-h-[40px] sm:min-h-0"
+        <p id="patient-sign-in-hint" className="text-center text-xs leading-relaxed text-text-muted">We&apos;ll send a verification code to your email or phone.</p>
+
+        <Button
+          type="submit"
+          fullWidth
+          loading={otpLoading}
+          loadingText="Sending code…"
+          size="lg"
+
         >
-          <NavigationPending />
-          <ArrowLeft className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.25} />
-          <span>Browse Locations</span>
-        </Link>
-      </div>
-
-      <div className="absolute top-[max(1.25rem,env(safe-area-inset-top))] right-4 sm:right-8 z-20">
-        <ModeSwitcher variant="icon" />
-      </div>
-
-      <div className="w-full max-w-md relative z-10 animate-fade-up">
-        {/* Brand Header */}
-        <div className="text-center mb-4 sm:mb-6 flex flex-col items-center justify-center">
-          <div className="relative mb-2">
-            <div className="relative">
-              <EkavyuLogo size="xl" />
+          <span>Send Verification OTP</span>
+          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
+        </Button>
+      </form>
+    ) : (
+      <form onSubmit={handleVerifyPatientOtp} className="space-y-4 animate-fade-in">
+        {/* Active Destination Chip */}
+        <div className="flex items-center justify-between p-3 bg-primary-500/8 dark:bg-primary-500/10 rounded-2xl border border-primary-500/20 text-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-2 h-2 rounded-full bg-success animate-pulse shrink-0" />
+            <div className="flex flex-col min-w-0">
+              <span className="text-[11px] text-text-muted font-medium">OTP dispatched to</span>
+              <span className="font-bold text-text text-xs tracking-wide truncate">
+                {otpTarget ? patientOtpDestination(otpTarget) : ""}
+              </span>
             </div>
           </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-[11px] font-bold text-accent dark:text-accent mt-2 shadow-2xs">
-            <Sparkles className="w-3 h-3" strokeWidth={2} />
-            <span>Care That Keeps Moving</span>
-          </div>
+          <Button type="button" disabled={otpLoading} onClick={() => { setOtpSent(false); setPhoneOtp(""); setOtpTarget(null); setResendTimer(0); }} variant="outline" size="xs" className="shrink-0">
+            Change
+          </Button>
         </div>
 
+        <Input
+          label="6-Digit Verification OTP *"
+          placeholder="••••••"
+          maxLength={6}
+          inputMode="numeric"
+          icon={<KeyRound className="w-4 h-4 text-text-muted" strokeWidth={2} />}
+          className="tracking-[0.4em] font-mono text-center text-lg sm:text-base font-bold placeholder:tracking-normal placeholder:font-sans"
+          value={phoneOtp}
+          disabled={otpLoading}
+          onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          autoComplete="one-time-code"
+          required
+        />
+
+        <div className="flex items-center justify-between text-xs px-1">
+          <span className="text-text-muted flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" strokeWidth={2} />
+            <span>Didn't receive code?</span>
+          </span>
+          {resendTimer > 0 ? (
+            <span className="text-accent dark:text-accent font-semibold bg-primary-500/10 px-2.5 py-0.5 rounded-full text-[11px]">
+              Resend in {resendTimer}s
+            </span>
+          ) : (
+            <Button variant="ghost" size="sm"
+              type="button"
+              onClick={handleRequestPatientOtp}
+              disabled={otpLoading}
+              className="text-accent dark:text-accent font-bold hover:underline cursor-pointer flex items-center gap-1 text-xs"
+            >
+              <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
+              <span>Resend OTP</span>
+            </Button>
+          )}
+        </div>
+
+        <Button
+          type="submit"
+          fullWidth
+          loading={otpLoading}
+          loadingText={isNavigating ? "Opening dashboard…" : otpAction === "sending" ? "Sending code…" : "Verifying…"}
+          size="lg"
+
+        >
+          <span>Verify & Sign In</span>
+          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
+        </Button>
+      </form>
+    )
+  ) : (
+
+    /* Email Password Form */
+    <form onSubmit={handleLogin} noValidate className="space-y-4 animate-fade-in">
+      <CardContent className="p-0 space-y-4">
+        <Input
+          label="Staff Email Address *"
+          type="email"
+          placeholder="doctor@example.com"
+          icon={<Mail className="w-4 h-4 text-text-muted" strokeWidth={2} />}
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (emailError) validateEmail(e.target.value);
+          }}
+          onBlur={() => validateEmail(email)}
+          error={emailError}
+          required
+          autoComplete="username"
+        />
+
+        <div>
+          <Input
+            label="Password *"
+            type={showPassword ? "text" : "password"}
+            placeholder="••••••••"
+            icon={<Lock className="w-4 h-4 text-text-muted" strokeWidth={2} />}
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (passwordError) validatePassword(e.target.value);
+            }}
+            onBlur={() => validatePassword(password)}
+            error={passwordError}
+            required
+            autoComplete="current-password"
+            rightIcon={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="p-1 text-text-muted hover:text-text rounded-md transition-all cursor-pointer flex items-center justify-center min-h-[28px] min-w-[28px]"
+                title={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" strokeWidth={2} />
+                ) : (
+                  <Eye className="w-4 h-4" strokeWidth={2} />
+                )}
+              </button>
+            }
+          />
+          <div className="flex justify-end pt-1.5">
+            <Button type="button" onClick={() => {
+                setIsForgotPassword(true);
+                setIsResetSent(false);
+                setResetEmail("");
+                setResetEmailError("");
+              }} variant="ghost" size="xs" className="text-accent">
+              Forgot Password?
+            </Button>
+          </div>
+        </div>
+      <div className="pt-4"><PasskeySignIn onSuccess={completeSignIn} onWorkspace={setWorkspaceSelection} disabled={loading || twoFactorLoading || isNavigating || isTwoFactorModalOpen || Boolean(workspaceSelection)} onTwoFactor={(token) => { setTwoFactorToken(token); setIsTwoFactorModalOpen(true); }} /></div>
+  </CardContent>
+
+      <CardFooter className="p-0 pt-2 flex flex-col gap-3">
+        <Button
+          type="submit"
+          fullWidth
+          loading={loading}
+          loadingText={isNavigating ? "Opening dashboard…" : "Signing in…"}
+          size="lg"
+
+        >
+          <span>Sign In to Dashboard</span>
+          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
+        </Button>
+      </CardFooter>
+    </form>
+  );
+
+  return (
+    <AuthPageShell>
         {sessionExpired && (
           <div className="mb-4 p-3.5 rounded-2xl bg-warning/10 border border-warning/20 text-warning-text dark:text-warning-text text-xs flex items-center gap-2.5 shadow-2xs">
             <AlertTriangle className="w-4 h-4 shrink-0 text-warning-text" strokeWidth={2} />
@@ -335,301 +514,37 @@ export default function LoginPage() {
 
         {/* Auth Card Container */}
         <fieldset disabled={isNavigating} aria-busy={isNavigating} aria-label="Sign in" className="min-w-0 w-full border-0 p-0">
-        <Card
-          className={cn(
-            "border border-border bg-surface p-0 rounded-xl overflow-hidden transition-transform duration-300 relative",
-            isShaking && "animate-shake"
-          )}
-        >
+        <Card padding="none" className={isShaking ? "animate-shake" : undefined}>
           {!isForgotPassword ? (
             <div className="p-4 sm:p-6 space-y-4">
               <CardHeader className="p-0 mb-3 text-center">
                 <CardTitle as="h1" className="page-title">Sign in</CardTitle>
-                <CardDescription className="text-xs text-text-muted mt-1 font-medium">
+                <CardDescription className="text-sm text-text-secondary">
                   Access your patient portal or healthcare workspace
                 </CardDescription>
 
-                {/* Auth Mode Tabs */}
-                <div role="tablist" aria-label="Sign in options" className="grid grid-cols-2 p-1.5 bg-surface-alt/90 rounded-2xl border border-border/70 mt-4 gap-1.5">
-                  <button
-                    id="tab-mobile"
-                    role="tab"
-                    aria-selected={authTab === "mobile"}
-                    aria-controls="panel-mobile"
-                    type="button"
-                    disabled={otpLoading}
-                    onClick={() => {
-                      startTransition(() => {
-                        setAuthTab("mobile");
-                        setOtpSent(false);
-                        setPhoneOtp("");
-                        setOtpTarget(null);
-                      });
-                    }}
-                    className={cn(
-                      "py-2 text-xs font-medium rounded-xl transition-all duration-200 cursor-pointer min-h-11 flex items-center justify-center gap-1.5",
-                      authTab === "mobile"
-                        ? "bg-surface text-accent dark:text-accent shadow-xs border border-border/70"
-                        : "text-text-muted hover:text-text hover:bg-surface/40"
-                    )}
-                  >
-                    <Smartphone className="w-4 h-4 shrink-0" strokeWidth={authTab === "mobile" ? 2.25 : 1.75} />
-                    <span>Patient Sign In</span>
-                    <span className={cn(
-                      "text-[10px] px-1.5 py-0.5 rounded-md font-semibold hidden sm:inline-block",
-                      authTab === "mobile" ? "bg-primary-500/10 text-accent dark:text-accent" : "bg-surface-alt text-text-muted"
-                    )}>
-                      OTP
-                    </span>
-                  </button>
-                  <button
-                    id="tab-email"
-                    role="tab"
-                    aria-selected={authTab === "email"}
-                    aria-controls="panel-email"
-                    type="button"
-                    disabled={otpLoading}
-                    onClick={() => {
-                      startTransition(() => {
-                        setAuthTab("email");
-                      });
-                    }}
-                    className={cn(
-                      "py-2 text-xs font-medium rounded-xl transition-all duration-200 cursor-pointer min-h-11 flex items-center justify-center gap-1.5",
-                      authTab === "email"
-                        ? "bg-surface text-accent dark:text-accent shadow-xs border border-border/70"
-                        : "text-text-muted hover:text-text hover:bg-surface/40"
-                    )}
-                  >
-                    <Mail className="w-4 h-4 shrink-0" strokeWidth={authTab === "email" ? 2.25 : 1.75} />
-                    <span>Staff Email</span>
-                    <span className={cn(
-                      "text-[10px] px-1.5 py-0.5 rounded-md font-semibold hidden xs:inline-block",
-                      authTab === "email" ? "bg-primary-500/10 text-accent dark:text-accent" : "bg-surface-alt text-text-muted"
-                    )}>
-                      Team
-                    </span>
-                  </button>
-                </div>
+
               </CardHeader>
 
-              {authTab === "mobile" ? (
-                /* Patient OTP Form */
-                !otpSent ? (
-                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleRequestPatientOtp} noValidate className="space-y-4 animate-fade-in">
-                    <Input
-                      label="Email or mobile number"
-                      type="text"
-                      placeholder={enteringPhone ? "Email or mobile number" : "Enter your email address"}
-                      icon={!enteringPhone ? <Mail className="w-4 h-4 text-text-muted" /> : undefined}
-                      leadingControl={enteringPhone ? <Select
-                        aria-label="Country code"
-                        value={phoneCountry}
-                        options={phoneCountryOptions}
-                        renderValue={() => COUNTRIES[phoneCountry].callingCode}
-                        variant="flush"
-                        containerClassName="w-24 shrink-0"
-                        className="rounded-l-xl px-3 focus-visible:ring-0"
-                        minMenuWidth={240}
-                        disabled={otpLoading}
-                        onChange={(event) => {
-                          if (patientIdentifier.trim().startsWith("+")) {
-                            const digits = `+${patientIdentifier.replace(/\D/g, "")}`;
-                            if (digits.startsWith(COUNTRIES[phoneCountry].callingCode)) setPatientIdentifier(digits.slice(COUNTRIES[phoneCountry].callingCode.length));
-                          }
-                          setPhoneCountry(event.target.value as CountryCode);
-                          setPatientIdentifierError("");
-                        }}
-                      /> : undefined}
-                      value={patientIdentifier}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setPatientIdentifier(value);
-                        setPatientIdentifierError("");
-                        if (value.trim().startsWith("+")) {
-                          const digits = `+${value.replace(/\D/g, "")}`;
-                          if (!digits.startsWith(COUNTRIES[phoneCountry].callingCode)) {
-                            const country = (Object.keys(COUNTRIES) as CountryCode[]).find(code => digits.startsWith(COUNTRIES[code].callingCode));
-                            if (country) setPhoneCountry(country);
-                          }
-                        }
-                      }}
-                      error={patientIdentifierError}
-                      aria-describedby="patient-sign-in-hint"
-                      autoComplete="username"
-                      autoCapitalize="none"
-                      spellCheck={false}
-                      disabled={otpLoading}
-                      required
-                    />
-
-                    <p id="patient-sign-in-hint" className="text-center text-xs leading-relaxed text-text-muted">We&apos;ll send a verification code to your email or phone.</p>
-
-                    <Button
-                      type="submit"
-                      fullWidth
-                      loading={otpLoading}
-                      loadingText="Sending code…"
-                      size="lg"
-                      className="font-bold min-h-[46px] shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group"
-                    >
-                      <span>Send Verification OTP</span>
-                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
-                    </Button>
-                  </form>
-                ) : (
-                  <form id="panel-mobile" role="tabpanel" aria-labelledby="tab-mobile" onSubmit={handleVerifyPatientOtp} className="space-y-4 animate-fade-in">
-                    {/* Active Destination Chip */}
-                    <div className="flex items-center justify-between p-3 bg-primary-500/8 dark:bg-primary-500/10 rounded-2xl border border-primary-500/20 text-xs">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-2 h-2 rounded-full bg-success animate-pulse shrink-0" />
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-[11px] text-text-muted font-medium">OTP dispatched to</span>
-                          <span className="font-bold text-text text-xs tracking-wide truncate">
-                            {otpTarget ? patientOtpDestination(otpTarget) : ""}
-                          </span>
-                        </div>
-                      </div>
-                      <Button type="button" disabled={otpLoading} onClick={() => { setOtpSent(false); setPhoneOtp(""); setOtpTarget(null); setResendTimer(0); }} variant="primary" size="xs" className="shrink-0 text-accent">
-                        Change
-                      </Button>
-                    </div>
-
-                    <Input
-                      label="6-Digit Verification OTP *"
-                      placeholder="••••••"
-                      maxLength={6}
-                      inputMode="numeric"
-                      icon={<KeyRound className="w-4 h-4 text-text-muted" strokeWidth={2} />}
-                      className="tracking-[0.4em] font-mono text-center text-lg sm:text-base font-bold placeholder:tracking-normal placeholder:font-sans"
-                      value={phoneOtp}
-                      disabled={otpLoading}
-                      onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      autoComplete="one-time-code"
-                      required
-                    />
-
-                    <div className="flex items-center justify-between text-xs px-1">
-                      <span className="text-text-muted flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" strokeWidth={2} />
-                        <span>Didn't receive code?</span>
-                      </span>
-                      {resendTimer > 0 ? (
-                        <span className="text-accent dark:text-accent font-semibold bg-primary-500/10 px-2.5 py-0.5 rounded-full text-[11px]">
-                          Resend in {resendTimer}s
-                        </span>
-                      ) : (
-                        <Button variant="ghost" size="sm"
-                          type="button"
-                          onClick={handleRequestPatientOtp}
-                          disabled={otpLoading}
-                          className="text-accent dark:text-accent font-bold hover:underline cursor-pointer flex items-center gap-1 text-xs"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" strokeWidth={2} />
-                          <span>Resend OTP</span>
-                        </Button>
-                      )}
-                    </div>
-
-                    <Button
-                      type="submit"
-                      fullWidth
-                      loading={otpLoading}
-                      loadingText={isNavigating ? "Opening dashboard…" : otpAction === "sending" ? "Sending code…" : "Verifying…"}
-                      size="lg"
-                      className="font-bold min-h-[46px] shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group"
-                    >
-                      <span>Verify & Sign In</span>
-                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
-                    </Button>
-                  </form>
-                )
-              ) : (
-
-                /* Email Password Form */
-                <form id="panel-email" role="tabpanel" aria-labelledby="tab-email" onSubmit={handleLogin} noValidate className="space-y-4 animate-fade-in">
-                  <CardContent className="p-0 space-y-4">
-                    <Input
-                      label="Staff Email Address *"
-                      type="email"
-                      placeholder="doctor@example.com"
-                      icon={<Mail className="w-4 h-4 text-text-muted" strokeWidth={2} />}
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        if (emailError) validateEmail(e.target.value);
-                      }}
-                      onBlur={() => validateEmail(email)}
-                      error={emailError}
-                      required
-                      autoComplete="username"
-                    />
-
-                    <div>
-                      <Input
-                        label="Password *"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        icon={<Lock className="w-4 h-4 text-text-muted" strokeWidth={2} />}
-                        value={password}
-                        onChange={(e) => {
-                          setPassword(e.target.value);
-                          if (passwordError) validatePassword(e.target.value);
-                        }}
-                        onBlur={() => validatePassword(password)}
-                        error={passwordError}
-                        required
-                        autoComplete="current-password"
-                        rightIcon={
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="p-1 text-text-muted hover:text-text rounded-md transition-all cursor-pointer flex items-center justify-center min-h-[28px] min-w-[28px]"
-                            title={showPassword ? "Hide password" : "Show password"}
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                          >
-                            {showPassword ? (
-                              <EyeOff className="w-4 h-4" strokeWidth={2} />
-                            ) : (
-                              <Eye className="w-4 h-4" strokeWidth={2} />
-                            )}
-                          </button>
-                        }
-                      />
-                      <div className="flex justify-end pt-1.5">
-                        <Button type="button" onClick={() => {
-                            setIsForgotPassword(true);
-                            setIsResetSent(false);
-                            setResetEmail("");
-                            setResetEmailError("");
-                          }} variant="ghost" size="xs" className="text-accent">
-                          Forgot Password?
-                        </Button>
-                      </div>
-                    </div>
-                  <div className="pt-4"><PasskeySignIn onSuccess={completeSignIn} onWorkspace={setWorkspaceSelection} disabled={loading || twoFactorLoading || isNavigating || isTwoFactorModalOpen || Boolean(workspaceSelection)} onTwoFactor={(token) => { setTwoFactorToken(token); setIsTwoFactorModalOpen(true); }} /></div>
-              </CardContent>
-
-                  <CardFooter className="p-0 pt-2 flex flex-col gap-3">
-                    <Button
-                      type="submit"
-                      fullWidth
-                      loading={loading}
-                      loadingText={isNavigating ? "Opening dashboard…" : "Signing in…"}
-                      size="lg"
-                      className="font-bold min-h-[46px] shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group"
-                    >
-                      <span>Sign In to Dashboard</span>
-                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
-                    </Button>
-                  </CardFooter>
-                </form>
-              )}
+              <Tabs
+                activeTab={authTab}
+                variant="pills"
+                scrollActiveIntoView={false}
+                className="[&_[role=tablist]]:grid [&_[role=tablist]]:grid-cols-2 [&_[role=tab]]:justify-center [&_[role=tab]]:px-1.5"
+                onChange={tab => startTransition(() => {
+                  setAuthTab(tab as "mobile" | "email");
+                  if (tab === "mobile") { setOtpSent(false); setPhoneOtp(""); setOtpTarget(null); }
+                })}
+                tabs={[
+                  { id: "mobile", label: "Patient Sign In", icon: <Smartphone aria-hidden="true" className="h-4 w-4" />, disabled: otpLoading || isNavigating, content: authTab === "mobile" ? signInPanel : undefined },
+                  { id: "email", label: "Staff Email", icon: <Mail aria-hidden="true" className="h-4 w-4" />, disabled: otpLoading || isNavigating, content: authTab === "email" ? signInPanel : undefined },
+                ]}
+              />
 
               {/* Patient Registration Link */}
-              <div className="mt-6 pt-4 border-t border-border/60 text-center flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 text-xs text-text-secondary">
+              <div className="mt-6 pt-4 border-t border-border/60 text-center flex flex-wrap items-center justify-center gap-x-1.5 text-sm text-text-secondary">
                 <span>New to Ekavyu Health?</span>
-                <Link href="/register" className="font-bold text-accent dark:text-accent hover:underline flex items-center gap-1">
+                <Link href="/register" className="inline-flex min-h-11 items-center gap-1 font-medium text-accent hover:underline">
                   <NavigationPending />
                   <span>Create Patient Account</span>
                   <ArrowRight className="w-3 h-3 inline" strokeWidth={2} />
@@ -639,10 +554,10 @@ export default function LoginPage() {
             </div>
           ) : (
             /* Forgot Password Form */
-            <form onSubmit={handleResetPassword} noValidate className="p-6 sm:p-7 space-y-4 animate-fade-in">
-              <CardHeader className="p-0 mb-3">
+            <form onSubmit={handleResetPassword} noValidate className="p-4 sm:p-6 space-y-4">
+              <CardHeader className="p-0 mb-3 text-center">
                 <CardTitle as="h1" className="page-title">Recover Password</CardTitle>
-                <CardDescription className="text-xs text-text-muted mt-1">
+                <CardDescription className="text-sm text-text-secondary">
                   {!isResetSent
                     ? "Enter your email address and we will send password recovery instructions."
                     : "Instructions have been dispatched to your inbox."}
@@ -684,7 +599,7 @@ export default function LoginPage() {
                     loading={resetLoading}
                     loadingText="Sending link…"
                     size="md"
-                    className="font-bold min-h-[44px] shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group"
+
                   >
                     <span>Send Recovery Link</span>
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
@@ -701,7 +616,6 @@ export default function LoginPage() {
         </fieldset>
         <p role="status" aria-live="polite" className="sr-only">{isNavigating ? "Opening your dashboard" : ""}</p>
 
-      </div>
 
       {/* 2FA OTP Verification Modal */}
       {workspaceSelection && <LoginWorkspacePicker selection={workspaceSelection} onSuccess={completeSignIn}
@@ -769,7 +683,7 @@ export default function LoginPage() {
               loadingText={isNavigating ? "Opening dashboard…" : "Verifying…"}
               fullWidth
               size="lg"
-              className="font-bold min-h-[46px] shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 group"
+
             >
               <span>Verify & Sign In</span>
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
@@ -777,6 +691,6 @@ export default function LoginPage() {
           </form>
         </Modal>
       )}
-    </main>
+    </AuthPageShell>
   );
 }

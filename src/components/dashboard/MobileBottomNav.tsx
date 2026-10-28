@@ -138,7 +138,7 @@ export function MobileBottomNav({
                     ? "text-accent dark:text-accent font-bold"
                     : "text-text-muted hover:text-text hover:bg-surface-hover/50"
                 )}
-                aria-label="Menu: Open Full Navigation Menu"
+              aria-label="More: Open full navigation menu"
                 aria-expanded={isMenuOpen}
                 aria-controls="dashboard-navigation"
               >
@@ -164,6 +164,7 @@ export function MobileBottomNav({
             <Link
               key={tab.label}
               href={tab.href!}
+              prefetch={false}
               aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex flex-col items-center justify-center w-full py-1.5 px-1 rounded-xl transition-all duration-150 cursor-pointer min-h-[44px]",

@@ -2,118 +2,108 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ArrowRight, CalendarDays, Check, ClipboardList, ListOrdered, Mail, Receipt, Search, ShieldCheck, Stethoscope, UserRound } from "lucide-react";
+import { ArrowDown, ArrowRight, Check, MessageCircle, BellRing, FileText, ShieldCheck } from "lucide-react";
 import EkavyuLogo from "@/components/ui/EkavyuLogo";
+import { getSiteUrl } from "@/lib/siteUrl";
 import HomeNavigation from "./home/HomeNavigation";
 import HomePricing from "./home/HomePricing";
+import LivingAppointment from "./home/LivingAppointment";
+import PatientDiscovery from "./home/PatientDiscovery";
+import ClinicExperience from "./home/ClinicExperience";
+import Communications from "./home/Communications";
 import styles from "./home/home.module.css";
-import { getSiteUrl } from "@/lib/siteUrl";
 
-const title = "Ekavyu — Practice management for healthcare teams";
-const description = "Clinic and practice management software for your healthcare team. Connect appointments, walk-ins, patient queues, consultations and visit billing with Ekavyu.";
+const title = "Ekavyu — Find doctors & manage clinic appointments";
+const description = "Discover doctors and clinics, check appointment options and book where available. Ekavyu helps clinic teams manage bookings, walk-ins, consultations and visit billing.";
 const siteUrl = getSiteUrl();
-
 export const metadata: Metadata = {
-  title,
-  description,
+  title, description,
   ...(siteUrl ? { metadataBase: siteUrl, alternates: { canonical: "/" } } : {}),
-  openGraph: {
-    title,
-    description,
-    type: "website",
-    siteName: "Ekavyu",
-    ...(siteUrl ? { url: "/", images: [{ url: "/ekavyu-home-social.png", width: 1200, height: 630, alt: "Ekavyu — Clinic and practice management. Booking, reception, consultations and billing." }] } : {}),
-  },
-  twitter: {
-    card: siteUrl ? "summary_large_image" : "summary",
-    title,
-    description,
-    ...(siteUrl ? { images: ["/ekavyu-home-social.png"] } : {}),
-  },
+  openGraph: { title, description, type: "website", siteName: "Ekavyu", ...(siteUrl ? { url: "/", images: [{ url: "/ekavyu-home-social.png", width: 1200, height: 630, alt: "Ekavyu — Find your doctor. Manage your clinic day." }] } : {}) },
+  twitter: { card: siteUrl ? "summary_large_image" : "summary", title, description, ...(siteUrl ? { images: ["/ekavyu-home-social.png"] } : {}) },
 };
 
-const workflow = [
-  { icon: CalendarDays, title: "Book or register", description: "Bring online bookings and walk-ins into the appointment list. Find an existing patient or register a new one." },
-  { icon: ListOrdered, title: "Check in and call next", description: "Mark arrivals, see who is waiting and call the next patient from the doctor’s queue." },
-  { icon: Stethoscope, title: "Consult with context", description: "Review available patient history, record consultation notes and prepare prescriptions." },
-  { icon: Receipt, title: "Complete the visit", description: "Create the visit invoice and track recorded payments and outstanding balances." },
-];
-
-const team = [
-  { role: "Reception", icon: ClipboardList, title: "A clear front desk.", description: "Register walk-ins, manage bookings and check patients in without losing sight of the waiting queue." },
-  { role: "Doctors", icon: Stethoscope, title: "Context for the next patient.", description: "Move from the queue into the consultation, with available history, notes and prescriptions together." },
-  { role: "Practice owners", icon: UserRound, title: "A view across the practice.", description: "Coordinate staff and locations. Review appointments, collections and pending balances from your workspace." },
-];
-
 const questions = [
-  { question: "What happens after I request setup?", answer: "Share your practice name, city and contact details in the setup form. Our team reviews the request and contacts you to confirm your plan and setup before activating the organization." },
-  { question: "Can we use it for a single-doctor practice?", answer: "Yes. Ekavyu supports independent doctors as well as teams with reception staff and multiple locations. The number of doctors, staff members and locations depends on your plan." },
-  { question: "Does it handle walk-ins as well as online bookings?", answer: "Yes. Reception can register a walk-in or find an existing patient, add the visit and manage arrival in the queue. Patients can also book online where the provider has enabled booking." },
-  { question: "Who can access patient information?", answer: "Staff access follows assigned roles, permissions and location access. Patients sign in to view available visits and records linked to their account. Available modules and clinical information depend on the organization’s setup and access rules." },
+  { question: "Can I browse without an account?", answer: "Yes. Explore doctors and clinic locations without signing in. Open a provider’s profile to review their practice locations, fees and available booking or contact options." },
+  { question: "Does every provider offer online booking?", answer: "No. Booking depends on the provider’s setup and available appointments. Where online booking is not enabled, use the contact options on the clinic’s page." },
+  { question: "What happens after I book?", answer: "Review the booking status and keep your private tracker link for visit updates. Some appointments require payment before confirmation; follow the instructions shown and contact reception for verified payment guidance. Keep the tracker link private." },
+  { question: "Can clinics manage walk-ins too?", answer: "Yes. Reception can find an existing patient or register a new one, add a walk-in visit and manage arrival alongside online appointments." },
+  { question: "What can clinics send through WhatsApp?", answer: "With a configured connection, clinics can send supported booking updates, queue alerts and completed-visit prescriptions. Sending depends on recorded consent, recipient authorization, clinic settings, plan access, approved templates and available credits. Delivery status is visible in the workspace. WhatsApp is not a booking chatbot, and delivery is not guaranteed." },
+  { question: "How do clinic setup and staff access work?", answer: "Our team reviews your setup request and confirms the plan before activating the organization. Staff access follows assigned roles, permissions and locations. Available tools and capacity depend on the enabled modules and selected plan." },
+  { question: "Who should I contact for help?", answer: "For appointment changes, availability or payment instructions, contact the provider using the details on their clinic page. For help evaluating Ekavyu or requesting clinic setup, email ekavyuofficial@gmail.com." },
 ];
 
 export default async function Home() {
   const cookieStore = await cookies();
   const isBookingGuest = cookieStore.get("ekavyu_session")?.value === "guest";
   if (!isBookingGuest && (cookieStore.has("refresh_token") || cookieStore.has("access_token"))) redirect("/dashboard");
+
   return <div className={styles.home}>
     <a href="#main-content" className={styles.skipLink}>Skip to content</a>
     <HomeNavigation />
     <main id="main-content" tabIndex={-1}>
-      <section className={`${styles.hero} ${styles.container}`} aria-labelledby="hero-heading">
-        <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>CLINIC &amp; PRACTICE MANAGEMENT SOFTWARE</p>
-          <h1 id="hero-heading">Run your practice.<br /><span>Connect every visit.</span></h1>
-          <p className={styles.heroDescription}>From booking to billing, give reception and doctors one connected way to manage the practice day.</p>
+      <section className={styles.hero} aria-labelledby="hero-heading">
+        <div className={`${styles.heroCopy} ${styles.container}`}>
+          <p className={styles.heroPrelude}>Doctor discovery. Clinic coordination.</p>
+          <h1 id="hero-heading">Find your doctor.<br /><span>Manage your clinic day.</span></h1>
+          <p className={styles.heroDescription}>Explore doctors and clinics, and book appointments where available.<br />{" "}For clinic teams, coordinate arrivals, consultations, billing and patient updates.</p>
           <div className={styles.actions}>
-            <Link href="/onboarding?mode=new_org" className={styles.primaryButton} data-home-event="home_organization_setup">Request setup <ArrowRight size={18} aria-hidden="true" /></Link>
-            <a href="#how-it-works" className={styles.secondaryButton}>See how it works</a>
+            <Link href="/browse" prefetch={false} className={styles.primaryButton} data-home-event="home_find_care">Find a Doctor <ArrowRight size={17} aria-hidden="true" /></Link>
+            <a href="#for-organizations" className={styles.secondaryButton}>For Clinics <ArrowRight size={17} aria-hidden="true" /></a>
           </div>
-          <p className={styles.heroNote}>For independent doctors, clinics and healthcare teams.<br />Share your practice details. Our team helps you get set up.</p>
+          <p className={styles.heroReassurance}>Browse without an account. Clinic setup is assisted by our team.</p>
         </div>
-
-        <figure className={styles.practicePreview} aria-labelledby="preview-heading">
-          <div className={styles.previewHeader}><span className={styles.previewMark} aria-hidden="true"><ListOrdered size={19} /></span><div><p>AN EXAMPLE PRACTICE DAY</p><h2 id="preview-heading">Everyone knows what’s next.</h2></div></div>
-          <div className={styles.queuePreview}>
-            <div className={styles.queueHeading}><span>Doctor’s queue</span><span>3 example visits</span></div>
-            <ol className={styles.queueRows}>
-              <li><span className={styles.activeToken}>12</span><div><strong>Patient A</strong><span>With the doctor</span></div><span className={styles.consultingStatus}><span aria-hidden="true" />In consultation</span></li>
-              <li><span className={styles.token}>13</span><div><strong>Patient B</strong><span>Checked in at reception</span></div><span className={styles.arrivedStatus}>Arrived</span></li>
-              <li><span className={styles.token}>14</span><div><strong>Patient C</strong><span>Appointment booked</span></div><span className={styles.bookedStatus}>Not arrived</span></li>
-            </ol>
-            <div className={styles.handoff}><Check size={16} aria-hidden="true" /><span>Reception checks in. The doctor sees who’s waiting.</span></div>
-          </div>
-          <figcaption>Illustrative workflow · No live patient information</figcaption>
-        </figure>
+        <div className={`${styles.heroProduct} ${styles.container}`}><LivingAppointment /></div>
+        <div className={`${styles.audienceRibbon} ${styles.container}`}><span>SEE HOW EKAVYU WORKS</span><a href="#for-patients">Doctor discovery & booking <ArrowDown size={14} aria-hidden="true" /></a><a href="#for-organizations">Inside the clinic workspace <ArrowDown size={14} aria-hidden="true" /></a></div>
       </section>
 
-      <section id="how-it-works" className={`${styles.workflow} ${styles.container}`} aria-labelledby="workflow-heading">
-        <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>FROM THE FIRST BOOKING TO THE FINAL BILL</p><h2 id="workflow-heading">One visit. A clear path.</h2></div><p>Help each person pick up where the last one left off.</p></div>
-        <ol className={styles.workflowSteps}>
-          {workflow.map((step, index) => { const Icon = step.icon; return <li key={step.title}><div className={styles.stepMarker}><span>0{index + 1}</span><Icon size={22} aria-hidden="true" /></div><div><h3>{step.title}</h3><p>{step.description}</p></div></li>; })}
-        </ol>
+      <section id="for-patients" className={styles.patientSection} aria-labelledby="patients-heading">
+        <div className={`${styles.container} ${styles.journeyThread}`}><span className={styles.storyInitials} aria-hidden="true">AS</span><div><strong>One visit. The people who make it happen.</strong><p>Follow Anaya S. and Dr. Mira Shah at Aster Grove Clinic. Every person, visit and total in this example is fictional.</p></div><span className={styles.storyLabel}>AN ILLUSTRATIVE CLINIC DAY</span></div>
+        <div className={`${styles.container} ${styles.patientLayout}`}>
+          <div className={styles.patientCopy}><p className={styles.eyebrow}>01 / FOR PATIENTS</p><h2 id="patients-heading">Find a provider.<br /><em>Plan your visit.</em></h2><p>Search by city or specialty. Compare practice locations and fees, then check the booking options for the doctor you choose.</p><ol className={styles.patientSteps}><li><span>01</span>Explore doctors and clinic locations.</li><li><span>02</span>Review fees and available times.</li><li><span>03</span>Enter your details and check the booking status.</li></ol><Link href="/browse" prefetch={false} className={styles.textLink} data-home-event="home_find_care">Find a Doctor <ArrowRight size={18} aria-hidden="true" /></Link><p className={styles.smallNote}>Availability and payment requirements vary by provider.</p></div>
+          <div className={styles.patientProduct}><PatientDiscovery /></div>
+        </div>
+        <div className={`${styles.container} ${styles.afterBooking}`}><div><p className={styles.eyebrow}>AFTER BOOKING</p><h3>Keep your visit details close.</h3></div><p>Check the status shown on your booking and save your private tracker link for updates. If payment is required before confirmation, follow the displayed instructions or contact reception.</p><Link href="/login" prefetch={false} className={styles.textLink}>Sign in to your account <ArrowRight size={15} aria-hidden="true" /></Link></div>
       </section>
 
-      <section id="for-organizations" className={styles.teamSection} aria-labelledby="team-heading">
+      <section id="for-organizations" className={styles.clinicSection} aria-labelledby="clinics-heading">
         <div className={styles.container}>
-          <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>ONE PRACTICE. DIFFERENT RESPONSIBILITIES.</p><h2 id="team-heading">A workspace for the work you do.</h2></div><p>From a single-doctor practice to a team working across locations.</p></div>
-          <div className={styles.teamGrid}>{team.map(item => { const Icon = item.icon; return <article key={item.role}><p className={styles.roleLabel}><Icon size={17} aria-hidden="true" />{item.role}</p><h3>{item.title}</h3><p>{item.description}</p></article>; })}</div>
-          <div className={styles.accessNote}><ShieldCheck size={21} aria-hidden="true" /><p><strong>The right access for each role.</strong> Staff access follows assigned permissions and locations. Available capabilities depend on your organization’s enabled modules and plan.</p></div>
+          <div className={styles.clinicIntro}><div><p className={styles.eyebrow}>02 / INSIDE THE CLINIC</p><h2 id="clinics-heading">From the front desk<br /><em>to the consultation.</em></h2></div><div><p>Anaya’s visit is one part of a busy clinic day. Explore the actual workspaces for reception, the doctor and the people managing the practice.</p><Link href="/onboarding?mode=new_org" prefetch={false} className={styles.lightLink} data-home-event="home_organization_setup">Request clinic setup <ArrowRight size={17} aria-hidden="true" /></Link></div></div>
+          <ClinicExperience />
+          <div className={styles.clinicFooter}><span>Appointments & walk-ins</span><span>Arrivals & patient queues</span><span>Consultations & visit billing</span></div>
+          <p className={styles.clinicScope}>Tools depend on your plan, enabled modules and staff permissions.</p>
         </div>
       </section>
 
-      <section id="plans" className={`${styles.plans} ${styles.container}`} aria-labelledby="plans-heading">
-        <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>PLANS &amp; ASSISTED SETUP</p><h2 id="plans-heading">Start with the team you have.</h2></div><p>Compare current prices and capacity. We’ll confirm your setup and plan before activation.</p></div>
+      <section id="stay-connected" className={styles.communicationsSection} aria-labelledby="communications-heading">
+        <div className={styles.container}>
+          <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>03 / WHATSAPP & TEAM UPDATES</p><h2 id="communications-heading">Keep patients updated.<br /><em>See delivery clearly.</em></h2></div><p>The same visit carries on beyond the front desk. Share supported patient updates through WhatsApp, and keep staff informed in their Ekavyu workspace.</p></div>
+          <ul className={styles.communicationCapabilities}>
+            <li><MessageCircle size={20} aria-hidden="true" /><div><h3>Booking updates</h3><p>Send the update that matches the booking’s actual status. Pending payment is not a confirmed visit.</p></div></li>
+            <li><BellRing size={20} aria-hidden="true" /><div><h3>Queue communication</h3><p>Configured turn alerts help patients prepare. Staff can send delay alerts when the clinic is running late.</p></div></li>
+            <li><FileText size={20} aria-hidden="true" /><div><h3>After the consultation</h3><p>Share an available prescription after the visit is completed, with the authorized recipient and consent.</p></div></li>
+          </ul>
+          <Communications />
+          <p className={styles.communicationRequirements}>WhatsApp requires a configured connection, recorded consent, applicable plan access and approved templates. Shared connections also depend on message credits. Provider acceptance does not guarantee delivery or reading.</p>
+        </div>
+      </section>
+
+      <section id="how-it-works" className={`${styles.setupSection} ${styles.container}`} aria-labelledby="setup-heading">
+        <div className={styles.setupHeading}><div><p className={styles.eyebrow}>04 / MAKE ROOM FOR YOUR PRACTICE</p><h2 id="setup-heading">Your team.<br /><em>Your clinic’s next step.</em></h2></div><p>Tell us how your practice works. Our team reviews your request and confirms the plan, locations and tools before activating your organization.</p></div>
+        <ol className={styles.setupSteps}><li><span>01</span><h3>Tell us about your practice.</h3><p>Share your practice name, city and contact details. Choose a plan or ask for help deciding.</p></li><li><span>02</span><h3>Confirm your plan and setup.</h3><p>Our team reviews your request and contacts you to confirm the right capacity and tools.</p></li><li><span>03</span><h3>Activate your organization.</h3><p>The team provisions the organization after review. Staff use the workspaces and locations assigned to them.</p></li></ol>
+        <div className={styles.setupActions}><Link href="/onboarding?mode=new_org" prefetch={false} className={styles.primaryButton} data-home-event="home_organization_setup">Request clinic setup <ArrowRight size={17} aria-hidden="true" /></Link><a href="mailto:ekavyuofficial@gmail.com" className={styles.textLink}>Ask the team a question <ArrowRight size={16} aria-hidden="true" /></a></div>
+        <div className={styles.accessNote}><ShieldCheck size={22} aria-hidden="true" /><strong>Access follows each person’s role.</strong><p>Assigned permissions and locations determine which clinic information staff can access.</p></div>
+      </section>
+
+      <section id="plans" className={styles.planSection} aria-labelledby="plans-heading"><div className={styles.container}>
+        <div className={styles.planIntro}><div><p className={styles.eyebrow}>05 / PLANS THAT FIT YOUR PRACTICE</p><h2 id="plans-heading">Choose the capacity<br /><em>your practice needs.</em></h2></div><div><p>Compare current prices, billing periods and team limits. We’ll confirm your selected plan and setup before activation.</p><span className={styles.setupPill}><Check size={14} aria-hidden="true" />Current configured plans · Assisted activation</span></div></div>
         <HomePricing />
-      </section>
+      </div></section>
 
-      <section className={`${styles.getStarted} ${styles.container}`} aria-labelledby="setup-heading">
-        <div className={styles.setupCopy}><p className={styles.eyebrow}>YOUR NEXT STEP</p><h2 id="setup-heading">Let’s talk about your practice.</h2><p>Tell us your practice name, city and how to reach you. We’ll review your request and help confirm the right setup.</p><Link href="/onboarding?mode=new_org" className={styles.primaryButton} data-home-event="home_organization_setup">Request setup <ArrowRight size={18} aria-hidden="true" /></Link><a href="mailto:ekavyuofficial@gmail.com" className={styles.textLink}><Mail size={16} aria-hidden="true" /> Prefer email? Contact the team</a></div>
-        <div className={styles.questions}><h3>Before you get started</h3><div className={styles.disclosures}>{questions.map(item => <details key={item.question}><summary><span>{item.question}</span><span aria-hidden="true">+</span></summary><p>{item.answer}</p></details>)}</div></div>
-      </section>
+      <section className={`${styles.questions} ${styles.container}`} aria-labelledby="questions-heading"><div><p className={styles.eyebrow}>BEFORE YOU BEGIN</p><h2 id="questions-heading">Practical questions.<br /><em>Direct answers.</em></h2><a href="mailto:ekavyuofficial@gmail.com" className={styles.textLink}>Contact the Ekavyu team <ArrowRight size={16} aria-hidden="true" /></a></div><div className={styles.disclosures}>{questions.map(item => <details key={item.question}><summary><span>{item.question}</span><span aria-hidden="true">+</span></summary><p>{item.answer}</p></details>)}</div></section>
 
-      <section id="for-patients" className={styles.patientSection} aria-labelledby="patients-heading"><div className={styles.container}><div><p className={styles.eyebrow}>HERE AS A PATIENT?</p><h2 id="patients-heading">Your next visit starts here.</h2><p>Explore doctors and locations without an account. Book where available, or sign in for your linked visits, records and bills.</p></div><div className={styles.patientActions}><Link href="/browse" className={styles.primaryButton} data-home-event="home_find_care">Find care <Search size={17} aria-hidden="true" /></Link><Link href="/login" className={styles.textLink}>Patient sign in <ArrowRight size={16} aria-hidden="true" /></Link></div></div></section>
+      <section className={styles.finalCta} aria-labelledby="next-heading"><div className={styles.container}><p className={styles.eyebrow}>CHOOSE YOUR NEXT STEP</p><h2 id="next-heading">Looking for a doctor?<br /><em>Or tools for your clinic?</em></h2><div className={styles.actions}><Link href="/browse" prefetch={false} className={styles.primaryButton} data-home-event="home_find_care">Find a Doctor <ArrowRight size={17} aria-hidden="true" /></Link><Link href="/onboarding?mode=new_org" prefetch={false} className={styles.secondaryButton} data-home-event="home_organization_setup">Request clinic setup <ArrowRight size={17} aria-hidden="true" /></Link></div><p>Explore providers, or tell our team about your practice.</p></div></section>
     </main>
-    <footer className={`${styles.footer} ${styles.container}`}><div><Link href="/" aria-label="Ekavyu home"><EkavyuLogo size="sm" /></Link><p>Care That Keeps Moving</p></div><nav aria-label="Footer navigation"><a href="#how-it-works">How it works</a><a href="#plans">Plans</a><Link href="/browse">Find care</Link><Link href="/login">Sign in</Link><a href="mailto:ekavyuofficial@gmail.com">Contact</a></nav><small>© {new Date().getFullYear()} Ekavyu</small></footer>
+    <footer className={`${styles.footer} ${styles.container}`}><div><Link href="/" aria-label="Ekavyu home"><EkavyuLogo size="md" /></Link><p>Doctor discovery & clinic coordination</p></div><nav aria-label="Footer navigation"><Link href="/browse" prefetch={false}>Find a Doctor</Link><a href="#for-organizations">For Clinics</a><a href="#how-it-works">Clinic setup</a><Link href="/pricing" prefetch={false}>Compare plans</Link><Link href="/login" prefetch={false}>Sign in</Link><a href="mailto:ekavyuofficial@gmail.com">Contact</a></nav><div className={styles.footerBottom}><small>© {new Date().getFullYear()} Ekavyu</small><span>Patients. Doctors. Clinics.</span></div></footer>
   </div>;
 }

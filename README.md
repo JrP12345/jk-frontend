@@ -6,12 +6,13 @@ Keeps Moving**. This repository builds independently of the backend checkout.
 Use Node.js 24. Run `npm ci`, copy `.env.example` to `.env.local`, configure the
 backend API URL, then run `npm run dev`. The default port is 3000.
 
-Checks: `npm test`, `npm run lint`, `npm run check:payments`, `npm run build`.
+Checks: `npm test`, `npm run lint`, `npm run check:types`,
+`npm run check:payments`, `npm run build`.
 
 For normal coding, use the [risk-based verification workflow](docs/verification-workflow.md)
 to select affected checks; CI retains the complete quality gate.
 
-The supplied logo is `public/image.png`; regenerate exports with
+The transparent SVG master is in `assets/brand`; regenerate vector/icon exports with
 `npm run brand:assets`, then `npm run brand:social` for the homepage share image.
 The Dockerfile serves the standalone production build.
 `NEXT_PUBLIC_API_URL` must be supplied at build time.
@@ -46,9 +47,21 @@ Wait for `/api/health/readiness` on that backend to return HTTP 200, then check
 login and API requests from the deployed frontend. These are environment repairs;
 a successful local build alone does not certify either deployed service.
 
-- [UI interaction patterns](docs/interaction-patterns.md)
-- [Pre-production cleanup](docs/pre-production-cleanup.md)
-- [Dependencies and licenses](docs/dependencies.md)
-- [Visual identity and logo exports](docs/ekavyu-visual-identity.md)
-- [Release verification gates](docs/production-readiness-tracker.md)
-- [Backend repository](https://github.com/JrP12345/jk-backend)
+## Documentation
+
+`docs` contains current topic guides. Completed task reports are consolidated
+into these guides; dated verification remains labelled separately from open
+release requirements.
+
+| Area | Start here |
+| --- | --- |
+| Development | [Verification workflow](docs/verification-workflow.md), [dependencies](docs/dependencies.md), [cleanup progress](docs/pre-production-cleanup.md) |
+| Interface | [Design and brand assets](docs/design-system.md), [interaction, loading and printing](docs/interaction-patterns.md), [homepage](docs/homepage-design.md) |
+| Clinic and discovery | [Organization management](docs/organization-management.md), [everyday clinic workflow](docs/small-clinic-workflow.md), [Browse-page handoff](docs/browse-pages-handoff.md), [public discovery](docs/public-discovery.md) |
+| CRM | [Workflows and acceptance](docs/crm-workflows.md), [operator review and pilot](docs/crm-migration-pilot.md) |
+| Pharmacy | [Scope and guide index](docs/pharmacy-production-plan.md), [release and setup](docs/pharmacy-release-evidence.md) |
+| Architecture and release | [Domain model](docs/domain-model-audit.md), [security review](docs/application-security-audit.md), [workflow coverage](docs/workflow-coverage.md), [operational gates](docs/production-readiness-tracker.md) |
+| Performance and hosting | [Measurements and reliability](docs/lighthouse-performance.md), [Cloudflare/Vinext decision](docs/cloudflare-vinext-blockers.md) |
+
+Backend source and operational runbooks live in the sibling checkout and the
+[backend repository](https://github.com/JrP12345/jk-backend).

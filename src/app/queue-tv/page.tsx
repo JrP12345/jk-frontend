@@ -287,7 +287,7 @@ export default function WaitingRoomTvQueueBoard() {
   }, [fetchQueueState, locationId, clockReady]);
 
   return (
-    <div className="min-h-screen bg-background text-text p-4 sm:p-8 lg:p-10 flex flex-col justify-between select-none animate-fade-in font-sans">
+    <main className="min-h-screen bg-background text-text p-4 sm:p-8 lg:p-10 flex flex-col justify-between select-none animate-fade-in font-sans">
       {/* Top TV Banner */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between border-b border-border pb-6 gap-4">
         <div className="flex items-center gap-3 sm:gap-4">
@@ -555,7 +555,7 @@ export default function WaitingRoomTvQueueBoard() {
           <div className="bg-surface/95 p-6 sm:p-8 rounded-3xl border border-border flex flex-col justify-between shadow-xl">
             <div>
               <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
-                <h3 className="text-xl font-black text-text">Next in Line</h3>
+                <h2 className="text-xl font-black text-text">Next in Line</h2>
                 <span className="text-xs text-text-muted font-bold px-2.5 py-1 bg-surface-alt rounded-lg">
                   {waitingQueue.length} Patient{waitingQueue.length === 1 ? "" : "s"} Waiting
                 </span>
@@ -630,6 +630,6 @@ export default function WaitingRoomTvQueueBoard() {
         <span>If you require emergency medical attention or wheelchair assistance, please notify the reception desk immediately.</span>
         <span className="font-black text-accent tracking-wide shrink-0">Ekavyu Live Display</span>
       </div>
-    </div>
+    </main>
   );
 }

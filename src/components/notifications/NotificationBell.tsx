@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, useId } from "react";
+import dynamic from "next/dynamic";
 import Modal from "@/components/ui/Modal";
 import { useNotifications } from "@/hooks/useNotifications";
-import { NotificationDropdown } from "./NotificationDropdown";
 import { useToastPosition } from "@/hooks/useToastPosition";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
+
+const NotificationDropdown = dynamic(() => import("./NotificationDropdown").then(module => module.NotificationDropdown), {
+  ssr: false,
+  loading: () => <div role="status" className="min-h-32 grid place-items-center text-sm text-text-secondary">Loading notifications...</div>,
+});
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,7 +26,7 @@ export function NotificationBell() {
         data-material-control
         onClick={() => setIsOpen(!isOpen)}
         className="touch-target relative p-2 rounded-xl text-text-secondary hover:text-text hover:bg-surface-hover transition-colors cursor-pointer"
-        aria-label="Open Notifications"
+        aria-label={`Open Notifications${unreadCount > 0 ? `: ${unreadCount > 9 ? "9+" : unreadCount} unread` : ""}`}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         aria-controls={isOpen ? id : undefined}
@@ -41,7 +46,7 @@ export function NotificationBell() {
         </svg>
 
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[10px] font-black text-background shadow-sm animate-pulse">
+          <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[10px] font-black text-background shadow-sm">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -60,7 +65,7 @@ export function NotificationBell() {
         bodyClassName="!p-0 !overflow-hidden flex flex-col"
         contentClassName="flex flex-col flex-auto min-h-0"
       >
-        <div id={id} {...previewGesture.handlers} style={{ translate: previewGesture.offset ? `${previewGesture.offset}px 0` : undefined, transition: previewGesture.dragging ? "none" : "translate 180ms ease" }} className="flex flex-col flex-auto min-h-0 [touch-action:pan-y_pinch-zoom]"><NotificationDropdown onClose={() => setIsOpen(false)} /></div>
+        <div id={id} {...previewGesture.handlers} style={{ translate: previewGesture.offset ? `${previewGesture.offset}px 0` : undefined, transition: previewGesture.dragging ? "none" : "translate 180ms ease" }} className="flex flex-col flex-auto min-h-0 [touch-action:pan-y_pinch-zoom]">{isOpen && <NotificationDropdown onClose={() => setIsOpen(false)} />}</div>
       </Modal>
     </div>
   );

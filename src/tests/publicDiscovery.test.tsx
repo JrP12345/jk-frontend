@@ -3,7 +3,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextRequest } from "next/server";
 import sitemap from "@/app/sitemap";
 import { proxy } from "@/proxy";
-import { getSiteUrl } from "@/lib/siteUrl";
+import { canIndexPublicSite, getSiteUrl } from "@/lib/siteUrl";
+import robots from "@/app/robots";
 import { locationStructuredData, profileMetadata, publicImageUrl, publicOpeningHours, serializeStructuredData } from "@/lib/publicSeo";
 import { getPublicProfile } from "@/lib/publicProfile";
 import type { LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
@@ -67,8 +68,39 @@ it("fails visibly instead of serving a partial sitemap or indexing a transient m
 });
 
 it("allows public profiles to be indexed and prevents operational pages from being indexed", () => {
+  const policy = proxy(new NextRequest("https://care.example/browse/care")).headers.get("Content-Security-Policy")!;
+  expect(policy).toContain("https://www.google.com/maps/embed");
+  expect(policy).toContain("https://checkout.razorpay.com");
+  expect(policy).not.toContain("https://*.google.com");
+  vi.stubEnv("APP_URL", "https://care.example");
+  vi.stubEnv("VERCEL_ENV", "production");
   for (const path of ["/browse/care", "/doctor/asha?location=care", "/pricing"]) expect(proxy(new NextRequest(`https://care.example${path}`)).headers.get("X-Robots-Tag")).toBeNull();
   for (const path of ["/track/private-id", "/join/care", "/check-in", "/queue-tv", "/login", "/onboarding", "/verify-email"]) expect(proxy(new NextRequest(`https://care.example${path}`)).headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+});
+
+it.each(["dev.ekavyu.com", "staging.ekavyu.com", "branch.vercel.app"])("keeps %s out of search even with a valid configured origin", async host => {
+  vi.stubEnv("APP_URL", `https://${host}`);
+  vi.stubEnv("VERCEL_ENV", "production");
+  expect(canIndexPublicSite()).toBe(false);
+  expect(profileMetadata("Care", "Public practice", "/browse/care").robots).toMatchObject({ index: false });
+  expect(proxy(new NextRequest(`https://${host}/browse`)).headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+  expect(robots().sitemap).toBeUndefined();
+  const request = vi.fn();
+  vi.stubGlobal("fetch", request);
+  expect(await sitemap()).toEqual([]);
+  expect(request).not.toHaveBeenCalled();
+});
+
+it("retains noindex on preview requests even when canonical metadata targets production", () => {
+  vi.stubEnv("APP_URL", "https://ekavyu.com");
+  vi.stubEnv("VERCEL_ENV", "production");
+  expect(canIndexPublicSite()).toBe(true);
+  expect(profileMetadata("Care", "Public practice", "/browse/care").robots).toMatchObject({ index: true });
+  expect(robots().sitemap).toBe("https://ekavyu.com/sitemap.xml");
+  expect(proxy(new NextRequest("https://dev.ekavyu.com/browse")).headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+  vi.stubEnv("VERCEL_ENV", "preview");
+  expect(canIndexPublicSite()).toBe(false);
+  expect(proxy(new NextRequest("https://ekavyu.com/browse")).headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
 });
 
 it("copies a clean profile URL without patient, follow-up or tracking parameters", async () => {

@@ -2,6 +2,24 @@ import { describe, it, expect } from "vitest";
 import { parseTimeToMinutes, formatMinutesTo12Hour, getLocationOperationalStatus } from "../lib/timing/locationStatus";
 
 describe("Clinic Operational Status Engine", () => {
+  it("recognizes explicit seven-day midnight schedules as open 24 hours", () => {
+    const schedule = JSON.stringify(Object.fromEntries(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(day => [day, [{ start: "00:00", end: "24:00" }]])));
+    expect(parseTimeToMinutes("24:00")).toBe(1440);
+    expect(getLocationOperationalStatus(schedule, new Date("2026-10-25T12:00:00Z"), "UTC")).toMatchObject({ isOpen: true, status: "open_24_7" });
+  });
+  it("does not turn an implicit Monday-to-Saturday midnight range into a seven-day claim", () => {
+    const schedule = JSON.stringify({ start: "00:00", end: "00:00" });
+    expect(getLocationOperationalStatus(schedule, new Date("2026-10-26T12:00:00Z"), "UTC").isOpen).toBe(true);
+    expect(getLocationOperationalStatus(schedule, new Date("2026-10-25T12:00:00Z"), "UTC")).toMatchObject({ isOpen: false, status: "closed_today" });
+  });
+  it("uses the facility's timezone and weekday rather than the visitor's clock", () => {
+    const schedule = JSON.stringify({ Monday: [{ start: "03:00", end: "04:00" }] });
+    const now = new Date("2026-10-18T22:00:00Z");
+    expect(getLocationOperationalStatus(schedule, now, "Asia/Kolkata").isOpen).toBe(true);
+    expect(getLocationOperationalStatus(schedule, now, "America/New_York").isOpen).toBe(false);
+    expect(getLocationOperationalStatus(schedule, now, "Invalid/Timezone").status).toBe("unspecified");
+    expect(now.toISOString()).toBe("2026-10-18T22:00:00.000Z");
+  });
   it("does not infer opening hours from an unpublished or invalid schedule", () => {
     for (const timings of [undefined, "", "{}", "not a schedule"]) {
       const status = getLocationOperationalStatus(timings, new Date(2026, 8, 28, 10));

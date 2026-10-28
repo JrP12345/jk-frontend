@@ -173,7 +173,6 @@ export function OpdClinicalPresetBar({
   const { toast } = useToast();
   const [systemPresets, setSystemPresets] = useState<OpdPresetItem[]>(FALLBACK_SYSTEM_PRESETS);
   const [customPresets, setCustomPresets] = useState<OpdPresetItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [newPresetTitle, setNewPresetTitle] = useState("");
   const [savingPreset, setSavingPreset] = useState(false);
@@ -181,7 +180,6 @@ export function OpdClinicalPresetBar({
 
   const fetchPresets = async () => {
     try {
-      setLoading(true);
       const res = await api.get("/clinical/opd-templates");
       if (res.data?.data) {
         if (res.data.data.systemPresets && res.data.data.systemPresets.length > 0) {
@@ -193,8 +191,6 @@ export function OpdClinicalPresetBar({
       }
     } catch {
       // Keep fallbacks
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -231,7 +227,7 @@ export function OpdClinicalPresetBar({
 
     try {
       setSavingPreset(true);
-      const res = await api.post("/clinical/opd-templates", {
+      await api.post("/clinical/opd-templates", {
         title: newPresetTitle.trim(),
         symptoms: currentSymptoms,
         diagnosis: currentDiagnosis,

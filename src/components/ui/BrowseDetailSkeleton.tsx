@@ -1,23 +1,24 @@
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
+import marketplace from "@/components/MarketplaceLayout.module.css";
+import styles from "@/app/browse/[slug]/FacilityProfile.module.css";
 
 export default function BrowseDetailSkeleton() {
-  return <div className="min-h-screen bg-surface-alt pt-16 text-text" role="status" aria-label="Loading location and doctor details">
-    <MarketplaceNavbar />
-    <div className="border-b border-border/40 bg-surface px-4 py-3 sm:px-6">
-      <div className="mx-auto h-4 w-44 max-w-6xl animate-pulse rounded bg-surface-alt" />
-    </div>
-    <main className="mx-auto max-w-6xl space-y-4 px-4 py-5 sm:px-6 sm:py-6">
-      <div className="rounded-2xl border border-border bg-surface p-4 sm:p-6">
-        <div className="flex animate-pulse items-start gap-4">
-          <div className="h-16 w-16 shrink-0 rounded-2xl bg-surface-alt sm:h-20 sm:w-20" />
-          <div className="flex-1 space-y-3 pt-1"><div className="h-5 w-2/3 rounded bg-surface-alt" /><div className="h-4 w-1/2 rounded bg-surface-alt" /><div className="h-4 w-1/3 rounded bg-surface-alt" /></div>
+  return <div className={marketplace.page} role="status" aria-label="Loading location and doctor details">
+    <MarketplaceNavbar showSignUp showSearch={false} />
+    <main className={`${marketplace.content} ${styles.container}`}>
+      <div className="flex h-14 items-center"><div className="h-5 w-52 animate-pulse rounded bg-surface-alt" /></div>
+      <div className={`${styles.heroCard} border border-border`}>
+        <div className={styles.hero}>
+          <div className={styles.heroIdentity}><div className={`${styles.logo} animate-pulse`} /><div className="min-w-0 flex-1 space-y-3"><div className="h-8 w-48 max-w-full animate-pulse rounded bg-surface-alt" /><div className="h-5 w-36 max-w-full animate-pulse rounded bg-surface-alt" /></div></div>
+          <div className={styles.heroActions}>{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-11 w-24 max-w-full animate-pulse rounded-xl bg-surface-alt" />)}</div>
         </div>
-        <div className="mt-5 h-16 animate-pulse rounded-xl bg-surface-alt" />
       </div>
-      <div className="h-44 animate-pulse rounded-2xl border border-border bg-surface sm:h-52" />
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="h-56 animate-pulse rounded-2xl border border-border bg-surface lg:col-span-2" />
-        <div className="h-40 animate-pulse rounded-2xl border border-border bg-surface" />
+      <div className={`${marketplace.detailsColumns} ${styles.layout}`}>
+        <div className={`${styles.doctors} space-y-4`}><div className="h-7 w-32 animate-pulse rounded bg-surface-alt" /><div className="h-5 w-2/3 animate-pulse rounded bg-surface-alt" />{Array.from({ length: 3 }, (_, index) => <div key={index} className="h-52 animate-pulse rounded-2xl border border-border bg-surface-elevated sm:h-44" />)}</div>
+        <div className={`${styles.sidebar} ${styles.information} space-y-4 border border-border p-5`}>
+          {Array.from({ length: 3 }, (_, index) => <div key={index} className="h-16 animate-pulse rounded border-b border-border bg-surface-alt" />)}
+          <div className="h-48 animate-pulse rounded bg-surface-alt" />
+        </div>
       </div>
     </main>
   </div>;

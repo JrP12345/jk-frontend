@@ -38,8 +38,8 @@ describe("service worker cache privacy", () => {
   const evaluate = (expression: string) => vm.runInContext(expression, context);
   it("allows only explicit public pages and immutable assets", () => {
     for (const path of ["/", "/dashboard", "/patients", "/clinical-notes", "/settings", "/auth/login", "/api/appointments", "/api/patients", "/storage/report.png", "/patient-photo.webp", "/_next/image?url=private"]) expect(evaluate(`allowed(new URL('https://app.test${path}'))`)).toBe(false);
-    for (const path of ["/browse", "/pricing", "/_next/static/chunk.js", "/app-icon-192.png", "/ekavyu-leaf-96.webp", "/ekavyu-leaf-160.webp?v=website-2", "/ekavyu-leaf-240.webp"]) expect(evaluate(`allowed(new URL('https://app.test${path}'))`)).toBe(true);
-    expect(evaluate("allowed(new URL('https://other.test/ekavyu-leaf-160.webp'))")).toBe(false);
+    for (const path of ["/browse", "/pricing", "/_next/static/chunk.js", "/app-icon-192.png", "/brand/ekavyu-mark.svg?v=brand-5"]) expect(evaluate(`allowed(new URL('https://app.test${path}'))`)).toBe(true);
+    expect(evaluate("allowed(new URL('https://other.test/brand/ekavyu-mark.svg'))")).toBe(false);
   });
   it("rejects redirects, private cache controls and private final URLs", () => {
     context.response = { status: 200, redirected: true, url: "https://app.test/browse", headers: { get: () => "public" } };

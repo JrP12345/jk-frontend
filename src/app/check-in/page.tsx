@@ -195,7 +195,7 @@ export default function PublicSelfCheckInKiosk() {
   if (!hasAnyPermission(user, "MANAGE_QUEUE")) return <main className="p-6 max-w-lg mx-auto"><Card><CardContent><h1 className="text-xl font-bold">Staff reception kiosk</h1><p className="my-4">Sign in with a staff account authorized to manage this location's queue. Patients can check arrival using their private appointment tracker.</p><Link href="/login">Staff sign in</Link></CardContent></Card></main>;
 
   return (
-    <div className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-3 sm:p-6 py-8 sm:py-12 animate-fade-in font-sans">
+    <main className="min-h-screen bg-surface-alt flex flex-col items-center justify-center p-3 sm:p-6 py-8 sm:py-12 animate-fade-in font-sans">
       <div className="w-full max-w-lg space-y-5 sm:space-y-6">
         {/* Top bar with back link & theme switch */}
         <div className="flex items-center justify-between">
@@ -394,6 +394,6 @@ export default function PublicSelfCheckInKiosk() {
           )}
         </Card>
       </div>
-    </div>
+    </main>
   );
 }

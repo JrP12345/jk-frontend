@@ -550,8 +550,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
           <button
             id={`${id}-trigger`}
             ref={buttonRef}
-            aria-labelledby={label ? `${id}-label` : undefined}
-            aria-label={!label ? placeholder || (mode === "range" ? "Choose date range" : "Choose date") : undefined}
+            aria-labelledby={label ? `${id}-label ${id}-value` : undefined}
             aria-describedby={visibleError ? `${id}-error` : hint ? `${id}-hint` : undefined}
             type="button"
             disabled={disabled}
@@ -574,7 +573,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
               )}
             </span>
 
-            <span className={cn("truncate flex-1 min-w-0 text-left font-medium", !displayString && "text-text-muted font-normal")}>
+            <span id={`${id}-value`} className={cn("truncate flex-1 min-w-0 text-left font-medium", !displayString && "text-text-muted font-normal")}>
               {displayString || placeholder || defaultPlaceholder}
             </span>
           </button>

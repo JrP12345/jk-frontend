@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getSiteUrl } from "@/lib/siteUrl";
+import { canIndexPublicSite, getSiteUrl } from "@/lib/siteUrl";
 import { publicBackendUrl } from "@/lib/publicProfile";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = getSiteUrl();
   if (!origin) throw new Error("Configure APP_URL with the frontend origin before serving the sitemap");
+  if (!canIndexPublicSite()) return [];
   const urls = new Set(["/", "/browse", "/pricing"]);
   const cursors = new Set<string>();
   let cursor: string | null = null;

@@ -21,9 +21,10 @@ import { OfflineStatusBanner } from "@/components/clinical/OfflineStatusBanner";
 import { MobileBottomNav } from "@/components/dashboard";
 import { useTrafficTracker } from "@/hooks/useTrafficTracker";
 import DashboardLoading from "./loading";
+import AICopilotLauncher from "@/components/ai/AICopilotLauncher";
+import { getAvatarInitials } from "@/components/ui/Avatar";
 import { LayoutDashboard, Calendar, User, CreditCard, Bell, BarChart3, Building2, Users, FileText, Video, FlaskConical, Image as ImageIcon, Pill, Receipt, ShieldCheck, ClipboardList, Clock, MessageSquare, Settings, Activity, ChevronLeft, ChevronRight, Menu, X, LogOut, Lock } from "lucide-react";
 
-const FloatingAICopilot = dynamic(() => import("@/components/ai/FloatingAICopilot").then((module) => module.FloatingAICopilot), { ssr: false });
 const AuthenticatorEnrollment = dynamic(() => import("@/components/auth/AuthenticatorEnrollment").then(module => module.AuthenticatorEnrollment));
 
 interface NavItem {
@@ -306,13 +307,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         ref={drawerRef}
         id="dashboard-navigation"
         {...drawerGesture.handlers}
-        style={{ translate: drawerGesture.offset ? `${drawerGesture.offset}px 0` : undefined, transition: drawerGesture.dragging ? "none" : undefined, touchAction: "pan-y pinch-zoom" }}
+        style={{ translate: drawerGesture.offset ? `${drawerGesture.offset}px 0` : undefined, transition: drawerGesture.dragging ? "none" : undefined }}
         role={mobileMenuOpen ? "dialog" : undefined}
         aria-modal={mobileMenuOpen || undefined}
         aria-label="Workspace navigation"
         tabIndex={-1}
         className={cn(
-          "fixed lg:static inset-y-0 left-0 z-50 shrink-0 h-full flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          "fixed lg:static inset-y-0 left-0 z-50 shrink-0 h-full flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] [touch-action:pan-y_pinch-zoom]",
           mobileMenuOpen
             ? "translate-x-0 opacity-100 visible pointer-events-auto shadow-lg"
             : "-translate-x-full opacity-0 invisible pointer-events-none lg:translate-x-0 lg:opacity-100 lg:visible lg:pointer-events-auto"
@@ -429,10 +430,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {user ? (
               <Dropdown
                 trigger={
-                  <button type="button" aria-label={`Account menu: ${user.name}, ${user.role}`} className="min-h-11 min-w-11 flex items-center gap-2 hover:bg-surface-hover p-1 pr-1.5 sm:pr-2 rounded-full transition-colors shrink-0 cursor-pointer">
-                    <Avatar src={user.image_url} name={user.name} size="sm" status="online" />
+                  <button type="button" aria-label={`Account menu: ${getAvatarInitials(user.name)} ${user.name}, ${user.role}`} className="min-h-11 min-w-11 flex items-center gap-2 hover:bg-surface-hover p-1 pr-1.5 sm:pr-2 rounded-full transition-colors shrink-0 cursor-pointer">
+                    <span aria-hidden="true"><Avatar src={user.image_url} name={user.name} size="sm" status="online" /></span>{" "}
                     <div className="text-left hidden sm:block">
-                      <p className="text-xs font-semibold text-text leading-tight truncate max-w-[120px]">{user.name}</p>
+                      <p className="text-xs font-semibold text-text leading-tight truncate max-w-[120px]">{user.name}</p>{" "}
                       <p className="text-[10px] text-text-muted capitalize leading-tight">{user.role}</p>
                     </div>
                   </button>
@@ -470,7 +471,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           role="main"
           id="main-content"
           data-app-scroll
-          className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 md:p-6 lg:py-8 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-8 lg:pb-8 scroll-pb-[calc(8rem+env(safe-area-inset-bottom))] md:scroll-pb-8 scroll-smooth w-full touch-scroll [scrollbar-gutter:stable]"
+          className="brand-essence flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 md:p-6 lg:py-8 pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-8 lg:pb-8 scroll-pb-[calc(8rem+env(safe-area-inset-bottom))] md:scroll-pb-8 scroll-smooth w-full touch-scroll [scrollbar-gutter:stable]"
         >
           {/* This shell owns page gutters; route workspaces fill the available width. */}
           <div className="w-full min-w-0 space-y-5 sm:space-y-6" data-dashboard-content>
@@ -497,7 +498,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       />
 
       {/* Global Floating AI Copilot Drawer Button */}
-      <FloatingAICopilot />
+      <AICopilotLauncher />
 
     </div>
   );

@@ -1,0 +1,139 @@
+.container { padding-block: 8px 32px; }
+.breadcrumbs { display: flex; align-items: center; min-height: 56px; min-width: 0; }
+.breadcrumbs > nav { min-width: 0; }
+.breadcrumbs ol { flex-wrap: nowrap; gap: 8px; }
+.breadcrumbs li { flex-shrink: 0; gap: 8px; }
+.breadcrumbs li:not(:first-child):not(:last-child) { min-width: 0; max-width: 14ch; }
+.breadcrumbs li:last-child { min-width: 0; flex: 1; }
+.breadcrumbs [aria-current=page] { min-width: 0; }
+.breadcrumbs a { display: inline-flex; align-items: center; min-height: 44px; }
+.heroCard, .information { background: var(--surface-elevated); border-radius: 18px; box-shadow: none; }
+.hero { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px 24px; padding: 20px; }
+.heroIdentity { display: flex; align-items: center; gap: 18px; min-width: 0; flex: 1 1 320px; }
+.logo { display: flex; width: 72px; height: 72px; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; border-radius: 20px; background: var(--selected); color: var(--accent); font-size: 24px; font-weight: 700; }
+.logo > img, .logo > span { max-width: 100%; max-height: 100%; }
+.heroText { min-width: 0; }
+.heroText h1 { color: var(--text-primary); font-size: 30px; font-weight: 750; line-height: 1.2; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.affiliation { margin-top: 6px; font-size: 13px; line-height: 1.4; color: var(--text-secondary); }
+.heroMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; color: var(--text-secondary); font-size: 14px; }
+.heroMeta > span:has(> svg) { display: inline-flex; align-items: center; gap: 6px; }
+.heroMeta svg { width: 17px; height: 17px; flex-shrink: 0; color: var(--text-muted); }
+.openingStatus { max-width: 100%; flex-wrap: wrap; white-space: normal; }
+.openingStatus > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.heroActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.heroActions button, .contactAction { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius-control); background: transparent; color: var(--text-primary); font-size: 14px; font-weight: 600; line-height: 22px; }
+.heroActions svg { width: 16px; height: 16px; flex-shrink: 0; }
+.contactAction:hover, .heroActions button:hover { background: var(--surface-hover); }
+.callAction { border-color: transparent; background: var(--p-500); color: var(--brand-mist); }
+.callAction:hover { background: var(--p-600); }
+.whatsapp { color: var(--success-text); }
+.layout { gap: 28px; margin-top: 26px; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); }
+.sidebar { grid-column: 2; grid-row: 1; min-width: 0; }
+.doctors { grid-column: 1; grid-row: 1; container-type: inline-size; min-width: 0; overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.information { min-width: 0; }
+.informationBody { padding: 4px 18px 24px; }
+.visit { display: grid; }
+.visitRow { display: grid; grid-template-columns: 20px minmax(0, 1fr) 28px; align-items: start; gap: 12px; padding-block: 14px; border-bottom: 1px solid var(--border); }
+.visitIcon { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 24px; color: var(--text-muted); }
+.visitIcon svg { width: 16px; height: 16px; }
+.contactText { min-width: 0; padding-top: 2px; font-size: 14px; line-height: 1.55; color: var(--text-primary); }
+.contactText > span, .hoursBody h2 { display: block; margin-bottom: 2px; color: var(--text-secondary); font-size: 12px; font-weight: 400; line-height: 1.5; }
+.contactText p, .contactText a { min-width: 0; overflow-wrap: anywhere; }
+.contactText a { display: flex; align-items: center; min-height: 44px; margin-block: -10px; }
+.contactText a:hover { color: var(--accent); }
+.iconButton { display: inline-flex; width: 44px; min-height: 44px; margin: -4px -8px 0; align-items: center; justify-content: center; flex-shrink: 0; border-radius: var(--radius-control); color: var(--text-muted); background: transparent; }
+.iconButton:hover { color: var(--accent); background: var(--surface-hover); }
+.iconButton svg { width: 15px; height: 15px; }
+.hoursSection { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 12px; padding-top: 14px; }
+.hoursBody { min-width: 0; padding-top: 2px; }
+.hours { display: grid; gap: 5px; margin-top: 4px; font-size: 13px; line-height: 1.55; color: var(--text-primary); }
+.hours > div { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: baseline; gap: 8px; }
+.hours dt { text-transform: capitalize; }
+.hours dd { text-align: right; overflow-wrap: anywhere; }
+.unlisted { color: var(--text-secondary); }
+.embeddedMap { overflow: hidden; margin-top: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-alt); }
+.embeddedMap iframe { display: block; width: 100%; height: 210px; border: 0; }
+.description { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; line-height: 1.6; white-space: pre-line; color: var(--text-secondary); overflow-wrap: anywhere; }
+.doctorSection { padding: 4px 0 0; }
+.sectionHeader h2 { font-size: 20px; font-weight: 700; line-height: 1.3; letter-spacing: -.03em; color: var(--text-primary); overflow-wrap: anywhere; }
+.sectionHeader p { margin-top: 5px; font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
+.filters { display: flex; flex-wrap: wrap; gap: 12px; }
+.filters:has(> *) { margin-top: 16px; }
+.filters > * { flex: 1; min-width: min(100%, 200px); }
+.filters button { min-height: 44px; }
+.results { margin-top: 12px; font-size: 13px; color: var(--text-secondary); }
+.doctorList { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.doctorRow { display: flex; flex-direction: column; gap: 16px; min-width: 0; padding: 18px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface-elevated); transition: border-color 160ms ease; }
+.doctorRow:focus-within { border-color: var(--focus-ring); }
+.doctorIdentity { display: flex; align-items: center; gap: 14px; min-width: 0; align-self: flex-start; max-width: 100%; border-radius: 10px; }
+.avatar { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 52px; height: 52px; overflow: hidden; border-radius: 50%; background: var(--selected); color: var(--accent); font-size: 14px; font-weight: 600; }
+.doctorText { min-width: 0; }
+.doctorText h3 { font-size: 18px; line-height: 1.25; font-weight: 700; color: var(--text-primary); letter-spacing: -.025em; overflow-wrap: anywhere; }
+.doctorIdentity:hover h3 { color: var(--accent); text-decoration: underline; }
+.specialty { color: var(--accent); font-size: 14px; margin-top: 4px; overflow-wrap: anywhere; }
+.credentials { color: var(--text-secondary); font-size: 13px; margin-top: 4px; line-height: 1.45; overflow-wrap: anywhere; }
+.credentials:empty { display: none; }
+.rating { display: flex; align-items: center; gap: 4px; margin-top: 5px; color: var(--text-secondary); font-size: 12px; }
+.rating svg { width: 14px; height: 14px; color: var(--warning-text); }
+.doctorFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 20px; padding-top: 14px; border-top: 1px solid var(--border); }
+.doctorBooking { display: grid; grid-template-columns: minmax(90px, 1fr) 156px; align-items: center; gap: 16px; min-width: 0; margin-left: auto; }
+.doctorFee { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.doctorFee > span { font-size: 12px; line-height: 1.4; color: var(--text-secondary); }
+.doctorFee strong { font-size: 20px; color: var(--text-primary); line-height: 1.2; overflow-wrap: anywhere; }
+.doctorActions { display: flex; min-width: 0; }
+.doctorActions button { min-height: 44px; padding-inline: 12px; font-size: 14px; }
+.doctorActions button svg { width: 16px; height: 16px; flex-shrink: 0; }
+.doctorStatus { display: flex; align-items: flex-start; gap: 8px; min-width: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.doctorStatus svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 3px; }
+.notice { margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-alt); color: var(--text-secondary); font-size: 13px; }
+.notice strong { color: var(--text-primary); }
+.notice p { margin-top: 4px; }
+.empty { padding: 24px 0; color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
+.empty a { display: inline-flex; align-items: center; min-height: 44px; margin-right: 16px; color: var(--accent); text-decoration: underline; }
+.disclosure { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 8px; }
+.disclosure summary { min-height: 44px; padding: 12px 8px; margin-inline: -8px; border-radius: 8px; color: var(--accent); font-size: 13px; font-weight: 600; line-height: 20px; cursor: pointer; }
+.disclosure summary:hover { background: var(--surface-hover); }
+.amenityTitle { margin-top: 8px; color: var(--text-primary); font-size: 14px; font-weight: 600; }
+.amenities { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; list-style: none; }
+.amenities li { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--text-secondary); }
+.gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.gallery button { aspect-ratio: 1; min-height: 44px; overflow: hidden; border-radius: 10px; background: var(--surface-alt); }
+.container a:focus-visible, .container button:focus-visible, .container summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) { .doctorRow:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); } }
+@media (prefers-reduced-motion: reduce) { .doctorRow { transition: none; } }
+@media (max-width: 899px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .sidebar { grid-column: 1; grid-row: 2; }
+  .doctors { grid-column: 1; grid-row: 1; }
+}
+@media (max-width: 639px) {
+  .container { padding-block: 4px 16px; }
+  .breadcrumbs { min-height: 52px; }
+  .breadcrumbs li:not(:first-child):not(:last-child) { display: none; }
+  .hero { padding: 16px; gap: 16px; }
+  .heroIdentity { gap: 12px; flex-basis: 100%; }
+  .logo { width: 60px; height: 60px; border-radius: 16px; font-size: 21px; }
+  .heroText h1 { font-size: 24px; }
+  .heroMeta { gap: 6px 8px; font-size: 13px; }
+  .heroActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .heroActions > * { min-width: 0; }
+  .heroActions button, .contactAction { padding-inline: 10px; font-size: 13px; }
+  .layout { margin-top: 24px; }
+  .informationBody { padding-inline: 16px; }
+  .sectionHeader p { font-size: 13px; }
+}
+@container (max-width: 620px) {
+  .doctorFooter { gap: 12px; }
+  .doctorBooking { width: 100%; grid-template-columns: minmax(0, 1fr) 156px; gap: 12px; }
+}
+@container (max-width: 360px) {
+  .doctorRow { padding: 14px; }
+  .doctorIdentity { gap: 12px; }
+  .avatar { width: 44px; height: 44px; }
+  .doctorText h3 { font-size: 17px; }
+  .specialty { font-size: 13px; }
+  .credentials { font-size: 12px; }
+  .doctorBooking { grid-template-columns: minmax(0, 1fr) 136px; }
+  .doctorFee > span { font-size: 11px; }
+  .doctorActions button { padding-inline: 8px; font-size: 13px; }
+}

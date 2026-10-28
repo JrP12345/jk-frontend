@@ -54,7 +54,7 @@ it('reports payment pending after a disruption reschedule', async () => {
 it("uses the shared date picker and preserves branch-local bounds and the private reschedule proof", async () => {
   window.history.replaceState({}, "", "/track/visit?action=reschedule#t=private-tracker-proof");
   render(<ThemeProvider><ToastProvider><Tracker /></ToastProvider></ThemeProvider>);
-  const trigger = await screen.findByRole("button", { name: "Select Date" });
+  const trigger = await screen.findByRole("button", { name: /^Select Date/ });
   const input = datePickerInput(trigger);
   expect(input).toHaveAttribute("min", input.value);
   const date = input.value;

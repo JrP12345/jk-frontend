@@ -78,7 +78,6 @@ export default function LaboratoryPage() {
   const [labTests, setLabTests] = useState<LabTestType[]>([]);
   const [labOrders, setLabOrders] = useState<LabOrderType[]>([]);
   const [doctors, setDoctors] = useState<DoctorUser[]>([]);
-  const [tatMetrics, setTatMetrics] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -99,20 +98,18 @@ export default function LaboratoryPage() {
         setLabTests(testsRes.data?.data || []);
         setLabOrders(ordersRes.data?.data || []);
       } else {
-        const [testsRes, ordersRes, docRes, tatRes] = await Promise.all([
+        const [testsRes, ordersRes, docRes] = await Promise.all([
           api.get(!isAll ? `/lab-tests?locationId=${selectedLocationId}` : "/lab-tests", { signal: request.signal }),
           api.get(linkedOrderId ? `/lab-orders?orderId=${linkedOrderId}${!isAll ? `&locationId=${selectedLocationId}` : ""}` : !isAll ? `/lab-orders?locationId=${selectedLocationId}` : "/lab-orders", { signal: request.signal }),
           api.get(!isAll ? `/onboarding/staff?locationId=${selectedLocationId}` : "/onboarding/staff", { signal: request.signal }),
-          api.get(!isAll ? `/lab/tat-metrics?locationId=${selectedLocationId}` : "/lab/tat-metrics", { signal: request.signal }),
         ]);
 
         if (!request.isCurrent()) return;
         setLabTests(testsRes.data?.data || []);
         setLabOrders(ordersRes.data?.data || []);
         setDoctors(docRes.data?.data?.doctors || []);
-        setTatMetrics(tatRes.data?.data || null);
       }
-    } catch (err) {
+    } catch {
       if (!request.isCurrent()) return;
       setLoadError("Laboratory records could not be loaded. Check your connection and try again.");
       // Non-critical
@@ -669,7 +666,7 @@ export default function LaboratoryPage() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <h4 className="font-bold text-text text-sm">{order.patientId?.userId?.name || "Patient"}</h4>
+                            <h2 className="font-bold text-text text-sm">{order.patientId?.userId?.name || "Patient"}</h2>
                             {order.patientId?.userId?.phone && (
                               <a
                                 href={`tel:${order.patientId?.userId?.phone}`}
@@ -828,7 +825,7 @@ export default function LaboratoryPage() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <h4 className="font-bold text-text text-sm">{test.name}</h4>
+                            <h2 className="font-bold text-text text-sm">{test.name}</h2>
                             <p className="text-xs text-text-muted">{test.department}</p>
                           </div>
                           <Badge variant="outline" size="sm" className="font-mono text-[10px] font-bold uppercase shrink-0">
@@ -893,7 +890,7 @@ export default function LaboratoryPage() {
           {/* TAB 3: PATIENT VAULT (PATIENT VIEW) */}
           {activeTab === "patientVault" && (
             <div className="space-y-6">
-              <h3 className="text-lg font-bold text-text">My Laboratory & Diagnostic Reports</h3>
+              <h2 className="text-lg font-bold text-text">My Laboratory & Diagnostic Reports</h2>
 
               <Card className="overflow-hidden">
                 <Table
@@ -951,7 +948,7 @@ export default function LaboratoryPage() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <h4 className="font-bold text-text text-sm">{order.testId?.name}</h4>
+                            <h3 className="font-bold text-text text-sm">{order.testId?.name}</h3>
                             <p className="text-xs text-text-muted font-mono">{order.testId?.code} &bull; {order.testId?.department}</p>
                           </div>
                           <Badge

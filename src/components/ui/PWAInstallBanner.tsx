@@ -1,7 +1,8 @@
 "use client";
 
 import { usePWA } from "@/hooks/usePWA";
-import { Button, EkavyuIcon } from "@/components/ui";
+import Button from "./Button";
+import { EkavyuIcon } from "./EkavyuLogo";
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "./Toast";

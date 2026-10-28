@@ -98,7 +98,7 @@ export class EkavyuAISDK {
         try {
           await api.post("/auth/refresh");
           return await makeStreamRequest(true);
-        } catch (refreshErr) {
+        } catch {
           if (typeof window !== "undefined") {
             window.dispatchEvent(new Event("auth-expired"));
           }

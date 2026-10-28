@@ -35,7 +35,7 @@ jobs:
       - name: Security Vulnerability Audit (High/Critical Only)
         run: npm audit --audit-level=high
       - name: TypeScript type check
-        run: npx tsc --noEmit
+        run: npm run check:types
       - name: Frontend lint
         run: npm run lint
       - name: Frontend tests

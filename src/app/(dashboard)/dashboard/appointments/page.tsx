@@ -1011,7 +1011,7 @@ export default function AppointmentsPage() {
         </div>
         <div className={styles.searchRow}>
           <Input type="search" icon={<Search size={16} />} aria-label="Search all appointments" placeholder="Patient, doctor or token" value={listSearch} onChange={e => setListSearch(e.target.value)} />
-          <Button variant="outline" size="sm" aria-label="Filter appointments" onClick={() => setFiltersOpen(true)} className={styles.filterButton}><SlidersHorizontal size={16} /><span className={styles.filterLabel}>Filters</span>{(filterStatus || filterDoctor || (filterDate && filterDate !== getTodayISO())) && <i className={styles.filterDot} />}</Button>
+          <Button variant="outline" size="sm" aria-label="Filters: Filter appointments" onClick={() => setFiltersOpen(true)} className={styles.filterButton}><SlidersHorizontal size={16} /><span className={styles.filterLabel}>Filters</span>{(filterStatus || filterDoctor || (filterDate && filterDate !== getTodayISO())) && <i className={styles.filterDot} />}</Button>
         </div>
         <div className={styles.filterSummary}>
           <span>{reviewOnly ? "Overdue and unresolved visits" : viewLayout === "calendar" ? "Calendar schedule" : filterDate ? filterDate.includes(" to ") ? filterDate.replace(" to ", " – ") : new Date(filterDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "All dates"}{filterStatus ? " · " + filterStatus.replaceAll("-", " ") : ""}</span>

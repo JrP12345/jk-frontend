@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import Analytics from "@/app/(dashboard)/dashboard/analytics/page";
 import { ToastProvider } from "@/components/ui/Toast";
 const fixture = vi.hoisted(() => ({ executive: vi.fn(), optional: vi.fn(), allowed: true, user: { id: "viewer" } }));
-vi.mock("@/services/analytics.service", () => ({ AnalyticsService: { getExecutiveAnalytics: fixture.executive, getQualityMetrics: fixture.optional, getNabhKpis: fixture.optional } }));
+vi.mock("@/services/analytics.service", () => ({ AnalyticsService: { getExecutiveAnalytics: fixture.executive, getNabhKpis: fixture.optional } }));
 vi.mock("@/store/authStore", () => ({ useAuthStore: () => ({ user: fixture.user }) }));
 vi.mock("@/lib/permissions", () => ({ canViewAnalytics: () => fixture.allowed }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); fixture.allowed = true; });

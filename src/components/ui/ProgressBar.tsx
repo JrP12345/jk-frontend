@@ -75,7 +75,7 @@ const ProgressBar = memo(function ProgressBar({
             aria-valuenow={value}
             aria-valuemin={0}
             aria-valuemax={max}
-            aria-label={label || undefined}
+            aria-label={label || "Progress"}
           />
         )}
       </div>

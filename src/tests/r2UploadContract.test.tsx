@@ -28,3 +28,11 @@ it("rejects incomplete success responses instead of inventing a storage key", as
   expect(result.current.error).toBe("Upload response is incomplete");
   expect(result.current.uploading).toBe(false);
 });
+
+it("sends the selected organization explicitly for a staff avatar without a patient", async () => {
+  vi.mocked(api.post).mockResolvedValue({ data: { success: true, data: { objectKey: "tenants/selected/verified/photo.png", intentId: "avatar" } } });
+  const { result } = renderHook(() => useR2Upload());
+  await act(async () => { await result.current.uploadFile(new File(["photo"], "photo.png", { type: "image/png" }), { organizationId: "selected", contentClass: "avatar" }); });
+  expect(api.post).toHaveBeenCalledWith("/uploads/base64", expect.objectContaining({ organizationId: "selected", contentClass: "avatar", originalFilename: "photo.png" }));
+  expect(vi.mocked(api.post).mock.calls[0][1]).not.toHaveProperty("patientId");
+});

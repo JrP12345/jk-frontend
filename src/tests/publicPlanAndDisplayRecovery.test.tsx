@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Pricing from "@/app/pricing/page";
 import QueueTV from "@/app/queue-tv/page";
 
@@ -17,10 +18,14 @@ const plan = {
 };
 afterEach(() => { cleanup(); vi.useRealTimers(); fixture.getPlans.mockReset(); fixture.get.mockReset(); });
 
+function renderPricing(client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })) {
+  return render(<QueryClientProvider client={client}><Pricing /></QueryClientProvider>);
+}
+
 describe("Configured public plans", () => {
   it("shows configured trial, currency and capacities without fixed promotional claims", async () => {
     fixture.getPlans.mockResolvedValue([plan]);
-    render(<Pricing />);
+    renderPricing();
     await screen.findByRole("heading", { name: plan.name });
     expect(screen.getByText("7-day free trial")).toBeInTheDocument();
     expect(screen.getByText("$90")).toBeInTheDocument();
@@ -36,10 +41,29 @@ describe("Configured public plans", () => {
 
   it("recovers a failed plan read and uses the approved sales destination", async () => {
     fixture.getPlans.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce([{ ...plan, slug: "enterprise", trialDays: 0 }]);
-    render(<Pricing />);
+    renderPricing();
     fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
     expect(await screen.findByRole("link", { name: "Contact Sales" })).toHaveAttribute("href", "mailto:ekavyuofficial@gmail.com");
     expect(screen.getByText("No free trial")).toBeInTheDocument();
+  });
+
+  it("reuses plans already read by the home page on navigation", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    client.setQueryData(["public-plans"], [plan]);
+    renderPricing(client);
+    expect(await screen.findByRole("heading", { name: plan.name })).toBeInTheDocument();
+    expect(fixture.getPlans).not.toHaveBeenCalled();
+  });
+
+  it("offers recovery when no active plans are configured", async () => {
+    fixture.getPlans.mockResolvedValueOnce([]).mockResolvedValueOnce([plan]);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
+    renderPricing(client);
+    expect(await screen.findByText("No active pricing plans are configured.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { name: plan.name })).toBeInTheDocument();
+    expect(fixture.getPlans).toHaveBeenCalledTimes(2);
+    client.clear();
   });
 });
 

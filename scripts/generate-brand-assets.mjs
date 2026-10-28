@@ -1,69 +1,34 @@
-// Run from the frontend repository: npm run brand:assets
-// Preserve the supplied artwork; only resize and place it on icon canvases.
+// npm run brand:assets — the UI master is a transparent path-only SVG.
 import path from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import sharp from 'sharp';
+
 const publicDir = path.join(import.meta.dirname, '../public');
-const source = path.join(publicDir, 'image.png');
-
-async function appIcon(markSource, name, size, background, scale = 0.92) {
-  const markSize = Math.floor(size * scale);
-  const mark = await sharp(markSource).resize(markSize, markSize, { fit: 'contain', background: '#00000000' }).png().toBuffer();
-  await sharp({ create: { width: size, height: size, channels: 4, background } })
-    .composite([{ input: mark, gravity: 'centre' }])
-    .png().toFile(path.join(publicDir, name));
+const brandDir = path.join(publicDir, 'brand');
+const source = path.join(import.meta.dirname, '../assets/brand/ekavyu-mark.svg');
+await mkdir(brandDir, { recursive: true });
+const original = await readFile(source, 'utf8');
+if (/<(?:image|script|foreignObject|rect)\b/i.test(original)) throw new Error('The logo must contain vector paths without a background or embedded image.');
+// Remove unused icon-background gradients and compact sub-pixel coordinates.
+// This retains the supplied contours; there is no bitmap tracing or runtime rendering code.
+const svg = original.replace(/<linearGradient id="(?:iconBg|creamBg|softPurp)"[\s\S]*?<\/linearGradient>/g, '')
+  .replace(/-?\d+\.\d+/g, value => String(Math.round(Number(value) * 10) / 10))
+  .replace(/>\s+</g, '><').trim();
+await writeFile(path.join(brandDir, 'ekavyu-mark.svg'), svg + '\n');
+for (const size of [16, 32]) {
+  await sharp(Buffer.from(svg)).resize(size, size).png({ compressionLevel: 9, adaptiveFiltering: true })
+    .toFile(path.join(publicDir, `favicon-${size}.png`));
 }
-
-async function main() {
-  if (process.argv.includes('--website-only')) return websiteMarks();
-  const metadata = await sharp(source).metadata();
-  if (!metadata.hasAlpha) throw new Error('The source logo must retain transparency.');
-  // The supplied image has transparent margins and a few nearly invisible
-  // pixels outside the mark. Fit the visible artwork, rather than that canvas.
-  const { data, info } = await sharp(source).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  let left = info.width, top = info.height, right = -1, bottom = -1;
-  for (let y = 0; y < info.height; y++) {
-    for (let x = 0; x < info.width; x++) {
-      if (data[(y * info.width + x) * 4 + 3] <= 16) continue;
-      left = Math.min(left, x); top = Math.min(top, y);
-      right = Math.max(right, x); bottom = Math.max(bottom, y);
-    }
-  }
-  if (right < left) throw new Error('The source logo has no visible artwork.');
-  left = Math.max(0, left - 2); top = Math.max(0, top - 2);
-  right = Math.min(info.width - 1, right + 2); bottom = Math.min(info.height - 1, bottom + 2);
-  const width = right - left + 1, height = bottom - top + 1;
-  const markSource = await sharp(source).extract({ left, top, width, height }).png().toBuffer();
-  let radius = 0;
-  for (let y = top; y <= bottom; y++) {
-    for (let x = left; x <= right; x++) {
-      if (data[(y * info.width + x) * 4 + 3] <= 16) continue;
-      radius = Math.max(radius, Math.hypot(x - (left + right) / 2, y - (top + bottom) / 2) / Math.max(width, height));
-    }
-  }
-  // Website components retain the original canvas and their established visual size.
-  // Only OS/browser icons use the tightly fitted artwork below.
-  await sharp(source).resize(512, 512, { fit: 'contain', background: '#00000000' }).png()
-    .toFile(path.join(publicDir, 'ekavyu-leaf.png'));
-  for (const size of [16, 32]) {
-    await sharp(markSource).resize(size, size, { fit: 'contain', background: '#00000000' }).png()
-      .toFile(path.join(publicDir, `favicon-${size}.png`));
-  }
-  for (const size of [192, 512]) {
-    await appIcon(markSource, `app-icon-${size}.png`, size, '#F7F7F2', 0.78);
-  }
-  await appIcon(markSource, 'app-icon-180.png', 180, '#F7F7F2', 0.78);
-  // Fit the actual leaf silhouette inside the maskable safe circle, with margin.
-  await appIcon(markSource, 'app-icon-maskable-512.png', 512, '#F7F7F2', Math.min(0.78, 0.39 / radius));
-  await websiteMarks();
-  console.log('Generated Ekavyu UI, favicon, Apple and PWA assets from public/image.png.');
+for (const size of [180, 192, 512]) {
+  const mark = await sharp(Buffer.from(svg)).resize(Math.round(size * .82), Math.round(size * .82)).png().toBuffer();
+  await sharp({ create: { width: size, height: size, channels: 4, background: '#F6F2E8' } })
+    .composite([{ input: mark, gravity: 'centre' }]).removeAlpha()
+    .png({ compressionLevel: 9, adaptiveFiltering: true })
+    .toFile(path.join(publicDir, `app-icon-${size}.png`));
 }
-
-async function websiteMarks() {
-  for (const size of [96, 160, 240]) {
-    await sharp(path.join(publicDir, 'ekavyu-leaf.png'))
-      .resize(size, size).webp({ quality: 88 })
-      .toFile(path.join(publicDir, `ekavyu-leaf-${size}.webp`));
-  }
-}
-
-main().catch(error => { console.error(error); process.exitCode = 1; });
+const safeMark = await sharp(Buffer.from(svg)).resize(280, 280).png().toBuffer();
+await sharp({ create: { width: 512, height: 512, channels: 4, background: '#F6F2E8' } })
+  .composite([{ input: safeMark, gravity: 'centre' }]).removeAlpha()
+  .png({ compressionLevel: 9, adaptiveFiltering: true })
+  .toFile(path.join(publicDir, 'app-icon-maskable-512.png'));
+console.log('Generated transparent SVG, favicons and vector-derived install icons.');

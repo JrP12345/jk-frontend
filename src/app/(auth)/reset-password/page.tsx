@@ -103,7 +103,7 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center py-20 px-4 bg-surface-alt relative font-sans text-text animate-page-enter">
+    <main className="min-h-dvh flex flex-col items-center justify-center py-20 px-4 bg-surface-alt relative font-sans text-text animate-page-enter">
       {/* Background glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 brand-wash" />
@@ -190,7 +190,7 @@ function ResetPasswordForm() {
           )}
         </Card>
       </div>
-    </div>
+    </main>
   );
 }
 

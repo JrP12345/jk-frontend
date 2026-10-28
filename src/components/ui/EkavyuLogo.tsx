@@ -10,6 +10,8 @@ export interface EkavyuLogoProps {
   size?: "sm" | "md" | "lg" | "xl";
   /** Include the tagline only where the brand has room, such as auth screens. */
   showTagline?: boolean;
+  /** Place a small, quiet wordmark beneath the symbol. */
+  layout?: "horizontal" | "stacked";
 }
 
 const wordmarkSizeMap = {
@@ -26,14 +28,12 @@ const iconSizeMap = {
   xl: "h-20 w-20",
 };
 
-/** Supplied transparent leaf mark, shared by both display modes. */
+/** Transparent path-based vector supplied in the brand handoff. */
 export function EkavyuIcon({ className = "h-10 w-10" }: { className?: string }) {
   return (
     <div className={cn("relative inline-flex shrink-0 items-center justify-center", className)}>
       <LoadingImage
-        src="/ekavyu-leaf-160.webp?v=website-2"
-        srcSet="/ekavyu-leaf-96.webp?v=website-2 96w, /ekavyu-leaf-160.webp?v=website-2 160w, /ekavyu-leaf-240.webp?v=website-2 240w"
-        sizes="80px"
+        src="/brand/ekavyu-mark.svg?v=brand-5"
         alt="Ekavyu"
         width={512}
         height={512}
@@ -56,18 +56,20 @@ export default function EkavyuLogo({
   iconOnly = false,
   size = "md",
   showTagline = false,
+  layout = "horizontal",
 }: EkavyuLogoProps) {
   if (iconOnly) {
     return <EkavyuIcon className={cn(iconSizeMap[size], className)} />;
   }
 
   const sizeClass = wordmarkSizeMap[size];
+  const stacked = layout === "stacked";
 
   return (
-    <div className={cn("inline-flex shrink-0 select-none items-center gap-2 py-1 font-bold tracking-tight text-text", sizeClass, className)}>
+    <div className={cn("inline-flex shrink-0 select-none items-center py-1 text-text", stacked ? "flex-col gap-0.5" : cn("gap-2 font-bold tracking-tight", sizeClass), className)}>
       <EkavyuIcon className={iconSizeMap[size]} />
-      <span className="flex min-w-0 flex-col">
-        <span aria-hidden="true">Ekavyu</span>
+      <span className={cn("flex min-w-0 flex-col", stacked && "items-center text-center")}>
+        <span aria-hidden="true" className={stacked ? cn("font-semibold tracking-[.035em] leading-none", size === "xl" ? "text-base" : size === "lg" ? "text-sm" : "text-[11px]") : "uppercase tracking-[.16em]"}>Ekavyu</span>
         {showTagline && <span className="text-[10px] sm:text-xs font-medium tracking-normal text-text-secondary">Care That Keeps Moving</span>}
       </span>
     </div>

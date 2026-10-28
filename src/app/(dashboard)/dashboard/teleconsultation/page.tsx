@@ -512,7 +512,7 @@ export default function TeleconsultationPage() {
                       {patientName.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-bold text-sm text-text truncate">{patientName}</h3>
+                      <h2 className="font-bold text-sm text-text truncate">{patientName}</h2>
                       {patientPhone ? (
                         <a
                           href={`tel:${patientPhone}`}

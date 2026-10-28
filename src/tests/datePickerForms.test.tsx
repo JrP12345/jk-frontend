@@ -12,7 +12,7 @@ it("preserves required form validation and focuses the shared trigger", async ()
   render(<form onSubmit={event => { event.preventDefault(); submit(); }}><DatePicker label="Visit date" name="visit" required /><button type="submit">Save</button></form>);
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(submit).not.toHaveBeenCalled();
-  expect(screen.getByRole("button", { name: "Visit date" })).toHaveFocus();
+  expect(screen.getByRole("button", { name: /^Visit date/ })).toHaveFocus();
   expect(await screen.findByRole("alert")).toHaveTextContent("Choose a date.");
 });
 
@@ -20,12 +20,12 @@ it("enforces calendar and form date bounds without mutating Date props", async (
   const min = new Date(2026, 9, 18, 10, 30);
   const original = min.getTime();
   render(<form><DatePicker label="Visit" value="2026-10-18" minDate={min} maxDate="2026-10-20" /></form>);
-  fireEvent.click(screen.getByRole("button", { name: "Visit" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Visit/ }));
   const popup = await screen.findByRole("dialog", { name: "Choose Visit" });
   expect(within(popup).getByRole("button", { name: /17.*October.*2026|October.*17.*2026/ })).toBeDisabled();
   expect(within(popup).getByRole("button", { name: /21.*October.*2026|October.*21.*2026/ })).toBeDisabled();
   expect(min.getTime()).toBe(original);
-  const input = datePickerInput(screen.getByRole("button", { name: "Visit" }));
+  const input = datePickerInput(screen.getByRole("button", { name: /^Visit/ }));
   fireEvent.change(input, { target: { value: "2026-10-17" } });
   let valid = true; act(() => { valid = input.checkValidity(); }); expect(valid).toBe(false);
 });
@@ -33,7 +33,7 @@ it("enforces calendar and form date bounds without mutating Date props", async (
 it("keeps exact minutes on opening and cancels an unconfirmed time edit", async () => {
   const change = vi.fn();
   render(<DatePicker label="Time" mode="time" value="23:17" onChange={change} />);
-  fireEvent.click(screen.getByRole("button", { name: "Time" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Time/ }));
   const popup = await screen.findByRole("dialog", { name: "Choose Time" });
   expect(within(popup).getByLabelText("Minute")).toHaveTextContent("17");
   expect(change).not.toHaveBeenCalled();
@@ -47,7 +47,7 @@ it("keeps exact minutes on opening and cancels an unconfirmed time edit", async 
 
 it("saves an exact midnight minute using shared select controls", async () => {
   const change = vi.fn(); render(<DatePicker label="Time" mode="time" value="23:17" onChange={change} />);
-  fireEvent.click(screen.getByRole("button", { name: "Time" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Time/ }));
   const popup = await screen.findByRole("dialog", { name: "Choose Time" });
   for (const [label, option] of [["Hour", "12"], ["Minute", "19"], ["Period", "AM"]]) {
     fireEvent.click(within(popup).getByLabelText(label));
@@ -60,7 +60,7 @@ it("saves an exact midnight minute using shared select controls", async () => {
 
 it("preserves local date-time strings and exact minutes without timezone conversion", async () => {
   const change = vi.fn(); render(<DatePicker label="Task due" mode="datetime" value="2026-10-18T11:17" onChange={change} />);
-  fireEvent.click(screen.getByRole("button", { name: "Task due" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Task due/ }));
   const popup = await screen.findByRole("dialog", { name: "Choose Task due" });
   fireEvent.click(within(popup).getByRole("button", { name: /Set Time/ }));
   expect(within(popup).getByLabelText("Minute")).toHaveTextContent("17");
@@ -73,15 +73,15 @@ it("clears a controlled time, preserves form values and stays disabled with its 
     const [time, setTime] = useState("10:17");
     return <form aria-label="Time form"><DatePicker name="time" label="Time" mode="time" value={time} onChange={setTime} /><fieldset disabled><DatePicker label="Unavailable date" required /></fieldset></form>;
   }
-  render(<Form />); const input = datePickerInput(screen.getByRole("button", { name: "Time" })); expect(input).toHaveValue("10:17");
+  render(<Form />); const input = datePickerInput(screen.getByRole("button", { name: /^Time/ })); expect(input).toHaveValue("10:17");
   fireEvent.click(screen.getByRole("button", { name: "Clear time" })); expect(input).toHaveValue("");
-  expect(screen.getByRole("button", { name: "Unavailable date" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /^Unavailable date/ })).toBeDisabled();
   expect(new FormData(screen.getByRole("form") as HTMLFormElement).get("time")).toBe("");
 });
 
 it("keeps the parent modal open when nested date and time popovers close", async () => {
   const close = vi.fn(); render(<Modal open title="Booking" onClose={close}><DatePicker label="Visit time" mode="time" value="09:17" /></Modal>);
-  fireEvent.click(screen.getByRole("button", { name: "Visit time" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Visit time/ }));
   const picker = await screen.findByRole("dialog", { name: "Choose Visit time" });
   fireEvent.click(within(picker).getByLabelText("Minute"));
   await screen.findByRole("listbox");
@@ -100,7 +100,7 @@ it("selects and clears a printed expiry month without inventing a day", async ()
     return <form aria-label="Expiry"><DatePicker label="Printed expiry" name="expiry" mode="month" value={value} onChange={value => { change(value); setValue(value); }} /></form>;
   }
   render(<Form />);
-  const trigger = screen.getByRole("button", { name: "Printed expiry" });
+  const trigger = screen.getByRole("button", { name: /^Printed expiry/ });
   expect(trigger).toHaveTextContent("October 2026");
   trigger.focus();
   fireEvent.click(trigger);
@@ -108,7 +108,7 @@ it("selects and clears a printed expiry month without inventing a day", async ()
   expect(within(popup).getByRole("button", { name: "October 2026" })).toHaveAttribute("aria-pressed", "true");
   fireEvent.click(within(popup).getByRole("button", { name: "November 2026" }));
   expect(change).toHaveBeenCalledExactlyOnceWith("2026-11");
-  const form = screen.getByRole("form", { name: "Expiry" }) as HTMLFormElement;
+  const form = screen.getByRole("form", { name: /^Expiry/ }) as HTMLFormElement;
   expect(new FormData(form).get("expiry")).toBe("2026-11");
   expect(trigger).toHaveFocus();
   fireEvent.click(screen.getByRole("button", { name: "Clear date" }));
@@ -119,7 +119,7 @@ it("selects and clears a printed expiry month without inventing a day", async ()
 it("bounds month selection with Date/string limits and preserves the bounds", async () => {
   const min = new Date(2026, 9, 18, 10, 30), original = min.getTime();
   render(<DatePicker label="Expiry" mode="month" value="2026-10" minDate={min} maxDate="2026-11" />);
-  const trigger = screen.getByRole("button", { name: "Expiry" });
+  const trigger = screen.getByRole("button", { name: /^Expiry/ });
   const input = datePickerInput(trigger);
   expect(input).toHaveAttribute("min", "2026-10");
   expect(input).toHaveAttribute("max", "2026-11");
@@ -137,7 +137,7 @@ it("bounds month selection with Date/string limits and preserves the bounds", as
 it("navigates expiry years and returns from year selection to months", async () => {
   const change = vi.fn();
   render(<DatePicker label="Expiry" mode="month" value="2026-12" onChange={change} />);
-  fireEvent.click(screen.getByRole("button", { name: "Expiry" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Expiry/ }));
   const popup = await screen.findByRole("dialog", { name: "Choose Expiry" });
   fireEvent.click(within(popup).getByRole("button", { name: "Next Year" }));
   fireEvent.click(within(popup).getByRole("button", { name: "Previous Year" }));
@@ -150,7 +150,7 @@ it("navigates expiry years and returns from year selection to months", async () 
 it("validates a required month and retains browser autofill metadata", async () => {
   const submit = vi.fn();
   render(<form onSubmit={event => { event.preventDefault(); submit(); }}><DatePicker label="Expiry" mode="month" required autoComplete="off" /><button type="submit">Save</button></form>);
-  const trigger = screen.getByRole("button", { name: "Expiry" });
+  const trigger = screen.getByRole("button", { name: /^Expiry/ });
   expect(datePickerInput(trigger)).toHaveAttribute("autocomplete", "off");
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(submit).not.toHaveBeenCalled();
@@ -161,11 +161,11 @@ it("validates a required month and retains browser autofill metadata", async () 
 it.each(["date", "month"] as const)("ignores an open %s popup when its original fieldset becomes locked", async mode => {
   const change = vi.fn();
   const view = render(<fieldset><DatePicker label="Source date" mode={mode} value={mode === "month" ? "2026-10" : "2026-10-18"} onChange={change} /></fieldset>);
-  fireEvent.click(screen.getByRole("button", { name: "Source date" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Source date/ }));
   const popup = await screen.findByRole("dialog", { name: "Choose Source date" });
   view.rerender(<fieldset disabled><DatePicker label="Source date" mode={mode} value={mode === "month" ? "2026-10" : "2026-10-18"} onChange={change} /></fieldset>);
   fireEvent.click(within(popup).getByRole("button", { name: mode === "month" ? "November 2026" : /19.*October.*2026|October.*19.*2026/ }));
   expect(change).not.toHaveBeenCalled();
-  expect(screen.getByRole("button", { name: "Source date" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /^Source date/ })).toBeDisabled();
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });

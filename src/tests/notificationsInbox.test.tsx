@@ -71,7 +71,7 @@ it("keeps pin, mark read, and mark all actions available without opening the not
   fireEvent.click(within(row).getByRole("button", { name: `Options for ${notice.title}` }));
   fireEvent.click(await screen.findByRole("menuitem", { name: "Unpin notification" }));
   await waitFor(() => expect(actions.pin).toHaveBeenCalledWith(notice.id));
-  fireEvent.click(within(row).getByRole("button", { name: `Mark ${notice.title} as read` }));
+  fireEvent.click(within(row).getByRole("button", { name: `Mark read: ${notice.title}` }));
   await waitFor(() => expect(actions.read).toHaveBeenCalledWith(notice.id));
   fireEvent.click(screen.getByRole("button", { name: "Mark all read" }));
   await waitFor(() => expect(actions.all).toHaveBeenCalledOnce());

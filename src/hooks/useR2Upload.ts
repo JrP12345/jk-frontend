@@ -16,7 +16,7 @@ export function useR2Upload(options?: UseR2UploadOptions) {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const uploadFile = async (file: File, context?: { patientId?: string; contentClass?: 'avatar' | 'lab_report' | 'clinical_document' }): Promise<UploadResult> => {
+  const uploadFile = async (file: File, context?: { organizationId?: string; patientId?: string; contentClass?: 'avatar' | 'lab_report' | 'clinical_document' }): Promise<UploadResult> => {
     setUploading(true);
     setProgress(30);
     setError(null);

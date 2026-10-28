@@ -5,9 +5,9 @@ import TeamManagement from "@/components/organization/TeamManagement";
 import { ToastProvider } from "@/components/ui/Toast";
 import { useAuthStore } from "@/store/authStore";
 
-const fixture = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn(), fetch: vi.fn(), activeLocationId: null as string | null, locations: [{ id: "clinic", name: "Sample clinic", city: "Surat" }] }));
+const fixture = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn(), upload: vi.fn(), fetch: vi.fn(), activeLocationId: null as string | null, locations: [{ id: "clinic", name: "Sample clinic", city: "Surat" }] }));
 vi.mock("@/lib/api", () => ({ default: { get: fixture.get, post: fixture.post, put: fixture.put, delete: fixture.delete } }));
-vi.mock("@/hooks/useR2Upload", () => ({ useR2Upload: () => ({ uploadFile: vi.fn() }) }));
+vi.mock("@/hooks/useR2Upload", () => ({ useR2Upload: () => ({ uploadFile: fixture.upload }) }));
 vi.mock("@/hooks/useOrganizationLocations", () => ({ useOrganizationLocations: () => ({ locations: fixture.locations, fetchLocations: fixture.fetch, activeLocationId: fixture.activeLocationId }) }));
 vi.mock("@/components/clinical/RBACPermissionMatrix", () => ({ RBACPermissionMatrix: () => <p>Scoped permissions panel</p> }));
 vi.mock("@/components/analytics/ExecutiveAnalytics", () => ({ ExecutiveAnalytics: () => <p>Existing insights panel</p> }));
@@ -32,9 +32,11 @@ beforeEach(() => {
   fixture.activeLocationId = null; fixture.fetch.mockReset().mockResolvedValue(fixture.locations);
   fixture.get.mockReset().mockImplementation(async (url: string) => response(url.includes("/onboarding/staff") ? { doctors: [doctor], nurses: [nurse] } : url.includes("doctorId=") ? [assignment] : url.includes("/doctors/assignments") ? [assignment] : []));
   fixture.post.mockReset().mockResolvedValue(response({ id: "new-doctor" })); fixture.put.mockReset().mockResolvedValue(response({})); fixture.delete.mockReset().mockResolvedValue(response({}));
+  fixture.upload.mockReset().mockResolvedValue({ objectKey: "tenants/org/verified/photo.png", intentId: "photo" });
+  vi.stubGlobal("URL", Object.assign(class extends URL {}, { createObjectURL: vi.fn(() => "blob:staff-photo"), revokeObjectURL: vi.fn() }));
   Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it("keeps staff counts across workspace tabs and searches role-filtered results", async () => {
   mount(); await screen.findAllByText("Sample doctor");
@@ -75,6 +77,49 @@ it("creates a receptionist from the pinned form and preserves its sole location"
   fireEvent.change(within(dialog).getByLabelText("Shift Schedule"), { target: { value: "Morning" } });
   const submit = within(dialog).getByRole("button", { name: "Add Team Member" }); expect((submit as HTMLButtonElement).form?.id).toBe("staff-form"); fireEvent.click(submit);
   await waitFor(() => expect(fixture.post).toHaveBeenCalledWith("/onboarding/receptionist?organizationId=org", expect.objectContaining({ name: "New member", email: "new@example.test", locationId: "clinic", shift: "Morning" })));
+});
+
+it("uploads Root's selected-organization staff photo before creating the member", async () => {
+  useAuthStore.setState({ user: { id: "root", name: "Root", email: "root@example.test", role: "root" } });
+  mount(); await screen.findAllByText("Sample doctor"); const dialog = await newMember("Receptionist");
+  fireEvent.click(within(dialog).getByRole("tab", { name: "Profile & practice" }));
+  const photo = new File(["synthetic photo"], "staff.png", { type: "image/png" });
+  fireEvent.change(dialog.querySelector('input[type="file"]')!, { target: { files: [photo] } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Add Team Member" }));
+  await waitFor(() => expect(fixture.post).toHaveBeenCalledWith("/onboarding/receptionist?organizationId=org", expect.objectContaining({ image_url: "tenants/org/verified/photo.png", locationId: "clinic" })));
+  expect(fixture.upload).toHaveBeenCalledWith(photo, { organizationId: "org", contentClass: "avatar" });
+  expect(useAuthStore.getState().user).toMatchObject({ id: "root", role: "root" });
+  expect(useAuthStore.getState().user?.organization_id).toBeUndefined();
+  expect(screen.queryByText("Uploading photo")).not.toBeInTheDocument();
+});
+
+it("retains the selected photo and form on upload failure without creating a member", async () => {
+  fixture.upload.mockRejectedValue(new Error("Upload failed"));
+  mount(); await screen.findAllByText("Sample doctor"); const dialog = await newMember("Receptionist");
+  fireEvent.click(within(dialog).getByRole("tab", { name: "Profile & practice" }));
+  fireEvent.change(dialog.querySelector('input[type="file"]')!, { target: { files: [new File(["photo"], "staff.png", { type: "image/png" })] } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Add Team Member" }));
+  await screen.findByText("Failed to save staff member");
+  expect(fixture.post).not.toHaveBeenCalled();
+  expect(screen.queryByText("Uploading photo")).not.toBeInTheDocument();
+  expect(within(dialog).getByLabelText("Full Name *")).toHaveValue("New member");
+  fixture.upload.mockResolvedValue({ objectKey: "tenants/org/verified/photo.png", intentId: "photo" });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Add Team Member" }));
+  await waitFor(() => expect(fixture.post).toHaveBeenCalledOnce());
+});
+
+it("does not create staff from an upload that finishes after the selected organization changes", async () => {
+  const pending = deferred(); fixture.upload.mockReturnValue(pending.promise);
+  const view = mount(); await screen.findAllByText("Sample doctor"); const dialog = await newMember("Receptionist");
+  fireEvent.click(within(dialog).getByRole("tab", { name: "Profile & practice" }));
+  fireEvent.change(dialog.querySelector('input[type="file"]')!, { target: { files: [new File(["photo"], "staff.png", { type: "image/png" })] } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Add Team Member" }));
+  await waitFor(() => expect(fixture.upload).toHaveBeenCalledOnce());
+  view.rerender(<ToastProvider><TeamManagement organizationId="other" /></ToastProvider>);
+  await act(async () => pending.resolve({ objectKey: "tenants/org/verified/photo.png", intentId: "photo" }));
+  expect(fixture.post).not.toHaveBeenCalled();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(screen.queryByText("Uploading photo")).not.toBeInTheDocument();
 });
 
 it("returns to the account tab for invalid fields and keeps edits after a failed save", async () => {

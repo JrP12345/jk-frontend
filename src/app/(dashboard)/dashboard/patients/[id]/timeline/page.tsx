@@ -18,7 +18,7 @@ export default async function PatientTimelinePage({ params }: PageProps) {
         </p>
       </div>
 
-      <PatientTimeline patientId={id} />
+      <PatientTimeline patientId={id} eventHeadingLevel="h2" />
     </div>
   );
 }

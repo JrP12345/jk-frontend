@@ -12,7 +12,7 @@ export function PatientMrn({ value }: { value?: string }) {
 
   return <>
     <span className={styles.desktop}>MRN: {value}</span>
-    <button type="button" className={styles.mobile} aria-label="View full MRN" onClick={() => setOpen(true)}>
+    <button type="button" className={styles.mobile} aria-label={`View full MRN: ${value.length > 18 ? `…${value.slice(-6)}` : value}`} onClick={() => setOpen(true)}>
       MRN: {value.length > 18 ? `…${value.slice(-6)}` : value}
     </button>
     <Dialog isOpen={open} onClose={() => setOpen(false)} title="Patient MRN" size="sm"

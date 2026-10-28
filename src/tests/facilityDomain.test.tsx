@@ -43,11 +43,12 @@ describe("Physical facility metadata and selection", () => {
       { ...base, id: "diagnostics", slug: "valsad-diagnostics", name: "Valsad Diagnostics", city: "Valsad", facilityType: "diagnostic_center", organizationName: "Mixed healthcare group", organizationLocationCount: 2 },
     ];
     render(<BrowseClient initialLocations={locations} />);
-    expect(screen.getByText("Hospital", { exact: true })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Surat Hospital" })).toBeInTheDocument();
+    expect(screen.queryByText("Hospital", { exact: true })).not.toBeInTheDocument();
     expect(screen.getByText("Diagnostic center", { exact: true })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("2 locations");
     expect(screen.queryByText("Single-location organization", { exact: false })).not.toBeInTheDocument();
-    expect(screen.getByText("Mixed healthcare group", { exact: false })).toBeInTheDocument();
+    expect(screen.queryByText("Mixed healthcare group", { exact: false })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Surat Hospital" })).toHaveAttribute("href", "/browse/surat-hospital");
   });
 });

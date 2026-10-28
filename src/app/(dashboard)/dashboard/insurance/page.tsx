@@ -739,7 +739,7 @@ export default function InsurancePage() {
                     </div>
 
                     <div className="pt-1.5">
-                      <h3 className="font-bold text-base text-text">{item.tpaName}</h3>
+                      <h2 className="font-bold text-base text-text">{item.tpaName}</h2>
                       <p className="text-[11px] text-text-muted font-mono">Policy #: {item.policyNumber}</p>
                     </div>
                   </div>
@@ -881,7 +881,7 @@ export default function InsurancePage() {
                     </div>
 
                     <div className="pt-1.5">
-                      <h3 className="font-bold text-base text-text">{claim.payerName}</h3>
+                      <h2 className="font-bold text-base text-text">{claim.payerName}</h2>
                       <p className="text-[11px] text-text-muted font-mono">Policy #: {claim.policyNumber}</p>
                     </div>
                   </div>

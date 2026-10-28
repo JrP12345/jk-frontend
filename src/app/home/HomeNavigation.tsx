@@ -10,8 +10,10 @@ import { useAuthStore } from "@/store/authStore";
 import styles from "./home.module.css";
 
 const links = [
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#for-organizations", label: "For healthcare teams" },
+  { href: "#for-patients", label: "For patients" },
+  { href: "#for-organizations", label: "For Clinics" },
+  { href: "#stay-connected", label: "WhatsApp" },
+  { href: "#how-it-works", label: "Clinic setup" },
   { href: "#plans", label: "Plans" },
 ];
 
@@ -45,11 +47,10 @@ export default function HomeNavigation() {
         </nav>
         <div className={styles.navActions}>
           <div className={styles.navAppearance}><ModeSwitcher variant="icon" /></div>
-          <Link href="/browse" className={`${styles.signIn} ${styles.navPatientLink}`} data-home-event="home_find_care">Find care</Link>
-          <Link href={signedIn ? "/dashboard" : "/login"} className={styles.signIn} data-home-event="home_sign_in">
+          <Link href={signedIn ? "/dashboard" : "/login"} prefetch={false} className={styles.signIn} data-home-event="home_sign_in">
             {signedIn ? "Dashboard" : "Sign in"}
           </Link>
-          <Link href="/onboarding?mode=new_org" className={styles.navCta} data-home-event="home_organization_setup">Request setup <ArrowRight size={16} aria-hidden="true" /></Link>
+          <Link href="/browse" prefetch={false} className={styles.navCta} data-home-event="home_find_care">Find a Doctor <ArrowRight size={16} aria-hidden="true" /></Link>
           <Button
             ref={menuButton}
             variant="outline"
@@ -70,8 +71,8 @@ export default function HomeNavigation() {
         hidden={!open}
       >
         {links.map(link => <a key={link.href} href={link.href} onClick={() => setOpen(false)}>{link.label}<ArrowRight size={16} aria-hidden="true" /></a>)}
-        <a href="#for-patients" onClick={() => setOpen(false)}>For patients <ArrowRight size={16} aria-hidden="true" /></a>
-        <Link href="/onboarding?mode=new_org" onClick={() => setOpen(false)}>Request setup <ArrowRight size={16} aria-hidden="true" /></Link>
+        <Link href="/browse" prefetch={false} onClick={() => setOpen(false)}>Find a Doctor <ArrowRight size={16} aria-hidden="true" /></Link>
+        <Link href="/onboarding?mode=new_org" prefetch={false} onClick={() => setOpen(false)}>Request setup <ArrowRight size={16} aria-hidden="true" /></Link>
         <div className={styles.mobileAppearance}><span>Appearance</span><ModeSwitcher variant="icon" /></div>
       </nav>
     </header>

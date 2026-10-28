@@ -464,7 +464,7 @@ function PatientPortal() {
           </div>
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-text break-words">{user?.name}</h1>
-            <p className="text-xs text-text-muted mt-0.5 [overflow-wrap:anywhere]">
+            <p className="text-xs text-text-secondary mt-0.5 [overflow-wrap:anywhere]">
               {user?.email} • {patient?.bloodGroup ? `Blood Group: ${patient.bloodGroup}` : "Patient Portal Active"}
             </p>
           </div>
@@ -512,7 +512,7 @@ function PatientPortal() {
           {patient?.id && <div className="md:col-span-2"><PatientPrivacyControls patientId={patient.id} /></div>}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base font-bold flex items-center justify-between">
+              <CardTitle as="h2" className="text-base font-bold flex items-center justify-between">
                 Personal Demographics
                 <Button size="xs" variant="outline" onClick={() => setEditProfileModalOpen(true)}>Edit</Button>
               </CardTitle>
@@ -549,11 +549,11 @@ function PatientPortal() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base font-bold">Emergency Contacts & Insurance</CardTitle>
+              <CardTitle as="h2" className="text-base font-bold">Emergency Contacts & Insurance</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-2">
               <div>
-                <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Emergency Contact</h4>
+                <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Emergency Contact</h3>
                 {patient?.emergencyContacts && patient.emergencyContacts.length > 0 ? (
                   <div className="p-3 bg-surface-alt rounded-xl border border-border/60">
                     <p className="text-sm font-bold text-text">{patient.emergencyContacts[0].name}</p>
@@ -567,7 +567,7 @@ function PatientPortal() {
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Insurance Policy</h4>
+                <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Insurance Policy</h3>
                 {patient?.insurancePolicies && patient.insurancePolicies.length > 0 ? (
                   <div className="p-3 bg-surface-alt rounded-xl border border-border/60">
                     <p className="text-sm font-bold text-text">{patient.insurancePolicies[0].providerName}</p>
@@ -594,7 +594,7 @@ function PatientPortal() {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-alt p-4 rounded-xl border border-border">
             <div>
-              <h3 className="font-bold text-sm text-text">Family Members & Dependents</h3>
+              <h2 className="font-bold text-sm text-text">Family Members & Dependents</h2>
               <p className="text-xs text-text-muted mt-0.5">Manage family profiles and book appointments on their behalf</p>
             </div>
             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
@@ -620,7 +620,7 @@ function PatientPortal() {
                         {(p?.name || "F")[0].toUpperCase()}
                       </div>
                       <div>
-                        <h4 className="font-bold text-sm text-text">{p?.name || "Family Member"}</h4>
+                        <h3 className="font-bold text-sm text-text">{p?.name || "Family Member"}</h3>
                         <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 bg-primary-500/10 text-accent font-bold rounded-full border border-primary-500/20">
                           {fm.relationship}
                         </span>
@@ -657,7 +657,7 @@ function PatientPortal() {
       {activeTab === "records" && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <CardTitle as="h2" className="text-base font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <span>Medical records</span>
               <Button
                 size="sm"
@@ -714,7 +714,7 @@ function PatientPortal() {
       {activeTab === "refills" && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base font-bold">Prescription Refill Requests</CardTitle>
+            <CardTitle as="h2" className="text-base font-bold">Prescription Refill Requests</CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
             {refillError && <Alert variant="error" title="Unable to load refill requests" action={<Button variant="outline" size="sm" onClick={fetchRefills}>Retry</Button>}>{refillError}</Alert>}
@@ -772,7 +772,7 @@ function PatientPortal() {
       {activeTab === "timeline" && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base font-bold">Longitudinal Health Timeline</CardTitle>
+            <CardTitle as="h2" className="text-base font-bold">Longitudinal Health Timeline</CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
             {timelineError && <Alert variant="error" title="Unable to load clinical history" action={<Button variant="outline" size="sm" onClick={() => { if (patient?.id) void fetchTimeline(patient.id); }}>Retry</Button>}>{timelineError}</Alert>}
@@ -878,7 +878,7 @@ function PatientPortal() {
             />
 
             <div className="border-t border-border pt-3">
-              <h4 className="text-xs font-bold text-text-muted mb-2 uppercase">Emergency Contact</h4>
+              <h3 className="text-xs font-bold text-text-muted mb-2 uppercase">Emergency Contact</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <Input
                   label="Contact Name"
@@ -899,7 +899,7 @@ function PatientPortal() {
             </div>
 
             <div className="border-t border-border pt-3">
-              <h4 className="text-xs font-bold text-text-muted mb-2 uppercase">Insurance Details</h4>
+              <h3 className="text-xs font-bold text-text-muted mb-2 uppercase">Insurance Details</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <Input
                   label="Provider Name"

@@ -61,5 +61,5 @@ complete the original clinical visit.
 
 Node 24 native startup requires erasable TypeScript syntax; the backend type gate
 now enforces it. Implementation and observed acceptance limits are tracked in
-[crm-implementation-progress.md](crm-implementation-progress.md) and
-[crm-acceptance-matrix.md](crm-acceptance-matrix.md). Production validation is pending.
+[crm-workflows.md#workflow-and-remaining-acceptance-matrix](crm-workflows.md#workflow-and-remaining-acceptance-matrix) and
+[crm-workflows.md#workflow-and-remaining-acceptance-matrix](crm-workflows.md#workflow-and-remaining-acceptance-matrix). Production validation is pending.

@@ -7,6 +7,7 @@ import Modal from "@/components/ui/Modal";
 import BrowseClient from "@/app/browse/BrowseClient";
 import BrowseDetailClient, { type LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
 import { FloatingAICopilot } from "@/components/ai/FloatingAICopilot";
+import AICopilotLauncher from "@/components/ai/AICopilotLauncher";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
 import { forceResetScrollLock, lockScroll, unlockScroll } from "@/lib/scrollLock";
@@ -17,7 +18,7 @@ import { ThemeProvider } from "@/components/ui/ThemeProvider";
 
 const mocks = vi.hoisted(() => ({ push: vi.fn(), toast: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }), usePathname: () => "/dashboard", useSearchParams: () => new URLSearchParams() }));
-vi.mock("@/components/MarketplaceNavbar", () => ({ default: () => null }));
+vi.mock("@/components/MarketplaceNavbar", () => ({ default: ({ searchSlot }: { searchSlot?: import("react").ReactNode }) => <header>{searchSlot}</header> }));
 vi.mock("@/components/ui", async original => ({ ...await original<typeof import("@/components/ui")>(), useToast: () => ({ toast: mocks.toast }) }));
 vi.mock("@/lib/geo/locationDetector", async importOriginal => ({ ...await importOriginal<typeof import("@/lib/geo/locationDetector")>(), detectUserLocation: async () => null }));
 
@@ -30,6 +31,26 @@ beforeEach(() => {
 });
 afterEach(() => { forceResetScrollLock(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
+describe("On-demand copilot", () => {
+  it("does not load session data until requested, and opens the existing dialog", async () => {
+    useAuthStore.setState({ user: { id: "doctor", role: "doctor", name: "Doctor", email: "doctor@example.test", organization_id: "org", permissions: ["VIEW_EHR"] } });
+    const get = vi.spyOn(api, "get").mockResolvedValue({ data: { data: [] } });
+    render(<AICopilotLauncher />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(get).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Toggle AI Copilot" }));
+    expect(await screen.findByRole("dialog", { name: "Ekavyu AI Copilot" })).toBeInTheDocument();
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/ai/chat/sessions", expect.anything()));
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("keeps the launcher unavailable without the existing clinical permission", () => {
+    render(<AICopilotLauncher />);
+    expect(screen.queryByRole("button", { name: "Toggle AI Copilot" })).not.toBeInTheDocument();
+  });
+});
+
 describe("Production install assets", () => {
   it("provides opaque icons at their declared sizes and keeps maskable artwork in its safe circle", async () => {
     const manifest = JSON.parse(readFileSync("public/manifest.json", "utf8"));
@@ -40,7 +61,7 @@ describe("Production install assets", () => {
       let minimumAlpha = 255;
       for (let offset = 3; offset < data.length; offset += 4) minimumAlpha = Math.min(minimumAlpha, data[offset]);
       expect(minimumAlpha).toBe(255);
-      expect(Array.from(data.subarray(0, 4))).toEqual([247, 247, 242, 255]);
+      expect(Array.from(data.subarray(0, 4))).toEqual([246, 242, 232, 255]);
       if (icon.purpose === "maskable") {
         let radius = 0;
         for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
@@ -118,37 +139,37 @@ describe("Browse and booking continuity", () => {
 
   it("opens directions to recorded coordinates when both are valid", () => {
     render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={{ ...location, latitude: 21.17, longitude: 72.83 }} /></ToastProvider></ThemeProvider>);
-    const link = screen.getByRole("link", { name: "Get Directions" });
+    const link = screen.getByRole("link", { name: /Get directions to Test Clinic/ });
     expect(new URL(link.getAttribute("href")!).searchParams.get("destination")).toBe("21.17,72.83");
     expect(link).toHaveAttribute("target", "_blank");
   });
 
   it("uses the recorded address and city when coordinates are unavailable", () => {
     render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={{ ...location, latitude: 91, longitude: 72.83 }} /></ToastProvider></ThemeProvider>);
-    const link = screen.getByRole("link", { name: "Get Directions" });
+    const link = screen.getByRole("link", { name: /Get directions to Test Clinic/ });
     expect(new URL(link.getAttribute("href")!).searchParams.get("destination")).toBe("Test street, Surat");
   });
 
   it("does not offer directions when only the city is recorded", () => {
     render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={{ ...location, address: "." }} /></ToastProvider></ThemeProvider>);
-    expect(screen.queryByRole("link", { name: "Get Directions" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Get directions to Test Clinic/ })).not.toBeInTheDocument();
   });
 
   it("renders partial records and replaces failed images without pretending that missing fees are free", () => {
     render(<BrowseClient initialLoaded initialLocations={[{ id: "partial", name: "Partial Clinic", rating: "4.8", reviewsCount: "2", logo_url: "/broken.png", doctorCount: 1, doctorsSummary: [{ id: "doc", name: "Doctor" }], amenities: [null, "Parking"], specialties: [null] }] as never} />);
-    expect(screen.getByRole("link", { name: "Partial Clinic" })).toBeInTheDocument();
-    expect(screen.getByText("Fee not listed")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Partial Clinic" })).toBeInTheDocument();
+    expect(screen.queryByText(/Fee not listed|Free/)).not.toBeInTheDocument();
     expect(screen.getByText("Location not listed")).toBeInTheDocument();
     expect(screen.queryByText("Hours not listed")).not.toBeInTheDocument();
-    fireEvent.error(screen.getByRole("img", { name: "Partial Clinic" }));
-    expect(screen.queryByRole("img", { name: "Partial Clinic" })).not.toBeInTheDocument();
+    fireEvent.error(document.querySelector('img[src="/broken.png"]')!);
+    expect(document.querySelector('img[src="/broken.png"]')).toBeNull();
   });
 
   it("uses the same loading shell during server loading without starting duplicate requests", () => {
     const request = vi.spyOn(api, "get");
     render(<BrowseClient loadingOnly />);
-    expect(screen.getByText("Finding locations...")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Sort locations by" })).toBeDisabled();
+    expect(screen.getByText("Finding locations…")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Sort by" })).toBeDisabled();
     expect(request).not.toHaveBeenCalled();
   });
 
@@ -162,7 +183,7 @@ describe("Browse and booking continuity", () => {
     let confirmed!: (value: unknown) => void;
     const post = vi.spyOn(api, "post").mockImplementation(() => new Promise(resolve => { confirmed = resolve; }));
     render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={location} /></ToastProvider></ThemeProvider>);
-    fireEvent.click(screen.getAllByRole("button", { name: "Check appointments" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^(Book now|Find next date)$/ })[0]);
     const dialog = await screen.findByRole("dialog", { name: "Select Date & Time" });
     expect(document.body.style.position).toBe("fixed");
     expect(within(dialog).getByRole("button", { name: "Continue to Details" })).toBeDisabled();
@@ -187,7 +208,7 @@ describe("Browse and booking continuity", () => {
   it("leaves Continue disabled after availability fails and offers a local retry", async () => {
     vi.spyOn(api, "get").mockRejectedValue(new Error("Offline"));
     render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={location} /></ToastProvider></ThemeProvider>);
-    fireEvent.click(screen.getAllByRole("button", { name: "Check appointments" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^(Book now|Find next date)$/ })[0]);
     const dialog = await screen.findByRole("dialog", { name: "Select Date & Time" });
     expect(await within(dialog).findByText("Availability could not be checked. Please try again.")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Continue to Details" })).toBeDisabled();
@@ -198,7 +219,7 @@ describe("Browse and booking continuity", () => {
     vi.spyOn(api, "get").mockResolvedValue({ data: { data: { isWorkingDay: true, bookingMode: "time_slot", slots: [] } } });
     const timedLocation = { ...location, doctors: location.doctors.map(doctor => ({ ...doctor, bookingMode: "time_slot" })) };
     render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={timedLocation} /></ToastProvider></ThemeProvider>);
-    fireEvent.click(screen.getAllByRole("button", { name: "Check appointments" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^(Book now|Find next date)$/ })[0]);
     const dialog = await screen.findByRole("dialog", { name: "Select Date & Time" });
     await within(dialog).findByText("Availability updated");
     expect(within(dialog).getByRole("button", { name: "Continue to Details" })).toBeDisabled();
@@ -208,7 +229,7 @@ describe("Browse and booking continuity", () => {
   it("prevents continuing when the server reports that all queue tokens are booked", async () => {
     vi.spyOn(api, "get").mockResolvedValue({ data: { data: { isWorkingDay: true, bookingMode: "sequential_queue", slots: [], nextToken: 21, maxDailyTokens: 20, tokensToday: 20 } } });
     render(<ThemeProvider><ToastProvider><BrowseDetailClient slug="clinic" initialLocation={location} /></ToastProvider></ThemeProvider>);
-    fireEvent.click(screen.getAllByRole("button", { name: "Check appointments" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^(Book now|Find next date)$/ })[0]);
     const dialog = await screen.findByRole("dialog", { name: "Select Date & Time" });
     expect(await within(dialog).findByText("All tokens are booked")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Continue to Details" })).toBeDisabled();

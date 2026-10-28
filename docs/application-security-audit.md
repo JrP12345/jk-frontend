@@ -15,7 +15,7 @@ passed again. Additional confirmed gaps were implemented without deployed-data c
 | Secrets/storage | Existing persistent encryption/signing/private-download controls retained; configuration validates without echoing values | Provision/escrow keys, private bucket/DB ACLs, repository-history secret scan |
 | Recovery | Dedicated strong new-archive key, bounded authenticated decrypt/decompression, private archive creation, paginated latest selection and isolated restore cleanup | Authorized real snapshot restore plus application/key/index verification; RPO/RTO approval |
 
-Focused evidence is maintained in `production-readiness-worklog.md`. Operational settings
+Focused evidence is maintained in `production-readiness-tracker.md#security-recovery-and-configured-provider-acceptance`. Operational settings
 and recovery procedures are documented in the backend security guide. Infrastructure
 items remain externally unverified and are not marked resolved by repository changes.
 

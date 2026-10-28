@@ -107,12 +107,12 @@ function FormattedMarkdown({ content }: { content: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Floating AI Copilot Widget Component
 // ─────────────────────────────────────────────────────────────────────────────
-export function FloatingAICopilot() {
+export function FloatingAICopilot({ initiallyOpen = false }: { initiallyOpen?: boolean } = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuthStore();
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(initiallyOpen);
   const { activeLocationId } = useLocationStore();
   const permitted = hasAnyPermission(user, "MANAGE_CLINICAL_NOTES", "MANAGE_EHR", "VIEW_EHR");
   const hasContext = Boolean(user?.organization_id || (user?.role === "root" && activeLocationId));

@@ -41,7 +41,7 @@ describe("Platform billing workspace", () => {
 
   it("preserves plan fields while saving an edited price and an accessible feature switch", async () => {
     mount();
-    fireEvent.click(await screen.findByRole("button", { name: "Edit Professional plan" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit plan: Professional" }));
     const dialog = screen.getByRole("dialog", { name: "Edit plan" });
     fireEvent.change(within(dialog).getByLabelText(/Monthly Price/), { target: { value: "1499" } });
     fireEvent.click(within(dialog).getByRole("switch", { name: "Clinical AI Features" }));
@@ -160,6 +160,6 @@ describe("Platform billing workspace", () => {
     expect(screen.queryByText("No plans configured yet")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create plan" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Retry billing" }));
-    expect(await screen.findByRole("button", { name: "Edit Professional plan" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Edit plan: Professional" })).toBeInTheDocument();
   });
 });

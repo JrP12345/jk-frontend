@@ -267,7 +267,7 @@ export default function NotificationsInboxPage() {
       renderMobileCard={row => <article className={row.readAt ? styles.notificationCard : styles.unreadCard} aria-label={row.title}>
         <div className={styles.cardHeading}>{renderBadges(row)}{renderActions(row)}</div>
         {renderContent(row)}
-        <div className={styles.cardFooter}><time dateTime={row.createdAt}>{formatTimestamp(row.createdAt)}</time>{!row.readAt ? <Button variant="ghost" size="sm" className={styles.readAction} aria-label={`Mark ${row.title} as read`} onClick={() => performAction(() => markAsRead(row.id))}><Check className="h-4 w-4" /><span>Mark read</span></Button> : <span>Read</span>}</div>
+        <div className={styles.cardFooter}><time dateTime={row.createdAt}>{formatTimestamp(row.createdAt)}</time>{!row.readAt ? <Button variant="ghost" size="sm" className={styles.readAction} aria-label={`Mark read: ${row.title}`} onClick={() => performAction(() => markAsRead(row.id))}><Check className="h-4 w-4" /><span>Mark read</span></Button> : <span>Read</span>}</div>
       </article>}
     />
     {!isLoading && !isError && <footer className={styles.pagination}><p>{notifications.length ? `${(pagination.page - 1) * pagination.limit + 1}\u2013${(pagination.page - 1) * pagination.limit + notifications.length} of ${pagination.total}` : "0 notifications"}</p><Pagination currentPage={pagination.page} totalPages={pagination.totalPages} onPageChange={setPage} /></footer>}

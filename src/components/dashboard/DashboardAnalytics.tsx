@@ -5,6 +5,7 @@ import styles from "./DashboardOverview.module.css";
 
 interface DashboardAnalyticsProps {
   role?: string;
+  showLocationActivity?: boolean;
   loading: boolean;
   trendRange: string;
   setTrendRange: (range: string) => void;
@@ -23,6 +24,7 @@ interface DashboardAnalyticsProps {
 
 export function DashboardAnalytics({
   role,
+  showLocationActivity = true,
   loading,
   trendRange,
   setTrendRange,
@@ -32,7 +34,7 @@ export function DashboardAnalytics({
   if (role === "patient") return null;
 
   return (
-    <div className={styles.analytics}>
+    <div className={styles.analytics} style={showLocationActivity ? undefined : { gridTemplateColumns: "minmax(0, 1fr)" }}>
       <ChartContainer
         title="Patient volume"
         description="Daily completed and scheduled consultations"
@@ -63,7 +65,7 @@ export function DashboardAnalytics({
         /></div></div>
       </ChartContainer>
 
-      <ChartContainer
+      {showLocationActivity && <ChartContainer
         title="Location activity"
         description="Visits distributed by location"
         className={styles.chartPanel}
@@ -85,7 +87,7 @@ export function DashboardAnalytics({
           height={220}
           valueFormatter={(v) => `${v}`}
         />
-      </ChartContainer>
+      </ChartContainer>}
     </div>
   );
 }

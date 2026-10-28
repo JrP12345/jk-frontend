@@ -183,31 +183,6 @@ export default function RootAdminMonitorPage() {
   };
 
   // ── Terminate All Sessions for a Target User ──────────────────────────────
-  const handleTerminateUser = (targetUserId: string, targetName: string) => {
-    setConfirmDialog({
-      open: true,
-      title: `Force Logout ${targetName}?`,
-      description: `This will terminate ALL active devices and sessions for ${targetName}.`,
-      action: async () => {
-        try {
-          await api.post(`/auth/admin/sessions/revoke-user/${targetUserId}`);
-          toast({
-            title: "User Logged Out",
-            description: `All active sessions for ${targetName} have been revoked.`,
-            variant: "success",
-          });
-          setSessions((prev) => prev.filter((s) => s.userId !== targetUserId));
-        } catch (err: any) {
-          toast({
-            title: "Revocation Failed",
-            description: err.response?.data?.message || "Could not revoke user sessions",
-            variant: "error",
-          });
-        }
-      },
-    });
-  };
-
   // ── Filtered Sessions ─────────────────────────────────────────────────────
   const filteredSessions = useMemo(() => {
     return sessions.filter((s) => {

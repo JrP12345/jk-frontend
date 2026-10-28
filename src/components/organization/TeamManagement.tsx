@@ -72,7 +72,7 @@ export default function TeamManagement({ organizationId, embedded = false }: { o
 
 function TeamWorkspace({ organizationId, embedded }: { organizationId?: string; embedded: boolean }) {
   const scopedPath = (path: string) => organizationPath(path, organizationId);
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const { uploadFile } = useR2Upload();
   const { user } = useAuthStore();
   const pharmacyOnly = !organizationId || organizationId === user?.organization_id ? isPharmacyWorkspace(user) : false;
@@ -534,10 +534,13 @@ function TeamWorkspace({ organizationId, embedded }: { organizationId?: string; 
 
       // Handle deferred image upload
       if (finalData.image_url instanceof File) {
-        toast({ title: "Uploading photo", description: "Please wait while the profile photo is saved.", variant: "default" });
-        const { objectKey } = await uploadFile(finalData.image_url);
-        if (currentContext.current !== submittedContext) return;
-        finalData.image_url = objectKey;
+        const uploadNotice = crypto.randomUUID();
+        toast({ id: uploadNotice, title: "Uploading photo", description: "Please wait while the profile photo is saved.", variant: "default" });
+        try {
+          const { objectKey } = await uploadFile(finalData.image_url, { organizationId: targetOrganizationId, contentClass: "avatar" });
+          if (currentContext.current !== submittedContext) return;
+          finalData.image_url = objectKey;
+        } finally { dismiss(uploadNotice); }
       }
 
       if (editingId) {
@@ -585,6 +588,7 @@ function TeamWorkspace({ organizationId, embedded }: { organizationId?: string; 
       setIsModalOpen(false);
       fetchStaff();
     } catch (err: any) {
+      if (currentContext.current !== submittedContext) return;
       toast({
         title: "Error",
         description: err.response?.data?.message || "Failed to save staff member",
@@ -945,6 +949,7 @@ function TeamWorkspace({ organizationId, embedded }: { organizationId?: string; 
               value={formData.image_url || null}
               onChange={(value) => handleFieldChange("image_url", value)}
               label="Profile photo"
+              helperText="PNG, JPEG or WebP (max. 2 MB)"
               disabled={submitting}
             />
             <p className="text-xs text-text-muted">

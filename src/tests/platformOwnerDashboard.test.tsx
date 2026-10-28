@@ -47,7 +47,7 @@ describe("Platform owner dashboard", () => {
     mount();
     await screen.findByRole("heading", { name: "Organization activity" });
     expect(screen.getAllByRole("link", { name: "Willow Clinic" })[0]).toHaveAttribute("href", "/dashboard/organizations?organizationId=org-paid&section=overview");
-    fireEvent.click(screen.getByRole("button", { name: "Create organization" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add: Create organization" }));
     expect(router.push).toHaveBeenCalledWith("/dashboard/organizations?create=1");
     fireEvent.click(screen.getByRole("button", { name: "Plans & billing" }));
     expect(router.push).toHaveBeenCalledWith("/dashboard/admin/billing");

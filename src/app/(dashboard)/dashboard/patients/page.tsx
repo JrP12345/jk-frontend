@@ -387,7 +387,7 @@ export default function PatientsDirectoryPage() {
       <section className={styles.toolbar} aria-label="Patient search and filters">
         <form onSubmit={handleSearchSubmit} className={styles.searchRow}>
           <Input type="search" icon={<Search size={16} />} placeholder="Name, phone, email or MRN" aria-label="Search patients by name, email or phone" value={search} onChange={event => setSearch(event.target.value)} onClear={() => { setSearch(""); setPage(1); }} />
-          <Button variant="outline" size="sm" className={styles.filterButton} aria-label="Filter patients" onClick={() => setFiltersOpen(true)}><SlidersHorizontal size={16} /><span className={styles.filterLabel}>{genderFilter === "all" ? "Filters" : genderFilter}</span>{genderFilter !== "all" && <i />}</Button>
+          <Button variant="outline" size="sm" className={styles.filterButton} aria-label={genderFilter === "all" ? "Filters: Filter patients" : `Filter patients: ${genderFilter}`} onClick={() => setFiltersOpen(true)}><SlidersHorizontal size={16} /><span className={styles.filterLabel}>{genderFilter === "all" ? "Filters" : genderFilter}</span>{genderFilter !== "all" && <i />}</Button>
         </form>
         <div className={styles.resultSummary}><span>{genderFilter === "all" ? "All patients" : genderFilter.charAt(0).toUpperCase() + genderFilter.slice(1) + " patients"}</span><span role="status">{loading ? "Loading patients…" : isRefreshing ? "Updating…" : totalCount + " matches"}</span></div>
       </section>
@@ -422,7 +422,6 @@ export default function PatientsDirectoryPage() {
                 {!!patient.conditions?.length && <p className={styles.conditions}>{patient.conditions.join(" · ")}</p>}
               </article>;
             }}
-            onRowClick={(p) => router.push(`/dashboard/patients/${p.id || p._id}`)}
             emptyMessage="No patient profiles found matching your search criteria."
           />
       </section>

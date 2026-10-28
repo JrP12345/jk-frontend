@@ -6,7 +6,6 @@ import { useAuthStore } from "@/store/authStore";
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import api from "@/lib/api";
 import { detectPatientOtpTarget } from "@/lib/patientLogin";
 import { userFacingError } from "@/lib/userFacingError";
@@ -558,13 +557,7 @@ function JoinLocationQueue({ locationSlug }: { locationSlug: string }) {
         {/* Existing Token / Help Footer */}
         <div className="mt-8 pt-6 border-t border-border dark:border-border text-center space-y-2 text-xs text-text-muted">
           <p>
-            Already hold an appointment token?{" "}
-            <Link
-              href="/track"
-              className="font-semibold text-accent dark:text-accent underline underline-offset-2"
-            >
-              Track Your Live Queue
-            </Link>
+            Already hold an appointment token? Open the private tracking link in your booking confirmation, or ask reception to resend it.
           </p>
           {location.phone && (
             <p className="text-[11px] text-text-muted">

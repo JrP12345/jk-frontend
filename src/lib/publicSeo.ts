@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
-import { absolutePublicUrl } from "./siteUrl";
+import { absolutePublicUrl, canIndexPublicSite } from "./siteUrl";
 import { locationPath } from "./publicPaths";
 
 /** Mark up only explicit, valid day schedules. Never publish parser defaults. */
@@ -36,7 +36,7 @@ export function profileMetadata(title: string, description: string, path: string
   return {
     title, description,
     alternates: url ? { canonical: url } : undefined,
-    robots: { index: Boolean(url), follow: true },
+    robots: { index: Boolean(url) && canIndexPublicSite(), follow: true },
     openGraph: { title, description, type: "website", siteName: "Ekavyu", ...(url ? { url } : {}), ...(preview ? { images: [{ url: preview, alt: title }] } : {}) },
     twitter: { card: preview ? "summary_large_image" : "summary", title, description, ...(preview ? { images: [preview] } : {}) },
   };

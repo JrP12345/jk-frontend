@@ -46,7 +46,7 @@ function VerifyEmailContent() {
   }, [token]);
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] px-4 relative bg-background">
+    <main className="min-h-screen flex flex-col justify-center items-center pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] px-4 relative bg-background">
       {/* Background ambient lighting */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
@@ -157,7 +157,7 @@ function VerifyEmailContent() {
           &copy; {new Date().getFullYear()} Ekavyu Health Platform. All rights reserved.
         </p>
       </div>
-    </div>
+    </main>
   );
 }
 

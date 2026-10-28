@@ -75,9 +75,6 @@ export function AbdmRegistrationModal({
   const [targetDoctorId, setTargetDoctorId] = useState(selectedDoctorId || doctors[0]?.id || "");
   const [isIssuingToken, setIsIssuingToken] = useState(false);
 
-  // Counter Standee State
-  const [standeeData, setStandeeData] = useState<any | null>(null);
-  const [loadingStandee, setLoadingStandee] = useState(false);
   const [isSimulatingScan, setIsSimulatingScan] = useState(false);
 
   useEffect(() => {
@@ -87,24 +84,6 @@ export function AbdmRegistrationModal({
       setTargetDoctorId(doctors[0].id);
     }
   }, [selectedDoctorId, doctors]);
-
-  useEffect(() => {
-    if (open && activeTab === "standee" && locationId) {
-      fetchStandeeData();
-    }
-  }, [open, activeTab, locationId]);
-
-  const fetchStandeeData = async () => {
-    try {
-      setLoadingStandee(true);
-      const res = await api.get(`/abdm/qr-standee/${locationId}`);
-      setStandeeData(res.data?.data || null);
-    } catch {
-      // Fallback
-    } finally {
-      setLoadingStandee(false);
-    }
-  };
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();

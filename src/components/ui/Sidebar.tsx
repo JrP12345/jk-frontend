@@ -101,6 +101,7 @@ function SidebarItem({ item, collapsed }: { item: NavItem; collapsed: boolean })
   const content = (
     <Link
       href={item.href}
+      prefetch={false}
       aria-label={collapsed ? item.label : undefined}
       aria-current={item.active ? "page" : undefined}
       className={cn(

@@ -1,0 +1,1990 @@
+{
+  "synthetic": true,
+  "development": true,
+  "phases": [
+    "compact",
+    "stability",
+    "filters",
+    "states",
+    "focus"
+  ],
+  "widths": [
+    320,
+    375,
+    390,
+    640,
+    768,
+    900,
+    1024,
+    1280,
+    1440,
+    1920
+  ],
+  "results": [
+    {
+      "name": "compact-320",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 1,
+        "expectedColumns": 1,
+        "cards": [
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 276,
+            "height": 377.578125,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Aster Grove Clinic",
+            "width": 276,
+            "height": 395.1875,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Orchard Clinic",
+            "width": 276,
+            "height": 353.1875,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Cedar Clinic",
+            "width": 276,
+            "height": 353.1875,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Valley Diagnostics",
+            "width": 276,
+            "height": 353.1875,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "The Centre for Comprehensive Family Medicine, Preventive Care and Specialist Consultations",
+            "width": 276,
+            "height": 437.171875,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Partial listing",
+            "width": 276,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Profile link pending",
+            "width": 276,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "sticky-320",
+      "passed": true,
+      "geometry": {
+        "centered": true,
+        "oneDesktopRow": true,
+        "toolbarHeight": 98
+      },
+      "scroll": 2904,
+      "dock": {
+        "x": 0,
+        "y": 64,
+        "width": 310,
+        "height": 128
+      },
+      "initialSearch": {
+        "x": 16,
+        "y": 254.65625,
+        "width": 278,
+        "height": 115
+      },
+      "narrowedSearch": {
+        "x": 24,
+        "y": 70,
+        "width": 262,
+        "height": 115
+      }
+    },
+    {
+      "name": "compact-375",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 1,
+        "expectedColumns": 1,
+        "cards": [
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 331,
+            "height": 356,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Aster Grove Clinic",
+            "width": 331,
+            "height": 374,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Orchard Clinic",
+            "width": 331,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Cedar Clinic",
+            "width": 331,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Valley Diagnostics",
+            "width": 331,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "The Centre for Comprehensive Family Medicine, Preventive Care and Specialist Consultations",
+            "width": 331,
+            "height": 392.390625,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Partial listing",
+            "width": 331,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Profile link pending",
+            "width": 331,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "sticky-375",
+      "passed": true,
+      "geometry": {
+        "centered": true,
+        "oneDesktopRow": true,
+        "toolbarHeight": 98
+      },
+      "scroll": 2807,
+      "dock": {
+        "x": 0,
+        "y": 64,
+        "width": 365,
+        "height": 128
+      },
+      "initialSearch": {
+        "x": 16,
+        "y": 254.65625,
+        "width": 333,
+        "height": 115
+      },
+      "narrowedSearch": {
+        "x": 24,
+        "y": 70,
+        "width": 317,
+        "height": 115
+      }
+    },
+    {
+      "name": "compact-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 1,
+        "expectedColumns": 1,
+        "cards": [
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 346,
+            "height": 356,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Aster Grove Clinic",
+            "width": 346,
+            "height": 356,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Orchard Clinic",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Cedar Clinic",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Valley Diagnostics",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "The Centre for Comprehensive Family Medicine, Preventive Care and Specialist Consultations",
+            "width": 346,
+            "height": 392.390625,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Partial listing",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Profile link pending",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "sticky-390",
+      "passed": true,
+      "geometry": {
+        "centered": true,
+        "oneDesktopRow": true,
+        "toolbarHeight": 98
+      },
+      "scroll": 2789,
+      "dock": {
+        "x": 0,
+        "y": 64,
+        "width": 380,
+        "height": 128
+      },
+      "initialSearch": {
+        "x": 16,
+        "y": 254.65625,
+        "width": 348,
+        "height": 115
+      },
+      "narrowedSearch": {
+        "x": 24,
+        "y": 70,
+        "width": 332,
+        "height": 115
+      }
+    },
+    {
+      "name": "compact-768",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 2,
+        "expectedColumns": 2,
+        "cards": [
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 337,
+            "height": 344,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Aster Grove Clinic",
+            "width": 337,
+            "height": 344,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Orchard Clinic",
+            "width": 337,
+            "height": 338,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Cedar Clinic",
+            "width": 337,
+            "height": 338,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Valley Diagnostics",
+            "width": 337,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "The Centre for Comprehensive Family Medicine, Preventive Care and Specialist Consultations",
+            "width": 337,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Partial listing",
+            "width": 337,
+            "height": 338,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Profile link pending",
+            "width": 337,
+            "height": 338,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "sticky-768",
+      "passed": true,
+      "geometry": {
+        "centered": true,
+        "oneDesktopRow": true,
+        "toolbarHeight": 98
+      },
+      "scroll": 1184,
+      "dock": {
+        "x": 0,
+        "y": 64,
+        "width": 758,
+        "height": 79
+      },
+      "initialSearch": {
+        "x": 32,
+        "y": 210.59375,
+        "width": 694,
+        "height": 62
+      },
+      "narrowedSearch": {
+        "x": 56,
+        "y": 72,
+        "width": 646,
+        "height": 62
+      }
+    },
+    {
+      "name": "compact-1024",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 3,
+        "expectedColumns": 3,
+        "cards": [
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 304,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Aster Grove Clinic",
+            "width": 304,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Orchard Clinic",
+            "width": 304,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Cedar Clinic",
+            "width": 304,
+            "height": 401.1875,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Valley Diagnostics",
+            "width": 304,
+            "height": 401.1875,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "The Centre for Comprehensive Family Medicine, Preventive Care and Specialist Consultations",
+            "width": 304,
+            "height": 401.1875,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Partial listing",
+            "width": 304,
+            "height": 338,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Profile link pending",
+            "width": 304,
+            "height": 338,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "sticky-1024",
+      "passed": true,
+      "geometry": {
+        "centered": true,
+        "oneDesktopRow": true,
+        "toolbarHeight": 44
+      },
+      "scroll": 816,
+      "dock": {
+        "x": 0,
+        "y": 64,
+        "width": 1014,
+        "height": 79
+      },
+      "initialSearch": {
+        "x": 32,
+        "y": 213.6875,
+        "width": 950,
+        "height": 62
+      },
+      "narrowedSearch": {
+        "x": 56,
+        "y": 72,
+        "width": 902,
+        "height": 62
+      }
+    },
+    {
+      "name": "compact-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 4,
+        "expectedColumns": 4,
+        "cards": [
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 327.5,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Aster Grove Clinic",
+            "width": 327.5,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Orchard Clinic",
+            "width": 327.5,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Cedar Clinic",
+            "width": 327.5,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Valley Diagnostics",
+            "width": 327.5,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "The Centre for Comprehensive Family Medicine, Preventive Care and Specialist Consultations",
+            "width": 327.5,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Partial listing",
+            "width": 327.5,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Profile link pending",
+            "width": 327.5,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "sticky-1440",
+      "passed": true,
+      "geometry": {
+        "centered": true,
+        "oneDesktopRow": true,
+        "toolbarHeight": 44
+      },
+      "scroll": 454,
+      "dock": {
+        "x": 0,
+        "y": 64,
+        "width": 1430,
+        "height": 79
+      },
+      "initialSearch": {
+        "x": 32,
+        "y": 228.515625,
+        "width": 1366,
+        "height": 62
+      },
+      "narrowedSearch": {
+        "x": 187,
+        "y": 72,
+        "width": 1056,
+        "height": 62
+      }
+    },
+    {
+      "name": "compact-1920",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 4,
+        "expectedColumns": 4,
+        "cards": [
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 370,
+            "height": 344,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Aster Grove Clinic",
+            "width": 370,
+            "height": 344,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Orchard Clinic",
+            "width": 370,
+            "height": 344,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Cedar Clinic",
+            "width": 370,
+            "height": 344,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Valley Diagnostics",
+            "width": 370,
+            "height": 362.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "The Centre for Comprehensive Family Medicine, Preventive Care and Specialist Consultations",
+            "width": 370,
+            "height": 362.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Partial listing",
+            "width": 370,
+            "height": 362.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Profile link pending",
+            "width": 370,
+            "height": 362.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "sticky-1920",
+      "passed": true,
+      "geometry": {
+        "centered": true,
+        "oneDesktopRow": true,
+        "toolbarHeight": 44
+      },
+      "scroll": 418,
+      "dock": {
+        "x": 0,
+        "y": 64,
+        "width": 1910,
+        "height": 79
+      },
+      "initialSearch": {
+        "x": 187,
+        "y": 228.515625,
+        "width": 1536,
+        "height": 62
+      },
+      "narrowedSearch": {
+        "x": 427,
+        "y": 72,
+        "width": 1056,
+        "height": 62
+      }
+    },
+    {
+      "name": "compact-dark-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 1,
+        "expectedColumns": 1,
+        "cards": [
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 346,
+            "height": 356,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Aster Grove Clinic",
+            "width": 346,
+            "height": 356,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Orchard Clinic",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Cedar Clinic",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Valley Diagnostics",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "The Centre for Comprehensive Family Medicine, Preventive Care and Specialist Consultations",
+            "width": 346,
+            "height": 392.390625,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Partial listing",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Profile link pending",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "sticky-dark-390",
+      "passed": true,
+      "geometry": {
+        "centered": true,
+        "oneDesktopRow": true,
+        "toolbarHeight": 98
+      },
+      "scroll": 2789,
+      "dock": {
+        "x": 0,
+        "y": 64,
+        "width": 380,
+        "height": 128
+      },
+      "initialSearch": {
+        "x": 16,
+        "y": 254.65625,
+        "width": 348,
+        "height": 115
+      },
+      "narrowedSearch": {
+        "x": 24,
+        "y": 70,
+        "width": 332,
+        "height": 115
+      }
+    },
+    {
+      "name": "compact-dark-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 4,
+        "expectedColumns": 4,
+        "cards": [
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 327.5,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Aster Grove Clinic",
+            "width": 327.5,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Orchard Clinic",
+            "width": 327.5,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Cedar Clinic",
+            "width": 327.5,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Valley Diagnostics",
+            "width": 327.5,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "The Centre for Comprehensive Family Medicine, Preventive Care and Specialist Consultations",
+            "width": 327.5,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Partial listing",
+            "width": 327.5,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Profile link pending",
+            "width": 327.5,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "sticky-dark-1440",
+      "passed": true,
+      "geometry": {
+        "centered": true,
+        "oneDesktopRow": true,
+        "toolbarHeight": 44
+      },
+      "scroll": 454,
+      "dock": {
+        "x": 0,
+        "y": 64,
+        "width": 1430,
+        "height": 79
+      },
+      "initialSearch": {
+        "x": 32,
+        "y": 228.515625,
+        "width": 1366,
+        "height": 62
+      },
+      "narrowedSearch": {
+        "x": 187,
+        "y": 72,
+        "width": 1056,
+        "height": 62
+      }
+    },
+    {
+      "name": "stable-location-390",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 1,
+        "expectedColumns": 1,
+        "cards": [
+          {
+            "name": "Aster Grove Clinic",
+            "width": 346,
+            "height": 356,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 346,
+            "height": 356,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Orchard Clinic",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Cedar Clinic",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Valley Diagnostics",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "The Centre for Comprehensive Family Medicine, Preventive Care and Specialist Consultations",
+            "width": 346,
+            "height": 392.390625,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Partial listing",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Profile link pending",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "delayed-location-layout-390",
+      "passed": true,
+      "before": {
+        "toolbar": {
+          "x": 16,
+          "y": 388.65625,
+          "height": 98
+        },
+        "specialties": {
+          "x": 16,
+          "y": 442.65625,
+          "height": 44
+        },
+        "grid": {
+          "x": 16,
+          "y": 498.65625
+        }
+      },
+      "after": {
+        "toolbar": {
+          "x": 16,
+          "y": 388.65625,
+          "height": 98
+        },
+        "specialties": {
+          "x": 16,
+          "y": 442.65625,
+          "height": 44
+        },
+        "grid": {
+          "x": 16,
+          "y": 498.65625
+        }
+      }
+    },
+    {
+      "name": "stable-location-1440",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 4,
+        "expectedColumns": 4,
+        "cards": [
+          {
+            "name": "Aster Grove Clinic",
+            "width": 327.5,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 327.5,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Orchard Clinic",
+            "width": 327.5,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Cedar Clinic",
+            "width": 327.5,
+            "height": 362,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Valley Diagnostics",
+            "width": 327.5,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "The Centre for Comprehensive Family Medicine, Preventive Care and Specialist Consultations",
+            "width": 327.5,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Partial listing",
+            "width": 327.5,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Profile link pending",
+            "width": 327.5,
+            "height": 380.390625,
+            "mediaHeight": 128,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "delayed-location-layout-1440",
+      "passed": true,
+      "before": {
+        "toolbar": {
+          "x": 32,
+          "y": 311.515625,
+          "height": 44
+        },
+        "specialties": {
+          "x": 228,
+          "y": 311.515625,
+          "height": 44
+        },
+        "grid": {
+          "x": 32,
+          "y": 367.515625
+        }
+      },
+      "after": {
+        "toolbar": {
+          "x": 32,
+          "y": 311.515625,
+          "height": 44
+        },
+        "specialties": {
+          "x": 228,
+          "y": 311.515625,
+          "height": 44
+        },
+        "grid": {
+          "x": 32,
+          "y": 367.515625
+        }
+      }
+    },
+    {
+      "name": "sticky-focus-390",
+      "passed": true,
+      "target": {
+        "x": 97,
+        "y": 211.65625,
+        "width": 126.734375,
+        "height": 44
+      },
+      "dock": {
+        "x": 0,
+        "y": 64,
+        "width": 380,
+        "height": 128
+      },
+      "errors": []
+    },
+    {
+      "name": "sticky-focus-1440",
+      "passed": true,
+      "target": {
+        "x": 456.5,
+        "y": 158.515625,
+        "width": 126.734375,
+        "height": 44
+      },
+      "dock": {
+        "x": 0,
+        "y": 64,
+        "width": 1430,
+        "height": 79
+      },
+      "errors": []
+    },
+    {
+      "name": "mobile-filter-sheet",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 1,
+        "expectedColumns": 1,
+        "cards": [
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 346,
+            "height": 356,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": []
+      }
+    },
+    {
+      "name": "mobile-applied-filter",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 1,
+        "expectedColumns": 1,
+        "cards": [
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 346,
+            "height": 356,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "mobile-stale-error",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 1,
+        "expectedColumns": 1,
+        "cards": [
+          {
+            "name": "River Hospital and Specialist Care",
+            "width": 346,
+            "height": 356,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Aster Grove Clinic",
+            "width": 346,
+            "height": 356,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Orchard Clinic",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Cedar Clinic",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Valley Diagnostics",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "The Centre for Comprehensive Family Medicine, Preventive Care and Specialist Consultations",
+            "width": 346,
+            "height": 392.390625,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Partial listing",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          },
+          {
+            "name": "Profile link pending",
+            "width": 346,
+            "height": 350,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "mobile-empty",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": null,
+        "expectedColumns": 1,
+        "cards": [],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "mobile-error",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": null,
+        "expectedColumns": 1,
+        "cards": [],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "mobile-loading",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": null,
+        "expectedColumns": 1,
+        "cards": [],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "mobile-single",
+      "passed": true,
+      "layout": {
+        "overflow": false,
+        "nestedLinks": 0,
+        "columns": 1,
+        "expectedColumns": 1,
+        "cards": [
+          {
+            "name": "Aster Grove Clinic",
+            "width": 346,
+            "height": 356,
+            "mediaHeight": 140,
+            "footerInsideCard": true
+          }
+        ],
+        "undersized": []
+      },
+      "errors": [],
+      "accessibility": {
+        "violations": [],
+        "incomplete": [
+          {
+            "id": "color-contrast",
+            "nodes": [
+              {
+                "target": [
+                  ".browse-module__bP9ayW__eyebrow"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__eyebrow\">CARE CLOSE TO YOU</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title"
+                ],
+                "html": "<h1 id=\"browse-title\">Find care that <span>fits your needs</span></h1>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  "#browse-title > span"
+                ],
+                "html": "<span>fits your needs</span>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              },
+              {
+                "target": [
+                  ".browse-module__bP9ayW__intro"
+                ],
+                "html": "<p class=\"browse-module__bP9ayW__intro\">Discover clinics and hospitals, explore doctors, and choose your next visit.</p>",
+                "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "/browse/does-not-exist",
+      "passed": true,
+      "status": 404
+    },
+    {
+      "name": "/doctor/does-not-exist",
+      "passed": true,
+      "status": 404
+    }
+  ],
+  "reads": [],
+  "blockedWrites": [],
+  "unexpectedImageRequests": [],
+  "date": "2026-10-25",
+  "scope": "Removed save feature; contained identity logos, safe native calling, opening status, stable detected-area metadata, narrower pinned search. Isolated fixture API; no database or live booking writes. Actual public screenshots use GET-only traffic."
+}

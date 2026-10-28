@@ -19,3 +19,13 @@ it('opens the exact linked diagnostic source under the current branch and allows
   await waitFor(() => expect(read).toHaveBeenCalledWith('/lab-orders', expect.anything()));
   expect(window.location.search).toBe('');
 });
+it('loads the staff laboratory workspace without fetching metrics that are not displayed', async () => {
+  useAuthStore.setState({ user: { id: 'lab-user', role: 'lab_tech', name: 'Lab', email: 'lab@example.test', permissions: ['VIEW_LAB_REPORTS'] }, isAuthenticated: true });
+  useLocationStore.setState({ activeLocationId: null });
+  const read = vi.spyOn(api, 'get').mockImplementation(async path => ({ data: { data: String(path).startsWith('/onboarding/staff') ? { doctors: [] } : [] } }));
+  render(<ThemeProvider><ToastProvider><Laboratory /></ToastProvider></ThemeProvider>);
+  await waitFor(() => expect(read).toHaveBeenCalledWith('/lab-orders', expect.anything()));
+  expect(read).toHaveBeenCalledWith('/lab-tests', expect.anything());
+  expect(read).toHaveBeenCalledWith('/onboarding/staff', expect.anything());
+  expect(read.mock.calls.some(([path]) => String(path).includes('/tat-metrics'))).toBe(false);
+});

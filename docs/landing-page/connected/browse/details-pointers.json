@@ -1,0 +1,16 @@
+[
+  {
+    "width": 390,
+    "checked": 14,
+    "nonPointers": [],
+    "saveControls": 0,
+    "passed": true
+  },
+  {
+    "width": 1440,
+    "checked": 14,
+    "nonPointers": [],
+    "saveControls": 0,
+    "passed": true
+  }
+]

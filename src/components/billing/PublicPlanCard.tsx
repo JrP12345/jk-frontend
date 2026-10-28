@@ -94,6 +94,7 @@ export function PublicPlanCard({ plan, billingCycle, compact = false }: { plan: 
         )}
         <Link
           href={isEnterprise ? "mailto:ekavyuofficial@gmail.com" : `/onboarding?mode=new_org&plan=${encodeURIComponent(plan.slug)}`}
+          prefetch={false}
           className={`mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-3 text-center text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${plan.isPopular ? "bg-primary text-brand-mist hover:bg-primary-hover" : "border border-border hover:bg-surface-hover"}`}
         >
           {isEnterprise ? "Contact Sales" : `Request ${plan.name} setup`}

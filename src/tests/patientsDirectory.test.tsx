@@ -28,7 +28,10 @@ it("does not fabricate an MRN and removes the empty table toolbar", async () => 
   expect(screen.getAllByText(/Not assigned/).length).toBeGreaterThan(0);
   expect(document.body.textContent).not.toContain("MRN-PATIEN");
   expect(screen.queryByRole("button", { name: /column/i })).not.toBeInTheDocument();
-  expect(screen.getAllByRole("link", { name: patient.name })[0]).toHaveAttribute("href", "/dashboard/patients/patient");
+  for (const link of screen.getAllByRole("link", { name: patient.name })) {
+    expect(link).toHaveAttribute("href", "/dashboard/patients/patient");
+    expect(link.closest('[role="button"]')).toBeNull();
+  }
 });
 
 it("hides old search results immediately and recovers from a failed read", async () => {

@@ -56,7 +56,7 @@ listed for pending rows identify existing coverage to inspect/select, not claime
 | Authorized clinical staff | Search/AI/ABDM/SSO/platform services | Scoped record search, draft assistance, configured integration | Route permissions + tenant/subject validation; no simulated production success | S; `aiValidationAndSecurity`, `abdmSandboxGuard`; provider/consent E |
 | Operators | Worker health/jobs/backup/restore | Durable delivery/retry/lease, shutdown; archive/drill | Restricted deployment credentials, bounded work, operator authorization | Codec R; live worker, snapshot/application restore E |
 
-Known direct code issues are tracked in `production-readiness-worklog.md`. Advanced
+Known direct code issues are tracked in `production-readiness-tracker.md#security-recovery-and-configured-provider-acceptance`. Advanced
 integrations are existing optional capabilities, not automatically part of a small
 clinic's P1 go-live. Disable/withhold unconfigured modules and run their separate
 acceptance checks before enabling them. Source enumeration is not an exhaustive

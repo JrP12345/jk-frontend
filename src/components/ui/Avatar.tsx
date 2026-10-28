@@ -52,7 +52,7 @@ function getColor(name: string): string {
   return avatarColors[Math.abs(hash) % avatarColors.length];
 }
 
-function getInitials(name: string): string {
+export function getAvatarInitials(name: string): string {
   if (!name.trim()) return "?";
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
@@ -68,8 +68,9 @@ const Avatar = memo(function Avatar({ src, alt, name = "", size = "md", status, 
         getColor(name)
       )}
       aria-label={name || "Avatar"}
+      role="img"
     >
-      {getInitials(name)}
+      {getAvatarInitials(name)}
     </span>
   );
 
@@ -84,6 +85,7 @@ const Avatar = memo(function Avatar({ src, alt, name = "", size = "md", status, 
             statusColors[status]
           )}
           aria-label={`Status: ${status}`}
+          role="img"
         />
       )}
     </div>

@@ -1,0 +1,682 @@
+{
+  "capturedAt": "2026-10-24T17:17:05.710Z",
+  "tool": "Playwright 1.64.1",
+  "dataset": {
+    "source": "landing-demo.mjs; entirely fictional, loopback only",
+    "clock": "2026-10-24T04:30:00.000Z",
+    "doctors": 3,
+    "patients": 8,
+    "appointments": 8,
+    "invoices": 5,
+    "locations": 2,
+    "storage": "In-memory API responses; no database changes"
+  },
+  "captures": [
+    {
+      "name": "booking-desktop",
+      "route": "/doctor/mira-shah?location=aster-grove",
+      "role": "anonymous",
+      "viewport": {
+        "width": 1040,
+        "height": 1000
+      },
+      "clip": {
+        "x": 0,
+        "y": 0,
+        "width": 1040,
+        "height": 860
+      },
+      "asset": "/landing/product/booking-desktop.webp",
+      "bytes": 47174,
+      "sha256": "7a719edb25653d749fa00f5b94e6aabe038fc1b8e7b8008b52898f7ec27cfb89",
+      "errors": [],
+      "consoleErrors": [],
+      "unknown": [],
+      "blockedWrites": [],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/public/locations/aster-grove",
+        "GET /api/public/doctors/mira-shah/profile",
+        "GET /api/public/doctors/333333333333333333333333/slots",
+        "GET /api/public/locations/aster-grove-east"
+      ],
+      "visibleText": "Browse locations\n/\nAster Grove Clinic\n/\nDr. Mira Shah\n\nDOCTOR PROFILE\n\nD\nDr. Mira Shah\nShare\n\nGeneral Medicine\n\nMBBS, MD\n12 years of experience\n\nConsultations in English, Hindi\n\nCheck appointment times\nPractice locations\n\nFees and booking options can vary by location.\n\nAster Grove Clinic\n\nClinic\n\nDemonstration address · Baner, Pune\n\n₹600\nView location details\nSelected location\nAster Grove East\n\nClinic\n\nDemonstration address · Kalyani Nagar, Pune\n\n₹600\nView location details\nCheck times at this location\n\nONLINE APPOINTMENTS\n\nSelect Date & Time\n\nAster Grove Clinic · Pune\n\n1. Date & Time\n2. Patient Details\nDR\n\nDr. Mira Shah\n\nGeneral Medicine\n\n₹600\nAvailability updated\n1. CHOOSE DATE\nShift: 09:00 AM – 05:00 PM\nMON\nOct 26\nTUE\nOct 27\nWED\nOct 28\nTHU\nOct 29\nFRI\nOct 30\nSAT\nOct 31\n2. SELECT TIME SLOT\nSelected: 10:30 AM\nMORNING (BEFORE 12:00 PM)\n10:00 AM\n10:15 AM\n10:30 AM\n10:45 AM\n11:00 AM\n11:15 AM\nContinue to Details"
+    },
+    {
+      "name": "booking-mobile",
+      "route": "/doctor/mira-shah?location=aster-grove",
+      "role": "anonymous",
+      "viewport": {
+        "width": 420,
+        "height": 1000
+      },
+      "clip": {
+        "x": 0,
+        "y": 70,
+        "width": 420,
+        "height": 800
+      },
+      "asset": "/landing/product/booking-mobile.webp",
+      "bytes": 39402,
+      "sha256": "87d012f73a41a563ef7225bc1a1bd7ca87dde41e8a8e40175b0ad1e003dc60e9",
+      "errors": [],
+      "consoleErrors": [],
+      "unknown": [],
+      "blockedWrites": [],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/public/locations/aster-grove",
+        "GET /api/public/doctors/mira-shah/profile",
+        "GET /api/public/doctors/333333333333333333333333/slots",
+        "GET /api/public/locations/aster-grove-east"
+      ],
+      "visibleText": "Browse locations\n/\nAster Grove Clinic\n/\nDr. Mira Shah\n\nDOCTOR PROFILE\n\nD\nDr. Mira Shah\nShare\n\nGeneral Medicine\n\nMBBS, MD\n12 years of experience\n\nConsultations in English, Hindi\n\nCheck appointment times\nPractice locations\n\nFees and booking options can vary by location.\n\nAster Grove Clinic\n\nClinic\n\nDemonstration address · Baner, Pune\n\n₹600\nView location details\nSelected location\nAster Grove East\n\nClinic\n\nDemonstration address · Kalyani Nagar, Pune\n\n₹600\nView location details\nCheck times at this location\n\nONLINE APPOINTMENTS\n\nSelect Date & Time\n\nAster Grove Clinic · Pune\n\n1. Date & Time\n2. Patient Details\nDR\n\nDr. Mira Shah\n\nGeneral Medicine\n\n₹600\nAvailability updated\n1. CHOOSE DATE\nShift: 09:00 AM – 05:00 PM\nMON\nOct 26\nTUE\nOct 27\nWED\nOct 28\nTHU\nOct 29\nFRI\nOct 30\nSAT\nOct 31\n2. SELECT TIME SLOT\nSelected: 10:30 AM\nMORNING (BEFORE 12:00 PM)\n10:00 AM\n10:15 AM\n10:30 AM\n10:45 AM\n11:00 AM\n11:15 AM\nContinue to Details"
+    },
+    {
+      "name": "reception-desktop",
+      "route": "/dashboard/appointments",
+      "role": "admin",
+      "viewport": {
+        "width": 1360,
+        "height": 1000
+      },
+      "clip": {
+        "x": 256,
+        "y": 64,
+        "width": 1094,
+        "height": 800
+      },
+      "asset": "/landing/product/reception-desktop.webp",
+      "bytes": 41016,
+      "sha256": "b620ccb9040f5faaa68cbe1f00f9fa577a977c6bbf712622c2786ccd7e0ba2f9",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/onboarding/locations",
+        "GET /api/onboarding/staff",
+        "GET /api/modules",
+        "GET /api/appointments"
+      ],
+      "visibleText": "Appointments\n8\nNew booking\nList\nCalendar\nNeeds review\nAster Grove Clinic\nFilters\nOct 24, 2026\n8 matches\nPatient\n\t\nPractitioner\n\t\nDate & Time\n\t\nStatus\n\t\nActions\n\n\nAnaya Sen\nToken #13\n0000000041\n\t\nDr. Mira Shah\nAster Grove Clinic\n\t\nOct 24, 2026, 10:30 AM\nScheduled\n\t\nChecked In\n\t\nSlip\n\n\nKabir Nair\nToken #14\n0000000042\n\t\nDr. Mira Shah\nAster Grove Clinic\n\t\nOct 24, 2026, 10:15 AM\nScheduled\n\t\nIn Consultation\n\t\nSlip\n\n\nTara Menon\nToken #15\n0000000043\n\t\nDr. Mira Shah\nAster Grove Clinic\n\t\nOct 24, 2026, 10:45 AM\nScheduled\n\t\nConfirmed\n\t\nSlip\n\n\nRohan Desai\nToken #16\n0000000044\n\t\nDr. Arjun Mehta\nAster Grove Clinic\n\t\nOct 24, 2026, 11:00 AM\nWalk In\n\t\nChecked In\n\t\nSlip\n\n\nIra Kapoor\nToken #17\n0000000045\n\t\nDr. Leena Iyer\nAster Grove Clinic\n\t\nOct 24, 2026, 11:15 AM\nScheduled\n\t\nPending\n\t\nSlip\n\n\nNikhil Shah\nToken #18\n0000000046\n\t\nDr. Mira Shah\nAster Grove Clinic\n\t\nOct 24, 2026, 9:15 AM\nScheduled\n\t\nCompleted\n\t\nSlip\n\n\nSana Joshi\nToken #19\n0000000047\n\t\nDr. Mira Shah\nAster Grove Clinic\n\t\nOct 24, 2026, 9:30 AM\nScheduled\n\t\nCompleted\n\t\nSlip\n\n\nDev Malhotra\nToken #20\n0000000048\n\t\nDr. Mira Shah\nAster Grove Clinic\n\t\nOct 24, 2026, 11:30 AM\nScheduled\n\t\nCancelled\n\t\nSlip\n8 of 8 appointments"
+    },
+    {
+      "name": "reception-mobile",
+      "route": "/dashboard/appointments",
+      "role": "admin",
+      "viewport": {
+        "width": 420,
+        "height": 1000
+      },
+      "clip": {
+        "x": 0,
+        "y": 101,
+        "width": 420,
+        "height": 800
+      },
+      "asset": "/landing/product/reception-mobile.webp",
+      "bytes": 28570,
+      "sha256": "0b001664d17a61a7e920f398bbd5ab6460e75886de58b2b764d9f0d2e905df69",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/onboarding/locations",
+        "GET /api/onboarding/staff",
+        "GET /api/modules",
+        "GET /api/appointments"
+      ],
+      "visibleText": "Appointments\n8\nNew booking\nList\nCalendar\nNeeds review\nOct 24, 2026\n8 matches\n#13\nAnaya Sen\n0000000041\nchecked in\nScheduled\nDr. Mira Shah\nOct 24, 2026, 10:30 AM\nAster Grove Clinic\n#14\nKabir Nair\n0000000042\nin consultation\nScheduled\nDr. Mira Shah\nOct 24, 2026, 10:15 AM\nAster Grove Clinic\n#15\nTara Menon\n0000000043\nconfirmed\nScheduled\nDr. Mira Shah\nOct 24, 2026, 10:45 AM\nAster Grove Clinic\n#16\nRohan Desai\n0000000044\nchecked in\nWalk In\nDr. Arjun Mehta\nOct 24, 2026, 11:00 AM\nAster Grove Clinic\n#17\nIra Kapoor\n0000000045\npending\nScheduled\nDr. Leena Iyer\nOct 24, 2026, 11:15 AM\nAster Grove Clinic\n#18\nNikhil Shah\n0000000046\ncompleted\nScheduled\nDr. Mira Shah\nOct 24, 2026, 9:15 AM\nAster Grove Clinic\n#19\nSana Joshi\n0000000047\ncompleted\nScheduled\nDr. Mira Shah\nOct 24, 2026, 9:30 AM\nAster Grove Clinic\n#20\nDev Malhotra\n0000000048\ncancelled\nScheduled\nDr. Mira Shah\nOct 24, 2026, 11:30 AM\nAster Grove Clinic\n8 of 8 appointments"
+    },
+    {
+      "name": "queue-desktop",
+      "route": "/dashboard/queue",
+      "role": "doctor",
+      "viewport": {
+        "width": 1360,
+        "height": 1000
+      },
+      "clip": {
+        "x": 256,
+        "y": 64,
+        "width": 1094,
+        "height": 800
+      },
+      "asset": "/landing/product/queue-desktop.webp",
+      "bytes": 28746,
+      "sha256": "a2cf54719b3b868e05db37f65f960459182776edb35446c6b1d434bf778f1d6d",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/onboarding/doctors/assignments",
+        "GET /api/modules",
+        "GET /api/queue",
+        "GET /api/queue/status",
+        "GET /api/onboarding/locations",
+        "GET /api/doctor-overrides",
+        "GET /api/doctor-overrides/triage",
+        "GET /api/queue/delay-status"
+      ],
+      "visibleText": "Patient queue\nLocation\n\nAster Grove Clinic\n\nDoctor\n\nDr. Mira Shah\n\nQueue date\nOct 24, 2026\nQueue\nStandby\nProcessed\nRecalls\nOPD in progress\nSession\nWalk-in\nCall Next\nNot arrived\n1\nWaiting\n1\nIn visit\n1\nNext token\n#13\nTOKEN\n#13\nAnaya Sen\nChecked In\nUnpaid ₹600\n0000000041\nScheduled\nNext in Line\nPay ₹600\nCall In\nTOKEN\n#14\nKabir Nair\nIn Consultation\nUnpaid ₹600\n0000000042\nScheduled\nPay ₹600\nConclude Visit\nTOKEN\n#15\nTara Menon\nConfirmed\nUnpaid ₹600\n0000000043\nScheduled\nNext in Line\nCheck In\nPay ₹600\nCall In\nHourly patient flow"
+    },
+    {
+      "name": "queue-mobile",
+      "route": "/dashboard/queue",
+      "role": "doctor",
+      "viewport": {
+        "width": 420,
+        "height": 1000
+      },
+      "clip": {
+        "x": 0,
+        "y": 101,
+        "width": 420,
+        "height": 800
+      },
+      "asset": "/landing/product/queue-mobile.webp",
+      "bytes": 36792,
+      "sha256": "ba5a0b0330adffc491c7171fea274c556b163cb681541542a205db2232d1b9b1",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/onboarding/doctors/assignments",
+        "GET /api/modules",
+        "GET /api/queue",
+        "GET /api/queue/status",
+        "GET /api/onboarding/locations",
+        "GET /api/doctor-overrides",
+        "GET /api/doctor-overrides/triage",
+        "GET /api/queue/delay-status"
+      ],
+      "visibleText": "Patient queue\nMira Shah\nAster Grove Clinic\n24 Oct 2026\nOPD in progress\nQueue\nStandby\nProcessed\nRecalls\nWalk-in\nCall Next\nNot arrived\n1\nWaiting\n1\nIn visit\n1\nNext token\n#13\nTOKEN\n#13\nAnaya Sen\nChecked In\nUnpaid ₹600\n0000000041\nScheduled\nNext in Line\nPay ₹600\nCall In\nTOKEN\n#14\nKabir Nair\nIn Consultation\nUnpaid ₹600\n0000000042\nScheduled\nPay ₹600\nConclude Visit\nTOKEN\n#15\nTara Menon\nConfirmed\nUnpaid ₹600\n0000000043\nScheduled\nNext in Line\nCheck In\nPay ₹600\nCall In\nHourly patient flow"
+    },
+    {
+      "name": "doctor-desktop",
+      "route": "/dashboard/consultations/555555555555555555555555",
+      "role": "doctor",
+      "viewport": {
+        "width": 1360,
+        "height": 1000
+      },
+      "clip": {
+        "x": 256,
+        "y": 64,
+        "width": 1094,
+        "height": 800
+      },
+      "asset": "/landing/product/doctor-desktop.webp",
+      "bytes": 36178,
+      "sha256": "417a623bac4d90c92b685c419cc95a9f4394bbe8e0d03a186cb69909424c7bb9",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [
+        "POST /api/encounters"
+      ],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/appointments/555555555555555555555555",
+        "GET /api/modules",
+        "GET /api/onboarding/locations",
+        "POST /api/encounters",
+        "GET /api/patients/444444444444444444444444/clinical-notes/history",
+        "GET /api/soap-templates",
+        "GET /api/encounters/555555555555555555555555/orders"
+      ],
+      "visibleText": "Consultation: Anaya Sen\nA\nAnaya Sen\nMRN: DEMO-001\nGender: female\nDOB: 1991-02-12\nAllergies:\nNot recorded\nDiagnoses:\nNot recorded\nNotes\nOrders\n0\nHistory\nNEWS2\nNext patient\nClinical notes\n\nDraft saved to server\n\nNote tools\nSave draft\nSign note\nS · Subjective\nChief Complaint *\nSymptoms (comma-separated)\nHistory of Present Illness (HPI)\nO · Objective\nBP Systolic\nBP Diastolic\nHeart Rate\nSpO₂ (%)\nTemp (°F)\nPhysical Examination Notes\nA · Assessment\nPrimary Diagnosis\nICD-10 Code\nSeverity\nSelect an option...\nMild\nModerate\nAcute\nSevere\nMild\nP · Plan\nTreatment Plan\nAdd Rx Medication (Search Catalog)\nAdd Rx\nPrevious visits\nPre-visit briefing"
+    },
+    {
+      "name": "doctor-mobile",
+      "route": "/dashboard/consultations/555555555555555555555555",
+      "role": "doctor",
+      "viewport": {
+        "width": 420,
+        "height": 1000
+      },
+      "clip": {
+        "x": 0,
+        "y": 101,
+        "width": 420,
+        "height": 800
+      },
+      "asset": "/landing/product/doctor-mobile.webp",
+      "bytes": 34844,
+      "sha256": "1391c1e836c74b5b2e6a10b951e2f544fd3b62219d75f1eba9e9c65a163d6870",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [
+        "POST /api/encounters"
+      ],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/appointments/555555555555555555555555",
+        "GET /api/modules",
+        "POST /api/encounters",
+        "GET /api/onboarding/locations",
+        "GET /api/patients/444444444444444444444444/clinical-notes/history",
+        "GET /api/soap-templates",
+        "GET /api/encounters/555555555555555555555555/orders"
+      ],
+      "visibleText": "Consultation: Anaya Sen\nA\nAnaya Sen\nMRN: DEMO-001\nGender: female\nDOB: 1991-02-12\nAllergies:\nNot recorded\nDiagnoses:\nNot recorded\nNotes\nOrders\n0\nHistory\nNEWS2\nNext patient\nClinical notes\n\nDraft saved to server\n\nNote tools\nSave draft\nSign note\nS · Subjective\nChief Complaint *\nSymptoms (comma-separated)\nHistory of Present Illness (HPI)\nO · Objective\nBP Systolic\nBP Diastolic\nHeart Rate\nSpO₂ (%)\nTemp (°F)\nPhysical Examination Notes\nA · Assessment\nPrimary Diagnosis\nICD-10 Code\nSeverity\nSelect an option...\nMild\nModerate\nAcute\nSevere\nMild\nP · Plan\nTreatment Plan\nAdd Rx Medication (Search Catalog)\nAdd Rx\nPrevious visits\nPre-visit briefing"
+    },
+    {
+      "name": "billing-desktop",
+      "route": "/dashboard/billing",
+      "role": "admin",
+      "viewport": {
+        "width": 1360,
+        "height": 1000
+      },
+      "clip": {
+        "x": 256,
+        "y": 64,
+        "width": 1094,
+        "height": 800
+      },
+      "asset": "/landing/product/billing-desktop.webp",
+      "bytes": 30188,
+      "sha256": "32bd239fa72d215420503ffb61af0b4ea7dba7ed605d936c99218023555fa662",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/onboarding/locations",
+        "GET /api/invoices",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/modules"
+      ],
+      "visibleText": "Billing\n\nInvoices and patient payments\n\nNew invoice\nAll\nUnpaid\nPart paid\nPaid\nRefunded\nCancelled\nSelect an option...\nAll locations\nAster Grove Clinic\nAster Grove East\nAll locations\nPatient / invoice\n\t\nVisit\n\t\nAmount\n\t\nStatus\n\t\n\n\nAnaya Sen\nDEMO-1021\n0000000041\n\t\nAster Grove Clinic\nMira Shah\n24 Oct 2026\n\t\n₹600\n\t\nPaid\n\t\nInvoice\n\n\nNikhil Shah\nDEMO-1022\n0000000046\n\t\nAster Grove Clinic\nMira Shah\n24 Oct 2026\n\t\n₹600\n\t\nPaid\n\t\nInvoice\n\n\nSana Joshi\nDEMO-1023\n0000000047\n\t\nAster Grove Clinic\nMira Shah\n24 Oct 2026\n\t\n₹600\n\t\nPaid\n\t\nInvoice\n\n\nTara Menon\nDEMO-1024\n0000000043\n\t\nAster Grove Clinic\nMira Shah\n24 Oct 2026\n\t\n₹600\nDue ₹300\n\t\nPart paid\n\t\nRecord payment\n\n\nRohan Desai\nDEMO-1025\n0000000044\n\t\nAster Grove Clinic\nArjun Mehta\n24 Oct 2026\n\t\n₹700\nDue ₹700\n\t\nUnpaid\n\t\nRecord payment\n5 invoices\nPrevious\nPage 1 / 1\nNext\nPage summary 5 invoices"
+    },
+    {
+      "name": "billing-mobile",
+      "route": "/dashboard/billing",
+      "role": "admin",
+      "viewport": {
+        "width": 420,
+        "height": 1000
+      },
+      "clip": {
+        "x": 0,
+        "y": 101,
+        "width": 420,
+        "height": 800
+      },
+      "asset": "/landing/product/billing-mobile.webp",
+      "bytes": 23828,
+      "sha256": "c107d63ea48c7768af40f72ed287b2efc8578bfe6313390b7f031a3d672e1487",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/onboarding/locations",
+        "GET /api/invoices",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/modules"
+      ],
+      "visibleText": "Billing\nNew invoice\nAll\nUnpaid\nPart paid\nPaid\nRefunded\nCancelled\nSelect an option...\nAll locations\nAster Grove Clinic\nAster Grove East\nAll locations\nAnaya Sen\nDEMO-1021\nPaid\n\nAster Grove Clinic · 24 Oct\n\nInvoice total\n₹600\nRecorded payments\n₹600\nInvoice\nNikhil Shah\nDEMO-1022\nPaid\n\nAster Grove Clinic · 24 Oct\n\nInvoice total\n₹600\nRecorded payments\n₹600\nInvoice\nSana Joshi\nDEMO-1023\nPaid\n\nAster Grove Clinic · 24 Oct\n\nInvoice total\n₹600\nRecorded payments\n₹600\nInvoice\nTara Menon\nDEMO-1024\nPart paid\n\nAster Grove Clinic · 24 Oct\n\nInvoice total\n₹600\nBalance due\n₹300\nRecord payment\nRohan Desai\nDEMO-1025\nUnpaid\n\nAster Grove Clinic · 24 Oct\n\nInvoice total\n₹700\nBalance due\n₹700\nRecord payment\n5 invoices\nPrevious\nPage 1 / 1\nNext\nPage summary 5 invoices"
+    },
+    {
+      "name": "overview-desktop",
+      "route": "/dashboard",
+      "role": "admin",
+      "viewport": {
+        "width": 1360,
+        "height": 1000
+      },
+      "clip": {
+        "x": 256,
+        "y": 64,
+        "width": 1094,
+        "height": 800
+      },
+      "asset": "/landing/product/overview-desktop.webp",
+      "bytes": 44358,
+      "sha256": "7c9e485f5863b99f0630b74e6d6328b14d15650de72a623259847a1e06eb972e",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/onboarding/staff",
+        "GET /api/invoices",
+        "GET /api/analytics/daily-summary",
+        "GET /api/onboarding/locations",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/modules"
+      ],
+      "visibleText": "Welcome back, Aditi Rao\n\nOrg Admin · Today's appointments, collections and location activity.\n\nNew Booking\nPractice summary\n\nCollections\n\n₹2,100\n\nToday's settled\n\nOutstanding\n\n₹1,000\n\nToday's pending balance\n\nActive Locations\n\n2\n\nOpen branches\n\nDoctors\n\n3\n\nRegistered clinicians\nLive Appointments Queue\n8\nView All\nToken\n\t\nPatient\n\t\nDoctor\n\t\nDate & Time\n\t\nStatus\n\n\n#13\n\t\nAnaya Sen\n\t\nDr. Mira Shah\n\t\nOct 24, 10:30 AM\n\t\nChecked In\n\n\n#14\n\t\nKabir Nair\n\t\nDr. Mira Shah\n\t\nOct 24, 10:15 AM\n\t\nIn Consultation\n\n\n#15\n\t\nTara Menon\n\t\nDr. Mira Shah\n\t\nOct 24, 10:45 AM\n\t\nConfirmed\n\n\n#16\n\t\nRohan Desai\n\t\nDr. Arjun Mehta\n\t\nOct 24, 11:00 AM\n\t\nChecked In\n\n\n#17\n\t\nIra Kapoor\n\t\nDr. Leena Iyer\n\t\nOct 24, 11:15 AM\n\t\nPending\nQuick operations\nQueue desk\nAppointments\nPatient records\nPatient billing\nStaff and clinicians\nLocations\nOrganizations\nPatient volume\n\nDaily completed and scheduled consultations\n\nLast 7 Days\nLast 30 Days\n0\n5\n10\n15\n18 Sun\n19 Mon\n20 Tue\n21 Wed\n22 Thu\n23 Fri\n24 Sat\nCompleted Visits\nScheduled\nCancelled\nLocation activity\n\nVisits distributed by location\n\n0\n5\n10\n15\nAster Grove ...\nAster Grove ...\nCompleted\nScheduled\nActive locations\n\nConnected healthcare centers and branch network\n\nManage Locations\nAster Grove Clinic\n\nPune\n\nDemonstration address · Baner\nActive\nAster Grove East\n\nPune\n\nDemonstration address · Kalyani Nagar\nActive"
+    },
+    {
+      "name": "overview-mobile",
+      "route": "/dashboard",
+      "role": "admin",
+      "viewport": {
+        "width": 420,
+        "height": 1000
+      },
+      "clip": {
+        "x": 0,
+        "y": 101,
+        "width": 420,
+        "height": 800
+      },
+      "asset": "/landing/product/overview-mobile.webp",
+      "bytes": 30048,
+      "sha256": "3b794d07154af50580335d53f731952191cf70bccb83e51d7c719413727ec7fc",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/onboarding/staff",
+        "GET /api/invoices",
+        "GET /api/analytics/daily-summary",
+        "GET /api/onboarding/locations",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/modules"
+      ],
+      "visibleText": "Welcome back, Aditi Rao\n\nOrg Admin · Today's appointments, collections and location activity.\n\nBook\nPractice summary\n\nCollections\n\n₹2,100\n\nToday's settled\n\nOutstanding\n\n₹1,000\n\nToday's pending balance\n\nActive Locations\n\n2\n\nOpen branches\n\nDoctors\n\n3\n\nRegistered clinicians\nLive Appointments Queue\n8\nView All\n#13\n10:30 AM (Oct 24)\nChecked In\nA\n\nAnaya Sen\n\nDr. Mira Shah\n\nDetails\n#14\n10:15 AM (Oct 24)\nIn Consultation\nK\n\nKabir Nair\n\nDr. Mira Shah\n\nDetails\n#15\n10:45 AM (Oct 24)\nConfirmed\nT\n\nTara Menon\n\nDr. Mira Shah\n\nDetails\n#16\n11:00 AM (Oct 24)\nChecked In\nR\n\nRohan Desai\n\nDr. Arjun Mehta\n\nDetails\n#17\n11:15 AM (Oct 24)\nPending\nI\n\nIra Kapoor\n\nDr. Leena Iyer\n\nDetails\nQuick operations\nQueue desk\nAppointments\nPatient records\nPatient billing\nStaff and clinicians\nLocations\nOrganizations\nPatient volume\n\nDaily completed and scheduled consultations\n\nLast 7 Days\nLast 30 Days\n0\n5\n10\n15\n18 Sun\n19 Mon\n20 Tue\n21 Wed\n22 Thu\n23 Fri\n24 Sat\nCompleted Visits\nScheduled\nCancelled\nLocation activity\n\nVisits distributed by location\n\n0\n5\n10\n15\nAster Grove ...\nAster Grove ...\nCompleted\nScheduled\nActive locations\n\nConnected healthcare centers and branch network\n\nManage Locations\nAster Grove Clinic\n\nPune\n\nDemonstration address · Baner\nActive\nAster Grove East\n\nPune\n\nDemonstration address · Kalyani Nagar\nActive"
+    },
+    {
+      "name": "whatsapp-desktop",
+      "route": "/dashboard/organizations?organizationId=111111111111111111111111&section=configuration",
+      "role": "admin",
+      "viewport": {
+        "width": 1360,
+        "height": 1000
+      },
+      "clip": {
+        "x": 301,
+        "y": 83,
+        "width": 994,
+        "height": 598
+      },
+      "asset": "/landing/product/whatsapp-desktop.webp",
+      "bytes": 21614,
+      "sha256": "22017188131ecbe6cac20459d1b3f48f2e32adbf837c09079dac913fa74a8d0f",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/organizations",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/modules",
+        "GET /api/organization/whatsapp",
+        "GET /api/onboarding/locations",
+        "GET /api/organization/whatsapp/health"
+      ],
+      "visibleText": "Aster Grove Practice\nActive\nPune\nOverview\nDetails & branding\nMembers\nLocations\nSubscription\nConfiguration\nConfiguration\nEveryday workflow\n\nChoose the usual starting point. Full registration, clinical documentation and billing stay available.\n\nPatient entry\nSelect an option...\nFull registration (current default)\nEssential details — search, name and contact\nFull registration (current default)\nConsultation starting view\nSelect an option...\nFull clinical workspace (current default)\nFocused visit — optional notes and medicine\nFull clinical workspace (current default)\n\nFocused visits can finish without a SOAP note. Saved clinical drafts must still be signed in the full editor. Fee, invoice, payment and permission rules stay in effect.\n\nQueue announcements\n\nBell and spoken language for staff calling patients from the queue. Saved for all staff and locations in this organization.\n\nBell sound\nSelect an option...\nClassic Reception Bell\nHospital Ding-Dong\nSoft Digital Synth Chime\nElevator Arrival Tone\nGentle Brass Gong\nModern High-Beep\nMarimba Double Strike\nMute / Silent Mode\nClassic Reception Bell\nAnnouncement language\nSelect an option...\nVoice off\nEnglish\nHindi\nEnglish and Hindi\nEnglish\nPreview announcement\n\nPreview plays a sample token on this device.\n\nSave preferences\nOrganization modules\n\nCore modules are enabled during provisioning. Required modules stay enabled. Root controls optional modules.\n\nPractice essentials\n\ndashboard · Required\n\ndashboard\n\nappointments · Required\n\nappointments\n\nconsultations · Required\n\nconsultations\n\npatients · Required\n\npatients\n\nnotifications · Required\n\nnotifications\n\ncrm · Required\n\ncrm\n\nbilling · Required\n\nbilling\n\nservice-catalog · Required\n\nservice-catalog\n\npharmacy · Required\n\npharmacy\n\nlaboratory · Required\n\nlaboratory\n\nradiology · Required\n\nradiology\n\nanalytics · Required\n\nanalytics\n\ninsurance · Required\n\ninsurance\n\nteleconsultation · Required\n\nteleconsultation\n\nfeedback · Required\n\nfeedback\n\nqueue · Required\n\nqueue\n\nstaff · Required\n\nstaff\n\nlocations · Required\n\nlocations\n\nshifts · Required\n\nshifts\n\nsettings · Required\n\nsettings\n\naudit · Required\n\naudit\nExtended modules\n\nNo matching modules.\n\nOrganization delivery settings\n\nDelivery settings for this workspace.\n\nMeta WhatsApp Business Cloud Gateway\nActive\nWhatsApp Cloud API\n\nOfficial Meta Cloud API for patient booking links, live queue tracker, and post-visit digital Rx handoffs.\n\nTop-Up Credits\nSave Settings\nAVAILABLE CREDITS\n382\nCredits\n\n1 Credit = 1 Billable WhatsApp Not"
+    },
+    {
+      "name": "whatsapp-mobile",
+      "route": "/dashboard/organizations?organizationId=111111111111111111111111&section=configuration",
+      "role": "admin",
+      "viewport": {
+        "width": 420,
+        "height": 1000
+      },
+      "clip": {
+        "x": 46,
+        "y": 120,
+        "width": 328,
+        "height": 441
+      },
+      "asset": "/landing/product/whatsapp-mobile.webp",
+      "bytes": 15982,
+      "sha256": "c133f06a105fed59277d7ac422534f565ac6a6fb45864235c9f77a461f693056",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/organizations",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/modules",
+        "GET /api/organization/whatsapp",
+        "GET /api/onboarding/locations",
+        "GET /api/organization/whatsapp/health"
+      ],
+      "visibleText": "Aster Grove Practice\nActive\nPune\nOverview\nDetails & branding\nMembers\nLocations\nSubscription\nConfiguration\nConfiguration\nEveryday workflow\n\nChoose the usual starting point. Full registration, clinical documentation and billing stay available.\n\nPatient entry\nSelect an option...\nFull registration (current default)\nEssential details — search, name and contact\nFull registration (current default)\nConsultation starting view\nSelect an option...\nFull clinical workspace (current default)\nFocused visit — optional notes and medicine\nFull clinical workspace (current default)\n\nFocused visits can finish without a SOAP note. Saved clinical drafts must still be signed in the full editor. Fee, invoice, payment and permission rules stay in effect.\n\nQueue announcements\n\nBell and spoken language for staff calling patients from the queue. Saved for all staff and locations in this organization.\n\nBell sound\nSelect an option...\nClassic Reception Bell\nHospital Ding-Dong\nSoft Digital Synth Chime\nElevator Arrival Tone\nGentle Brass Gong\nModern High-Beep\nMarimba Double Strike\nMute / Silent Mode\nClassic Reception Bell\nAnnouncement language\nSelect an option...\nVoice off\nEnglish\nHindi\nEnglish and Hindi\nEnglish\nPreview announcement\n\nPreview plays a sample token on this device.\n\nSave preferences\nOrganization modules\n\nCore modules are enabled during provisioning. Required modules stay enabled. Root controls optional modules.\n\nPractice essentials\n\ndashboard · Required\n\ndashboard\n\nappointments · Required\n\nappointments\n\nconsultations · Required\n\nconsultations\n\npatients · Required\n\npatients\n\nnotifications · Required\n\nnotifications\n\ncrm · Required\n\ncrm\n\nbilling · Required\n\nbilling\n\nservice-catalog · Required\n\nservice-catalog\n\npharmacy · Required\n\npharmacy\n\nlaboratory · Required\n\nlaboratory\n\nradiology · Required\n\nradiology\n\nanalytics · Required\n\nanalytics\n\ninsurance · Required\n\ninsurance\n\nteleconsultation · Required\n\nteleconsultation\n\nfeedback · Required\n\nfeedback\n\nqueue · Required\n\nqueue\n\nstaff · Required\n\nstaff\n\nlocations · Required\n\nlocations\n\nshifts · Required\n\nshifts\n\nsettings · Required\n\nsettings\n\naudit · Required\n\naudit\nExtended modules\n\nNo matching modules.\n\nOrganization delivery settings\n\nDelivery settings for this workspace.\n\nMeta WhatsApp Business Cloud Gateway\nActive\nWhatsApp Cloud API\n\nOfficial Meta Cloud API for patient booking links, live queue tracker, and post-visit digital Rx handoffs.\n\nTop-Up Credits\nSave Settings\nAVAILABLE CREDITS\n382\nCredits\n\n1 Credit = 1 Billable WhatsApp Not"
+    },
+    {
+      "name": "notifications-desktop",
+      "route": "/dashboard/notifications",
+      "role": "admin",
+      "viewport": {
+        "width": 1360,
+        "height": 1000
+      },
+      "clip": {
+        "x": 256,
+        "y": 64,
+        "width": 1094,
+        "height": 800
+      },
+      "asset": "/landing/product/notifications-desktop.webp",
+      "bytes": 29332,
+      "sha256": "b6d343759cbbeecb2ad107864efe167cd26183616a6179bd77cbed171b50ce1c",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/notifications",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/modules",
+        "GET /api/onboarding/locations"
+      ],
+      "visibleText": "Notifications\n\n3 unread notifications\n\nNew notification\nAll\nUnread\nMark all read\nSelect an option...\nAll categories\nAccount activity\nPatient care\nTasks\nSecurity\nSystem\nBilling\nTeam\nOrganization\nAll categories\nNotification inbox\n\t\nNotification\n\t\nReceived\n\t\nActions\n\n\n\t\nPatient care\nUnread\nAnaya Sen checked in\n\nToken 13 · Dr. Mira Shah · Aster Grove Clinic\n\n\t\nOct 24, 9:59 AM\nUnread\n\t\n\n\n\t\nBilling\nUnread\nPayment recorded for Anaya Sen\n\nDEMO-1021 · ₹600 · Consultation invoice settled\n\n\t\nOct 24, 9:54 AM\nUnread\n\t\n\n\n\t\nPatient care\nUnread\nTara Menon booked an appointment\n\n10:45 AM · General Medicine · Confirmation recorded\n\n\t\nOct 24, 9:49 AM\nUnread\n\t\n\n\n\t\nTeam\nDr. Leena Iyer’s clinic session is scheduled\n\nDermatology · Aster Grove Clinic · 09:00 AM–01:00 PM\n\n\t\nOct 24, 9:44 AM\nRead\n\t\n\n\n\t\nSystem\nClinic activity summary is available\n\nReview today’s appointments, collections and location activity.\n\n\t\nOct 24, 9:39 AM\nRead\n\t\n\n1–5 of 5"
+    },
+    {
+      "name": "notifications-mobile",
+      "route": "/dashboard/notifications",
+      "role": "admin",
+      "viewport": {
+        "width": 420,
+        "height": 1000
+      },
+      "clip": {
+        "x": 0,
+        "y": 101,
+        "width": 420,
+        "height": 800
+      },
+      "asset": "/landing/product/notifications-mobile.webp",
+      "bytes": 26598,
+      "sha256": "42971cbbb616c669bdbd9a1055b71a69c3a6230470c75f00c60f6a96a34624c0",
+      "errors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 405 (Method Not Allowed)"
+      ],
+      "unknown": [],
+      "blockedWrites": [
+        "POST /api/public/track-visit"
+      ],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/auth/me",
+        "GET /api/auth/workspaces",
+        "GET /api/notifications/unread-count",
+        "GET /api/notifications",
+        "GET /api/onboarding/organization/preferences",
+        "GET /api/modules",
+        "GET /api/onboarding/locations"
+      ],
+      "visibleText": "Notifications\n\n3 unread notifications\n\nNew\nAll\nUnread\nMark all read\nSelect an option...\nAll categories\nAccount activity\nPatient care\nTasks\nSecurity\nSystem\nBilling\nTeam\nOrganization\nSelect page\nPatient care\nUnread\nAnaya Sen checked in\n\nToken 13 · Dr. Mira Shah · Aster Grove Clinic\n\nOct 24, 9:59 AM\nMark read\nBilling\nUnread\nPayment recorded for Anaya Sen\n\nDEMO-1021 · ₹600 · Consultation invoice settled\n\nOct 24, 9:54 AM\nMark read\nPatient care\nUnread\nTara Menon booked an appointment\n\n10:45 AM · General Medicine · Confirmation recorded\n\nOct 24, 9:49 AM\nMark read\nTeam\nDr. Leena Iyer’s clinic session is scheduled\n\nDermatology · Aster Grove Clinic · 09:00 AM–01:00 PM\n\nOct 24, 9:44 AM\nRead\nSystem\nClinic activity summary is available\n\nReview today’s appointments, collections and location activity.\n\nOct 24, 9:39 AM\nRead\n\n1–5 of 5"
+    },
+    {
+      "name": "discovery-desktop",
+      "route": "/browse",
+      "role": "anonymous",
+      "viewport": {
+        "width": 1040,
+        "height": 1000
+      },
+      "clip": {
+        "x": 0,
+        "y": 0,
+        "width": 1040,
+        "height": 860
+      },
+      "asset": "/landing/product/discovery-desktop.webp",
+      "bytes": 28472,
+      "sha256": "157ff8f007f13d737055687688da6a783f96e4b2638664bbb2567771c8e54ede",
+      "errors": [],
+      "consoleErrors": [],
+      "unknown": [],
+      "blockedWrites": [],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/public/locations"
+      ],
+      "visibleText": "2 locations available\n\nCare specialty\nSelect an option...\nAll Care\nDermatology\nGeneral Medicine\nPediatrics\nAll Care\nSort by\nSelect an option...\nTop rated\nLowest fee\nTop rated\nAster Grove Clinic\nPune\nDemonstration address · Baner\nclinic@example.test\nDirections\nView facility\nAster Grove East\n\nClinic\n\nPune\nDemonstration address · Kalyani Nagar\nclinic@example.test\nDirections\nView facility"
+    },
+    {
+      "name": "discovery-mobile",
+      "route": "/browse",
+      "role": "anonymous",
+      "viewport": {
+        "width": 420,
+        "height": 1000
+      },
+      "clip": {
+        "x": 0,
+        "y": 0,
+        "width": 420,
+        "height": 860
+      },
+      "asset": "/landing/product/discovery-mobile.webp",
+      "bytes": 38864,
+      "sha256": "f494d4f51eacd1ab90431cdafd82d39fed8976b64088cb4019957bef9e42d718",
+      "errors": [],
+      "consoleErrors": [],
+      "unknown": [],
+      "blockedWrites": [],
+      "simulatedInitializations": [],
+      "requests": [
+        "GET /api/public/locations"
+      ],
+      "visibleText": "2 locations\n\nCare specialty\nSelect an option...\nAll Care\nDermatology\nGeneral Medicine\nPediatrics\nAll Care\nSort by\nSelect an option...\nTop rated\nLowest fee\nTop rated\nAster Grove Clinic\nPune\nDemonstration address · Baner\nclinic@example.test\nDirections\nView facility\nAster Grove East\n\nClinic\n\nPune\nDemonstration address · Kalyani Nagar\nclinic@example.test\nDirections\nView facility"
+    }
+  ],
+  "blockedWrites": [],
+  "simulatedInitializations": []
+}

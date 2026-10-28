@@ -31,7 +31,7 @@ it("submits a form from its pinned action and returns focus after dismissal", as
   expect(submit).toHaveBeenCalledTimes(1);
   fireEvent.keyDown(document, { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-  expect(trigger).toHaveFocus();
+  await waitFor(() => expect(trigger).toHaveFocus());
 });
 
 it("keeps a busy dialog open when Escape or Close is pressed", async () => {

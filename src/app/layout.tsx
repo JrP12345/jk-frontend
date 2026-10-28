@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { getSiteUrl } from "@/lib/siteUrl";
+import { canIndexPublicSite, getSiteUrl } from "@/lib/siteUrl";
 
 const brandDescription = "Ekavyu — Care That Keeps Moving. Integrated digital health for patients and healthcare teams.";
 
 export const metadata: Metadata = {
   metadataBase: getSiteUrl(),
-  robots: { index: Boolean(getSiteUrl()), follow: true },
+  robots: { index: canIndexPublicSite(), follow: true },
   title: "Ekavyu — Healthcare Platform",
   description: brandDescription,
   applicationName: "Ekavyu",
@@ -23,13 +23,13 @@ export const metadata: Metadata = {
     title: "Ekavyu — Healthcare Platform",
     description: brandDescription,
   },
-  manifest: "/manifest.json?v=brand-3",
+  manifest: "/manifest.json?v=brand-5",
   icons: {
     icon: [
-      { url: "/favicon-32.png?v=brand-3", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-32.png?v=brand-5", sizes: "32x32", type: "image/png" },
     ],
-    shortcut: [{ url: "/favicon-16.png?v=brand-3", sizes: "16x16", type: "image/png" }],
-    apple: [{ url: "/app-icon-180.png?v=brand-3", sizes: "180x180", type: "image/png" }],
+    shortcut: [{ url: "/favicon-16.png?v=brand-5", sizes: "16x16", type: "image/png" }],
+    apple: [{ url: "/app-icon-180.png?v=brand-5", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
@@ -42,7 +42,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0F6F66",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F6F2E8" },
+    { media: "(prefers-color-scheme: dark)", color: "#121314" },
+  ],
 };
 
 export default async function RootLayout({

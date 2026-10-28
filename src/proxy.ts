@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { canIndexPublicSite, isPreviewHost } from "@/lib/siteUrl";
 
 function nextWithContentSecurityPolicy(request: NextRequest) {
   // Next reads the nonce from the forwarded request CSP and adds it to its own
@@ -22,7 +23,7 @@ function nextWithContentSecurityPolicy(request: NextRequest) {
     "img-src 'self' blob: data: https: https://*.razorpay.com",
     "font-src 'self' data:",
     `connect-src ${connectSources}`,
-    "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com",
+    "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com https://www.google.com/maps/embed",
     "frame-ancestors 'self'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -40,7 +41,9 @@ function nextWithContentSecurityPolicy(request: NextRequest) {
   response.headers.set("x-nonce", nonce);
   const path = request.nextUrl.pathname;
   const publicPage = path === "/" || path === "/pricing" || path === "/browse" || path.startsWith("/browse/") || path.startsWith("/doctor/");
-  if (!publicPage) response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  if (!publicPage || !canIndexPublicSite() || isPreviewHost(request.nextUrl.hostname)) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
   return response;
 }
 

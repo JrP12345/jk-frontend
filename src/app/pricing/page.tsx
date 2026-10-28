@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import { Button } from "@/components/ui";
 import { billingService, type SaaSPlan } from "@/services/billing.service";
@@ -8,26 +9,29 @@ import { BillingCycleSwitch, PublicPlanCard, planCapacityRows as capacityRows, p
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
-  const [plans, setPlans] = useState<SaaSPlan[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const [plans, setPlans] = useState<SaaSPlan[]>(() => queryClient.getQueryData(["public-plans"]) || []);
+  const [loading, setLoading] = useState(!plans.length);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let current = true;
-    setLoading(true);
     setError(null);
-    billingService.getPlans().then(data => {
+    void queryClient.fetchQuery({
+      queryKey: ["public-plans"], queryFn: () => billingService.getPlans(),
+      staleTime: 5 * 60 * 1000, retry: false,
+    }).then(data => {
       if (!current) return;
-      setPlans(data || []);
-      if (!data?.length) setError("No active pricing plans are configured.");
+      setPlans(data);
+      if (!data.length) setError("No active pricing plans are configured.");
     }).catch(() => {
       if (!current) return;
       setPlans([]);
       setError("Pricing plans could not be loaded. Please try again.");
     }).finally(() => { if (current) setLoading(false); });
     return () => { current = false; };
-  }, [attempt]);
+  }, [queryClient, attempt]);
 
   return (
     <div className="min-h-dvh bg-background text-text flex flex-col">
@@ -45,7 +49,10 @@ export default function PricingPage() {
         ) : error ? (
           <div className="rounded-xl border border-border bg-surface p-6 space-y-4">
             <p role="status" className="text-sm text-text-secondary">{error}</p>
-            <Button variant="outline" onClick={() => setAttempt(value => value + 1)}>Try again</Button>
+            <Button variant="outline" onClick={() => {
+              void queryClient.invalidateQueries({ queryKey: ["public-plans"], exact: true, refetchType: "none" });
+              setLoading(true); setAttempt(value => value + 1);
+            }}>Try again</Button>
           </div>
         ) : (
           <>
