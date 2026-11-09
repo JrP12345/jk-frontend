@@ -10,6 +10,9 @@ const directoryRows = browseCases.slice(0,4).map((row,index)=>({...row, name:['A
 function filterBrowseCases(url, mode) {
  let rows = mode==='empty'?[]:mode==='single'?[directoryRows[0]]:mode==='unmapped'?directoryRows.map(row=>({...row,latitude:0,longitude:0})):directoryRows;
  if(mode==='long')rows=[{...directoryRows[0],name:'The Centre for Comprehensive Family Medicine, Preventive Care and Specialist Consultations',address:'A long illustrative address near the community health centre and residential gardens in the city'}];
+ const types=url.searchParams.getAll('facilityType');
+ if(types.length)rows=rows.filter(row=>types.includes(row.facilityType));
+ if(url.searchParams.get('onlineBooking')==='true')rows=rows.filter(row=>row.onlineBookingAvailable&&row.bookingStatus==='check_availability');
  const q=url.searchParams.get('search')?.toLowerCase(),city=url.searchParams.get('city'),specialties=url.searchParams.getAll('specialization'),bounds=url.searchParams.get('bounds')?.split(',').map(Number);
  if(q)rows=rows.filter(row=>[row.name,row.city,...row.specialties].join(' ').toLowerCase().includes(q));
  if(city)rows=rows.filter(row=>row.city===city);
@@ -41,7 +44,7 @@ const api = http.createServer(async (request, response) => {
   if (url.pathname === '/api/public/locations') {
     if (mode === 'error' || failRefresh) { response.writeHead(503); response.end('{}'); return; }
     if (mode === 'loading') await new Promise(resolve => setTimeout(resolve, 3500));
-    value = { success: true, data: filterBrowseCases(url, mode), filters: { cities: ['Pune', 'Surat'], specialties: ['General Physician / Consultant','Cardiology','Orthopedics','Pathology','Radiology'],specialtyCounts:{'General Physician / Consultant':1,Cardiology:1,Orthopedics:1,Pathology:1,Radiology:1} } };
+    value = { success: true, data: filterBrowseCases(url, mode), filters: { cities: ['Pune', 'Surat'], specialties: ['General Physician / Consultant','Cardiology','Orthopedics','Pathology','Radiology'],specialtyCounts:{'General Physician / Consultant':1,Cardiology:1,Orthopedics:1,Pathology:1,Radiology:1},facilityTypeCounts:{clinic:2,hospital:1,diagnostic_center:1} } };
   } else if (url.pathname.startsWith('/api/public/locations/')) {
     const row = browseCases.find(row => url.pathname.endsWith('/' + row.slug));
     if (!row) { response.writeHead(404); response.end('{}'); return; }
@@ -94,7 +97,7 @@ async function inspectDirectory(page,name,errors) {
   await page.evaluate(async()=>{await Promise.all([...document.querySelectorAll('.leaflet-tile')].map(image=>image.decode().catch(()=>{})));await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});
  }
  await page.evaluate(async()=>{await document.fonts.ready;await Promise.all([...document.images].filter(i=>i.complete).map(i=>i.decode().catch(()=>{})));});
- await page.screenshot({path:path.join(output,name+'.png'),fullPage:true});
+ await page.screenshot({path:path.join(output,name+'.png'),fullPage:!await page.getByRole('dialog').count()});
  const geometry=await page.evaluate(()=>({
   overflow:document.documentElement.scrollWidth>innerWidth,
   nestedLinks:document.querySelectorAll('a a').length,
@@ -116,9 +119,10 @@ try {
  for(const[width,dark]of widths) {
   mode='populated';
   const {context,page,errors}=await open(width,dark);
-  await page.getByRole('heading',{level:1,name:'Clinics & hospitals',exact:true}).waitFor();
+  await page.getByRole('heading',{level:1,name:'Clinics & hospitals near you',exact:true}).waitFor();
   await page.getByRole('searchbox',{name:'Search by doctor, location name, or specialty'}).waitFor();
-  if(await page.evaluate(()=>performance.getEntriesByType('resource').some(entry=>entry.name.includes('tile.openstreetmap.org'))))throw Error('List view downloaded map tiles');
+  if(width<1200&&await page.evaluate(()=>performance.getEntriesByType('resource').some(entry=>entry.name.includes('tile.openstreetmap.org'))))throw Error('Narrow List view downloaded map tiles');
+  if(width>=1200){await page.locator('.leaflet-container').waitFor();await page.getByRole('button',{name:/Select Riverside/}).waitFor();}
   await inspectDirectory(page,'list-'+width+(dark?'-dark':''),errors);
   await page.getByRole('button',{name:'Map',exact:true}).filter({visible:true}).first().click();
   await page.locator('.leaflet-container').waitFor();
@@ -129,7 +133,7 @@ try {
   }
   await clinicPin.click();
   await page.locator('[aria-live="polite"] h2').filter({hasText:'Aster Grove Clinic'}).waitFor();
-  await page.locator('[aria-live="polite"]').getByRole('link',{name:'Book appointment'}).waitFor();
+  if(width<768)await page.locator('[aria-live="polite"]').getByRole('link',{name:'Book appointment'}).waitFor();
   await inspectDirectory(page,'map-'+width+(dark?'-dark':''),errors);
   await page.getByRole('button',{name:'Zoom in',exact:true}).click();
   await Promise.all([page.waitForResponse(r=>r.url().includes('/api/public/locations?')&&r.url().includes('bounds=')),page.getByRole('button',{name:'Search this area',exact:true}).click()]);
@@ -150,6 +154,23 @@ try {
   await filtered;
   await page.waitForFunction(()=>document.querySelectorAll('ul[aria-label="Healthcare locations"] article').length===1);
   if(await page.getByRole('list',{name:'Healthcare locations'}).locator('article').count()!==1)throw Error('Opening filter failed');
+  if(width===390&&!dark){
+   await page.getByRole('button',{name:'Filters',exact:true}).click();
+   const sheet=page.getByRole('dialog',{name:'Filter locations'});
+   await sheet.getByRole('button',{name:'Clear all',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelectorAll('ul[aria-label="Healthcare locations"] article').length===4);
+   await inspectDirectory(page,'filters-390',errors);
+   await page.evaluate(()=>Object.defineProperty(navigator,'geolocation',{configurable:true,value:{getCurrentPosition:ok=>ok({coords:{latitude:21.17,longitude:72.80,accuracy:20}})}}));
+   await sheet.getByRole('button',{name:'Use my location',exact:true}).click();
+   await sheet.getByRole('slider',{name:'Distance in kilometres'}).waitFor();
+   await Promise.all([page.waitForResponse(r=>r.url().includes('radiusKm=50')),sheet.getByRole('slider',{name:'Distance in kilometres'}).press('End')]);
+   await Promise.all([page.waitForResponse(r=>r.url().includes('facilityType=hospital')),sheet.getByRole('checkbox',{name:'Hospital',exact:true}).press('Space')]);
+   await page.waitForFunction(()=>document.querySelectorAll('ul[aria-label="Healthcare locations"] article').length===1);
+   await inspectDirectory(page,'filters-selected-390',errors);
+   await sheet.getByRole('button',{name:'Show results'}).click();
+   if(!await page.getByRole('heading',{name:/Riverside Multispeciality/}).isVisible())throw Error('Facility filter did not persist after closing sheet');
+   results.push({name:'sheet-location-distance-facility-390',passed:true});
+  }
   results.push({name:'selection-zoom-area-filter-'+width+(dark?'-dark':''),passed:true});
   await context.close();
  }

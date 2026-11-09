@@ -13222,5 +13222,1539 @@
       "scopedLint": true,
       "controlledProductionBuild": true
     }
+  },
+  "directoryReference20261031": {
+    "date": "2026-10-31",
+    "scope": "Updated supplied reference using shared Ekavyu components: scrolling search band, grouped type/specialty/booking/hour/radius filters, structured cards, inline desktop map, mobile quick filters/sheet and List/Map group. No verified badges, favorites or invented date availability. Public actual-data captures are read-only. Aarogya has no usable map coordinates.",
+    "responsive": {
+      "synthetic": true,
+      "liveTiles": false,
+      "results": [
+        {
+          "name": "list-390",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 244.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 229,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 278,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "aria-prohibited-attr",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__quickFilters"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "map-390",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__filterButton > .grid.gap-\\[inherit\\].max-w-full > .\\[grid-area\\:1\\/1\\].gap-\\[inherit\\].max-w-full > .whitespace-normal.wrap-anywhere.\\[\\&\\>span\\]\\:min-w-0"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "selection-zoom-area-filter-390",
+          "passed": true
+        },
+        {
+          "name": "list-1440",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 238,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 238,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 287,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".BrowseMap-module__K7hUQq__pin[data-selected=\"true\"][data-map-pin=\"true\"] > span"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "map-1440",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 315.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 315.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 300,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 300,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".leaflet-marker-icon.BrowseMap-module__K7hUQq__pinHost.leaflet-interactive:nth-child(1) > .BrowseMap-module__K7hUQq__pin[data-selected=\"false\"][data-map-pin=\"true\"] > span"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "selection-zoom-area-filter-1440",
+          "passed": true
+        },
+        {
+          "name": "list-320",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 266.671875,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 323,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 229,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 278,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "aria-prohibited-attr",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__quickFilters"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "map-320",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__filterButton > .grid.gap-\\[inherit\\].max-w-full > .\\[grid-area\\:1\\/1\\].gap-\\[inherit\\].max-w-full > .whitespace-normal.wrap-anywhere.\\[\\&\\>span\\]\\:min-w-0"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "selection-zoom-area-filter-320",
+          "passed": true
+        },
+        {
+          "name": "list-375",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 244.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 229,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 278,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "aria-prohibited-attr",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__quickFilters"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "map-375",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__filterButton > .grid.gap-\\[inherit\\].max-w-full > .\\[grid-area\\:1\\/1\\].gap-\\[inherit\\].max-w-full > .whitespace-normal.wrap-anywhere.\\[\\&\\>span\\]\\:min-w-0"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "selection-zoom-area-filter-375",
+          "passed": true
+        },
+        {
+          "name": "list-768",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 238,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 238,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 287,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "aria-prohibited-attr",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__quickFilters"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "map-768",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 315.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 315.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 300,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 300,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".BrowseMap-module__K7hUQq__pin[data-outside=\"false\"][data-selected=\"false\"] > span"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "selection-zoom-area-filter-768",
+          "passed": true
+        },
+        {
+          "name": "list-1024",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 238,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 302.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 238,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 287,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": []
+          },
+          "errors": []
+        },
+        {
+          "name": "map-1024",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 315.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 315.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 300,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 300,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".leaflet-marker-icon.BrowseMap-module__K7hUQq__pinHost.leaflet-interactive:nth-child(1) > .BrowseMap-module__K7hUQq__pin[data-selected=\"false\"][data-map-pin=\"true\"] > span"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "selection-zoom-area-filter-1024",
+          "passed": true
+        },
+        {
+          "name": "list-390-dark",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 244.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 229,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 278,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "aria-prohibited-attr",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__quickFilters"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "map-390-dark",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__filterButton > .grid.gap-\\[inherit\\].max-w-full > .\\[grid-area\\:1\\/1\\].gap-\\[inherit\\].max-w-full > .whitespace-normal.wrap-anywhere.\\[\\&\\>span\\]\\:min-w-0"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "selection-zoom-area-filter-390-dark",
+          "passed": true
+        },
+        {
+          "name": "list-1440-dark",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 238,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 238,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 287,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".BrowseMap-module__K7hUQq__pin[data-selected=\"true\"][data-map-pin=\"true\"] > span"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "map-1440-dark",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 315.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 315.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 300,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 300,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".leaflet-marker-icon.BrowseMap-module__K7hUQq__pinHost.leaflet-interactive:nth-child(1) > .BrowseMap-module__K7hUQq__pin[data-selected=\"false\"][data-map-pin=\"true\"] > span"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "selection-zoom-area-filter-1440-dark",
+          "passed": true
+        },
+        {
+          "name": "state-empty",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "aria-prohibited-attr",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__quickFilters"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "state-error",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "aria-prohibited-attr",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__quickFilters"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "state-single",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "aria-prohibited-attr",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__quickFilters"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "state-unmapped",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__filterButton > .grid.gap-\\[inherit\\].max-w-full > .\\[grid-area\\:1\\/1\\].gap-\\[inherit\\].max-w-full > .whitespace-normal.wrap-anywhere.\\[\\&\\>span\\]\\:min-w-0"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "state-long",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 378.671875,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "aria-prohibited-attr",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__quickFilters"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        }
+      ],
+      "blockedWrites": [],
+      "unexpectedImageRequests": []
+    },
+    "refinement": {
+      "synthetic": true,
+      "liveTiles": false,
+      "results": [
+        {
+          "name": "list-390",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 244.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 229,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 278,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "aria-prohibited-attr",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__quickFilters"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "map-390",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__filterButton > .grid.gap-\\[inherit\\].max-w-full > .\\[grid-area\\:1\\/1\\].gap-\\[inherit\\].max-w-full > .whitespace-normal.wrap-anywhere.\\[\\&\\>span\\]\\:min-w-0"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "filters-390",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 244.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 229,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 278,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".gap-2.w-full.flex > .active\\:bg-active.hover\\:border-border-focus[type=\"button\"] > .grid.gap-\\[inherit\\].max-w-full > .\\[grid-area\\:1\\/1\\].gap-\\[inherit\\].max-w-full > .whitespace-normal.wrap-anywhere.\\[\\&\\>span\\]\\:min-w-0"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "filters-selected-390",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 244.28125,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": []
+          },
+          "errors": []
+        },
+        {
+          "name": "sheet-location-distance-facility-390",
+          "passed": true
+        },
+        {
+          "name": "selection-zoom-area-filter-390",
+          "passed": true
+        },
+        {
+          "name": "list-1440",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 238,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 238,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 287,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".BrowseMap-module__K7hUQq__pin[data-selected=\"true\"][data-outside=\"false\"] > span"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "map-1440",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 315.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 315.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 300,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 300,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".leaflet-marker-icon.BrowseMap-module__K7hUQq__pinHost.leaflet-interactive:nth-child(1) > .BrowseMap-module__K7hUQq__pin[data-selected=\"false\"][data-map-pin=\"true\"] > span"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "selection-zoom-area-filter-1440",
+          "passed": true
+        },
+        {
+          "name": "list-390-dark",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 244.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 229,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 278,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "aria-prohibited-attr",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__quickFilters"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "map-390-dark",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__filterButton > .grid.gap-\\[inherit\\].max-w-full > .\\[grid-area\\:1\\/1\\].gap-\\[inherit\\].max-w-full > .whitespace-normal.wrap-anywhere.\\[\\&\\>span\\]\\:min-w-0"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "selection-zoom-area-filter-390-dark",
+          "passed": true
+        }
+      ],
+      "blockedWrites": [],
+      "unexpectedImageRequests": []
+    },
+    "liveTiles": {
+      "synthetic": true,
+      "liveTiles": true,
+      "results": [
+        {
+          "name": "list-1440",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 238,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 238,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 287,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".BrowseMap-module__K7hUQq__pin[data-selected=\"true\"][data-map-pin=\"true\"] > span"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "map-1440",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 315.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 315.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 300,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 300,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".leaflet-marker-icon.BrowseMap-module__K7hUQq__pinHost.leaflet-interactive:nth-child(1) > .BrowseMap-module__K7hUQq__pin[data-selected=\"false\"][data-map-pin=\"true\"] > span"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "selection-zoom-area-filter-1440",
+          "passed": true
+        },
+        {
+          "name": "list-390",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 244.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 229,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 278,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "aria-prohibited-attr",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__quickFilters"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "map-390",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 0,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": [
+              {
+                "id": "color-contrast",
+                "nodes": [
+                  [
+                    ".browse-module__bP9ayW__filterButton > .grid.gap-\\[inherit\\].max-w-full > .\\[grid-area\\:1\\/1\\].gap-\\[inherit\\].max-w-full > .whitespace-normal.wrap-anywhere.\\[\\&\\>span\\]\\:min-w-0"
+                  ]
+                ]
+              }
+            ]
+          },
+          "errors": []
+        },
+        {
+          "name": "filters-390",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 244.28125,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 314.5,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 229,
+                "logoSquare": true,
+                "contained": true
+              },
+              {
+                "height": 278,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": []
+          },
+          "errors": []
+        },
+        {
+          "name": "filters-selected-390",
+          "passed": true,
+          "geometry": {
+            "overflow": false,
+            "nestedLinks": 0,
+            "cards": [
+              {
+                "height": 244.28125,
+                "logoSquare": true,
+                "contained": true
+              }
+            ],
+            "smallActions": []
+          },
+          "accessibility": {
+            "violations": [],
+            "incomplete": []
+          },
+          "errors": []
+        },
+        {
+          "name": "sheet-location-distance-facility-390",
+          "passed": true
+        },
+        {
+          "name": "selection-zoom-area-filter-390",
+          "passed": true
+        }
+      ],
+      "blockedWrites": [],
+      "unexpectedImageRequests": []
+    },
+    "checks": {
+      "frontendFocusedTests": 50,
+      "backendFocusedTests": 34,
+      "frontendTypes": true,
+      "backendTypes": true,
+      "scopedLint": true,
+      "brokenDocumentationLinks": 0,
+      "productionBuild": "Not rerun: no dependency or build-configuration changes."
+    }
   }
 }

@@ -16,6 +16,7 @@ import { readPharmacyTrials, parseStoredPharmacySetup } from "@/lib/pharmacyOnbo
 const router = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("@/lib/api", () => ({ default: { get: vi.fn(), post: vi.fn() } }));
+vi.mock("@/components/ui", async original => ({ ...await original<typeof import("@/components/ui")>(), ModeSwitcher: () => null }));
 const plan = { id: "1".repeat(24), name: "Reviewed synthetic trial", fingerprint: "a".repeat(64), currency: "INR", monthlyTotalPaise: 49900, maxStaff: 5, trialDays: 7 };
 const proof = { requestId: "2".repeat(24), setupToken: "b".repeat(64), completionKey: "saved-completion-key" };
 const owner: User = { id: "3".repeat(24), name: "Owner", email: "owner@example.test", organization_id: "4".repeat(24), role: "admin", workspaceProfile: "pharmacy", mfaEnrollmentRequired: true, permissions: ["MANAGE_ORGANIZATION", "MANAGE_STAFF", "VIEW_LOCATIONS", "PHARMACY_SELL"] };

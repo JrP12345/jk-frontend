@@ -1,139 +1,137 @@
-.container { padding-block: 8px 32px; }
+.container { padding-block: 0 48px; }
+.heroBand { position: relative; padding-bottom: 64px; background: var(--brand-primary); color: var(--brand-mist); box-shadow: 0 0 0 100vmax var(--brand-primary); clip-path: inset(0 -100vmax); }
 .breadcrumbs { display: flex; align-items: center; min-height: 56px; min-width: 0; }
 .breadcrumbs > nav { min-width: 0; }
 .breadcrumbs ol { flex-wrap: nowrap; gap: 8px; }
 .breadcrumbs li { flex-shrink: 0; gap: 8px; }
-.breadcrumbs li:not(:first-child):not(:last-child) { min-width: 0; max-width: 14ch; }
+.breadcrumbs li:not(:first-child) { min-width: 0; }
+.breadcrumbs li:not(:first-child):not(:last-child) { max-width: 18ch; }
 .breadcrumbs li:last-child { min-width: 0; flex: 1; }
-.breadcrumbs [aria-current=page] { min-width: 0; }
-.breadcrumbs a { display: inline-flex; align-items: center; min-height: 44px; }
-.heroCard, .information { background: var(--surface-elevated); border-radius: 18px; box-shadow: none; }
-.hero { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px 24px; padding: 20px; }
-.heroIdentity { display: flex; align-items: center; gap: 18px; min-width: 0; flex: 1 1 320px; }
-.logo { display: flex; width: 72px; height: 72px; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; border-radius: 20px; background: var(--selected); color: var(--accent); font-size: 24px; font-weight: 700; }
-.logo > img, .logo > span { max-width: 100%; max-height: 100%; }
+.breadcrumbs a { display: inline-flex; align-items: center; min-width: 0; min-height: 44px; }
+.breadcrumbs a > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.heroBand .breadcrumbs :is(a, span) { color: var(--brand-mist); }
+.hero { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 24px; padding-block: 4px 24px; }
+.heroIdentity { display: flex; align-items: center; gap: 24px; min-width: 0; flex: 1 1 360px; }
+.logo { display: flex; width: 88px; height: 88px; align-items: center; justify-content: center; flex: 0 0 88px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-elevated); color: var(--accent); font-size: 28px; font-weight: 600; }
+.logo > span { max-width: 100%; }
 .heroText { min-width: 0; }
-.heroText h1 { color: var(--text-primary); font-size: 30px; font-weight: 750; line-height: 1.2; letter-spacing: -.035em; overflow-wrap: anywhere; }
-.affiliation { margin-top: 6px; font-size: 13px; line-height: 1.4; color: var(--text-secondary); }
-.heroMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; color: var(--text-secondary); font-size: 14px; }
-.heroMeta > span:has(> svg) { display: inline-flex; align-items: center; gap: 6px; }
-.heroMeta svg { width: 17px; height: 17px; flex-shrink: 0; color: var(--text-muted); }
-.openingStatus { max-width: 100%; flex-wrap: wrap; white-space: normal; }
-.openingStatus > span:last-child { min-width: 0; overflow-wrap: anywhere; }
-.heroActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.heroActions button, .contactAction { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius-control); background: transparent; color: var(--text-primary); font-size: 14px; font-weight: 600; line-height: 22px; }
-.heroActions svg { width: 16px; height: 16px; flex-shrink: 0; }
-.contactAction:hover, .heroActions button:hover { background: var(--surface-hover); }
-.callAction { border-color: transparent; background: var(--p-500); color: var(--brand-mist); }
-.callAction:hover { background: var(--p-600); }
-.whatsapp { color: var(--success-text); }
-.layout { gap: 28px; margin-top: 26px; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); }
-.sidebar { grid-column: 2; grid-row: 1; min-width: 0; }
-.doctors { grid-column: 1; grid-row: 1; container-type: inline-size; min-width: 0; overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.information { min-width: 0; }
-.informationBody { padding: 4px 18px 24px; }
-.visit { display: grid; }
-.visitRow { display: grid; grid-template-columns: 20px minmax(0, 1fr) 28px; align-items: start; gap: 12px; padding-block: 14px; border-bottom: 1px solid var(--border); }
-.visitIcon { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 24px; color: var(--text-muted); }
-.visitIcon svg { width: 16px; height: 16px; }
-.contactText { min-width: 0; padding-top: 2px; font-size: 14px; line-height: 1.55; color: var(--text-primary); }
-.contactText > span, .hoursBody h2 { display: block; margin-bottom: 2px; color: var(--text-secondary); font-size: 12px; font-weight: 400; line-height: 1.5; }
-.contactText p, .contactText a { min-width: 0; overflow-wrap: anywhere; }
-.contactText a { display: flex; align-items: center; min-height: 44px; margin-block: -10px; }
-.contactText a:hover { color: var(--accent); }
-.iconButton { display: inline-flex; width: 44px; min-height: 44px; margin: -4px -8px 0; align-items: center; justify-content: center; flex-shrink: 0; border-radius: var(--radius-control); color: var(--text-muted); background: transparent; }
-.iconButton:hover { color: var(--accent); background: var(--surface-hover); }
-.iconButton svg { width: 15px; height: 15px; }
-.hoursSection { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 12px; padding-top: 14px; }
-.hoursBody { min-width: 0; padding-top: 2px; }
-.hours { display: grid; gap: 5px; margin-top: 4px; font-size: 13px; line-height: 1.55; color: var(--text-primary); }
-.hours > div { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: baseline; gap: 8px; }
-.hours dt { text-transform: capitalize; }
-.hours dd { text-align: right; overflow-wrap: anywhere; }
-.unlisted { color: var(--text-secondary); }
-.embeddedMap { overflow: hidden; margin-top: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-alt); }
-.embeddedMap iframe { display: block; width: 100%; height: 210px; border: 0; }
-.description { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; line-height: 1.6; white-space: pre-line; color: var(--text-secondary); overflow-wrap: anywhere; }
-.doctorSection { padding: 4px 0 0; }
-.sectionHeader h2 { font-size: 20px; font-weight: 700; line-height: 1.3; letter-spacing: -.03em; color: var(--text-primary); overflow-wrap: anywhere; }
-.sectionHeader p { margin-top: 5px; font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
+.heroText > p { color: var(--brand-mist); opacity: .85; }
+.heroMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 10px; }
+.heroMeta > span { color: var(--brand-mist); opacity: .85; overflow-wrap: anywhere; }
+.heroActions { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+.heroActions :is(.contactAction, .shareAction) { border-color: color-mix(in srgb, var(--brand-mist) 30%, transparent); color: var(--brand-mist); background: transparent; }
+.heroActions :is(.contactAction, .shareAction):hover { background: color-mix(in srgb, var(--brand-mist) 12%, transparent); }
+.heroActions .heroBooking { background: var(--brand-mist); color: var(--brand-primary); }
+.summaryCard { position: relative; z-index: 1; margin-top: -44px; box-shadow: var(--s-shadow-xs); overflow: visible; }
+.summaryCard .summary { grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+.summary > div { padding: 16px 20px; }
+.summaryContact { display: flex; align-items: center; gap: 4px; }
+.summaryContact > a { min-width: 0; flex: 1; }
+.summaryContact > button { width: 32px; flex-shrink: 0; padding-inline: 0; }
+.contactCell { position: relative; }
+.openingStatus { flex-wrap: wrap; max-width: 100%; white-space: normal; line-height: 1.6; }
+.openingStatus > span:last-child { min-width: 0; max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+.jumpNav { display: none; }
+.layout { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(300px, 1fr); gap: 28px 32px; align-items: start; margin-top: 36px; }
+.layout > section, .layout > aside, .weeklyHours { min-width: 0; scroll-margin-top: 88px; }
+.doctors { grid-column: 1; grid-row: 1; }
+.sidebar { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 88px; }
+.aboutSection { grid-column: 1; grid-row: 2; }
+.sectionHeader { margin-bottom: 16px; }
+.sectionHeader p { margin-top: 6px; }
+.notice { margin-block: 16px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-muted); color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
 .filters { display: flex; flex-wrap: wrap; gap: 12px; }
-.filters:has(> *) { margin-top: 16px; }
+.filters:has(> *) { margin-block: 16px; }
 .filters > * { flex: 1; min-width: min(100%, 200px); }
-.filters button { min-height: 44px; }
-.results { margin-top: 12px; font-size: 13px; color: var(--text-secondary); }
-.doctorList { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
-.doctorRow { display: flex; flex-direction: column; gap: 16px; min-width: 0; padding: 18px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface-elevated); transition: border-color 160ms ease; }
-.doctorRow:focus-within { border-color: var(--focus-ring); }
-.doctorIdentity { display: flex; align-items: center; gap: 14px; min-width: 0; align-self: flex-start; max-width: 100%; border-radius: 10px; }
-.avatar { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 52px; height: 52px; overflow: hidden; border-radius: 50%; background: var(--selected); color: var(--accent); font-size: 14px; font-weight: 600; }
+.doctorList { display: flex; flex-direction: column; gap: 16px; }
+.doctorRow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(100px, auto); min-width: 0; }
+.doctorIdentity { display: flex; gap: 16px; align-items: flex-start; min-width: 0; padding: 20px; border-radius: var(--radius-control); }
+.doctorIdentity:hover h3 { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.doctorIdentity:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -3px; }
+.avatar { display: flex; align-items: center; justify-content: center; flex: 0 0 64px; width: 64px; height: 64px; overflow: hidden; border-radius: 50%; background: var(--selected); color: var(--accent); font-size: 20px; font-weight: 600; }
 .doctorText { min-width: 0; }
-.doctorText h3 { font-size: 18px; line-height: 1.25; font-weight: 700; color: var(--text-primary); letter-spacing: -.025em; overflow-wrap: anywhere; }
-.doctorIdentity:hover h3 { color: var(--accent); text-decoration: underline; }
-.specialty { color: var(--accent); font-size: 14px; margin-top: 4px; overflow-wrap: anywhere; }
-.credentials { color: var(--text-secondary); font-size: 13px; margin-top: 4px; line-height: 1.45; overflow-wrap: anywhere; }
-.credentials:empty { display: none; }
-.rating { display: flex; align-items: center; gap: 4px; margin-top: 5px; color: var(--text-secondary); font-size: 12px; }
-.rating svg { width: 14px; height: 14px; color: var(--warning-text); }
-.doctorFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 20px; padding-top: 14px; border-top: 1px solid var(--border); }
-.doctorBooking { display: grid; grid-template-columns: minmax(90px, 1fr) 156px; align-items: center; gap: 16px; min-width: 0; margin-left: auto; }
-.doctorFee { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
-.doctorFee > span { font-size: 12px; line-height: 1.4; color: var(--text-secondary); }
-.doctorFee strong { font-size: 20px; color: var(--text-primary); line-height: 1.2; overflow-wrap: anywhere; }
-.doctorActions { display: flex; min-width: 0; }
-.doctorActions button { min-height: 44px; padding-inline: 12px; font-size: 14px; }
-.doctorActions button svg { width: 16px; height: 16px; flex-shrink: 0; }
-.doctorStatus { display: flex; align-items: flex-start; gap: 8px; min-width: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
-.doctorStatus svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 3px; }
-.notice { margin-top: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-alt); color: var(--text-secondary); font-size: 13px; }
-.notice strong { color: var(--text-primary); }
-.notice p { margin-top: 4px; }
-.empty { padding: 24px 0; color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
-.empty a { display: inline-flex; align-items: center; min-height: 44px; margin-right: 16px; color: var(--accent); text-decoration: underline; }
-.disclosure { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 8px; }
-.disclosure summary { min-height: 44px; padding: 12px 8px; margin-inline: -8px; border-radius: 8px; color: var(--accent); font-size: 13px; font-weight: 600; line-height: 20px; cursor: pointer; }
-.disclosure summary:hover { background: var(--surface-hover); }
-.amenityTitle { margin-top: 8px; color: var(--text-primary); font-size: 14px; font-weight: 600; }
-.amenities { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; list-style: none; }
-.amenities li { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--text-secondary); }
-.gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
-.gallery button { aspect-ratio: 1; min-height: 44px; overflow: hidden; border-radius: 10px; background: var(--surface-alt); }
-.container a:focus-visible, .container button:focus-visible, .container summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
-@media (hover: hover) and (pointer: fine) { .doctorRow:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); } }
-@media (prefers-reduced-motion: reduce) { .doctorRow { transition: none; } }
+.doctorText .doctorName { font-size: 18px; line-height: 1.4; letter-spacing: -.01em; }
+.doctorText > p { margin-top: 4px; overflow-wrap: anywhere; }
+.rating { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; color: var(--text-secondary); font-size: 12px; }
+.rating svg { width: 14px; height: 14px; color: var(--accent); }
+.doctorFee { display: flex; flex-direction: column; gap: 4px; max-width: 180px; padding: 20px 20px 16px 0; text-align: right; }
+.doctorBooking { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px; margin: 0 20px 20px; border-radius: var(--radius-control); background: var(--surface-muted); }
+.doctorStatus { display: flex; flex: 1 1 180px; align-items: center; gap: 6px; min-width: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+.doctorStatus svg { width: 14px; height: 14px; flex-shrink: 0; }
+.doctorActions { min-width: 0; margin-left: auto; }
+.hours { display: grid; margin-top: 8px; font-size: 13px; line-height: 1.6; }
+.hours > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 12px; padding: 10px 8px; border-radius: var(--radius-control); }
+.hours dd { text-align: right; overflow-wrap: anywhere; }
+.hours .today { background: var(--selected); color: var(--accent); font-weight: 500; }
+.embeddedMap { overflow: hidden; background: var(--selected); }
+.embeddedMap iframe { display: block; width: 100%; height: 190px; border: 0; }
+.locationBody { display: flex; flex-direction: column; gap: 12px; padding: 20px; }
+.locationActions { display: flex; gap: 8px; }
+.locationActions > a { flex: 1; min-width: 0; }
+.weeklyHours { margin-inline: 20px; padding-block: 4px 12px; border-top: 1px solid var(--border); }
+.weeklyHours summary, .disclosure summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; cursor: pointer; color: var(--text-primary); font-size: 13px; font-weight: 500; list-style: none; }
+.weeklyHours summary::-webkit-details-marker, .disclosure summary::-webkit-details-marker { display: none; }
+.weeklyHours summary > svg, .disclosure summary > svg { width: 16px; height: 16px; flex-shrink: 0; }
+.weeklyHours details[open] > summary > svg, .disclosure[open] summary > svg { transform: rotate(180deg); }
+.disclosure { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.disclosure:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.gallery > button { overflow: hidden; aspect-ratio: 4 / 3; }
+.bookingBar { position: fixed; z-index: 40; inset: auto 0 0; padding-block: 10px max(10px, env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: var(--surface-elevated); box-shadow: var(--s-shadow-sm); }
+.bookingBarContent { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bookingBarFee { min-width: 0; overflow-wrap: anywhere; }
+.bookingBarContent > button { flex-shrink: 0; }
+@media (min-width: 900px) { .bookingBar { display: none; } }
+@media (max-width: 1199px) {
+  .layout { grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: 24px; }
+  .heroIdentity { flex-basis: 280px; gap: 16px; }
+  .heroActions { gap: 6px; }
+  .heroActions :is(button, a) { padding-inline: 10px; font-size: 12px; }
+  .summary > div { padding-inline: 16px; }
+}
 @media (max-width: 899px) {
-  .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
-  .sidebar { grid-column: 1; grid-row: 2; }
-  .doctors { grid-column: 1; grid-row: 1; }
+  .layout { grid-template-columns: minmax(0, 1fr); margin-top: 0; }
+  .doctors, .sidebar, .aboutSection { grid-column: auto; grid-row: auto; }
+  .sidebar { position: static; }
+  .jumpNav { display: flex; align-items: center; gap: 4px; overflow-x: auto; padding-block: 12px; margin-bottom: 12px; }
+  .summaryCard .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .summary > div:nth-child(odd) { border-left: 0; }
+  .summary > div:nth-child(n+3) { border-top: 1px solid var(--border); }
+  .summary > div:last-child:nth-child(3) { grid-column: 1 / -1; border-left: 0; }
 }
-@media (max-width: 639px) {
-  .container { padding-block: 4px 16px; }
-  .breadcrumbs { min-height: 52px; }
-  .breadcrumbs li:not(:first-child):not(:last-child) { display: none; }
-  .hero { padding: 16px; gap: 16px; }
-  .heroIdentity { gap: 12px; flex-basis: 100%; }
-  .logo { width: 60px; height: 60px; border-radius: 16px; font-size: 21px; }
-  .heroText h1 { font-size: 24px; }
-  .heroMeta { gap: 6px 8px; font-size: 13px; }
-  .heroActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
-  .heroActions > * { min-width: 0; }
-  .heroActions button, .contactAction { padding-inline: 10px; font-size: 13px; }
-  .layout { margin-top: 24px; }
-  .informationBody { padding-inline: 16px; }
-  .sectionHeader p { font-size: 13px; }
+@media (max-width: 767px) {
+  .heroBand { padding-bottom: 48px; }
+  .breadcrumbs { min-height: 48px; }
+  .hero { padding-block: 4px 24px; gap: 20px; }
+  .heroIdentity { flex-basis: 100%; align-items: flex-start; gap: 16px; }
+  .logo { width: 60px; height: 60px; flex-basis: 60px; font-size: 21px; }
+  .heroMeta { margin-top: 8px; }
+  .heroActions { width: 100%; }
+  .heroActions .heroBooking { display: none; }
+  .heroActions > .contactAction, .heroActions > .shareAction { flex: 1; min-width: 0; padding-inline: 4px; }
+  .contactAction { flex-direction: column; gap: 4px; }
+  .summaryCard { margin-top: -28px; }
+  .summary > div { padding: 14px 12px; }
+  .contactCell dt { display: flex; align-items: center; min-height: 32px; padding-right: 44px; }
+  .contactCell .summaryContact { display: block; font-size: 13px; }
+  .summaryContact > a { display: flex; align-items: center; min-height: 44px; }
+  .summaryContact > button { position: absolute; top: 6px; right: 6px; min-width: 44px; }
+  .doctorList { gap: 12px; }
+  .doctorIdentity { padding: 16px; gap: 12px; }
+  .avatar { width: 48px; height: 48px; flex-basis: 48px; font-size: 16px; }
+  .doctorFee { padding: 16px 16px 12px 0; }
+  .doctorBooking { margin: 0 16px 16px; }
+  .doctorActions { flex: 1 1 128px; }
+  .locationBody { padding: 16px; }
+  .weeklyHours { margin-inline: 16px; }
 }
-@container (max-width: 620px) {
-  .doctorFooter { gap: 12px; }
-  .doctorBooking { width: 100%; grid-template-columns: minmax(0, 1fr) 156px; gap: 12px; }
+@media (max-width: 479px) {
+  .doctorRow { grid-template-columns: minmax(0, 1fr); }
+  .doctorFee { grid-column: 1; max-width: none; padding: 0 16px 12px; flex-direction: row; justify-content: space-between; align-items: center; gap: 12px; text-align: right; }
 }
-@container (max-width: 360px) {
-  .doctorRow { padding: 14px; }
-  .doctorIdentity { gap: 12px; }
-  .avatar { width: 44px; height: 44px; }
-  .doctorText h3 { font-size: 17px; }
-  .specialty { font-size: 13px; }
-  .credentials { font-size: 12px; }
-  .doctorBooking { grid-template-columns: minmax(0, 1fr) 136px; }
-  .doctorFee > span { font-size: 11px; }
-  .doctorActions button { padding-inline: 8px; font-size: 13px; }
+@media (max-width: 359px) {
+  .summary > .contactCell { grid-column: 1 / -1; display: grid; grid-template-columns: 68px minmax(0, 1fr); align-items: center; padding: 8px 12px; border-left: 0; border-top: 1px solid var(--border); }
+  .contactCell dt { min-height: 44px; margin: 0; padding: 0; }
+  .contactCell .summaryContact { padding-right: 44px; }
+  .summaryContact > button { top: 50%; transform: translateY(-50%); }
 }

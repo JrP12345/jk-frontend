@@ -4,7 +4,9 @@ import { type FacilityType } from "@/lib/facility";
 import LoadingImage from "@/components/ui/LoadingImage";
 import BrowseDetailSkeleton from "@/components/ui/BrowseDetailSkeleton";
 import FacilityProfile from "./FacilityProfile";
+import FacilityBookingBar from "./FacilityBookingBar";
 import marketplace from "@/components/MarketplaceLayout.module.css";
+import bookingPanel from "./BookingPanel.module.css";
 import PrintButton from "@/components/ui/PrintButton";
 
 import { rememberTracker } from "@/store/trackerStore";
@@ -28,6 +30,7 @@ import { Card, CardContent, Button, Modal, Input, Select, useToast, Badge, Loadi
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import { AlertCircle, Clock, Building2, Calendar, ExternalLink, ChevronRight, ArrowLeft, ArrowRight, CheckCircle2, Copy, Users, CreditCard, UserCheck, User, Smartphone, Mail, FileText, CalendarOff, X, ChevronLeft } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
+import { publicConsultationFee as doctorFeeLabel } from "@/lib/publicFees";
 import { detectPatientOtpTarget } from "@/lib/patientLogin";
 import { LocationStatusBadge } from "@/components/ui/LocationStatusBadge";
 
@@ -123,14 +126,14 @@ function BookingSurface({ inline, open, onClose, title, subtitle, footer, busy, 
   busy: boolean;
   children: ReactNode;
 }) {
-  if (inline) return <section aria-labelledby="booking-title" className="rounded-2xl border border-border bg-surface">
-    <header className="border-b border-border px-4 py-4 sm:px-6">
-      <p className="text-xs font-semibold uppercase tracking-wide text-accent">Online appointments</p>
-      <h2 id="booking-title" className="mt-1 text-xl font-bold text-text">{title}</h2>
-      {subtitle && <p className="mt-1 text-sm text-text-secondary">{subtitle}</p>}
+  if (inline) return <section aria-labelledby="booking-title" className={bookingPanel.panel}>
+    <header className={bookingPanel.header}>
+      <h2 id="booking-title">Book a visit</h2>
+      {subtitle && <p>{subtitle}</p>}
+      <p className="sr-only" aria-live="polite">{title}</p>
     </header>
-    <div className="px-4 py-5 sm:px-6">{children}</div>
-    <div className="sticky bottom-0 z-10 flex flex-wrap justify-end gap-2 border-t border-border bg-surface px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">{footer}</div>
+    <div className={bookingPanel.body}>{children}</div>
+    <div className={bookingPanel.footer}>{footer}</div>
   </section>;
   return <Modal open={open} onClose={onClose} title={title} size="xl" className="md:max-w-3xl!" presentation="sheet" busy={busy} footerClassName="!flex-row" footer={footer}>{children}</Modal>;
 }
@@ -145,12 +148,6 @@ function format12Hour(time24: string): string {
   const ampm = h >= 12 ? "PM" : "AM";
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
-}
-
-function doctorFeeLabel(doc: Doctor, currency: string) {
-  if (doc.feeType === "free") return "Free";
-  if (doc.feeType === "post_consultation") return doc.fees > 0 ? `From ${formatCurrency(doc.fees, currency)}` : "Set after consultation";
-  return Number.isFinite(doc.fees) && doc.fees > 0 ? formatCurrency(doc.fees, currency) : "Ask reception for fee";
 }
 
 // ─── Helper: Parse Doctor Working Schedule for any day ─────────────
@@ -390,39 +387,6 @@ export default function BrowseDetailClient({
     }
   };
 
-  const getHeaderTimingSummary = (timingsStr: string | null | undefined): string => {
-    if (!timingsStr) return "Hours not listed";
-    try {
-      const trimmed = timingsStr.trim();
-      if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-        const parts = trimmed.split(/[-–—to]/i).map((s) => s.trim()).filter(Boolean);
-        if (parts.length >= 2) {
-          return `Hours: ${format12Hour(parts[0])} – ${format12Hour(parts[1])}`;
-        }
-        return timingsStr;
-      }
-      const data = JSON.parse(trimmed);
-      const days = Object.keys(data);
-      if (days.length === 0) return "Hours not listed";
-
-      for (const d of ["monday", "all", "daily"]) {
-        const lowerKey = days.find((k) => k.toLowerCase() === d);
-        if (lowerKey && Array.isArray(data[lowerKey]) && data[lowerKey].length > 0) {
-          const slot = data[lowerKey][0];
-          const dayLabel = d === "monday" ? "Mon" : "Daily";
-          return `${dayLabel}: ${format12Hour(slot.start)} – ${format12Hour(slot.end)}`;
-        }
-      }
-      const firstSlots = data[days[0]];
-      if (Array.isArray(firstSlots) && firstSlots.length > 0) {
-        return `${format12Hour(firstSlots[0].start)} – ${format12Hour(firstSlots[firstSlots.length - 1].end)}`;
-      }
-      return "Hours not listed";
-    } catch {
-      return "Hours not listed";
-    }
-  };
-
   const [location, setLocation] = useState<LocationDetail | null>(initialLocation);
   const [loading, setLoading] = useState(!initialLocation);
   const [locationError, setLocationError] = useState<"not_found" | "load_failed" | null>(null);
@@ -465,9 +429,12 @@ export default function BrowseDetailClient({
   const [availabilityState, setAvailabilityState] = useState<"checking" | "ready" | "error">("checking");
   const [nextSearchState, setNextSearchState] = useState<"idle" | "checking" | "none" | "error">("idle");
   const nextSearchRequest = useRef<AbortController | null>(null);
-  useEffect(() => () => availabilityRequest.current?.abort(), []);
-  useEffect(() => () => nextSearchRequest.current?.abort(), []);
   const autoOpenedBookingKeyRef = useRef<string | null>(null);
+  useEffect(() => () => {
+    availabilityRequest.current?.abort();
+    nextSearchRequest.current?.abort();
+    autoOpenedBookingKeyRef.current = null;
+  }, []);
 
   // Time & Notes inputs
   const [bookingNotes, setBookingNotes] = useState("");
@@ -1162,27 +1129,12 @@ export default function BrowseDetailClient({
         specialty={locationSpecialty} onSpecialty={value => { setLocationSpecialty(value); setShowAllDoctors(false); }}
         specialties={locationSpecialties} matchingDoctors={matchingDoctors} visibleDoctors={visibleDoctors}
         onShowAll={() => setShowAllDoctors(true)} onBook={handleOpenBooking} onPhoto={setLightboxIndex}
-        feeLabel={doctorFeeLabel} hours={renderTimings(location.timings)} hoursSummary={getHeaderTimingSummary(location.timings)}
+        feeLabel={doctorFeeLabel} hours={renderTimings(location.timings)}
       />
 
       {/* Sticky Mobile Bottom Booking Bar (For single-doctor clinics) */}
       {hasSingleDoctor && singleDoctor && bookingStatus === "check_availability" && !isBookingOpen && !ticketModalOpen && (
-        <div role="region" aria-label="Appointment booking" className="fixed bottom-0 left-0 right-0 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface/95 border-t border-border z-40 lg:hidden shadow-lg">
-          <div className={`${marketplace.content} flex flex-wrap items-center justify-between gap-3`}>
-          <div className="min-w-0 flex-1 basis-32">
-            <p className="text-xs font-bold text-text truncate">Dr. {singleDoctor.name.replace(/^Dr\.?\s*/i, "")}</p>
-            <p className="text-[11px] text-text-secondary font-semibold">{doctorFeeLabel(singleDoctor, location.currency || "INR")} · Consultation fee</p>
-          </div>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => handleOpenBooking(singleDoctor)}
-            className="font-bold px-5 min-h-11! shrink-0"
-          >
-            {"Check times"} →
-          </Button>
-          </div>
-        </div>
+        <FacilityBookingBar key={`${location.id}:${singleDoctor.id}`} fee={doctorFeeLabel(singleDoctor, location.currency || "INR")} label={singleDoctor.isAvailable === false || singleDoctor.isOnlineBookingClosed ? "Find next date" : "Book now"} onBook={() => handleOpenBooking(singleDoctor)} />
       )}
       </>}
 
@@ -1199,6 +1151,7 @@ export default function BrowseDetailClient({
         }
         busy={bookingLoading}
         footer={ticketModalOpen ? <div className="flex gap-2 justify-end w-full"><PrintButton documentName="token slip" onPrint={handlePrintSlip} disabled={!createdTicket} /><Button variant="outline" onClick={() => { setTicketModalOpen(false); if (bookingOnly && bookingDoctor) handleOpenBooking(bookingDoctor); }}>{bookingOnly ? "Book another appointment" : "Done"}</Button></div> : bookingStep === 1 ? <>
+          {bookingOnly && selectedDoctor && <div className={bookingPanel.fee}><span>Consultation fee</span><strong>{doctorFeeLabel(selectedDoctor, location.currency || "INR")}</strong></div>}
           {!bookingOnly && <Button variant="ghost" onClick={() => setIsBookingOpen(false)}>Cancel</Button>}
           <Button disabled={availabilityBlocked || !selectedDate || (!selectedTime && doctorSlotInfo?.bookingMode !== "sequential_queue")} onClick={() => setBookingStep(2)} iconRight={<ArrowRight className="w-4 h-4" />}>Continue to Details</Button>
         </> : <>
@@ -1211,8 +1164,8 @@ export default function BrowseDetailClient({
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex-1 space-y-1">
             <div className="flex items-center justify-between text-[11px] font-semibold">
-              <span className={bookingStep >= 1 ? "text-accent font-bold" : "text-text-muted"}>{"1. Date & Time"}</span>
-              <span className={bookingStep >= 2 ? "text-accent font-bold" : "text-text-muted"}>{"2. Patient Details"}</span>
+              <span className={bookingStep >= 1 ? "text-accent font-semibold" : "text-text-muted"}>{"1. Date & Time"}</span>
+              <span className={bookingStep >= 2 ? "text-accent font-semibold" : "text-text-muted"}>{"2. Patient Details"}</span>
             </div>
             <div className="flex items-center gap-1.5 h-1">
               <div className={`flex-1 h-full rounded-full transition-colors ${bookingStep >= 1 ? "bg-primary-600" : "bg-border"}`} />
@@ -1227,9 +1180,9 @@ export default function BrowseDetailClient({
           {bookingStep === 1 && (
             <div className="space-y-3">
               {/* Doctor Compact Header Bar */}
-              <div className="p-2.5 bg-surface-alt rounded-xl border border-border flex items-center justify-between gap-2.5">
+              {!bookingOnly && <div className="p-2.5 bg-surface-alt rounded-xl border border-border flex items-center justify-between gap-2.5">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-surface border border-border flex items-center justify-center font-bold text-text-secondary text-[11px] shrink-0 overflow-hidden shadow-2xs">
+                  <div className="w-8 h-8 rounded-lg bg-surface border border-border flex items-center justify-center font-semibold text-text-secondary text-[11px] shrink-0 overflow-hidden shadow-2xs">
                     {selectedDoctor?.image_url ? (
                       <LoadingImage src={selectedDoctor.image_url} alt={selectedDoctor.name} className="w-full h-full object-cover" />
                     ) : (
@@ -1237,23 +1190,22 @@ export default function BrowseDetailClient({
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-bold text-text text-xs sm:text-sm break-words">Dr. {selectedDoctor?.name.replace(/^Dr\.?\s*/i, "")}</p>
+                    <p className="font-semibold text-text text-xs sm:text-sm break-words">Dr. {selectedDoctor?.name.replace(/^Dr\.?\s*/i, "")}</p>
                     <p className="text-[11px] text-accent dark:text-accent font-semibold break-words">{selectedDoctor?.specialization}</p>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="text-xs sm:text-sm font-black text-success-text dark:text-success-text bg-surface px-2 py-0.5 rounded-lg border border-border">
+                  <span className="text-xs sm:text-sm font-semibold text-success-text dark:text-success-text bg-surface px-2 py-0.5 rounded-lg border border-border">
                     {selectedDoctor && doctorFeeLabel(selectedDoctor, location?.currency || "INR")}
                   </span>
                 </div>
-              </div>
-
+              </div>}
               {/* Online Booking Backlog Buffer Banner */}
               {selectedDate === locationDateKey(new Date(), location?.timezone || "Asia/Kolkata") && selectedDoctor?.isOnlineBookingClosed && (
                 <div className="p-2.5 rounded-xl bg-warning/10 border border-warning/30 text-warning-text dark:text-warning-text text-xs flex items-start gap-2">
                   <AlertCircle className="w-3.5 h-3.5 text-warning-text shrink-0 mt-0.5" strokeWidth={1.75} />
                   <div className="space-y-0.5 text-[11px]">
-                    <p className="font-bold">{"Same-Day Online Booking Closed"}</p>
+                    <p className="font-semibold">{"Same-Day Online Booking Closed"}</p>
                     <p className="opacity-90 leading-tight">
                       {selectedDoctor.onlineBookingClosedReason || "Queue cutoff reached for today. Please select tomorrow or an upcoming date below."}
                     </p>
@@ -1261,15 +1213,15 @@ export default function BrowseDetailClient({
                 </div>
               )}
 
-              <div role={availabilityState === "error" ? "alert" : "status"} className="min-h-6 text-xs text-text-secondary flex items-center justify-between gap-2">
+              <div role={availabilityState === "error" ? "alert" : "status"} className={bookingOnly && availabilityState === "ready" ? "sr-only" : "min-h-6 text-xs text-text-secondary flex items-center justify-between gap-2"}>
                 <span>{availabilityState === "checking" ? "Checking available appointments…" : availabilityState === "error" ? "Availability could not be checked. Please try again." : "Availability updated"}</span>
                 {availabilityState === "error" && <Button variant="outline" size="sm" onClick={() => selectedDoctor && loadSlotsForDate(selectedDate, selectedDoctor)}>Try again</Button>}
               </div>
               {/* Date Selection Ribbon */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold uppercase tracking-wider text-text text-[11px]">
-                    {"1. Choose Date"}
+                  <span className="font-semibold normal-case tracking-normal text-text text-[11px]">
+                    {bookingOnly ? selectedDate ? new Date(`${selectedDate}T12:00:00Z`).toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }) : "Choose a date" : "1. Choose Date"}
                   </span>
                   {selectedDaySchedule?.isWorkingDay && (
                     <span className="text-[11px] text-text-muted font-medium">
@@ -1283,11 +1235,13 @@ export default function BrowseDetailClient({
                     {"No active schedules configured for this doctor currently."}
                   </p>
                 ) : (
-                  <div className="flex sm:grid sm:grid-cols-6 gap-2 overflow-x-auto no-scrollbar py-0.5 touch-scroll">
+                  <div role="group" aria-label="Appointment dates" className={bookingOnly ? bookingPanel.dates : "flex sm:grid sm:grid-cols-6 gap-2 overflow-x-auto no-scrollbar py-0.5 touch-scroll"}>
                     {upcomingDays.map((d) => (
                       <button
                         key={d.dateString}
                         type="button"
+                        aria-pressed={selectedDate === d.dateString}
+                        aria-label={new Date(`${d.dateString}T12:00:00Z`).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) + (d.isHoliday ? ", Holiday" : d.isToday ? ", Today" : d.isTomorrow ? ", Tomorrow" : "")}
                         onClick={() => {
                           if (selectedDoctor) {
                             loadSlotsForDate(d.dateString, selectedDoctor);
@@ -1295,23 +1249,23 @@ export default function BrowseDetailClient({
                         }}
                         className={`shrink-0 w-[58px] sm:w-auto py-1.5 px-1 rounded-xl border text-center transition-all duration-150 cursor-pointer min-h-[48px] flex flex-col items-center justify-center ${
                           selectedDate === d.dateString
-                            ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs font-bold"
+                            ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs font-semibold"
                             : "bg-surface hover:border-border hover:bg-surface-alt text-text border border-border"
                         }`}
                       >
-                        <span className="text-[10px] font-semibold uppercase tracking-wider block opacity-85">{d.dayShort}</span>
-                        <span className="text-xs sm:text-sm font-bold block mt-0.5">{d.dateNum}</span>
+                        <span className="text-[10px] font-semibold normal-case tracking-normal block opacity-85">{d.dayShort}</span>
+                        <span className="text-xs sm:text-sm font-semibold block mt-0.5">{bookingOnly ? Number(d.dateString.slice(-2)) : d.dateNum}</span>
                         {d.isHoliday ? (
-                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-primary-900 text-brand-mist" : "bg-warning/20 text-warning-text dark:text-warning-text"}`}>
+                          <span className={`${bookingOnly ? bookingPanel.dateBadge : "text-[11px]"} font-semibold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-primary-900 text-brand-mist" : "bg-warning/20 text-warning-text dark:text-warning-text"}`}>
                             {"Holiday"}
                           </span>
                         ) : d.isToday ? (
-                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-primary-900 text-brand-mist" : "bg-primary-500/10 text-accent"}`}>
+                          <span className={`${bookingOnly ? bookingPanel.dateBadge : "text-[11px]"} font-semibold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-primary-900 text-brand-mist" : "bg-primary-500/10 text-accent"}`}>
                             {"Today"}
                           </span>
                         ) : d.isTomorrow ? (
-                          <span className={`text-[8px] font-bold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-primary-900 text-brand-mist" : "bg-surface-alt text-text-muted"}`}>
-                            {"Tmrw"}
+                          <span className={`${bookingOnly ? bookingPanel.dateBadge : "text-[11px]"} font-semibold px-1 rounded-full mt-0.5 ${selectedDate === d.dateString ? "bg-primary-900 text-brand-mist" : "bg-surface-alt text-text-muted"}`}>
+                            {bookingOnly ? "Tomorrow" : "Tmrw"}
                           </span>
                         ) : null}
                       </button>
@@ -1321,7 +1275,7 @@ export default function BrowseDetailClient({
               </div>
 
               {/* Time Slots OR Queue Mode — Rock-steady container with zero flicker */}
-              <div className="relative min-h-[200px] sm:min-h-[220px] flex flex-col justify-start">
+              <div className={bookingOnly ? "relative flex min-w-0 flex-col" : "relative min-h-[200px] sm:min-h-[220px] flex flex-col justify-start"}>
                 {(() => {
                   const isCurrentDateHoliday = doctorSlotInfo?.isHoliday || upcomingDays.find((d) => d.dateString === selectedDate)?.isHoliday;
                   const holidayReasonText = doctorSlotInfo?.holidayReason || upcomingDays.find((d) => d.dateString === selectedDate)?.holidayReason || "Doctor Holiday / Scheduled Leave";
@@ -1336,11 +1290,11 @@ export default function BrowseDetailClient({
                         </div>
                         <div className="space-y-1.5 max-w-sm">
                           <div className="flex items-center justify-center gap-1.5">
-                            <Badge variant="warning" size="sm" className="font-bold uppercase tracking-wider text-[10px]">
+                            <Badge variant="warning" size="sm" className="font-semibold normal-case tracking-normal text-[10px]">
                               {"Scheduled Leave"}
                             </Badge>
                           </div>
-                          <h4 className="text-sm font-bold text-text">{"Doctor on Holiday / Leave"}</h4>
+                          <h4 className="text-sm font-semibold text-text">{"Doctor on Holiday / Leave"}</h4>
                           <p className="text-xs text-text-muted">
                             Dr. {selectedDoctor?.name} {"is not available on this date"} ({holidayReasonText}).
                           </p>
@@ -1359,7 +1313,7 @@ export default function BrowseDetailClient({
                                   loadSlotsForDate(nextWorkingDay.dateString, selectedDoctor);
                                 }
                               }}
-                              className="text-xs font-bold gap-1.5 shadow-xs border-warning/30 hover:border-primary-500 cursor-pointer"
+                              className="text-xs font-semibold gap-1.5 shadow-xs border-warning/30 hover:border-primary-500 cursor-pointer"
                             >
                               <span>{"Check next date:"} {nextWorkingDay.label || nextWorkingDay.dateString}</span>
                               <ArrowRight className="w-3.5 h-3.5 text-accent" />
@@ -1371,7 +1325,12 @@ export default function BrowseDetailClient({
                   }
 
                   if (doctorSlotInfo?.bookingMode === "sequential_queue") {
-                    if (queueIsFull) return <div className="p-6 min-h-[200px] flex flex-col items-center justify-center text-center gap-2 bg-surface-alt border border-border rounded-2xl"><h4 className="text-sm font-bold text-text">All tokens are booked</h4><p className="text-xs text-text-secondary">Please choose another date for your consultation.</p>{upcomingDays.some((day) => day.dateString > selectedDate && !day.isHoliday) && <Button type="button" variant="outline" loading={nextSearchState === "checking"} onClick={findNextAvailable}>Find next available appointment</Button>}{nextSearchState === "none" && <p role="status" className="text-xs text-text-secondary">No available tokens were found in the next listed operating days.</p>}{nextSearchState === "error" && <p role="alert" className="text-xs text-text-secondary">Could not check later dates. Please try again.</p>}{location.phone && <a href={`tel:${location.phone.replace(/\s+/g, "")}`} className="text-xs font-semibold text-accent underline">Call reception for help</a>}</div>;
+                    if (queueIsFull) return <div className="p-6 min-h-[200px] flex flex-col items-center justify-center text-center gap-2 bg-surface-alt border border-border rounded-2xl"><h4 className="text-sm font-semibold text-text">All tokens are booked</h4><p className="text-xs text-text-secondary">Please choose another date for your consultation.</p>{upcomingDays.some((day) => day.dateString > selectedDate && !day.isHoliday) && <Button type="button" variant="outline" loading={nextSearchState === "checking"} onClick={findNextAvailable}>Find next available appointment</Button>}{nextSearchState === "none" && <p role="status" className="text-xs text-text-secondary">No available tokens were found in the next listed operating days.</p>}{nextSearchState === "error" && <p role="alert" className="text-xs text-text-secondary">Could not check later dates. Please try again.</p>}{location.phone && <a href={`tel:${location.phone.replace(/\s+/g, "")}`} className="text-xs font-semibold text-accent underline">Call reception for help</a>}</div>;
+                    if (bookingOnly) return <div className={bookingPanel.queue}>
+                      <p className={bookingPanel.queueLabel}>Queue token · {upcomingDays.find(day => day.dateString === selectedDate)?.label || selectedDate}</p>
+                      <p>{selectedDaySchedule?.startFormatted && <>Consultation starts at <strong>{selectedDaySchedule.startFormatted}</strong>. </>}Arrive 15 minutes early to confirm your token at reception.</p>
+                      <p className={bookingPanel.queueNote}>Your token number is assigned after booking.</p>
+                    </div>;
                     return (
                       <div key={`queue-${selectedDate}`} className="p-3 bg-surface-alt rounded-2xl border border-border space-y-2.5 animate-fade-in">
                     <div className="flex items-center justify-between">
@@ -1386,12 +1345,12 @@ export default function BrowseDetailClient({
 
                     <div className="grid grid-cols-2 gap-2">
                       <div className="bg-surface p-2.5 rounded-xl border border-border text-center">
-                        <span className="text-[9px] text-text-muted uppercase font-semibold block">{"Estimated Token"}</span>
-                        <span className="text-xl font-black text-text">{availabilityState === "ready" && doctorSlotInfo.nextToken ? `#${doctorSlotInfo.nextToken}` : "—"}</span>
+                        <span className="text-[11px] text-text-muted normal-case font-semibold block">{"Estimated Token"}</span>
+                        <span className="text-xl font-semibold text-text">{availabilityState === "ready" && doctorSlotInfo.nextToken ? `#${doctorSlotInfo.nextToken}` : "—"}</span>
                       </div>
                       <div className="bg-surface p-2.5 rounded-xl border border-border text-center">
-                        <span className="text-[9px] text-text-muted uppercase font-semibold block">{"Estimated Wait"}</span>
-                        <span className="text-xl font-black text-text-secondary">
+                        <span className="text-[11px] text-text-muted normal-case font-semibold block">{"Estimated Wait"}</span>
+                        <span className="text-xl font-semibold text-text-secondary">
                           {availabilityState === "ready" && doctorSlotInfo.nextToken ? `~${Math.max(0, (doctorSlotInfo.nextToken - 1) * (doctorSlotInfo.appointmentDuration || 15))} mins` : "—"}
                         </span>
                       </div>
@@ -1408,9 +1367,9 @@ export default function BrowseDetailClient({
               return selectedDate ? (
                 <div key={`slots-${selectedDate}`} className="space-y-1.5 pt-0.5 animate-fade-in flex-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold uppercase tracking-wider text-text text-[11px]">{"2. Select Time Slot"}</span>
+                    <span className="font-semibold normal-case tracking-normal text-text text-[11px]">{"2. Select Time Slot"}</span>
                     {selectedTime && (
-                      <span className="text-accent font-bold text-xs">
+                      <span className="text-accent font-semibold text-xs">
                         {"Selected:"} {format12Hour(selectedTime)}
                       </span>
                     )}
@@ -1427,7 +1386,7 @@ export default function BrowseDetailClient({
                           {/* Morning Slots */}
                           {categorizedSlots.morning.length > 0 && (
                             <div className="space-y-1">
-                              <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                              <div className="text-[10px] font-semibold text-text-muted normal-case tracking-normal">
                                 {"Morning (Before 12:00 PM)"}
                               </div>
                               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
@@ -1444,7 +1403,7 @@ export default function BrowseDetailClient({
                                         !isAvailable
                                           ? "bg-surface-alt/60 text-text-muted/50 border border-dashed border-border/70 line-through cursor-not-allowed"
                                           : isSelected
-                                          ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs font-bold cursor-pointer"
+                                          ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs font-semibold cursor-pointer"
                                           : "bg-surface hover:border-border text-text border border-border cursor-pointer"
                                       }`}
                                     >
@@ -1459,7 +1418,7 @@ export default function BrowseDetailClient({
                           {/* Afternoon Slots */}
                           {categorizedSlots.afternoon.length > 0 && (
                             <div className="space-y-1 pt-0.5">
-                              <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                              <div className="text-[10px] font-semibold text-text-muted normal-case tracking-normal">
                                 {"Afternoon (12:00 PM – 4:00 PM)"}
                               </div>
                               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
@@ -1476,7 +1435,7 @@ export default function BrowseDetailClient({
                                         !isAvailable
                                           ? "bg-surface-alt/60 text-text-muted/50 border border-dashed border-border/70 line-through cursor-not-allowed"
                                           : isSelected
-                                          ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs font-bold cursor-pointer"
+                                          ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs font-semibold cursor-pointer"
                                           : "bg-surface hover:border-border text-text border border-border cursor-pointer"
                                       }`}
                                     >
@@ -1491,7 +1450,7 @@ export default function BrowseDetailClient({
                           {/* Evening Slots */}
                           {categorizedSlots.evening.length > 0 && (
                             <div className="space-y-1 pt-0.5">
-                              <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                              <div className="text-[10px] font-semibold text-text-muted normal-case tracking-normal">
                                 {"Evening (After 4:00 PM)"}
                               </div>
                               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
@@ -1508,7 +1467,7 @@ export default function BrowseDetailClient({
                                         !isAvailable
                                           ? "bg-surface-alt/60 text-text-muted/50 border border-dashed border-border/70 line-through cursor-not-allowed"
                                           : isSelected
-                                          ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs font-bold cursor-pointer"
+                                          ? "bg-primary-600 text-brand-mist border-primary-600 shadow-xs font-semibold cursor-pointer"
                                           : "bg-surface hover:border-border text-text border border-border cursor-pointer"
                                       }`}
                                     >
@@ -1537,14 +1496,14 @@ export default function BrowseDetailClient({
           {bookingStep === 2 && (
             <div className="space-y-3">
               {/* Selected Slot Summary Bar */}
-              <div className="p-3 bg-surface-alt rounded-2xl border border-border flex items-center justify-between gap-3 text-xs">
+              <div className={bookingPanel.detailsSummary}>
                 <div className="space-y-0.5 min-w-0">
-                  <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider block">{"Selected Consultation"}</span>
-                  <p className="font-bold text-text truncate">
+                  <span className="text-[10px] normal-case font-semibold text-text-muted tracking-normal block">{"Selected Consultation"}</span>
+                  <p className="font-semibold text-text">
                     {upcomingDays.find((d) => d.dateString === selectedDate)?.label || selectedDate} •{" "}
                     {doctorSlotInfo?.bookingMode === "sequential_queue" ? "Queue token" : format12Hour(selectedTime)}
                   </p>
-                  <p className="text-[11px] text-accent truncate">
+                  <p className="text-[11px] text-accent">
                     Dr. {selectedDoctor?.name.replace(/^Dr\.?\s*/i, "")} •{" "}
                     {selectedDoctor?.feeType === "post_consultation"
                       ? (selectedDoctor?.fees && selectedDoctor.fees > 0
@@ -1555,18 +1514,19 @@ export default function BrowseDetailClient({
                       : selectedDoctor ? doctorFeeLabel(selectedDoctor, location?.currency || "INR") : ""}
                   </p>
                 </div>
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setBookingStep(1)}
-                  className="shrink-0 text-xs font-semibold text-accent hover:text-accent bg-surface px-2.5 py-1.5 rounded-xl border border-border shadow-xs cursor-pointer min-h-[36px]"
+                  className="min-h-11! shrink-0"
                 >
                   {"Change Slot"}
-                </button>
+                </Button>
               </div>
 
               {/* Patient Details Input */}
               <div className="space-y-2.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-text block">
+                <label className="text-xs font-semibold normal-case tracking-normal text-text block">
                   {"Patient Information"}
                 </label>
 
@@ -1647,7 +1607,7 @@ export default function BrowseDetailClient({
               {/* Payment Preference */}
               {selectedDoctor?.feeType === "post_consultation" ? (
                 <div className="p-3.5 bg-warning/10 border border-warning/20 rounded-2xl space-y-1">
-                  <div className="flex items-center gap-2 text-warning-text dark:text-warning-text font-bold text-xs">
+                  <div className="flex items-center gap-2 text-warning-text dark:text-warning-text font-semibold text-xs">
                     <Building2 className="w-4 h-4 shrink-0" strokeWidth={1.75} />
                     <span>{"Post-Consultation Billing"}{selectedDoctor?.fees && selectedDoctor.fees > 0 ? ` • Min. ${formatCurrency(selectedDoctor.fees, location?.currency || "INR")} ${"visit charge"}` : ""}</span>
                   </div>
@@ -1659,7 +1619,7 @@ export default function BrowseDetailClient({
                 </div>
               ) : selectedDoctor?.feeType === "free" ? (
                 <div className="p-3.5 bg-success/10 border border-success/20 rounded-2xl space-y-1">
-                  <div className="flex items-center gap-2 text-success-text dark:text-success-text font-bold text-xs">
+                  <div className="flex items-center gap-2 text-success-text dark:text-success-text font-semibold text-xs">
                     <span>✨ {"Complimentary Consultation"}</span>
                   </div>
                   <p className="text-[11px] text-text-secondary leading-relaxed">
@@ -1669,10 +1629,10 @@ export default function BrowseDetailClient({
               ) : selectedDoctor?.fees && selectedDoctor.fees > 0 ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-text block">
+                    <label className="text-xs font-semibold normal-case tracking-normal text-text block">
                       {"Payment Preference"}
                     </label>
-                    <span className="text-xs font-bold text-success-text dark:text-success-text">
+                    <span className="text-xs font-semibold text-success-text dark:text-success-text">
                       {formatCurrency(selectedDoctor.fees, location?.currency || "INR")}
                     </span>
                   </div>
@@ -1682,13 +1642,13 @@ export default function BrowseDetailClient({
                       onClick={() => setPaymentMode("pay_at_location")}
                       className={`p-3 rounded-xl border text-left transition-all cursor-pointer min-h-[56px] ${
                         paymentMode === "pay_at_location"
-                          ? "bg-primary-600/10 border-primary-600 text-accent font-bold shadow-xs ring-1 ring-focus-ring"
+                          ? "bg-primary-600/10 border-primary-600 text-accent font-semibold shadow-xs ring-1 ring-focus-ring"
                           : "bg-surface border-border text-text hover:border-border"
                       }`}
                     >
                       <div className="flex items-center gap-2">
                         <Building2 className="w-4 h-4 text-text-muted shrink-0" strokeWidth={1.75} />
-                        <span className="text-xs font-bold">{"Pay at reception"}</span>
+                        <span className="text-xs font-semibold">{"Pay at reception"}</span>
                       </div>
                       <span className="text-[10px] text-text-muted block mt-1 pl-6">{"Pay"} {formatCurrency(selectedDoctor.fees, location?.currency || "INR")} {"at the desk upon arrival"}</span>
                     </button>
@@ -1698,13 +1658,13 @@ export default function BrowseDetailClient({
                       onClick={() => setPaymentMode("online")}
                       className={`p-3 rounded-xl border text-left transition-all cursor-pointer min-h-[56px] ${
                         paymentMode === "online"
-                          ? "bg-primary-600/10 border-primary-600 text-accent font-bold shadow-xs ring-1 ring-focus-ring"
+                          ? "bg-primary-600/10 border-primary-600 text-accent font-semibold shadow-xs ring-1 ring-focus-ring"
                           : "bg-surface border-border text-text hover:border-border"
                       }`}
                     >
                       <div className="flex items-center gap-2">
                         <CreditCard className="w-4 h-4 text-text-muted shrink-0" strokeWidth={1.75} />
-                        <span className="text-xs font-bold">{"Pay Online Now"}</span>
+                        <span className="text-xs font-semibold">{"Pay Online Now"}</span>
                       </div>
                       <span className="text-[10px] text-text-muted block mt-1 pl-6">{"Pay"} {formatCurrency(selectedDoctor.fees, location?.currency || "INR")} {"via UPI / Card"}</span>
                     </button>}
@@ -1737,14 +1697,14 @@ export default function BrowseDetailClient({
               {createdTicket?.status === "confirmed" ? <CheckCircle2 className="w-7 h-7" strokeWidth={1.75} /> : <Clock className="w-6 h-6" strokeWidth={1.75} />}
             </div>
             <div>
-              <h2 className="text-xl font-bold text-text">Appointment booked</h2>
+              <h2 className="text-xl font-semibold text-text">Appointment booked</h2>
               <p className="text-sm text-text-secondary">{appointmentBookingLabel(createdTicket?.status)}. Keep your private tracker link for updates.</p>
             </div>
             <div>
-              <span className="text-3xl font-black text-text block">
+              <span className="text-3xl font-semibold text-text block">
                 #{createdTicket?.tokenNumber}
               </span>
-              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mt-0.5">{"Appointment Token"}</p>
+              <p className="text-xs font-semibold text-text-muted normal-case tracking-normal mt-0.5">{"Appointment Token"}</p>
             </div>
 
             {createdTicket?.status === "pending_payment" && <p className="mb-4 text-sm text-text-muted">Payment is required before confirmation. Contact reception for verified payment instructions. Your private tracker shows the visit details.</p>}
@@ -1799,7 +1759,7 @@ export default function BrowseDetailClient({
           {createdTicket?.appointmentId && (
             <div className="p-3.5 bg-surface-alt rounded-2xl border border-border text-left space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-text flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-text flex items-center gap-1.5">
                   <Smartphone className="w-3.5 h-3.5 text-accent" strokeWidth={1.75} />
                   <span>{"Live Visit Status & Tracker"}</span>
                 </span>
@@ -1812,7 +1772,7 @@ export default function BrowseDetailClient({
               </p>
               <div className="flex gap-2 pt-1">
                 <Link href={`/track/${createdTicket.appointmentId}${createdTicket.trackerToken ? `#t=${encodeURIComponent(createdTicket.trackerToken)}` : ""}`} target="_blank" className="w-full">
-                  <Button size="sm" className="w-full text-xs font-bold min-h-[44px] flex items-center justify-center gap-1">
+                  <Button size="sm" className="w-full text-xs font-semibold min-h-[44px] flex items-center justify-center gap-1">
                     <span>{"Open Live Tracker"}</span>
                     <ExternalLink className="w-3 h-3" strokeWidth={1.75} />
                   </Button>
@@ -1841,12 +1801,12 @@ export default function BrowseDetailClient({
               {isGuest ? <Button
                 variant="outline"
                 size="sm"
-                className="w-full font-bold min-h-[44px]"
+                className="w-full font-semibold min-h-[44px]"
                 onClick={() => { setTicketModalOpen(false); router.push("/login"); }}
               >Verify your phone to manage appointments</Button> : <Button
                 variant="primary"
                 size="sm"
-                className="w-full font-bold min-h-[44px] flex items-center justify-center gap-1.5"
+                className="w-full font-semibold min-h-[44px] flex items-center justify-center gap-1.5"
                 onClick={() => {
                   setTicketModalOpen(false);
                   router.push("/dashboard/appointments");

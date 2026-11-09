@@ -20,6 +20,8 @@ describe("compact facility discovery cards", () => {
     expect(onNavigate).toHaveBeenCalledOnce();
     expect(screen.queryByText(/Mira Shah|General Medicine|Consultation|₹500|Check appointments/)).not.toBeInTheDocument();
     expect(screen.queryByText("Clinic", { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText("Online booking available")).not.toBeInTheDocument();
+    expect(screen.queryByText("Appointments", { exact: true })).not.toBeInTheDocument();
   });
   it("keeps the facility name and uses hospital classification in the action instead of an extra text row", () => {
     const view = show({ name: "River Hospital", facilityType: "hospital", onlineBookingAvailable: false });

@@ -18,12 +18,12 @@ it("keeps registration details when delivery fails inside a successful HTTP resp
   render(<ThemeProvider><ToastProvider><RegisterPage /></ToastProvider></ThemeProvider>);
   fireEvent.change(screen.getByLabelText("Full Name *"), { target: { value: "Test Patient" } });
   fireEvent.change(screen.getByLabelText("Mobile Phone Number *"), { target: { value: "9876543210" } });
-  fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+  fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
   expect(await screen.findByText("Verification code could not be sent")).toBeInTheDocument();
   expect(screen.getByLabelText("Full Name *")).toHaveValue("Test Patient");
   expect(screen.getByLabelText("Mobile Phone Number *")).toHaveValue("9876543210");
   expect(screen.queryByLabelText("6-Digit Verification Code *")).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Send Verification OTP" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Send verification code" })).toBeEnabled();
   expect(api.post).toHaveBeenCalledOnce();
 });
 
@@ -40,7 +40,7 @@ it("keeps a selected birth date and its autofill metadata through OTP verificati
   fireEvent.click(within(popup).getByRole("button", { name: new Date().toLocaleDateString("en-US", { month: "long" }), exact: true }));
   fireEvent.click(within(popup).getByRole("button", { name: "Jan", exact: true }));
   fireEvent.click(within(popup).getByRole("button", { name: /15.*January.*1990|January.*15.*1990/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+  fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
   fireEvent.change(await screen.findByLabelText("6-Digit Verification Code *"), { target: { value: "123456" } });
   fireEvent.click(screen.getByRole("button", { name: "Complete Registration" }));
   await waitFor(() => expect(api.post).toHaveBeenCalledWith("/auth/otp/verify", expect.objectContaining({ name: "Test Patient", dateOfBirth: "1990-01-15", otp: "123456", purpose: "authentication" })));

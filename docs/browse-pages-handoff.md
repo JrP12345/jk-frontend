@@ -1,6 +1,26 @@
 # Ekavyu Browse pages — product and engineering handoff
 
-Reviewed against the repository on **27 October 2026**. This document describes the current implementation, including the latest doctor-card layout. It is a guide for explaining, maintaining, designing, or reviewing these pages; it is not a proposal for a new design.
+Directory, facility and doctor presentation updated against the repository on **9 November 2026**; booking policy retains its **27 October 2026** review. This document describes the current implementation. It is a guide for explaining, maintaining, designing, or reviewing these pages; it is not a proposal for a new design.
+
+The 9 November typography pass uses the existing system sans-serif throughout these pages: restrained semibold headings, plain labels, consistent fee figures and subtle card shadows. Decorative serif fonts, heavy black weights and wide uppercase booking labels are removed. Titles remain readable at phone widths; date targets use 64px minimum widths so their labels do not crowd. Responsive layouts and booking behavior are preserved.
+
+Typography verification: all 32 synthetic browser review cases passed, covering phone and desktop layouts, light/dark themes, booking details, missing or long content, availability states and short screens. Desktop and phone screenshots were visually inspected. Changed-file ESLint reported no errors and the same five existing hook warnings; the diff passed whitespace checks. No booking logic changed in this pass.
+
+### Final UI review: weak points and corrections
+
+The second 8 November review found problems that a page-overflow check alone did not catch:
+
+| Weak point | Current correction |
+| --- | --- |
+| Clipped quick filters and sort text at 320px; crowded desktop toolbar | Three filters share a responsive grid. Phone results and controls occupy separate rows. One Map/List action works at every width. |
+| Phone/email text squeezed beside copy buttons; empty columns when data is missing | Fact columns fit supplied content, copy buttons have separate space, and contacts use full rows below 360px. |
+| Fixed booking bar covering a visible doctor card | The bar starts hidden and appears only after the doctor card leaves the usable viewport. Current geometry avoids stale observer entries; facility/doctor changes reset the observer. |
+| Oversized breadcrumbs, missing-field gaps and fragile share-button styling | Breadcrumb labels truncate within their own slots, supplied facts fill the available grid, and Share uses the shared component's explicit icon-only option. |
+| Doctor profile rounding a fractional fee differently from booking | Both use `publicConsultationFee`; free, unspecified and post-consultation fees keep distinct meanings and fractional amounts are preserved. |
+| Tiny date badges and incomplete date context | Date targets have a 64px minimum width, readable badges and complete accessible dates including year. |
+| Long booking forms leaving controls off short desktop screens | Header and footer stay in the bounded panel while its body scrolls. Input icons cannot bleed into the footer, focused fields stay visible, and Change Slot uses the shared 44px Button. |
+
+Verification includes 91 focused Vitest cases, TypeScript, changed-file ESLint, responsive light/dark browser checks and targeted 520px-high booking-form checks. The latter exercise input focus and button hit testing as well as screenshot/layout inspection. Checks use isolated synthetic data; no local live backend was running for an actual-data review. Five existing hook warnings in `BrowseDetailClient` remain separate technical debt. Full release gates remain in CI.
 
 ## 1. A description you can share
 
@@ -35,130 +55,106 @@ Supported facility classifications include clinic, hospital, diagnostic center, 
 
 Only active, publicly published locations belonging to eligible active organizations should be discoverable. A published contact page can remain available when online booking is unavailable. Publication, facility opening hours, doctor availability, and booking entitlement are separate concepts.
 
-## 4. /browse: list and map discovery
+## 4. /browse: facility discovery
 
-The current directory follows the supplied desktop list, desktop map, mobile list and mobile map boards. The former reception hero, specialty-chip row and multi-column card grid are replaced by a compact search header and facility rows. Existing account controls, brand assets and light/dark tokens remain in use.
+The directory layout was updated on **31 October 2026** from the supplied search/list/map and mobile-filter references. It uses the shared Navbar, Button appearance utility, Card, Input, Select, Checkbox, Modal and location-status engine. Custom CSS is limited to responsive composition and map presentation.
+
+The consistency pass reuses MarketplaceLayout.content for header-aligned gutters and widths, CardTitle for facility headings, fieldLabel for filter section labels, and the status component's existing pill appearance. Shared typography utilities replace page-specific title and caption scales. The search container uses Card, the ordinary page surface matches the other public pages, and action links use the shared compact Button size.
 
 ### Header and search
 
-The shared fixed header includes the real Ekavyu identity, appearance/account actions, and a directory search slot. Desktop combines keyword, city and Search. Phones put a single-line keyword form with an icon submit button beneath the brand/account row; city selection is in Filters. Header height is 64px on desktop and 126px on mobile.
+The fixed 64px public header keeps the real Ekavyu identity, account/appearance actions and links to existing patient/provider destinations. A full-width search card sits on the warm page surface in ordinary document flow. Its page heading remains available to screen readers without a large visual banner. Keyword search, city and Search share one field group; phones put keyword above city and submit. Enter/Search submits immediately; typing remains debounced by 300ms.
 
-Typing is debounced by 300ms; Enter or Search submits immediately. Searches use the public facility/clinician API. An explicit search query takes precedence over saved discovery state. The heading is “Clinics & hospitals,” followed by the selected city when applicable. The count represents loaded results, with “shown” when another cursor exists; it is not an invented full-directory total.
+The visible result count describes loaded facilities, using “shown” while another cursor exists. It is not an invented catalogue total. Approximate detected locations are labelled. Use precise location explicitly requests browser geolocation; denial leaves city search usable.
 
-Appearance uses the existing Button, Input, Select, Checkbox, Card and page-title system. Facility action links reuse Button's exported buttonClassName utility while retaining native link navigation. Local CSS handles responsive arrangement and map positioning rather than recreating ordinary control colors, corners and hover states. Map pins and Leaflet controls retain their map-specific presentation.
+### Filters and API behavior
 
-### Filters and ordering
-
-| Control | Behavior |
+| Control | Actual behavior |
 | --- | --- |
-| Specialty checkboxes | Multiple supplied specialties can be selected; matching any selected specialty includes a facility. Values are sent as repeated specialization parameters. |
-| Specialty counts | Distinct published facilities with the specialty across the public catalogue, not doctor counts or fabricated filtered totals. Missing counts are omitted. |
-| Open now | Server checks saved hours in the facility timezone before pagination. Unknown hours do not match. Active open-now results refresh each minute. |
-| Open 24 hours | Filters for explicit round-the-clock hours. |
-| City | Desktop search selector or filter sheet. |
-| Clear all | Clears keyword, city, specialties, hours and map-area constraint, retaining view/sort. |
-| Sort | Nearest first when a usable user/map-area origin exists; otherwise Top rated. Lowest fee remains supported. |
-| Load more | Retains the same query, specialties, hours, map bounds and ordering; duplicate IDs are excluded. |
+| Facility type | Multiple saved classifications, matched with OR semantics; no name-based clinic inference. Facet counts come from the full public catalogue. |
+| Specialty | Multiple supplied specialties, matched with OR semantics; real catalogue counts. |
+| Online booking | Server requires eligible organization booking access and an active public doctor assignment. It does not promise a slot. |
+| Open now / Open 24 hours | Saved facility hours and timezone, evaluated before pagination. Unknown hours never match. |
+| Distance | Any distance by default; 1–50 km can be selected once a usable location is available. This is straight-line distance, not driving distance. Unmapped facilities do not match a radius. |
+| City / keyword | Existing public facility/clinician search. |
+| Search this area | Explicit map-bounds request; panning/zooming alone never requests directory data. |
+| Clear / applied filters | Clear all or remove an individual constraint. Ordinary filter changes clear old map bounds. |
+| Sort / pagination | Nearby, rating and minimum-fee ordering remain server-wide before pagination; requests retain the entire filter context. |
 
-Desktop List view has a sticky filter sidebar. Below 900px, and in desktop Map view, Filters opens the existing responsive sheet instead. Changes update shared result state; Show results closes the sheet. There is no favorites feature or duplicate applied-filter row.
+The grouped desktop sidebar uses collapsible sections. On phones, quick buttons expose Filters, Open now and Online booking. The existing sheet provides city, all filter groups, a distance slider, Clear all and Show results. Filters apply live; Show results closes the sheet. It does not fabricate a total beyond the loaded page.
 
-Nearby ranking happens across the visible catalogue before pagination, not on one downloaded page. A failed nearby request falls back to rating order with an explanation. Ratings and minimum fees can support sorting without becoming extra information rows inside facility cards.
+Distance starts unrestricted so an approximate city or absent facility coordinates cannot silently hide real facilities. A small, nonempty filtered result set offers widening to 50 km only when a smaller radius is actually active, or resetting to all facilities. The unfiltered catalogue does not offer a redundant reset. A selected city does not become an invented coordinate.
 
-### Facility-row hierarchy
+### Facility-card structure
 
-Desktop rows have a fixed square logo beside a single information column: actual name, opening status, specialties, address, and callable phone. A narrow, divided action column sits on the right with Book/View above Directions.
+1. A fixed, contained 44px logo or real-name initials, the saved facility name and up to two specialties. The opening-status chip wraps alongside the title.
+2. Compact address and phone text below the specialties; calling remains a separate native action.
+3. A quiet action band with a full-width Book/View action and compact Directions and Call buttons when supported. The primary action communicates booking access without repeated booking notes. Buttons and links share the existing component appearance.
+4. Names and the primary action retain the current public slug and booking entry. Directions use saved coordinates or the real facility name/address. Address text is read-only.
 
-Phones use the same identity order with stacked full-width actions below a divider. Map rows use a compact variant with side-by-side actions. The selected map summary shows identity/status/city and its own Directions/Book-or-View actions.
+Doctor biographies, fees, email and extended information remain on the detail page. No verified badge, saved/favorite action, invented availability dates, ratings or doctor profiles are added to directory cards. The supplied “Today”, “Next 3 days” and date chips are intentionally absent because the directory API does not provide authoritative appointment availability; that remains in the existing doctor/date booking flow.
 
-| Element | Purpose and fallback |
-| --- | --- |
-| Logo | Contained square, 56px desktop / 48px phone / 44px map row. Missing logo uses the facility initial; failed images use an icon. |
-| Name | Strongest text, linking to the saved public facility slug. No hardcoded Clinic suffix. |
-| Opening status | Existing timezone-aware status engine; unknown hours stay unknown. |
-| Specialties | At most two distinct supplied specialties. No individual doctor details on facility rows. |
-| Address | Readable wrapping, with city/location fallback. Qualified distance is shown only with usable nearby data. |
-| Phone | Validated native call link; missing/invalid phone says Phone not listed. Email stays on the detail page. |
-| Main action | Book appointment only for explicitly eligible online booking; otherwise View clinic, View hospital, or View facility. Opens the facility page, without reserving a visit. |
-| Directions | Separate labelled action opening Google Maps using valid coordinates or facility name/address. Address text remains read-only. |
+### List, map and responsive layout
 
-Directory rows load only the identity logo. They do not download cover/gallery images or show doctor biographies, qualifications, doctor fees, speculative availability, or extra feedback rows.
+At 1200px and wider, List view shows the filter sidebar, facility cards and a sticky real map together. Smaller List views avoid downloading map tiles. A desktop Map view gives more width to the map and exposes filters through the sheet. On phones, the floating List/Map group switches between the directory and a map filling the area below the 64px header and compact controls.
 
-### Map view and interaction
+The on-demand Leaflet map retains real coordinate pins, selection, zoom, keyboard movement, area search, provider attribution, failure/retry states and unmapped-facility messaging. Desktop selected summaries stay compact; phone map summaries retain navigation actions. Only finite, in-range, non-zero-pair saved coordinates produce pins. No placeholder roads or made-up facility pins are shipped.
 
-The desktop List/Map switch sits beside sorting. Phones have a floating Map/List button. Both views share filters, ordering, results and navigation. Switching views does not request another directory page. The view=map query parameter can open Map directly.
+### Continuity and recovery
 
-Desktop Map view removes the filter sidebar, puts compact rows on the left and a sticky map on the right. Mobile hides the list/visible heading, keeps Filters and sorting under the header, and fills the remaining viewport with the map.
+Session storage preserves search, city, types, specialties, booking/hours/distance choices, ordering, view and scroll position. An explicit incoming search takes precedence. Storage or location-provider failure never prevents ordinary browsing.
 
-- Numbered pins follow the current row order. Selected pins are larger/filled, and the selected row is marked.
-- A pin or map-row logo/number button selects a facility; name and booking links still navigate.
-- The selected summary is at bottom-left on desktop and above the floating List button on phones.
-- Zoom buttons, keyboard movement, and optional centering on the user's approximate location work.
-- Panning/zooming alone does not fetch results. Search this area sends visible bounds to the API, which filters before ranking/pagination.
-- Ordinary search/filter changes clear stale map bounds. Clear map area is also available in Filters.
-- Map view exposes additional-page loading and request errors/retry.
-- Only finite saved coordinates in range produce pins. The zero pair is unmapped. Missing coordinates never receive invented positions; those facilities remain in List view.
-- Pins clipped by the map boundary or covered by its controls/summary are not exposed as tiny partial touch targets. Pan/zoom or use List view to reach those facilities.
-- Empty/unmapped results, failed map-code loading and failed raster tiles have recovery states. Tile failure does not remove pins or List view.
-
-The actual map uses on-demand Leaflet 1.9.4, raster tiles and visible OpenStreetMap attribution. Map code and tiles load only when Map is opened. The reference boards' drawn roads are not shipped as a pretend map.
-
-### Location, continuity and loading
-
-Browser geolocation, then approximate IP-location providers, can supply a ranking origin. Valid location is session-cached for five minutes. Detection does not force a city filter. IP/low-accuracy results are qualified as approximate, and distance bands are not road-travel estimates.
-
-Before facility navigation, session storage retains keyword, city, selected specialties, hours filters, sort, view and scroll position. Returning can restore that context; storage failure never prevents browsing.
-
-Initial loading shows row skeletons. Refresh preserves previous results with busy/status feedback. Failed updates retain the last available rows and offer retry. Empty states distinguish no matches from a service error. Filters, recovery and pagination use the same data state in both views.
+Existing abort/race protection, cursor deduplication, nearby-sort recovery, loading skeletons, stale-result retry and empty/error/partial-data states remain. This redesign changes public discovery presentation and filters; it does not create appointments, alter booking policy or write organization/patient records.
 
 ## 5. `/browse/[slug]`: page structure and behavior
 
 ### Overall composition
 
-The facility page shares the directory's navbar, content width, gutters, theme tokens, controls and status treatment. A breadcrumb/back action returns to Browse Locations. The navbar provides a native GET search that opens `/browse?search=…`; on mobile it is accessed through a search dialog.
+The facility page shares the directory's navbar, content width, gutters, theme tokens, controls and status treatment. Breadcrumbs return to Browse locations. The shared header keeps Find care, For patients and For providers navigation on desktop and existing account, theme and mobile-menu controls.
 
-At 900px and above, **doctors are on the left and facility information is on the right**. Below 900px, facility information comes first, followed by doctors. This order also follows the rendered document structure. There is no separate full-width facility banner above these columns.
+A full-width forest header introduces the location, followed by an overlapping contact-summary card. Below 900px, ordinary section links lead to Doctors, Hours, Location and optional About; these are not hidden tab panels.
 
-### Integrated facility-information card
+At 900px and above, the doctor list and About occupy the left column, with a sticky Location card and weekly-hours disclosure on the right. Below 900px, the document order is Doctors, Location and weekly hours, then optional About. A single-doctor booking bar appears below 900px while the booking/ticket surface is closed.
 
-Read from top to bottom:
+### Facility summary and supporting sections
 
-1. A short saved cover strip, fading into the card surface; opening status and Share sit together at the top right.
-2. Contained facility logo and actual facility name. Organization affiliation is shown only for a multi-location organization with a different name.
-3. City and a saved opening-hours summary.
-4. Facility description, or a reception-contact explanation when no description is supplied.
-5. One grouped contact area: full address, directions, phone/copy, email/copy, and WhatsApp contact when a phone is supplied.
-6. An explicitly configured embedded map, when available.
-7. Native Opening hours disclosure, followed by Facilities & photos only when real amenities/photos exist.
+Read the summary from top to bottom:
 
-The logo is 72px on larger screens and 64px below 640px. The cover strip is 88px high; it is decorative context, with the title rendered on an opaque readable surface. Directory cards do not download this cover.
+1. A forest header with breadcrumbs and a contained logo (88px desktop, 60px mobile), with real-name initials if no logo is available.
+2. Actual facility name, city and address. Organization affiliation appears only for a multi-location organization with a different name. The separate contact strip shows Today, Hours, Reception and Email when supplied.
+3. Existing booking entry on desktop, plus Call, Directions, WhatsApp and Share where supported by saved contact data. Mobile contact actions form a compact row; the contact strip uses two columns.
 
-Phone and email open the device's calling/email applications. Copy buttons provide clipboard feedback. Share uses the existing public-profile sharing component. Opening the WhatsApp link starts an external conversation with a prefilled appointment enquiry; it is not an in-page chat service or evidence that automated notifications were delivered.
+Fees and specialties stay with the doctors, the full schedule stays in the weekly-hours disclosure, and booking-mode exceptions stay on the relevant doctor card. The contact strip contains no consultation-fee or appointment-availability promises.
 
-Without an embedded map, the address row provides the directions action. With an embed, directions sits below the map instead, avoiding a duplicate directions control. The saved map loads lazily. There is no fabricated map preview when a map has not been configured.
+The page does not download the old decorative facility banner. The summary uses the same shared Card, Button, Badge, Breadcrumbs and theme tokens as the rest of Ekavyu.
 
-Opening hours remain a disclosure rather than a long permanent schedule. Amenities are saved facility attributes, not inferred services. Photo thumbnails and the gallery viewer use the actual saved gallery; there are no About/Plan your visit tabs or unsupported Reviews tab.
+**Weekly opening hours** groups consecutive days with identical saved schedules and keeps today distinct using the facility timezone. The Hours summary opens the full schedule. Unlisted days say Not listed; they are not asserted to be closed. Split shifts, overnight hours and explicit 24-hour schedules remain supported. Phone and email links open the device's applications; shared buttons copy their saved values with feedback. The opening status appears once under Today; WhatsApp appears once in the identity header. WhatsApp opens an external enquiry, not an in-page chat or a claim that automated notifications were delivered.
+
+**Location** contains the lazily loaded configured map embed, saved address, directions and copy action. Without an embed, it presents the address and supported actions without a large empty map placeholder.
+
+**About** shows supplied facility or applicable organization descriptions. Real amenities/photos remain under Facilities & photos; the existing gallery viewer is preserved. The section and navigation link are omitted when no description, amenities or photos are supplied.
+
+Repeated FAQ and generic visit-instruction content are omitted. The public facility contract has no verification flag or facility-review feed, so there is no invented Verified badge, reviews panel, claim-listing flow or patient-review count.
 
 ### Doctor-list structure
 
-The section is labelled **Doctors**, with a short instruction that changes when booking is unavailable. More than eight doctors enables a local name/specialty search; more than one distinct specialty enables a specialty selector. Initially up to 12 doctors are shown; Show all expands the roster. Local roster filtering does not fetch every doctor's availability.
+The section is labelled **Doctors**, with one short availability instruction when booking is supported and a reception notice when booking is temporarily unavailable. More than eight doctors enables a local name/specialty search; more than one distinct specialty enables a specialty selector. Initially up to 12 doctors are shown; Show all expands the roster. Local roster filtering does not fetch every doctor's availability.
 
 ```text
-┌────────────────────────────────────────────┐
-│ Portrait   Doctor name                      │
-│            Specialty                        │
-│            Qualifications · Experience      │
-│            Rating, when supported           │
-│ ────────────────────────────────────────── │
-│ Availability/mode   Consultation fee [Book] │
-└────────────────────────────────────────────┘
+Portrait   Doctor name                     Consultation fee
+           Specialty
+           Qualifications · Experience
+           Rating, when supported
+----------------------------------------------------------
+Applicable booking context                 [Book / Next date]
 ```
 
-The latest doctor card has two sections:
+The doctor card separates identity, fee, booking context and action:
 
 - **Identity header:** portrait/initials, name, specialty, qualifications, experience, and optional supplied feedback. This is a link to the doctor's public profile in the same facility context.
-- **Action footer:** doctor availability/queue-mode information, a consultation-fee label with its value underneath, and the booking button directly beside the fee. On narrower containers, availability occupies its own line above the fee/action row.
+- **Fee and action:** the fee sits beside identity on larger cards and moves to its own row below 480px. A quiet bottom band pairs applicable booking context with the booking button. Ordinary rows do not repeat the section's availability instruction.
 
-The portrait is a fixed 64px circle, reducing to 56px in the narrowest doctor containers. A missing portrait uses the existing DR fallback. Long text wraps rather than being forced over the fee or action. The doctor list uses individual cards without an additional decorative card around the entire list.
+The portrait is a fixed 64px circle, reducing to 48px on phones. A missing portrait uses initials from the actual doctor name. Long text wraps rather than being forced over the fee or action. The doctor list uses individual cards without an additional decorative card around the entire list.
 
 Fee display follows the supplied fee type:
 
@@ -172,7 +168,7 @@ Fee display follows the supplied fee type:
 
 The action says Book now for an ordinary bookable context, Find next date when the doctor is unavailable/online booking is closed today, or Contact reception when location booking is unavailable. Opening this action invokes the existing availability/booking flow; the card itself does not establish that a slot is free.
 
-A single-doctor facility also has the existing Check times bar below 1024px when booking is allowed and no booking/ticket surface is open. It uses the same doctor, fee and booking handler.
+A single-doctor facility also has a sticky fee and Book now / Find next date bar below 900px when booking is allowed, the doctor card has left the usable viewport, and no booking/ticket surface is open. It uses the same doctor, fee and existing booking handler.
 
 ### Opening status is not appointment availability
 
@@ -193,6 +189,12 @@ Free, post-consultation, pay-at-reception and online-payment preferences follow 
 
 Tracker links can include a private capability token. They must not be copied into public-profile links, screenshots, documentation or metadata. Public browsing does not grant access to patient records.
 
+### Doctor profile presentation
+
+The canonical route remains `/doctor/[slug]?location=[facility-slug]`. It shares the public Ekavyu navigation, system-font headings/fees and elevated cards with the facility page. On desktop, identity, experience/fee/booking facts, About and selected practice appear left of a sticky Book a visit panel. Below 900px, booking follows identity and facts, before About and practices. Practice-specific booking mode comes from the existing public profile contract.
+
+The inline panel keeps the shared two-step booking flow and availability gates. Its date ribbon scrolls without widening the page; queue guidance explains arrival and assignment after booking without speculative token/wait tiles. Time-slot, full-queue, failed-request, guest/family, follow-up and payment recovery remain in the existing flow. Effect cleanup clears the auto-open guard so a canceled initial availability request is rechecked on a Strict Mode remount.
+
 ## 7. Data placement and ownership
 
 | Information | Directory | Facility page | Source / editing responsibility |
@@ -201,11 +203,11 @@ Tracker links can include a private capability token. They must not be copied in
 | Phone | Callable | Callable, copyable; WhatsApp link | Published location contact data |
 | Email | Deferred | Email link and copy | Published location contact data |
 | Logo | Small, contained | Contained facility/organization fallback | Published branding configuration and effective API response |
-| Cover/gallery | Not loaded | Short cover and optional photo disclosure | Saved public branding/gallery |
-| Facility hours/timezone | Compact status | Status, summary and detailed hours | Saved location/organization context |
+| Cover/gallery | Not loaded | Forest identity header and optional photo disclosure | Saved public branding/gallery |
+| Facility hours/timezone | Compact status | Status and detailed hours | Saved location/organization context |
 | Specialties | Compact supplied summary | Assigned doctors and roster filter | Public clinician/assignment data |
 | Doctor qualifications/experience | Deferred | Doctor identity section | Clinician profile |
-| Doctor fee and booking mode | Not repeated on facility card | Doctor footer and booking flow | Selected practice's public configuration |
+| Doctor fee and booking mode | Not repeated on facility card | Doctor identity/fee row and booking flow | Selected practice's public configuration |
 | Reviews/ratings | Only supported feedback values | Conditional doctor feedback; no review tab | Supplied public feedback; no invented trust/verification badge |
 | Maps coordinates/embed | Coordinates inform directions/ranking | Directions and optional saved map | Location management |
 | Publication/online booking | Controls discovery and action labels | Controls availability entry points | Backend publication and booking-policy checks |
@@ -220,8 +222,9 @@ Paths below include the `/api` prefix; the shared client supplies that prefix wh
 
 | Request | Role |
 | --- | --- |
-| `GET /api/public/locations` | Directory results/facets; accepts search, city, repeated specialization, sort, coordinates, cursor, openNow/open24Hours and bounds=south,west,north,east |
+| `GET /api/public/locations` | Directory results/facets; accepts search, city, repeated specialization, sort, coordinates, cursor, repeated facilityType, onlineBooking, radiusKm (1–50), openNow/open24Hours and bounds=south,west,north,east |
 | `GET /api/public/locations/[slug]` | Selected public facility and assigned doctors |
+| `GET /api/public/doctors/[slug]/profile?location=[facility-slug]` | Public doctor identity and practice-specific fee/booking configuration |
 | `GET /api/public/doctors/[doctorId]/slots?locationId=…&date=…` | Authoritative availability for one selected context/date |
 | `GET /api/family` | Authenticated patient's linked family choices during patient-details step |
 | `POST /api/public/booking-session` | Restricted guest booking session |
@@ -242,15 +245,15 @@ Current facility deep links can use `doctor=[doctor-slug]` with `openBooking=tru
 | Width / container condition | Current layout rule |
 | --- | --- |
 | Desktop List | Filter sidebar and one facility row per line; sidebar collapses below 900px |
-| Directory below 768px | Two-row header, compact controls, stacked-action cards and floating Map button |
+| Directory below 768px | Two-row search below the 64px header, compact cards and floating List/Map switch |
 | Desktop Map | Compact left results and pinned right map; no filter sidebar |
 | Mobile Map | Full remaining viewport under header/filter controls, summary card and List button |
-| Facility below 900px | Information first, doctors second |
-| Facility 900px and above | Doctors left, information right; shared responsive column ratios |
-| Doctor container at most 560px | Availability line above a full-width fee/action row |
-| Doctor container at most 360px | Smaller portrait/type/padding and 128px action column |
+| Facility below 900px | Forest header, two-column contact strip, section navigation, Doctors, Location/weekly hours and optional About |
+| Facility 900px and above | Forest header/contact strip; doctors/About left, sticky Location/weekly hours right |
+| Doctor cards | Fee beside identity; applicable context and action in a quiet footer; fee moves below identity under 480px |
+| Doctor profile below 900px | Identity and facts, inline booking, About, then practice locations; dates scroll within their ribbon |
 
-The facility and directory Map frames are capped at 1600px; directory List uses a 1320px frame. Side padding is 32px on larger screens and 16px below 768px. Both pages use the existing warm light and charcoal dark surfaces, emerald actions, border tokens and focus-ring tokens. Do not introduce separate page palettes.
+The facility and directory frames are capped at 1600px; the doctor frame is capped at 1440px. Side padding is 32px on larger screens and 16px below 768px. All three pages use the existing warm light and charcoal dark surfaces, emerald actions, border tokens and focus-ring tokens. PublicCare.module.css shares the system-font profile headings/fees and 12px elevated cards; getAvatarInitials is a pure utility shared by server profiles and client avatars. Do not introduce separate page palettes.
 
 Cards use readable wrapping, consistent radii and 44px primary interactive targets. Facility logos remain square and contained; doctor photographs cover a fixed circular frame. Pointer cursors apply to real links/buttons, while read-only metadata keeps its ordinary cursor. Hover effects are restrained, keyboard focus stays visible, and reduced-motion settings disable the relevant transitions/movement. Loading skeletons follow the same page order and card grouping.
 
@@ -297,7 +300,10 @@ For publication, domain configuration and deployment acceptance, use [Public dis
 | [Directory CSS](../src/app/browse/browse.module.css), [card CSS](../src/app/browse/LocationCard.module.css) | Directory layout and facility-card styling |
 | [Facility server page](../src/app/browse/[slug]/page.tsx) | Public lookup, metadata, structured data and brand context |
 | [BrowseDetailClient](../src/app/browse/[slug]/BrowseDetailClient.tsx) | Facility state, roster filtering, availability, booking, ticket and gallery |
-| [FacilityProfile](../src/app/browse/[slug]/FacilityProfile.tsx), [profile CSS](../src/app/browse/[slug]/FacilityProfile.module.css) | Information card, doctor cards and their responsive presentation |
+| [FacilityProfile](../src/app/browse/[slug]/FacilityProfile.tsx), [profile CSS](../src/app/browse/[slug]/FacilityProfile.module.css), [hours presentation](../src/app/browse/[slug]/facilityView.ts) | Facility header/contact strip, doctor cards, grouped hours, location and optional About |
+| [Doctor page](../src/app/doctor/[slug]/page.tsx), [doctor CSS](../src/app/doctor/[slug]/doctor.module.css), [booking CSS](../src/app/browse/[slug]/BookingPanel.module.css) | Doctor identity, practice context and the shared inline booking flow |
+| [Public care styles](../src/components/PublicCare.module.css), [initials utility](../src/lib/avatar.ts), [public fees](../src/lib/publicFees.ts) | Reused profile headings, cards, fact strips, consistent fees and server/client name initials |
+| [Facility booking bar](../src/app/browse/[slug]/FacilityBookingBar.tsx) | Contextual phone booking action without covering the doctor card |
 | [MarketplaceNavbar](../src/components/MarketplaceNavbar.tsx), [shared layout CSS](../src/components/MarketplaceLayout.module.css) | Shared header, account/search controls, gutters and columns |
 | [Directory skeletons](../src/components/ui/LocationCardSkeletons.tsx), [detail skeleton](../src/components/ui/BrowseDetailSkeleton.tsx) | Loading layouts |
 | [LocationStatusBadge](../src/components/ui/LocationStatusBadge.tsx), [status engine](../src/lib/timing/locationStatus.ts) | Facility opening-status calculation and display |
@@ -309,18 +315,24 @@ For publication, domain configuration and deployment acceptance, use [Public dis
 
 ## 13. Map configuration and verification
 
+The **8 November** reference polish passed 28 isolated facility/doctor browser cases at 320/390/768/1024/1440px and in both themes, including long content, missing contacts/doctors, saved-map embeds, unavailable booking, full queues, failed availability and date-to-details transitions. The final directory review passed 15 list/map, selection/zoom/area-search and mobile filter cases; empty/error/unmapped/long-content states were also checked during this pass. These checks use synthetic data and include overflow, action containment, nested-link, browser-error and focused Axe checks. No real booking, patient, payment or configuration writes were made.
+
+Focused Vitest coverage, TypeScript and changed-file ESLint passed (the booking client retains five existing hook warnings). A new Strict Mode regression verifies that inline availability recovers after an effect remount. The reusable local review is [review-public-care.mjs](../scripts/performance/review-public-care.mjs), alongside the existing directory review. Run with the already-installed local Chrome/Playwright/Axe tooling; screenshots and JSON evidence go under `.next/brand-handoff/care-final-polish` and `.next/brand-handoff/browse-final-polish`. Full release gates remain owned by CI.
+
 The default raster endpoint is https://tile.openstreetmap.org/{z}/{x}/{y}.png. Deployment can supply NEXT_PUBLIC_MAP_TILE_URL and a plain-text NEXT_PUBLIC_MAP_TILE_CREDIT at build time for another suitable raster provider. Keep visible attribution, provider caching and referrer requirements. Default OSM tiles are a best-effort external service, not a purchased map SLA. See [Leaflet documentation](https://leafletjs.com/examples/quick-start/) and the [OSM tile policy](https://operations.osmfoundation.org/policies/tiles/). The default does not require a map API key.
 
-Owners must save actual facility coordinates in location management. At the 27 October read-only checkpoint, Aarogya Clinic had the zero pair: its address-based directions worked, but it had no map pin. No database coordinates or configuration were changed for screenshots.
+Owners must save actual facility coordinates in location management. The 31 October reference update adds server-backed type, booking-eligibility and radius filtering; it does not add date availability to the directory. At the 27 October read-only checkpoint, Aarogya Clinic had the zero pair: its address-based directions worked, but it had no map pin. No database coordinates or configuration were changed for screenshots.
 
-The list/map implementation passed 29 fixture browser cases across 320/375/390/768/1024/1440px and light/dark themes, plus focused live-tile and short-screen checks. These cover selection, zoom, area requests, hours filtering, empty/error/unmapped/long/single-result states, layout and Axe checks. Ordinary fixture runs mock raster images; live-tile reviews use the real provider with synthetic facility coordinates. Actual public-page captures use read-only traffic.
+The earlier list/map implementation passed 29 fixture browser cases across 320/375/390/768/1024/1440px and light/dark themes, plus focused live-tile and short-screen checks. These cover selection, zoom, area requests, hours filtering, empty/error/unmapped/long/single-result states, layout and Axe checks. Ordinary fixture runs mock raster images; live-tile reviews use the real provider with synthetic facility coordinates. Actual public-page captures use read-only traffic.
 
 Focused frontend coverage includes facility actions, directory orchestration, mobile navigation and booking-entry preservation. Backend coverage checks specialty/bounds/hours filtering before cursor pagination, published visibility, missing hours, timezone and overnight behavior. Package type checks and a controlled production build verify integration. These are scoped checks, not a replacement for release gates or accessibility certification.
 
-- Current evidence: [Connected results](landing-page/connected/browse/connected-results.json).
+The **1 November** polish passed 36 focused synthetic browser cases across 320/390/768/1440px and both themes, including list/map selection and filters, empty/error/unmapped/long-content states, facility contacts, gallery, and ordinary/single-doctor booking entry. The final doctor footer was checked for fee/button alignment and containment. Scoped lint, TypeScript, directory/card/detail tests and booking-continuity regressions passed. No appointment or configuration writes were made. The captures linked below predate this polish.
+
+- Earlier directory evidence: [Connected results](landing-page/connected/browse/connected-results.json).
 - Directory actual data: [desktop](landing-page/connected/browse/connected-directory-actual-1440.png), [phone](landing-page/connected/browse/connected-directory-actual-390.png).
-- Map layout with isolated synthetic facilities and live map tiles: [desktop](landing-page/connected/browse/connected-directory-map-1440.png), [phone](landing-page/connected/browse/connected-directory-map-390.png).
-- Facility page, unchanged by this redesign: [desktop](landing-page/connected/browse/connected-facility-actual-1440.png), [phone](landing-page/connected/browse/connected-facility-actual-390.png).
+- Map layout with isolated synthetic facilities and live map tiles: [desktop](landing-page/connected/browse/connected-directory-map-1440.png), [phone](landing-page/connected/browse/connected-directory-map-390.png). The current [mobile filter sheet](landing-page/connected/browse/connected-directory-filters-390.png) uses the same fixture set.
+- Facility reference update: [desktop](landing-page/connected/browse/connected-facility-1440.png), [phone](landing-page/connected/browse/connected-facility-390.png). These use isolated synthetic facilities; the configured-map fixture is labelled illustrative.
 - Browser review: [List/map checks](../scripts/performance/review-browse-directory.mjs).
 - Frontend tests: [cards](../src/tests/browseLocationCard.test.tsx), [directory](../src/tests/browseAndMobilePolish.test.tsx), [doctor/detail/booking](../src/tests/browseDoctorDetail.test.tsx).
 - Backend tests: [catalogue](../../backend/tests/publicLocationCatalog.test.ts), [filters](../../backend/tests/publicBrowseFilters.test.ts).

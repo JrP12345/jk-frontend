@@ -14,7 +14,7 @@ import { Menu, Search, X } from "lucide-react";
 import { getAvatarInitials } from "@/components/ui/Avatar";
 import marketplace from "./MarketplaceLayout.module.css";
 
-export default function MarketplaceNavbar({ brand, showSearch = true, showSignUp = false, searchSlot }: { brand?: { name: string; logoUrl?: string | null; href: string }; showSearch?: boolean; showSignUp?: boolean; searchSlot?: ReactNode }) {
+export default function MarketplaceNavbar({ brand, showSearch = true, showSignUp = false, searchSlot, navigationSlot }: { brand?: { name: string; logoUrl?: string | null; href: string }; showSearch?: boolean; showSignUp?: boolean; searchSlot?: ReactNode; navigationSlot?: ReactNode }) {
   const { user, logout, isAuthenticated, isLoading, isLoggingOut } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -55,6 +55,7 @@ export default function MarketplaceNavbar({ brand, showSearch = true, showSignUp
           <EkavyuLogo size={showSignUp ? "md" : "sm"} layout={showSignUp ? "horizontal" : "stacked"} className={searchSlot ? "[&>span>span]:normal-case [&>span>span]:tracking-tight" : showSignUp ? "[&>span>span]:normal-case [&>span>span]:tracking-tight [&>span]:hidden sm:[&>span]:flex" : ""} />
         </Link>}
 
+        {navigationSlot && <nav aria-label="Discover care" className="hidden min-w-0 flex-1 items-center gap-5 px-6 text-sm md:flex">{navigationSlot}</nav>}
         {searchSlot && <div className={marketplace.directorySearch}>{searchSlot}</div>}
         {showSearch && searchForm("mx-3 hidden min-w-0 max-w-xl flex-1 items-center rounded-full border border-border bg-surface focus-within:ring-2 focus-within:ring-focus-ring md:flex")}
         <div className="flex items-center gap-1.5 md:gap-3 shrink-0">

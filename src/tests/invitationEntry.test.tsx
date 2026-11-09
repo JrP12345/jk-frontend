@@ -5,6 +5,7 @@ import InvitationPage from "@/app/(auth)/accept-invite/page";
 const fixture = vi.hoisted(() => ({ query: "token=private-invitation", post: vi.fn(), login: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(fixture.query), useRouter: () => ({ replace: fixture.replace }) }));
 vi.mock("@/lib/api", () => ({ default: { post: fixture.post } }));
+vi.mock("@/components/ui", async original => ({ ...await original<typeof import("@/components/ui")>(), ModeSwitcher: () => null }));
 vi.mock("@/store/authStore", () => ({ useAuthStore: (selector: (state: { login: typeof fixture.login }) => unknown) => selector({ login: fixture.login }) }));
 afterEach(() => { cleanup(); fixture.query = "token=private-invitation"; vi.clearAllMocks(); });
 

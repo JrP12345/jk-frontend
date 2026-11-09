@@ -32,6 +32,40 @@ async function mount(props: ComponentProps<typeof BrowseClient> = {}) {
 function headings() { return within(screen.getByRole("list", { name: "Healthcare locations" })).getAllByRole("heading", { level: 2 }).map(node => node.textContent); }
 
 describe("Responsive facility directory behavior", () => {
+  it("offers widening only for a small filtered result set", async () => {
+    vi.spyOn(api, "get").mockResolvedValue({ data: { data: [clinic] } });
+    await mount({ initialLoaded: true, initialLocations: [clinic], initialFilters: { cities: [], specialties: ["Cardiology"] } });
+    expect(screen.queryByText("Looking for more options?")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Cardiology" }));
+    expect(await screen.findByText("Looking for more options?")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "All facilities", exact: true }));
+    await waitFor(() => expect(screen.queryByText("Looking for more options?")).not.toBeInTheDocument());
+  });
+
+  it("sends facility, booking and distance choices to the server and clears only the chosen constraint", async () => {
+    detectLocation.mockResolvedValue({ source: "gps", latitude: 21.17, longitude: 72.83 });
+    const request = vi.spyOn(api, "get").mockResolvedValue({ data: { data: [clinic] } });
+    await mount({ initialLoaded: true, initialFilters: { cities: [], specialties: [], facilityTypeCounts: { clinic: 1 } } });
+    const radius = screen.getByRole("slider", { name: "Distance in kilometres" });
+    await waitFor(() => expect(radius).toBeEnabled());
+    fireEvent.click(screen.getByRole("checkbox", { name: "Clinic", exact: true }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Online booking", exact: true }));
+    fireEvent.change(radius, { target: { value: "25" } });
+    await waitFor(() => expect(request).toHaveBeenLastCalledWith(expect.stringContaining("facilityType=clinic&onlineBooking=true&radiusKm=25"), expect.anything()));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Within 25 km" }));
+    await waitFor(() => {
+      const url = request.mock.calls.at(-1)![0];
+      expect(url).toContain("facilityType=clinic&onlineBooking=true");
+      expect(url).not.toContain("radiusKm");
+    });
+  });
+
+  it("does not offer a distance constraint without a usable origin", async () => {
+    vi.spyOn(api, "get").mockResolvedValue({ data: { data: [] } });
+    await mount({ initialLoaded: true });
+    expect(screen.getByRole("slider", { name: "Distance in kilometres" })).toBeDisabled();
+    expect(screen.getByText("Choose your location to filter by distance.")).toBeInTheDocument();
+  });
   it("uses an explicit navbar query instead of saved filters", async () => {
     sessionStorage.setItem("ekavyu_browse_discovery", JSON.stringify({ search: "old", city: "Old city", specialties: ["Cardiology"], sort: "rating", scrollY: 0 }));
     const request = vi.spyOn(api, "get").mockResolvedValue({ data: { data: [] } });

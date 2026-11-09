@@ -6,7 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { userFacingError } from "@/lib/userFacingError";
-import { Button, Input, EkavyuLogo, Alert, LoadingState } from "@/components/ui";
+import { Button, Input, Card, Alert } from "@/components/ui";
+import AuthPageShell from "@/components/auth/AuthPageShell";
+import AuthPageLoading from "@/components/auth/AuthPageLoading";
+import auth from "@/components/auth/AuthPageShell.module.css";
 
 function AcceptInvitation() {
   const token = useSearchParams().get("token") || "";
@@ -48,11 +51,9 @@ function AcceptInvitation() {
   }
 
   return (
-    <main className="min-h-dvh bg-surface-alt px-4 py-12 flex items-center justify-center text-text">
-      <div className="w-full max-w-md space-y-5">
-        <EkavyuLogo size="md" />
-        <section className="rounded-xl border border-border bg-surface p-4 sm:p-6 space-y-4">
-          <h1 className="text-2xl font-semibold">Accept your staff invitation</h1>
+    <AuthPageShell>
+        <Card padding="none" className={auth.card} contentClassName="space-y-5">
+          <h1 className="page-title">Accept your staff invitation</h1>
           {!token ? (
             <>
               <Alert variant="warning">This link is missing its invitation token. Open the complete link from your invitation email or ask your administrator for a new one.</Alert>
@@ -63,20 +64,19 @@ function AcceptInvitation() {
               <p className="text-sm text-text-secondary">Set up your account to join the organization that invited you. Your access is determined by the invitation.</p>
               {error && <Alert variant="error">{error}</Alert>}
               <fieldset disabled={busy} className="space-y-4">
-                <Input label="Full name" value={name} onChange={event => setName(event.target.value)} autoComplete="name" required />
-                <Input label="Phone (optional)" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} />
-                <Input label="Password" type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="new-password" minLength={8} hint="At least 8 characters, with uppercase and lowercase letters, a number and a special character." required />
-                <Input label="Confirm password" type="password" value={confirmation} onChange={event => setConfirmation(event.target.value)} autoComplete="new-password" required />
+                <Input size="lg" label="Full name" value={name} onChange={event => setName(event.target.value)} autoComplete="name" required />
+                <Input size="lg" label="Phone (optional)" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} />
+                <Input size="lg" label="Password" type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="new-password" minLength={8} hint="At least 8 characters, with uppercase and lowercase letters, a number and a special character." required />
+                <Input size="lg" label="Confirm password" type="password" value={confirmation} onChange={event => setConfirmation(event.target.value)} autoComplete="new-password" required />
               </fieldset>
-              <Button type="submit" fullWidth loading={busy}>Accept invitation</Button>
+              <Button type="submit" fullWidth size="lg" loading={busy}>Accept invitation</Button>
             </form>
           )}
-        </section>
-      </div>
-    </main>
+        </Card>
+    </AuthPageShell>
   );
 }
 
 export default function AcceptInvitationPage() {
-  return <Suspense fallback={<LoadingState label="Loading invitation" fullPage />}><AcceptInvitation /></Suspense>;
+  return <Suspense fallback={<AuthPageLoading label="Loading invitation" />}><AcceptInvitation /></Suspense>;
 }

@@ -1,5 +1,5 @@
 import { locationPath, doctorPath, hasMultipleLocations } from "@/lib/publicPaths";
-import { facilityTypeLabel, type FacilityType } from "@/lib/facility";
+import { type FacilityType } from "@/lib/facility";
 import LoadingImage from "@/components/ui/LoadingImage";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -10,11 +10,17 @@ import PublicStructuredData from "@/components/PublicStructuredData";
 import PublicBrandStyles from "@/components/PublicBrandStyles";
 import PublicProfileShare from "@/components/PublicProfileShare";
 import { Suspense, cache } from "react";
-import { LoadingState, SkeletonForm } from "@/components/ui";
+import { Breadcrumbs, Card, CardTitle, LoadingState, SkeletonForm, cn } from "@/components/ui";
 import Link from "next/link";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import BrowseDetailClient, { type LocationDetail } from "@/app/browse/[slug]/BrowseDetailClient";
 import { getPublicBookingStatus, type PublicBookingStatus } from "@/lib/publicBooking";
+
+import { getAvatarInitials } from "@/lib/avatar";
+import { publicConsultationFee as consultationFee } from "@/lib/publicFees";
+import marketplace from "@/components/MarketplaceLayout.module.css";
+import care from "@/components/PublicCare.module.css";
+import styles from "./doctor.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +45,7 @@ type DoctorProfile = {
     brandColor: string; fees: number; feeType: "fixed" | "free" | "post_consultation";
     onlineBookingAvailable: boolean;
     bookingStatus?: PublicBookingStatus;
+    bookingMode?: "time_slot" | "sequential_queue";
   }>;
 };
 
@@ -71,15 +78,6 @@ async function DoctorBooking({ location, doctorId, initialLocation }: {
   return <BrowseDetailClient key={location.id} slug={location.slug!} initialLocation={bookingLocation} bookingDoctorId={doctorId} bookingOnly bookingName={location.name} />;
 }
 
-function consultationFee(location: DoctorProfile["locations"][number], currency: string) {
-  if (location.feeType === "free") return "Free";
-  const amount = Number.isFinite(location.fees) && location.fees > 0
-    ? new Intl.NumberFormat("en-IN", { style: "currency", currency, maximumFractionDigits: 0 }).format(location.fees)
-    : null;
-  if (location.feeType === "post_consultation") return amount ? `From ${amount} · final fee after consultation` : "Decided after consultation";
-  return amount || "Ask reception for fee";
-}
-
 export async function generateMetadata({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ location?: string; openBooking?: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const query = await searchParams;
@@ -106,66 +104,40 @@ export default async function DoctorPage({ params, searchParams }: { params: Pro
   const profileUrl = selectedLocation ? absolutePublicUrl(doctorPath(doctor, selectedLocation)) : undefined;
   const profileImage = publicImageUrl(doctor.imageUrl);
 
-  return <div className="min-h-screen bg-surface-alt text-text">
+  return <div className={marketplace.page}>
     <PublicBrandStyles color={selectedLocation?.brandColor} />
     <PublicStructuredData data={profileUrl ? { "@context": "https://schema.org", "@type": "ProfilePage", url: profileUrl, mainEntity: { "@type": "Person", "@id": `${profileUrl}#doctor`, name: doctor.name, url: profileUrl, ...(profileImage ? { image: profileImage } : {}), ...(doctor.description ? { description: doctor.description } : {}), workLocation: locations.map((location) => ({ "@type": "Place", name: location.name, url: absolutePublicUrl(locationPath(location)) })) } } : null} />
-    <MarketplaceNavbar brand={selectedLocation ? { name: doctor && hasMultipleLocations(doctor) ? doctor.organizationName : selectedLocation.name, logoUrl: doctor?.organizationLogo || selectedLocation.logo, href: locationPath(selectedLocation) } : undefined} />
-    <main className="mx-auto max-w-6xl px-4 pb-28 pt-24 sm:px-6 sm:pt-28 lg:pb-16">
-      {!doctor ? <section className="rounded-3xl border border-border bg-surface p-8">
-        <h1 className="text-2xl font-bold">Doctor profile unavailable</h1>
-        <p className="mt-2 text-text-secondary">This link may have changed. Browse available locations to find an appointment.</p>
-        <Link href="/browse" className="mt-5 inline-flex min-h-11 items-center rounded-xl bg-primary-600 px-5 font-semibold text-brand-mist">Browse locations</Link>
-      </section> : <>
-        {selectedLocation && hasMultipleLocations(doctor) && selectedLocation.name !== doctor.organizationName && <div className="mb-6 flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3" style={{ borderLeft: `4px solid ${selectedLocation.brandColor}` }}>
-          {selectedLocation.logo || doctor.organizationLogo ? (
-            <LoadingImage src={selectedLocation.logo || doctor.organizationLogo || ""} alt="" className="h-11 w-11 rounded-xl border border-border bg-surface object-contain" />
-          ) : <div aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-500/10 font-bold text-accent">{selectedLocation.name.slice(0, 1)}</div>}
-          <div className="min-w-0"><p className="truncate text-sm font-bold">{doctor.organizationName}</p><p className="truncate text-xs text-text-secondary">Appointments at {selectedLocation.name}</p></div>
-        </div>}
-        <nav aria-label="Breadcrumb" className="mb-5 flex flex-wrap items-center gap-2 text-sm text-text-muted">
-          <Link href="/browse" className="hover:text-accent">Browse locations</Link><span aria-hidden="true">/</span>
-          {selectedLocation && <><Link href={locationPath(selectedLocation)} className="hover:text-accent">{selectedLocation.name}</Link><span aria-hidden="true">/</span></>}
-          <span className="font-semibold text-text">{doctor.name}</span>
-        </nav>
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)]">
-          <div className="contents">
-            <section className={`${selectedLocation ? "public-brand-border " : ""}order-1 min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-6 lg:col-start-1 lg:row-start-1`}>
-              <p className="text-xs font-semibold uppercase tracking-wide text-accent">Doctor profile</p>
-              <div className="mt-3 flex items-start gap-3 sm:gap-4">
-                {doctor.imageUrl ? (
-                  <LoadingImage src={doctor.imageUrl} alt={doctor.name} className="h-16 w-16 sm:h-24 sm:w-24 shrink-0 rounded-xl border border-border object-cover" />
-                ) : <div aria-hidden="true" className="flex h-16 w-16 sm:h-24 sm:w-24 shrink-0 items-center justify-center rounded-xl bg-primary-500/10 text-2xl font-semibold text-accent">{doctor.name.slice(0, 1)}</div>}
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-xl font-semibold sm:text-2xl break-words">{doctor.name}</h1>
-                  {selectedLocation && <div className="mt-3"><PublicProfileShare title={doctor.name} path={doctorPath(doctor, selectedLocation)} /></div>}
-                  <p className="mt-1 text-base font-medium text-accent">{doctor.specialization}</p>
-                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-secondary">
-                    {doctor.qualification && <span>{doctor.qualification}</span>}
-                    {doctor.experienceYears > 0 && <span>{doctor.experienceYears} years of experience</span>}
-                  </div>
-                  {doctor.languages.length > 0 && <p className="mt-3 text-sm text-text-secondary">Consultations in {doctor.languages.join(", ")}</p>}
-                </div>
-              </div>
-              {selectedLocation && <a href="#booking" className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary-600 px-5 text-sm font-semibold text-brand-mist hover:bg-primary-700 sm:w-auto">{getPublicBookingStatus({ ...selectedLocation, doctorCount: 1 }) === "check_availability" ? "Check appointment times" : "See contact options"}</a>}
-            </section>
-            {doctor.description && <section className="order-3 min-w-0 rounded-2xl border border-border bg-surface p-5 sm:p-7 lg:col-start-1 lg:row-start-2" aria-labelledby="doctor-about-title"><h2 id="doctor-about-title" className="text-lg font-bold">About {doctor.name}</h2><p className="mt-3 whitespace-pre-line text-sm leading-7 text-text-secondary">{doctor.description}</p></section>}
-            <section className={`order-4 min-w-0 lg:col-start-1 ${doctor.description ? "lg:row-start-3" : "lg:row-start-2"}`} aria-labelledby="doctor-locations-title">
-              <h2 id="doctor-locations-title" className="text-xl font-bold">Practice locations</h2>
-              <p className="mt-1 text-sm text-text-secondary">Fees and booking options can vary by location.</p>
-              <div className="mt-4 grid gap-3">{locations.map((location) => <article key={location.id} className={`rounded-2xl border bg-surface p-5 ${location.id === selectedLocation?.id ? "border-primary-600" : "border-border"}`}>
-                <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-base font-bold">{location.name}</h3><p className="mt-1 text-sm text-text-secondary">{facilityTypeLabel(location.facilityType)}</p><p className="mt-1 text-sm text-text-secondary">{[location.address, location.city].filter(Boolean).join(", ")}</p></div><span className="text-sm font-semibold">{consultationFee(location, doctor.currency)}</span></div>
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm"><Link href={locationPath(location)} className="inline-flex min-h-11 items-center font-medium text-accent hover:underline">View location details</Link>{location.id !== selectedLocation?.id && <Link href={`${doctorPath(doctor, location)}#booking`} className="inline-flex min-h-11 items-center font-semibold text-accent hover:underline">{getPublicBookingStatus({ ...location, doctorCount: 1 }) === "check_availability" ? "Check times at this location" : "Contact this location"}</Link>}{location.id === selectedLocation?.id && <span className="font-medium text-text-secondary">Selected location</span>}</div>
-              </article>)}</div>
-            </section>
-          </div>
-          <aside id="booking" className="order-2 min-w-0 scroll-mt-24 lg:col-start-2 lg:row-span-3 lg:row-start-1" aria-label="Book an appointment">
-            {selectedLocation && <Suspense fallback={selectedLocation.onlineBookingAvailable
-              ? <LoadingState label="Loading booking options"><SkeletonForm fields={3} /></LoadingState>
-              : <LoadingState label="Loading contact options" className="rounded-2xl border border-border bg-surface p-5 text-sm"><div className="h-5 animate-pulse rounded bg-surface-alt" /><div className="mt-2 h-5 w-3/4 animate-pulse rounded bg-surface-alt" /></LoadingState>
-            }><DoctorBooking location={selectedLocation} doctorId={doctor.id} initialLocation={bookingLocation} /></Suspense>}
-          </aside>
+    <MarketplaceNavbar showSignUp showSearch={false} navigationSlot={<><Link href="/browse" className="font-medium text-accent">Find care</Link><Link href="/" className="text-text-secondary hover:text-text">For patients</Link><Link href="/pricing" className="text-text-secondary hover:text-text">For providers</Link></>} />
+    <main className={cn(marketplace.content, styles.content)}>
+      <div className={styles.breadcrumbs}><Breadcrumbs separator={<span aria-hidden="true">/</span>} items={[{ label: "Browse locations", href: "/browse" }, ...(selectedLocation ? [{ label: selectedLocation.name, href: locationPath(selectedLocation) }] : []), { label: doctor.name }]} /></div>
+      <div className={styles.layout}>
+        <div className={styles.profile}>
+          <section aria-labelledby="doctor-title" className={styles.identity}>
+            <div className={styles.avatar}>{doctor.imageUrl ? <LoadingImage src={doctor.imageUrl} alt="" width={96} height={96} className="h-full w-full object-cover" fallback={<span>{getAvatarInitials(doctor.name.replace(/^Dr\.?\s*/i, ""))}</span>} /> : <span aria-hidden="true">{getAvatarInitials(doctor.name.replace(/^Dr\.?\s*/i, ""))}</span>}</div>
+            <div className={styles.identityText}><h1 id="doctor-title" className={care.title}>{doctor.name}</h1><p className="mt-2 text-sm font-medium text-accent">{doctor.specialization || "Specialty not listed"}</p>{doctor.qualification && <p className="mt-1 text-sm text-text-secondary">{doctor.qualification}</p>}{doctor.languages.length > 0 && <p className="mt-2 text-xs text-text-secondary">Consultations in {doctor.languages.join(", ")}</p>}{selectedLocation && hasMultipleLocations(doctor) && selectedLocation.name !== doctor.organizationName && <p className="mt-2 text-xs text-text-secondary">{doctor.organizationName}</p>}</div>
+            {selectedLocation && <PublicProfileShare title={doctor.name} path={doctorPath(doctor, selectedLocation)} className={styles.share} iconOnly />}
+          </section>
+          <Card padding="none" className={care.card}><dl className={cn(care.summary, styles.summary)}>
+            {doctor.experienceYears > 0 && <div><dt>Experience</dt><dd>{doctor.experienceYears} {doctor.experienceYears === 1 ? "year" : "years"}</dd></div>}
+            {selectedLocation && <div><dt>Consultation fee</dt><dd>{consultationFee(selectedLocation, doctor.currency)}</dd></div>}
+            {selectedLocation && <div><dt>Booking</dt><dd>{getPublicBookingStatus({ ...selectedLocation, doctorCount: 1 }) !== "check_availability" ? "Contact reception" : selectedLocation.bookingMode === "sequential_queue" ? "Queue token" : selectedLocation.bookingMode === "time_slot" ? "Time slot" : "Check availability"}</dd></div>}
+          </dl></Card>
+          {doctor.description && <section aria-labelledby="doctor-about-title" className={styles.about}><h2 id="doctor-about-title" className={care.sectionTitle}>About</h2><p className="mt-3 whitespace-pre-line text-sm leading-7 text-text-secondary">{doctor.description}</p></section>}
+          <section aria-labelledby="doctor-locations-title" className={styles.practices}>
+            <h2 id="doctor-locations-title" className={care.sectionTitle}>Practice {locations.length === 1 ? "location" : "locations"}</h2>
+            {locations.length > 1 && <p className="mt-2 text-sm text-text-secondary">Fees and booking options can vary by location.</p>}
+            <div className={styles.practiceList}>{locations.map(location => <Card key={location.id} padding="none" className={cn(care.card, location.id === selectedLocation?.id && styles.selectedPractice)}><article className={styles.practice}>
+              <span aria-hidden="true" className={styles.practiceDot} data-selected={location.id === selectedLocation?.id} />
+              <div className={styles.practiceInfo}><CardTitle as="h3"><Link href={locationPath(location)}>{location.name}</Link></CardTitle><p className="mt-1 text-xs leading-relaxed text-text-secondary">{[location.address, location.city && !location.address?.toLowerCase().includes(location.city.toLowerCase()) ? location.city : null].filter(Boolean).join(", ") || "Address not listed"}</p>{location.id !== selectedLocation?.id && <Link href={doctorPath(doctor, location) + "#booking"} className={styles.practiceLink}>{getPublicBookingStatus({ ...location, doctorCount: 1 }) === "check_availability" ? "Check times at this location" : "Contact this location"}</Link>}{location.id === selectedLocation?.id && <span className="sr-only">Selected location</span>}</div>
+              <span className="text-sm font-semibold">{consultationFee(location, doctor.currency)}</span>
+            </article></Card>)}</div>
+            {!locations.length && <p className="mt-3 text-sm text-text-secondary">No practice locations are listed. <Link href="/browse" className="text-accent underline">Browse other locations</Link></p>}
+          </section>
         </div>
-      </>}
+        <aside id="booking" className={styles.booking} aria-label="Book an appointment">
+          {selectedLocation && <Suspense fallback={<LoadingState label={selectedLocation.onlineBookingAvailable ? "Loading booking options" : "Loading contact options"}><SkeletonForm fields={3} /></LoadingState>}><DoctorBooking location={selectedLocation} doctorId={doctor.id} initialLocation={bookingLocation} /></Suspense>}
+        </aside>
+      </div>
     </main>
   </div>;
 }

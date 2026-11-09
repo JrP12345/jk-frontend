@@ -52,7 +52,7 @@ export default function PasskeySignIn({ onSuccess, onTwoFactor, onWorkspace, dis
   if (!support.checked) return null;
   return (
     <div className="space-y-2">
-      <Button type="button" variant="outline" className="w-full min-h-11" loading={loading} loadingText={disabled ? "Opening dashboard…" : "Checking passkey…"} disabled={disabled || !support.supported} onClick={signIn}>
+      <Button type="button" variant="outline" size="lg" fullWidth loading={loading} loadingText={disabled ? "Opening dashboard…" : "Checking passkey…"} disabled={disabled || !support.supported} onClick={signIn}>
         <KeyRound className="w-4 h-4 mr-2" />Sign in with a passkey
       </Button>
       {!support.supported && support.reason && <p className="text-xs leading-5 text-text-muted">{support.reason}</p>}

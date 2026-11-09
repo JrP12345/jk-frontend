@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import api from "@/lib/api";
-import { type FacilityType } from "@/lib/facility";
-import { Alert, Button, Select, Card, EmptyState, Modal } from "@/components/ui";
+import { facilityTypeOptions, type FacilityType } from "@/lib/facility";
+import { Alert, Button, Select, Card, EmptyState, Modal, cn } from "@/components/ui";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import LocationCardSkeletons from "@/components/ui/LocationCardSkeletons";
 import LocationCard from "./LocationCard";
@@ -13,7 +14,7 @@ import BrowseFilters, { type BrowseFilterValues } from "./BrowseFilters";
 import { facilityCoordinates, type MapBounds } from "./browsePresentation";
 import styles from "./browse.module.css";
 import marketplace from "@/components/MarketplaceLayout.module.css";
-import { List, Map, SlidersHorizontal } from "lucide-react";
+import { List, Map, SlidersHorizontal, X, LocateFixed } from "lucide-react";
 import { getPublicBookingStatus, type PublicBookingStatus } from "@/lib/publicBooking";
 import { detectUserLocation, hasLocationCoordinates, type DetectedLocation } from "@/lib/geo/locationDetector";
 
@@ -64,6 +65,7 @@ export interface LocationFilters {
   cities: string[];
   specialties: string[];
   specialtyCounts?: Record<string, number>;
+  facilityTypeCounts?: Record<string, number>;
 }
 
 function filtersFromLocations(locations: Location[]): LocationFilters {
@@ -95,7 +97,7 @@ export function normalizeLocations(input: unknown): Location[] {
 function normalizeFilters(filters: LocationFilters | undefined, locations: Location[]): LocationFilters {
   const fallback = filtersFromLocations(locations);
   const values = (input: unknown, defaults: string[]) => Array.isArray(input) ? Array.from(new Set(input.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).map(value => value.trim()))).sort() : defaults;
-  return { cities: values(filters?.cities, fallback.cities), specialties: values(filters?.specialties, fallback.specialties), specialtyCounts: filters?.specialtyCounts };
+  return { cities: values(filters?.cities, fallback.cities), specialties: values(filters?.specialties, fallback.specialties), specialtyCounts: filters?.specialtyCounts, facilityTypeCounts: filters?.facilityTypeCounts };
 }
 
 
@@ -123,6 +125,10 @@ export default function BrowseClient({ initialLocations = [], initialLoaded = fa
   const [loadMoreError, setLoadMoreError] = useState(false);
   const [restored, setRestored] = useState(false);
   const [view, setView] = useState<"list" | "map">(initialView);
+  const [desktopMap, setDesktopMap] = useState(false);
+  const [smallScreen, setSmallScreen] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [bounds, setBounds] = useState<MapBounds | null>(null);
   const restoreScroll = useRef<number | null>(null);
@@ -135,6 +141,16 @@ export default function BrowseClient({ initialLocations = [], initialLoaded = fa
   const longitude = bounds ? bounds[1] <= bounds[3] ? (bounds[1] + bounds[3]) / 2 : ((bounds[1] + bounds[3] + 360) / 2 + 180) % 360 - 180 : hasLocationCoordinates(detectedLocation) ? detectedLocation.longitude : undefined;
   const effectiveSort = sortBy === "nearby" && latitude === undefined ? "rating" : sortBy;
   const [filters, setFilters] = useState<LocationFilters>(() => normalizeFilters(initialFilters, normalizeLocations(initialLocations)));
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 1200px)");
+    let active = true;
+    const phone = window.matchMedia("(max-width: 767px)");
+    const update = () => { if (active) { setDesktopMap(query.matches); setSmallScreen(phone.matches); } };
+    queueMicrotask(update);
+    query.addEventListener("change", update);
+    phone.addEventListener("change", update);
+    return () => { active = false; query.removeEventListener("change", update); phone.removeEventListener("change", update); };
+  }, []);
   const origin = useMemo(() => hasLocationCoordinates(detectedLocation) ? { latitude: detectedLocation.latitude, longitude: detectedLocation.longitude, approximate: detectedLocation.source === "ip" || (detectedLocation.accuracy ?? 0) > 1000 } : undefined, [detectedLocation]);
 
   useEffect(() => {
@@ -155,11 +171,11 @@ export default function BrowseClient({ initialLocations = [], initialLoaded = fa
         const city = typeof saved.city === "string" ? saved.city : "";
         const specialties = Array.isArray(saved.specialties) ? saved.specialties.filter((value): value is string => typeof value === "string") : [];
         const sort = SORT_OPTIONS.some(option => option.value === saved.sort) ? saved.sort : "nearby";
-        restoredFilters.current = Boolean(search || city || specialties.length || saved.openNow || saved.open24Hours || sort !== "nearby");
+        restoredFilters.current = Boolean(search || city || specialties.length || saved.openNow || saved.open24Hours || saved.onlineBooking || saved.facilityTypes?.length || saved.radiusKm || sort !== "nearby");
         restoringResults.current = restoredFilters.current;
         setSearchQuery(search);
         setDebouncedSearch(search);
-        setValues({ city, specialties, openNow: saved.openNow === true, open24Hours: saved.open24Hours === true });
+        setValues({ city, specialties, openNow: saved.openNow === true, open24Hours: saved.open24Hours === true, onlineBooking: saved.onlineBooking === true, facilityTypes: Array.isArray(saved.facilityTypes) ? saved.facilityTypes.filter(type => facilityTypeOptions.some(option => option.value === type)) : [], radiusKm: typeof saved.radiusKm === "number" && saved.radiusKm >= 1 && saved.radiusKm <= 50 ? saved.radiusKm : 0 });
         setSortBy(sort);
         if (initialView !== "map" && saved.view === "map") setView("map");
         restoreScroll.current = Number.isFinite(saved.scrollY) && saved.scrollY > 0 ? saved.scrollY : null;
@@ -202,10 +218,13 @@ export default function BrowseClient({ initialLocations = [], initialLoaded = fa
     values.specialties.forEach(value => params.append("specialization", value));
     params.set("sort", effectiveSort);
     if (cursor) params.set("cursor", cursor);
-    if (effectiveSort === "nearby" && latitude !== undefined && longitude !== undefined) {
+    if ((effectiveSort === "nearby" || values.radiusKm) && latitude !== undefined && longitude !== undefined) {
       params.set("latitude", String(latitude));
       params.set("longitude", String(longitude));
     }
+    values.facilityTypes?.forEach(type => params.append("facilityType", type));
+    if (values.onlineBooking) params.set("onlineBooking", "true");
+    if (values.radiusKm && latitude !== undefined && longitude !== undefined) params.set("radiusKm", String(values.radiusKm));
     if (values.openNow) params.set("openNow", "true");
     if (values.open24Hours) params.set("open24Hours", "true");
     if (bounds) params.set("bounds", bounds.join(","));
@@ -273,7 +292,7 @@ export default function BrowseClient({ initialLocations = [], initialLoaded = fa
   const activeId = sortedLocations.some(location => location.id === selectedId) ? selectedId : sortedLocations.find(location => facilityCoordinates(location))?.id || null;
   const changeFilters = (next: BrowseFilterValues) => { setValues(next); setBounds(null); };
   const resetFilters = () => { setSearchQuery(""); setValues(emptyFilters); setBounds(null); };
-  const hasActiveFilters = Boolean(debouncedSearch || values.city || values.specialties.length || values.openNow || values.open24Hours || bounds);
+  const hasActiveFilters = Boolean(debouncedSearch || values.city || values.specialties.length || values.openNow || values.open24Hours || values.onlineBooking || values.facilityTypes?.length || values.radiusKm || bounds);
   const submitSearch = () => {
     const value = searchQuery.trim();
     setBounds(null);
@@ -288,36 +307,76 @@ export default function BrowseClient({ initialLocations = [], initialLoaded = fa
     window.history.replaceState(null, "", url.pathname + url.search + url.hash);
   };
   const area = values.city || (bounds ? "Selected map area" : origin ? detectedLocation?.source === "ip" ? "Near " + (detectedLocation.city || detectedLocation.state || "you") + " (approx.)" : "Near your location" : "All cities");
-  const filterProps = { values, filters, onChange: changeFilters, onClear: resetFilters, hasArea: Boolean(bounds), onClearArea: () => setBounds(null) };
+  const locate = () => {
+    if (locating) return;
+    setLocating(true);
+    setLocationError("");
+    if (!navigator.geolocation) { setLocationError("Location is unavailable. Choose a city instead."); setLocating(false); return; }
+    navigator.geolocation.getCurrentPosition(position => {
+      setDetectedLocation({ source: "gps", city: "", state: "", latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy });
+      setBounds(null);
+      setLocating(false);
+    }, () => { setLocationError("Location could not be accessed. You can still search by city."); setLocating(false); }, { timeout: 8000, maximumAge: 60000, enableHighAccuracy: true });
+  };
+  const filterProps = { values, filters, onChange: changeFilters, onClear: resetFilters, hasArea: Boolean(bounds), onClearArea: () => setBounds(null), hasOrigin: Boolean(origin), onLocate: locate };
+  const applied = [
+    ...(debouncedSearch ? [{ label: "Search: " + debouncedSearch, clear: () => setSearchQuery("") }] : []),
+    ...(values.city ? [{ label: values.city, clear: () => changeFilters({ ...values, city: "" }) }] : []),
+    ...(values.facilityTypes || []).map(type => ({ label: facilityTypeOptions.find(option => option.value === type)?.label || type, clear: () => changeFilters({ ...values, facilityTypes: values.facilityTypes?.filter(value => value !== type) }) })),
+    ...values.specialties.map(specialty => ({ label: specialty, clear: () => changeFilters({ ...values, specialties: values.specialties.filter(value => value !== specialty) }) })),
+    ...(values.onlineBooking ? [{ label: "Online booking", clear: () => changeFilters({ ...values, onlineBooking: false }) }] : []),
+    ...(values.openNow ? [{ label: "Open now", clear: () => changeFilters({ ...values, openNow: false }) }] : []),
+    ...(values.open24Hours ? [{ label: "Open 24 hours", clear: () => changeFilters({ ...values, open24Hours: false }) }] : []),
+    ...(values.radiusKm && latitude !== undefined ? [{ label: "Within " + values.radiusKm + " km", clear: () => changeFilters({ ...values, radiusKm: 0 }) }] : []),
+    ...(bounds ? [{ label: "Map area", clear: () => setBounds(null) }] : []),
+  ];
+  const resultCount = <>{locations.length} {locations.length === 1 ? "facility" : "facilities"} {nextCursor ? "shown" : "found"}</>;
 
-  return <div className={marketplace.page + " " + styles.page} data-browse-view={view}>
-    <MarketplaceNavbar showSearch={false} showSignUp searchSlot={<BrowseSearch search={searchQuery} city={values.city} cities={filters.cities} disabled={loadingOnly} onSearch={value => { setSearchQuery(value); setBounds(null); }} onCity={city => changeFilters({ ...values, city })} onSubmit={submitSearch} />} />
-    <main className={styles.main}>
-      <div className={styles.layout}>
-        <aside className={styles.sidebar} aria-label="Filter facilities"><Card padding="none"><BrowseFilters {...filterProps} /></Card></aside>
-        <section className={styles.resultsSection} aria-labelledby="browse-title" aria-busy={loading}>
-          <header className={styles.toolbar}>
-            <div className={styles.heading}><h1 id="browse-title" className="page-title">Clinics &amp; hospitals{values.city ? " in " + values.city : ""}</h1><p className={styles.resultCount}>{hasLoaded || locations.length ? <>{locations.length} {locations.length === 1 ? "location" : "locations"}{nextCursor ? " shown" : ""}</> : "Finding locations…"}<span aria-hidden="true"> · </span><span title={area}>{area}</span></p></div>
-            <div className={styles.controls}>
-              <Button variant="outline" className={styles.filterButton + " min-h-11!"} onClick={() => setFiltersOpen(true)} aria-label="Filters" aria-expanded={filtersOpen} aria-haspopup="dialog" data-active={hasActiveFilters} icon={<SlidersHorizontal aria-hidden="true" />}>Filters{hasActiveFilters && <span className={styles.filterDot} />}</Button>
-              <div role="group" aria-label="Browse view" className={styles.viewSwitch}><Button variant={view === "list" ? "primary" : "ghost"} onClick={() => changeView("list")} aria-pressed={view === "list"} icon={<List aria-hidden="true" />}>List</Button><Button variant={view === "map" ? "primary" : "ghost"} onClick={() => changeView("map")} aria-pressed={view === "map"} icon={<Map aria-hidden="true" />}>Map</Button></div>
-              <Select value={effectiveSort} disabled={loadingOnly} onChange={event => { setNearbySortFailed(false); setSortBy(event.target.value); }} options={SORT_OPTIONS.filter(option => option.value !== "nearby" || latitude !== undefined)} aria-label="Sort by" containerClassName={styles.sort} className="min-h-11! text-sm!" />
+  return <div className={cn(marketplace.page, styles.page)} data-browse-view={view}>
+    <MarketplaceNavbar showSearch={false} showSignUp navigationSlot={<><Link href="/browse" aria-current="page" className="font-medium text-accent">Find care</Link><Link href="/" className="text-text-secondary hover:text-text">For patients</Link><Link href="/pricing" className="text-text-secondary hover:text-text">For providers</Link></>} />
+    <main>
+      <section className={styles.hero} aria-labelledby="browse-title">
+        <div className={cn(marketplace.content, styles.heroInner)}>
+          <h1 id="browse-title" className="sr-only">Clinics &amp; hospitals near you</h1>
+          <BrowseSearch search={searchQuery} city={values.city} cities={filters.cities} disabled={loadingOnly} onSearch={value => { setSearchQuery(value); setBounds(null); }} onCity={city => changeFilters({ ...values, city })} onSubmit={submitSearch} />
+        </div>
+      </section>
+      {view === "list" && <div className={cn(marketplace.content, styles.quickFilters)} aria-label="Quick filters">
+        <Button variant="outline" onClick={() => setFiltersOpen(true)} aria-label="Filters" aria-expanded={filtersOpen} aria-haspopup="dialog" icon={<SlidersHorizontal aria-hidden="true" />}>Filters{hasActiveFilters && <span className={styles.filterDot} />}</Button>
+        <Button variant={values.openNow ? "secondary" : "outline"} aria-pressed={values.openNow} onClick={() => changeFilters({ ...values, openNow: !values.openNow })}>Open now</Button>
+        <Button variant={values.onlineBooking ? "secondary" : "outline"} aria-pressed={Boolean(values.onlineBooking)} onClick={() => changeFilters({ ...values, onlineBooking: !values.onlineBooking })}>Online booking</Button>
+      </div>}
+      <div className={cn(marketplace.content, styles.main)}>
+        <div className={styles.layout}>
+          <aside className={styles.sidebar} aria-label="Filter facilities"><Card padding="none"><BrowseFilters {...filterProps} /></Card></aside>
+          <section className={styles.resultsSection} aria-label="Healthcare search results" aria-busy={loading}>
+            {locationError && <p role="status" className={styles.recovery}>{locationError}</p>}
+            <span role="status" className="sr-only">{loading ? "Updating locations" : fetchError ? "Locations could not be updated" : locations.length + " locations found"}</span>
+            <div className={styles.resultsLayout}>
+              <div className={styles.resultList}>
+            <header className={styles.toolbar}>
+              <div className={styles.heading}><h2 className="text-base font-semibold text-text">{hasLoaded || locations.length ? resultCount : "Finding facilities…"}</h2><p className={styles.resultCount}><span title={area}>{area}</span>{origin?.approximate && <Button variant="ghost" size="xs" loading={locating} onClick={locate} icon={<LocateFixed aria-hidden="true" />}>Use precise location</Button>}</p></div>
+              <div className={styles.controls}>
+                {view === "map" && <Button variant="outline" className={styles.filterButton} onClick={() => setFiltersOpen(true)} aria-label="Filters" aria-expanded={filtersOpen} aria-haspopup="dialog" icon={<SlidersHorizontal aria-hidden="true" />}><span className={styles.filterLabel}>Filters</span></Button>}
+                <Select value={effectiveSort} disabled={loadingOnly} onChange={event => { setNearbySortFailed(false); setSortBy(event.target.value); }} options={SORT_OPTIONS.filter(option => option.value !== "nearby" || latitude !== undefined)} aria-label="Sort by" containerClassName={styles.sort} className="min-h-11! text-sm!" />
+                <div role="group" aria-label={smallScreen ? "Mobile browse view" : "Browse view"} className={styles.viewSwitch}><Button variant="outline" title={view === "list" ? "Expand map view" : "Show facility list"} onClick={() => changeView(view === "list" ? "map" : "list")} icon={view === "list" ? <Map aria-hidden="true" /> : <List aria-hidden="true" />}>{view === "list" ? "Map" : "List"}</Button></div>
+              </div>
+            </header>
+
+                {applied.length > 0 && <div className={styles.applied} aria-label="Applied filters">{applied.map(item => <Button key={item.label} variant="secondary" size="xs" onClick={item.clear} aria-label={"Remove " + item.label} iconRight={<X aria-hidden="true" />}>{item.label}</Button>)}<Button variant="ghost" size="xs" onClick={resetFilters}>Clear filters</Button></div>}
+                {fetchError && locations.length > 0 && <Alert variant="error" title="Unable to update results" action={<Button size="sm" onClick={() => setRetryKey(value => value + 1)}>Try again</Button>}>Showing the last available locations.</Alert>}
+                {nearbySortFailed && !loading && !fetchError && <p className={styles.recovery} role="status">Distance sorting is temporarily unavailable. Showing top rated locations.</p>}
+                {loading && !locations.length ? <LocationCardSkeletons /> : !locations.length ? <Card className={styles.empty}><EmptyState title={fetchError ? "We couldn't load locations" : "No locations found"} description={fetchError ? "Check your connection and try again." : hasActiveFilters ? "Try another area or clear your filters." : "There are no published locations to browse yet."} action={fetchError ? <Button onClick={() => setRetryKey(value => value + 1)}>Try again</Button> : hasActiveFilters ? <Button onClick={resetFilters}>Clear all filters</Button> : undefined} /></Card> : <ul className={styles.grid} aria-label="Healthcare locations">{sortedLocations.map((location, index) => <li key={location.id}><LocationCard location={location} onNavigate={rememberPosition} preload={locations.length === 1} showDistance={effectiveSort === "nearby"} approximateDistance={!bounds && Boolean(origin?.approximate)} variant={view === "map" ? "compact" : "row"} selected={(view === "map" || desktopMap) && location.id === activeId} number={view === "map" ? index + 1 : undefined} onSelect={view === "map" || desktopMap ? () => setSelectedId(location.id) : undefined} /></li>)}</ul>}
+                {nextCursor && !loading && searchQuery === debouncedSearch && !fetchError && <div className={styles.loadMore}><Button variant="outline" onClick={loadMore} loading={loadingMore}>Load more locations</Button>{loadMoreError && <p role="alert">More locations could not be loaded. Please try again.</p>}</div>}
+                {hasLoaded && !loading && !fetchError && !nextCursor && hasActiveFilters && locations.length > 0 && locations.length < 3 && <Card padding="sm" className={styles.explore}><h3 className="text-sm font-medium text-text">Looking for more options?</h3><p className="text-xs text-text-secondary">{values.radiusKm ? "Widen your search or explore all distances." : "Explore another city or adjust your filters."}</p><div className="flex flex-wrap gap-2">{Boolean(values.radiusKm && values.radiusKm < 50) && <Button variant="outline" size="sm" onClick={() => changeFilters({ ...values, radiusKm: 50 })}>Widen to 50 km</Button>}<Button variant="outline" size="sm" onClick={() => { setSearchQuery(""); changeFilters({ ...emptyFilters }); }}>All facilities</Button></div></Card>}
+              </div>
+              <div className={styles.mapPane}>{view === "map" || desktopMap ? <BrowseMap locations={sortedLocations} selectedId={activeId} onSelect={setSelectedId} origin={origin} onSearchArea={area => { setBounds(area); if (values.radiusKm) setValues(current => ({ ...current, radiusKm: 0 })); }} onNavigate={rememberPosition} resetKey={JSON.stringify([debouncedSearch, values])} loading={loading} hasMore={Boolean(nextCursor)} onLoadMore={loadMore} loadingMore={loadingMore} error={fetchError || (loadMoreError ? "More locations could not be loaded." : null)} onRetry={() => loadMoreError ? void loadMore() : setRetryKey(value => value + 1)} /> : null}</div>
             </div>
-          </header>
-          <span role="status" className="sr-only">{loading ? "Updating locations" : fetchError ? "Locations could not be updated" : locations.length + " locations found"}</span>
-          <div className={styles.resultsLayout}>
-            <div className={styles.resultList}>
-              {fetchError && locations.length > 0 && <Alert variant="error" title="Unable to update results" action={<Button size="sm" onClick={() => setRetryKey(value => value + 1)}>Try again</Button>}>Showing the last available locations.</Alert>}
-              {nearbySortFailed && !loading && !fetchError && <p className={styles.recovery} role="status">Distance sorting is temporarily unavailable. Showing top rated locations.</p>}
-              {loading && !locations.length ? <LocationCardSkeletons /> : !locations.length ? <Card className={styles.empty}><EmptyState title={fetchError ? "We couldn't load locations" : "No locations found"} description={fetchError ? "Check your connection and try again." : hasActiveFilters ? "Try another area or clear your filters." : "There are no published locations to browse yet."} action={fetchError ? <Button onClick={() => setRetryKey(value => value + 1)}>Try again</Button> : hasActiveFilters ? <Button onClick={resetFilters}>Clear all filters</Button> : undefined} /></Card> : <ul className={styles.grid} aria-label="Healthcare locations">{sortedLocations.map((location, index) => <li key={location.id}><LocationCard location={location} onNavigate={rememberPosition} preload={locations.length === 1} showDistance={effectiveSort === "nearby"} approximateDistance={!bounds && Boolean(origin?.approximate)} variant={view === "map" ? "compact" : "row"} selected={view === "map" && location.id === activeId} number={view === "map" ? index + 1 : undefined} onSelect={view === "map" ? () => setSelectedId(location.id) : undefined} /></li>)}</ul>}
-              {nextCursor && !loading && searchQuery === debouncedSearch && !fetchError && <div className={styles.loadMore}><Button variant="outline" onClick={loadMore} loading={loadingMore}>Load more locations</Button>{loadMoreError && <p role="alert">More locations could not be loaded. Please try again.</p>}</div>}
-            </div>
-            {view === "map" && <div className={styles.mapPane}><BrowseMap locations={sortedLocations} selectedId={activeId} onSelect={setSelectedId} origin={origin} onSearchArea={setBounds} onNavigate={rememberPosition} resetKey={JSON.stringify([debouncedSearch, values])} loading={loading} hasMore={Boolean(nextCursor)} onLoadMore={loadMore} loadingMore={loadingMore} error={fetchError || (loadMoreError ? "More locations could not be loaded." : null)} onRetry={() => loadMoreError ? void loadMore() : setRetryKey(value => value + 1)} /></div>}
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </main>
-    <Button className={styles.floatingView} onClick={() => changeView(view === "list" ? "map" : "list")} icon={view === "list" ? <Map aria-hidden="true" /> : <List aria-hidden="true" />}>{view === "list" ? "Map" : "List"}</Button>
-    <Modal open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filter locations" presentation="sheet" size="md" footer={<Button onClick={() => setFiltersOpen(false)}>Show results</Button>}><BrowseFilters {...filterProps} showCity /></Modal>
+    <footer className={styles.footer}><div className={cn(marketplace.content, styles.footerContent, "text-sm")}><div><strong className="text-xl">Ekavyu</strong><p>Find care, explore facilities, and choose your next visit.</p></div><nav aria-label="Patient links"><strong>Patients</strong><Link href="/browse">Find care</Link><Link href="/register">Create an account</Link></nav><nav aria-label="Provider links"><strong>Providers</strong><Link href="/pricing">Plans for your practice</Link><Link href="/login">Provider sign in</Link></nav></div></footer>
+    <Modal open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filter locations" presentation="sheet" size="md" footer={<div className="flex w-full gap-2"><Button variant="outline" className="shrink-0" onClick={resetFilters}>Clear all</Button><Button fullWidth aria-label="Show results" onClick={() => setFiltersOpen(false)}>{loading || nextCursor ? "Show results" : "Show " + locations.length + (locations.length === 1 ? " result" : " results")}</Button></div>}><BrowseFilters {...filterProps} showCity /></Modal>
   </div>;
 }

@@ -71,6 +71,7 @@ export default function BrowseMap(props: BrowseMapProps) {
     if (!ready || !map.current || !layers.current) return;
     let disposed = false;
     let detachVisibility = () => {};
+    let visibilityFrame: number | undefined;
     void import("leaflet").then(L => {
       if (disposed || !map.current || !layers.current) return;
       const instance = map.current;
@@ -131,8 +132,9 @@ export default function BrowseMap(props: BrowseMapProps) {
         instance.panBy(pixel.subtract(target), { animate: false });
       }
       syncVisibility();
+      visibilityFrame = requestAnimationFrame(syncVisibility);
     });
-    return () => { disposed = true; detachVisibility(); };
+    return () => { disposed = true; detachVisibility(); if (visibilityFrame !== undefined) cancelAnimationFrame(visibilityFrame); };
   }, [ready, props.locations, props.selectedId, props.origin, props.resetKey, props.error, props.hasMore, tilesFailed]);
 
   const selected = props.locations.find(location => location.id === props.selectedId && facilityCoordinates(location)) || props.locations.find(location => facilityCoordinates(location));

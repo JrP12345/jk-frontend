@@ -27,12 +27,12 @@ afterEach(() => { vi.restoreAllMocks(); window.history.replaceState(null, "", "/
 describe("Patient identifier sign in", () => {
   it("switches patient and staff sign-in panels with the keyboard", () => {
     render(<LoginPage />);
-    const patientTab = screen.getByRole("tab", { name: "Patient Sign In" });
+    const patientTab = screen.getByRole("tab", { name: "Patient" });
     patientTab.focus();
     fireEvent.keyDown(patientTab, { key: "ArrowRight" });
-    expect(screen.getByRole("tab", { name: "Staff Email" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "Staff" })).toHaveFocus();
     expect(screen.getByLabelText("Staff Email Address *")).toBeVisible();
-    fireEvent.keyDown(screen.getByRole("tab", { name: "Staff Email" }), { key: "ArrowLeft" });
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Staff" }), { key: "ArrowLeft" });
     expect(patientTab).toHaveFocus();
     expect(screen.getByRole("textbox", { name: "Email or mobile number" })).toBeVisible();
   });
@@ -43,11 +43,11 @@ describe("Patient identifier sign in", () => {
     const post = vi.spyOn(api, "post").mockResolvedValueOnce({ data });
     render(<LoginPage />);
     fireEvent.change(screen.getByRole("textbox", { name: "Email or mobile number" }), { target: { value: patient.email } });
-    fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
     await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Verification code could not be sent", variant: "error" })));
     expect(screen.getByRole("textbox", { name: "Email or mobile number" })).toHaveValue(patient.email);
     expect(screen.queryByRole("textbox", { name: /6-Digit Verification OTP/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Send Verification OTP" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Send verification code" })).toBeEnabled();
     expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({ variant: "success" }));
     expect(post).toHaveBeenCalledOnce();
   });
@@ -56,7 +56,7 @@ describe("Patient identifier sign in", () => {
     const post = vi.spyOn(api, "post").mockResolvedValueOnce({ data: { data: { success: true } } }).mockRejectedValueOnce({ code: "ECONNABORTED" });
     render(<LoginPage />);
     fireEvent.change(screen.getByRole("textbox", { name: "Email or mobile number" }), { target: { value: patient.email } });
-    fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
     const input = await screen.findByRole("textbox", { name: /6-Digit Verification OTP/ });
     fireEvent.change(input, { target: { value: "482910" } });
     fireEvent.click(screen.getByRole("button", { name: "Verify & Sign In" }));
@@ -93,7 +93,7 @@ describe("Patient identifier sign in", () => {
     expect(screen.queryByRole("button", { name: "Mobile Phone" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Email Address" })).not.toBeInTheDocument();
     fireEvent.change(screen.getByRole("textbox", { name: "Email or mobile number" }), { target: { value: " Patient@Example.COM " } });
-    fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
     expect(await screen.findByText("patient@example.com")).toBeInTheDocument();
     expect(post).toHaveBeenNthCalledWith(1, "/auth/otp/request", { email: "patient@example.com", purpose: "authentication" });
     fireEvent.change(screen.getByRole("textbox", { name: /6-Digit Verification OTP/ }), { target: { value: "482910" } });
@@ -110,7 +110,7 @@ describe("Patient identifier sign in", () => {
     const post = vi.spyOn(api, "post").mockResolvedValue({ data: { data: {} } });
     render(<LoginPage />);
     fireEvent.change(screen.getByRole("textbox", { name: "Email or mobile number" }), { target: { value: identifier } });
-    fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
     expect(await screen.findByText("+91 9876543210")).toBeInTheDocument();
     expect(post).toHaveBeenCalledWith("/auth/otp/request", { phone: "9876543210", purpose: "authentication" });
   });
@@ -119,7 +119,7 @@ describe("Patient identifier sign in", () => {
     const post = vi.spyOn(api, "post");
     render(<LoginPage />);
     fireEvent.change(screen.getByRole("textbox", { name: "Email or mobile number" }), { target: { value: identifier } });
-    fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
     expect(screen.getByText("Enter a valid email or mobile number for the selected country.")).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
   });
@@ -128,10 +128,10 @@ describe("Patient identifier sign in", () => {
     const post = vi.spyOn(api, "post").mockResolvedValue({ data: { data: {} } });
     render(<LoginPage />);
     fireEvent.change(screen.getByRole("textbox", { name: "Email or mobile number" }), { target: { value: patient.email } });
-    fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
     fireEvent.click(await screen.findByRole("button", { name: "Change" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Email or mobile number" }), { target: { value: "9876543210" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
     expect(await screen.findByText("+91 9876543210")).toBeInTheDocument();
     expect(post).toHaveBeenNthCalledWith(2, "/auth/otp/request", { phone: "9876543210", purpose: "authentication" });
     expect(screen.getByRole("textbox", { name: /6-Digit Verification OTP/ })).toHaveValue("");
@@ -142,10 +142,10 @@ describe("Patient identifier sign in", () => {
     const post = vi.spyOn(api, "post").mockImplementation(() => new Promise(resolve => { resolveRequest = resolve; }));
     render(<LoginPage />);
     fireEvent.change(screen.getByRole("textbox", { name: "Email or mobile number" }), { target: { value: patient.email } });
-    fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
     const pending = screen.getByRole("button", { name: "Sending code…" });
     expect(pending).toBeDisabled();
-    expect(screen.getByRole("tab", { name: /Staff Email/ })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: /Staff/ })).toBeDisabled();
     fireEvent.click(pending);
     expect(post).toHaveBeenCalledOnce();
     await act(async () => resolveRequest({ data: { data: {} } }));
@@ -155,7 +155,7 @@ describe("Patient identifier sign in", () => {
   it("preserves staff email/password sign in", async () => {
     const post = vi.spyOn(api, "post").mockResolvedValue({ data: { data: { user: { ...patient, role: "doctor" } } } });
     render(<LoginPage />);
-    fireEvent.click(screen.getByRole("tab", { name: /Staff Email/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Staff/ }));
     fireEvent.change(screen.getByRole("textbox", { name: /Staff Email Address/ }), { target: { value: "doctor@example.com" } });
     fireEvent.change(screen.getByLabelText("Password *"), { target: { value: "test-only-password" } });
     fireEvent.click(screen.getByRole("button", { name: "Sign In to Dashboard" }));
@@ -173,7 +173,7 @@ describe("Patient identifier sign in", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Email or mobile number" }), { target: { value: number } });
     fireEvent.click(screen.getByRole("combobox", { name: "Country code" }));
     fireEvent.click(await screen.findByRole("option", { name: country }));
-    fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
     expect(await screen.findByText(phone)).toBeInTheDocument();
     expect(post).toHaveBeenNthCalledWith(1, "/auth/otp/request", { phone, purpose: "authentication" });
     fireEvent.change(screen.getByRole("textbox", { name: /6-Digit Verification OTP/ }), { target: { value: "482910" } });
@@ -190,7 +190,7 @@ describe("Patient identifier sign in", () => {
     fireEvent.click(screen.getByRole("combobox", { name: "Country code" }));
     fireEvent.click(await screen.findByRole("option", { name: "United States (+1)" }));
     expect(input).toHaveValue("2079460123");
-    fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/auth/otp/request", { phone: "+12079460123", purpose: "authentication" }));
   });
 
@@ -203,7 +203,7 @@ describe("Patient identifier sign in", () => {
     fireEvent.click(await screen.findByRole("option", { name: "United States (+1)" }));
     fireEvent.change(input, { target: { value: patient.email } });
     expect(screen.queryByRole("combobox", { name: "Country code" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Send Verification OTP" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send verification code" }));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/auth/otp/request", { email: patient.email, purpose: "authentication" }));
   });
 
@@ -212,7 +212,7 @@ describe("Patient identifier sign in", () => {
     const post = vi.spyOn(api, "post").mockResolvedValueOnce({ data: { data: { twoFactorRequired: true, twoFactorToken: "test-challenge" } } })
       .mockImplementationOnce(() => new Promise(resolve => { resolveVerification = resolve; }));
     render(<LoginPage />);
-    fireEvent.click(screen.getByRole("tab", { name: /Staff Email/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Staff/ }));
     fireEvent.change(screen.getByRole("textbox", { name: /Staff Email Address/ }), { target: { value: "root@example.com" } });
     fireEvent.change(screen.getByLabelText("Password *"), { target: { value: "test-only-password" } });
     fireEvent.click(screen.getByRole("button", { name: "Sign In to Dashboard" }));
@@ -237,7 +237,7 @@ describe("Patient identifier sign in", () => {
 
 describe("Sign-in dashboard handoff", () => {
   const enterStaffCredentials = () => {
-    fireEvent.click(screen.getByRole("tab", { name: /Staff Email/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Staff/ }));
     fireEvent.change(screen.getByRole("textbox", { name: /Staff Email Address/ }), { target: { value: "doctor@example.com" } });
     fireEvent.change(screen.getByLabelText("Password *"), { target: { value: "test-only-password" } });
   };
@@ -258,7 +258,7 @@ describe("Sign-in dashboard handoff", () => {
     expect(toast).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Opening dashboard…" })).toBeDisabled();
     expect(screen.getByRole("group", { name: "Sign in" })).toHaveAttribute("aria-busy", "true");
-    expect(screen.getByRole("tab", { name: /Patient Sign In/ })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: /Patient/ })).toBeDisabled();
     fireEvent.submit(form);
     expect(post).toHaveBeenCalledOnce();
   });
@@ -282,7 +282,7 @@ describe("Sign-in dashboard handoff", () => {
 
   it("uses the same handoff for a verified passkey", async () => {
     render(<LoginPage />);
-    fireEvent.click(screen.getByRole("tab", { name: /Staff Email/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Staff/ }));
     fireEvent.click(screen.getByRole("button", { name: "Use passkey" }));
     await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith("/dashboard"));
     expect(useAuthStore.getState().user?.id).toBe(patient.id);

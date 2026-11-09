@@ -168,7 +168,7 @@ describe("Browse and booking continuity", () => {
   it("uses the same loading shell during server loading without starting duplicate requests", () => {
     const request = vi.spyOn(api, "get");
     render(<BrowseClient loadingOnly />);
-    expect(screen.getByText("Finding locations…")).toBeInTheDocument();
+    expect(screen.getByText("Finding facilities…")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Sort by" })).toBeDisabled();
     expect(request).not.toHaveBeenCalled();
   });

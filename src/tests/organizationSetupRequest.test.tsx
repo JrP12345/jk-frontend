@@ -6,6 +6,7 @@ vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(f
 vi.mock("@/store/authStore", () => ({ useAuthStore: () => ({ user: fixture.user, isLoading: fixture.loading }) }));
 vi.mock("@/services/billing.service", () => ({ billingService: { getPlans: fixture.plans } }));
 vi.mock("@/lib/api", () => ({ default: { post: fixture.post } }));
+vi.mock("@/components/ui", async original => ({ ...await original<typeof import("@/components/ui")>(), ModeSwitcher: () => null }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); fixture.user = null; fixture.loading = false; });
 it("submits a request for the selected configured plan without provisioning or collecting credentials", async () => {
   fixture.post.mockResolvedValue({ data: { data: null } });

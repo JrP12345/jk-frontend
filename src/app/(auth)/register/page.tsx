@@ -8,6 +8,7 @@ import api from "@/lib/api";
 import { apiErrorMessage } from "@/lib/apiError";
 import { detectPatientOtpTarget } from "@/lib/patientLogin";
 import AuthPageShell from "@/components/auth/AuthPageShell";
+import auth from "@/components/auth/AuthPageShell.module.css";
 import { NavigationPending } from "@/components/ui/RouteProgress";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Input, Button, Select, useToast, DatePicker } from "@/components/ui";
 
@@ -138,12 +139,12 @@ export default function RegisterPage() {
   };
 
   return (
-    <AuthPageShell>
-        <Card padding="none" className={isShaking ? "animate-shake" : undefined}>
+    <AuthPageShell wide>
+        <Card padding="none" className={`${auth.card} ${isShaking ? "animate-shake" : ""}`}>
           {!otpSent ? (
-            <form onSubmit={handleRequestOtp} noValidate className="p-4 sm:p-6 space-y-4">
-              <CardHeader className="p-0 mb-3 text-center">
-                <CardTitle as="h1" className="page-title">Patient Registration</CardTitle>
+            <form onSubmit={handleRequestOtp} noValidate className="space-y-5">
+              <CardHeader className={auth.formHeader}>
+                <CardTitle as="h1" className="page-title">Create your account</CardTitle>
                 <CardDescription className="text-sm text-text-secondary">
                   Sign up with your mobile number — no password required
                 </CardDescription>
@@ -151,6 +152,7 @@ export default function RegisterPage() {
 
               <CardContent className="p-0 space-y-4">
                 <Input
+                  size="lg"
                   label="Full Name *"
                   placeholder="e.g. John Doe"
                   value={formData.name}
@@ -160,8 +162,9 @@ export default function RegisterPage() {
                   required
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className={auth.fields}>
                   <Input
+                    size="lg"
                     label="Mobile Phone Number *"
                     placeholder="9876543210"
                     type="tel"
@@ -173,6 +176,7 @@ export default function RegisterPage() {
                   />
 
                   <Input
+                    size="lg"
                     label="Email Address (Optional)"
                     type="email"
                     placeholder="patient@example.com"
@@ -183,9 +187,10 @@ export default function RegisterPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3">
+                <div className={auth.pairedFields}>
                   <div>
                     <Select
+                      size="lg"
                       label="Gender"
                       value={formData.gender}
                       onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
@@ -198,6 +203,7 @@ export default function RegisterPage() {
                   </div>
 
                   <DatePicker
+                    size="lg"
                     label="Date of Birth"
                     value={formData.dateOfBirth}
                     onChange={value => setFormData({ ...formData, dateOfBirth: value })}
@@ -206,9 +212,9 @@ export default function RegisterPage() {
                 </div>
               </CardContent>
 
-              <CardFooter className="p-0 pt-2 flex flex-col gap-3">
+              <CardFooter className={`${auth.formFooter} flex flex-col gap-3`}>
                 <Button type="submit" fullWidth loading={loading} size="lg">
-                  Send Verification OTP
+                  Send verification code
                 </Button>
                 <div className="flex flex-wrap items-center justify-center gap-x-1.5 text-center text-sm text-text-secondary">
                   Already have an account?{" "}
@@ -219,8 +225,8 @@ export default function RegisterPage() {
               </CardFooter>
             </form>
           ) : (
-            <form onSubmit={handleVerifyOtp} className="p-4 sm:p-6 space-y-4">
-              <CardHeader className="p-0 mb-3 text-center">
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              <CardHeader className={auth.formHeader}>
                 <CardTitle as="h1" className="page-title">Verify OTP</CardTitle>
                 <CardDescription className="text-sm text-text-secondary">
                   Enter 6-digit code sent to <strong className="text-text">{formData.phone}</strong>
@@ -229,6 +235,7 @@ export default function RegisterPage() {
 
               <CardContent className="p-0 space-y-4">
                 <Input
+                  size="lg"
                   label="6-Digit Verification Code *"
                   placeholder="123456"
                   maxLength={6}
@@ -238,10 +245,7 @@ export default function RegisterPage() {
                   autoComplete="one-time-code"
                   required
                 />
-                <div className="flex items-center justify-between text-xs px-1">
-                  <Button type="button" onClick={() => setOtpSent(false)} variant="ghost" size="xs">
-                    Change Details
-                  </Button>
+                <div className="flex items-center justify-end text-xs px-1">
                   {resendTimer > 0 ? (
                     <span className="text-text-muted font-medium">Resend in {resendTimer}s</span>
                   ) : (
@@ -257,7 +261,7 @@ export default function RegisterPage() {
                 </div>
               </CardContent>
 
-              <CardFooter className="p-0 pt-2 flex flex-col gap-3">
+              <CardFooter className={`${auth.formFooter} flex flex-col gap-3`}>
                 <div className="flex w-full flex-col gap-2 min-[360px]:flex-row">
                   <Button type="button" variant="outline" onClick={() => setOtpSent(false)} >
                     Back

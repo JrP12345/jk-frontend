@@ -5,7 +5,10 @@ import { useSearchParams, useRouter } from "next/navigation";
 
 import api from "@/lib/api";
 import { userFacingError } from "@/lib/userFacingError";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Button, ModeSwitcher, EkavyuLogo, Spinner } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter, Button, Spinner } from "@/components/ui";
+import AuthPageShell from "@/components/auth/AuthPageShell";
+import AuthPageLoading from "@/components/auth/AuthPageLoading";
+import auth from "@/components/auth/AuthPageShell.module.css";
 import { CheckCircle2, AlertTriangle, MailCheck, ArrowRight, Home } from "lucide-react";
 
 function VerifyEmailContent() {
@@ -45,139 +48,40 @@ function VerifyEmailContent() {
     };
   }, [token]);
 
-  return (
-    <main className="min-h-screen flex flex-col justify-center items-center pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] px-4 relative bg-background">
-      {/* Background ambient lighting */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+  return <AuthPageShell>
+    <Card padding="none" className={auth.card}>
+      <div aria-live="polite">
+        <CardHeader className={auth.formHeader}>
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-control bg-selected text-accent">
+            {status === "loading" && <Spinner size="lg" />}
+            {status === "success" && <CheckCircle2 className="h-7 w-7" aria-hidden="true" />}
+            {status === "error" && <AlertTriangle className="h-7 w-7 text-danger-text" aria-hidden="true" />}
+            {status === "no_token" && <MailCheck className="h-7 w-7" aria-hidden="true" />}
+          </div>
+          <CardTitle as="h1" className="page-title">
+            {status === "loading" && "Verifying your email..."}
+            {status === "success" && "Email Verified!"}
+            {status === "error" && "Verification Failed"}
+            {status === "no_token" && "Verification Link Missing"}
+          </CardTitle>
+          <CardDescription>
+            {status === "loading" && "Please wait while we confirm your account details."}
+            {status === "success" && "Your Ekavyu account email has been verified. Sign in to continue."}
+            {status === "error" && errorMessage}
+            {status === "no_token" && "No verification token was detected in your link. Please check your email inbox."}
+          </CardDescription>
+        </CardHeader>
       </div>
-      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50">
-        <ModeSwitcher variant="icon" />
-      </div>
-
-      <div className="w-full max-w-md relative z-10">
-        <div className="flex flex-col items-center mb-8">
-          <EkavyuLogo size="xl" showTagline className="mb-2" />
-        </div>
-
-        <Card className="border-border bg-surface rounded-xl">
-          <CardHeader className="text-center pb-2">
-            {status === "loading" && (
-              <div className="mx-auto my-4 w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-accent">
-                <Spinner size="lg" />
-              </div>
-            )}
-
-            {status === "success" && (
-              <div className="mx-auto my-4 w-14 h-14 rounded-full bg-success/10 text-success-text flex items-center justify-center animate-in zoom-in-50 duration-300">
-                <CheckCircle2 className="w-8 h-8" />
-              </div>
-            )}
-
-            {status === "error" && (
-              <div className="mx-auto my-4 w-14 h-14 rounded-full bg-destructive/10 text-destructive flex items-center justify-center animate-in zoom-in-50 duration-300">
-                <AlertTriangle className="w-8 h-8" />
-              </div>
-            )}
-
-            {status === "no_token" && (
-              <div className="mx-auto my-4 w-14 h-14 rounded-full bg-warning/10 text-warning-text flex items-center justify-center">
-                <MailCheck className="w-8 h-8" />
-              </div>
-            )}
-
-            <CardTitle as="h1" className="text-xl sm:text-2xl font-semibold tracking-tight">
-              {status === "loading" && "Verifying your email..."}
-              {status === "success" && "Email Verified!"}
-              {status === "error" && "Verification Failed"}
-              {status === "no_token" && "Verification Link Missing"}
-            </CardTitle>
-
-            <CardDescription className="text-muted-foreground mt-2">
-              {status === "loading" && "Please wait while we confirm your account details."}
-              {status === "success" && "Your Ekavyu account email has been verified. Sign in to continue."}
-              {status === "error" && errorMessage}
-              {status === "no_token" && "No verification token was detected in your link. Please check your email inbox."}
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="pt-2">
-            {status === "success" && (
-              <div className="rounded-lg bg-success/10 p-4 border border-success/20 text-success-text dark:text-success-text text-sm text-center">
-                Ready to sign in to your healthcare workspace or patient portal.
-              </div>
-            )}
-          </CardContent>
-
-          <CardFooter className="flex flex-col gap-2 pt-2">
-            {status === "success" && (
-              <Button
-                className="w-full flex items-center justify-center gap-2 font-medium min-h-[44px]"
-                size="lg"
-                onClick={() => router.push("/login")}
-              >
-                Continue to Login
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            )}
-
-            {status === "error" && (
-              <>
-                <Button
-                  className="w-full min-h-[44px]"
-                  size="lg"
-                  onClick={() => router.push("/login")}
-                >
-                  Return to Login
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full flex items-center justify-center gap-2 min-h-[44px]"
-                  onClick={() => router.push("/")}
-                >
-                  <Home className="w-4 h-4" />
-                  Return Home
-                </Button>
-              </>
-            )}
-
-            {status === "no_token" && (
-              <Button
-                className="w-full min-h-[44px]"
-                size="lg"
-                onClick={() => router.push("/login")}
-              >
-                Go to Login
-              </Button>
-            )}
-          </CardFooter>
-        </Card>
-
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          &copy; {new Date().getFullYear()} Ekavyu Health Platform. All rights reserved.
-        </p>
-      </div>
-    </main>
-  );
+      {status !== "loading" && <CardFooter className={auth.formFooter + " flex flex-col gap-3"}>
+        <Button fullWidth size="lg" onClick={() => router.push("/login")} iconRight={<ArrowRight aria-hidden="true" />}>
+          {status === "success" ? "Continue to Login" : status === "error" ? "Return to Login" : "Go to Login"}
+        </Button>
+        {status === "error" && <Button variant="outline" fullWidth onClick={() => router.push("/")} icon={<Home aria-hidden="true" />}>Return Home</Button>}
+      </CardFooter>}
+    </Card>
+  </AuthPageShell>;
 }
 
 export default function VerifyEmailPage() {
-  return (
-    <Suspense
-      fallback={
-        <div role="status" aria-live="polite" className="min-h-screen flex flex-col items-center justify-center p-4 bg-background" aria-busy="true" aria-label="Verifying email">
-          <div className="w-full max-w-md bg-card/95 border border-border/60 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 text-center animate-fade-in">
-            <div className="mx-auto w-14 h-14 rounded-full bg-surface-alt animate-pulse" />
-            <div className="space-y-2">
-              <div className="h-6 w-40 bg-surface-alt rounded-lg mx-auto animate-pulse" />
-              <div className="h-4 w-60 bg-surface-alt rounded mx-auto animate-pulse" />
-            </div>
-            <div className="h-11 w-full bg-surface-alt rounded-xl animate-pulse" />
-          </div>
-        </div>
-      }
-    >
-      <VerifyEmailContent />
-    </Suspense>
-  );
+  return <Suspense fallback={<AuthPageLoading label="Verifying email" />}><VerifyEmailContent /></Suspense>;
 }

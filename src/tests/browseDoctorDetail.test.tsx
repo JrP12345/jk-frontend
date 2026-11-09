@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import BrowseDetailClient, { type LocationDetail } from "../app/browse/[slug]/BrowseDetailClient";
 import api from "../lib/api";
 import { ToastProvider } from "../components/ui/Toast";
 import { useAuthStore } from "../store/authStore";
+import { StrictMode } from "react";
 
 const route = vi.hoisted(() => ({ search: "doctor=doctor-1" }));
 vi.mock("next/navigation", () => ({
@@ -30,6 +31,25 @@ beforeEach(() => {
 afterEach(() => { route.search = "doctor=doctor-1"; vi.useRealTimers(); vi.restoreAllMocks(); useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false }); });
 
 describe("clinic detail and doctor booking links", () => {
+  it("keeps fees and opening status in one place and omits empty supporting sections", () => {
+    route.search = "";
+    render(<ToastProvider><BrowseDetailClient slug="clinic-1" initialLocation={location} /></ToastProvider>);
+    expect(screen.getAllByText("Hours unavailable")).toHaveLength(1);
+    expect(screen.getAllByText("Consultation fee")).toHaveLength(location.doctors.length);
+    expect(screen.queryByText("Check available dates and times")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Frequently asked questions" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "About", exact: true })).not.toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Facility sections" })).queryByRole("link", { name: "About" })).not.toBeInTheDocument();
+  });
+
+  it("keeps real facility information reachable from the section navigation", () => {
+    route.search = "";
+    render(<ToastProvider><BrowseDetailClient slug="clinic-1" initialLocation={{ ...location, description: "Family care in Surat." }} /></ToastProvider>);
+    const navigation = screen.getByRole("navigation", { name: "Facility sections" });
+    expect(within(navigation).getByRole("link", { name: "About" })).toHaveAttribute("href", "#facility-about");
+    expect(screen.getByRole("region", { name: "About", exact: true })).toHaveTextContent("Family care in Surat.");
+  });
+
   it("keeps contact actions connected and copies the saved address", async () => {
     route.search = "";
     const writeText = vi.fn().mockResolvedValue(undefined);
@@ -41,7 +61,7 @@ describe("clinic detail and doctor booking links", () => {
       expect(screen.getByRole("link", { name: "WhatsApp" })).toHaveAttribute("href", expect.stringContaining("https://wa.me/919876543210?text="));
       fireEvent.click(screen.getByRole("button", { name: "Copy address" }));
       await waitFor(() => expect(writeText).toHaveBeenCalledWith("204, Test Road"));
-      expect(await screen.findByText("Contact detail copied.")).toBeInTheDocument();
+      expect(await screen.findByText("Address copied.")).toBeInTheDocument();
     } finally { vi.unstubAllGlobals(); }
   });
 
@@ -49,10 +69,12 @@ describe("clinic detail and doctor booking links", () => {
     route.search = "";
     const timings = JSON.stringify({ Monday: [{ start: "09:00", end: "13:00" }, { start: "17:00", end: "20:00" }], Friday: [{ start: "22:00", end: "02:00" }] });
     render(<ToastProvider><BrowseDetailClient slug="clinic-1" initialLocation={{ ...location, facilityType: "clinic", timings }} /></ToastProvider>);
+    fireEvent.click(screen.getByText("Weekly opening hours", { selector: "summary" }));
     expect(screen.getByRole("region", { name: "Clinic opening hours" })).toBeVisible();
     expect(screen.getByText("9:00 AM – 1:00 PM, 5:00 PM – 8:00 PM")).toBeVisible();
     expect(screen.getByText("10:00 PM – 2:00 AM (next day)")).toBeVisible();
-    expect(screen.getAllByText("Not listed")).toHaveLength(5);
+    expect(screen.getByRole("region", { name: "Clinic opening hours" })).toHaveTextContent("Not listed");
+    expect(within(screen.getByRole("region", { name: "Clinic opening hours" })).queryByText("Closed", { exact: true })).not.toBeInTheDocument();
   });
 
   it("keeps one directions action when no map has been configured", () => {
@@ -143,8 +165,21 @@ describe("clinic detail and doctor booking links", () => {
     expect(screen.queryByRole("heading", { level: 1, name: "Surat Clinic" })).not.toBeInTheDocument();
     await waitFor(() => expect(request).toHaveBeenCalledWith(expect.stringMatching(/^\/public\/doctors\/doctor-1\/slots\?locationId=clinic-1&date=/), expect.anything()));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Select Date & Time" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Book a visit" })).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "10:00 AM" })).toBeEnabled();
+  });
+
+  it("rechecks inline availability after a Strict Mode effect remount", async () => {
+    route.search = "";
+    const request = vi.spyOn(api, "get").mockResolvedValue({ data: { data: { isWorkingDay: true, bookingMode: "sequential_queue", slots: [], nextToken: 3 } } });
+    render(<StrictMode><ToastProvider><BrowseDetailClient slug="clinic-1" initialLocation={location} bookingDoctorId="doctor-1" bookingOnly /></ToastProvider></StrictMode>);
+    expect(await screen.findByText("Availability updated")).toBeInTheDocument();
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(request.mock.calls[0][1]?.signal?.aborted).toBe(true);
+    expect(request.mock.calls[1][1]?.signal?.aborted).toBe(false);
+    expect(screen.getByRole("button", { name: "Continue to Details" })).toBeEnabled();
+    expect(screen.getByText("Your token number is assigned after booking.")).toBeInTheDocument();
+    expect(screen.queryByText("Estimated Token")).not.toBeInTheDocument();
   });
 
   it("checks later dates only when asked and selects an authoritative available slot", async () => {

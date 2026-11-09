@@ -3,6 +3,8 @@
 import { memo } from "react";
 import { cn } from "./utils";
 import LoadingImage from "./LoadingImage";
+import { getAvatarInitials } from "@/lib/avatar";
+export { getAvatarInitials } from "@/lib/avatar";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
 
@@ -50,13 +52,6 @@ function getColor(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return avatarColors[Math.abs(hash) % avatarColors.length];
-}
-
-export function getAvatarInitials(name: string): string {
-  if (!name.trim()) return "?";
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 const Avatar = memo(function Avatar({ src, alt, name = "", size = "md", status, className = "" }: AvatarProps) {

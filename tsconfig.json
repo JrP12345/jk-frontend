@@ -36,7 +36,13 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     ".next/facility-reference-dev/types/**/*.ts",
-    ".next/facility-reference-dev/dev/types/**/*.ts"
+    ".next/facility-reference-dev/dev/types/**/*.ts",
+    ".next/facility-ui-dev/types/**/*.ts",
+    ".next/facility-ui-dev/dev/types/**/*.ts",
+    ".next/browse-polish-dev/types/**/*.ts",
+    ".next/browse-polish-dev/dev/types/**/*.ts",
+    ".next/auth-redesign-dev/types/**/*.ts",
+    ".next/auth-redesign-dev/dev/types/**/*.ts"
   ],
   "exclude": [
     ".cloudflare",

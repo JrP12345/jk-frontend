@@ -111,6 +111,16 @@ it("copies a clean profile URL without patient, follow-up or tracking parameters
   await waitFor(() => expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/browse/care`));
 });
 
+it("keeps an icon-only profile share labelled and functional", async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+  render(<ToastProvider><PublicProfileShare title="Care" path="/browse/care" iconOnly /></ToastProvider>);
+  const button = screen.getByRole("button", { name: "Share Care" });
+  expect(button).not.toHaveTextContent("Share");
+  fireEvent.click(button);
+  await waitFor(() => expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/browse/care`));
+});
+
 it("keeps Google appointment copying disabled when online booking is unavailable", () => {
   render(<GoogleBookingLinks locationUrl="https://care.example/browse/care" available={false} doctors={[{ id: "asha", name: "Asha", url: "https://care.example/doctor/asha?location=care" }]} onCopy={vi.fn()} />);
   expect(screen.getByRole("button", { name: "Copy Google booking link" })).toBeDisabled();

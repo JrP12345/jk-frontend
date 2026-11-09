@@ -1,161 +1,156 @@
 "use client";
 
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Calendar, Clock, Copy, Mail, MapPin, MessageSquare, Navigation, Phone, Search, Star } from "lucide-react";
-import { Breadcrumbs, Button, Card, Input, Select, useToast } from "@/components/ui";
+import { Calendar, ChevronDown, Clock, Copy, MessageSquare, Navigation, Phone, Search, Star } from "lucide-react";
+import { Badge, Breadcrumbs, Button, Card, CardTitle, Input, Select, cn, useToast } from "@/components/ui";
+import { buttonClassName } from "@/components/ui/Button";
 import LoadingImage from "@/components/ui/LoadingImage";
 import { LocationStatusBadge } from "@/components/ui/LocationStatusBadge";
-import { getAvatarInitials } from "@/components/ui/Avatar";
+import { getAvatarInitials } from "@/lib/avatar";
 import { NavigationPending } from "@/components/ui/RouteProgress";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import PublicProfileShare from "@/components/PublicProfileShare";
 import { doctorPath, hasMultipleLocations, locationPath } from "@/lib/publicPaths";
 import { normalizeGoogleMapsEmbed } from "@/lib/geo/googleMapsEmbed";
-import { DAYS_OF_WEEK, formatMinutesTo12Hour, parseWeeklySchedule } from "@/lib/timing/locationStatus";
 import type { PublicBookingStatus } from "@/lib/publicBooking";
-import type { ReactNode } from "react";
 import type { Doctor, LocationDetail } from "./BrowseDetailClient";
+import { facilityHoursRows, facilityHoursSummary } from "./facilityView";
 import styles from "./FacilityProfile.module.css";
+import care from "@/components/PublicCare.module.css";
 import marketplace from "@/components/MarketplaceLayout.module.css";
 
 interface Props {
-  location: LocationDetail;
-  bookingStatus: PublicBookingStatus;
-  directionsUrl: string | null;
-  doctorQuery: string;
-  onQuery: (value: string) => void;
-  specialty: string;
-  onSpecialty: (value: string) => void;
-  specialties: string[];
-  matchingDoctors: Doctor[];
-  visibleDoctors: Doctor[];
-  onShowAll: () => void;
-  onBook: (doctor: Doctor) => void;
-  onPhoto: (index: number) => void;
-  feeLabel: (doctor: Doctor, currency: string) => string;
-  hours: ReactNode;
-  hoursSummary: string;
+  location: LocationDetail; bookingStatus: PublicBookingStatus; directionsUrl: string | null;
+  doctorQuery: string; onQuery: (value: string) => void; specialty: string; onSpecialty: (value: string) => void;
+  specialties: string[]; matchingDoctors: Doctor[]; visibleDoctors: Doctor[]; onShowAll: () => void;
+  onBook: (doctor: Doctor) => void; onPhoto: (index: number) => void;
+  feeLabel: (doctor: Doctor, currency: string) => string; hours: ReactNode;
 }
 
-export default function FacilityProfile({ location, bookingStatus, directionsUrl, doctorQuery, onQuery, specialty, onSpecialty, specialties, matchingDoctors, visibleDoctors, onShowAll, onBook, onPhoto, feeLabel, hours, hoursSummary }: Props) {
+export default function FacilityProfile({ location, bookingStatus, directionsUrl, doctorQuery, onQuery, specialty, onSpecialty, specialties, matchingDoctors, visibleDoctors, onShowAll, onBook, onPhoto, feeLabel, hours }: Props) {
   const { toast } = useToast();
+  const [now, setNow] = useState(() => new Date());
+  const [activeSection, setActiveSection] = useState("facility-doctors");
+  useEffect(() => { const timer = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(timer); }, []);
   const logo = location.logo_url || location.organization?.logo_url;
   const phone = location.phone?.trim();
+  const dial = phone?.replace(/[^+\d]/g, "") || "";
+  const callable = Boolean(phone && /^\+?[\d\s().-]+$/.test(phone) && /^\+?\d{7,15}$/.test(dial));
   const email = location.email?.trim();
   const mapEmbed = normalizeGoogleMapsEmbed(location.googleMapsEmbedUrl || "");
   const address = location.address?.trim() && location.address.trim() !== "." ? location.address : location.city;
   const affiliated = hasMultipleLocations(location) && location.organization?.name && location.organization.name !== location.name;
-  const { schedule, is24x7, hasExplicitSchedule } = parseWeeklySchedule(location.timings);
-  const week = [...DAYS_OF_WEEK.slice(1), DAYS_OF_WEEK[0]];
-  const initials = <span aria-hidden="true">{getAvatarInitials(location.name)}</span>;
-  const copy = async (value: string) => {
-    try { await navigator.clipboard.writeText(value); toast({ title: "Copied", description: "Contact detail copied.", variant: "success" }); }
-    catch { toast({ title: "Could not copy", description: "Select the contact detail to copy it.", variant: "error" }); }
+  const rows = facilityHoursRows(location.timings, location.timezone, now);
+  const bookable = bookingStatus === "check_availability" && location.doctors.length > 0;
+  const singleDoctor = location.doctors.length === 1 ? location.doctors[0] : null;
+  const hasAbout = Boolean(location.description?.trim() || (affiliated && location.organization?.description?.trim()) || location.amenities?.length || location.images?.length);
+  const whatsappUrl = callable ? `https://wa.me/${dial.replace(/\D/g, "")}?text=${encodeURIComponent(`Hello, I would like to inquire about appointments and doctors at ${location.name}.`)}` : null;
+  const navigation = [{ id: "facility-doctors", label: "Doctors" }, { id: "facility-hours", label: "Hours" }, { id: "facility-location", label: "Location" }, ...(hasAbout ? [{ id: "facility-about", label: "About" }] : [])];
+  useEffect(() => {
+    const update = () => { const id = window.location.hash.slice(1); if (["facility-doctors", "facility-hours", "facility-location", "facility-about"].includes(id)) setActiveSection(id); };
+    queueMicrotask(update);
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+  const copy = async (value: string, name: string) => {
+    try { await navigator.clipboard.writeText(value); toast({ title: "Copied", description: name + " copied.", variant: "success" }); }
+    catch { toast({ title: "Could not copy", description: "Select the " + name.toLowerCase() + " to copy it.", variant: "error" }); }
   };
-  const visit = <div className={styles.visit}>
-    {address && <div className={styles.visitRow}>
-      <span className={styles.visitIcon}><MapPin aria-hidden="true" /></span>
-      <div className={styles.contactText}><span>Address</span><p>{address}</p></div>
-      <button type="button" className={styles.iconButton} onClick={() => void copy(address)} aria-label="Copy address" title="Copy address"><Copy aria-hidden="true" /></button>
-    </div>}
-    {phone && <div className={styles.visitRow}>
-      <span className={styles.visitIcon}><Phone aria-hidden="true" /></span>
-      <div className={styles.contactText}><span>Reception phone</span><a href={`tel:${phone.replace(/[^+\d]/g, "")}`}>{phone}</a></div>
-      <button type="button" className={styles.iconButton} onClick={() => void copy(phone)} aria-label="Copy phone number" title="Copy phone number"><Copy aria-hidden="true" /></button>
-    </div>}
-    {email && <div className={styles.visitRow}>
-      <span className={styles.visitIcon}><Mail aria-hidden="true" /></span>
-      <div className={styles.contactText}><span>Email</span><a href={`mailto:${encodeURIComponent(email).replace(/%40/g, "@")}`}>{email}</a></div>
-      <button type="button" className={styles.iconButton} onClick={() => void copy(email)} aria-label="Copy email address" title="Copy email address"><Copy aria-hidden="true" /></button>
-    </div>}
-  </div>;
-  const map = mapEmbed ? <div className={styles.embeddedMap}><iframe src={mapEmbed} title={`Map of ${location.name}`} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div> : null;
+  const showDoctors = () => { setActiveSection("facility-doctors"); document.getElementById("facility-doctors")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); };
+  const bookFromHeader = () => { if (singleDoctor && bookable) onBook(singleDoctor); else showDoctors(); };
+  const heroLinkClass = cn(buttonClassName({ variant: "outline", size: "sm", className: "min-h-11!" }), styles.contactAction);
+  const doctorAction = (doc: Doctor) => !bookable ? "Contact reception" : doc.isAvailable === false || doc.isOnlineBookingClosed ? "Find next date" : "Book now";
+
   return <>
-    <MarketplaceNavbar showSignUp showSearch={false} />
-    <div className={`${marketplace.content} ${styles.container}`} data-facility-content>
-      <div className={styles.breadcrumbs}>
-        <Breadcrumbs separator={<span aria-hidden="true">/</span>} items={[{ label: "Browse locations", href: "/browse" }, ...(location.city ? [{ label: location.city }] : []), { label: location.name }]} />
-      </div>
-      <Card padding="none" className={styles.heroCard}>
-        <section className={styles.hero} aria-labelledby="facility-title">
-          <div className={styles.heroIdentity}>
-            <div className={styles.logo}>{logo ? <LoadingImage src={logo} alt="" width={72} height={72} loadingEffect={false} className="h-full w-full object-contain p-2" fallback={initials} /> : initials}</div>
-            <div className={styles.heroText}>
-              <h1 id="facility-title">{location.name}</h1>
-              {affiliated && <p className={styles.affiliation}>Branch of {location.organization!.name}</p>}
-              <div className={styles.heroMeta}>
-                {location.city && <span><MapPin aria-hidden="true" />{location.city}</span>}
-                <LocationStatusBadge timings={location.timings} timezone={location.timezone} className={`${marketplace.statusBadge} ${styles.openingStatus}`} pill />
+    <MarketplaceNavbar showSignUp showSearch={false} navigationSlot={<><Link href="/browse" className="font-medium text-accent">Find care</Link><Link href="/" className="text-text-secondary hover:text-text">For patients</Link><Link href="/pricing" className="text-text-secondary hover:text-text">For providers</Link></>} />
+    <div className={cn(marketplace.content, styles.container)} data-facility-content>
+      <section className={styles.heroBand} aria-labelledby="facility-title">
+      <div className={styles.breadcrumbs}><Breadcrumbs separator={<span aria-hidden="true">/</span>} items={[{ label: "Browse locations", href: "/browse" }, ...(location.city ? [{ label: location.city }] : []), { label: location.name }]} /></div>
+
+          <div className={styles.hero}>
+            <div className={styles.heroIdentity}>
+              <div className={styles.logo}>{logo ? <LoadingImage src={logo} alt="" width={72} height={72} loadingEffect={false} className="h-full w-full object-contain p-2" fallback={<span aria-hidden="true">{getAvatarInitials(location.name)}</span>} /> : <span aria-hidden="true">{getAvatarInitials(location.name)}</span>}</div>
+              <div className={styles.heroText}>
+                <h1 id="facility-title" className={care.title}>{location.name}</h1>
+                {affiliated && <p className="mt-1 text-sm text-text-secondary">Branch of {location.organization!.name}</p>}
+                <div className={styles.heroMeta}>
+                  {location.city && <span className="inline-flex items-center gap-1.5 text-sm text-text-secondary">{location.city}</span>}
+                  {address && address !== location.city && <span className="text-sm">{address}</span>}
+                </div>
               </div>
             </div>
-          </div>
-          <div className={styles.heroActions}>
-            {phone && <a className={`${styles.contactAction} ${styles.callAction}`} href={`tel:${phone.replace(/[^+\d]/g, "")}`}><Phone aria-hidden="true" />Call</a>}
-            {directionsUrl && <a className={styles.contactAction} href={directionsUrl} target="_blank" rel="noopener noreferrer" aria-label={`Get directions to ${location.name} in Google Maps`}><Navigation aria-hidden="true" />Directions</a>}
-            {phone && <a className={`${styles.contactAction} ${styles.whatsapp}`} href={`https://wa.me/${phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello, I would like to inquire about appointments and doctors at ${location.name}.`)}`} target="_blank" rel="noopener noreferrer"><MessageSquare aria-hidden="true" />WhatsApp</a>}
-            <PublicProfileShare title={location.name} path={locationPath(location)} />
-          </div>
-        </section>
-      </Card>
-      <div className={`${marketplace.detailsColumns} ${styles.layout}`}>
-        <Card padding="none" className={styles.doctors}>
-          <section aria-labelledby="facility-doctors" className={styles.doctorSection}>
-            <header className={styles.sectionHeader}><h2 id="facility-doctors">Doctors</h2><p>{bookingStatus === "check_availability" ? "Choose a doctor to see available dates and times." : "View our doctors and contact reception about appointments."}</p></header>
-            {bookingStatus === "contact_location" && <div role="status" className={styles.notice}><strong>Online booking is temporarily unavailable.</strong><p>Please contact reception directly.</p></div>}
-            <div className={styles.filters}>
-              {location.doctors.length > 8 && <Input icon={<Search className="h-4 w-4" aria-hidden="true" />} value={doctorQuery} onChange={event => onQuery(event.target.value)} placeholder="Search doctors or specialties" aria-label="Search doctors at this location" />}
-              {specialties.length > 1 && <Select label="Specialty" value={specialty} onChange={event => onSpecialty(event.target.value)} options={[{ value: "", label: "All specialties" }, ...specialties.map(value => ({ value, label: value }))]} />}
+            <div className={styles.heroActions}>
+              {bookable && <Button className={cn(styles.heroBooking, "min-h-11!")} size="sm" onClick={bookFromHeader} icon={<Calendar aria-hidden="true" />}>Book appointment</Button>}
+              {callable && <a className={heroLinkClass} href={"tel:" + dial}><Phone aria-hidden="true" className="h-4 w-4" /><span>Call</span></a>}
+              {directionsUrl && <a className={heroLinkClass} href={directionsUrl} target="_blank" rel="noopener noreferrer" aria-label={`Get directions to ${location.name} in Google Maps`}><Navigation aria-hidden="true" className="h-4 w-4" /><span>Directions</span></a>}
+              {whatsappUrl && <a className={heroLinkClass} href={whatsappUrl} target="_blank" rel="noopener noreferrer"><MessageSquare aria-hidden="true" className="h-4 w-4" /><span>WhatsApp</span></a>}
+              <PublicProfileShare title={location.name} path={locationPath(location)} className={cn(styles.shareAction, "min-h-11!")} stackOnMobile />
             </div>
-            {(doctorQuery || specialty) && <p role="status" className={styles.results}>Showing {matchingDoctors.length} {matchingDoctors.length === 1 ? "doctor" : "doctors"}</p>}
-            {location.doctors.length === 0 ? <div className={styles.empty}><p>No doctors are listed for online booking at this location right now.</p><Link href="/browse">Browse other locations</Link>{phone && <a href={`tel:${phone.replace(/[^+\d]/g, "")}`}>Call reception</a>}</div> : matchingDoctors.length === 0 ? <p role="status" className={styles.empty}>No doctors match this search. Try a name or specialty.</p> : <div className={styles.doctorList}>
-              {visibleDoctors.map(doc => <article key={doc.id} className={styles.doctorRow}>
-                <Link href={doctorPath(doc, location)} className={styles.doctorIdentity}>
-                  <NavigationPending />
-                  <div className={styles.avatar}>{doc.image_url ? <LoadingImage src={doc.image_url} alt="" width={52} height={52} loading="lazy" className="h-full w-full object-cover" fallback={<span aria-hidden="true">{getAvatarInitials(doc.name.replace(/^Dr\.?\s*/i, ""))}</span>} /> : <span aria-hidden="true">{getAvatarInitials(doc.name.replace(/^Dr\.?\s*/i, ""))}</span>}</div>
-                  <div className={styles.doctorText}><h3>Dr. {doc.name.replace(/^Dr\.?\s*/i, "")}</h3><p className={styles.specialty}>{doc.specialization || "Specialty not listed"}</p><p className={styles.credentials}>{[doc.qualification, doc.experience_years > 0 ? `${doc.experience_years}+ years experience` : null].filter(Boolean).join(" · ")}</p>
-                    {doc.rating != null && (doc.reviewsCount || 0) > 0 && <p className={styles.rating}><Star aria-hidden="true" />{doc.rating.toFixed(1)} <span>({doc.reviewsCount} reviews)</span></p>}
-                  </div>
-                </Link>
-                <footer className={styles.doctorFooter}>
-                  {(doc.isOnlineBookingClosed || doc.isAvailable === false || doc.bookingMode === "sequential_queue") && <p className={styles.doctorStatus}><Clock aria-hidden="true" /><span>{[doc.isAvailable === false ? "Unavailable today" : doc.isOnlineBookingClosed ? "Online booking closed today" : null, doc.bookingMode === "sequential_queue" ? "Queue tokens" : null].filter(Boolean).join(" · ")}</span></p>}
-                  <div className={styles.doctorBooking}>
-                  <div className={styles.doctorFee}><span>Consultation fee</span><strong>{feeLabel(doc, location.currency || "INR")}</strong></div>
-                  <div className={styles.doctorActions}><Button variant="primary" className="min-h-11! w-full" onClick={() => onBook(doc)} disabled={bookingStatus !== "check_availability"}><Calendar aria-hidden="true" />{bookingStatus !== "check_availability" ? "Contact reception" : doc.isAvailable === false ? "Find next date" : doc.isOnlineBookingClosed ? "Find next date" : "Book now"}</Button></div>
-                  </div>
-                </footer>
-              </article>)}
-            </div>}
-            {matchingDoctors.length > visibleDoctors.length && <Button variant="outline" className="mt-4 min-h-11! w-full" onClick={onShowAll}>Show all {matchingDoctors.length} doctors</Button>}
-          </section>
-        </Card>
-        <aside aria-label="Facility information" className={styles.sidebar}>
-          <Card padding="none" className={styles.information}>
-            <div className={styles.informationBody}>
-              {visit}
-              <section className={styles.hoursSection} aria-labelledby="facility-hours" title={hoursSummary}>
-                <span className={styles.visitIcon}><Clock aria-hidden="true" /></span>
-                <div className={styles.hoursBody}><h2 id="facility-hours">{location.facilityType === "clinic" ? "Clinic opening hours" : "Opening hours"}</h2>
-                  {hasExplicitSchedule ? <dl className={styles.hours}>
-                    {week.map(day => <div key={day}>
-                      <dt>{day.slice(0, 3)}</dt>
-                      <dd className={schedule[day].length ? undefined : styles.unlisted}>
-                        {is24x7 ? "Open 24 hours" : schedule[day].length ? schedule[day].map(slot => `${formatMinutesTo12Hour(slot.startMinutes)} – ${formatMinutesTo12Hour(slot.endMinutes)}${slot.isOvernight ? " (next day)" : ""}`).join(", ") : "Not listed"}
-                      </dd>
-                    </div>)}
-                  </dl> : hours}
+          </div>
+      </section>
+      <Card padding="none" className={cn(care.card, styles.summaryCard)}><dl className={cn(care.summary, styles.summary)}>
+        <div><dt>Today</dt><dd><LocationStatusBadge timings={location.timings} timezone={location.timezone} showSecondary className={styles.openingStatus} /></dd></div>
+        <div><dt>Hours</dt><dd><a href="#facility-hours" onClick={() => { const detail = document.getElementById("facility-weekly-hours"); if (detail instanceof HTMLDetailsElement) detail.open = true; }}>{facilityHoursSummary(rows)}</a></dd></div>
+        {callable && <div className={styles.contactCell}><dt>Reception</dt><dd className={styles.summaryContact}><a href={"tel:" + dial}>{phone}</a><Button variant="ghost" size="xs" onClick={() => copy(phone!, "Phone number")} aria-label="Copy phone number" icon={<Copy aria-hidden="true" />} /></dd></div>}
+        {email && <div className={styles.contactCell}><dt>Email</dt><dd className={styles.summaryContact}><a href={`mailto:${encodeURIComponent(email).replace(/%40/g, "@")}`}>{email}</a><Button variant="ghost" size="xs" onClick={() => copy(email, "Email address")} aria-label="Copy email address" icon={<Copy aria-hidden="true" />} /></dd></div>}
+      </dl></Card>
+      <nav aria-label="Facility sections" className={styles.jumpNav}>{navigation.map(item => <a key={item.id} href={"#" + item.id} aria-current={activeSection === item.id ? "location" : undefined} onClick={() => setActiveSection(item.id)} className={buttonClassName({ variant: activeSection === item.id ? "secondary" : "ghost", size: "sm", className: "min-h-11! shrink-0" })}>{item.label}</a>)}</nav>
+      <div className={styles.layout}>
+        <section id="facility-doctors" aria-labelledby="facility-doctors-title" className={styles.doctors}>
+          <header className={styles.sectionHeader}><h2 id="facility-doctors-title" className={care.sectionTitle}>Doctors</h2>{bookable && <p className="text-sm text-text-secondary">Choose a doctor to check appointment availability.</p>}</header>
+          {bookingStatus === "contact_location" && <div role="status" className={styles.notice}><p className="font-medium">Online booking is temporarily unavailable.</p><p>Please contact reception directly.</p></div>}
+          <div className={styles.filters}>
+            {location.doctors.length > 8 && <Input icon={<Search className="h-4 w-4" aria-hidden="true" />} value={doctorQuery} onChange={event => onQuery(event.target.value)} placeholder="Search doctors or specialties" aria-label="Search doctors at this location" />}
+            {specialties.length > 1 && <Select label="Specialty" value={specialty} onChange={event => onSpecialty(event.target.value)} options={[{ value: "", label: "All specialties" }, ...specialties.map(value => ({ value, label: value }))]} />}
+          </div>
+          {(doctorQuery || specialty) && <p role="status" className="my-3 text-sm text-text-secondary">Showing {matchingDoctors.length} {matchingDoctors.length === 1 ? "doctor" : "doctors"}</p>}
+          {location.doctors.length === 0 ? <Card padding="md"><p className="text-sm text-text-secondary">No doctors are listed for online booking at this location right now.</p><Link href="/browse" className="mt-3 inline-flex min-h-11 items-center text-sm text-accent underline">Browse other locations</Link>{callable && <a href={"tel:" + dial} className="inline-flex min-h-11 items-center text-sm text-accent underline">Call reception</a>}</Card> : matchingDoctors.length === 0 ? <p role="status" className={styles.notice}>No doctors match this search. Try a name or specialty.</p> : <div className={styles.doctorList}>
+            {visibleDoctors.map(doc => {
+              const status = [doc.isAvailable === false ? "Unavailable today" : doc.isOnlineBookingClosed ? "Online booking closed today" : null, doc.bookingMode === "sequential_queue" ? "Queue tokens" : null].filter(Boolean).join(" · ");
+              return <Card key={doc.id} padding="none" className={care.card}><article className={styles.doctorRow} data-facility-doctor>
+              <Link href={doctorPath(doc, location)} className={styles.doctorIdentity}><NavigationPending />
+                <div className={styles.avatar}>{doc.image_url ? <LoadingImage src={doc.image_url} alt="" width={56} height={56} loading="lazy" className="h-full w-full object-cover" fallback={<span aria-hidden="true">{getAvatarInitials(doc.name.replace(/^Dr\.?\s*/i, ""))}</span>} /> : <span aria-hidden="true">{getAvatarInitials(doc.name.replace(/^Dr\.?\s*/i, ""))}</span>}</div>
+                <div className={styles.doctorText}><h3 className={cn(care.sectionTitle, styles.doctorName)}>Dr. {doc.name.replace(/^Dr\.?\s*/i, "")}</h3><p className="text-sm text-accent">{doc.specialization || "Specialty not listed"}</p><p className="text-xs leading-relaxed text-text-secondary">{[doc.qualification, doc.experience_years > 0 ? `${doc.experience_years}+ years experience` : null].filter(Boolean).join(" · ")}</p>
+                  {doc.rating != null && (doc.reviewsCount || 0) > 0 && <p className={styles.rating}><Star aria-hidden="true" />{doc.rating.toFixed(1)} <span>({doc.reviewsCount} reviews)</span></p>}
                 </div>
-              </section>
-              {map}
-              {location.description && <p className={styles.description}>{location.description}</p>}
-              {affiliated && location.organization?.description && <p className={styles.description}>{location.organization.description}</p>}
-              {Boolean(location.amenities?.length || location.images?.length) && <details className={styles.disclosure}>
-                <summary>Facilities &amp; photos</summary>
-                {Boolean(location.amenities?.length) && <><h2 className={styles.amenityTitle}>Amenities ({location.amenities!.length})</h2><ul className={styles.amenities}>{location.amenities!.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
-                {Boolean(location.images?.length) && <><h2 className={styles.amenityTitle}>Photos</h2><div className={styles.gallery}>{location.images!.slice(0, 6).map((image, index) => <button key={index} type="button" onClick={() => onPhoto(index)} aria-label={`View facility photo ${index + 1}`}><LoadingImage src={image} alt={`Facility photo ${index + 1}`} loading="lazy" className="h-full w-full object-cover" /></button>)}</div><Button variant="outline" className="mt-4 min-h-11! w-full" onClick={() => onPhoto(0)}>View all photos</Button></>}
-              </details>}
-            </div>
+              </Link>
+              <div className={styles.doctorFee}><span className="text-xs text-text-secondary">Consultation fee</span><strong className={care.fee}>{feeLabel(doc, location.currency || "INR")}</strong></div>
+              <div className={styles.doctorBooking}>
+              {status && <p className={styles.doctorStatus}><Clock aria-hidden="true" /><span>{status}</span></p>}
+                <div className={styles.doctorActions}><Button data-facility-booking-action size="sm" className="min-h-11! w-full" onClick={() => onBook(doc)} disabled={!bookable} icon={<Calendar aria-hidden="true" />}>{doctorAction(doc)}</Button></div>
+              </div>
+            </article></Card>;
+            })}
+          </div>}
+          {matchingDoctors.length > visibleDoctors.length && <Button variant="outline" className="mt-4 min-h-11! w-full" onClick={onShowAll}>Show all {matchingDoctors.length} doctors</Button>}
+        </section>
+        <aside aria-label="Facility information" className={styles.sidebar}>
+          <Card padding="none" className={care.card}>
+            <section id="facility-location" aria-labelledby="facility-location-title" className={styles.locationSection}>
+              {mapEmbed && <div className={styles.embeddedMap}><iframe src={mapEmbed} title={`Map of ${location.name}`} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div>}
+              <div className={styles.locationBody}><CardTitle as="h2" className={care.sectionTitle}><span id="facility-location-title">Location</span></CardTitle>
+                <p className="text-sm leading-relaxed text-text-secondary">{address || "Address not listed"}</p>
+                <div className={styles.locationActions}>{directionsUrl && <a href={directionsUrl} target="_blank" rel="noopener noreferrer" aria-label={`Directions to ${location.name}`} className={buttonClassName({ size: "sm", className: "min-h-11!" })}><Navigation aria-hidden="true" className="h-4 w-4" />Get directions</a>}{address && <Button variant="outline" size="sm" onClick={() => copy(address, "Address")} aria-label="Copy address" className="min-h-11!">Copy</Button>}</div>
+              </div>
+            </section>
+            <section id="facility-hours" className={styles.weeklyHours}>
+              <details id="facility-weekly-hours" open={!rows.length}><summary>Weekly opening hours<ChevronDown aria-hidden="true" /></summary>
+                <section aria-label={location.facilityType === "clinic" ? "Clinic opening hours" : "Opening hours"}>{rows.length ? <dl className={styles.hours}>{rows.map(row => <div key={row.label} className={row.today ? styles.today : undefined}><dt>{row.label}{row.today && <span> · Today</span>}</dt><dd className={row.listed ? undefined : "text-text-secondary"}>{row.value}</dd></div>)}</dl> : hours}</section>
+              </details>
+            </section>
           </Card>
         </aside>
+        {hasAbout && <section id="facility-about" aria-labelledby="facility-about-title" className={styles.aboutSection}><h2 id="facility-about-title" className={cn(care.sectionTitle, "mb-3")}>About</h2>
+          <Card padding="md" className={care.card}>
+            {location.description && <p className="whitespace-pre-line text-sm leading-relaxed text-text-secondary">{location.description}</p>}
+            {affiliated && location.organization?.description && <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-text-secondary">{location.organization.description}</p>}
+            {Boolean(location.amenities?.length || location.images?.length) && <details className={styles.disclosure}><summary>Facilities &amp; photos<ChevronDown aria-hidden="true" /></summary>
+              {Boolean(location.amenities?.length) && <><h3 className="mb-2 mt-4 text-sm font-medium">Amenities ({location.amenities!.length})</h3><ul className="flex flex-wrap gap-2">{location.amenities!.map((item, index) => <li key={index}><Badge variant="secondary">{item}</Badge></li>)}</ul></>}
+              {Boolean(location.images?.length) && <><h3 className="mb-2 mt-4 text-sm font-medium">Photos</h3><div className={styles.gallery}>{location.images!.slice(0, 6).map((image, index) => <Button key={index} type="button" variant="ghost" className="relative h-full w-full p-0!" onClick={() => onPhoto(index)} aria-label={`View facility photo ${index + 1}`}><LoadingImage src={image} alt={`Facility photo ${index + 1}`} loading="lazy" className="absolute inset-0 h-full w-full object-cover" /></Button>)}</div><Button variant="outline" className="mt-4 min-h-11! w-full" onClick={() => onPhoto(0)}>View all photos</Button></>}
+            </details>}
+          </Card>
+        </section>}
       </div>
     </div>
   </>;

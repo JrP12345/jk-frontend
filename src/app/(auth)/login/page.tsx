@@ -7,6 +7,7 @@ import { useAuthStore, type User } from "@/store/authStore";
 import api from "@/lib/api";
 import { apiErrorMessage } from "@/lib/apiError";
 import AuthPageShell from "@/components/auth/AuthPageShell";
+import auth from "@/components/auth/AuthPageShell.module.css";
 import PasskeySignIn from "@/components/auth/PasskeySignIn";
 import LoginWorkspacePicker from "@/components/auth/LoginWorkspacePicker";
 import type { WorkspaceSelection } from "@/types/workspace";
@@ -295,11 +296,13 @@ export default function LoginPage() {
     !otpSent ? (
       <form onSubmit={handleRequestPatientOtp} noValidate className="space-y-4 animate-fade-in">
         <Input
+          size="lg"
           label="Email or mobile number"
           type="text"
           placeholder={enteringPhone ? "Email or mobile number" : "Enter your email address"}
           icon={!enteringPhone ? <Mail className="w-4 h-4 text-text-muted" /> : undefined}
           leadingControl={enteringPhone ? <Select
+            size="lg"
             aria-label="Country code"
             value={phoneCountry}
             options={phoneCountryOptions}
@@ -340,7 +343,7 @@ export default function LoginPage() {
           required
         />
 
-        <p id="patient-sign-in-hint" className="text-center text-xs leading-relaxed text-text-muted">We&apos;ll send a verification code to your email or phone.</p>
+        <p id="patient-sign-in-hint" className="text-xs leading-relaxed text-text-muted">We&apos;ll send a 6-digit verification code.</p>
 
         <Button
           type="submit"
@@ -350,7 +353,7 @@ export default function LoginPage() {
           size="lg"
 
         >
-          <span>Send Verification OTP</span>
+          <span>Send verification code</span>
           <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
         </Button>
       </form>
@@ -373,6 +376,7 @@ export default function LoginPage() {
         </div>
 
         <Input
+          size="lg"
           label="6-Digit Verification OTP *"
           placeholder="••••••"
           maxLength={6}
@@ -427,6 +431,7 @@ export default function LoginPage() {
     <form onSubmit={handleLogin} noValidate className="space-y-4 animate-fade-in">
       <CardContent className="p-0 space-y-4">
         <Input
+          size="lg"
           label="Staff Email Address *"
           type="email"
           placeholder="doctor@example.com"
@@ -444,6 +449,7 @@ export default function LoginPage() {
 
         <div>
           <Input
+            size="lg"
             label="Password *"
             type={showPassword ? "text" : "password"}
             placeholder="••••••••"
@@ -461,7 +467,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="p-1 text-text-muted hover:text-text rounded-md transition-all cursor-pointer flex items-center justify-center min-h-[28px] min-w-[28px]"
+                className="text-text-muted hover:text-text rounded-md cursor-pointer flex items-center justify-center min-h-11 min-w-11 focus-visible:outline-2 focus-visible:outline-focus-ring"
                 title={showPassword ? "Hide password" : "Show password"}
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
@@ -484,10 +490,9 @@ export default function LoginPage() {
             </Button>
           </div>
         </div>
-      <div className="pt-4"><PasskeySignIn onSuccess={completeSignIn} onWorkspace={setWorkspaceSelection} disabled={loading || twoFactorLoading || isNavigating || isTwoFactorModalOpen || Boolean(workspaceSelection)} onTwoFactor={(token) => { setTwoFactorToken(token); setIsTwoFactorModalOpen(true); }} /></div>
   </CardContent>
 
-      <CardFooter className="p-0 pt-2 flex flex-col gap-3">
+      <CardFooter className={`${auth.formFooter} flex flex-col gap-3`}>
         <Button
           type="submit"
           fullWidth
@@ -500,6 +505,7 @@ export default function LoginPage() {
           <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2.25} />
         </Button>
       </CardFooter>
+      <div><div className={auth.divider}>or</div><PasskeySignIn onSuccess={completeSignIn} onWorkspace={setWorkspaceSelection} disabled={loading || twoFactorLoading || isNavigating || isTwoFactorModalOpen || Boolean(workspaceSelection)} onTwoFactor={(token) => { setTwoFactorToken(token); setIsTwoFactorModalOpen(true); }} /></div>
     </form>
   );
 
@@ -514,11 +520,11 @@ export default function LoginPage() {
 
         {/* Auth Card Container */}
         <fieldset disabled={isNavigating} aria-busy={isNavigating} aria-label="Sign in" className="min-w-0 w-full border-0 p-0">
-        <Card padding="none" className={isShaking ? "animate-shake" : undefined}>
+        <Card padding="none" className={`${auth.card} ${isShaking ? "animate-shake" : ""}`}>
           {!isForgotPassword ? (
-            <div className="p-4 sm:p-6 space-y-4">
-              <CardHeader className="p-0 mb-3 text-center">
-                <CardTitle as="h1" className="page-title">Sign in</CardTitle>
+            <div className="space-y-5">
+              <CardHeader className={auth.formHeader}>
+                <CardTitle as="h1" className="page-title">Welcome back</CardTitle>
                 <CardDescription className="text-sm text-text-secondary">
                   Access your patient portal or healthcare workspace
                 </CardDescription>
@@ -530,32 +536,27 @@ export default function LoginPage() {
                 activeTab={authTab}
                 variant="pills"
                 scrollActiveIntoView={false}
-                className="[&_[role=tablist]]:grid [&_[role=tablist]]:grid-cols-2 [&_[role=tab]]:justify-center [&_[role=tab]]:px-1.5"
+                className={auth.tabs}
                 onChange={tab => startTransition(() => {
                   setAuthTab(tab as "mobile" | "email");
                   if (tab === "mobile") { setOtpSent(false); setPhoneOtp(""); setOtpTarget(null); }
                 })}
                 tabs={[
-                  { id: "mobile", label: "Patient Sign In", icon: <Smartphone aria-hidden="true" className="h-4 w-4" />, disabled: otpLoading || isNavigating, content: authTab === "mobile" ? signInPanel : undefined },
-                  { id: "email", label: "Staff Email", icon: <Mail aria-hidden="true" className="h-4 w-4" />, disabled: otpLoading || isNavigating, content: authTab === "email" ? signInPanel : undefined },
+                  { id: "mobile", label: "Patient", icon: <Smartphone aria-hidden="true" className="h-4 w-4" />, disabled: otpLoading || isNavigating, content: authTab === "mobile" ? signInPanel : undefined },
+                  { id: "email", label: "Staff", icon: <Mail aria-hidden="true" className="h-4 w-4" />, disabled: otpLoading || isNavigating, content: authTab === "email" ? signInPanel : undefined },
                 ]}
               />
 
               {/* Patient Registration Link */}
-              <div className="mt-6 pt-4 border-t border-border/60 text-center flex flex-wrap items-center justify-center gap-x-1.5 text-sm text-text-secondary">
-                <span>New to Ekavyu Health?</span>
-                <Link href="/register" className="inline-flex min-h-11 items-center gap-1 font-medium text-accent hover:underline">
-                  <NavigationPending />
-                  <span>Create Patient Account</span>
-                  <ArrowRight className="w-3 h-3 inline" strokeWidth={2} />
-                </Link>
+              <div className={auth.accountLinks}>
+                <p>New to Ekavyu? <Link href="/register"><NavigationPending />Create patient account</Link></p>
+                <Link href="/pharmacy-start" className="text-xs">Start an independent pharmacy business</Link>
               </div>
-              <p className="mt-3 text-center text-xs text-text-secondary"><Link href="/pharmacy-start" className="font-semibold text-accent hover:underline">Start an independent pharmacy business</Link></p>
             </div>
           ) : (
             /* Forgot Password Form */
-            <form onSubmit={handleResetPassword} noValidate className="p-4 sm:p-6 space-y-4">
-              <CardHeader className="p-0 mb-3 text-center">
+            <form onSubmit={handleResetPassword} noValidate className="space-y-5">
+              <CardHeader className={auth.formHeader}>
                 <CardTitle as="h1" className="page-title">Recover Password</CardTitle>
                 <CardDescription className="text-sm text-text-secondary">
                   {!isResetSent
@@ -567,6 +568,7 @@ export default function LoginPage() {
               <CardContent className="p-0 space-y-4">
                 {!isResetSent ? (
                   <Input
+                    size="lg"
                     label="Registered Email *"
                     type="email"
                     placeholder="doctor@example.com"
@@ -591,7 +593,7 @@ export default function LoginPage() {
                 )}
               </CardContent>
 
-              <CardFooter className="p-0 pt-2 flex flex-col gap-3">
+              <CardFooter className={`${auth.formFooter} flex flex-col gap-3`}>
                 {!isResetSent && (
                   <Button
                     type="submit"
@@ -664,6 +666,7 @@ export default function LoginPage() {
             className="space-y-4"
           >
             <Input
+              size="lg"
               label="6-Digit OTP Code *"
               placeholder="••••••"
               maxLength={6}

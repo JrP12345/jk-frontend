@@ -2,7 +2,9 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Button, Input, Select } from "@/components/ui";
+import { Alert, Button, Card, Input, Select } from "@/components/ui";
+import AuthPageShell from "@/components/auth/AuthPageShell";
+import auth from "@/components/auth/AuthPageShell.module.css";
 import { authScopeKey, referenceOwnerKey } from "@/lib/authScope";
 import { useAuthStore } from "@/store/authStore";
 import { readPharmacyTrials, startPharmacySetup, verifyPharmacySetup, resendPharmacySetup, completePharmacySetup, verifyPharmacySetupMfa, pharmacySetupStatus,
@@ -61,8 +63,8 @@ function SetupSession() {
   }
   const selected = options.find(option => option.id === planId);
   function fresh() { if (busy || resuming) return; try { sessionStorage.removeItem(storageKey); } catch { setError("Allow session storage to keep a recoverable setup reference"); return; } setStorageError(false); setProof(null); setPhase("details"); setPassword(""); setOtp(""); setMfaToken(""); setError(""); setNotice("Review the current offer and request a fresh email code. A completed business is resumed through sign-in."); }
-  return <main className="min-h-dvh bg-background px-4 py-8 sm:py-12"><section aria-label="Independent pharmacy signup" className="mx-auto max-w-xl space-y-5 rounded-2xl border border-border bg-surface p-5 sm:p-8">
-    <div><Link href="/" className="font-semibold text-accent">Ekavyu</Link><h1 className="mt-4 text-2xl font-semibold">Start your pharmacy workspace</h1><p className="mt-2 text-sm text-text-secondary">Verify your business email, create one pharmacy branch, and secure staff access with an authenticator. Your existing account and patient records are retained.</p></div>
+  return <AuthPageShell wide><Card padding="none" className={auth.card}><section aria-label="Independent pharmacy signup" className="space-y-5">
+    <header className={auth.formHeader}><h1 className="page-title">Start your pharmacy workspace</h1><p className="mt-2 text-sm text-text-secondary">Set up a pharmacy branch with verified business email and secure staff access.</p></header>
     {error && <Alert variant="error" title="Setup needs attention">{error}</Alert>}{notice && <Alert variant="info" title="Business setup">{notice}</Alert>}
     {resuming && <p className={proof ? "text-sm text-text-secondary" : "sr-only"} role="status">Checking your saved setup...</p>}
     {storageError && <Button variant="outline" onClick={fresh}>Begin new verification</Button>}
@@ -72,33 +74,37 @@ function SetupSession() {
         if (!current()) return; sessionStorage.setItem(storageKey, JSON.stringify(result.proof)); setProof(result.proof); setPassword(""); setPhase("verify"); setNotice(result.deliveryAvailable ? "Check your email for the six-digit setup code. No business access is granted until verification." : "Email delivery is unavailable. Keep this reference and resend later.");
       }); }}>
         <fieldset disabled={busy || resuming || loading || !options.length || storageError} className="min-w-0 space-y-4">
-          <Select label="Published pharmacy trial *" value={planId} onChange={event => setPlanId(event.target.value)} options={options.map(option => ({ value: option.id, label: `${option.name} / ${option.trialDays} days` }))} />
-          <div className="min-h-28 sm:min-h-20" aria-live="polite" aria-busy={loading}>
+          <Select size="lg" label="Published pharmacy trial *" value={planId} onChange={event => setPlanId(event.target.value)} options={options.map(option => ({ value: option.id, label: `${option.name} / ${option.trialDays} days` }))} />
+          <div className="min-h-20" aria-live="polite" aria-busy={loading}>
             {loading && <><p role="status" className="sr-only">Loading published pharmacy trials...</p><div aria-hidden="true" className="animate-pulse space-y-2"><div className="h-4 rounded bg-surface-alt" /><div className="h-4 rounded bg-surface-alt" /><div className="h-4 w-3/4 rounded bg-surface-alt" /></div></>}
             {!loading && !options.length && <Alert variant="info" title="Signup is not available">No reviewed pharmacy trial is currently published. Existing accounts can still sign in.</Alert>}
-            {selected && <p className="text-sm">{selected.trialDays}-day trial for one pharmacy branch. Current monthly total: {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(selected.monthlyTotalPaise / 100)}. Configured staff limit: {selected.maxStaff}. Paid activation is a separate reviewed checkout.</p>}
+            {selected && <p className="text-sm leading-relaxed">{selected.trialDays}-day trial · {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(selected.monthlyTotalPaise / 100)} per month · {selected.maxStaff} staff. One branch; paid activation is a separate reviewed checkout.</p>}
           </div>
-          <Input label="Owner name *" value={ownerName} maxLength={120} minLength={2} required onChange={event => setOwnerName(event.target.value)} />
-          <Input label="Business account email *" type="email" value={email} maxLength={254} required readOnly={Boolean(user?.email)} onChange={event => setEmail(event.target.value)} />
-          {!user && <Input label="Password for a new account" type="password" autoComplete="new-password" value={password} maxLength={72} onChange={event => setPassword(event.target.value)} hint="Choose a strong password for a new identity. Existing account credentials are kept." />}
-          <Input label="Business name *" value={businessName} minLength={2} maxLength={200} required onChange={event => setBusinessName(event.target.value)} />
-          <Input label="City *" value={city} minLength={2} maxLength={100} required onChange={event => setCity(event.target.value)} />
-          <Input label="Branch address *" value={address} minLength={5} maxLength={500} required onChange={event => setAddress(event.target.value)} />
-          <Input label="Business phone" type="tel" value={phone} maxLength={30} onChange={event => setPhone(event.target.value)} />
-          <p className="text-sm text-text-secondary">This setup is for India/INR businesses. Review actual issuer and operating licence details before enabling sales.</p>
-          <Button type="submit" loading={busy} disabled={!selected}>Send business verification code</Button>
+          <div className={auth.fields}>
+          <Input size="lg" label="Owner name *" autoComplete="name" value={ownerName} maxLength={120} minLength={2} required onChange={event => setOwnerName(event.target.value)} />
+          <Input size="lg" label="Business account email *" type="email" value={email} maxLength={254} required readOnly={Boolean(user?.email)} onChange={event => setEmail(event.target.value)} />
+          {!user && <Input size="lg" label="Password for a new account" type="password" autoComplete="new-password" value={password} maxLength={72} onChange={event => setPassword(event.target.value)} hint="Choose a strong password for a new identity. Existing account credentials are kept." />}
+          <Input size="lg" label="Business name *" value={businessName} minLength={2} maxLength={200} required onChange={event => setBusinessName(event.target.value)} />
+          <div className={`${auth.pairedFields} ${auth.fullField}`}>
+            <Input size="lg" label="City *" value={city} minLength={2} maxLength={100} required onChange={event => setCity(event.target.value)} />
+            <Input size="lg" label="Business phone" type="tel" value={phone} maxLength={30} onChange={event => setPhone(event.target.value)} />
+          </div>
+          <Input size="lg" label="Branch address *" containerClassName={auth.fullField} value={address} minLength={5} maxLength={500} required onChange={event => setAddress(event.target.value)} />
+          </div>
+          <p className="text-xs leading-relaxed text-text-secondary">This setup is for India/INR businesses. Review actual issuer and operating licence details before enabling sales.</p>
+          <Button type="submit" size="lg" fullWidth loading={busy} disabled={!selected}>Send business verification code</Button>
         </fieldset>
       </form>}
       {proof && phase === "verify" && <form className="space-y-3" aria-label="Verify business account email" onSubmit={event => { event.preventDefault(); void work(async () => { await verifyPharmacySetup(proof, otp); if (current()) { setPhase("ready"); setOtp(""); setNotice("Email verified. Create the reviewed pharmacy workspace to continue."); } }); }}>
-        <Input label="Business email verification code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required disabled={busy} value={otp} onChange={event => setOtp(event.target.value)} />
+        <Input size="lg" label="Business email verification code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} required disabled={busy} value={otp} onChange={event => setOtp(event.target.value)} />
         <div className="flex flex-wrap gap-2"><Button type="submit" loading={busy}>Verify business email</Button><Button type="button" variant="outline" disabled={busy} onClick={() => void work(async () => { const delivered = await resendPharmacySetup(proof); if (current()) setNotice(delivered ? "A new code was sent to your business email." : "Email delivery is unavailable. Retry later."); })}>Resend setup code</Button></div>
       </form>}
       {proof && phase === "ready" && <div className="space-y-3"><p>Email verification is recorded. Completion creates this one business or resumes its recorded result; it does not start another trial.</p><Button loading={busy} onClick={() => void work(async () => signIn(await completePharmacySetup(proof)))}>Create or resume pharmacy workspace</Button></div>}
       {phase === "mfa" && <form aria-label="Verify account authenticator" className="space-y-3" onSubmit={event => { event.preventDefault(); void work(async () => signIn(await verifyPharmacySetupMfa(mfaToken, otp))); }}>
-        <p>Enter your existing account authenticator code to open the pharmacy workspace.</p><Input label="Authenticator code" inputMode="numeric" pattern="[0-9]{6}" minLength={6} maxLength={6} required disabled={busy} value={otp} onChange={event => setOtp(event.target.value)} /><Button type="submit" loading={busy}>Verify authenticator and continue</Button>
+        <p>Enter your existing account authenticator code to open the pharmacy workspace.</p><Input size="lg" label="Authenticator code" inputMode="numeric" pattern="[0-9]{6}" minLength={6} maxLength={6} required disabled={busy} value={otp} onChange={event => setOtp(event.target.value)} /><Button type="submit" loading={busy}>Verify authenticator and continue</Button>
       </form>}
       {proof && <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy} onClick={() => void work(async () => { const status = await pharmacySetupStatus(proof); if (current()) { setPhase(status.state === "pending" ? "verify" : "ready"); setNotice(status.state === "provisioned" ? "The business is already recorded. Resume secure sign-in." : "Setup status refreshed."); } })}>Check saved setup</Button><Button size="sm" variant="ghost" disabled={busy} onClick={fresh}>Begin new verification</Button></div>}
     </>}
-    <p className="text-sm"><Link href="/login" className="text-accent">Already have an account? Sign in</Link></p>
-  </section></main>;
+    <p className={auth.accountLinks}><Link href="/login">Already have an account? Sign in</Link></p>
+  </section></Card></AuthPageShell>;
 }
